@@ -2732,8 +2732,22 @@ export async function discoverWorkflows({
   inventoryPath,
   outputPath,
   repository,
+  sourceInventoryPath,
 } = {}) {
-  const inventory = discoverInventory(path.resolve(root));
+  const inventory = sourceInventoryPath
+    ? JSON.parse(await readFile(path.resolve(sourceInventoryPath), "utf8"))
+    : discoverInventory(path.resolve(root));
+  if (
+    !inventory ||
+    typeof inventory !== "object" ||
+    inventory.schemaVersion !== 1 ||
+    !Array.isArray(inventory.workflows) ||
+    !Array.isArray(inventory.bundles) ||
+    !Array.isArray(inventory.campaigns)
+  ) {
+    throw new Error("source inventory is not a valid control-plane inventory");
+  }
+  inventory.generatedAt = new Date().toISOString();
   const controlSettings = JSON.parse(await readFile(path.resolve(controlSettingsPath), "utf8"));
   const sources = await discoverInventoryDashboardSources({
     inventory,

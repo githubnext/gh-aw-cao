@@ -154,7 +154,10 @@ Collected evidence MUST be persisted in a durable **evidence lake**.
 
 - The lake MUST use the Activity snapshot directory layout: compacted run shards
   under `gh-aw-logs-runs/`, record shards under `gh-aw-logs-records/`, a
-  `payload-hashes.json` manifest, and `inventory-sources.json`.
+  `payload-hashes.json` manifest, and `inventory-sources.json`. A source-built
+  collector MUST also retain the resolved `control-settings.json` and
+  source-bound `control-plane-inventory.json` that produced those inventory
+  sources.
 - Shard writes MUST be atomic per repository: a reader MUST observe either the
   previous shard or the complete new shard.
 - The manifest MUST be regenerated whenever shards change, and MUST list a
@@ -190,6 +193,17 @@ dataset.
 - Inventory discovery MUST NOT silently truncate the enrolled repository set. An
   implementation MAY enforce a configured bound, but exceeding it MUST fail the
   projection rather than publish a partial inventory.
+- A source-built collector MUST generate its static control-plane inventory
+  deterministically from the exact source revision during image build. Runtime
+  inventory discovery MUST resolve the reviewed deployment policy, reject an
+  unavailable policy resolution, replace only its repository scope with the
+  exact Redis enrollment set, and enrich the source-bound inventory with a
+  short-lived installation token for the control repository.
+- The first canonical activation MUST fail when it cannot produce valid inventory evidence
+  with at least one campaign. After one valid inventory has been retained, a
+  transient policy, GitHub, or enrichment failure MAY reuse that previous
+  inventory while projecting newer run evidence; an empty or malformed
+  inventory seed MUST NOT qualify as a previous valid inventory.
 
 ## 8. Cold start
 
@@ -211,6 +225,10 @@ An implementation MUST support cold start in this order:
 During cold start the implementation MUST continue to accept webhooks and MUST
 apply them without loss or double application. Window completeness and
 backfilled repository count MUST be published as source metadata.
+
+An empty source-built lake MUST produce and retain valid inventory evidence
+before its first canonical projection. A retained lake with valid inventory
+evidence remains replayable without GitHub requests.
 
 An explicitly configured historical backfill window MUST be sent as an
 inclusive UTC `created=START..END` range to GitHub's run-list API; a provider
@@ -246,6 +264,9 @@ per installation.
 
 - Installation tokens MUST be minted per installation, cached no longer than
   shortly before expiry, and never logged or persisted to the evidence lake.
+- Live inventory enrichment MUST use a short-lived token for the control
+  repository installation and MUST pass the same explicit rate-limit reserve as
+  other collector GitHub subprocesses.
 - The implementation MUST maintain a per-installation budget corrected from
   `x-ratelimit-remaining` and `x-ratelimit-reset` on every response.
 - A worker MUST reserve budget before starting a task and MUST stop at a

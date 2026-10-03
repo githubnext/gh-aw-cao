@@ -42,6 +42,11 @@ type CollectorConfig struct {
 	CatalogRoot string
 	// ControlRepository names the control repository for inventory discovery.
 	ControlRepository string
+	// PolicyPath is the reviewed deployment policy resolved for inventory.
+	PolicyPath string
+	// StaticInventoryPath is the source-bound inventory packaged with the
+	// collector image.
+	StaticInventoryPath string
 
 	NodeBinary   string
 	GitHubBinary string
@@ -106,6 +111,15 @@ func (config *CollectorConfig) Validate() error {
 		}
 		if strings.TrimSpace(config.CatalogRoot) == "" {
 			return errors.New("collection requires the catalog root containing activity/cao.mjs")
+		}
+		if strings.TrimSpace(config.ControlRepository) == "" {
+			return errors.New("collection requires a control repository for inventory discovery")
+		}
+		if strings.TrimSpace(config.PolicyPath) == "" {
+			return errors.New("collection requires the reviewed control policy path")
+		}
+		if strings.TrimSpace(config.StaticInventoryPath) == "" {
+			return errors.New("collection requires the packaged static control-plane inventory")
 		}
 	}
 	if config.QueueMaxLength <= 0 {
@@ -228,6 +242,8 @@ func NewCollector(
 		WindowDays:               config.WindowDays,
 		DatabaseQueriesPath:      databaseQueriesPath,
 		ControlRepository:        config.ControlRepository,
+		PolicyPath:               config.PolicyPath,
+		StaticInventoryPath:      config.StaticInventoryPath,
 		MinInterval:              config.MinProjectionInterval,
 		InventoryRepositoryLimit: config.InventoryLimit,
 	}

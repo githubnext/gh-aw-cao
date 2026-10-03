@@ -465,8 +465,9 @@ set the Compose file to `server/coolify/compose.yml`, enable automatic
 deployments, and enable **Include Source Commit in Build**. Compose passes
 Coolify's `SOURCE_COMMIT` to `server/Dockerfile` as the image version and
 revision. The Dockerfile bakes `cao.json` and `cao.coolify.json` into the image,
-so runtime policy bind mounts and **Preserve Repository During Deployment** are
-not required.
+generates a deterministic control-plane inventory from that exact checkout,
+and packages the shared policy resolver. Runtime policy or catalog bind mounts
+and **Preserve Repository During Deployment** are not required.
 
 The external artifact volume is authoritative input, not checked-in deployment
 data. Before the first start, populate an unattached staging volume with a
@@ -709,8 +710,8 @@ deployment can never have two writers for one database.
 
 To switch a deployment to the collection profile, unset `CAO_SOURCE_DIRECTORY`,
 set the `CAO_COLLECT_*` settings, and deploy `collectorImage`. To switch back,
-reverse both. Switching does not lose data: the canonical database is rebuilt
-from whichever evidence the selected profile retains.
+reverse both. Switching does not lose data: the canonical database is
+repopulated from whichever evidence the selected profile retains.
 
 ### Collection profile
 
@@ -727,15 +728,21 @@ Collection separates three concerns that fail differently:
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
    and GitHub budget is reserved per installation before each collection.
-3. **Projection.** Collected evidence is projected by the existing
+3. **Canonical ingestion.** Collected evidence is written to PostgreSQL by the existing
    `internal/ingest` package. Before finalizing the payload manifest, projection
+   resolves the reviewed deployment policy, overlays the exact Redis enrollment
+   set, and enriches the packaged source-bound inventory with a short-lived
+   token for the control repository installation. The first activation fails
+   without valid campaign inventory; later transient inventory refresh failures
+   retain the previous valid inventory. Projection then
    builds a temporary Activity database and runs the native Go
    operational-value orchestrator, whose output is equivalence-tested against
    `cao operational-value`. Campaign adapters remain shared JavaScript modules,
    invoked with one installation-scoped token per repository. Operational-value
    failure remains best-effort and does not block newer Activity evidence.
-   Projection is coalesced behind a dirty flag and a minimum interval, so
-   projection cost follows the collection rate rather than the event rate.
+   Canonical replacement is coalesced behind a dirty flag and a minimum
+   interval, so ingestion cost follows the collection rate rather than the
+   event rate.
 
 The evidence lake is laid out byte-compatibly with a snapshot published by the
 Activity workflow:
@@ -745,6 +752,8 @@ gh-aw-logs-shards/     collected, not yet compacted
 gh-aw-logs-runs/*.jsonl
 gh-aw-logs-records/*.jsonl
 payload-hashes.json
+control-settings.json
+control-plane-inventory.json
 inventory-sources.json
 ```
 
@@ -886,6 +895,8 @@ readiness URL, OTLP endpoint, authorization header, trace ID, or span ID.
 | `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
 | `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
 | `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
+| `CAO_COLLECT_STATIC_INVENTORY` | source-bound control-plane inventory packaged with the collector |
+| `CAO_POLICY_PATH` | reviewed base policy or deployment profile resolved before inventory discovery |
 | `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |

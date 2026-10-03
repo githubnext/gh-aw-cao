@@ -85,6 +85,45 @@ test("control.mjs reads the configured gh-aw compiler version", () => {
   }
 });
 
+test("control.mjs resolves deployment profiles for control settings", () => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-policy-profile-"));
+  const policyPath = join(directory, "cao.json");
+  const profilePath = join(directory, "cao.coolify.json");
+  writeFileSync(policyPath, JSON.stringify(policy()));
+  writeFileSync(profilePath, JSON.stringify({
+    extends: "./cao.json",
+    "control-plane": {
+      web: {
+        host: {
+          target: {
+            module: "container",
+            name: "coolify",
+          },
+          redis: {
+            module: "local",
+            "url-env": "REDIS_URL",
+            "namespace-env": "REDIS_NAMESPACE",
+            "allow-private-plaintext": true,
+            tls: {
+              mode: "disabled",
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  try {
+    const result = run(["control-settings", profilePath]);
+    assert.equal(result.status, 0, result.stderr);
+    const settings = JSON.parse(result.stdout);
+    assert.deepEqual(settings.allowed_repositories, ["acme/target"]);
+    assert.equal(settings.web.host.target.name, "coolify");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function run(args, input = "", environment = {}) {
   return spawnSync(process.execPath, [control, ...args], {
     cwd: root,

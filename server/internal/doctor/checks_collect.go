@@ -102,6 +102,10 @@ func (d Doctor) checkCollectionSettings(context.Context) Check {
 		LakeDirectory:     d.getenv("CAO_COLLECT_LAKE_DIRECTORY"),
 		CatalogRoot:       d.getenv("CAO_COLLECT_CATALOG_ROOT"),
 		ControlRepository: d.getenv("CAO_COLLECT_CONTROL_REPOSITORY"),
+		PolicyPath:        d.getenv("CAO_POLICY_PATH"),
+		StaticInventoryPath: d.getenv(
+			"CAO_COLLECT_STATIC_INVENTORY",
+		),
 		Workers:           intEnv(d.getenv("CAO_COLLECT_WORKERS")),
 		RecoverDeliveries: envTruthy(d.getenv("CAO_COLLECT_RECOVER_DELIVERIES")),
 	}

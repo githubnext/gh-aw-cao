@@ -159,7 +159,7 @@ components:
     responsibility: expose the complete hosted CAO handler and cancellation-aware application startup to a separately owned HTTP listener without exporting Redis or authentication internals
   dashboard_coolify_deployment:
     path: server/coolify/
-    responsibility: let a repository-scoped Coolify GitHub App watch protected main, build a lean admission-only dashboard target plus private collector and backfill targets from the checked-out source commit, retain collection evidence in a persistent volume, and keep one external read-only activity artifact available only for snapshot-profile rollback
+    responsibility: let a repository-scoped Coolify GitHub App watch protected main, build a lean admission-only dashboard target plus private collector and backfill targets from the checked-out source commit, package a deterministic source-bound control-plane inventory with the minimal shared policy resolver, retain collection evidence in a persistent volume, and keep one external read-only activity artifact available only for snapshot-profile rollback
   dashboard_observability:
     path: server/internal/telemetry/, server/internal/server/, dashboard/site/src/remote-data-backend.js
     responsibility: export vendor-neutral OTLP traces and metrics plus explicitly enabled DEBUG-selected logs, correlate bounded server errors and browser failures through matching W3C trace/span identifiers, and keep exporter credentials and internal failure details outside responses and logs
@@ -183,7 +183,7 @@ components:
     responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
   dashboard_server_collection:
     path: server/internal/collect/
-    responsibility: optional alternative ingestion profile that discovers paginated historical workflow runs into durable resumable run tasks, while retaining repository collection into a snapshot-compatible evidence lake and the existing ingestion pipeline
+    responsibility: optional alternative ingestion profile that discovers paginated historical workflow runs into durable resumable run tasks, resolves reviewed policy over exact Redis enrollment, enriches source-bound campaign inventory with short-lived installation authority, and retains repository and inventory evidence in a snapshot-compatible lake loaded through the existing ingestion pipeline
   dashboard_collection_health:
     path: server/internal/server/collecting.go
     responsibility: persist allowlisted Redis-backed ingestion counters and expose a read-only health API and admin-authorized collection-health runtime source through the query boundary
@@ -364,7 +364,7 @@ invariants:
   - "cao.json MUST remain the only rollout policy; cao.<deployment>.json profiles MAY extend only control-plane.web.host and MUST reject traversal, cycles, duplicate keys, and any authority or campaign override."
   - "The CAO server package MUST require stable release identities in exact vX.Y.Z form on protected main history; admit manual branch dispatch only for original and rerun actors with maintain or admin permission when the executing workflow is current protected main and the requested source branch is at its current head; keep manual dispatch identities separate from main and release identities; run lint, test, and image build/scanning as separate jobs; test exact sources; gate Dockerfile and workflow security with Hadolint, actionlint, and zizmor; preserve raw static-check outputs in a short-lived artifact even on failure; independently gate high/critical CVEs with Trivy and Grype; check container hardening with Dockle; generate an SPDX SBOM with Syft; keep lint, test, build, and scanner execution outside the package-write security domain; pass only a checksummed candidate and exact metadata to the protected-main reusable publisher; revalidate caller, source, checksum, metadata, and OCI labels before publication; publish only immutable commit or exact stable release identities; attest provenance and SBOM for the exact OCI digest; expose the multi-role server for downstream Docker Compose command selection; emit privacy-safe core.info milestones for JavaScript control checks; and never publish mutable channel tags."
   - "Package and delivery step summaries MUST use non-nested details sections and disclose only check scope, policy, and outcome; they MUST NOT reproduce vulnerability records, SBOM contents, image inventory, credentials, endpoints, payloads, registry responses, or adapter responses."
-  - "Coolify production delivery MUST use a repository-scoped Coolify GitHub App and automatic deployments from protected main; build server/Dockerfile through server/coolify/compose.yml from the selected source commit; embed SOURCE_COMMIT; bake the base and Coolify policy profiles into the image; run the public dashboard in admission-only mode without the collection private key; run unexposed collector and idempotent backfill roles with a checksum-verified policy-pinned gh-aw toolchain and shared persistent evidence volume; leave CAO_SOURCE_DIRECTORY unset in the collection profile; retain one authoritative activity artifact as an external read-only recovery volume for snapshot-profile rollback; require no GitHub deployment workflow, Coolify API token, public Coolify API endpoint, runner tailnet access, registry credentials, or mutable registry tag; and treat package-workflow scans, hardening checks, SBOMs, and attestations as guarantees for published packages rather than admission evidence for the source-built production image."
+  - "Coolify production delivery MUST use a repository-scoped Coolify GitHub App and automatic deployments from protected main; build server/Dockerfile through server/coolify/compose.yml from the selected source commit; embed SOURCE_COMMIT; bake the base and Coolify policy profiles into the image; package a deterministic control-plane inventory from that exact source plus only the shared runtime policy resolver; run the public dashboard in admission-only mode without the collection private key; run unexposed collector and idempotent backfill roles with a checksum-verified policy-pinned gh-aw toolchain and shared persistent evidence volume; resolve reviewed deployment policy, overlay exact Redis enrollment, and use a short-lived control-repository installation token for live inventory enrichment; fail the first canonical ingestion without valid campaign inventory and retain only a previously valid inventory on later transient refresh failure; leave CAO_SOURCE_DIRECTORY unset in the collection profile; retain one authoritative activity artifact as an external read-only recovery volume for snapshot-profile rollback; require no GitHub deployment workflow, Coolify API token, public Coolify API endpoint, runner tailnet access, registry credentials, or mutable registry tag; and treat package-workflow scans, hardening checks, SBOMs, and attestations as guarantees for published packages rather than admission evidence for the source-built production image."
   - "Hosted server telemetry MUST use standard OTEL runtime configuration; exporter endpoints and headers MUST remain deployment secrets and MUST NOT enter policy, browser state, or logs. When tracing is active, API error bodies, response headers, browser request IDs, and bounded server error logs MUST carry matching W3C trace identifiers without exposing internal exceptions, query payloads, source rows, or storage credentials."
   - "Observability backends are diagnostic infrastructure only and MUST NOT become dashboard data stores, policy authorities, rollout authorities, or sources of operational evidence."
   - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
@@ -377,7 +377,7 @@ invariants:
   - "Workers MUST persist future retries outside the ready stream, promote them only when due, count scheduled work toward queue capacity/depth, preserve leased work on shutdown, and never block ready work while waiting."
   - "The collection task stream MUST apply admission backpressure at its configured capacity and MUST NOT trim undelivered or pending work; completed entries are ACKed and deleted atomically."
   - "Published-snapshot ingestion and server collection are mutually exclusive profiles; configuring both MUST fail at startup, and the published-snapshot profile MUST remain the default with unchanged behavior when collection is unconfigured."
-  - "Server collection MUST write evidence in the published snapshot layout and project it through the same ingestion pipeline, so a retained evidence lake repopulates a database on cold start without GitHub requests."
+  - "Server collection MUST write repository and inventory evidence in the published snapshot layout and project it through the same ingestion pipeline, so a retained evidence lake with valid inventory repopulates a database on cold start without GitHub requests; an empty lake MUST produce valid campaign inventory before its first projection."
   - "Server collection scope MUST derive from GitHub App installations; a delivery for an unenrolled repository MUST be dropped rather than collected, and GitHub budget MUST be reserved per installation before each collection."
   - "The local ingestion simulator MUST use the production webhook admission and collection subprocess path, strict seeded JSON scenarios, synthetic repositories, bounded event/repository/concurrency limits, and MUST NOT be treated as a complete GitHub API emulator or production-capacity guarantee."
   - "Server diagnostics MUST be read-only, use stable check identifiers, produce equivalent human-readable and versioned structured reports, redact secrets, bound each dependency check, and require explicit deep mode before reading every active source."
@@ -457,6 +457,9 @@ flows:
   activity_dashboard_coolify:
     - dashboard_publisher
     - dashboard_coolify_deployment
+    - policy_resolution
+    - dashboard_collection_credentials
+    - dashboard_server_collection
     - dashboard_https_server
     - postgres_entity_store
     - redis_operational_store
@@ -498,6 +501,10 @@ generation:
     path: CODEBASE.yml
     source: ARCHITECTURE.md
     compilation_skill: .github/skills/codebase-model/SKILL.md
+  coolify_static_control_plane_inventory:
+    source: aw.yml, campaign aw.yml files, .github/workflows workflow sources, compiled lock files, campaign records, intelligence declarations, and cao.json
+    output: collector image /app/catalog/control-plane-inventory.json
+    command: REPORT_ROOT=/workspace REPORT_INVENTORY=/tmp/control-plane-inventory.json REPORT_INVENTORY_STATIC=true node activity/inventory.mjs
   dashboard_server_package:
     path: .github/workflows/cao-package.yml
     output: ghcr.io/githubnext/gh-aw-cao/cao-server

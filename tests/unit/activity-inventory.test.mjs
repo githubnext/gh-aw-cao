@@ -68,6 +68,10 @@ source: githubnext/gh-aw-cao@${sourceRevision}
     assert.equal(inventory.workflows[0].source, `githubnext/gh-aw-cao@${sourceRevision}`);
     assert.equal(inventory.workflows[0].version, sourceRevision);
     assert.equal(inventory.workflows[0].ghAwVersion, "v0.89.15");
+    assert.equal(
+      Object.hasOwn(discoverInventory(root, { generatedAt: "" }), "generatedAt"),
+      false,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

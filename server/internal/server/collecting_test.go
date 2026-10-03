@@ -230,6 +230,9 @@ func TestCollectorConfigFromEnvReadsTheCollectionProfile(t *testing.T) {
 	t.Setenv("CAO_COLLECT_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----")
 	t.Setenv("CAO_COLLECT_LAKE_DIRECTORY", lake)
 	t.Setenv("CAO_COLLECT_CATALOG_ROOT", catalog)
+	t.Setenv("CAO_COLLECT_CONTROL_REPOSITORY", "octo/control")
+	t.Setenv("CAO_POLICY_PATH", "/app/.github/workflows/cao.coolify.json")
+	t.Setenv("CAO_COLLECT_STATIC_INVENTORY", "/app/catalog/control-plane-inventory.json")
 	t.Setenv("CAO_COLLECT_WORKERS", "4")
 	t.Setenv("CAO_COLLECT_PROJECTION_INTERVAL", "90s")
 	t.Setenv("CAO_COLLECT_RECOVER_DELIVERIES", "true")
@@ -248,6 +251,10 @@ func TestCollectorConfigFromEnvReadsTheCollectionProfile(t *testing.T) {
 	}
 	if !config.RecoverDeliveries {
 		t.Fatal("expected delivery recovery to be enabled")
+	}
+	if config.PolicyPath != "/app/.github/workflows/cao.coolify.json" ||
+		config.StaticInventoryPath != "/app/catalog/control-plane-inventory.json" {
+		t.Fatalf("unexpected inventory configuration: %+v", config)
 	}
 }
 

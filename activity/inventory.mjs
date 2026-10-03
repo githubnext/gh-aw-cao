@@ -59,7 +59,9 @@ function manifestIncludes(source) {
 
 function findFiles(directory, filename) {
   const matches = [];
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+  const entries = readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
     if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "_site") continue;
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) matches.push(...findFiles(entryPath, filename));
@@ -153,7 +155,10 @@ export function sourceRevision(source) {
   return scalar(source, "source").match(/@([0-9a-f]{40})$/i)?.[1] || "";
 }
 
-export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT || ".")) {
+export function discoverInventory(
+  root = path.resolve(process.env.REPORT_ROOT || "."),
+  { generatedAt = new Date().toISOString() } = {},
+) {
   const workflowDirectory = path.join(root, ".github/workflows");
   const policyPath = path.join(workflowDirectory, "cao.json");
   const installedDeclarations = installedIntelligenceDeclarations(root);
@@ -176,7 +181,9 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
     };
   });
   const campaignByWorkflow = new Map();
-  for (const manifest of manifests.sort((left, right) => left.path.split("/").length - right.path.split("/").length)) {
+  for (const manifest of manifests.sort((left, right) =>
+    left.path.split("/").length - right.path.split("/").length || left.path.localeCompare(right.path),
+  )) {
     for (const include of manifest.includes) {
       if (include.startsWith(".github/workflows/") && include.endsWith(".md")) campaignByWorkflow.set(include, manifest);
     }
@@ -184,6 +191,7 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
 
   const workflows = readdirSync(workflowDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .sort((left, right) => left.name.localeCompare(right.name))
     .map((entry) => {
       const sourcePath = `.github/workflows/${entry.name}`;
       const lockPath = path.join(workflowDirectory, `${entry.name.slice(0, -3)}.lock.yml`);
@@ -265,8 +273,18 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
   const lockOnly = readdirSync(workflowDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
     .map((entry) => entry.name.slice(0, -9))
-    .filter((stem) => !workflowById.has(stem));
-  return { schemaVersion: 1, generatedAt: new Date().toISOString(), manifests, workflows, bundles, campaigns, standalone, lockOnly };
+    .filter((stem) => !workflowById.has(stem))
+    .sort();
+  return {
+    schemaVersion: 1,
+    ...(generatedAt ? { generatedAt } : {}),
+    manifests,
+    workflows,
+    bundles,
+    campaigns,
+    standalone,
+    lockOnly,
+  };
 }
 
 export async function main(actions = {}) {
@@ -274,7 +292,11 @@ export async function main(actions = {}) {
   log.group`Extract control-plane inventory`;
   try {
     const outputPath = path.resolve(process.env.REPORT_INVENTORY || "_inventory/control-plane.json");
-    const inventory = discoverInventory();
+    const inventory = discoverInventory(path.resolve(process.env.REPORT_ROOT || "."), {
+      generatedAt: process.env.REPORT_INVENTORY_STATIC === "true"
+        ? ""
+        : new Date().toISOString(),
+    });
     await mkdir(path.dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(inventory, null, 2)}\n`);
     log.info`Discovered ${inventory.bundles.length} campaigns and ${inventory.standalone.length} standalone workflows in ${outputPath}`;

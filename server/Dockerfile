@@ -11,6 +11,10 @@ RUN sed -i \
       dashboard/site/package-lock.json \
     && npm --prefix dashboard/site ci
 COPY . .
+RUN REPORT_ROOT=/workspace \
+    REPORT_INVENTORY=/tmp/control-plane-inventory.json \
+    REPORT_INVENTORY_STATIC=true \
+    node activity/inventory.mjs
 RUN printf '%s' "${CAO_PROFILE}" | grep -Eq '^cao(\.[a-z0-9-]+)?\.json$' \
     && policy="../../.github/workflows/${CAO_PROFILE}" \
     && if echo "${REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then \
@@ -109,6 +113,9 @@ RUN apk add --no-cache ca-certificates github-cli \
 
 COPY --from=dashboard-runtime --chown=cao:cao /app/ /app/
 COPY --from=dashboard-build --chown=cao:cao /workspace/activity/ /app/catalog/activity/
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/control.mjs /app/catalog/.github/workflows/shared/control.mjs
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/policy.mjs /app/catalog/.github/workflows/shared/policy.mjs
+COPY --from=dashboard-build --chown=cao:cao /tmp/control-plane-inventory.json /app/catalog/control-plane-inventory.json
 # gh aw logs discovers agentic workflow names from local compiled workflows
 # before it queries runs, so the collection catalog must retain the lock files.
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/*.lock.yml /app/catalog/.github/workflows/

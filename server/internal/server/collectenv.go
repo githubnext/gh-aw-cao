@@ -78,6 +78,8 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 		LakeDirectory:         strings.TrimSpace(os.Getenv("CAO_COLLECT_LAKE_DIRECTORY")),
 		CatalogRoot:           strings.TrimSpace(os.Getenv("CAO_COLLECT_CATALOG_ROOT")),
 		ControlRepository:     strings.TrimSpace(os.Getenv("CAO_COLLECT_CONTROL_REPOSITORY")),
+		PolicyPath:            strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")),
+		StaticInventoryPath:   strings.TrimSpace(os.Getenv("CAO_COLLECT_STATIC_INVENTORY")),
 		NodeBinary:            strings.TrimSpace(os.Getenv("CAO_COLLECT_NODE_BINARY")),
 		GitHubBinary:          strings.TrimSpace(os.Getenv("CAO_COLLECT_GH_BINARY")),
 		Consumer:              strings.TrimSpace(os.Getenv("CAO_COLLECT_CONSUMER")),

@@ -68,4 +68,15 @@ func TestInventoryAdapterHasDeterministicNativeIdentities(t *testing.T) {
 	if source != "$workflows" || row["id"] != "workflow:octo%2Fapi%3A.github%2Fworkflows%2Fbuild.md" || row["repositoryId"] != "repository:octo%2Fapi" || row["state"] != "active" {
 		t.Fatalf("normalization differs from declared inventory identity: %#v", row)
 	}
+	source, row, err = inventoryRow("campaigns", model.Row{
+		"campaign":      "maintenance",
+		"campaign-name": "Maintenance",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source != "$campaigns" || row["id"] != "campaign:dashboard-sources:maintenance" ||
+		row["slug"] != "maintenance" || row["name"] != "Maintenance" {
+		t.Fatalf("campaign inventory does not map to canonical Postgres rows: %#v", row)
+	}
 }

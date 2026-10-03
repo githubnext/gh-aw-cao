@@ -2,7 +2,10 @@ package collect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -120,5 +123,96 @@ func TestCollectEnrolledRepositoriesHandlesNoRepositories(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Fatalf("len(got) = %d, want 0", len(got))
+	}
+}
+
+func TestOverlayInventoryRepositoriesRequiresResolvedPolicy(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "control-settings.json")
+	content := `{
+			"allowed_repositories": ["wrong/repository"],
+			"campaigns": {"maintenance": {}},
+			"policy_resolution": {"status": "available", "reason": ""}
+		}`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := overlayInventoryRepositories(path, []string{"octo/api", "octo/web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings struct {
+		AllowedRepositories []string `json:"allowed_repositories"`
+		Campaigns           map[string]any
+	}
+	if err := json.Unmarshal(result, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(settings.AllowedRepositories, ",") != "octo/api,octo/web" {
+		t.Fatalf("allowed repositories = %v", settings.AllowedRepositories)
+	}
+	if _, ok := settings.Campaigns["maintenance"]; !ok {
+		t.Fatal("policy campaigns were not preserved")
+	}
+
+	if err := os.WriteFile(path, []byte(`{
+			"policy_resolution": {"status": "unavailable", "reason": "profile missing"}
+		}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := overlayInventoryRepositories(path, nil); err == nil ||
+		!strings.Contains(err.Error(), "profile missing") {
+		t.Fatalf("expected unavailable policy error, got %v", err)
+	}
+}
+
+func TestValidateInventorySourcesRequiresCampaignEvidence(t *testing.T) {
+	valid := []byte(`{
+			"campaigns": {"rows": [{"campaign": "maintenance"}]},
+			"repositories": {"rows": []},
+			"workflows": {"rows": []},
+			"configuration-policy": {"rows": []}
+		}`)
+	if err := validateInventorySources(valid); err != nil {
+		t.Fatalf("valid inventory was rejected: %v", err)
+	}
+	for name, content := range map[string][]byte{
+		"empty document": []byte(`{}`),
+		"empty campaigns": []byte(`{
+				"campaigns": {"rows": []},
+				"repositories": {"rows": []},
+				"workflows": {"rows": []},
+				"configuration-policy": {"rows": []}
+			}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateInventorySources(content); err == nil {
+				t.Fatal("expected invalid inventory to fail")
+			}
+		})
+	}
+}
+
+func TestValidateRetainedInventoryEvidence(t *testing.T) {
+	if err := validateControlSettings([]byte(`{
+		"campaigns": {"maintenance": {}},
+		"policy_resolution": {"status": "available"}
+	}`)); err != nil {
+		t.Fatalf("valid control settings were rejected: %v", err)
+	}
+	if err := validateControlPlaneInventory([]byte(`{
+		"campaigns": [{"id": "maintenance"}],
+		"workflows": [{"id": "maintenance"}]
+	}`)); err != nil {
+		t.Fatalf("valid control-plane inventory was rejected: %v", err)
+	}
+	for name, test := range map[string]func([]byte) error{
+		"control settings":  validateControlSettings,
+		"control inventory": validateControlPlaneInventory,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := test([]byte(`{}`)); err == nil {
+				t.Fatal("expected empty retained evidence to fail")
+			}
+		})
 	}
 }

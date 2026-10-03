@@ -43,13 +43,29 @@ test("discover-workflows collects a bounded repository set locally", async () =>
     await writeFile(path.join(root, "aw.yml"), "name: Fixture\nincludes: []\n");
     await writeFile(path.join(workflowDirectory, "cao.json"), JSON.stringify({
       version: 1,
-      "control-plane": { campaigns: {} },
+      "control-plane": {
+        campaigns: {
+          maintenance: {
+            enabled: true,
+            mode: "review",
+          },
+        },
+      },
     }));
-    await writeFile(path.join(workflowDirectory, "ci.md"), "---\nname: CI\n---\n");
+    await writeFile(
+      path.join(workflowDirectory, "ci.md"),
+      "---\nname: CI\n---\nuses: shared/control.md\ncampaign: maintenance\nrole: orchestrator\n",
+    );
     const settingsPath = path.join(root, "control-settings.json");
     await writeFile(settingsPath, JSON.stringify({
       allowed_repositories: ["acme/app"],
-      campaigns: {},
+      campaigns: {
+        maintenance: {
+          enabled: true,
+          mode: "review",
+          worker_policies: {},
+        },
+      },
       policy_document: {
         "control-plane": {
           inventory: { "max-scan-repositories": 2 },
@@ -81,14 +97,42 @@ test("discover-workflows collects a bounded repository set locally", async () =>
     assert.deepEqual(result, {
       command: "discover-workflows",
       repositories: 2,
-      campaigns: 0,
+      campaigns: 1,
       workflows: 3,
     });
     const sources = JSON.parse(await readFile(outputPath, "utf8"));
+    assert.equal(sources.campaigns.rows.length, 1);
+    assert.equal(sources.campaigns.rows[0].campaign, "maintenance");
     assert.equal(sources.repositories.rows.length, 2);
     assert.equal(sources.workflows.rows.filter((workflow) => workflow["workflow-name"] === "CI").length, 3);
     assert.equal(requests.filter((url) => url?.includes("/actions/workflows")).length, 2);
     assert.equal(requests.filter((url) => url?.startsWith("/repos/acme/") && !url.includes("/actions/")).length, 1);
+
+    requests.length = 0;
+    const packagedInventoryPath = path.join(root, "packaged-inventory.json");
+    const packagedSourcesPath = path.join(root, "packaged-inventory-sources.json");
+    const { stdout: packagedStdout } = await executeFile(cao, [
+      "discover-workflows",
+      "--root", path.join(root, "missing-source-tree"),
+      "--source-inventory", inventoryPath,
+      "--control-settings", settingsPath,
+      "--inventory", packagedInventoryPath,
+      "--output", packagedSourcesPath,
+      "--repo", "acme/control",
+    ], {
+      env: {
+        ...process.env,
+        GH_TOKEN: "test-token",
+        GITHUB_API_URL: `http://127.0.0.1:${port}`,
+      },
+    });
+    const packagedResult = JSON.parse(packagedStdout.slice(packagedStdout.lastIndexOf("\n{") + 1));
+    assert.equal(packagedResult.workflows, 3);
+    assert.equal(
+      JSON.parse(await readFile(packagedInventoryPath, "utf8")).workflows[0].id,
+      "ci",
+    );
+    assert.equal(requests.filter((url) => url?.includes("/actions/workflows")).length, 2);
   } finally {
     server.close();
     await rm(root, { recursive: true, force: true });

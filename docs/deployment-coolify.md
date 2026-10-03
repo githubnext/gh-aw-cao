@@ -11,9 +11,13 @@ description: Run the Central Agentic Ops dashboard server as a hardened containe
 The Coolify deployment runs the same Go dashboard server as [the Azure deployment](deployment-azure.md). It builds two non-root image targets and runs three roles:
 
 - `dashboard` starts `serve-hosted` in admission-only mode. The Coolify proxy is the only way into this container, and the container never receives the collection App private key.
-- `collector` continuously leases admitted work, collects GitHub evidence, and projects it into PostgreSQL.
+- `collector` continuously leases admitted work, collects GitHub evidence, and ingests canonical rows into PostgreSQL.
 - `backfill` runs once per deployment to replay retained evidence, enumerate the App installations, and seed missing work.
-- The collector and backfill roles share a persistent evidence volume. Redis stores operational queues and PostgreSQL stores the current canonical projection.
+- The collector and backfill roles share a persistent evidence volume. Redis stores operational queues and PostgreSQL stores the current canonical dataset.
+- The image contains a deterministic campaign inventory generated from the
+  exact source commit. Private collection roles combine it with the reviewed
+  Coolify policy and current Redis enrollment before publishing enriched
+  inventory evidence.
 - The last verified dashboard artifact remains mounted read-only as a recovery source, but it is not an active ingestion source while collection is configured.
 - Users sign in with GitHub OAuth. Only active members of GitHub organizations or teams that you allow can access the dashboard.
 
@@ -124,7 +128,12 @@ For the production deployment of the `githubnext/gh-aw-cao` dashboard:
    for installation scope.
 1. Deploy once from the Coolify UI, then verify readiness, authentication,
    authorization, backfill completion, enrollment coverage, a bounded query,
-   and webhook admission.
+   and webhook admission. In the collector container, confirm that
+   `/app/catalog/control-plane-inventory.json`,
+   `/app/evidence/control-plane-inventory.json`, and
+   `/app/evidence/inventory-sources.json` exist and are non-empty. After signing
+   in, `GET /api/health` must report a `counts.$campaigns` value greater than
+   zero.
 
 The Dockerfile bakes `cao.json` and `cao.coolify.json` into the image, so
 **Preserve Repository During Deployment** is not required. On later pushes, the
@@ -137,10 +146,15 @@ health evaluation, and rollback.
 Data updates do not require a source commit or deployment. A completed workflow
 run or supported issue lifecycle event produces a signed GitHub App webhook.
 The admission-only dashboard durably queues the repository, and the collector
-updates the retained evidence lake and PostgreSQL projection. GitHub retries
+updates the retained evidence lake and canonical PostgreSQL data. GitHub retries
 unsuccessful webhook deliveries. The idempotent backfill job also runs on every
 source deployment to replay retained evidence, refresh installation enrollment,
-and seed historical work.
+and seed historical work. Inventory refresh resolves the baked
+`cao.coolify.json` profile, overlays the exact repository set enrolled in Redis,
+and uses a short-lived collection App token for the control repository. A new
+evidence volume fails its first canonical ingestion if that inventory cannot be
+produced. Once valid inventory is retained, a transient refresh failure keeps
+the previous inventory while newer run evidence is projected.
 
 An administrator listed in `CAO_GITHUB_ADMIN_USERS` can inspect
 `GET /api/admin/collection/status`. Administrative rebuild is intentionally
@@ -210,6 +224,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_COLLECT_APP_ID` | Yes | No | Positive numeric identifier of the read-only collection GitHub App. This is not the App client ID. |
 | `CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED` | Yes | Yes | Single-line standard-base64 encoding of the collection App private key PEM. Compose injects it only into `collector` and `backfill`, which decode it in memory. |
 | `CAO_COLLECT_CONTROL_REPOSITORY` | Yes | No | Control repository in `OWNER/REPO` form, used for inventory discovery. |
+| `CAO_COLLECT_STATIC_INVENTORY` | Set by Compose. | No | Points at the deterministic control-plane inventory generated from the checked-out source and packaged in the collector image. |
 | `CAO_COLLECT_INVENTORY_LIMIT` | Yes | No | Exact maximum number of repositories expected in the App installation scope. Exceeding it fails projection. |
 | `CAO_COLLECT_WINDOW_DAYS` | No. Defaults to `30`. | No | Historical workflow-run window admitted by collection. |
 | `CAO_COLLECT_RUN_LIMIT` | No. Defaults to `10000`. | No | Maximum workflow runs requested per repository collection. |
@@ -419,6 +434,9 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Source-bound builds.** Coolify fetches the configured `main` commit and embeds `SOURCE_COMMIT` into the image metadata. Mutable registry tags don't select production code.
 - **Credential isolation.** The public dashboard admits signed events with only the webhook secret. Only unexposed collection roles receive the App private key.
 - **Automatic freshness.** Workflow-run and issue webhooks enqueue collection without requiring a data commit or deployment, while every deployment runs an idempotent backfill.
+- **Source-bound campaign inventory.** The collector enriches a deterministic
+  inventory from the exact source commit with reviewed policy and current
+  enrollment. Initial ingestion fails rather than activate without campaigns.
 - **Single-writer ingestion.** The collection profile leaves `CAO_SOURCE_DIRECTORY` unset. The recovery artifact remains read-only and inactive, so snapshot ingestion and server collection cannot write the same database.
 - **Retained evidence.** A named evidence volume survives ordinary source redeployments and can repopulate PostgreSQL without GitHub access.
 - **Native deployment history.** Coolify retains deployment records and supports rollback to a prior deployment or source revision.
@@ -430,7 +448,11 @@ You configure traces for orchestrators and workers in the control repository. Fo
 - **Package admission.** The source-built production image does not pass through the GHCR package workflow's Trivy, Grype, Dockle, SBOM, or artifact-attestation admission gates. Those checks still run for published packages.
 - **Automatic verified rollback.** Coolify, rather than a repository-owned API client, controls rollback. Operators must verify readiness after restoring a prior deployment.
 - **Redis operations.** You're responsible for Redis authentication, access control lists, persistence, memory sizing, and network isolation. Redis holds operational caches and security state, not dashboard entities.
-- **Data freshness.** Nothing refreshes the artifact volume automatically. Data is only as fresh as the last volume that you prepared or the last rebuild. For the upstream schedule, see [CAO Activity](activity.md).
+- **Recovery artifact freshness.** Nothing refreshes the inactive recovery
+  artifact volume automatically. Live collection freshness depends on webhook
+  delivery, collection App installation coverage, collector health, and
+  backfill completion. For the upstream artifact schedule, see
+  [CAO Activity](activity.md).
 - **Live updates.** Server-sent events are best effort. If they stop, clients fall back to polling.
 - **Per-repository authorization.** Authorized users can read all of the active data.
 - **Secret rollback.** Rolling back an image doesn't roll back OAuth, webhook, or session secrets.

@@ -54,6 +54,12 @@ func (l Lake) InventoryPath() string {
 	return filepath.Join(l.Directory, "inventory-sources.json")
 }
 
+// ControlPlaneInventoryPath is the source-bound control-plane inventory used
+// to produce the enriched logical source inventory.
+func (l Lake) ControlPlaneInventoryPath() string {
+	return filepath.Join(l.Directory, "control-plane-inventory.json")
+}
+
 // ManifestPath is the payload-hash manifest that makes the lake verifiable.
 func (l Lake) ManifestPath() string {
 	return filepath.Join(l.Directory, "payload-hashes.json")

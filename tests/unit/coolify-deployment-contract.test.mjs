@@ -51,6 +51,19 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /sha256sum -c -/);
   assert.match(dockerfile, /\/app\/\.local\/share\/gh\/extensions\/gh-aw\/gh-aw/);
   assert.match(dockerfile, /\/workspace\/activity\/ \/app\/catalog\/activity\//);
+  assert.match(dockerfile, /REPORT_INVENTORY_STATIC=true/);
+  assert.match(
+    dockerfile,
+    /\/tmp\/control-plane-inventory\.json \/app\/catalog\/control-plane-inventory\.json/,
+  );
+  assert.match(
+    dockerfile,
+    /\/workspace\/\.github\/workflows\/shared\/control\.mjs \/app\/catalog\/\.github\/workflows\/shared\/control\.mjs/,
+  );
+  assert.match(
+    dockerfile,
+    /\/workspace\/\.github\/workflows\/shared\/policy\.mjs \/app\/catalog\/\.github\/workflows\/shared\/policy\.mjs/,
+  );
   assert.match(
     dockerfile,
     /\/workspace\/\.github\/workflows\/\*\.lock\.yml \/app\/catalog\/\.github\/workflows\//,
@@ -170,6 +183,10 @@ test("Coolify collection workers isolate credentials and share durable evidence"
     assert.equal(service.environment.CAO_SOURCE_DIRECTORY, undefined);
     assert.equal(service.environment.CAO_COLLECT_LAKE_DIRECTORY, "/app/evidence");
     assert.equal(service.environment.CAO_COLLECT_CATALOG_ROOT, "/app/catalog");
+    assert.equal(
+      service.environment.CAO_COLLECT_STATIC_INVENTORY,
+      "/app/catalog/control-plane-inventory.json",
+    );
     assertRotatableOtelHeaders(service.environment);
     assert.deepEqual(service.volumes, ["cao-collector-evidence:/app/evidence"]);
     assert.equal(service.read_only, true);

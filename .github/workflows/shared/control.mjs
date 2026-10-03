@@ -13,6 +13,7 @@ import {
   PolicyError,
   controlSettings,
   effectivePolicy,
+  loadPolicyFile,
   parsePolicy,
 } from "./policy.mjs";
 
@@ -1017,9 +1018,11 @@ function readSource(path) {
   return path === "-" ? readFileSync(0, "utf8") : readFileSync(path, "utf8");
 }
 
-function policyCommand(command, args) {
+async function policyCommand(command, args) {
   if (args.length !== 1) throw new ControlError(`usage: control.mjs ${command} <file|->`);
-  const document = parsePolicy(readSource(args[0]));
+  const document = args[0] === "-"
+    ? parsePolicy(readSource(args[0]))
+    : await loadPolicyFile(args[0]);
   if (command === "validate-policy") return document;
   if (command === "resolve-policy") return effectivePolicy(document, policyOptions());
   if (command === "control-settings") return controlSettings(document, environment("GITHUB_REPOSITORY"));
@@ -1061,7 +1064,7 @@ export async function main(actionsOrArguments = {}, maybeArguments = undefined) 
     if (command === "authority") return authority(args);
     if (command === "compiler-version") return compilerVersion(args);
     if (["validate-policy", "resolve-policy", "control-settings"].includes(command)) {
-      process.stdout.write(`${JSON.stringify(policyCommand(command, args), null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify(await policyCommand(command, args), null, 2)}\n`);
       return;
     }
     throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <campaign>");

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -50,6 +51,11 @@ type Projector struct {
 	Budget              *githubapp.Budget
 	WindowDays          int
 	DatabaseQueriesPath string
+	// PolicyPath is the reviewed deployment policy resolved for inventory.
+	PolicyPath string
+	// StaticInventoryPath is the source-bound control-plane inventory packaged
+	// with the collector image.
+	StaticInventoryPath string
 	// ControlRepository names the control repository used during inventory
 	// discovery.
 	ControlRepository string
@@ -168,6 +174,7 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 		return ingest.Result{}, err
 	}
 	if err := p.refreshCompaction(ctx); err != nil {
+		_ = p.RequestProjection(context.WithoutCancel(ctx))
 		return ingest.Result{}, err
 	}
 	// Force is deliberately not set. A collection re-enumerates a repository's
@@ -210,9 +217,13 @@ func (p Projector) refreshCompaction(ctx context.Context) error {
 		return nil
 	}
 	if err := p.refreshInventory(ctx); err != nil {
-		// Inventory is an auxiliary logical source. A failure degrades
-		// completeness; it must not discard collected evidence.
-		projectorLog.Printf("inventory discovery failed; continuing with the previous inventory")
+		if previousErr := p.validateExistingInventory(); previousErr != nil {
+			return fmt.Errorf(
+				"inventory discovery failed and no previous valid inventory is available: %w",
+				errors.Join(err, previousErr),
+			)
+		}
+		projectorLog.Printf("inventory discovery failed; retaining the previous valid inventory")
 	}
 	if err := p.refreshManifest(ctx); err != nil {
 		return err
@@ -355,28 +366,218 @@ func (p Projector) refreshInventory(ctx context.Context) error {
 	if p.ControlRepository == "" {
 		return errors.New("control repository is required for inventory discovery")
 	}
+	if p.PolicyPath == "" {
+		return errors.New("control policy path is required for inventory discovery")
+	}
+	if p.StaticInventoryPath == "" {
+		return errors.New("static control-plane inventory path is required for inventory discovery")
+	}
+	if p.Tokens == nil {
+		return errors.New("installation token provider is required for inventory discovery")
+	}
 	repositories, err := p.enrolledRepositories(ctx)
 	if err != nil {
 		return err
 	}
-	settings, err := json.MarshalIndent(map[string]any{
-		"allowed_repositories": repositories,
-	}, "", "  ")
+	workspace, err := os.MkdirTemp(p.Lake.Directory, ".inventory-refresh-")
+	if err != nil {
+		return fmt.Errorf("create inventory refresh workspace: %w", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(workspace)
+	}()
+	settingsPath := filepath.Join(workspace, "control-settings.json")
+	inventoryPath := filepath.Join(workspace, "control-plane-inventory.json")
+	sourcesPath := filepath.Join(workspace, "inventory-sources.json")
+	controlProgram := filepath.Join(p.CatalogRoot, ".github", "workflows", "shared", "control.mjs")
+	if err := p.runWithEnvironment(ctx, []string{
+		filepath.Join(p.CatalogRoot, "activity", "control-settings.mjs"),
+		controlProgram,
+		p.PolicyPath,
+		settingsPath,
+	}, []string{"GITHUB_REPOSITORY=" + p.ControlRepository}); err != nil {
+		return fmt.Errorf("resolve control settings: %w", err)
+	}
+	settings, err := overlayInventoryRepositories(settingsPath, repositories)
 	if err != nil {
 		return err
 	}
-	if err := WriteFileAtomic(p.Lake.ControlSettingsPath(), append(settings, '\n')); err != nil {
+	if err := validateControlSettings(settings); err != nil {
 		return err
+	}
+	if err := WriteFileAtomic(settingsPath, settings); err != nil {
+		return err
+	}
+	installationID, err := p.Enrollment.InstallationFor(ctx, p.ControlRepository)
+	if err != nil {
+		return fmt.Errorf("resolve control repository installation: %w", err)
+	}
+	if installationID <= 0 {
+		return errors.New("control repository is not covered by an enrolled GitHub App installation")
+	}
+	reserve, err := p.rateLimitReserve(ctx, installationID)
+	if err != nil {
+		return err
+	}
+	token, err := p.Tokens.InstallationToken(ctx, installationID)
+	if err != nil {
+		return fmt.Errorf("mint control repository installation token: %w", err)
 	}
 	arguments := []string{
 		filepath.Join(p.CatalogRoot, "activity", "cao.mjs"),
 		"discover-workflows",
-		"--control-settings", p.Lake.ControlSettingsPath(),
-		"--inventory", filepath.Join(p.Lake.Directory, "control-plane-inventory.json"),
-		"--output", p.Lake.InventoryPath(),
+		"--source-inventory", p.StaticInventoryPath,
+		"--control-settings", settingsPath,
+		"--inventory", inventoryPath,
+		"--output", sourcesPath,
 		"--repo", p.ControlRepository,
 	}
-	return p.run(ctx, arguments)
+	environment := []string{
+		"GITHUB_REPOSITORY=" + p.ControlRepository,
+		"GH_TOKEN=" + token,
+		"GITHUB_TOKEN=" + token,
+		"CAO_GITHUB_TOKEN_TYPE=github-app-installation",
+		"CAO_GITHUB_CREDENTIAL_ID=" + strconv.FormatInt(installationID, 10),
+		"CAO_GITHUB_CREDENTIAL_ROLE=read",
+		"CAO_GITHUB_API_MIN_REMAINING=" + strconv.Itoa(reserve),
+	}
+	if err := p.runWithEnvironment(ctx, arguments, environment, token); err != nil {
+		return err
+	}
+	// #nosec G304 -- sourcesPath is constructed inside the projector-owned workspace.
+	sources, err := os.ReadFile(sourcesPath)
+	if err != nil {
+		return fmt.Errorf("read refreshed inventory sources: %w", err)
+	}
+	if err := validateInventorySources(sources); err != nil {
+		return err
+	}
+	// #nosec G304 -- inventoryPath is constructed inside the projector-owned workspace.
+	inventory, err := os.ReadFile(inventoryPath)
+	if err != nil {
+		return fmt.Errorf("read refreshed control-plane inventory: %w", err)
+	}
+	if err := validateControlPlaneInventory(inventory); err != nil {
+		return err
+	}
+	if err := WriteFileAtomic(p.Lake.ControlSettingsPath(), settings); err != nil {
+		return err
+	}
+	if err := WriteFileAtomic(p.Lake.ControlPlaneInventoryPath(), inventory); err != nil {
+		return err
+	}
+	if err := WriteFileAtomic(p.Lake.InventoryPath(), sources); err != nil {
+		return err
+	}
+	return nil
+}
+
+func overlayInventoryRepositories(path string, repositories []string) ([]byte, error) {
+	// #nosec G304 -- callers pass the projector-owned staged control-settings path.
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read resolved control settings: %w", err)
+	}
+	var settings map[string]json.RawMessage
+	if err := json.Unmarshal(content, &settings); err != nil {
+		return nil, fmt.Errorf("parse resolved control settings: %w", err)
+	}
+	var resolution struct {
+		Status string `json:"status"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(settings["policy_resolution"], &resolution); err != nil {
+		return nil, fmt.Errorf("parse control policy resolution: %w", err)
+	}
+	if resolution.Status != "available" {
+		return nil, fmt.Errorf("control policy resolution is unavailable: %s", resolution.Reason)
+	}
+	encodedRepositories, err := json.Marshal(repositories)
+	if err != nil {
+		return nil, err
+	}
+	settings["allowed_repositories"] = encodedRepositories
+	result, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(result, '\n'), nil
+}
+
+func (p Projector) validateExistingInventory() error {
+	settings, err := os.ReadFile(p.Lake.ControlSettingsPath())
+	if err != nil {
+		return fmt.Errorf("read previous control settings: %w", err)
+	}
+	if err := validateControlSettings(settings); err != nil {
+		return err
+	}
+	inventory, err := os.ReadFile(p.Lake.ControlPlaneInventoryPath())
+	if err != nil {
+		return fmt.Errorf("read previous control-plane inventory: %w", err)
+	}
+	if err := validateControlPlaneInventory(inventory); err != nil {
+		return err
+	}
+	sources, err := os.ReadFile(p.Lake.InventoryPath())
+	if err != nil {
+		return fmt.Errorf("read previous inventory sources: %w", err)
+	}
+	return validateInventorySources(sources)
+}
+
+func validateControlSettings(content []byte) error {
+	var settings struct {
+		Campaigns        map[string]json.RawMessage `json:"campaigns"`
+		PolicyResolution struct {
+			Status string `json:"status"`
+		} `json:"policy_resolution"`
+	}
+	if err := json.Unmarshal(content, &settings); err != nil {
+		return fmt.Errorf("parse control settings: %w", err)
+	}
+	if settings.PolicyResolution.Status != "available" {
+		return errors.New("control settings do not contain an available policy resolution")
+	}
+	if len(settings.Campaigns) == 0 {
+		return errors.New("control settings contain no campaigns")
+	}
+	return nil
+}
+
+func validateControlPlaneInventory(content []byte) error {
+	var inventory struct {
+		Campaigns []json.RawMessage `json:"campaigns"`
+		Workflows []json.RawMessage `json:"workflows"`
+	}
+	if err := json.Unmarshal(content, &inventory); err != nil {
+		return fmt.Errorf("parse control-plane inventory: %w", err)
+	}
+	if len(inventory.Campaigns) == 0 {
+		return errors.New("control-plane inventory contains no campaigns")
+	}
+	if len(inventory.Workflows) == 0 {
+		return errors.New("control-plane inventory contains no workflows")
+	}
+	return nil
+}
+
+func validateInventorySources(content []byte) error {
+	var sources map[string]struct {
+		Rows []json.RawMessage `json:"rows"`
+	}
+	if err := json.Unmarshal(content, &sources); err != nil {
+		return fmt.Errorf("parse inventory sources: %w", err)
+	}
+	for _, name := range []string{"campaigns", "repositories", "workflows", "configuration-policy"} {
+		if _, ok := sources[name]; !ok {
+			return fmt.Errorf("inventory sources do not contain %s", name)
+		}
+	}
+	if len(sources["campaigns"].Rows) == 0 {
+		return errors.New("inventory sources contain no campaigns")
+	}
+	return nil
 }
 
 // scanRepositoriesPage matches Enrollment.ScanRepositories's signature so
@@ -438,14 +639,22 @@ func (p Projector) run(ctx context.Context, arguments []string) error {
 	return p.runWithEnvironment(ctx, arguments, nil)
 }
 
-func (p Projector) runWithEnvironment(ctx context.Context, arguments, environment []string) error {
+func (p Projector) runWithEnvironment(
+	ctx context.Context, arguments, environment []string, redactValues ...string,
+) error {
 	// #nosec G204 -- arguments are built from validated configuration paths.
 	command := exec.CommandContext(ctx, p.node(), arguments...)
 	command.Dir = p.CatalogRoot
 	command.Env = append(collectionEnvironment(p.GitHubAPIURL), environment...)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("activity CLI failed: %w: %s", err, summarize(string(output)))
+		message := string(output)
+		for _, value := range redactValues {
+			if value != "" {
+				message = strings.ReplaceAll(message, value, "[REDACTED]")
+			}
+		}
+		return fmt.Errorf("activity CLI failed: %w: %s", err, summarize(message))
 	}
 	return nil
 }
