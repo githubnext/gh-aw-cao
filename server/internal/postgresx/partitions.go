@@ -2,6 +2,7 @@ package postgresx
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"strconv"
@@ -9,6 +10,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 const defaultRunRetentionDays = 400
@@ -26,7 +29,7 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 		return err
 	}
 	defer func() {
-		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		closeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = lock.Close(closeCtx)
 	}()
@@ -43,44 +46,10 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	start := week(cutoff)
 	current := week(now)
 	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
-	rows, err := s.db.QueryContext(ctx, `SELECT c.relname,p.relname FROM pg_inherits i
-		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
-		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
-		('events','sessions','audits','domains','eval_observations','experiment_assignments',
-		 'friction','grader_observations','issues','jobs','skills','tools','runs')`)
+	existing, expired, err := s.existingPartitions(ctx, cutoff)
 	if err != nil {
 		return err
 	}
-	existing := make(map[string]bool)
-	var expired []time.Time
-	for rows.Next() {
-		var name, table string
-		if err := rows.Scan(&name, &table); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		existing[name] = true
-		if table != "runs" {
-			continue
-		}
-		if !strings.HasPrefix(name, "runs_w") || len(name) != len("runs_w")+8 {
-			_ = rows.Close()
-			return fmt.Errorf("unexpected runs partition")
-		}
-		date, err := time.Parse("20060102", strings.TrimPrefix(name, "runs_w"))
-		if err != nil {
-			_ = rows.Close()
-			return err
-		}
-		if !date.AddDate(0, 0, 7).After(cutoff) {
-			expired = append(expired, date)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return err
-	}
-	_ = rows.Close()
 	// Provision the current and upcoming weeks before any historical backlog.
 	for at := current; at.Before(end); at = at.AddDate(0, 0, 7) {
 		if err := s.createWeek(ctx, tables, at, existing); err != nil {
@@ -98,6 +67,44 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 		}
 	}
 	return nil
+}
+
+func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[string]bool, []time.Time, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT c.relname,p.relname FROM pg_inherits i
+		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
+		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
+		('events','sessions','audits','domains','eval_observations','experiment_assignments',
+		 'friction','grader_observations','issues','jobs','skills','tools','runs')`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	existing := make(map[string]bool)
+	var expired []time.Time
+	for rows.Next() {
+		var name, table string
+		if err := rows.Scan(&name, &table); err != nil {
+			return nil, nil, err
+		}
+		existing[name] = true
+		if table != "runs" {
+			continue
+		}
+		if !strings.HasPrefix(name, "runs_w") || len(name) != len("runs_w")+8 {
+			return nil, nil, fmt.Errorf("unexpected runs partition")
+		}
+		date, err := time.Parse("20060102", strings.TrimPrefix(name, "runs_w"))
+		if err != nil {
+			return nil, nil, err
+		}
+		if !date.AddDate(0, 0, 7).After(cutoff) {
+			expired = append(expired, date)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return existing, expired, nil
 }
 
 func (s *Store) createWeek(ctx context.Context, tables []string, at time.Time, existing map[string]bool) error {
@@ -127,23 +134,10 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 	defer func() { _ = tx.Rollback() }()
 	var namespaces []string
 	if drop {
-		rows, err := tx.QueryContext(ctx, "SELECT DISTINCT namespace FROM runs_w"+at.Format("20060102"))
+		namespaces, err = partitionNamespaces(ctx, tx, "runs_w"+at.Format("20060102"))
 		if err != nil {
 			return err
 		}
-		for rows.Next() {
-			var namespace string
-			if err := rows.Scan(&namespace); err != nil {
-				_ = rows.Close()
-				return err
-			}
-			namespaces = append(namespaces, namespace)
-		}
-		if err := rows.Err(); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		_ = rows.Close()
 		for _, namespace := range namespaces {
 			if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, namespace); err != nil {
 				return err
@@ -160,8 +154,13 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 				return fmt.Errorf("drop expired %s: %w", name, err)
 			}
 		} else {
-			statement := fmt.Sprintf("CREATE TABLE %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
-				name, table, at.Format(time.RFC3339), at.AddDate(0, 0, 7).Format(time.RFC3339))
+			statement, _, err := sqlbuilder.Build("CREATE TABLE {} PARTITION OF {} FOR VALUES FROM ({}) TO ({})",
+				sqlbuilder.Identifier(name), sqlbuilder.Identifier(table),
+				sqlbuilder.Fragment("'"+at.Format(time.RFC3339)+"'"),
+				sqlbuilder.Fragment("'"+at.AddDate(0, 0, 7).Format(time.RFC3339)+"'"))
+			if err != nil {
+				return err
+			}
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("create weekly %s: %w", name, err)
 			}
@@ -193,6 +192,27 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 		}
 	}
 	return tx.Commit()
+}
+
+func partitionNamespaces(ctx context.Context, tx *sql.Tx, name string) ([]string, error) {
+	statement, _, err := sqlbuilder.Build("SELECT DISTINCT namespace FROM {}", sqlbuilder.Identifier(name))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.QueryContext(ctx, statement)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var namespaces []string
+	for rows.Next() {
+		var namespace string
+		if err := rows.Scan(&namespace); err != nil {
+			return nil, err
+		}
+		namespaces = append(namespaces, namespace)
+	}
+	return namespaces, rows.Err()
 }
 
 func configuredRetentionDays() (int, error) {

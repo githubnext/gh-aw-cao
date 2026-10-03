@@ -112,7 +112,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("maintain existing native audits: %w", err)
 	}
-	maintenanceCtx, stop := context.WithCancel(context.Background())
+	maintenanceCtx, stop := context.WithCancel(context.WithoutCancel(ctx))
 	store.stopMaintenance = stop
 	store.maintenanceDone.Add(1)
 	go func() {

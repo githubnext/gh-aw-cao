@@ -409,7 +409,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	// Staged run-owned rows are linked after all run and session records have
 	// arrived. The copied batches remain bounded; PostgreSQL routes the insert.
 	for _, source := range append([]string{"$sessions"}, tableNames()...) {
-		if source == "$sessions" && w.staged["$sessions"] == false {
+		if source == "$sessions" && !w.staged["$sessions"] {
 			continue
 		}
 		table, ok := entityTables[source]
