@@ -1371,16 +1371,32 @@ function renderChartView(context) {
     headingTag
   );
   if (pending) {
+    const clusteringScope = createFactoryScope();
+    clusteringScope.bind(section);
+    const clusteringState = state(/** @type {'pending'|'ready'|'failed'} */ ('pending'));
+    /** @type {ChartPoint[]} */
+    let clusteredPoints = [];
     clustering.then((clustered) => {
-      const rendered = renderVisualization(clustered);
-      visualization?.replaceWith(...rendered.chartContent);
+      if (clusteringScope.signal.aborted) return;
+      clusteredPoints = clustered;
+      clusteringState.set('ready');
     }).catch(() => {
-      visualization?.replaceWith(h(
-        'div',
-        { className: 'chart-widget scatter-chart-widget', role: 'status' },
-        'Unable to prepare this scatter visualization.'
-      ));
+      if (clusteringScope.signal.aborted) return;
+      clusteringState.set('failed');
     });
+    const clusteringEffect = effect(() => {
+      const current = clusteringState.get();
+      if (current === 'pending') return;
+      const rendered = current === 'ready'
+        ? renderVisualization(clusteredPoints).chartContent
+        : [h(
+            'div',
+            { className: 'chart-widget scatter-chart-widget', role: 'status' },
+            'Unable to prepare this scatter visualization.'
+          )];
+      visualization?.replaceWith(...rendered);
+      clusteringEffect.stop();
+    }, { signal: clusteringScope.signal });
   } else if (chartType === 'pie') {
     section.append(
       h('div', { className: 'pie-chart-card' }, ...Array.from(section.children))
