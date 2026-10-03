@@ -475,12 +475,18 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   publisher. A Coolify GitHub App restricted to this repository watches
   protected `main`; its webhook causes Coolify to check out the selected
   commit, build `server/Dockerfile` through
-  `server/coolify/compose.yml`, embed `SOURCE_COMMIT`, and activate the service
-  only after container health evaluation. The image contains both the base and
-  Coolify deployment policies, while the authoritative activity artifact
-  remains an external read-only volume. Production delivery requires no
-  GitHub deployment workflow, Coolify API token, public Coolify API endpoint,
-  runner tailnet access, registry credentials, or mutable registry tag.
+  `server/coolify/compose.yml`, and embed `SOURCE_COMMIT`. The source build
+  produces a lean admission-only dashboard target and a collector target with
+  Node, GitHub CLI, a checksum-verified policy-pinned gh-aw binary, and the
+  Activity projection catalog. The internet-facing dashboard holds the webhook
+  secret but no collection private key. Unexposed collector and idempotent
+  backfill services hold the read-only GitHub App key and share a persistent
+  evidence volume; only the dashboard is activated through the proxy after
+  health evaluation. The collection profile leaves `CAO_SOURCE_DIRECTORY`
+  unset, while one verified activity artifact remains an external read-only
+  recovery volume for rollback to the snapshot profile. Production delivery
+  requires no GitHub deployment workflow, Coolify API token, public Coolify API
+  endpoint, runner tailnet access, registry credentials, or mutable registry tag.
   Coolify owns build logs, deployment history, and operator-initiated rollback
   to a retained deployment or known-good source revision. The source-built
   image is not admitted through the package workflow's vulnerability scans,
