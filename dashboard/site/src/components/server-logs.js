@@ -1,11 +1,14 @@
 import { h } from '../dom.js';
 import { usesGitHubAuthentication } from '../auth.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
 import { effect, state } from '../reactive.js';
 import { fetchServerLogs, usesRemoteDataBackend } from '../remote-data-backend.js';
 import { errorMessage } from './count-formatters.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderFileContent } from './file-content.js';
 import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
+
+const debugServerLogs = createDebug('server-logs');
 
 /** @param {() => void} onOpen */
 export function renderServerLogsSetting(onOpen) {
@@ -22,7 +25,9 @@ export function renderServerLogsSetting(onOpen) {
     )
   );
   fetchServerLogs(scope.signal).then((snapshot) => {
-    if (!scope.signal.aborted && Array.isArray(snapshot?.logs)) section.hidden = false;
+    const available = Array.isArray(snapshot?.logs);
+    if (!scope.signal.aborted && available) section.hidden = false;
+    debugServerLogs({ event: 'availability-checked', available });
   }).catch(() => {});
   scope.bind(section);
   return section;
@@ -53,9 +58,12 @@ export function renderServerLogsView(onBack) {
     fetchServerLogs(current.signal).then((snapshot) => {
       if (current.signal.aborted) return;
       if (!snapshot || !Array.isArray(snapshot.logs)) throw new Error('Server logs are unavailable.');
+      debugServerLogs({ event: 'load-succeeded', count: snapshot.logs.length });
       content.set({ status: 'ready', text: JSON.stringify(snapshot, null, 2) });
     }).catch((error) => {
-      if (!current.signal.aborted) content.set({ status: 'error', text: errorMessage(error) });
+      if (current.signal.aborted) return;
+      debugServerLogs({ event: 'load-failed', error: diagnosticErrorName(error) });
+      content.set({ status: 'error', text: errorMessage(error) });
     });
   }
   scope.signal.addEventListener('abort', () => request?.abort(), { once: true });
