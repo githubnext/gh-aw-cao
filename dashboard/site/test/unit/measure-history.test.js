@@ -19,6 +19,22 @@ afterEach(() => {
 });
 
 describe('Measure history', () => {
+  it('does not query all campaigns before a campaign is selected', () => {
+    const loader = vi.fn();
+    configureSourceLoader(loader);
+    const root = renderBoundMeasureHistory({
+      title: 'Repository operational value',
+      sourceNames: ['value-series'],
+      sources: {},
+      pageId: 'test-page',
+      routeParameter: 'campaign',
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+    expect(root.textContent).toContain('Select a campaign');
+    expect(loader).not.toHaveBeenCalled();
+  });
+
   it('updates the operational-value plot as each declared query resolves and stops on detachment', async () => {
     /** @type {Record<string, (source: import('../../src/presenter.js').LogicalSourceInput) => void>} */
     const resolve = {};
@@ -34,6 +50,7 @@ describe('Measure history', () => {
       elementConfig: { 'measure-source': 'operational-value' },
       pageId: 'test-page',
       viewId: 'value-history',
+      routeParameter: 'campaign',
       routeParameters: { campaign: 'sample' },
       contextDetails: [],
       headingTag: 'h3'
