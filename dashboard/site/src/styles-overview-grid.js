@@ -1,0 +1,3 @@
+export const overviewGridStyles = `
+.factory-floor::before, .first-load-background::before { content: ""; width: round(down, 100%, 32px); height: round(down, 100%, 32px); position: absolute; top: 50%; left: 50%; border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); background-image: linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px); background-size: 32px 32px; transform: translate(-50%, -50%); }
+`;

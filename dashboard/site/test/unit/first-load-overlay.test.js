@@ -87,7 +87,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('.first-load-description .first-load-compact-copy')?.textContent)
       .toBe('Preparing a local copy of activity data. First visits can take a few minutes.');
     expect(dialog?.querySelector('.first-load-background')?.getAttribute('aria-hidden')).toBe('true');
-    expect(dialog?.querySelectorAll('.first-load-background-bar')).toHaveLength(7);
+    expect(dialog?.querySelector('.first-load-background')?.childElementCount).toBe(0);
     expect(dialog?.querySelector('progress')?.hasAttribute('value')).toBe(false);
     browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 2, total: 5 });
     expect(dialog?.querySelector('progress')?.getAttribute('value')).toBe('2');

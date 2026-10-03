@@ -189,9 +189,16 @@ async function exerciseFirstImport({ context, page }, mobile) {
     }
     await page.setViewportSize({ width: 390, height: 844 });
   }
-  await expect(importScreen.locator('.first-load-background-graph')).toHaveCSS('animation-name', 'first-load-graph-drift');
+  const readBackground = (/** @type {Element} */ element) => {
+    const css = getComputedStyle(element, '::before');
+    return { image: css.backgroundImage, size: css.backgroundSize, border: css.borderRightColor };
+  };
+  const overviewGrid = await page.locator('.factory-floor').evaluate(readBackground);
+  expect(await importScreen.locator('.first-load-background').evaluate(readBackground)).toEqual(overviewGrid);
+  await expect.poll(() => importScreen.locator('.first-load-background').evaluate((element) => (
+    getComputedStyle(element, '::before').animationName
+  ))).toBe('first-load-grid-breathe');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(importScreen.locator('.first-load-background-graph')).toHaveCSS('animation-name', 'none');
   await expect.poll(() => importScreen.locator('.first-load-background').evaluate((element) => (
     getComputedStyle(element, '::before').animationName
   ))).toBe('none');

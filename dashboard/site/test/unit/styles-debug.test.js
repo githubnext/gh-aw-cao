@@ -36,7 +36,8 @@ describe('styles debug logging', () => {
     expect(css).toContain('.first-load-close:focus-visible, .first-load-browse:focus-visible, .first-load-details:focus-visible{outline:2px solid var(--focus);outline-offset:3px}');
     expect(css).toContain('@media (max-width:700px){.first-load-overlay{padding:12px}');
     expect(css).toContain('.first-load-wide-copy, .first-load-steps, .first-load-eyebrow{display:none}');
-    expect(css).toContain('.first-load-background::before, .first-load-background-graph{animation:none}');
+    expect(css).toContain('.first-load-background::before{animation:none;opacity:.75}');
+    expect(css).toContain('.factory-floor::before, .first-load-background::before{content:""');
     const overlayIndex = css.indexOf('.first-load-overlay{');
     expect(overlayIndex).toBeGreaterThan(css.indexOf('.factory-intro h2{'));
     expect(overlayIndex).toBeLessThan(css.indexOf('.factory-intro h2.factory-heading-pending'));

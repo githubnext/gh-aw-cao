@@ -54,11 +54,7 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
     onClick: dismiss
   });
   dialog.append(
-    h('div', { className: 'first-load-background', 'aria-hidden': 'true' },
-      h('div', { className: 'first-load-background-graph' },
-        Array.from({ length: 7 }, () => h('span', { className: 'first-load-background-bar' }))
-      )
-    ),
+    h('div', { className: 'first-load-background', 'aria-hidden': 'true' }),
     h('section', { className: 'first-load-card' },
     dismissControl,
     h('div', { className: 'first-load-symbol', 'aria-hidden': 'true' }, octicon('download')),

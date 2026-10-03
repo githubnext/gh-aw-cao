@@ -4,6 +4,7 @@
 
 import { createDebug } from './debug.js';
 import { firstLoadStyles } from './styles-first-load.js';
+import { overviewGridStyles } from './styles-overview-grid.js';
 
 const debug = createDebug('styles');
 
@@ -1606,7 +1607,7 @@ main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 
 ${firstLoadStyles}
 .factory-intro h2.factory-heading-pending { width: min(100%, 560px); height: 3.25rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-floor { min-height: 250px; position: relative; display: grid; align-items: center; padding: 38px 48px; overflow: hidden; border-block: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-floor::before { content: ""; width: round(down, 100%, 32px); height: round(down, 100%, 32px); position: absolute; top: 50%; left: 50%; border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); background-image: linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px); background-size: 32px 32px; transform: translate(-50%, -50%); }
+${overviewGridStyles}
 .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 22%, transparent); background: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 10%, transparent), transparent 70%), var(--canvas-subtle); }
 .factory-floor-active::before { border-color: var(--factory-floor-grid); background-image: linear-gradient(var(--factory-floor-grid) 1px, transparent 1px), linear-gradient(90deg, var(--factory-floor-grid) 1px, transparent 1px); }
 .dashboard-root[data-theme="light"] .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 34%, transparent); background-image: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 18%, transparent), transparent 72%); }
