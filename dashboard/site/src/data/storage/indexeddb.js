@@ -645,7 +645,7 @@ function estimatedRecordBytes(record) {
  * never materializes the canonical database or its large linked-record stores.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, signal?: AbortSignal }} options
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 export async function maintainCanonicalDatabase(indexedDB, options) {
     options.signal?.throwIfAborted();
@@ -825,6 +825,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           });
         }
         await done;
+        options.onMaintenanceProgress?.(ENTITY_STORES.indexOf(storeName) + 1, ENTITY_STORES.length);
       }
 
       if (options.reconcileRelationships) {

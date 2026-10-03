@@ -83,7 +83,7 @@ function progressForOperations(operations) {
     : INITIAL_PROGRESS;
   return {
     transform: `scaleX(${progress})`,
-    valueNow: determinate ? String(Math.round(completion * 100)) : null
+    valueNow: determinate ? String(Math.min(99, Math.round(completion * 100))) : null
   };
 }
 

@@ -850,6 +850,7 @@ export function processDataRequest(request, signal) {
           const shardLimit = eagerIngest ? undefined : debugShardLimit();
           const shards = shardLimit === undefined ? phasedShards : phasedShards.slice(0, shardLimit);
           const shardCount = shards.length;
+          const importSteps = shardCount + 3;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
@@ -890,7 +891,7 @@ export function processDataRequest(request, signal) {
           });
           if (pendingShards.length > 0) {
             progress.start();
-            progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);
+            progress.reportImportProgress(shardStates.length - pendingShards.length, importSteps, 'files');
           }
           const measureShards = (/** @type {typeof pendingShards} */ states) => Promise.all(states.map(async (state) => {
             const response = await ingestionFetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
@@ -903,7 +904,7 @@ export function processDataRequest(request, signal) {
             : undefined;
           progress.setWorkload(workloadBytes);
           let completedShardCount = shardStates.length - pendingShards.length;
-          progress.reportShardImportProgress(completedShardCount, shardCount);
+          progress.reportImportProgress(completedShardCount, importSteps, 'files');
           if (completedShardCount > 0) {
             progress.log(`Reusing ${completedShardCount}/${shardCount} cached activity `
               + `${completedShardCount === 1 ? 'shard' : 'shards'}.`);
@@ -986,19 +987,23 @@ export function processDataRequest(request, signal) {
                 totalBytes: workloadBytes
               });
               completedShardCount += 1;
-              progress.reportShardImportProgress(completedShardCount, shardCount);
+              progress.reportImportProgress(completedShardCount, importSteps, 'files');
             }
           }
           if (changed || !await isAuditCurationCurrent(indexedDB)) {
             progress.log('Applying retention limits.');
+            progress.reportImportProgress(shardCount, importSteps, 'maintenance');
             const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              onMaintenanceProgress: (completed, total) =>
+                progress.reportImportProgress(shardCount + 0.9 * completed / total, importSteps, 'maintenance'),
               onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
               signal
             });
             changed ||= maintenance.deletedRecords > 0;
           }
+          progress.reportImportProgress(shardCount + 1, importSteps, 'inventory');
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
@@ -1014,8 +1019,10 @@ export function processDataRequest(request, signal) {
               ? 'Inventory metadata is already current.'
               : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
+          progress.reportImportProgress(shardCount + 2, importSteps, 'queries');
         } else {
           progress.log('Normalizing dashboard source data.');
+          progress.reportImportProgress(0, 3, 'inventory');
           const ingestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
@@ -1028,6 +1035,7 @@ export function processDataRequest(request, signal) {
           progress.log('skipped' in ingestion && ingestion.skipped
             ? 'Dashboard source data is already current.'
             : `Dashboard ingestion committed ${ingestion.committedRecords} canonical records.`);
+          progress.reportImportProgress(2, 3, 'queries');
         }
         if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
         progress.log('Refreshing active dashboard queries.');
@@ -1047,7 +1055,6 @@ export function processDataRequest(request, signal) {
         };
         publicationPhase = 'complete';
         scheduleDashboardSubscriptions();
-        progress.complete();
         const projected = await queryLiveDashboard(
           requested,
           context,
@@ -1059,6 +1066,7 @@ export function processDataRequest(request, signal) {
           queryContext(request.queryContext),
           typeof request.viewId === 'string' ? request.viewId : undefined
         );
+        progress.complete();
         return request.reportActivation
           ? { sources: projected, changed }
           : projected;

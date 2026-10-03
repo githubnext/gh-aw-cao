@@ -18,7 +18,7 @@ export function publishWorkerNotification(notification, target = self) {
 
 /**
  * Publishes the worker-owned state for the top loading bar.
- * @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state
+ * @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number, stage?: 'files' | 'maintenance' | 'inventory' | 'queries' }} state
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 function publishWorkerLoadingProgress(state, target = self) {
@@ -129,10 +129,10 @@ export function startIngestionProgress(target = self, requestId) {
     log(nextMessage) {
       clock.advance(nextMessage);
     },
-    /** @param {number} completed @param {number} total */
-    reportShardImportProgress(completed, total) {
+    /** @param {number} completed @param {number} total @param {'files' | 'maintenance' | 'inventory' | 'queries'} stage */
+    reportImportProgress(completed, total, stage) {
       if (!started) return;
-      publishWorkerLoadingProgress({ id, phase: 'update', completed, total }, target);
+      publishWorkerLoadingProgress({ id, phase: 'update', completed, total, stage }, target);
     },
     complete() {
       if (completed) return;

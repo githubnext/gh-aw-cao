@@ -94,22 +94,29 @@ describe('data-worker ingestion progress', () => {
     });
   });
 
-  it('publishes shard import state as the manifest and imports progress', () => {
+  it('publishes import state through post-shard preparation without reaching 100% early', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
     progress.start();
 
-    progress.reportShardImportProgress(0, 4);
-    progress.reportShardImportProgress(2, 4);
+    progress.reportImportProgress(0, 7, 'files');
+    progress.reportImportProgress(4, 7, 'maintenance');
+    progress.reportImportProgress(4.5, 7, 'maintenance');
+    progress.reportImportProgress(5, 7, 'inventory');
+    progress.reportImportProgress(6, 7, 'queries');
 
     expect(postMessage).toHaveBeenNthCalledWith(3, {
       type: 'loading-progress',
-      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 0, total: 4 }
+      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 0, total: 7, stage: 'files' }
     });
     expect(postMessage).toHaveBeenNthCalledWith(4, {
       type: 'loading-progress',
-      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 2, total: 4 }
+      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 4, total: 7, stage: 'maintenance' }
     });
+    const updates = postMessage.mock.calls.map(([message]) => message)
+      .filter((message) => message.type === 'loading-progress' && message.state.phase === 'update');
+    expect(updates.map(({ state }) => state.completed)).toEqual([0, 4, 4.5, 5, 6]);
+    expect(updates.every(({ state }) => state.completed < state.total)).toBe(true);
     progress.complete();
   });
 

@@ -486,7 +486,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * caller's configured windows and storage estimate.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 async function maintainNormalizedJsonlDatabase(indexedDB, options) {
   const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
@@ -501,6 +501,7 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
     retentionWindowMsByStore: options.retentionWindowMsByStore,
     maxDatabaseBytes,
     usageBytes,
+    onMaintenanceProgress: options.onMaintenanceProgress,
     signal: options.signal
   });
 }
@@ -516,7 +517,7 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
  * import quadratic in the number of shards.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onLockWait?: () => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onLockWait?: () => void, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 export function finalizeNormalizedJsonlIngestion(indexedDB, options = {}) {
   return serializeIngestion(

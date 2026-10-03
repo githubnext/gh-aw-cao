@@ -117,18 +117,18 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       'Campaign status is not available yet. Retry the import to finish preparing your dashboard.',
       'Try again to finish preparing your dashboard.'
     );
+    if (current.stage === 'maintenance') return 'Applying retention limits to the local database...';
+    if (current.stage === 'inventory') return 'Preparing inventory and dashboard metadata...';
+    if (current.stage === 'queries') return 'Refreshing dashboard queries...';
     return current.total
-      ? responsiveCopy(
-        `${current.completed ?? 0} of ${current.total} activity files processed. Final preparation follows.`,
-        `${current.completed ?? 0} of ${current.total} files processed`
-      )
-      : responsiveCopy('Preparing the latest activity snapshot...', 'Preparing activity data...');
+      ? 'Importing activity files and preparing the local database...'
+      : 'Preparing the latest activity snapshot...';
   }, { signal });
   render(progress, () => {
     const current = browserFirstLoad.get();
     if (current.status === 'failed') return [];
     return h('progress', {
-      'aria-label': 'Activity files processed',
+      'aria-label': 'Dashboard import progress',
       ...(current.total ? { max: current.total, value: current.completed ?? 0 } : {})
     });
   }, { signal });

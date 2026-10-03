@@ -48,6 +48,15 @@ describe('loading progress', () => {
     expect(bar?.getAttribute('aria-valuenow')).toBe('0');
   });
 
+  it('does not announce completion while post-import work remains', () => {
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'update', completed: 1002, total: 1003 });
+    const bar = document.querySelector('.loading-progress');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('99');
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'complete' });
+    expect(bar?.getAttribute('aria-valuenow')).toBe('100');
+  });
+
   it('waits for every worker operation before completing', () => {
     vi.useFakeTimers();
     setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });

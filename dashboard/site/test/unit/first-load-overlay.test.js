@@ -52,7 +52,7 @@ describe('browser first-load presentation', () => {
     browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 1, total: 5 });
     vi.advanceTimersByTime(FIRST_LOAD_MESSAGE_INTERVAL_MS / 2);
     expect(message?.textContent).not.toBe(original);
-    expect(document.querySelector('[role="status"]')?.textContent).toContain('1 of 5');
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('Importing activity files');
   });
 
   it('pauses rotation when dismissed or failed and tears down permanently when complete', () => {
@@ -92,7 +92,7 @@ describe('browser first-load presentation', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('explains the import, reports actual file progress, and dismisses without cancelling', () => {
+  it('explains the import, reports all preparation stages, and dismisses without cancelling', () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     const dialog = document.querySelector('dialog');
     expect(dialog?.open).toBe(true);
@@ -105,7 +105,15 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('progress')?.hasAttribute('value')).toBe(false);
     browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 2, total: 5 });
     expect(dialog?.querySelector('progress')?.getAttribute('value')).toBe('2');
-    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('2 of 5');
+    expect(dialog?.querySelector('progress')?.getAttribute('aria-label')).toBe('Dashboard import progress');
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Importing activity files');
+    browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 2.5, total: 5, stage: 'maintenance' });
+    expect(dialog?.querySelector('progress')?.value).toBe(2.5);
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Applying retention limits');
+    browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 3, total: 5, stage: 'inventory' });
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Preparing inventory');
+    browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 4, total: 5, stage: 'queries' });
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Refreshing dashboard queries');
     const browse = dialog?.querySelector('.first-load-browse');
     if (!(browse instanceof HTMLButtonElement)) throw new Error('Browse button is missing.');
     browse.click();
@@ -115,7 +123,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.open).toBe(false);
     showBrowserFirstLoad();
     expect(dialog?.open).toBe(true);
-    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('3 of 5');
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Refreshing dashboard queries');
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
     expect(dialog?.open).toBe(false);
     expect(document.querySelector('dialog')).toBeNull();

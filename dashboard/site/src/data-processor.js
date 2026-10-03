@@ -57,7 +57,7 @@ const subscriptions = new Map();
 const workerNotificationHandles = new Map();
 /** @type {Set<string>} */
 const cancelledWorkerNotificationIds = new Set();
-/** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void>} */
+/** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number, stage?: 'files' | 'maintenance' | 'inventory' | 'queries' }) => void>} */
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
@@ -127,7 +127,7 @@ function syncDashboardQueries(id) {
   request.processor.postMessage({ operation: 'sync-dashboard-queries', requestId: id });
 }
 
-/** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
+/** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number, stage?: 'files' | 'maintenance' | 'inventory' | 'queries' }} state */
 function emitWorkerLoadingProgress(state) {
   for (const listener of workerLoadingProgressListeners) {
     try {
@@ -140,7 +140,7 @@ function emitWorkerLoadingProgress(state) {
 
 /**
  * Subscribes to worker-owned loading progress for the active top progress bar.
- * @param {(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void} listener
+ * @param {(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number, stage?: 'files' | 'maintenance' | 'inventory' | 'queries' }) => void} listener
  * @returns {() => void}
  */
 export function subscribeWorkerLoadingProgress(listener) {

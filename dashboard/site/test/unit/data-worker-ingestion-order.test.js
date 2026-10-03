@@ -147,5 +147,19 @@ describe('canonical dashboard worker ingestion order', () => {
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) })
     ]);
     expect(storedRunIds).toEqual(['github:run:githubnext/gh-aw-cao:303']);
+    const updates = posted.filter((message) => message.type === 'loading-progress'
+      && /** @type {{ phase?: string }} */ (message.state)?.phase === 'update')
+      .map((message) => /** @type {{ completed: number, total: number, stage: string }} */ (message.state));
+    expect(updates.some(({ stage, completed, total }) =>
+      stage === 'files' && completed === total - 3)).toBe(true);
+    expect(updates.some(({ stage, completed, total }) =>
+      stage === 'maintenance' && completed > total - 3 && completed < total - 2)).toBe(true);
+    expect(updates.at(-2)).toMatchObject({ stage: 'inventory', completed: 2, total: 4 });
+    expect(updates.at(-1)).toMatchObject({ stage: 'queries', completed: 3, total: 4 });
+    expect(updates.every(({ completed, total }) => completed < total)).toBe(true);
+    expect(posted.findIndex((message) => message.type === 'loading-progress'
+      && /** @type {{ phase?: string }} */ (message.state)?.phase === 'complete'))
+      .toBeGreaterThan(posted.findIndex((message) => message.type === 'loading-progress'
+        && /** @type {{ stage?: string }} */ (message.state)?.stage === 'queries'));
   }, 30_000);
 });

@@ -377,6 +377,7 @@ export async function startDashboardData(options) {
         ...current,
         completed: progress.completed,
         total: progress.total,
+        stage: progress.stage,
       }));
     });
     cleanup.signal.addEventListener("abort", finishFirstLoad, { once: true });
@@ -411,7 +412,7 @@ export async function startDashboardData(options) {
     refreshFailed = false;
     refreshPending = true;
     if (firstBrowserLoad && !hasCompleteSnapshot) {
-      browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined }));
+      browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined, stage: undefined }));
     }
     emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
       kind: "refresh",
