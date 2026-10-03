@@ -1,11 +1,22 @@
+import { createDebug } from '../debug.js';
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderActionLabel } from './ui-primitives.js';
+
+const debugDashboardHeader = createDebug('dashboard-header');
 
 /**
  * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, accountMenu: HTMLElement | null, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
+  debugDashboardHeader({
+    event: 'initial-render',
+    hasTitle: Boolean(options.title),
+    experimental: options.experimental === true,
+    hasDescription: Boolean(options.description),
+    hasRepositoryLink: options.dashboardRepository !== null,
+    hasAccountMenu: options.accountMenu !== null
+  });
   return h(
     'header',
     { className: 'top-nav' },
