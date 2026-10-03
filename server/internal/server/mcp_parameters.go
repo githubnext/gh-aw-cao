@@ -7,8 +7,78 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+var mcpParametersLog = logger.New("cao:server:mcp-parameters")
+
+// parameterRejectionReason names why resolveParameterValue rejected one
+// supplied parameter value, stable across error-message wording changes so
+// it is useful to log without exposing the supplied value itself.
+type parameterRejectionReason string
+
+const (
+	parameterRejectionNone          parameterRejectionReason = "none"
+	parameterRejectionInvalidNumber parameterRejectionReason = "invalid-number"
+	parameterRejectionInvalidStep   parameterRejectionReason = "invalid-step"
+	parameterRejectionWrongType     parameterRejectionReason = "wrong-type"
+	parameterRejectionEnumMismatch  parameterRejectionReason = "enum-mismatch"
+)
+
+// resolveParameterValue validates and coerces one supplied parameter value
+// against its declared schema, applying the same per-type rules
+// bindParameters previously validated inline. It is a pure function so each
+// rejection path -- a non-finite or out-of-range number, an invalid step, a
+// wrong-typed value, and an over-length or unsupported untyped value -- is
+// independently testable without constructing an mcpRuntime. It returns a
+// stable rejection reason alongside the same error bindParameters previously
+// returned, so callers can log the reason without exposing the value.
+func resolveParameterValue(name string, parameter queryParameter, raw any, maxParameterLength int) (any, parameterRejectionReason, error) {
+	switch parameter.Type {
+	case "number":
+		number, ok := raw.(float64)
+		if !ok || math.IsNaN(number) || math.IsInf(number, 0) ||
+			(parameter.Schema.Minimum != nil && (math.IsNaN(*parameter.Schema.Minimum) || math.IsInf(*parameter.Schema.Minimum, 0) || number < *parameter.Schema.Minimum)) ||
+			(parameter.Schema.Maximum != nil && (math.IsNaN(*parameter.Schema.Maximum) || math.IsInf(*parameter.Schema.Maximum, 0) || number > *parameter.Schema.Maximum)) ||
+			(parameter.Schema.Minimum != nil && parameter.Schema.Maximum != nil && *parameter.Schema.Minimum > *parameter.Schema.Maximum) {
+			return nil, parameterRejectionInvalidNumber, fmt.Errorf("parameter %q must be a finite number within its declared range", name)
+		}
+		if step := parameter.Schema.MultipleOf; step != nil {
+			quotient := number / *step
+			if math.IsNaN(*step) || math.IsInf(*step, 0) || *step <= 0 || math.Abs(quotient-math.Round(quotient)) > 1e-9 {
+				return nil, parameterRejectionInvalidStep, fmt.Errorf("parameter %q must match its declared step", name)
+			}
+		}
+		return number, parameterRejectionNone, nil
+	case "string":
+		text, ok := raw.(string)
+		if !ok || len(text) > maxParameterLength {
+			return nil, parameterRejectionWrongType, fmt.Errorf("parameter %q must be a bounded string", name)
+		}
+		return text, parameterRejectionNone, nil
+	case "boolean":
+		boolean, ok := raw.(bool)
+		if !ok {
+			return nil, parameterRejectionWrongType, fmt.Errorf("parameter %q must be a boolean", name)
+		}
+		return boolean, parameterRejectionNone, nil
+	case "":
+		var value any
+		switch raw.(type) {
+		case string, float64, bool:
+			value = fmt.Sprint(raw)
+		default:
+			return nil, parameterRejectionWrongType, fmt.Errorf("parameter %q must be a string, number, or boolean", name)
+		}
+		if len(value.(string)) > maxParameterLength {
+			return nil, parameterRejectionWrongType, fmt.Errorf("parameter %q exceeds %d characters", name, maxParameterLength)
+		}
+		return value, parameterRejectionNone, nil
+	default:
+		return nil, parameterRejectionWrongType, fmt.Errorf("unsupported parameter type for %q", name)
+	}
+}
 
 // bindParameters resolves operands only in the named query's dependency graph.
 // Definitions owned by the application remain untouched between MCP calls.
@@ -73,47 +143,10 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 			}
 			continue
 		}
-		var value any
-		switch parameter.Type {
-		case "number":
-			number, ok := raw.(float64)
-			if !ok || math.IsNaN(number) || math.IsInf(number, 0) ||
-				(parameter.Schema.Minimum != nil && (math.IsNaN(*parameter.Schema.Minimum) || math.IsInf(*parameter.Schema.Minimum, 0) || number < *parameter.Schema.Minimum)) ||
-				(parameter.Schema.Maximum != nil && (math.IsNaN(*parameter.Schema.Maximum) || math.IsInf(*parameter.Schema.Maximum, 0) || number > *parameter.Schema.Maximum)) ||
-				(parameter.Schema.Minimum != nil && parameter.Schema.Maximum != nil && *parameter.Schema.Minimum > *parameter.Schema.Maximum) {
-				return nil, nil, nil, fmt.Errorf("parameter %q must be a finite number within its declared range", name)
-			}
-			if step := parameter.Schema.MultipleOf; step != nil {
-				quotient := number / *step
-				if math.IsNaN(*step) || math.IsInf(*step, 0) || *step <= 0 || math.Abs(quotient-math.Round(quotient)) > 1e-9 {
-					return nil, nil, nil, fmt.Errorf("parameter %q must match its declared step", name)
-				}
-			}
-			value = number
-		case "string":
-			text, ok := raw.(string)
-			if !ok || len(text) > runtime.contract.Limits.MaxParameterLength {
-				return nil, nil, nil, fmt.Errorf("parameter %q must be a bounded string", name)
-			}
-			value = text
-		case "boolean":
-			boolean, ok := raw.(bool)
-			if !ok {
-				return nil, nil, nil, fmt.Errorf("parameter %q must be a boolean", name)
-			}
-			value = boolean
-		case "":
-			switch raw.(type) {
-			case string, float64, bool:
-				value = fmt.Sprint(raw)
-			default:
-				return nil, nil, nil, fmt.Errorf("parameter %q must be a string, number, or boolean", name)
-			}
-			if len(value.(string)) > runtime.contract.Limits.MaxParameterLength {
-				return nil, nil, nil, fmt.Errorf("parameter %q exceeds %d characters", name, runtime.contract.Limits.MaxParameterLength)
-			}
-		default:
-			return nil, nil, nil, fmt.Errorf("unsupported parameter type for %q", name)
+		value, reason, err := resolveParameterValue(name, parameter, raw, runtime.contract.Limits.MaxParameterLength)
+		if err != nil {
+			mcpParametersLog.Printf("cao_query parameter rejected id=%s reason=%s", id, reason)
+			return nil, nil, nil, err
 		}
 		if parameter.Schema.Enum != nil && !slices.ContainsFunc(parameter.Schema.Enum, func(candidate any) bool {
 			switch parameter.Type {
@@ -130,6 +163,7 @@ func (runtime *mcpRuntime) bindParameters(id string, entry agentQuery, input any
 				return false
 			}
 		}) {
+			mcpParametersLog.Printf("cao_query parameter rejected id=%s reason=%s", id, parameterRejectionEnumMismatch)
 			return nil, nil, nil, fmt.Errorf("parameter %q must match its declared enum", name)
 		}
 		resolved[name] = value

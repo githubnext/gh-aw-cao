@@ -90,6 +90,56 @@ func TestMCPBindsSimulatorOperandsInDependencies(t *testing.T) {
 
 func stringPointer(value string) *string { return &value }
 
+func TestResolveParameterValue(t *testing.T) {
+	min, max, step := float64(2), float64(10), float64(2)
+	numberParameter := queryParameter{Type: "number"}
+	numberParameter.Schema.Minimum, numberParameter.Schema.Maximum, numberParameter.Schema.MultipleOf = &min, &max, &step
+	invertedParameter := queryParameter{Type: "number"}
+	invertedMin, invertedMax := float64(10), float64(2)
+	invertedParameter.Schema.Minimum, invertedParameter.Schema.Maximum = &invertedMin, &invertedMax
+
+	for _, test := range []struct {
+		name         string
+		parameter    queryParameter
+		raw          any
+		maxLength    int
+		wantValue    any
+		wantReason   parameterRejectionReason
+		wantRejected bool
+	}{
+		{"number within bounds and step", numberParameter, float64(6), 0, float64(6), parameterRejectionNone, false},
+		{"number below minimum", numberParameter, float64(1), 0, nil, parameterRejectionInvalidNumber, true},
+		{"number above maximum", numberParameter, float64(11), 0, nil, parameterRejectionInvalidNumber, true},
+		{"number not finite", numberParameter, math.Inf(1), 0, nil, parameterRejectionInvalidNumber, true},
+		{"number wrong go type", numberParameter, "6", 0, nil, parameterRejectionInvalidNumber, true},
+		{"number violates step", numberParameter, float64(7), 0, nil, parameterRejectionInvalidStep, true},
+		{"number inverted range always rejects", invertedParameter, float64(5), 0, nil, parameterRejectionInvalidNumber, true},
+		{"string within bound", queryParameter{Type: "string"}, "abc", 5, "abc", parameterRejectionNone, false},
+		{"string exceeds bound", queryParameter{Type: "string"}, "abcdef", 5, nil, parameterRejectionWrongType, true},
+		{"string wrong go type", queryParameter{Type: "string"}, float64(1), 5, nil, parameterRejectionWrongType, true},
+		{"boolean accepted", queryParameter{Type: "boolean"}, true, 0, true, parameterRejectionNone, false},
+		{"boolean wrong go type", queryParameter{Type: "boolean"}, "true", 0, nil, parameterRejectionWrongType, true},
+		{"untyped string coerced", queryParameter{}, "x", 5, "x", parameterRejectionNone, false},
+		{"untyped number coerced", queryParameter{}, float64(5), 5, "5", parameterRejectionNone, false},
+		{"untyped exceeds bound", queryParameter{}, "abcdef", 5, nil, parameterRejectionWrongType, true},
+		{"untyped unsupported go type", queryParameter{}, []any{1}, 5, nil, parameterRejectionWrongType, true},
+		{"unsupported declared type", queryParameter{Type: "object"}, "x", 5, nil, parameterRejectionWrongType, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			value, reason, err := resolveParameterValue("p", test.parameter, test.raw, test.maxLength)
+			if (err != nil) != test.wantRejected {
+				t.Fatalf("resolveParameterValue() error = %v, want rejected %t", err, test.wantRejected)
+			}
+			if reason != test.wantReason {
+				t.Fatalf("resolveParameterValue() reason = %q, want %q", reason, test.wantReason)
+			}
+			if !test.wantRejected && value != test.wantValue {
+				t.Fatalf("resolveParameterValue() value = %v, want %v", value, test.wantValue)
+			}
+		})
+	}
+}
+
 func TestMCPDecodesParameterizedComputeOperand(t *testing.T) {
 	var definition query.Definition
 	if err := json.Unmarshal([]byte(`{"name":"simulator-database-inputs","from":"simulation-days","compute":[{"as":"daily","function":"literal","args":[{"parameter":"repositories"}]}]}`), &definition); err != nil {
