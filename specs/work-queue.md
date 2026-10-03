@@ -9,9 +9,9 @@ editors:
 
 # Central Agentic Ops Work-Queue Specification
 
-**Version:** 1.0.0  
-**Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/work-queue.md  
+**Version:** 1.0.0
+**Status:** Working Draft
+**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/work-queue.md
 **Editors:** GitHub Next
 
 ## Abstract
@@ -70,7 +70,7 @@ Lifecycle transitions and erasure MUST NOT be discarded by ordinary
 collection debounce; successive lifecycle updates remain independent tasks.
 
 The queue MUST apply admission backpressure without trimming ready or pending
-collection work. The configured capacity counts ready-stream entries
+collection work. The configured capacity counts stream entries
 (including pending ones) and scheduled work. Admission failure is not
 successful delivery; callers must be able to retry it. Historical run tasks
 use a distinct stream and durable uniqueness marker derived from normalized
