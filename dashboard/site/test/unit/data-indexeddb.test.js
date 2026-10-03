@@ -248,6 +248,9 @@ describe('canonical IndexedDB', () => {
 
   it('initializes the database for an empty collection request', async () => {
     await expect(readCollections(indexedDB, [])).resolves.toEqual({});
+    const database = await openCanonicalDatabase(indexedDB);
+    expect([...database.objectStoreNames]).toContain('repositories');
+    database.close();
   });
 
   it('removes persisted aggregate stores when upgrading an existing database', async () => {
@@ -268,9 +271,6 @@ describe('canonical IndexedDB', () => {
     expect(database.objectStoreNames.contains('runs')).toBe(true);
     database.close();
 
-    const database = await openCanonicalDatabase(indexedDB);
-    expect([...database.objectStoreNames]).toContain('repositories');
-    database.close();
   });
 
   it('counts multiple collections without materializing their records', async () => {
