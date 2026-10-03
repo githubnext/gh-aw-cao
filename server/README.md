@@ -1421,9 +1421,26 @@ go -C server run ./cmd/cao-dashboard serve
 ```
 
 To inspect local traces and metrics, start the optional
-[OpenObserve self-hosted instance](https://openobserve.ai/docs/getting-started/)
-on `http://127.0.0.1:5080` via the separate `server/otel-compose.yml`.
-It is not started by the Redis/Postgres Compose stack.
+[Aspire dashboard](https://aspire.dev/dashboard/standalone/) on
+`http://127.0.0.1:18888`. It is not started by the Redis/Postgres Compose stack.
+Its OTLP/HTTP receiver is available only on `127.0.0.1:18890`; the unsecured
+dashboard is for local development only and stores telemetry in memory.
+
+```bash
+npm run dashboard:server:otel-up
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:18890
+export OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=local
+go -C server run ./cmd/cao-dashboard serve
+```
+
+The shared OTLP endpoint exports traces and metrics. Logs are opt-in via
+`CAO_OTEL_LOGS_ENABLED=true`. Stop Aspire with
+`docker compose -f server/aspire-compose.yml down`.
+
+### Alternative: OpenObserve
+
+The existing [OpenObserve self-hosted instance](https://openobserve.ai/docs/getting-started/)
+remains available on `http://127.0.0.1:5080` via `server/otel-compose.yml`.
 Set an email and a locally held password (8–128 characters with uppercase,
 lowercase, digit, and special characters) before its first startup
 (do not commit them or put them in command-line arguments):
@@ -1432,10 +1449,11 @@ lowercase, digit, and special characters) before its first startup
 read -rp 'OpenObserve email: ' CAO_LOCAL_OTEL_EMAIL
 read -rsp 'OpenObserve password: ' CAO_LOCAL_OTEL_PASSWORD; echo
 export CAO_LOCAL_OTEL_EMAIL CAO_LOCAL_OTEL_PASSWORD
-npm run dashboard:server:otel-up
+npm run dashboard:server:otel-openobserve-up
 ```
 
-In the same shell, configure the Go server's OTLP/HTTP exporters before
+In the same shell, unset `OTEL_EXPORTER_OTLP_ENDPOINT` if switching from Aspire,
+then configure the Go server's OTLP/HTTP exporters before
 running `serve` or `ingest`. OpenObserve requires Basic authentication and
 uses signal-specific endpoints; the shared base OTLP endpoint would append
 the wrong paths. The credentials are needed again after a restart to export
