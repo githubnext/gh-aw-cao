@@ -1260,13 +1260,6 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		if err != nil {
 			return queryResponse{}, http.StatusBadRequest, err
 		}
-		if a.database.Open() {
-			state, stateErr := a.database.State(ctx)
-			if stateErr != nil {
-				return queryResponse{}, http.StatusServiceUnavailable, stateErr
-			}
-			cacheKey += ":revision:" + strconv.FormatInt(state.Revision, 10)
-		}
 		cached, hit, err := a.loadCachedQuery(ctx, cacheKey, cache)
 		if err != nil {
 			return queryCacheError(err)

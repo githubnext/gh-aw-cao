@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -119,6 +121,9 @@ func TestQueryCacheIdentity(t *testing.T) {
 	original, err := app.queryCacheIdentity(input, false)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if decoded, decodeErr := hex.DecodeString(original); decodeErr != nil || len(decoded) != sha256.Size {
+		t.Fatalf("query cache identity is not a SHA-256 digest: %q, %v", original, decodeErr)
 	}
 	input.RouteParameters = map[string]any{"a": "one", "b": "two"}
 	input.EvaluatedAt = "2026-10-01T00:00:00Z"
