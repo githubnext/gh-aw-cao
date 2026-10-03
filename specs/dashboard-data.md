@@ -1370,6 +1370,12 @@ the input payload hashes have not changed. Cleanup MUST precede size-based Run
 eviction, use bounded cursor scans or namespace-scoped SQL, and publish any
 changed database revision so active worker/hosted query subscriptions refresh.
 
+IndexedDB Audit cleanup SHALL queue deletion keys in bounded batches within the
+scan transaction, flushing the final partial batch before commit. Deleting each
+row through its cursor invalidates Chromium's cursor prefetch and can stall a
+deployed-data refresh; batching MUST preserve the same eligibility and reference
+checks without materializing the Audit collection.
+
 The first pass MAY discard only the following source/type/status/summary tuples:
 
 | Source | Type | Status | Summary |

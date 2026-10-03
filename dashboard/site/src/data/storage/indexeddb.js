@@ -749,6 +749,12 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           }
         } else {
           await new Promise((resolve, reject) => {
+            /** @type {IDBValidKey[]} */
+            const pendingAuditDeletes = [];
+            const flushAuditDeletes = () => {
+              for (const key of pendingAuditDeletes) store.delete(key);
+              pendingAuditDeletes.length = 0;
+            };
             const cursorRequest = store.openCursor();
             cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB cursor failed'));
             cursorRequest.onsuccess = () => {
@@ -758,11 +764,17 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
               }
               const cursor = cursorRequest.result;
               if (!cursor) {
+                flushAuditDeletes();
                 resolve(undefined);
                 return;
               }
-              visit(cursor.value, () => cursor.delete());
+              visit(cursor.value, () => {
+                if (storeName === 'audits') pendingAuditDeletes.push(cursor.primaryKey);
+                else cursor.delete();
+              });
               cursor.continue();
+              // Per-row deletes invalidate Chromium's cursor prefetch cache.
+              if (pendingAuditDeletes.length >= DEFAULT_WRITE_BATCH_SIZE) flushAuditDeletes();
             };
           });
         }

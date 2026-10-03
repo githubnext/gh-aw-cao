@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { IDBCursor, IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { discardAudit } from '../../src/data/model/audit-curation.js';
 import { normalize } from '../../src/data/normalize/index.js';
@@ -76,6 +76,57 @@ describe('first-pass canonical Audit curation', () => {
     await upsertCanonicalBatch(indexedDB, incoming);
     await maintainCanonicalDatabase(indexedDB, options);
     expect((await readCollection(indexedDB, 'audits')).some((audit) => audit.id === 'working-set-marker')).toBe(true);
+  });
+
+  it('batches Audit deletions without invalidating cursor prefetch per record', async () => {
+    const indexedDB = new IDBFactory();
+    const incoming = batch();
+    incoming.audits = Array.from({ length: 2105 }, (_, index) => ({
+      ...fixture.audit, id: `audit:${String(index).padStart(4, '0')}`,
+      type: 'workflow_run_working_set', status: 'observed', summary: 'Working set measured'
+    }));
+    incoming.audits.push({
+      ...fixture.audit, id: 'audit:retained', type: 'workflow_run_working_set',
+      status: 'observed', summary: 'Working set measured', diagnosis: 'Specific evidence'
+    });
+    await upsertCanonicalBatch(indexedDB, incoming);
+    const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const cursorDelete = vi.spyOn(IDBCursor.prototype, 'delete');
+    const originalDelete = IDBObjectStore.prototype.delete;
+    const storeDelete = vi.spyOn(IDBObjectStore.prototype, 'delete');
+    /** @type {number[]} */
+    const pendingDeletes = [];
+    let auditCursorReads = 0;
+    const originalOpenCursor = IDBObjectStore.prototype.openCursor;
+    const openCursor = vi.spyOn(IDBObjectStore.prototype, 'openCursor').mockImplementation(/** @this {IDBObjectStore} */ function (...args) {
+      const request = originalOpenCursor.apply(this, args);
+      if (this.name === 'audits') {
+        request.addEventListener('success', () => {
+          if (request.result) auditCursorReads += 1;
+        });
+      }
+      return request;
+    });
+    storeDelete.mockImplementation(/** @this {IDBObjectStore} */ function (key) {
+      if (this.name === 'audits') pendingDeletes.push(auditCursorReads);
+      return originalDelete.call(this, key);
+    });
+    try {
+      const maintained = await maintainCanonicalDatabase(indexedDB, options);
+      expect(maintained.prunedAudits).toBe(2105);
+      expect(getAll).not.toHaveBeenCalled();
+      expect(cursorDelete).not.toHaveBeenCalled();
+      expect(pendingDeletes.slice(0, 1000)).toEqual(Array(1000).fill(1000));
+      expect(pendingDeletes.slice(1000, 2000)).toEqual(Array(1000).fill(2000));
+      expect(pendingDeletes.slice(2000)).toEqual(Array(105).fill(2106));
+    } finally {
+      getAll.mockRestore();
+      cursorDelete.mockRestore();
+      storeDelete.mockRestore();
+      openCursor.mockRestore();
+    }
+    expect((await readCollection(indexedDB, 'audits')).map((audit) => audit.id)).toEqual(['audit:retained']);
+    expect((await maintainCanonicalDatabase(indexedDB, options)).prunedAudits).toBe(0);
   });
 
   it('validates old transport counts before pruning and cleans unchanged shards', async () => {

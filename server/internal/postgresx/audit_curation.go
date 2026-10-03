@@ -77,7 +77,7 @@ func validateAuditProjection(row model.Row) error {
 			}
 		}
 	}
-	if row["code"] != nil && !(source == "audit" && kind == "audit.finding" && row["code"] == "workflow_failed") {
+	if row["code"] != nil && (source != "audit" || kind != "audit.finding" || row["code"] != "workflow_failed") {
 		return nil
 	}
 	for field, value := range row {

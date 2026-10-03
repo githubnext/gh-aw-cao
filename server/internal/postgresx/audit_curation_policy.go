@@ -98,7 +98,7 @@ func discardAuditCopy(audit, run model.Row) bool {
 	}
 	for field, value := range audit {
 		if value != nil && !auditMetadataField(field) &&
-			!(field == "code" && auditText(audit, "type") == "audit.finding" && value == "workflow_failed") {
+			(field != "code" || auditText(audit, "type") != "audit.finding" || value != "workflow_failed") {
 			return false
 		}
 	}
