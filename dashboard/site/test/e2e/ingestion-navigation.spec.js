@@ -175,6 +175,26 @@ async function exerciseFirstImport({ context, page }, mobile) {
   await expect(importScreen).toBeVisible();
   await expect(importScreen).toContainText('The first import can take several minutes');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  if (mobile) {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }]) {
+      await page.setViewportSize(viewport);
+      await expect(importScreen.getByRole('heading', { name: 'Preparing your dashboard.' })).toBeVisible();
+      await expect(importScreen.locator('.first-load-steps')).not.toBeVisible();
+      await expect(importScreen.getByRole('button', { name: 'Explore while data loads' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toBeInViewport({ ratio: 1 });
+      await expect.poll(() => importScreen.evaluate((element) => ({
+        horizontal: element.scrollWidth > element.clientWidth,
+        vertical: element.scrollHeight > element.clientHeight
+      }))).toEqual({ horizontal: false, vertical: false });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+  }
+  await expect(importScreen.locator('.first-load-background-graph')).toHaveCSS('animation-name', 'first-load-graph-drift');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(importScreen.locator('.first-load-background-graph')).toHaveCSS('animation-name', 'none');
+  await expect.poll(() => importScreen.locator('.first-load-background').evaluate((element) => (
+    getComputedStyle(element, '::before').animationName
+  ))).toBe('none');
   await page.keyboard.press('Escape');
   await expect(importScreen).not.toBeVisible();
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');

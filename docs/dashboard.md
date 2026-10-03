@@ -51,6 +51,10 @@ first-import experience. While the import screen is visible, 100 friendly notes
 rotate randomly every six seconds without repeating within a cycle. These notes
 are separate from factual import progress and pause when the screen is dismissed
 or the import is no longer running.
+Small screens use shorter copy and omit the explanatory step list so the main
+action stays in view. A decorative Overview-style grid and paired-bar backdrop
+uses slow CSS motion, disabled when the browser requests reduced motion. The
+background is decorative, not campaign telemetry.
 
 ## Read a result
 
