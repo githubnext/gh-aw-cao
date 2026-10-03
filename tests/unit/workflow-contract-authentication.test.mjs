@@ -120,6 +120,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-docs-build-time-investigator",
     "self-care-docs-maintainer",
     "self-care-glossary",
+    "self-care-hosted-health",
     "self-care-open-source-failures",
     "self-care-pages-health",
     "self-care-primer-brand-checker",

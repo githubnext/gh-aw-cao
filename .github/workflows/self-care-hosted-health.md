@@ -138,8 +138,8 @@ pre-agent-steps:
         echo "Hosted MCP read credential is unavailable" >&2
         exit 1
       fi
-      oidc="$(curl --fail --silent --show-error --max-time 10 \
       AUTH_SCHEME=bearer
+      oidc="$(curl --fail --silent --show-error --max-time 10 \
         -H "Authorization: ${AUTH_SCHEME^} ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
         "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fcao.githubnext.com" | jq -er .value)"
       echo "::add-mask::$oidc"

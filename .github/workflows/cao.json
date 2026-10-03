@@ -243,6 +243,9 @@
           "glossary": {
             "workflow": "self-care-glossary"
           },
+          "hosted-health": {
+            "workflow": "self-care-hosted-health"
+          },
           "open-source-failures": {
             "workflow": "self-care-open-source-failures"
           },
