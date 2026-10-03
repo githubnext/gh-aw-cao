@@ -49,7 +49,7 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-03T20:35:19Z",
+  "last_seen_at": "2026-10-03T23:36:42Z",
   "last_updated": "2026-10-03T20:35:19Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37151586837",
   "last_updated_target_repo": "github/gh-aw-firewall",
@@ -61,5 +61,17 @@
     "false_negative_count": 0,
     "reason": "Confirmed a live occurrence at src/docker-manager.test.ts#L82-L117 where behavioral filterCapDrop/isCapDropSkipped assertions duplicate src/capability-filter.test.ts's dedicated suite, violating the barrel file's own documented shape-only scope. A naive non-typeof-expect() heuristic also false-positives on two legitimate shape/pass-through assertions in the same file (L74, L76) whose comments explicitly defer behavior elsewhere, and there is no suppression mechanism for intentional defense-in-depth duplication.",
     "txn_id": "refiner-37151586837-1"
-  }
+  },
+  "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw-actions",
+      "target_commit": "8a5b99ba734d5cb564e3a0c85ea0580d881002e0",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "No TypeScript barrel/re-export modules or barrel-shaped smoke-test files exist in this repository; its .ts files are ambient type declarations plus one type-only compile test, none re-exporting runtime functions the way the mined evidence file does.",
+      "txn_id": "refiner-37162075777-3"
+    }
+  ]
 }
