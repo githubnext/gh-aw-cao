@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { renderMeasureHistory } from '../../src/components/measure-history.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderBoundMeasureHistory, renderMeasureHistory } from '../../src/components/measure-history.js';
+import { configureSourceLoader, resetSourceStore } from '../../src/source-store.js';
 
 const metadata = {
   'source-id': 'operational-value-fixture',
@@ -12,7 +13,66 @@ const metadata = {
   availability: /** @type {'available'} */ ('available')
 };
 
+afterEach(() => {
+  document.body.replaceChildren();
+  resetSourceStore();
+});
+
 describe('Measure history', () => {
+  it('updates the operational-value plot as each declared query resolves and stops on detachment', async () => {
+    /** @type {Record<string, (source: import('../../src/presenter.js').LogicalSourceInput) => void>} */
+    const resolve = {};
+    const loader = vi.fn((name) => new Promise((done) => {
+      resolve[name] = done;
+    }));
+    configureSourceLoader(loader);
+    const names = ['value-series', 'campaign-run-days', 'evidence-state'];
+    const root = renderBoundMeasureHistory({
+      title: 'Repository operational value',
+      sourceNames: names,
+      sources: {},
+      elementConfig: { 'measure-source': 'operational-value' },
+      pageId: 'test-page',
+      viewId: 'value-history',
+      routeParameters: { campaign: 'sample' },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+    document.body.append(root);
+    expect(root.textContent).toContain('Loading repository operational value');
+    expect(loader.mock.calls.map(([name]) => name)).toEqual(names);
+
+    resolve['value-series']({
+      source: 'value-series',
+      metadata,
+      rows: [{
+        metric: 'sample.value',
+        'operational-value-name': 'Sample value',
+        'operational-value-unit': 'percent',
+        points: [{ x: '2026-09-24T00:00:00Z', y: 42, color: 'github/repo' }]
+      }]
+    });
+    await vi.waitFor(() => expect(root.querySelector('.temporal-metric-plot')).not.toBeNull());
+    const plot = root.querySelector('.temporal-metric-plot');
+    resolve['campaign-run-days']({
+      source: 'campaign-run-days',
+      metadata,
+      rows: [{ 'run-day': '2026-09-24', 'successful-runs': 1, 'failed-runs': 0, 'concluded-runs': 1, 'success-rate-percent': 100 }]
+    });
+    await vi.waitFor(() => expect(root.querySelector('.temporal-plot-run-outcome')).not.toBeNull());
+    expect(root.querySelector('.temporal-metric-plot')).toBe(plot);
+
+    root.remove();
+    await Promise.resolve();
+    resolve['evidence-state']({
+      source: 'evidence-state',
+      metadata,
+      rows: [{ 'evidence-state': 'interim-evidence', 'observation-count': 1, 'matured-observation-count': 0 }]
+    });
+    await Promise.resolve();
+    expect(root.querySelector('.temporal-metric-plot')).toBe(plot);
+  });
+
   it('labels interim repository operational value without a heading badge', () => {
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',

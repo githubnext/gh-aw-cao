@@ -11,6 +11,7 @@ import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
 import { renderMarkdownElement } from './markdown.js';
+import { renderBoundMeasureHistory } from './measure-history.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
@@ -56,11 +57,12 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-floor', renderFactoryFloorElement],
   ['all-campaign-memory', renderAllCampaignMemory],
   ['link-button-list', renderLinkButtonList],
-  ['markdown', renderMarkdownElement]
+  ['markdown', renderMarkdownElement],
+  ['measure-history', renderBoundMeasureHistory]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list', 'measure-history']);
 
 /** Elements that retain their DOM while the active page publishes subscribed results. */
 const PAGE_BOUND_ELEMENTS = new Set(['problem-detail']);
@@ -91,7 +93,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'factory-floor',
   'all-campaign-memory',
   'link-button-list',
-  'markdown'
+  'markdown',
+  'measure-history'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail']);
 
