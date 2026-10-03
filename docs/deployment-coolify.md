@@ -226,9 +226,10 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | No | Shared base OTLP/HTTP endpoint. The exporter appends the signal path. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | No | No | Full OTLP/HTTP trace endpoint. Use this to reuse the control plane's `GH_AW_DEFAULT_OTLP_ENDPOINT`. |
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | No | No | Full OTLP/HTTP metrics endpoint. |
-| `OTEL_EXPORTER_OTLP_HEADERS` | No | Yes | Shared OTLP authentication headers. |
-| `OTEL_EXPORTER_OTLP_TRACES_HEADERS` | No | Yes | Trace-specific OTLP authentication headers. |
-| `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | No | Yes | Metrics-specific OTLP authentication headers. |
+| `OTEL_EXPORTER_OTLP_HEADERS_ROTATED` | No | Yes | Shared OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_HEADERS` in each container. |
+| `OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED` | No | Yes | Trace-specific OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_TRACES_HEADERS` in each container. |
+| `OTEL_EXPORTER_OTLP_METRICS_HEADERS_ROTATED` | No | Yes | Metrics-specific OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_METRICS_HEADERS` in each container. |
+| `OTEL_EXPORTER_OTLP_LOGS_HEADERS_ROTATED` | No | Yes | Log-specific OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_LOGS_HEADERS` in each container. |
 | `OTEL_SERVICE_NAME` | No. Defaults to `cao-dashboard`. | No | Stable service name used by the observability backend. |
 | `OTEL_RESOURCE_ATTRIBUTES` | No. Defaults to `deployment.environment.name=production`. | No | Reviewed, non-sensitive deployment attributes. |
 | `OTEL_SDK_DISABLED` | No. Defaults to `false`. | No | Set to `true` to disable telemetry export. |
@@ -266,7 +267,8 @@ Set `CAO_MCP_ACTIONS_REPOSITORY` to the repository configured in this Coolify re
 
 Follow these rules when you add the values.
 
-- **Store credentials as Coolify secrets.** `CAO_POSTGRES_URL`, `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`, `CAO_SESSION_SECRET_ROTATED`, `CAO_SESSION_SECRET_PREVIOUS`, `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`, and every `OTEL_EXPORTER_OTLP_*_HEADERS` value are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log.
+- **Store credentials as Coolify secrets.** `CAO_POSTGRES_URL`, `REDIS_URL`, `CAO_GITHUB_CLIENT_SECRET_ROTATED`, `CAO_SESSION_SECRET_ROTATED`, `CAO_SESSION_SECRET_PREVIOUS`, `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`, and every `OTEL_EXPORTER_OTLP_*_HEADERS_ROTATED` value are credentials. Never commit them to the repository, paste them into `.env.example`, or echo them in a build or deployment log. Compose maps the `_ROTATED` OTLP inputs to the standard OpenTelemetry variable names inside each container so a locked Coolify secret can be replaced under a new input name without changing server code.
+- **Verify Compose-defined secrets before locking them.** Coolify cannot edit or delete a locked variable while the Compose file still references it. Redeploy and run the deployment smoke test before locking a new OTLP header value.
 - **Generate the two server-side secrets yourself.** `CAO_SESSION_SECRET_ROTATED` and `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` must each be at least 32 characters. Generate each one separately, and don't reuse one value for both.
 
   ```bash
@@ -314,7 +316,8 @@ configured.
 To reuse the same collector as the control plane, copy
 `GH_AW_DEFAULT_OTLP_ENDPOINT` into `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and
 copy `GH_AW_DEFAULT_OTLP_HEADERS` into
-`OTEL_EXPORTER_OTLP_TRACES_HEADERS`. The trace endpoint is a complete
+`OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED`. Compose exposes the latter as
+`OTEL_EXPORTER_OTLP_TRACES_HEADERS` inside each container. The trace endpoint is a complete
 `/v1/traces` URL. Configure the corresponding `/v1/metrics` URL separately
 when the backend accepts metrics.
 
@@ -345,8 +348,8 @@ single-node service, persists `/data`, and doesn't require another database.
 1. Set the CAO application's `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to the full
    internal endpoint, using the OpenObserve service's Coolify network name and
    port `5080` in place of its public origin. Store the copied header as a
-   Coolify secret in `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, using the
-   OpenTelemetry environment format `Authorization=Basic ...`.
+   Coolify secret in `OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED`, using the
+   OpenTelemetry environment format `Authorization=Basic%20...`.
 1. To send workflow traces to the same OpenObserve instance, expose a
    separately reviewed HTTPS ingestion route that GitHub-hosted runners can
    reach. Set that full trace endpoint as `GH_AW_DEFAULT_OTLP_ENDPOINT` and the

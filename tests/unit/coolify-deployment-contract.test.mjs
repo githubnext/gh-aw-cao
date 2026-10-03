@@ -5,8 +5,21 @@ import { parse } from "yaml";
 
 const root = new URL("../../", import.meta.url);
 
+const otelHeaderInputs = {
+  OTEL_EXPORTER_OTLP_HEADERS: "OTEL_EXPORTER_OTLP_HEADERS_ROTATED",
+  OTEL_EXPORTER_OTLP_TRACES_HEADERS: "OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED",
+  OTEL_EXPORTER_OTLP_METRICS_HEADERS: "OTEL_EXPORTER_OTLP_METRICS_HEADERS_ROTATED",
+  OTEL_EXPORTER_OTLP_LOGS_HEADERS: "OTEL_EXPORTER_OTLP_LOGS_HEADERS_ROTATED",
+};
+
 async function text(path) {
   return readFile(new URL(path, root), "utf8");
+}
+
+function assertRotatableOtelHeaders(environment) {
+  for (const [runtimeName, coolifyName] of Object.entries(otelHeaderInputs)) {
+    assert.equal(environment[runtimeName], `\${${coolifyName}:-}`);
+  }
 }
 
 test("Coolify image is multi-stage, non-root, versioned, and health checked", async () => {
@@ -107,7 +120,7 @@ test("Coolify Compose builds the checked-out source with admission-only public s
   );
   assert.equal(dashboard.environment.CAO_OTEL_LOGS_ENABLED, "${CAO_OTEL_LOGS_ENABLED:-false}");
   assert.equal(dashboard.environment.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, "${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-}");
-  assert.equal(dashboard.environment.OTEL_EXPORTER_OTLP_LOGS_HEADERS, "${OTEL_EXPORTER_OTLP_LOGS_HEADERS:-}");
+  assertRotatableOtelHeaders(dashboard.environment);
   assert.equal(dashboard.read_only, true);
   assert.equal(dashboard.init, true);
   assert.deepEqual(dashboard.cap_drop, ["ALL"]);
@@ -157,6 +170,7 @@ test("Coolify collection workers isolate credentials and share durable evidence"
     assert.equal(service.environment.CAO_SOURCE_DIRECTORY, undefined);
     assert.equal(service.environment.CAO_COLLECT_LAKE_DIRECTORY, "/app/evidence");
     assert.equal(service.environment.CAO_COLLECT_CATALOG_ROOT, "/app/catalog");
+    assertRotatableOtelHeaders(service.environment);
     assert.deepEqual(service.volumes, ["cao-collector-evidence:/app/evidence"]);
     assert.equal(service.read_only, true);
     assert.equal(service.init, true);
