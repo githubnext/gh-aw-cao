@@ -8,6 +8,8 @@ const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).
 assert.deepEqual(program.diagnostics, []);
 const tables = new Map();
 const documentation = new Map();
+const parents = new Map();
+const partitioned = new Set();
 navigateProgram(program, {
   model(model) {
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres') {
@@ -16,6 +18,10 @@ navigateProgram(program, {
       }
       tables.set(`$${model.name}`, new Set(model.properties.keys()));
       documentation.set(model.name, getDoc(program, model));
+      if (program.stateSet(Symbol.for('cao-postgres.run-partition')).has(model)) partitioned.add(model.name);
+      parents.set(model.name, [...model.properties.values()]
+        .map((property) => program.stateMap(Symbol.for('cao-postgres.parent')).get(property)?.entity)
+        .filter(Boolean));
     }
   }
 });
@@ -45,6 +51,41 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
     '$marketplacePackages', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations', '$jobs', '$sessions', '$events'
   ].sort());
+});
+
+test('all run-owned tables share weekly partitions and maintenance coverage', () => {
+  const runOwned = new Set(['runs']);
+  let size;
+  do {
+    size = runOwned.size;
+    for (const [name, relationships] of parents) {
+      if (relationships.some((parent) => runOwned.has(parent))) runOwned.add(name);
+    }
+  } while (runOwned.size !== size);
+  assert.deepEqual([...runOwned].sort(), [...partitioned].sort());
+  const names = [...runOwned].map((name) => name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)).sort();
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  for (const name of names) {
+    const declaration = sql.split(`CREATE TABLE IF NOT EXISTS ${name} (`)[1]?.split(';')[0];
+    assert.match(declaration ?? '', /\) PARTITION BY RANGE \(run_at\)$/);
+  }
+  const maintenance = readFileSync(new URL('../internal/postgresx/partitions.go', import.meta.url), 'utf8');
+  const registered = maintenance.match(/tables := \[\]string\{([^}]+)\}/);
+  assert.ok(registered, 'weekly maintenance must declare its partitioned tables');
+  const dropOrder = [...registered[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual([...dropOrder].sort(), names);
+  for (const [child, relationships] of parents) {
+    if (!runOwned.has(child)) continue;
+    for (const parent of relationships.filter((name) => runOwned.has(name))) {
+      const childTable = child.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+      const parentTable = parent.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+      assert.ok(dropOrder.indexOf(childTable) < dropOrder.indexOf(parentTable),
+        `${childTable} must be detached before ${parentTable}`);
+    }
+  }
+  const discovered = maintenance.match(/p\.relname IN\s*\(([^)]+)\)/);
+  assert.ok(discovered, 'weekly maintenance must discover every partitioned table');
+  assert.deepEqual([...discovered[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort(), names);
 });
 
 test('TypeSpec Audit storage describes curation without speculative duplicate Run columns', () => {
