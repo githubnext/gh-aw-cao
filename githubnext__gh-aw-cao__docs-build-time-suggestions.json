@@ -1,6 +1,6 @@
 {
   "source_sha": "c109e77cddcd66de2f4d8cce616097cd67454c26",
-  "next_category": 2,
+  "next_category": 4,
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T07:09:46Z",
@@ -435,6 +435,32 @@
         37129734458
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 successful completed runs from 2026-10-03T14:16Z to 18:19Z shows dependency installation and caching are already effective on the docs path. Queue median/p90 was 3.5s/12.9s, workflow median/p90 47s/87.7s, build-job median/p90 43s/50.9s, deploy-job median/p90 18s/18.8s on the 3 runs that deployed, and schedule-freshness median/p90 7s/7s on the 3 scheduled runs. Trusted step conclusions showed Restore node_modules succeeded in all 12 build jobs with 5s median/p90 6.9s, while Install dependencies and Save node_modules were skipped in all 12, confirming steady cache hits from execution rather than syntax. Restore cached CAO Dashboard also succeeded in all 12 builds with 2s median/p90 3s, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped every time, confirming dashboard cache hits as well. Cross-checking 6 recent successful cao-dashboard.yml producer runs showed dashboard build median/p90 175s/257.5s, with Install dashboard build dependencies only 7s median while Upgrade fallback activity data dominated at 128s median and 199s p90. Bounded trusted logs for run 37143314789 confirmed the producer still recopies a 491.2 MiB gh-aw-logs.sqlite plus 336 activity shards totaling 292.3 MiB before uploading a 43,662,726-byte artifact. Because dependency installation is already amortized in docs.yml and is only a small producer cost, no new dependency-cache change can credibly save >=60s or >=15% of median docs execution time without duplicating prior upstream dashboard-data work.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-03T19:13:52Z",
+      "worker_run_id": "37146977675",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37145348172,
+        37144359287,
+        37143675418,
+        37143314770,
+        37142980800,
+        37142412073,
+        37140366232,
+        37138312126,
+        37137604414,
+        37135272102,
+        37132501580,
+        37129888383,
+        37129387073,
+        37143314789,
+        37142795904,
+        37140168022,
+        37138088972
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 13 successful completed runs from 2026-10-03T14:22Z to 18:45Z shows reusable dashboard generation is already effectively cached on the docs path. Queue time could not be measured directly from available metadata, but job timing remained low: full workflow median/p90 49s/88s, build-job median/p90 45s/51s, deploy-job median/p90 16.5s/19s on the 4 runs that deployed, and schedule-freshness median/p90 7s/7s on the 4 scheduled runs. Trusted step conclusions showed Restore cached CAO Dashboard succeeded in all 13 builds with 2s median/p90 3s, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 13, confirming consistent dashboard cache hits from execution metadata rather than syntax. Build documentation stayed 13s median and Upload Pages artifact 9s median. Cross-checking recent successful cao-dashboard.yml producer runs 37143314789, 37142795904, 37140168022, and 37138088972 showed producer build median/p90 178.5s/336s, with Install dashboard build dependencies only 7.5s median, Assemble Dashboard Language site only 3s median, and Upgrade fallback activity data dominating at 129.5s median/p90 267s. Bounded trusted logs for run 37143314789 confirmed the producer still recopied a 491.2 MiB gh-aw-logs.sqlite plus 336 activity shards totaling 292.3 MiB before uploading a 43,662,726-byte dashboard artifact. Existing open issues #15497 and #15332 already cover the remaining upstream dashboard-input re-upgrade optimization, so no new non-duplicate reusable-dashboard recommendation meets the >=60s or >=15% threshold from this evidence window.",
       "suggestion_fingerprint": null
     }
   ]
