@@ -1142,7 +1142,11 @@ The server is instrumented with standard, vendor-neutral
 wrapped with `otelhttp` using a redacted request, which supplies bounded
 OpenTelemetry HTTP semantic-convention attributes and the standard
 `http.server.request.duration`, `http.server.request.body.size`, and
-`http.server.response.body.size` metrics. OAuth callbacks instead emit a
+`http.server.response.body.size` metrics. Registered API/auth endpoints also
+attach their registered `http.route` template to HTTP spans and metrics after
+routing, including `HEAD` requests and parameterized paths such as
+`/api/repositories/{id}`. Parameter values are never exported; arbitrary or
+unmatched paths omit that attribute. OAuth callbacks instead emit a
 dedicated W3C-context-propagating server span named `GET /auth/callback` with
 only fixed `http.route` and `http.request.method` attributes, plus
 `cao_dashboard.auth.callback.count` (unit `{callback}`). Both the span and
@@ -1170,11 +1174,38 @@ spans. Every Postgres statement emits a child `cao_dashboard.postgres.query`
 client span and `cao_dashboard.postgres.query.count` (unit `{query}`) and
 `cao_dashboard.postgres.query.duration` (seconds) metrics. Duration measures
 statement execution after acquiring a connection, not pool wait or row
-decoding. Only fixed `db.operation.name` (`select`, `insert`, `update`,
+decoding. Existing CAO-specific metrics record fixed `db.operation.name`
+(`select`, `insert`, `update`,
 `delete`, `copy`, or `other`) and `cao_dashboard.postgres.outcome` (`success`
 or `error`) values are recorded; SQL, parameters, error messages, source
 names, and database connection details are excluded. Existing pgx tracers
-are preserved. The GitHub API quota service (`internal/githubquota/`) starts
+are preserved. PostgreSQL queries and ingestion `COPY` calls additionally emit
+the standard [`db.client.operation.duration`](https://opentelemetry.io/docs/specs/semconv/db/database-metrics/)
+histogram (unit `s`, recommended boundaries
+`0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10`). The standard metric and client
+spans use `db.system.name=postgresql` and uppercase `db.operation.name`
+(`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `COPY`); unrecognized SQL operations
+omit the standard operation attribute. Existing CAO-specific metrics retain
+their lowercase operation and outcome attributes for compatibility.
+Failures add `error.type`, using a validated PostgreSQL SQLSTATE and
+`db.response.status_code` when available, otherwise `canceled`, `timeout`, or
+`_OTHER`. The histogram duration matches the client span duration.
+
+Redis calls emit the same standard duration histogram with `db.system.name=redis`
+and allowlisted uppercase commands, alongside client spans named for those
+commands. Unknown commands use `_OTHER`. Pipelines produce one observation per
+call, named `PIPELINE <COMMAND>` for homogeneous batches or `PIPELINE` for mixed
+or empty batches; a one-command pipeline is a single operation. Batch sizes are
+span-only `db.operation.batch.size` attributes, not metric dimensions. Redis
+duration includes connection acquisition, authentication, retries, and response
+reading; recovered retries count as one successful operation. Failures add
+`error.type` and, for allowlisted Redis error prefixes, `db.response.status_code`.
+Other failures use `canceled`, `timeout`, or `_OTHER`. SQL text, Redis keys,
+values, Lua scripts, raw error messages, database indexes, and connection
+details are excluded. These signals use the existing optional OTLP providers;
+no additional exporter or dependency is required.
+
+The GitHub API quota service (`internal/githubquota/`) starts
 `cao_githubquota.<operation>` spans (`observe`, `commit`, `reserve`, `release`,
 `park`, `unpark`, `state`, `select`, `usage`) and records
 `cao_githubquota.operation.count` and `cao_githubquota.operation.duration`

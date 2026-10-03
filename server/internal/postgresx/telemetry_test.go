@@ -3,10 +3,12 @@ package postgresx
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -19,7 +21,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-type existingQueryTracer struct{ starts, ends int }
+type existingQueryTracer struct{ starts, ends, copyStarts, copyEnds int }
 
 func (t *existingQueryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
 	t.starts++
@@ -29,7 +31,17 @@ func (t *existingQueryTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.Trac
 	t.ends++
 }
 
-func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
+func (t *existingQueryTracer) TraceCopyFromStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceCopyFromStartData) context.Context {
+	t.copyStarts++
+	return ctx
+}
+
+func (t *existingQueryTracer) TraceCopyFromEnd(context.Context, *pgx.Conn, pgx.TraceCopyFromEndData) {
+	t.copyEnds++
+}
+
+func installPostgresTelemetry(t *testing.T) (*tracetest.InMemoryExporter, *sdkmetric.ManualReader) {
+	t.Helper()
 	previousTracer, previousMeter := otel.GetTracerProvider(), otel.GetMeterProvider()
 	exporter := tracetest.NewInMemoryExporter()
 	traceProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
@@ -43,7 +55,11 @@ func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
 		otel.SetTracerProvider(previousTracer)
 		otel.SetMeterProvider(previousMeter)
 	})
+	return exporter, reader
+}
 
+func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
+	exporter, reader := installPostgresTelemetry(t)
 	existing := &existingQueryTracer{}
 	config, err := pgx.ParseConfig("postgres://localhost/test?sslmode=disable")
 	if err != nil {
@@ -98,6 +114,7 @@ func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
 	}
 	counts := map[string]int64{}
 	durations := map[string]float64{}
+	standard := map[string]float64{}
 	for _, scope := range measured.ScopeMetrics {
 		for _, recorded := range scope.Metrics {
 			switch data := recorded.Data.(type) {
@@ -111,6 +128,21 @@ func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
 					counts[op.AsString()+"/"+outcome.AsString()] += point.Value
 				}
 			case metricdata.Histogram[float64]:
+				if recorded.Name == "db.client.operation.duration" {
+					if recorded.Unit != "s" {
+						t.Fatalf("standard duration unit = %q, want s", recorded.Unit)
+					}
+					for _, point := range data.DataPoints {
+						op, _ := point.Attributes.Value(attribute.Key("db.operation.name"))
+						system, _ := point.Attributes.Value(attribute.Key("db.system.name"))
+						errorType, failed := point.Attributes.Value(attribute.Key("error.type"))
+						if system.AsString() != "postgresql" || (failed && errorType.AsString() != "_OTHER") ||
+							point.Count != 1 || !slices.Equal(point.Bounds, []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10}) {
+							t.Fatalf("invalid standard duration: %+v", point)
+						}
+						standard[op.AsString()] = point.Sum
+					}
+				}
 				if recorded.Name != postgresQueryDuration {
 					continue
 				}
@@ -128,6 +160,80 @@ func TestPostgresTelemetryPreservesTracerAndOmitsSQL(t *testing.T) {
 	if counts["select/success"] != 1 || counts["insert/error"] != 1 ||
 		len(counts) != 2 || len(durations) != 2 {
 		t.Fatalf("missing postgres metrics: counts=%v durations=%v", counts, durations)
+	}
+	if len(standard) != 2 || standard["SELECT"] != durations["select/success"] || standard["INSERT"] != durations["insert/error"] {
+		t.Fatalf("standard metrics disagree with existing durations: standard=%v legacy=%v", standard, durations)
+	}
+	for _, span := range spans {
+		attrs := attribute.NewSet(span.Attributes...)
+		op, _ := attrs.Value(attribute.Key("db.operation.name"))
+		if standard[op.AsString()] != span.EndTime.Sub(span.StartTime).Seconds() {
+			t.Fatal("standard metric duration must match the client span duration")
+		}
+	}
+}
+
+func TestPostgresCopyTelemetryAndErrorCodes(t *testing.T) {
+	exporter, reader := installPostgresTelemetry(t)
+	existing := &existingQueryTracer{}
+	config, err := pgx.ParseConfig("postgres://localhost/test?sslmode=disable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.Tracer = existing
+	config, err = instrumentConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copier, ok := config.Tracer.(pgx.CopyFromTracer)
+	if !ok {
+		t.Fatal("COPY instrumentation is missing")
+	}
+	for _, failure := range []error{nil, &pgconn.PgError{Code: "23505", Message: "private database detail"}} {
+		ctx := copier.TraceCopyFromStart(t.Context(), nil, pgx.TraceCopyFromStartData{
+			TableName: pgx.Identifier{"private_table"}, ColumnNames: []string{"private_column"},
+		})
+		copier.TraceCopyFromEnd(ctx, nil, pgx.TraceCopyFromEndData{Err: failure})
+	}
+	if existing.copyStarts != 2 || existing.copyEnds != 2 {
+		t.Fatal("existing COPY tracer was not preserved")
+	}
+	spans := exporter.GetSpans()
+	if len(spans) != 2 || spans[0].Status.Code != codes.Ok || spans[1].Status.Code != codes.Error {
+		t.Fatalf("unexpected COPY spans: %+v", spans)
+	}
+	attrs := attribute.NewSet(spans[1].Attributes...)
+	for key, want := range map[string]string{
+		"db.operation.name": "COPY", "db.response.status_code": "23505", "error.type": "23505",
+	} {
+		value, _ := attrs.Value(attribute.Key(key))
+		if value.AsString() != want {
+			t.Fatalf("%s = %q, want %q", key, value.AsString(), want)
+		}
+	}
+	var measured metricdata.ResourceMetrics
+	if err := reader.Collect(t.Context(), &measured); err != nil {
+		t.Fatal(err)
+	}
+	var copyCount uint64
+	for _, scope := range measured.ScopeMetrics {
+		for _, recorded := range scope.Metrics {
+			if recorded.Name == "db.client.operation.duration" {
+				for _, point := range recorded.Data.(metricdata.Histogram[float64]).DataPoints {
+					copyCount += point.Count
+				}
+			}
+		}
+	}
+	if copyCount != 2 {
+		t.Fatalf("COPY duration samples = %d, want 2", copyCount)
+	}
+	for _, failure := range []error{context.Canceled, context.DeadlineExceeded, &pgconn.PgError{Code: "private error"}} {
+		for _, attr := range postgresErrorAttributes(failure) {
+			if strings.Contains(attr.Value.AsString(), "private") {
+				t.Fatal("unrecognized database error leaked into telemetry")
+			}
+		}
 	}
 }
 
