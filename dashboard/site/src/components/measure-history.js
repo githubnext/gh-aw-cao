@@ -4,17 +4,55 @@
 
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
-import { effect, state } from '../reactive.js';
+import { effect, render, state } from '../reactive.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
-import { formatMediumUtcDateTimeWithSuffix, renderVisualizationEmptyMessage } from './ui-primitives.js';
+import { formatMediumUtcDateTimeWithSuffix, renderLoadingMessage, renderVisualizationEmptyMessage } from './ui-primitives.js';
 
 const debugMeasureHistory = createDebug('measure-history');
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
+
+/**
+ * Keeps the operational-value plot independent of the campaign route shell.
+ * Each declared source is bound to its own worker query and the owned root is
+ * updated only when a source used by this element changes.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderBoundMeasureHistory(context) {
+  const selectedRoute = context.routeParameter ? context.routeParameters?.[context.routeParameter] : '';
+  if (context.routeParameter && !selectedRoute) {
+    return h('section', { className: 'measure-history', 'aria-label': context.title },
+      renderVisualizationEmptyMessage('Select a campaign to view its operational value.'));
+  }
+  const bindings = bindFactorySources({}, context.sourceNames, {
+    pageId: context.pageId,
+    viewId: context.viewId,
+    viewIndex: context.viewIndex,
+    sourceNames: context.sourceNames,
+    routeParameters: context.routeParameters,
+    queryContext: context.queryContext
+  }, { bindingScope: selectedRoute });
+  const scope = createFactoryScope();
+  const root = h('div', { className: 'measure-history-bound' });
+  render(root, () => {
+    const sources = /** @type {Record<string, import('../presenter.js').LogicalSourceInput>} */ ({});
+    for (const name of context.sourceNames) {
+      const source = bindings[name].source();
+      if (source) sources[name] = source;
+    }
+    const series = bindings[context.sourceNames[0]];
+    if (series?.pending() && !series.source()) return renderLoadingMessage('Loading repository operational value...');
+    if (series?.unavailable()) return renderVisualizationEmptyMessage('Repository operational-value evidence is unavailable.');
+    return renderMeasureHistory({ ...context, sources });
+  }, { signal: scope.signal });
+  scope.bind(root);
+  return root;
+}
 
 /**
  * @typedef {{

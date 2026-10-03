@@ -10,17 +10,10 @@ import {
   CAMPAIGN_ROUTE_DEFAULT_BODY,
   CAMPAIGN_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
-import { renderMeasureHistory } from './measure-history.js';
 import { renderCampaignMemory } from './campaign-memory.js';
 import { createDebug } from '../debug.js';
 
 const debugCampaignRouteComposition = createDebug('campaign-route-composition');
-
-const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
-  'campaign-operational-value-primary-series',
-  'campaign-operational-value-run-days',
-  'campaign-operational-value-evidence-state'
-];
 
 /**
  * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory'|'dispatches'} CampaignRouteBody
@@ -91,16 +84,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its operational value.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'insights',
-    bodyRenderer: ({ context }) => renderMeasureHistory({
-      ...context,
-      title: 'Repository operational value',
-      sourceNames: CAMPAIGN_OPERATIONAL_VALUE_SOURCES,
-      elementConfig: {
-        ...context.elementConfig,
-        'measure-source': 'operational-value',
-        'empty-message': 'No repository operational-value observations have been published for this campaign yet.'
-      }
-    })
+    bodyRenderer: undefined
   },
   problems: {
     rootClassName: 'campaign-problems',

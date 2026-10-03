@@ -438,14 +438,7 @@ describe('dashboard view query contracts', () => {
         'workflows',
         'campaign-insight-tab-counts',
         'campaign-problem-tab-counts',
-        'campaign-issue-tab-counts',
-        ...(pageId === 'campaign-insights'
-          ? [
-              'campaign-operational-value-primary-series',
-              'campaign-operational-value-run-days',
-              'campaign-operational-value-evidence-state'
-            ]
-          : [])
+        'campaign-issue-tab-counts'
       ];
       expect(firstView).toMatchObject({
         data: {
@@ -511,10 +504,7 @@ describe('dashboard view query contracts', () => {
           'workflows',
           'campaign-insight-tab-counts',
           'campaign-problem-tab-counts',
-          'campaign-issue-tab-counts',
-          'campaign-operational-value-primary-series',
-          'campaign-operational-value-run-days',
-          'campaign-operational-value-evidence-state'
+          'campaign-issue-tab-counts'
         ],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
@@ -524,6 +514,21 @@ describe('dashboard view query contracts', () => {
     });
 
     expect(viewsOf(insights)[1]).toMatchObject({
+      id: 'campaign-operational-value-history',
+      data: {
+        sources: [
+          'campaign-operational-value-primary-series',
+          'campaign-operational-value-run-days',
+          'campaign-operational-value-evidence-state'
+        ],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history',
+      config: { 'measure-source': 'operational-value' }
+    });
+
+    expect(viewsOf(insights)[2]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',
@@ -551,6 +556,30 @@ describe('dashboard view query contracts', () => {
       data: { source: 'campaign-runs', 'route-field': 'campaign' },
       mark: 'chart'
     });
+  });
+
+  it('compiles each operational-value source independently with campaign scope', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
+    );
+    const sourceNames = [
+      'campaign-operational-value-primary-series',
+      'campaign-operational-value-run-days',
+      'campaign-operational-value-evidence-state'
+    ];
+    for (const sourceName of sourceNames) {
+      const payload = compileDashboardViewPayloadQueries(page, 'campaign-insights', {
+        viewId: 'campaign-operational-value-history',
+        sourceNames: [sourceName],
+        routeParameters: { campaign: 'optimization' },
+        queries
+      });
+      expect(payload.aliases).toHaveLength(1);
+      expect(payload.queries.at(-1)).toMatchObject({
+        name: payload.aliases[0],
+        filter: { predicates: [{ field: 'campaign', equals: 'optimization' }] }
+      });
+    }
   });
 
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {
