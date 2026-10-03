@@ -16,6 +16,12 @@ import (
 
 func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 	t.Helper()
+	ctx, store, _ := ingestTestStoreConfig(t)
+	return ctx, store
+}
+
+func ingestTestStoreConfig(t *testing.T) (context.Context, *postgresx.Store, *pgx.ConnConfig) {
+	t.Helper()
 	endpoint := os.Getenv("POSTGRES_URL")
 	if endpoint == "" {
 		t.Skip("POSTGRES_URL is not set")
@@ -46,7 +52,7 @@ func ingestTestStore(t *testing.T) (context.Context, *postgresx.Store) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	return ctx, store
+	return ctx, store, config
 }
 
 func TestFreshNativeIngestionReuseForceAndQueries(t *testing.T) {

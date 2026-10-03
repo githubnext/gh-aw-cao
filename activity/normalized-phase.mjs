@@ -3,6 +3,25 @@ import { NORMALIZED_COLLECTIONS } from './cli-usage.mjs';
 const RUN_COLLECTIONS = new Set([
   'campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments'
 ]);
+const STRUCTURAL_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals']);
+export const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
+const TIMESTAMP_FIELDS = ['startedAt', 'observedAt', 'timestamp', 'completedAt', 'createdAt', 'updatedAt'];
+
+/**
+ * Stable day buckets preserve historical shard hashes across publications.
+ * @param {string} collection
+ * @param {Record<string, unknown>} record
+ */
+export function consolidationBucket(collection, record) {
+  if (STRUCTURAL_COLLECTIONS.has(collection)) return STRUCTURAL_CONSOLIDATION_BUCKET;
+  for (const field of TIMESTAMP_FIELDS) {
+    const value = record[field];
+    if (typeof value !== 'string') continue;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  }
+  return STRUCTURAL_CONSOLIDATION_BUCKET;
+}
 
 const EVIDENCE_RELATIONSHIPS = [
   ['experimentAssignments', 'experiments', 'experimentId'],

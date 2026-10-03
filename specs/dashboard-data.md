@@ -1360,6 +1360,60 @@ Records MUST remain independently addressable and MUST NOT be stored as one
 ever-growing array inside the Run record. Issues and pull requests share the
 Issue table; pull requests set `isPullRequest=true`.
 
+## 11.1 First-pass Audit curation
+
+Audit is an evidence table, not a second Run summary table. JavaScript canonical
+ingestion, normalized Activity publication, and Go/Postgres ingestion SHALL apply
+the same versioned, fail-closed curation rules. Existing IndexedDB, SQLite, and
+Postgres databases SHALL apply those rules during maintenance, including when
+the input payload hashes have not changed. Cleanup MUST precede size-based Run
+eviction, use bounded cursor scans or namespace-scoped SQL, and publish any
+changed database revision so active worker/hosted query subscriptions refresh.
+
+The first pass MAY discard only the following source/type/status/summary tuples:
+
+| Source | Type | Status | Summary |
+|---|---|---|---|
+| `gh-aw-logs` | `workflow_run_comparison` | `unavailable` | `No baseline comparison` |
+| `gh-aw-logs` | `workflow_run_working_set` | `observed` | `Working set measured` |
+| `agent` | `agent.session` | `completed` | Empty string |
+| `audit` | `audit.observability` | `low` | `1 anomalous event pattern(s) detected` |
+| `audit` | `audit.recommendation` | `low` | `Monitor workflow performance over time` |
+
+It MAY additionally discard these Run-backed copies only when the owning Run
+exists and the applicable fields agree:
+
+| Source/type | Required agreement |
+|---|---|
+| `gh-aw-logs` / `workflow_run_started` | Valid timestamp equals `startedAt` (or `createdAt` when start is unavailable), and status equals Run status. |
+| `gh-aw-logs` / `workflow_run_completed` | Valid timestamp equals `completedAt`, status equals Run conclusion, and summary equals the nonempty Run classification or conclusion. |
+| `gh-aw-logs` / `workflow_run_failed` | Status is `failure`; Run conclusion is `failure` or Run failure kind is nonempty; summary equals that failure kind or `workflow run failed`. |
+| `gh-aw-logs` / `workflow_run_usage` | Status is `observed`; summary is `AIC N`, and finite nonnegative `N` equals the nonnull Run `aicTotal`. |
+| `gh-aw-logs` / `workflow_run_safe_outputs` | Status is `observed`; summary is `N safe output items`, and nonnegative safe-integer `N` equals nonnull Run `safeItemsCount`. |
+| `audit` / `audit.finding` | Status is `critical`, code is `workflow_failed`, summary is `Workflow Failed`, and Run conclusion is `failure`. |
+
+Eligible rows MUST contain no additional nonnull evidence beyond shared record
+identity, provenance, ordering, timestamps, source/type/status/summary, and the
+specified failure code. Unexpected sources, statuses, summaries, invalid
+numbers/timestamps, conflicting explicit attempts, and missing/null Run facts
+MUST retain the Audit. Absence after curation MUST NOT establish zero source
+activity, a successful outcome, or complete import coverage. Transport record
+counts and checksums MUST still validate every input record; retained counts
+SHALL reflect only rows actually stored. Database health diagnostics MUST permit
+an empty Audit collection when the retained Run hierarchy is valid.
+
+Numeric summary matching SHALL consume the entire string, without trailing
+whitespace, and SHALL retain summaries longer than 1,024 ASCII characters or
+scientific exponents longer than three digits. These shared conservative bounds
+MUST prevent a malformed numeric summary from aborting existing-database cleanup.
+
+This first pass MUST preserve grader/eval audits and their referenced identities,
+safe-output events, security/policy evidence, specific findings and diagnostics,
+and runtime facts that are missing from the Run. Behavior and assessment copies
+remain retained because their complete comparison facts are not present in the
+query-minimal native Postgres Run representation. Implementations MUST NOT add
+duplicate Run payloads or speculative native columns merely to prune them.
+
 ---
 
 # 12. Run-Owned Records

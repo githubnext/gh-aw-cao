@@ -12,6 +12,7 @@ model RebuildStatus {
   completedAt?: string;
   revision?: int64;
   dataRevision?: string;
+  /** Retained collection counts after canonical Audit curation and relationship validation; not transport input counts. */
   counts?: Record<int32>;
 }
 @jsonSchema
@@ -102,7 +103,7 @@ namespace Operations {
   ): { @statusCode code: 202; @body body: WebhookAcknowledgement } |
     BadRequest | Unauthorized | Conflict | Unavailable;
 
-  /** Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. */
+  /** Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained. */
   @useAuth(DashboardAuth)
   @route("/api/admin/rebuild")
   @post op rebuild(@header("X-CSRF-Token") csrfToken?: string):

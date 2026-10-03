@@ -94,7 +94,12 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("postgres connection or fresh schema initialization failed: %w", err)
 	}
-	return &Store{db: db, config: config.Copy(), namespace: namespace}, nil
+	store := &Store{db: db, config: config.Copy(), namespace: namespace}
+	if _, err := store.CurateAudits(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("maintain existing native audits: %w", err)
+	}
+	return store, nil
 }
 
 func validateTransport(config *pgx.ConnConfig) error {

@@ -37,6 +37,7 @@ import {
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 import { createDebug } from '../../debug.js';
+import { AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION } from '../model/audit-curation.js';
 
 const debug = createDebug('data:ingestion');
 
@@ -172,6 +173,7 @@ function cachedJsonlShardTransactionId(hash) {
 export function cachedJsonlAdaptationContext(options) {
   return JSON.stringify({
     ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
+    auditCurationVersion: AUDIT_CURATION_VERSION,
     context: options.context ?? null,
     workflowHints: options.workflowHints ?? []
   });
@@ -212,6 +214,27 @@ export async function isNormalizedJsonlCurrent(indexedDB, options) {
     && receipt.payloadHash === options.payloadIdentity
     && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
     && (options.expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
+}
+
+/** @param {IDBFactory} indexedDB */
+export async function isAuditCurationCurrent(indexedDB) {
+  const receipt = await readTransaction(indexedDB, AUDIT_CURATION_TRANSACTION_ID);
+  return receipt?.version === AUDIT_CURATION_VERSION;
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {Parameters<typeof maintainNormalizedJsonlDatabase>[1]} options
+ */
+async function skippedIngestion(indexedDB, options) {
+  const cleanup = await isAuditCurationCurrent(indexedDB)
+    ? null : await maintainNormalizedJsonlDatabase(indexedDB, options);
+  return {
+    updated: (cleanup?.deletedRecords ?? 0) > 0,
+    skipped: true,
+    committedBatches: 0,
+    committedRecords: 0
+  };
 }
 
 /**
@@ -442,7 +465,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       DASHBOARD_SOURCE_INGESTION_VERSION
     )) {
       debug('skipped unchanged dashboard source shard', { scope });
-      return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      return skippedIngestion(indexedDB, options);
     }
     const adapted = queryDashboardSourceObservations(sources);
     phase = 'normalizing';
@@ -518,7 +541,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * caller's configured windows and storage estimate.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, signal?: AbortSignal }} options
  */
 async function maintainNormalizedJsonlDatabase(indexedDB, options) {
   const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
@@ -532,7 +555,8 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore,
     maxDatabaseBytes,
-    usageBytes
+    usageBytes,
+    signal: options.signal
   });
 }
 
@@ -574,7 +598,9 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       }
       if (await isNormalizedJsonlCurrent(indexedDB, options)) {
         debug('skipped unchanged normalized activity JSONL shard', { scope: options.payloadScope });
-        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+        return options.deferMaintenance
+          ? { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 }
+          : skippedIngestion(indexedDB, options);
       }
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
@@ -836,7 +862,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
           await recordTransaction(indexedDB, { ...current, payloadEtag: options.payloadEtag });
         }
         debug('skipped unchanged JSONL shard', { scope });
-        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+        return skippedIngestion(indexedDB, options);
       }
     }
     const streamed = typeof content !== 'string'
@@ -874,7 +900,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
         records: current.records ?? null,
         parsingMs
       });
-      return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      return skippedIngestion(indexedDB, options);
     }
     const adapted = streamed ?? adaptCachedGhAwJsonl(
       /** @type {string | Uint8Array} */ (content),

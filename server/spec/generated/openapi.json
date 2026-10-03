@@ -234,7 +234,7 @@
     "/api/admin/rebuild": {
       "post": {
         "operationId": "Operations_rebuild",
-        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations.",
+        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained.",
         "parameters": [
           {
             "name": "X-CSRF-Token",
@@ -3935,7 +3935,8 @@
             "unevaluatedProperties": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "description": "Retained collection counts after canonical Audit curation and relationship validation; not transport input counts."
           }
         }
       },

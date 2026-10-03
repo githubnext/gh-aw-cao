@@ -53,8 +53,28 @@ describe('full dashboard diagnostics', () => {
     expect(report.database.counts.audits).toBe(0);
     expect(report.ui.activePageId).toBe('events');
     expect(report.checks).toContainEqual(expect.objectContaining({
-      name: 'audits populated',
+      name: 'runs populated',
       passed: false
     }));
+  });
+
+  it('accepts a populated Run hierarchy whose audits were entirely curated away', async () => {
+    document.body.innerHTML = `
+      <main class="dashboard-root">
+        <section data-page-id="events">
+          <article data-view-id="event-inspection"></article>
+        </section>
+      </main>
+    `;
+    const report = await collectFullDiagnostics({
+      queryDatabase: async () => ({
+        schemaVersion: 25,
+        counts: { repositories: 1, workflows: 1, runs: 1, audits: 0 },
+        relationshipErrors: [],
+        duplicateRecordIds: {}
+      })
+    });
+    expect(report.passed).toBe(true);
+    expect(report.database.counts.audits).toBe(0);
   });
 });
