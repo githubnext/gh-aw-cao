@@ -66,6 +66,21 @@ func TestNormalizePreservesUnknownFieldsUntilClosedProjection(t *testing.T) {
 	}
 }
 
+func TestResultShapeModeLabel(t *testing.T) {
+	for _, tt := range []struct {
+		mode ResultShapeMode
+		want string
+	}{
+		{PreserveInput, "preserve-input"},
+		{ClosedShape, "closed-shape"},
+		{ResultShapeMode(99), "unknown"},
+	} {
+		if got := resultShapeModeLabel(tt.mode); got != tt.want {
+			t.Fatalf("resultShapeModeLabel(%d) = %q, want %q", tt.mode, got, tt.want)
+		}
+	}
+}
+
 func TestNormalizeTemporalShape(t *testing.T) {
 	for _, tt := range []struct {
 		shape string

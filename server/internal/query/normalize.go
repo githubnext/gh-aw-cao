@@ -5,6 +5,20 @@ import (
 	"sort"
 )
 
+// resultShapeModeLabel names a NormalizedQuery's result-shape mode, stable
+// across the ResultShapeMode constant's underlying values so it is useful to
+// log without exposing the query's actual field names.
+func resultShapeModeLabel(mode ResultShapeMode) string {
+	switch mode {
+	case ClosedShape:
+		return "closed-shape"
+	case PreserveInput:
+		return "preserve-input"
+	default:
+		return "unknown"
+	}
+}
+
 type FieldSet []string
 
 type ResultShapeMode int
@@ -248,5 +262,8 @@ func Normalize(definition Definition) NormalizedQuery {
 		delete(transient, field)
 	}
 	plan.TransientFields = sortedFields(transient)
+	queryLog.Printf("normalized query source=%s shape=%s stages=%d source_fields=%d output_fields=%d",
+		plan.Source, resultShapeModeLabel(plan.ResultShape.Mode), len(plan.Stages),
+		len(plan.SourceFields), len(plan.OutputFields))
 	return plan
 }
