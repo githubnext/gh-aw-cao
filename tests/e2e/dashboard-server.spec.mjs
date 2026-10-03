@@ -195,6 +195,12 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
           const failures = await activePage.locator('[aria-label^="Unable to load "]')
             .evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
           result.errors.push(...failures, ...browserErrors);
+          if (expectsQueries) {
+            await expect.poll(() => queryResponses.length, {
+              message: `Wait for Go server queries for ${definition.id}`,
+              timeout: 30_000,
+            }).toBeGreaterThan(0);
+          }
           for (const response of queryResponses) {
             result.queries += 1;
             if (!response.ok()) {
@@ -214,7 +220,6 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
               }
             }
           }
-          if (expectsQueries && result.queries === 0) result.errors.push("No Go server queries observed");
           result.status = result.errors.length === 0 ? "passed" : "failed";
         } catch (error) {
           result.errors.push(error instanceof Error ? error.message : String(error));
