@@ -406,22 +406,14 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if duplicate {
 		return State{}, errors.New("duplicate run identity across weeks")
 	}
-	// Staged run-owned rows are linked after all run and session records have
+	// Staged run-owned rows are linked after all run records have
 	// arrived. The copied batches remain bounded; PostgreSQL routes the insert.
-	for _, source := range append([]string{"$sessions"}, tableNames()...) {
-		if source == "$sessions" && !w.staged["$sessions"] {
-			continue
-		}
+	for _, source := range tableNames() {
 		table, ok := entityTables[source]
 		if !ok || !w.staged[source] {
 			continue
 		}
 		name := table.name
-		parent := "runs"
-		key := "run_id"
-		if name == "events" {
-			parent, key = "sessions", "session_id"
-		}
 		columns := []string{"namespace", "ordinal", "present_fields"}
 		for _, column := range table.columns {
 			columns = append(columns, column.name)
@@ -430,9 +422,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		for i, column := range columns {
 			quoted[i] = "s." + query.SQLIdentifier(column)
 		}
-		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN %s p ON p.namespace=s.namespace AND p.id=s.%s",
+		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id",
 			query.SQLIdentifier(name), strings.Join(columns, ","), strings.Join(quoted, ","),
-			query.SQLIdentifier(name+"_stage"), parent, key)
+			query.SQLIdentifier(name+"_stage"))
 		tag, err := w.tx.Exec(ctx, statement)
 		if err != nil {
 			return State{}, fmt.Errorf("publish run-owned %s: %w", name, err)

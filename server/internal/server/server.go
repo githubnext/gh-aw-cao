@@ -264,11 +264,6 @@ func rawSourceDefinitions(definitions []query.Definition) []query.Definition {
 		}
 	}
 	result := make([]query.Definition, 0, 9)
-	for _, name := range []string{"jobs", "sessions", "events"} {
-		if !declared[name] {
-			result = append(result, query.Definition{Name: name, From: "$" + name})
-		}
-	}
 	if recordQuery != nil {
 		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
 			if declared[name] {

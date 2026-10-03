@@ -185,7 +185,7 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		}
 	}
 	if len(records) == 0 {
-		for _, source := range []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues", "$jobs", "$sessions", "$events", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
+		for _, source := range []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
 			if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
 				return Result{}, err
 			}

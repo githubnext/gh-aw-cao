@@ -205,10 +205,5 @@ func collectionDefinitions(definitions []query.Definition) []query.Definition {
 			result = append(result, definition)
 		}
 	}
-	for _, name := range []string{"jobs", "sessions", "events"} {
-		if !names[name] {
-			result = append(result, query.Definition{Name: name, From: "$" + name})
-		}
-	}
 	return result
 }

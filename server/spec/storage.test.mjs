@@ -49,7 +49,7 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
   assert.deepEqual([...tables.keys()].sort(), [
     '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues',
     '$marketplacePackages', '$experiments', '$experimentAssignments',
-    '$graders', '$graderObservations', '$evals', '$evalObservations', '$jobs', '$sessions', '$events'
+    '$graders', '$graderObservations', '$evals', '$evalObservations'
   ].sort());
 });
 
@@ -126,7 +126,6 @@ test('native table fields cover database projections and joins without speculati
     }
   }
   for (const [source, fields] of tables) {
-    if (['$jobs', '$sessions', '$events'].includes(source)) continue; // Canonical HTTP lookup contracts.
     for (const field of fields) {
       if (!required.get(source).has(field)) defects.push(`unused native column ${source}.${field}`);
     }
@@ -150,7 +149,7 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.match(sql, /present_fields BIT VARYING NOT NULL/);
   assert.match(sql, /REFERENCES runs\(namespace, id, run_at\) DEFERRABLE INITIALLY DEFERRED/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS runs \([\s\S]*?\) PARTITION BY RANGE \(run_at\);/);
-  assert.match(sql, /REFERENCES sessions\(namespace, id, run_at\) DEFERRABLE INITIALLY DEFERRED/);
+  assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:jobs|sessions|events)\b/);
   assert.match(sql, /DEFERRABLE INITIALLY DEFERRED/);
   assert.doesNotMatch(sql, /\b(?:ALTER|DROP)\s+TABLE\b/i);
   assert.doesNotMatch(sql, /\b(?:cao_sources|cao_source_rows|cao_values|ChildValue)\b|CREATE TABLE[^\n]*(?:campaigns|runs|audits|friction)_values\b/i);

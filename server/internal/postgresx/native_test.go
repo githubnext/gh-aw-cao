@@ -279,16 +279,12 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
 		{"$runs", model.Row{"id": "old", "repositoryId": "repository", "workflowId": "workflow", "createdAt": old}},
 		{"$runs", model.Row{"id": "current", "repositoryId": "repository", "workflowId": "workflow", "createdAt": current}},
-		{"$sessions", model.Row{"id": "old-session", "runId": "old"}},
-		{"$events", model.Row{"id": "old-event", "sessionId": "old-session"}},
-		{"$sessions", model.Row{"id": "current-session", "runId": "current"}},
-		{"$events", model.Row{"id": "current-event", "sessionId": "current-session"}},
 	} {
 		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, source := range []string{"$audits", "$domains", "$evalObservations", "$experimentAssignments", "$friction", "$graderObservations", "$issues", "$jobs", "$skills", "$tools"} {
+	for _, source := range []string{"$audits", "$domains", "$evalObservations", "$experimentAssignments", "$friction", "$graderObservations", "$issues", "$skills", "$tools"} {
 		for _, run := range []string{"old", "current"} {
 			row := model.Row{"id": source + run, "runId": run}
 			switch source {
@@ -335,10 +331,10 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	state, err := store.State(t.Context())
-	if err != nil || state.Revision <= 1 || state.Counts["$runs"] != 1 || state.Counts["$events"] != 1 {
+	if err != nil || state.Revision <= 1 || state.Counts["$runs"] != 1 || state.Counts["$tools"] != 1 {
 		t.Fatalf("retention did not publish updated counts and revision: %+v %v", state, err)
 	}
-	for _, table := range []string{"runs", "sessions", "events", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "jobs", "skills", "tools"} {
+	for _, table := range []string{"runs", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools"} {
 		var count int
 		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count); err != nil || count != 1 {
 			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)

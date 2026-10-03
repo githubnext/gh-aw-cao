@@ -14,7 +14,7 @@ standalone DDL for downstream implementations; the Go file supplies the same
 entity names, fields, and native types to ingestion and reads. Both are generated
 artifacts. Edit TypeSpec, never the generated SQL or bindings.
 
-Each of the eighteen canonical collections has one root table. Only fields
+Each of the fifteen canonical collections has one root table. Only fields
 consumed by `dashboard/site/src/data/queries/database.json` and its joins are
 retained, plus identity/storage keys. Counters use `BIGINT`, fractional measures
 use `NUMERIC`, booleans use `BOOLEAN`, timestamps use `TIMESTAMPTZ`, and identifiers
@@ -56,6 +56,10 @@ logical query source through a SQL join if introducing a physical dictionary.
 Observed identities are not configured tool definitions; the latter require
 independent workflow-declaration evidence. This split is an assessed follow-on,
 not part of the current schema.
+
+Jobs, sessions, and events are not stored as canonical entity tables. Their
+legacy HTTP list routes return empty lists; the query engine does not expose
+these sources.
 
 Run `npm run generate:storage` for storage only, or `npm run generate` for both
 storage and HTTP contracts. `storage.test.mjs` checks one-to-one table coverage,

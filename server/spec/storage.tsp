@@ -42,38 +42,6 @@ model repositories {
   visibility?: string;
 }
 
-@runPartition
-model jobs {
-  id: string;
-  @parent("runs")
-  runId: string;
-  name?: string;
-  status?: string;
-  conclusion?: string;
-  startedAt?: utcDateTime;
-  completedAt?: utcDateTime;
-}
-
-@runPartition
-model sessions {
-  id: string;
-  @parent("runs")
-  runId: string;
-  agentId?: string;
-  startedAt?: utcDateTime;
-  completedAt?: utcDateTime;
-}
-
-@runPartition
-model events {
-  id: string;
-  @parent("sessions")
-  sessionId: string;
-  type?: string;
-  timestamp?: utcDateTime;
-  summary?: string;
-}
-
 /** Query-minimal workflow inventory; raw ghAwMetadata and ghAwManifest remain upstream. */
 model workflows {
   admissionReason?: string;

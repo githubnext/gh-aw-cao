@@ -16,7 +16,7 @@ pre-cutover fallback architecture remains active.
 
 ## Starting point
 
-The current implementation initializes eighteen TypeSpec-generated native
+The current implementation initializes fifteen TypeSpec-generated native
 entity tables, uses compact missing/null presence bits, and stores canonical
 data without generic row/value tables or serialized documents. Ingestion streams
 manifested shards through a bounded batched writer and publishes entities,

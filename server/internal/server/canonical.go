@@ -136,10 +136,6 @@ func (service canonicalService) parentRuns(ctx context.Context, parent, field, i
 	return rows, err
 }
 
-func (service canonicalService) related(ctx context.Context, source, id, field string) ([]model.Row, error) {
-	return service.filteredRows(ctx, source, map[string]any{field: id})
-}
-
 // canonicalOutcome classifies a canonical query's result for the HTTP layer,
 // so a query failure is diagnosable without logging the query error text
 // (which may embed a source name or filter value).
@@ -201,18 +197,15 @@ func (a *App) workflowRuns(response http.ResponseWriter, request *http.Request) 
 }
 
 func (a *App) runJobs(response http.ResponseWriter, request *http.Request) {
-	rows, err := a.canonical.related(request.Context(), "jobs", request.PathValue("id"), "runId")
-	a.writeCanonicalRows(response, rows, err)
+	writeJSON(response, http.StatusOK, []model.Row{})
 }
 
 func (a *App) runSessions(response http.ResponseWriter, request *http.Request) {
-	rows, err := a.canonical.related(request.Context(), "sessions", request.PathValue("id"), "runId")
-	a.writeCanonicalRows(response, rows, err)
+	writeJSON(response, http.StatusOK, []model.Row{})
 }
 
 func (a *App) sessionEvents(response http.ResponseWriter, request *http.Request) {
-	rows, err := a.canonical.related(request.Context(), "events", request.PathValue("id"), "sessionId")
-	a.writeCanonicalRows(response, rows, err)
+	writeJSON(response, http.StatusOK, []model.Row{})
 }
 
 func (a *App) writeCanonicalRows(response http.ResponseWriter, rows []model.Row, err error) {
