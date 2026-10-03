@@ -866,7 +866,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             return source ? [[sourceName, source]] : [];
           }));
           const prompt = renderPromptPreviewAction(
-            view.mark === 'chart' ? `Fix it: ${getViewTitle(view, index)}` : `Create prompt for ${getViewTitle(view, index)}`,
+            view.mark === 'chart' ? `Fix: ${getViewTitle(view, index)}` : `Create prompt for ${getViewTitle(view, index)}`,
             () => {
               const routeValues = Object.fromEntries(new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? ''));
               return semanticViewPrompt({

@@ -32,7 +32,7 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   const titleRow = page.locator('[data-view-id="cost-by-campaign"] .chart-prompt-heading');
   await expect(titleRow.locator('h3, h4')).toBeVisible();
   await expect(action.locator('.octicon')).toBeVisible();
-  await expect(action).toHaveAttribute('aria-label', /Fix it: /);
+  await expect(action).toHaveAttribute('aria-label', /Fix: /);
   await expect(action.locator('span')).toBeHidden();
   const titleBox = await titleRow.locator('h3, h4').boundingBox();
   const buttonBox = await action.boundingBox();

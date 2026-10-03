@@ -111,7 +111,7 @@ describe('problem detail', () => {
     expect(rendered.querySelector('a[href*="/actions/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('##[error]dependency update failed');
-    expect(rendered.getElementsByTagName('button')[0]?.textContent).toBe('Fix it');
+    expect(rendered.getElementsByTagName('button')[0]?.textContent).toBe('Fix');
     expect(allocation).toHaveBeenCalledWith(expect.objectContaining({
       detail: {
         title: 'Dependency update failed',
