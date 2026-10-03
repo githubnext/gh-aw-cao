@@ -1994,7 +1994,9 @@ async function hashActivityPayloads({
         continue;
       }
       const rawHash = await hashFile(shardPath);
-      hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
+      if (!runsDirectory && !recordsDirectory) {
+        hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
+      }
       if (!normalizedDirectory && !runsDirectory && !recordsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.jsonl`;
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;

@@ -490,6 +490,11 @@ test('hash-payloads publishes consolidated shards in deterministic ingestion ord
   assert.deepEqual(records.names, [...records.names].sort());
   for (const name of runs.names) assert.ok(hashes[`gh-aw-logs-runs/${name}`]);
   for (const name of records.names) assert.ok(hashes[`gh-aw-logs-records/${name}`]);
+  assert.deepEqual(
+    Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-shards/')),
+    [],
+  );
+  assert.ok((await readdir(shardDirectory)).some((name) => name.endsWith('.jsonl')));
   // The later source shard observed the run last, so its status wins.
   assert.deepEqual([...new Set(runs.batch.runs.map((run) => run.status))], ['completed']);
   assert.equal(runs.batch.runs.length, new Set(runs.batch.runs.map((run) => run.id)).size);
