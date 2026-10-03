@@ -490,6 +490,12 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			return State{}, fmt.Errorf("publish typed inventory %s: %w", source, err)
 		}
 	}
+	if err := overlayRepositoryLifecycle(ctx, w.store.namespace, func(ctx context.Context, statement string, args ...any) error {
+		_, err := w.tx.Exec(ctx, statement, args...)
+		return err
+	}); err != nil {
+		return State{}, err
+	}
 	// Deferred parent checks and native primary keys reject orphans and duplicates
 	// before the publication state becomes visible to readers.
 	if _, err := w.tx.Exec(ctx, "SET CONSTRAINTS ALL IMMEDIATE"); err != nil {

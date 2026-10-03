@@ -85,7 +85,11 @@ export async function $onEmit(context) {
     `-- Inventory normalization contract: ${createHash('sha256').update(JSON.stringify(inventoryContract.observations.filter((o) => ['campaign','repository','workflow'].includes(o.kind)))).digest('hex')}`
   ];
   for (const table of systems) {
-    const constraints = table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : [
+    const constraints = table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : table.name === 'cao_repository_lifecycle' ? [
+      'PRIMARY KEY (namespace, id)',
+      'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
+      "CHECK (lifecycle IN ('active','archived','deleted'))"
+    ] : [
       'PRIMARY KEY (namespace, collection)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
       `CHECK (collection IN (${tables.filter((t) => !t.runtime).map((t) => `'${t.source}'`).join(',')}))`,

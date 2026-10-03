@@ -37,6 +37,8 @@ type Task struct {
 	// collection. An admission-only process has no evidence lake, so
 	// withdrawing consent is queued for a worker that does.
 	Erase bool `json:"erase,omitempty"`
+	RepositoryID int64 `json:"repositoryId,omitempty"`
+	Lifecycle string `json:"lifecycle,omitempty"`
 }
 
 // RunTask is one durable historical workflow-run item. Key is the stable
@@ -145,8 +147,12 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 	if err != nil {
 		return false, false, err
 	}
+	debounce := debounceKey(repository)
+	if task.Lifecycle != "" {
+		debounce = ""
+	}
 	result, err := q.Store.StreamEnqueueDelivery(
-		ctx, delivery, deliveryTTL, taskStream, delayedTaskSet, debounceKey(repository),
+		ctx, delivery, deliveryTTL, taskStream, delayedTaskSet, debounce,
 		q.debounce(), q.MaxLength, taskFields(repository, payload),
 	)
 	if err != nil {
@@ -168,7 +174,7 @@ func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 		return false, err
 	}
 	debounce := ""
-	if task.Attempt == 0 && !task.Erase {
+	if task.Attempt == 0 && !task.Erase && task.Lifecycle == "" {
 		debounce = debounceKey(repository)
 	}
 	enqueued, err := q.Store.StreamEnqueue(

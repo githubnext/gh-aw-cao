@@ -93,7 +93,7 @@ model ServerLogSnapshot {
 
 @tag("Ingestion and administration")
 namespace Operations {
-  /** Public signed GitHub delivery (maximum 10 MiB); validated with HMAC-SHA256 over the raw body. Never use dashboard bearer/session credentials for webhook authentication. The body is a GitHub event-specific JSON object. */
+  /** Public signed GitHub delivery (maximum 10 MiB); validated with HMAC-SHA256 over the raw body. Repository created, deleted, archived and unarchived deliveries durably queue repository lifecycle updates; a successful acknowledgement does not mean the database update has completed. Never use dashboard bearer/session credentials for webhook authentication. The body is a GitHub event-specific JSON object. */
   @route("/api/github/webhook")
   @post op webhook(
     @header("X-Hub-Signature-256") signature: string,

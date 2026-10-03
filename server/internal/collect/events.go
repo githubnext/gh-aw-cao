@@ -23,6 +23,7 @@ const (
 	IntentCollect IntentKind = "collect"
 	// IntentIssueStatus refreshes the enrolled repository after an issue event.
 	IntentIssueStatus IntentKind = "issue-status"
+	IntentRepository IntentKind = "repository"
 	// IntentEnroll adds repositories to the enrollment set.
 	IntentEnroll IntentKind = "enroll"
 	// IntentUnenroll removes repositories from the enrollment set.
@@ -42,6 +43,8 @@ type Intent struct {
 	InstallationID int64
 	Reason         string
 	Issue          redisx.IssueUpdate
+	RepositoryID   int64
+	Lifecycle      string
 }
 
 type webhookEnvelope struct {
@@ -50,6 +53,7 @@ type webhookEnvelope struct {
 		ID int64 `json:"id"`
 	} `json:"installation"`
 	Repository struct {
+		ID       int64  `json:"id"`
 		FullName string `json:"full_name"`
 	} `json:"repository"`
 	WorkflowRun struct {
@@ -93,12 +97,35 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 		intent, err = parseWorkflowRunEvent(envelope)
 	case "issues":
 		intent = parseIssueEvent(envelope)
+	case "repository":
+		intent = parseRepositoryEvent(envelope)
 	case "installation":
 		intent = parseInstallationEvent(envelope)
 	case "installation_repositories":
 		intent = parseInstallationRepositoriesEvent(envelope)
 	default:
 		intent = Intent{Kind: IntentIgnore}
+	}
+
+	func parseRepositoryEvent(envelope webhookEnvelope) Intent {
+		state := ""
+		switch envelope.Action {
+		case "created", "unarchived":
+			state = "active"
+		case "archived":
+			state = "archived"
+		case "deleted":
+			state = "deleted"
+		}
+		if state == "" || envelope.Installation.ID <= 0 || envelope.Repository.ID <= 0 {
+			return Intent{Kind: IntentIgnore}
+		}
+		repository, err := NormalizeRepository(envelope.Repository.FullName)
+		if err != nil {
+			return Intent{Kind: IntentIgnore}
+		}
+		return Intent{Kind: IntentRepository, Repository: repository, RepositoryID: envelope.Repository.ID,
+			InstallationID: envelope.Installation.ID, Lifecycle: state, Reason: "repository." + envelope.Action}
 	}
 
 	if err != nil {
@@ -299,7 +326,7 @@ func (a Admitter) AdmitDelivery(
 	if err != nil {
 		return Admission{}, err
 	}
-	if intent.Kind == IntentIssueStatus {
+	if intent.Kind == IntentIssueStatus || intent.Kind == IntentRepository {
 		return a.admitIssue(ctx, intent, delivery, deliveryTTL)
 	}
 	if intent.Kind != IntentCollect {
@@ -361,20 +388,25 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 	task := Task{
 		Repository:     intent.Repository,
 		InstallationID: owner,
-		Reason:         "issue-status",
+		Reason:         intent.Reason,
+		RepositoryID:   intent.RepositoryID,
+		Lifecycle:      intent.Lifecycle,
+	}
+	if task.Reason == "" {
+		task.Reason = "issue-status"
 	}
 	if delivery == "" {
 		enqueued, err := a.Queue.Enqueue(ctx, task)
 		if err != nil {
 			return Admission{}, err
 		}
-		return Admission{Kind: IntentIssueStatus, Enqueued: enqueued}, nil
+		return Admission{Kind: intent.Kind, Enqueued: enqueued}, nil
 	}
 	enqueued, duplicate, err := a.Queue.EnqueueDelivery(ctx, task, delivery, ttl)
 	if err != nil {
 		return Admission{}, err
 	}
-	return Admission{Kind: IntentIssueStatus, Enqueued: enqueued, Duplicate: duplicate}, nil
+	return Admission{Kind: intent.Kind, Enqueued: enqueued, Duplicate: duplicate}, nil
 }
 
 // resolveCollectInstallation determines the installation that must own a
@@ -484,7 +516,7 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 			return Admission{}, err
 		}
 		return Admission{Kind: IntentCollect, Enqueued: enqueued}, nil
-	case IntentIssueStatus:
+	case IntentIssueStatus, IntentRepository:
 		return a.admitIssue(ctx, intent, "", 0)
 	default:
 		return Admission{Kind: IntentIgnore}, nil

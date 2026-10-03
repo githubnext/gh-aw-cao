@@ -1,0 +1,91 @@
+package postgresx
+
+import (
+	"context"
+	"errors"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
+)
+
+// UpdateRepositoryLifecycle records a verified, enrolled repository delivery.
+// The collector state is independent of the replaceable canonical projection.
+func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, repository, lifecycle string) error {
+	if githubID <= 0 || (lifecycle != "active" && lifecycle != "archived" && lifecycle != "deleted") {
+		return errors.New("invalid repository lifecycle update")
+	}
+	owner, name, ok := strings.Cut(repository, "/")
+	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
+		return errors.New("invalid repository coordinate")
+	}
+	id := "github:repository:" + strconv.FormatInt(githubID, 10)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_state(namespace,revision,data_revision,evaluated_at,schema_version)
+		VALUES($1,0,'','epoch',$2) ON CONFLICT(namespace) DO NOTHING`, s.namespace, model.SchemaVersion); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_repository_lifecycle(namespace,id,owner,name,lifecycle,changed_at)
+		VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(namespace,id) DO UPDATE SET
+		owner=excluded.owner,name=excluded.name,lifecycle=excluded.lifecycle,changed_at=excluded.changed_at`,
+		s.namespace, id, owner, name, lifecycle, time.Now().UTC()); err != nil {
+		return err
+	}
+	if err = overlayRepositoryLifecycle(ctx, s.namespace, func(ctx context.Context, statement string, args ...any) error {
+		_, err := tx.ExecContext(ctx, statement, args...)
+		return err
+	}); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1 WHERE namespace=$1`, s.namespace); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func repositoryLifecyclePresence() string {
+	bits := make([]byte, len(entityTables["$repositories"].columns))
+	for i, column := range entityTables["$repositories"].columns {
+		bits[i] = '0'
+		if column.field == "id" || column.field == "owner" || column.field == "name" || column.field == "lifecycle" {
+			bits[i] = '1'
+		}
+	}
+	return string(bits)
+}
+
+func overlayRepositoryLifecycle(ctx context.Context, namespace string, exec func(context.Context, string, ...any) error) error {
+	err := exec(ctx, `INSERT INTO repositories(namespace,ordinal,present_fields,id,owner,name,lifecycle)
+		SELECT l.namespace, (SELECT coalesce(max(ordinal),-1) FROM repositories WHERE namespace=$1)
+			+ row_number() OVER (ORDER BY l.id),
+			$2::bit varying,l.id,l.owner,l.name,l.lifecycle
+		FROM cao_repository_lifecycle l
+		WHERE l.namespace=$1 AND NOT EXISTS
+			(SELECT 1 FROM repositories r WHERE r.namespace=l.namespace AND r.id=l.id)
+		ON CONFLICT(namespace,id) DO NOTHING`, namespace, repositoryLifecyclePresence())
+	if err != nil {
+		return err
+	}
+	err = exec(ctx, `UPDATE repositories r SET lifecycle=l.lifecycle,
+		present_fields=set_bit(r.present_fields, $2, 1)
+		FROM cao_repository_lifecycle l WHERE r.namespace=$1 AND l.namespace=r.namespace AND l.id=r.id`,
+		namespace, repositoryLifecycleIndex())
+	return err
+}
+
+func repositoryLifecycleIndex() int {
+	for i, column := range entityTables["$repositories"].columns {
+		if column.field == "lifecycle" {
+			return i
+		}
+	}
+	panic("repository lifecycle is missing from the storage contract")
+}

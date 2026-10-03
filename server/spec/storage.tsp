@@ -39,6 +39,8 @@ model repositories {
   owner?: string;
   repositoryLink?: Values.Link;
   rolloutMode?: string;
+  /** Collector-maintained lifecycle; absent means active for snapshot ingestion. */
+  lifecycle?: string;
   visibility?: string;
 }
 
@@ -773,5 +775,15 @@ namespace Storage {
     freshness: string;
     asOf?: utcDateTime;
     retrievedAt?: utcDateTime;
+  }
+
+  /** Collector-owned state survives replacement of the derived canonical projection. */
+  model caoRepositoryLifecycle {
+    `namespace`: string;
+    id: string;
+    owner: string;
+    name: string;
+    lifecycle: string;
+    changedAt: utcDateTime;
   }
 }
