@@ -330,6 +330,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
+      const { configureSourceLoader } = await import('http://dashboard.test/src/source-store.js');
+      const { dashboardViewAliasName } = await import('http://dashboard.test/src/data/queries/view-payload-compiler.js');
+      configureSourceLoader(async (name, options) => {
+        const loaded = await loadPageSources(options.pageId, options);
+        const alias = dashboardViewAliasName(options.pageId, { id: options.viewId }, 0, name, options.sourceIndex);
+        return loaded[alias] ?? loaded[name];
+      });
       const viewSources = await loadPageSources('campaigns', {});
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,

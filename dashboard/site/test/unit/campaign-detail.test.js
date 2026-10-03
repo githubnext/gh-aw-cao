@@ -151,8 +151,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value');
-    expect(rendered.querySelector('.measure-history')).not.toBeNull();
-    expect(rendered.querySelector('.temporal-plot-heading h3')?.textContent).toBe('Guidance freshness');
+    expect(rendered.querySelector('.measure-history')).toBeNull();
   });
 
   it('keeps the compatibility Info route outside the reusable campaign tabs', () => {

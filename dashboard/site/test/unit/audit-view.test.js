@@ -21,6 +21,7 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
+      'campaign-operational-value-history',
       'campaign-performance-baseline',
       'campaign-audit-event-table'
     ]);
@@ -29,10 +30,7 @@ describe('Audit dashboard view', () => {
         'workflows',
         'campaign-insight-tab-counts',
         'campaign-problem-tab-counts',
-        'campaign-issue-tab-counts',
-        'campaign-operational-value-primary-series',
-        'campaign-operational-value-run-days',
-        'campaign-operational-value-evidence-state'
+        'campaign-issue-tab-counts'
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
