@@ -1433,8 +1433,10 @@ export OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=local
 go -C server run ./cmd/cao-dashboard serve
 ```
 
-The shared OTLP endpoint exports traces and metrics. Logs are opt-in via
-`CAO_OTEL_LOGS_ENABLED=true`. Stop Aspire with
+The shared OTLP endpoint exports traces and metrics. If switching from
+OpenObserve, unset `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, and `OTEL_EXPORTER_OTLP_HEADERS` first.
+Logs are opt-in via `CAO_OTEL_LOGS_ENABLED=true`. Stop Aspire with
 `docker compose -f server/aspire-compose.yml down`.
 
 ### Alternative: OpenObserve
@@ -1480,7 +1482,7 @@ either the trace or metric export is rejected or unreachable.
 
 Sign in to OpenObserve with the same credentials and select the `default`
 organization. The local instance stores data in the `openobserve-data` Docker
-volume; `docker-compose -f server/otel-compose.yml down` stops it without
+volume; `docker compose -f server/otel-compose.yml down` stops it without
 deleting that volume. Do not use `down -v` unless you intend to erase its data.
 For hosted deployments, supply exporter authentication through the deployment
 secret manager instead of exporting it from an interactive shell.
