@@ -117,6 +117,27 @@ npm run check
 Workflow source changes must pass `npm run compile`. Run
 `npm run compile:locks` only when generated lock files should be updated.
 
+### CI feedback and post-merge coverage
+
+Pull requests run the fast checks relevant to their changed paths: repository
+unit contracts, lint, type checks, workflow compilation, dashboard unit tests and
+production build, Go quality and API contract checks, and focused Actions,
+shell, installer, and SVG checks. Frontend-only changes do not start Go CI;
+control workflow Markdown and generated locks do not start Actions lint, which
+checks handwritten workflow YAML.
+
+Pushes to `main` retain the integration, load, campaign lifecycle, browser,
+mobile, Azure, query-parity, deployed-data benchmark, and performance suites.
+Their workflow path filters limit execution to relevant inputs. Existing
+scheduled and manual runs remain available; Dashboard CI can also be dispatched
+manually. Superseded PR runs are cancelled without cancelling main-branch
+validation.
+
+Moving these suites after merge shortens PR feedback but does not establish
+their results before merge. Run the applicable integration or browser tests
+locally when changing those contracts, and monitor the main-branch checks after
+merging.
+
 Setup-path changes must also pass the clean consumer integration suite:
 
 ```bash

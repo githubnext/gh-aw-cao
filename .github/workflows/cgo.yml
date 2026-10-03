@@ -4,13 +4,8 @@ on:
   pull_request:
     paths:
       - .github/workflows/cgo.yml
-      - dashboard/site/**
       - server/**
-      - scripts/test-dashboard-backfill.sh
-      - package.json
-      - package-lock.json
-      - tests/e2e/dashboard-server.spec.mjs
-      - tests/playwright/configs/dashboard-server.config.mjs
+      - "!server/**/*.md"
   push:
     branches: [main]
     paths:
@@ -22,9 +17,15 @@ on:
       - package-lock.json
       - tests/e2e/dashboard-server.spec.mjs
       - tests/playwright/configs/dashboard-server.config.mjs
+      - "!dashboard/site/**/*.md"
+      - "!server/**/*.md"
 
 permissions:
   contents: read
+
+concurrency:
+  group: go-dashboard-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   server-quality:
@@ -52,6 +53,7 @@ jobs:
 
   server-backfill:
     name: Postgres backfill and OpenObserve integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -95,6 +97,7 @@ jobs:
 
   server-stress:
     name: Go rate-limit stress and profiles
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -183,6 +186,7 @@ jobs:
 
   redis-dashboard-integration:
     name: Postgres dashboard integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     services:
@@ -270,6 +274,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
+      needs.redis-dashboard-integration.result != 'skipped' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: redis-dashboard-integration
     runs-on: ubuntu-latest

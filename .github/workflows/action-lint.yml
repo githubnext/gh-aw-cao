@@ -4,10 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/**"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
+      - "!.github/workflows/**/*.lock.yml"
   pull_request:
     paths:
-      - ".github/workflows/**"
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
+      - "!.github/workflows/**/*.lock.yml"
 
 permissions:
   contents: read

@@ -1,7 +1,8 @@
 name: Deployed dashboard integration
 
 on:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - .github/workflows/dashboard-deployed-integration.yml
       - dashboard/site/dashboard.json
@@ -20,6 +21,10 @@ on:
       - server/internal/postgresx/**
       - server/internal/server/**
       - server/internal/redisx/**
+      - server/go.mod
+      - server/go.sum
+      - dashboard/site/package.json
+      - dashboard/site/package-lock.json
       - package.json
       - package-lock.json
       - scripts/merge-dashboard-query-performance.mjs
@@ -33,6 +38,7 @@ on:
       - tests/performance/dashboard-query-cost-postgres.test.mjs
       - tests/performance/dashboard-query-cost.test.mjs
       - tests/playwright/configs/dashboard-query-performance.config.mjs
+      - "!server/**/*.md"
   workflow_dispatch:
   schedule:
     - cron: "12,27,42,57 * * * *"
@@ -41,7 +47,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: dashboard-deployed-integration-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name }}
+  group: dashboard-deployed-integration-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:

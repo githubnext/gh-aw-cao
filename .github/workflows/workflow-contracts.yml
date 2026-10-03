@@ -15,9 +15,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: workflow-contracts-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   agent-plugin:
     name: Install agent plugin with Copilot CLI
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -34,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        area: [activity, dashboard, workflows, tooling]
+        area: [activity, dashboard, workflows, tooling, documentation]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -69,25 +74,11 @@ jobs:
         run: npm ci
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
-      - name: Run remaining contract checks
+      - name: Run fast contract checks
         run: |
           npm run lint
           npm run typecheck:cao
-          npm run test:integration
-          npm run test:load
           npm run compile
-      - name: Verify versioned server API signatures
-        run: |
-          npm --prefix server/spec ci
-          npm run dashboard:server:spec:check
-      - name: Run documentation unit contracts
-        if: ${{ !cancelled() }}
-        run: npm run test:unit:area -- documentation
-      - name: Build and validate documentation
-        if: ${{ !cancelled() }}
-        run: |
-          npm run check:svg
-          npm run docs:build
       - name: Check patch formatting
         run: git diff --check
       - name: Require successful unit areas
@@ -100,8 +91,40 @@ jobs:
             exit 1
           fi
 
+  full-contracts:
+    name: Integration, load, API, and documentation contracts
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Run integration and load contracts
+        run: |
+          npm run test:integration
+          npm run test:load
+      - name: Verify versioned server API signatures
+        run: |
+          npm --prefix server/spec ci
+          npm run dashboard:server:spec:check
+      - name: Build and validate documentation
+        if: ${{ !cancelled() }}
+        run: |
+          npm run check:svg
+          npm run docs:build
+
   github-issue-query:
     name: GitHub issue GraphQL integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -121,6 +144,7 @@ jobs:
 
   dependabot-operational-value:
     name: Dependabot operational value integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -158,6 +182,7 @@ jobs:
 
   campaign-lifecycle-changes:
     name: Select campaign lifecycle tests
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       has-changes: ${{ steps.matrix.outputs.has-changes }}
@@ -193,7 +218,7 @@ jobs:
 
   campaign-lifecycle:
     needs: campaign-lifecycle-changes
-    if: needs.campaign-lifecycle-changes.outputs.has-changes == 'true'
+    if: github.event_name != 'pull_request' && needs.campaign-lifecycle-changes.outputs.has-changes == 'true'
     name: Campaign lifecycle (${{ matrix.name }})
     strategy:
       fail-fast: false

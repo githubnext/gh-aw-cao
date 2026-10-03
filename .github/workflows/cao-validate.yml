@@ -4,7 +4,11 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - ".github/workflows/**"
+      - ".github/workflows/cao-validate.yml"
+      - ".github/workflows/cao*.json"
+      - ".github/workflows/*.md"
+      - ".github/workflows/*.lock.yml"
+      - ".github/workflows/shared/**"
       - ".github/aw/**"
       - "activity/cao.mjs"
       - "activity/commands/**"
@@ -18,7 +22,11 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/**"
+      - ".github/workflows/cao-validate.yml"
+      - ".github/workflows/cao*.json"
+      - ".github/workflows/*.md"
+      - ".github/workflows/*.lock.yml"
+      - ".github/workflows/shared/**"
       - ".github/aw/**"
       - "activity/cao.mjs"
       - "activity/commands/**"

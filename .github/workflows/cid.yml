@@ -4,17 +4,11 @@ on:
   pull_request:
     paths:
       - .github/workflows/cid.yml
-      - activity/cao.mjs
-      - activity/commands/**
-      - activity/dashboard-complexity.mjs
       - dashboard/site/**
       - docs/assets/logo-day.svg
       - docs/assets/logo-night.svg
       - public/favicon.svg
-      - tests/unit/cao-dashboard-complexity.test.mjs
-      - tests/playwright/configs/dashboard-ingestion.config.mjs
-      - tests/e2e/dashboard-ingestion-scale.spec.mjs
-      - tests/helpers/synthetic-gh-aw-logs.mjs
+      - "!dashboard/site/**/*.md"
   push:
     branches: [main]
     paths:
@@ -30,9 +24,17 @@ on:
       - tests/playwright/configs/dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
       - tests/helpers/synthetic-gh-aw-logs.mjs
+      - package.json
+      - package-lock.json
+      - "!dashboard/site/**/*.md"
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: dashboard-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint-unit:
@@ -64,6 +66,7 @@ jobs:
 
   playwright-integration:
     name: Playwright integration tests (${{ matrix.shard }})
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -164,6 +167,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
+      needs.dead-views.result != 'skipped' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: dead-views
     runs-on: ubuntu-latest
@@ -244,6 +248,7 @@ jobs:
 
   query-complexity:
     name: Dashboard query complexity
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -278,6 +283,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
+      needs.query-complexity.result != 'skipped' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: query-complexity
     runs-on: ubuntu-latest
@@ -362,6 +368,7 @@ jobs:
 
   lighthouse-performance:
     name: Lighthouse performance scenarios
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -414,6 +421,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
+      needs.lighthouse-performance.result != 'skipped' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: lighthouse-performance
     runs-on: ubuntu-latest

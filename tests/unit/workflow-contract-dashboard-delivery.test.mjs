@@ -125,6 +125,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   );
   assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
+  assert.match(playwrightIntegration.block, /if: github\.event_name != 'pull_request'/);
   assert.deepEqual(ingestionScale.needs, []);
   // The synthetic ingestion payload is slow, so the gate stays on main.
   assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
@@ -145,6 +146,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(deadViewsComment.block, /issues\.updateComment/);
   assert.match(deadViewsComment.block, /issues\.createComment/);
   assert.deepEqual(queryComplexity.needs, []);
+  assert.match(queryComplexity.block, /if: github\.event_name != 'pull_request'/);
   assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
   assert.match(queryComplexity.block, /npm run dashboard:data:download/);
   assert.match(queryComplexity.block, /--database \.cao\/gh-aw-logs\.sqlite/);
@@ -167,6 +169,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(queryComplexityComment.block, /issues\.updateComment/);
   assert.match(queryComplexityComment.block, /issues\.createComment/);
   assert.deepEqual(lighthousePerformance.needs, []);
+  assert.match(lighthousePerformance.block, /if: github\.event_name != 'pull_request'/);
   assert.deepEqual(lighthouseComment.needs, ["lighthouse-performance"]);
   for (const command of ["npm run typecheck", "npm run lint", "npm test"]) {
     assert.match(lintUnit.block, new RegExp(`run: ${command.replaceAll(".", "\\.")}`));
@@ -556,10 +559,11 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8").replaceAll("\r\n", "\n");
   const campaignDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
-  assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
+  assert.match(workflow, /push:\n\s+branches: \[main\][\s\S]*?dashboard\/site\/\*\*/);
+  assert.equal(parse(workflow).on.pull_request, undefined);
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
-  assert.match(workflow, /mobile:[\s\S]*?if: github\.event_name != 'push'/);
+  assert.equal(parse(workflow).jobs.mobile.if, undefined);
   assert.match(workflow, /include: \$\{\{ fromJSON\(github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /refs\/heads\/main' && '[^']*Pixel 7[^']*' \|\| '\[\{"browser":"webkit","device":"iPhone 15"\}\]'/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);

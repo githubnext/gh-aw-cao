@@ -1,14 +1,6 @@
 name: Local Azure Functions integration
 
 on:
-  pull_request:
-    paths:
-      - .github/workflows/azure-local-integration.yml
-      - dashboard/site/**
-      - scripts/azure-local/**
-      - server/**
-      - tests/integration/azure-local-functions.test.mjs
-      - .github/workflows/cao.json
   push:
     branches: [main]
     paths:
@@ -18,6 +10,8 @@ on:
       - server/**
       - tests/integration/azure-local-functions.test.mjs
       - .github/workflows/cao.json
+      - "!dashboard/site/**/*.md"
+      - "!server/**/*.md"
   workflow_dispatch:
 
 permissions:
