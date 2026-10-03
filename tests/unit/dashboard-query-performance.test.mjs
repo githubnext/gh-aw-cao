@@ -29,8 +29,8 @@ test("dashboard query benchmark runs serially with enough time for deployed data
 
 test("deployed integration isolates query benchmark reporting from test permissions", () => {
   const workflow = readFileSync(deployedIntegrationWorkflowPath, "utf8");
-  assert.match(workflow, /pull_request:\n\s+paths:/);
-  assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{[\s\S]*github\.event\.pull_request\.number/);
+  assert.match(workflow, /push:\n\s+branches: \[main\]\n\s+paths:/);
+  assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{ github\.event_name \}\}/);
   assert.match(workflow, /tests\/e2e\/dashboard-deployed-refresh-helpers\.mjs/);
   assert.match(workflow, /tests\/e2e\/dashboard-view-assessment\.mjs/);
   assert.match(workflow, /run: npm run test:performance:dashboard-queries/);
@@ -112,13 +112,15 @@ test("query performance comment waits for the installation rate limit to reset",
   );
 });
 
-test("deployed integration pull request trigger only watches query benchmark inputs", () => {
+test("deployed integration main push trigger only watches query benchmark inputs", () => {
   const workflow = parse(readFileSync(deployedIntegrationWorkflowPath, "utf8"));
   // The boolean-key lookup is a defensive fallback for YAML 1.1 core-schema behavior.
   const workflowTriggers = workflow.on ?? workflow[true];
   assert.ok(workflowTriggers, "expected workflow trigger block");
-  const paths = workflowTriggers.pull_request.paths;
-  assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
+  assert.equal(workflowTriggers.pull_request, undefined);
+  assert.deepEqual(workflowTriggers.push.branches, ["main"]);
+  const paths = workflowTriggers.push.paths;
+  assert.ok(Array.isArray(paths), "expected push.paths trigger list");
   for (const path of [
     "dashboard/site/dashboard.json",
     "dashboard/site/dashboard-fragments/**",

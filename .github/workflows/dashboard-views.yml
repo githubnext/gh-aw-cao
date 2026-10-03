@@ -2,9 +2,22 @@ name: Dashboard views
 
 on:
   workflow_dispatch:
-  pull_request:
   push:
     branches: [main]
+    paths:
+      - .github/workflows/dashboard-views.yml
+      - dashboard/site/**
+      - dashboard/local-server.mjs
+      - dashboard/report/**
+      - "**/dashboard.json"
+      - "**/dashboard-fragments/**"
+      - package.json
+      - package-lock.json
+      - tests/e2e/dashboard-view-*.mjs
+      - tests/e2e/dashboard-views-live.spec.mjs
+      - tests/e2e/dashboard-deployed-refresh-helpers.mjs
+      - tests/playwright/configs/dashboard-views.config.mjs
+      - "!dashboard/site/**/*.md"
   schedule:
     - cron: "53 5 * * *"
 

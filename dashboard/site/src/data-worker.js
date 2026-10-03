@@ -6,6 +6,7 @@ import {
   finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
   ingestNormalizedJsonl,
+  isAuditCurationCurrent,
   isNormalizedJsonlCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
@@ -983,14 +984,15 @@ export function processDataRequest(request, signal) {
               progress.reportShardImportProgress(completedShardCount, shardCount);
             }
           }
-          if (changed) {
+          if (changed || !await isAuditCurationCurrent(indexedDB)) {
             progress.log('Applying retention limits.');
-            await finalizeNormalizedJsonlIngestion(indexedDB, {
+            const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
               signal
             });
+            changed ||= maintenance.deletedRecords > 0;
           }
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');

@@ -2,6 +2,7 @@ import { issueCoordinates, issueId, operationalValueId, repositoryId, runId, sou
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
+import { curateBatchAudits } from '../model/audit-curation.js';
 
 const debugNormalize = createDebug('normalize:index');
 
@@ -218,6 +219,8 @@ export function normalize(observations, options = {}) {
   for (const collection of RUN_LINKED_COLLECTIONS) {
     batch[collection] = orderRunRecords(batch[collection]);
   }
+  // Run-backed copies are curated after all Run observations have converged.
+  batch.audits = curateBatchAudits({ ...batch, runs: [] });
   const entityCount = Object.values(batch).reduce((total, records) => total + records.length, 0);
   debugNormalize({
     event: 'normalize-complete',

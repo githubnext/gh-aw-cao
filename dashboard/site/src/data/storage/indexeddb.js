@@ -4,6 +4,12 @@ import { recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
+import {
+  AUDIT_CURATION_TRANSACTION_ID,
+  AUDIT_CURATION_VERSION,
+  auditCurationRunFacts,
+  discardAudit
+} from '../model/audit-curation.js';
 
 const debug = createDebug('data:indexeddb');
 
@@ -593,9 +599,10 @@ function estimatedRecordBytes(record) {
  * never materializes the canonical database or its large linked-record stores.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] } }} options
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, signal?: AbortSignal }} options
  */
 export async function maintainCanonicalDatabase(indexedDB, options) {
+    options.signal?.throwIfAborted();
     const now = options.now ?? Date.now();
     const defaultWindow = Number.isFinite(options.retentionWindowMs)
       ? Math.max(0, Number(options.retentionWindowMs))
@@ -604,6 +611,9 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     let estimatedBytes = 0;
     let deletedRecords = 0;
     let retainedRecords = 0;
+    let prunedAudits = 0;
+    /** @type {Map<string, Record<string, unknown>>} */
+    const auditRunFacts = new Map();
     /** @type {{ id: string, timestamp: number, bytes: number }[]} */
     const runs = [];
     /** @type {string[]} */
@@ -622,13 +632,47 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     const referencedRepositoryIds = new Set();
     const database = await openCanonicalDatabase(indexedDB);
     try {
+      const referencedAudits = new Set();
+      for (const storeName of ['graderObservations', 'evalObservations', 'experimentAssignments']) {
+        options.signal?.throwIfAborted();
+        const transaction = database.transaction(storeName);
+        const done = transactionDone(transaction);
+        const store = transaction.objectStore(storeName);
+        if (typeof store.openCursor !== 'function') {
+          for (const record of await requestResult(store.getAll())) {
+            if (typeof record.auditId === 'string') referencedAudits.add(record.auditId);
+          }
+        } else {
+          const request = store.openCursor();
+          request.onsuccess = () => {
+            if (options.signal?.aborted) {
+              transaction.abort();
+              return;
+            }
+            const cursor = request.result;
+            if (!cursor) return;
+            if (typeof cursor.value.auditId === 'string') referencedAudits.add(cursor.value.auditId);
+            cursor.continue();
+          };
+        }
+        await done;
+      }
       for (const storeName of ENTITY_STORES) {
+        options.signal?.throwIfAborted();
         const transaction = readwriteTransaction(database, storeName);
         const done = transactionDone(transaction);
         const store = transaction.objectStore(storeName);
         /** @param {Record<string, unknown>} record @param {() => void} remove */
         const visit = (record, remove) => {
           const id = String(record.id);
+          if (storeName === 'runs') auditRunFacts.set(id, auditCurationRunFacts(record));
+          if (storeName === 'audits' && !referencedAudits.has(id)
+              && discardAudit(record, auditRunFacts.get(String(record.runId)))) {
+            remove();
+            deletedRecords += 1;
+            prunedAudits += 1;
+            return;
+          }
           if (options.reconcileRelationships) {
             if (storeName === 'campaigns') {
               campaignIds.add(id);
@@ -705,16 +749,32 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           }
         } else {
           await new Promise((resolve, reject) => {
+            /** @type {IDBValidKey[]} */
+            const pendingAuditDeletes = [];
+            const flushAuditDeletes = () => {
+              for (const key of pendingAuditDeletes) store.delete(key);
+              pendingAuditDeletes.length = 0;
+            };
             const cursorRequest = store.openCursor();
             cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB cursor failed'));
             cursorRequest.onsuccess = () => {
+              if (options.signal?.aborted) {
+                transaction.abort();
+                return;
+              }
               const cursor = cursorRequest.result;
               if (!cursor) {
+                flushAuditDeletes();
                 resolve(undefined);
                 return;
               }
-              visit(cursor.value, () => cursor.delete());
+              visit(cursor.value, () => {
+                if (storeName === 'audits') pendingAuditDeletes.push(cursor.primaryKey);
+                else cursor.delete();
+              });
               cursor.continue();
+              // Per-row deletes invalidate Chromium's cursor prefetch cache.
+              if (pendingAuditDeletes.length >= DEFAULT_WRITE_BATCH_SIZE) flushAuditDeletes();
             };
           });
         }
@@ -844,7 +904,18 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
         }
         await done;
       }
-      return { deletedRecords, estimatedBytes, retainedRecords };
+      options.signal?.throwIfAborted();
+      const receipt = readwriteTransaction(database, TRANSACTION_STORE);
+      const receiptDone = transactionDone(receipt);
+      receipt.objectStore(TRANSACTION_STORE).put({
+        id: AUDIT_CURATION_TRANSACTION_ID,
+        kind: 'audit-curation',
+        version: AUDIT_CURATION_VERSION,
+        createdAt: new Date(now).toISOString()
+      });
+      await receiptDone;
+      debug('curated canonical audits', { prunedAudits, version: AUDIT_CURATION_VERSION });
+      return { deletedRecords, estimatedBytes, retainedRecords, prunedAudits };
     } finally {
       database.close();
     }

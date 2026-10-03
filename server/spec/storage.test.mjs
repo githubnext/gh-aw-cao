@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { compile, getNamespaceFullName, navigateProgram, NodeHost } from '@typespec/compiler';
+import { compile, getDoc, getNamespaceFullName, navigateProgram, NodeHost } from '@typespec/compiler';
 import { PRUNED_CANONICAL_FIELDS } from '../../dashboard/site/src/data/model/fields.js';
 
 const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).pathname, { noEmit: true });
 assert.deepEqual(program.diagnostics, []);
 const tables = new Map();
+const documentation = new Map();
 navigateProgram(program, {
   model(model) {
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres') {
@@ -14,6 +15,7 @@ navigateProgram(program, {
         assert.notEqual(property.type.name, 'unknown', `${model.name}.${property.name} must be a typed field`);
       }
       tables.set(`$${model.name}`, new Set(model.properties.keys()));
+      documentation.set(model.name, getDoc(program, model));
     }
   }
 });
@@ -43,6 +45,15 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
     '$marketplacePackages', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations', '$jobs', '$sessions', '$events'
   ].sort());
+});
+
+test('TypeSpec Audit storage describes curation without speculative duplicate Run columns', () => {
+  const contract = documentation.get('audits');
+  assert.match(contract, /dashboard-data\.md section 11\.1/);
+  assert.match(contract, /JavaScript and Go ingestion and existing-database maintenance/);
+  assert.match(contract, /missing Run facts/);
+  assert.match(contract, /Grader\/eval identities/);
+  assert.match(contract, /Cleanup precedes size eviction/);
 });
 
 test('native table fields cover database projections and joins without speculative columns', () => {

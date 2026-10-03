@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, cp, readFile, readdir, rename, stat, writeFile } from '
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 import { promisify } from 'node:util';
 import {
   normalizedPhaseBatch,
@@ -123,7 +124,7 @@ async function queryTransactions(databasePath) {
     '--collection',
     'transactions',
   ]);
-  return JSON.parse(stdout);
+  return JSON.parse(stdout).filter((transaction) => transaction.kind !== 'audit-curation');
 }
 
 test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs without reparsing them', async () => {
@@ -494,6 +495,50 @@ test('hash-payloads publishes consolidated shards in deterministic ingestion ord
   assert.equal(runs.batch.runs.length, new Set(runs.batch.runs.map((run) => run.id)).size);
 });
 
+test('publication retains usage evidence when the winning Run has null AIC', async () => {
+  const { root, shardDirectory } = await fixture();
+  const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+  const source = (await readFile(sourcePath, 'utf8')).trim().split('\n');
+  await writeFile(path.join(shardDirectory, 'gh-aw-logs-2000000000-bbbb.jsonl'), `${source[0]}\n`);
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+  await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'), 'hash-payloads', '--shard-dir', shardDirectory,
+    '--runs-dir', runsDirectory, '--records-dir', recordsDirectory
+  ]);
+  const runs = await readPhasePayload(runsDirectory);
+  const records = await readPhasePayload(recordsDirectory);
+  assert.equal(runs.batch.runs[0].aicTotal, null);
+  assert.deepEqual(records.batch.audits.filter((audit) => audit.type === 'workflow_run_usage')
+    .map((audit) => audit.summary), ['AIC 2.5']);
+});
+
+test('unchanged source shards still clean a pre-curation SQLite database', async () => {
+  const { shardDirectory, databasePath } = await fixture();
+  await ingest(shardDirectory, databasePath);
+  const database = new DatabaseSync(databasePath);
+  const run = JSON.parse(database.prepare("SELECT value FROM __idb_records WHERE store_name='runs' LIMIT 1").get().value);
+  const { database_name: databaseName } = database.prepare("SELECT database_name FROM __idb_records WHERE store_name='runs' LIMIT 1").get();
+  const audit = {
+    id: 'audit:legacy-marker', runId: run.id, source: 'gh-aw-logs',
+    type: 'workflow_run_working_set', status: 'observed', summary: 'Working set measured',
+    timestamp: run.completedAt, observedAt: run.completedAt
+  };
+  database.prepare('INSERT INTO __idb_records (database_name,store_name,record_key,value) VALUES (?,?,?,?)')
+    .run(databaseName, 'audits', JSON.stringify(audit.id), JSON.stringify(audit));
+  database.prepare("DELETE FROM __idb_records WHERE store_name='transactions' AND json_extract(value,'$.kind')='audit-curation'").run();
+  database.close();
+  const repeated = await ingest(shardDirectory, databasePath);
+  assert.equal(repeated.result.updated, true);
+  assert.equal(repeated.result.committedRecords, 0);
+  assert.ok(repeated.result.shards.every((shard) => shard.skipped));
+  const cleaned = new DatabaseSync(databasePath, { readOnly: true });
+  assert.equal(cleaned.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name='audits' AND json_extract(value,'$.id')=?")
+    .get(audit.id).count, 0);
+  cleaned.close();
+  assert.equal((await ingest(shardDirectory, databasePath)).result.updated, false);
+});
+
 test('hash-payloads excludes info-level audits from record shards', async () => {
   const { root, shardDirectory } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
@@ -593,7 +638,8 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
   assert.ok(runs.payloads.every((payload) => payload.phase === 'runs'));
   assert.ok(records.payloads.every((payload) => payload.phase === 'records'));
   assert.ok(runs.batch.runs.length > 0);
-  assert.ok(['domains', 'tools', 'audits', 'issues'].some((name) => records.batch[name].length > 0));
+  assert.equal(records.batch.audits.length, 0, 'the legacy fixture contains only redundant lifecycle audits');
+  assert.ok(records.payloads.every((payload) => payload.records === 0));
   for (const payload of [normalizedPayload, ...runs.payloads, ...records.payloads]) {
     assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
     assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);

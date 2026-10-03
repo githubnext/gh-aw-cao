@@ -8,17 +8,20 @@ on:
     branches: [main]
     paths:
       - .github/workflows/actions.yml
-      - dashboard/**
+      - dashboard/site/**
+      - dashboard/local-server.mjs
+      - dashboard/report/**
+      - "**/dashboard.json"
+      - "**/dashboard-fragments/**"
+      - package.json
+      - package-lock.json
       - tests/playwright/configs/mobile.config.mjs
       - tests/integration/dashboard-deployed-data.test.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
-  pull_request:
-    paths:
-      - .github/workflows/actions.yml
-      - dashboard/**
-      - tests/playwright/configs/mobile.config.mjs
-      - tests/integration/dashboard-deployed-data.test.mjs
-      - tests/e2e/dashboard-mobile-live.spec.mjs
+      - tests/e2e/dashboard-deployed-refresh-helpers.mjs
+      - tests/e2e/dashboard-screenshot.mjs
+      - tests/e2e/dashboard-tree-analysis.mjs
+      - "!dashboard/site/**/*.md"
 
 permissions:
   actions: read
@@ -55,7 +58,6 @@ jobs:
 
   mobile:
     name: ${{ matrix.device }}
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

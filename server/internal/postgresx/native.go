@@ -115,8 +115,8 @@ func (column entityColumn) bind(value any) (any, error) {
 			return instant, nil
 		}
 		if text, ok := value.(string); ok {
-			instant, err := time.Parse(time.RFC3339Nano, text)
-			if err != nil {
+			instant, valid := auditTimestamp(text)
+			if !valid {
 				return nil, errors.New("invalid canonical timestamp")
 			}
 			return instant, nil
@@ -235,6 +235,14 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	id, valid := row["id"].(string)
 	if !valid || id == "" {
 		return errors.New("native row requires a nonempty string id")
+	}
+	if source == "$audits" {
+		if err := validateAuditProjection(row); err != nil {
+			return err
+		}
+	}
+	if err := validateAuditReferenceProjection(source, row); err != nil {
+		return err
 	}
 	present := make([]byte, len(table.columns))
 	values := make([]any, len(table.columns)+3)
@@ -524,6 +532,10 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	clockSources = append(clockSources, "SELECT max(greatest(as_of,retrieved_at)) AS instant FROM cao_quality WHERE namespace=$1")
 	if err := w.tx.QueryRow(ctx, "SELECT coalesce(max(instant),'epoch'::timestamptz) FROM ("+strings.Join(clockSources, " UNION ALL ")+") AS clocks", w.store.namespace).Scan(&w.evaluatedAt); err != nil {
 		return State{}, err
+	}
+	// Keep the source clock even when its latest event is a discarded copy.
+	if _, err := w.tx.Exec(ctx, auditCurationStatement(), w.store.namespace); err != nil {
+		return State{}, fmt.Errorf("curate native audits before publication: %w", err)
 	}
 	state := State{Ready: true, DataRevision: dataRevision, EvaluatedAt: w.evaluatedAt.UTC(), Counts: map[string]int{}}
 	for _, source := range tableNames() {

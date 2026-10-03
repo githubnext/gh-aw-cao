@@ -17,6 +17,7 @@ import {
   ingestCachedGhAwJsonl,
   ingestGhAwLogs,
   ingestNormalizedJsonl,
+  isAuditCurationCurrent,
   isCachedGhAwJsonlCurrent,
   NORMALIZED_JSONL_INGESTION_VERSION
 } from '../dashboard/site/src/data/ingest/coordinator.js';
@@ -72,7 +73,8 @@ import {
   USAGE
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
-import { normalizedPhaseBatch, relationshipSafeEvidenceBatch } from './normalized-phase.mjs';
+import { consolidationBucket, normalizedPhaseBatch, relationshipSafeEvidenceBatch, STRUCTURAL_CONSOLIDATION_BUCKET } from './normalized-phase.mjs';
+import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../dashboard/site/src/data/model/audit-curation.js';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
@@ -94,18 +96,6 @@ const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 // Per-shard normalization output is retained only as an incremental cache. It lives
 // in a subdirectory so it is never published, hashed into the manifest, or ingested.
 const PAYLOAD_CACHE_DIRECTORY = '.payloads';
-// Structural collections are owned by inventory discovery rather than by any single
-// run, so they are consolidated into one leading bucket that sorts before day buckets.
-const STRUCTURAL_CONSOLIDATION_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals']);
-const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
-const CONSOLIDATION_TIMESTAMP_FIELDS = [
-  'startedAt',
-  'observedAt',
-  'timestamp',
-  'completedAt',
-  'createdAt',
-  'updatedAt'
-];
 const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- "$1"';
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
@@ -1734,6 +1724,10 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     debug('ingested shard %s: committedRecords=%d', name, result.committedRecords ?? 0);
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
+  if (!await isAuditCurationCurrent(indexedDB)) {
+    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    updated ||= maintenance.deletedRecords > 0;
+  }
   return { ...totals, updated, committedRecords, shards };
 }
 
@@ -1791,9 +1785,10 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
       Date.now() - phaseStartedAt
     );
   }
-  if (updated) {
+  if (updated || !await isAuditCurationCurrent(indexedDB)) {
     const maintenanceStartedAt = Date.now();
-    await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    updated ||= maintenance.deletedRecords > 0;
     debug('applied deferred canonical maintenance durationMs=%d', Date.now() - maintenanceStartedAt);
   }
   return { updated, committedRecords, shards };
@@ -1831,25 +1826,6 @@ function workflowHintsFromInventory(input) {
 }
 
 /**
- * Assigns a record to a stable partition. Day buckets keep historical output
- * byte-identical across runs so the browser's content-hash skip receipt still
- * matches and the shard is never redownloaded.
- *
- * @param {string} collection
- * @param {Record<string, unknown>} record
- */
-function consolidationBucket(collection, record) {
-  if (STRUCTURAL_CONSOLIDATION_COLLECTIONS.has(collection)) return STRUCTURAL_CONSOLIDATION_BUCKET;
-  for (const field of CONSOLIDATION_TIMESTAMP_FIELDS) {
-    const value = record[field];
-    if (typeof value !== 'string') continue;
-    const parsed = Date.parse(value);
-    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
-  }
-  return STRUCTURAL_CONSOLIDATION_BUCKET;
-}
-
-/**
  * Collapses every per-shard payload for one phase into deduplicated, day-bucketed
  * shards. Published shards repeat a canonical record once per source shard that
  * observed it; keying on (collection, id) keeps exactly one copy.
@@ -1860,7 +1836,9 @@ function consolidationBucket(collection, record) {
  * @param {number} maxBytes
  */
 async function consolidatePhasePayloads(
-  phase, cachePaths, outputDirectory, maxBytes, { runWorkflowIds = new Map() } = {}
+  phase, cachePaths, outputDirectory, maxBytes, {
+    runWorkflowIds = new Map(), runFacts = new Map(), referencedAuditIds = new Set()
+  } = {}
 ) {
   /** @type {Map<string, Map<string, Record<string, unknown>>>} */
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
@@ -1902,12 +1880,23 @@ async function consolidatePhasePayloads(
     ? new Map([...deduped.get('runs').values()].map((run) =>
       [String(run.id), String(run.workflowId)]))
     : runWorkflowIds;
+  if (phase === 'runs') {
+    runFacts = new Map([...deduped.get('runs').values()].map((run) =>
+      [String(run.id), auditCurationRunFacts(run)]));
+  }
+  for (const collection of ['experimentAssignments', 'graderObservations', 'evalObservations']) {
+    for (const record of deduped.get(collection).values()) {
+      if (typeof record.auditId === 'string') referencedAuditIds.add(record.auditId);
+    }
+  }
   /** @type {Map<string, string[]>} */
   const buckets = new Map();
   let uniqueRecords = 0;
   for (const collection of NORMALIZED_COLLECTIONS) {
     const records = deduped.get(collection);
     for (const record of records.values()) {
+      if (collection === 'audits' && !referencedAuditIds.has(String(record.id))
+          && discardAudit(record, runFacts.get(String(record.runId)))) continue;
       const bucket = consolidationBucket(collection, record);
       const lines = buckets.get(bucket) ?? buckets.set(bucket, []).get(bucket);
       lines.push(`${JSON.stringify({ kind: 'record', collection, record })}\n`);
@@ -1951,7 +1940,7 @@ async function consolidatePhasePayloads(
   if (written.length === 0) {
     written.push(await writeConsolidatedShard(phase, STRUCTURAL_CONSOLIDATION_BUCKET, 0, [], outputDirectory));
   }
-  return { names: written, runWorkflowIds: consolidatedRunWorkflowIds };
+  return { names: written, runWorkflowIds: consolidatedRunWorkflowIds, runFacts, referencedAuditIds };
 }
 
 async function writeConsolidatedShard(phase, bucket, index, lines, outputDirectory) {
@@ -2013,7 +2002,7 @@ async function hashActivityPayloads({
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${AUDIT_CURATION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = {
@@ -2108,6 +2097,8 @@ async function hashActivityPayloads({
       }
     }
     let runWorkflowIds = new Map();
+    let runFacts = new Map();
+    let referencedAuditIds = new Set();
     for (const [phase, directory] of [
       ['runs', runsDirectory],
       ['records', recordsDirectory]
@@ -2117,9 +2108,13 @@ async function hashActivityPayloads({
         cachePaths[phase],
         directory,
         DEFAULT_COMPACTED_JSONL_SHARD_BYTES,
-        { runWorkflowIds }
+        { runWorkflowIds, runFacts, referencedAuditIds }
       );
-      if (phase === 'runs') runWorkflowIds = consolidated.runWorkflowIds;
+      if (phase === 'runs') {
+        runWorkflowIds = consolidated.runWorkflowIds;
+        runFacts = consolidated.runFacts;
+        referencedAuditIds = consolidated.referencedAuditIds;
+      }
       for (const name of consolidated.names) {
         retainedPayloads[phase].add(name);
         hashes[`${path.basename(directory)}/${name}`] = await hashFile(path.join(directory, name));

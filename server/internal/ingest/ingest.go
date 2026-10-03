@@ -160,6 +160,10 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		return Result{}, err
 	}
 	if !options.Force && active.Ready && active.DataRevision == dataRevision {
+		active, err = store.CurateAudits(ctx)
+		if err != nil {
+			return Result{}, err
+		}
 		return stateResult(active), nil
 	}
 	writer, err := store.BeginIngestion(ctx)
@@ -169,7 +173,7 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 	defer writer.Abort(ctx)
 	if !options.Force && writer.PreviousDataRevision == dataRevision {
 		writer.Abort(ctx)
-		active, err := store.State(ctx)
+		active, err := store.CurateAudits(ctx)
 		if err != nil {
 			return Result{}, err
 		}

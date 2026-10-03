@@ -1,7 +1,7 @@
 import { queryCanonicalDatabaseDiagnostics } from './data-processor.js';
 import { createDebug } from './debug.js';
 
-const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'audits'];
+const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs'];
 
 const debugDiagnostics = createDebug('diagnostics');
 

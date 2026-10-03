@@ -289,6 +289,20 @@ model friction {
   unattributedOccurrences?: int64;
 }
 
+/**
+ * Curated Run-owned evidence, governed by dashboard-data.md section 11.1.
+ * JavaScript and Go ingestion and existing-database maintenance discard only
+ * the exact low-information comparison, working-set, empty-session, and
+ * low-priority generic advice tuples, or started/completed/failed/usage/
+ * safe-output-count/failure-finding copies whose nonnull owning Run facts agree.
+ * Additional nonnull evidence, conflicting attempts, missing Run facts, and
+ * invalid comparison values retain the Audit. Grader/eval identities,
+ * safe-output actions, behavior/assessment evidence, and specific diagnostics
+ * are not eligible. Cleanup precedes size eviction; retained row counts and
+ * changed revisions are published without adding duplicate Run storage.
+ * Numeric summaries must match in full, be at most 1,024 ASCII characters,
+ * and use at most three exponent digits; larger or malformed summaries remain.
+ */
 @runPartition
 model audits {
   acceptedAt?: utcDateTime;

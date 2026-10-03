@@ -502,7 +502,8 @@ describe('database table ingestion and queries', () => {
         kind: 'ingest-dashboard-sources',
         ingestionVersion: 6,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
-      })
+      }),
+      expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
   });
 
@@ -822,7 +823,8 @@ describe('database table ingestion and queries', () => {
         ingestionVersion: 6,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
-      })
+      }),
+      expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
     await expect(ingestCachedGhAwJsonl(indexedDB, content, {
       now: Date.parse('2026-01-02T00:00:00Z'),
@@ -831,7 +833,8 @@ describe('database table ingestion and queries', () => {
       payloadScope: 'renamed-shard.jsonl'
     })).resolves.toMatchObject({ updated: false, skipped: true });
     await expect(readTransactions(indexedDB)).resolves.toEqual([
-      expect.objectContaining({ payloadEtag: '"generation-a"' })
+      expect.objectContaining({ payloadEtag: '"generation-a"' }),
+      expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);

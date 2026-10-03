@@ -108,6 +108,10 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize run partitions: %w", err)
 	}
+	if _, err := store.CurateAudits(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("maintain existing native audits: %w", err)
+	}
 	maintenanceCtx, stop := context.WithCancel(context.Background())
 	store.stopMaintenance = stop
 	store.maintenanceDone.Add(1)
