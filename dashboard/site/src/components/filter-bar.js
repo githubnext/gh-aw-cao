@@ -33,6 +33,16 @@ export function renderFilterBar(onChange, options = {}) {
     spellcheck: 'false'
   }));
   const count = renderCountBadge(0, '0 filters');
+  // The filter count badge is the smallest DOM update needed from the
+  // current filter count; a single effect is the only place that writes it
+  // onto the owned `count` node, matching the `createCopyControl`
+  // state/effect shape for owned interactive DOM.
+  const filterCount = state(0);
+  effect(() => {
+    const currentCount = filterCount.get();
+    count.textContent = String(currentCount);
+    count.setAttribute('aria-label', `${currentCount} filters`);
+  });
   const applyFilters = debounce(onChange, FILTER_DEBOUNCE_MS);
   /** @type {ReturnType<typeof renderHorizonControl>} */
   let horizonControl;
@@ -111,9 +121,7 @@ export function renderFilterBar(onChange, options = {}) {
   }
   /** @param {Map<string, string[]>} parsed */
   function updateCount(parsed) {
-    const filterCount = [...parsed.values()].reduce((total, values) => total + values.length, 0);
-    count.textContent = String(filterCount);
-    count.setAttribute('aria-label', `${filterCount} filters`);
+    filterCount.set([...parsed.values()].reduce((total, values) => total + values.length, 0));
   }
   const initialFilters = parseFilters(filters.value);
   initialFilters.set('mode', horizonControl.modes());

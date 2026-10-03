@@ -156,6 +156,23 @@ describe('time-window filter bar', () => {
     expect(document.activeElement).toBe(toggle);
   });
 
+  it('keeps the filter count badge text and accessible label in sync as filters change', async () => {
+    const filterBar = renderFilterBar(vi.fn(), { defaultRange: '24h' });
+    document.body.append(filterBar);
+    const badge = filterBar.querySelector('.count-badge');
+
+    expect(badge?.textContent).toBe('3');
+    expect(badge?.getAttribute('aria-label')).toBe('3 filters');
+
+    const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
+    filterInput.value = 'repository:gh-aw-cao';
+    filterInput.dispatchEvent(new Event('input'));
+    await Promise.resolve();
+
+    expect(badge?.textContent).toBe('4');
+    expect(badge?.getAttribute('aria-label')).toBe('4 filters');
+  });
+
   it('closes the horizon controls when clicking outside the filter bar', () => {
     const filterBar = renderFilterBar(vi.fn(), { defaultRange: '24h' });
     const toggle = document.createElement('button');
