@@ -57,6 +57,30 @@ it('debounces rapid slider changes and emits the latest complete form state', ()
   expect(onChange).toHaveBeenCalledWith({ workers: 7, review: true });
 });
 
+it('stops updating the slider readout once the form is detached', async () => {
+  const form = renderDashboardForm({
+    fields: [{ id: 'workers', label: 'Workers', control: 'slider', default: 2, min: 1, max: 10, step: 1 }]
+  }, undefined, () => {});
+  document.body.append(form);
+  const slider = /** @type {HTMLInputElement} */ (form.querySelector('input[type="range"]'));
+  const output = /** @type {HTMLOutputElement} */ (form.querySelector('output'));
+
+  slider.value = '5';
+  slider.dispatchEvent(new Event('input'));
+  expect(output.textContent).toBe('5');
+
+  form.remove();
+  // Let the MutationObserver microtask backing createFactoryScope run.
+  await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+  slider.value = '9';
+  slider.dispatchEvent(new Event('input'));
+
+  // The effect stopped when the form detached, so the owned readout no
+  // longer tracks later slider input even though its value changed.
+  expect(output.textContent).toBe('5');
+});
+
 it('does not emit scheduled work after the form is detached', () => {
   const onChange = vi.fn();
   const form = renderDashboardForm({
