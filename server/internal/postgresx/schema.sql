@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$workflows','$runs','$audits','$campaigns','$domains','$evals','$experiments','$evalObservations','$sessions','$events','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$jobs','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$workflows','$runs','$audits','$campaigns','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -477,52 +477,6 @@ CREATE INDEX IF NOT EXISTS eval_observations_run_id ON eval_observations (namesp
 
 CREATE INDEX IF NOT EXISTS eval_observations_identity ON eval_observations (namespace, id);
 
-CREATE TABLE IF NOT EXISTS sessions (
-  namespace TEXT NOT NULL,
-  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
-  present_fields BIT VARYING NOT NULL,
-  id TEXT NOT NULL CHECK (id <> ''),
-  run_id TEXT,
-  agent_id TEXT,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  run_at TIMESTAMPTZ NOT NULL,
-
-  PRIMARY KEY (namespace, id, run_at),
-  UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 5),
-  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
-) PARTITION BY RANGE (run_at);
-
-CREATE INDEX IF NOT EXISTS sessions_run_id ON sessions (namespace, run_id, ordinal);
-
-CREATE INDEX IF NOT EXISTS sessions_identity ON sessions (namespace, id);
-
-CREATE TABLE IF NOT EXISTS events (
-  namespace TEXT NOT NULL,
-  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
-  present_fields BIT VARYING NOT NULL,
-  id TEXT NOT NULL CHECK (id <> ''),
-  session_id TEXT,
-  type TEXT,
-  timestamp TIMESTAMPTZ,
-  summary TEXT,
-  run_at TIMESTAMPTZ NOT NULL,
-
-  PRIMARY KEY (namespace, id, run_at),
-  UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 5),
-  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (session_id IS NOT NULL AND session_id <> ''),
-  FOREIGN KEY (namespace, session_id, run_at) REFERENCES sessions(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
-) PARTITION BY RANGE (run_at);
-
-CREATE INDEX IF NOT EXISTS events_session_id ON events (namespace, session_id, ordinal);
-
-CREATE INDEX IF NOT EXISTS events_identity ON events (namespace, id);
-
 CREATE TABLE IF NOT EXISTS experiment_assignments (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
@@ -734,31 +688,6 @@ CREATE TABLE IF NOT EXISTS issues (
 CREATE INDEX IF NOT EXISTS issues_run_id ON issues (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS issues_identity ON issues (namespace, id);
-
-CREATE TABLE IF NOT EXISTS jobs (
-  namespace TEXT NOT NULL,
-  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
-  present_fields BIT VARYING NOT NULL,
-  id TEXT NOT NULL CHECK (id <> ''),
-  run_id TEXT,
-  name TEXT,
-  status TEXT,
-  conclusion TEXT,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  run_at TIMESTAMPTZ NOT NULL,
-
-  PRIMARY KEY (namespace, id, run_at),
-  UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 7),
-  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
-) PARTITION BY RANGE (run_at);
-
-CREATE INDEX IF NOT EXISTS jobs_run_id ON jobs (namespace, run_id, ordinal);
-
-CREATE INDEX IF NOT EXISTS jobs_identity ON jobs (namespace, id);
 
 CREATE TABLE IF NOT EXISTS operational_values (
   namespace TEXT NOT NULL,

@@ -129,7 +129,7 @@ func TestQueryCacheIdentity(t *testing.T) {
 	for _, mutate := range []func(*queryRequest){
 		func(input *queryRequest) { input.RouteParameters["a"] = "changed" },
 		func(input *queryRequest) { input.Pagination = map[string]paginationRequest{"runs": {Limit: 1}} },
-		func(input *queryRequest) { input.CompiledQueries = []query.Definition{{Name: "runs", From: "$jobs"}} },
+		func(input *queryRequest) { input.CompiledQueries = []query.Definition{{Name: "runs", From: "$tools"}} },
 		func(input *queryRequest) { input.ReplacedSources = []string{"runs"} },
 	} {
 		cloned := input

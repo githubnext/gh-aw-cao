@@ -342,20 +342,6 @@ var entityTables = map[string]entityTable{
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "variant", name: "variant", kind: "", sql: "TEXT"},
 	}},
-	"$sessions": {name: "sessions", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
-		{field: "id", name: "id", kind: "", sql: "TEXT"},
-		{field: "runId", name: "run_id", kind: "", sql: "TEXT"},
-		{field: "agentId", name: "agent_id", kind: "", sql: "TEXT"},
-		{field: "startedAt", name: "started_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
-		{field: "completedAt", name: "completed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
-	}},
-	"$events": {name: "events", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
-		{field: "id", name: "id", kind: "", sql: "TEXT"},
-		{field: "sessionId", name: "session_id", kind: "", sql: "TEXT"},
-		{field: "type", name: "type", kind: "", sql: "TEXT"},
-		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
-		{field: "summary", name: "summary", kind: "", sql: "TEXT"},
-	}},
 	"$experimentAssignments": {name: "experiment_assignments", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
 		{field: "artifactLink", name: "artifact_link", kind: "", sql: "TEXT"},
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},
@@ -492,15 +478,6 @@ var entityTables = map[string]entityTable{
 		{field: "summary", name: "summary", kind: "", sql: "TEXT"},
 		{field: "timestamp", name: "timestamp", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
-	}},
-	"$jobs": {name: "jobs", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
-		{field: "id", name: "id", kind: "", sql: "TEXT"},
-		{field: "runId", name: "run_id", kind: "", sql: "TEXT"},
-		{field: "name", name: "name", kind: "", sql: "TEXT"},
-		{field: "status", name: "status", kind: "", sql: "TEXT"},
-		{field: "conclusion", name: "conclusion", kind: "", sql: "TEXT"},
-		{field: "startedAt", name: "started_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
-		{field: "completedAt", name: "completed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 	}},
 	"$marketplacePackages": {name: "marketplace_packages", runtime: true, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "addCommand", name: "add_command", kind: "", sql: "TEXT"},
