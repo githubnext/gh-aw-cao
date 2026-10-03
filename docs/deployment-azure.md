@@ -239,7 +239,7 @@ Logs go to standard error. They include operation names, counts, timings, and fi
 | `GET /api/v1/health` | Versioned health check. |
 | `cao-dashboard doctor --postgres-url "$CAO_POSTGRES_URL" --redis-url "$CAO_REDIS_URL" --redis-namespace azure-dashboard` | Read-only check of PostgreSQL dashboard data and Redis operational state. Add `--deep` to read every active source, `--format json` for automation, or `--strict` to fail on warnings. |
 
-Rate limits don't apply to the health and readiness checks.
+Hosted health and readiness probes (including HEAD requests on the `GET` routes) share a 600-requests-per-minute bucket keyed by client address. The loopback local profile leaves these probes unmetered.
 
 ### Agentic workflow traces
 
