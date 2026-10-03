@@ -18,11 +18,19 @@ function responsiveCopy(wide, compact) {
  * Browser-local import presentation cannot be expressed as a canonical data query.
  * @param {{ document: Document, signal: AbortSignal, retry: () => void }} options
  */
-export function mountFirstLoadOverlay({ document, signal, retry }) {
+export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) {
+  if (ownerSignal.aborted || browserFirstLoad.get().status === 'inactive') return;
+  const lifetime = new AbortController();
+  const signal = lifetime.signal;
+  ownerSignal.addEventListener('abort', () => lifetime.abort(), { once: true, signal });
   const { dialog, open, close } = createModalDialog({
     className: 'first-load-overlay',
     ariaLabel: 'Preparing your dashboard'
   });
+  signal.addEventListener('abort', () => {
+    close();
+    dialog.remove();
+  }, { once: true });
   const dismiss = () => browserFirstLoad.set((current) => ({ ...current, dismissed: true }));
   const dismissButton = h('button', {
     type: 'button',
@@ -116,7 +124,11 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
   }, { signal });
   effect(() => {
     const current = browserFirstLoad.get();
-    const visible = current.status !== 'inactive' && !current.dismissed;
+    if (current.status === 'inactive') {
+      lifetime.abort();
+      return;
+    }
+    const visible = !current.dismissed;
     dismissButton.hidden = current.status === 'failed';
     retryButton.hidden = current.status !== 'failed';
     continuationNote.hidden = current.status === 'failed';
@@ -126,8 +138,4 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
     }
     else if (!visible && dialog.open) close();
   }, { signal });
-  signal.addEventListener('abort', () => {
-    close();
-    dialog.remove();
-  }, { once: true });
 }

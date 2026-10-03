@@ -229,7 +229,7 @@ describe("dashboard data startup", () => {
     expect(calls).toContain("render:loading");
     expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(2);
     expect(browserFirstLoad.get().status).toBe("inactive");
-    expect(document.querySelector("dialog")?.open).toBe(false);
+    expect(document.querySelector("dialog")).toBeNull();
   });
 
   it("shows the first-import screen only without a complete browser snapshot and cleans up on stop", async () => {
@@ -248,6 +248,32 @@ describe("dashboard data startup", () => {
     expect(stopProgress).toHaveBeenCalledOnce();
     expect(document.querySelector("dialog")).toBeNull();
     expect(browserFirstLoad.get().status).toBe("inactive");
+  });
+
+  it("automatically removes an open import screen and releases progress when the first snapshot loads", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ createdAt: "2026-09-28T12:00:00.000Z" });
+    let finishImport = () => {};
+    dataProcessor.refreshCanonicalDashboardSources.mockImplementation(() => new Promise((resolve) => {
+      finishImport = () => resolve({ changed: true });
+    }));
+    const stopProgress = vi.fn();
+    dataProcessor.subscribeWorkerLoadingProgress.mockReturnValue(stopProgress);
+    const startupOptions = options();
+    const stop = await startDashboardData(startupOptions);
+    expect(document.querySelector("dialog")?.open).toBe(true);
+    finishImport();
+    await vi.waitFor(() => expect(document.querySelector("dialog")).toBeNull());
+    expect(browserFirstLoad.get().status).toBe("inactive");
+    expect(stopProgress).toHaveBeenCalledOnce();
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+    startupOptions.browserWindow.dispatchEvent(new Event("dashboard-refresh-request"));
+    await vi.waitFor(() => expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(3));
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(stopProgress).toHaveBeenCalledOnce();
+    stop();
+    expect(stopProgress).toHaveBeenCalledOnce();
   });
 
   it("keeps failed and cancelled first imports incomplete and supports retry without reopening a dismissed screen", async () => {

@@ -231,12 +231,16 @@ async function exerciseFirstImport({ context, page }, mobile) {
     }
   }
 
+  await navigateToPage(page, 'overview');
+  await page.getByRole('button', { name: 'Show import progress' }).click();
+  await expect(importScreen).toBeVisible();
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
+  await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'overview');
   await expect(page.locator('#agent-factory-heading')).not.toHaveText('Your dashboard is taking shape.');
   await expect(page.getByRole('button', { name: 'Show import progress' })).not.toBeVisible();
-  await expect(importScreen).not.toBeVisible();
+  await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'runs');
   await selectTable(page, mobile);
   expect(requestedShards).toBe(shardCount);

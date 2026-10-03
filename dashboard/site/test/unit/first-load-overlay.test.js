@@ -55,7 +55,7 @@ describe('browser first-load presentation', () => {
     expect(document.querySelector('[role="status"]')?.textContent).toContain('1 of 5');
   });
 
-  it('pauses rotation when dismissed, failed or complete and releases its timer on abort', () => {
+  it('pauses rotation when dismissed or failed and tears down permanently when complete', () => {
     vi.useFakeTimers();
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     const message = document.querySelector('.first-load-message');
@@ -72,9 +72,23 @@ describe('browser first-load presentation', () => {
     expect(vi.getTimerCount()).toBe(0);
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
     expect(vi.getTimerCount()).toBe(0);
+    expect(document.querySelector('dialog')).toBeNull();
     browserFirstLoad.set({ status: 'loading', dismissed: false });
-    expect(vi.getTimerCount()).toBe(1);
+    expect(document.querySelector('dialog')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
     owner.abort();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not mount after data is already loaded or its owner is aborted', () => {
+    vi.useFakeTimers();
+    browserFirstLoad.set({ status: 'inactive', dismissed: false });
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    expect(document.querySelector('dialog')).toBeNull();
+    browserFirstLoad.set({ status: 'loading', dismissed: false });
+    owner.abort();
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    expect(document.querySelector('dialog')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -104,6 +118,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('3 of 5');
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
     expect(dialog?.open).toBe(false);
+    expect(document.querySelector('dialog')).toBeNull();
     owner.abort();
     expect(document.querySelector('dialog')).toBeNull();
   });

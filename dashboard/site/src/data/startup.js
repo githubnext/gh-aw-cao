@@ -363,9 +363,15 @@ export async function startDashboardData(options) {
   const remoteDataBackend = usesRemoteDataBackend(document);
   let hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
   const firstBrowserLoad = !hasCompleteSnapshot;
+  let stopFirstLoadProgress = () => {};
+  const finishFirstLoad = () => {
+    stopFirstLoadProgress();
+    stopFirstLoadProgress = () => {};
+    browserFirstLoad.set({ status: "inactive", dismissed: false });
+  };
   if (firstBrowserLoad) {
     browserFirstLoad.set({ status: "loading", dismissed: false });
-    const stopProgress = subscribeWorkerLoadingProgress((progress) => {
+    stopFirstLoadProgress = subscribeWorkerLoadingProgress((progress) => {
       if (browserFirstLoad.get().status !== "loading" || progress.phase !== "update") return;
       browserFirstLoad.set((current) => ({
         ...current,
@@ -373,10 +379,7 @@ export async function startDashboardData(options) {
         total: progress.total,
       }));
     });
-    cleanup.signal.addEventListener("abort", () => {
-      stopProgress();
-      browserFirstLoad.set({ status: "inactive", dismissed: false });
-    }, { once: true });
+    cleanup.signal.addEventListener("abort", finishFirstLoad, { once: true });
   }
   render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
@@ -429,7 +432,7 @@ export async function startDashboardData(options) {
         hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
         if (!hasCompleteSnapshot) throw new Error("Dashboard import finished without a complete snapshot.");
         refreshPending = false;
-        if (firstBrowserLoad) browserFirstLoad.set({ status: "inactive", dismissed: false });
+        if (firstBrowserLoad) finishFirstLoad();
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",
           status: "completed",
