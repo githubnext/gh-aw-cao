@@ -24,18 +24,19 @@ const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderBoundMeasureHistory(context) {
-  if (context.routeParameter && !context.routeParameters?.[context.routeParameter]) {
+  const selectedRoute = context.routeParameter ? context.routeParameters?.[context.routeParameter] : '';
+  if (context.routeParameter && !selectedRoute) {
     return h('section', { className: 'measure-history', 'aria-label': context.title },
       renderVisualizationEmptyMessage('Select a campaign to view its operational value.'));
   }
-  const bindings = bindFactorySources(context.sources, context.sourceNames, {
+  const bindings = bindFactorySources({}, context.sourceNames, {
     pageId: context.pageId,
     viewId: context.viewId,
     viewIndex: context.viewIndex,
     sourceNames: context.sourceNames,
     routeParameters: context.routeParameters,
     queryContext: context.queryContext
-  }, { refreshViewSources: true });
+  }, { bindingScope: selectedRoute });
   const scope = createFactoryScope();
   const root = h('div', { className: 'measure-history-bound' });
   render(root, () => {

@@ -35,6 +35,41 @@ describe('Measure history', () => {
     expect(loader).not.toHaveBeenCalled();
   });
 
+  it('isolates pending campaign plot sources from another route and cached unscoped rows', async () => {
+    /** @type {Record<string, (source: import('../../src/presenter.js').LogicalSourceInput) => void>} */
+    const pending = {};
+    configureSourceLoader((name, options) => new Promise((resolve) => {
+      pending[options?.routeParameters?.campaign ?? ''] = resolve;
+    }));
+    const context = {
+      title: 'Repository operational value',
+      sourceNames: ['value-series'],
+      sources: {
+        'value-series': {
+          source: 'value-series',
+          metadata,
+          rows: [{ metric: 'other-campaign', points: [{ x: '2026-09-24T00:00:00Z', y: 42, color: 'other/repo' }] }]
+        }
+      },
+      elementConfig: { 'measure-source': /** @type {const} */ ('operational-value') },
+      pageId: 'test-page',
+      viewId: 'value-history',
+      routeParameter: 'campaign',
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3')
+    };
+    const first = renderBoundMeasureHistory({ ...context, routeParameters: { campaign: 'first' } });
+    const second = renderBoundMeasureHistory({ ...context, routeParameters: { campaign: 'second' } });
+    document.body.append(first, second);
+    expect(second.textContent).not.toContain('other-campaign');
+    expect(second.textContent).toContain('Loading repository operational value');
+    pending.first({ source: 'value-series', metadata, rows: [] });
+    await vi.waitFor(() => expect(first.textContent).toContain('No measure history was observed'));
+    expect(second.textContent).toContain('Loading repository operational value');
+    pending.second({ source: 'value-series', metadata, rows: [] });
+    await vi.waitFor(() => expect(second.textContent).toContain('No measure history was observed'));
+  });
+
   it('updates the operational-value plot as each declared query resolves and stops on detachment', async () => {
     /** @type {Record<string, (source: import('../../src/presenter.js').LogicalSourceInput) => void>} */
     const resolve = {};
