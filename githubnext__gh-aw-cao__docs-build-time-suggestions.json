@@ -1,6 +1,6 @@
 {
-  "source_sha": "c109e77cddcd66de2f4d8cce616097cd67454c26",
-  "next_category": 4,
+  "source_sha": "50d47f91cad8b34eefc5662d8e397e20a91239a3",
+  "next_category": 5,
   "evaluations": [
     {
       "evaluated_at": "2026-10-02T07:09:46Z",
@@ -276,7 +276,7 @@
         37110380271,
         37101732387
       ],
-      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 11 build-bearing successful runs from 2026-10-03T08:19Z to 10:23Z shows dependency installation is already fully amortized. Workflow wall-time median/p90 was 68s/87s, build-job median/p90 41s/50s, deploy-job median/p90 9s/19s, and schedule-freshness median/p90 6s/7s. Trusted step conclusions showed Restore node_modules succeeded in all 11 builds with 4s median and 7s p90, while Install dependencies and Save node_modules were skipped in all 11, confirming cache hits from execution rather than workflow syntax. Restore cached CAO Dashboard also succeeded in all 11 builds with 1s median and 3s p90, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 11. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37101732387, 37110380271, 37111506788, 37112649493, 37115128466) showed Install dashboard build dependencies was only 7s median/p90 9s, while the producer build median/p90 was 168s/173.6s and Upgrade fallback activity data dominated at 124s median/p90 126.8s. Bounded trusted logs for run 37115128466 confirmed the producer still recopies a 482.3 MiB gh-aw-logs.sqlite plus 333 activity shards totaling 287.7 MiB before uploading a 42,956,439-byte dashboard artifact. Because dependency installation is already eliminated on the docs path and is minor upstream, no dependency-cache change can credibly save >=60s or >=15% of median docs execution time without duplicating earlier scheduling work or shifting to another category.",
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 11 build-bearing successful runs from 2026-10-03T08:19Z to 10:23Z shows dependency installation is already fully amortized. Workflow wall-time median/p90 was 68s/87s, build-job median/p90 41s/50s, deploy-job median/p90 9s/19s, and schedule-freshness median/p90 6s/7s. Trusted step conclusions showed Restore node_modules succeeded in all 11 builds with 4s median and 7s p90, while Install dependencies and Save node_modules were skipped in all 11, confirming cache hits from execution rather than workflow syntax. Restore cached CAO Dashboard also succeeded in all 11 builds with 1s median and 3s p90, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 11. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37101732387, 37110380271, 37111506788, 37112649493, 37115128466) showed Install dashboard build dependencies was only 7s median/p90 9s, while the producer build median/p90 was 168s/173.6s and Upgrade fallback activity data dominated at 124s median/p90 126.8s. Bounded trusted logs for run 37115128466 confirmed the producer still recopies a 482.3 MiB gh-aw-logs.sqlite plus 333 activity shards totaling 287.7 MiB before uploading a 42,956,439-byte artifact. Because dependency installation is already eliminated on the docs path and is minor upstream, no dependency-cache change can credibly save >=60s or >=15% of median docs execution time without duplicating earlier scheduling work or shifting to another category.",
       "suggestion_fingerprint": null
     },
     {
@@ -461,6 +461,28 @@
         37138088972
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 13 successful completed runs from 2026-10-03T14:22Z to 18:45Z shows reusable dashboard generation is already effectively cached on the docs path. Queue time could not be measured directly from available metadata, but job timing remained low: full workflow median/p90 49s/88s, build-job median/p90 45s/51s, deploy-job median/p90 16.5s/19s on the 4 runs that deployed, and schedule-freshness median/p90 7s/7s on the 4 scheduled runs. Trusted step conclusions showed Restore cached CAO Dashboard succeeded in all 13 builds with 2s median/p90 3s, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 13, confirming consistent dashboard cache hits from execution metadata rather than syntax. Build documentation stayed 13s median and Upload Pages artifact 9s median. Cross-checking recent successful cao-dashboard.yml producer runs 37143314789, 37142795904, 37140168022, and 37138088972 showed producer build median/p90 178.5s/336s, with Install dashboard build dependencies only 7.5s median, Assemble Dashboard Language site only 3s median, and Upgrade fallback activity data dominating at 129.5s median/p90 267s. Bounded trusted logs for run 37143314789 confirmed the producer still recopied a 491.2 MiB gh-aw-logs.sqlite plus 336 activity shards totaling 292.3 MiB before uploading a 43,662,726-byte dashboard artifact. Existing open issues #15497 and #15332 already cover the remaining upstream dashboard-input re-upgrade optimization, so no new non-duplicate reusable-dashboard recommendation meets the >=60s or >=15% threshold from this evidence window.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-03T20:16:30Z",
+      "worker_run_id": "37150810169",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37149923583,
+        37149510784,
+        37148820865,
+        37145348172,
+        37144359287,
+        37143675418,
+        37143314770,
+        37142980800,
+        37142412073,
+        37143314789,
+        37142795904,
+        37140168022,
+        37138088972
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across the latest 10 successful completed runs in the last 14 days shows packaging and transfer remain below the action threshold. Workflow median/p90 was 47.5s/67s, build-job median/p90 41s/50.8s, deploy-job median/p90 15s/15s on the only deploying run, and schedule-freshness median/p90 7s/7s on the two successful scheduled skips. Trusted build-step evidence showed Restore node_modules succeeded in all 8 executed builds with 5s median, while Install dependencies and Save node_modules were skipped in all 8; Restore cached CAO Dashboard also succeeded in all 8 builds with 2s median, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 8, confirming cache hits from execution metadata rather than syntax. Upload Pages artifact took only 9s median/p90 10s and Build documentation 13s median/p90 14s. Cross-checking recent successful cao-dashboard.yml producer runs 37143314789, 37142795904, 37140168022, and 37138088972 showed producer build median/p90 178.5s/226.2s, with Upload dashboard artifact only 8s median/p90 8.7s while Upgrade fallback activity data dominated at 129.5s median/p90 226.2s. Bounded trusted logs for runs 37143314789 and 37142795904 confirmed the producer still recopies a 491.2-492.5 MiB gh-aw-logs.sqlite plus 336-339 activity shards totaling 292.3-294.1 MiB before uploading a 43.7-43.8 MiB dashboard artifact. Even eliminating docs-side packaging would save well under the required >=60s absolute or >=15% of current median docs execution time, and the upstream producer costs already overlap existing reusable-dashboard issues #15497 and #15332. Repository issue search could not verify open duplicates because GitHub Issues are disabled in githubnext/gh-aw-cao.",
       "suggestion_fingerprint": null
     }
   ]
