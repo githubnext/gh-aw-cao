@@ -50,23 +50,45 @@ func validateBenchmarkEvidence(counts map[string]int) (int, error) {
 	return records, nil
 }
 
+// benchmarkPostgresRejectionStage identifies which stage of
+// benchmarkPostgresConfig's local-only validation failed, so a
+// misconfigured --postgres-url or CAO_POSTGRES_URL is diagnosable without
+// logging the endpoint itself, which can contain credentials.
+type benchmarkPostgresRejectionStage string
+
+const (
+	benchmarkPostgresRejectionStageParse    benchmarkPostgresRejectionStage = "parse"
+	benchmarkPostgresRejectionStagePrimary  benchmarkPostgresRejectionStage = "primary-host"
+	benchmarkPostgresRejectionStageFallback benchmarkPostgresRejectionStage = "fallback-host"
+)
+
+// isLocalPostgresHost reports whether host is safe for the benchmark
+// command to connect to: a Unix socket directory (an absolute path) or a
+// loopback IP address. It is a pure function extracted from
+// benchmarkPostgresConfig's inline closure so the loopback-versus-remote
+// decision is independently testable against host strings, without
+// constructing a pgx.ConnConfig.
+func isLocalPostgresHost(host string) bool {
+	if filepath.IsAbs(host) {
+		return true // pgx treats an absolute host path as a Unix socket directory.
+	}
+	addr, err := netip.ParseAddr(host)
+	return err == nil && addr.IsLoopback()
+}
+
 func benchmarkPostgresConfig(endpoint string) (*pgx.ConnConfig, error) {
 	config, err := pgx.ParseConfig(endpoint)
 	if err != nil {
+		benchmarkLog.Printf("benchmark postgres config rejected stage=%s", benchmarkPostgresRejectionStageParse)
 		return nil, errors.New("invalid benchmark Postgres configuration")
 	}
-	local := func(host string) bool {
-		if filepath.IsAbs(host) {
-			return true // pgx treats an absolute host path as a Unix socket directory.
-		}
-		addr, err := netip.ParseAddr(host)
-		return err == nil && addr.IsLoopback()
-	}
-	if !local(config.Host) {
+	if !isLocalPostgresHost(config.Host) {
+		benchmarkLog.Printf("benchmark postgres config rejected stage=%s", benchmarkPostgresRejectionStagePrimary)
 		return nil, errors.New("benchmark Postgres endpoint must be loopback or a Unix socket")
 	}
 	for _, fallback := range config.Fallbacks {
-		if fallback == nil || !local(fallback.Host) {
+		if fallback == nil || !isLocalPostgresHost(fallback.Host) {
+			benchmarkLog.Printf("benchmark postgres config rejected stage=%s", benchmarkPostgresRejectionStageFallback)
 			return nil, errors.New("benchmark Postgres fallback must be loopback or a Unix socket")
 		}
 	}

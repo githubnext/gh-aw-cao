@@ -79,6 +79,28 @@ func TestBenchmarkPostgresConfigRejectsRemoteEnvironmentFallback(t *testing.T) {
 	}
 }
 
+func TestIsLocalPostgresHost(t *testing.T) {
+	for _, tc := range []struct {
+		name, host string
+		local      bool
+	}{
+		{"ipv4 loopback", "127.0.0.1", true},
+		{"ipv6 loopback", "::1", true},
+		{"unix socket directory", "/var/run/postgresql", true},
+		{"relative path is not a socket directory", "var/run/postgresql", false},
+		{"remote ip", "192.0.2.1", false},
+		{"hostname", "db.example.com", false},
+		{"localhost dns name is not a parsed loopback address", "localhost", false},
+		{"empty host", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isLocalPostgresHost(tc.host); got != tc.local {
+				t.Fatalf("isLocalPostgresHost(%q) = %t, want %t", tc.host, got, tc.local)
+			}
+		})
+	}
+}
+
 func TestBenchmarkNamespaceUnique(t *testing.T) {
 	first, err := newBenchmarkNamespace()
 	if err != nil {
