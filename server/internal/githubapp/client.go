@@ -77,6 +77,7 @@ type Repository struct {
 	PushedAt   time.Time
 	Private    bool
 	Visibility string
+	Archived   bool
 }
 
 // WorkflowRun is the stable run identity needed by historical collection.
@@ -222,6 +223,7 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 					PushedAt:   repository.GetPushedAt().Time,
 					Private:    repository.GetPrivate(),
 					Visibility: repository.GetVisibility(),
+					Archived:   repository.GetArchived(),
 				})
 			}
 		}

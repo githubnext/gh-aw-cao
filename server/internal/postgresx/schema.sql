@@ -35,6 +35,20 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   CHECK (freshness IN ('current','stale','unknown'))
 );
 
+CREATE TABLE IF NOT EXISTS cao_repository_lifecycle (
+  namespace TEXT NOT NULL,
+  id TEXT NOT NULL,
+  owner TEXT NOT NULL,
+  name TEXT NOT NULL,
+  lifecycle TEXT NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (namespace, id),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (lifecycle IN ('active','archived','deleted'))
+);
+
+CREATE INDEX IF NOT EXISTS cao_repository_lifecycle_coordinate ON cao_repository_lifecycle (namespace, owner, name);
+
 CREATE TABLE IF NOT EXISTS repositories (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
@@ -52,11 +66,12 @@ CREATE TABLE IF NOT EXISTS repositories (
   repository_link_href TEXT,
   repository_link_label TEXT,
   rollout_mode TEXT,
+  lifecycle TEXT,
   visibility TEXT,
 
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 14),
+  CHECK (bit_length(present_fields) = 15),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
 );
 

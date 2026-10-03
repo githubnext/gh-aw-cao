@@ -23,7 +23,7 @@ const (
 	IntentCollect IntentKind = "collect"
 	// IntentIssueStatus refreshes the enrolled repository after an issue event.
 	IntentIssueStatus IntentKind = "issue-status"
-	IntentRepository IntentKind = "repository"
+	IntentRepository  IntentKind = "repository"
 	// IntentEnroll adds repositories to the enrollment set.
 	IntentEnroll IntentKind = "enroll"
 	// IntentUnenroll removes repositories from the enrollment set.
@@ -107,27 +107,6 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 		intent = Intent{Kind: IntentIgnore}
 	}
 
-	func parseRepositoryEvent(envelope webhookEnvelope) Intent {
-		state := ""
-		switch envelope.Action {
-		case "created", "unarchived":
-			state = "active"
-		case "archived":
-			state = "archived"
-		case "deleted":
-			state = "deleted"
-		}
-		if state == "" || envelope.Installation.ID <= 0 || envelope.Repository.ID <= 0 {
-			return Intent{Kind: IntentIgnore}
-		}
-		repository, err := NormalizeRepository(envelope.Repository.FullName)
-		if err != nil {
-			return Intent{Kind: IntentIgnore}
-		}
-		return Intent{Kind: IntentRepository, Repository: repository, RepositoryID: envelope.Repository.ID,
-			InstallationID: envelope.Installation.ID, Lifecycle: state, Reason: "repository." + envelope.Action}
-	}
-
 	if err != nil {
 		return Intent{}, err
 	}
@@ -136,6 +115,27 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	// logging every delivery cannot flood the log.
 	eventsLog.Printf("classified webhook event=%s kind=%s", trimmedEvent, intent.Kind)
 	return intent, nil
+}
+
+func parseRepositoryEvent(envelope webhookEnvelope) Intent {
+	state := ""
+	switch envelope.Action {
+	case "created", "unarchived":
+		state = "active"
+	case "archived":
+		state = "archived"
+	case "deleted":
+		state = "deleted"
+	}
+	if state == "" || envelope.Installation.ID <= 0 || envelope.Repository.ID <= 0 {
+		return Intent{Kind: IntentIgnore}
+	}
+	repository, err := NormalizeRepository(envelope.Repository.FullName)
+	if err != nil {
+		return Intent{Kind: IntentIgnore}
+	}
+	return Intent{Kind: IntentRepository, Repository: repository, RepositoryID: envelope.Repository.ID,
+		InstallationID: envelope.Installation.ID, Lifecycle: state, Reason: "repository." + envelope.Action}
 }
 
 func parseIssueEvent(envelope webhookEnvelope) Intent {

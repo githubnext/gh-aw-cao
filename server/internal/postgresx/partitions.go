@@ -66,7 +66,61 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 			return err
 		}
 	}
-	return nil
+	return s.purgeInactiveRepositories(ctx, cutoff)
+}
+
+func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
+		return err
+	}
+	// Keep the identity while any historical or inventory record still refers
+	// to it. Retired identities become eligible only after the retention window.
+	rows, err := tx.QueryContext(ctx, `SELECT l.id FROM cao_repository_lifecycle l
+		WHERE l.namespace=$1 AND l.lifecycle IN ('deleted','archived') AND l.changed_at<$2
+		AND NOT EXISTS (SELECT 1 FROM workflows w WHERE w.namespace=l.namespace AND w.repository_id=l.id)
+		AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.namespace=l.namespace AND r.repository_id=l.id)
+		AND NOT EXISTS (SELECT 1 FROM operational_values v WHERE v.namespace=l.namespace AND v.repository_id=l.id)`,
+		s.namespace, cutoff)
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM repositories WHERE namespace=$1 AND id=$2`, s.namespace, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM cao_repository_lifecycle WHERE namespace=$1 AND id=$2`, s.namespace, id); err != nil {
+			return err
+		}
+	}
+	if len(ids) > 0 {
+		if _, err := tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1 WHERE namespace=$1`, s.namespace); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE cao_quality SET row_count=(SELECT count(*) FROM repositories WHERE namespace=$1)
+			WHERE namespace=$1 AND collection='$repositories'`, s.namespace); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[string]bool, []time.Time, error) {

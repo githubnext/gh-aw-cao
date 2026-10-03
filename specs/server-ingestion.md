@@ -299,6 +299,25 @@ per installation.
 The evidence lake is retained evidence rather than a cache, so retention is a
 governed property and not an accident of disk usage.
 
+- A signed `repository` delivery with action `created`, `deleted`, `archived`,
+  or `unarchived` and a valid repository ID and installation MUST be admitted
+  only for a repository already covered by that installation. Admission MUST
+  durably queue an independent lifecycle update (without collapsing successive
+  archive/unarchive transitions); the worker MUST serialize it with collection
+  for that repository. The database MUST preserve the repository's immutable
+  identity and lifecycle state across canonical projection replacements. A
+  newly created enrolled repository MAY be inserted before its first snapshot.
+  Deleted and archived repositories MUST be excluded from repository discovery
+  while their retained historical rows remain queryable; unarchiving restores
+  discovery. GitHub installation enumeration MUST skip archived repositories
+  when scheduling historical collection without revoking their enrollment.
+- Repository deletion or archiving is **not** withdrawal of the installation's
+  authority. Retain evidence until its normal retention boundary. Maintenance
+  MAY purge an inactive repository only after the configured retention window
+  and after all referencing evidence and inventory rows have expired. Consent
+  withdrawal (`installation.deleted`, `installation.suspend`, or
+  `installation_repositories.removed`) still takes precedence and MUST erase
+  evidence immediately under the rules below.
 - Leaving ingestion scope MUST erase retained evidence. When an installation is
   deleted or suspended, or repositories are removed from it, an implementation
   MUST delete that repository's shards from the evidence lake and MUST request a
@@ -396,7 +415,11 @@ The supported scenario controls are:
 - `replay_count` to redeliver the most recent generated window using its
   original delivery IDs; and
 - `remove_repositories` to emit a repository-removal event after workflow
-  traffic.
+  traffic; and
+- `create_repositories`, `archive_repositories`, `unarchive_repositories`, and
+  `delete_repositories` to emit signed lifecycle deliveries for the first
+  synthetic repository. Unarchiving requires archiving. The fake GitHub API
+  MUST represent the resulting archived/deleted state.
 
   An optional `history` object MAY generate 1-31 days with a positive
   `runs_per_day` and an explicit RFC3339 `as_of`. Historical generation MUST be

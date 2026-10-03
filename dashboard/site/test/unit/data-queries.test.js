@@ -12,6 +12,7 @@ import {
 } from '../../src/data/queries/declarative.js';
 import { computeValue, tidy } from '../../src/data-operations.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import databaseQueries from '../../src/data/queries/database.json' with { type: 'json' };
 
 /**
  * @param {string} id
@@ -378,6 +379,21 @@ describe('declarative dashboard queries', () => {
     expect(result['overview-registered-repository-summary'].rows).toEqual([
       { 'registered-repositories': 6 }
     ]);
+  });
+
+  it('excludes archived and deleted repositories from discovery without dropping historical sources', () => {
+    const rows = [
+      { id: 'a', owner: 'octo', name: 'active' },
+      { id: 'b', owner: 'octo', name: 'archived', lifecycle: 'archived' },
+      { id: 'c', owner: 'octo', name: 'deleted', lifecycle: 'deleted' },
+      { id: 'd', owner: 'octo', name: 'restored', lifecycle: 'active' }
+    ];
+    const sources = {
+      '$repositories': { source: '$repositories', rows, metadata: metadata('$repositories') }
+    };
+    const result = executeDashboardQueries(databaseQueries, sources, ['repositories']);
+    expect(result.repositories.rows.map((row) => row.id)).toEqual(['a', 'd']);
+    expect(rows).toHaveLength(4);
   });
 
   it('executes built-in aggregate-local filters with the same filtered totals', () => {

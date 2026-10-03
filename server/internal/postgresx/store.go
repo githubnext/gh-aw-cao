@@ -38,6 +38,10 @@ type Store struct {
 	maintenanceDone sync.WaitGroup
 }
 
+// Open reports whether the store has a database handle. A zero-valued Store
+// is useful only as a test seam, not as a source of revision state.
+func (s *Store) Open() bool { return s != nil && s.db != nil }
+
 type NativeReader interface {
 	State(context.Context) (State, error)
 	ExecuteSQLPlan(context.Context, []query.Definition, []string) (map[string]model.Source, model.Metrics, error)

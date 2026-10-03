@@ -43,6 +43,10 @@ type Scenario struct {
 	Delay                    string      `json:"delay"`
 	ReplayCount              int         `json:"replay_count"`
 	RemoveRepositories       bool        `json:"remove_repositories"`
+	CreateRepositories       bool        `json:"create_repositories,omitempty"`
+	ArchiveRepositories      bool        `json:"archive_repositories,omitempty"`
+	UnarchiveRepositories    bool        `json:"unarchive_repositories,omitempty"`
+	DeleteRepositories       bool        `json:"delete_repositories,omitempty"`
 	API                      []APIWindow `json:"api"`
 	// RateLimit optionally meters GitHub API traffic with a fixed-window
 	// primary rate limit, so load tests can exhaust a deliberately low budget.
@@ -147,6 +151,9 @@ func (s Scenario) Validate() error {
 	}
 	if s.ReplayCount < 0 || s.ReplayCount > s.Repositories*s.EventsPerRepository {
 		return errors.New("simulator replay_count exceeds generated workflow events")
+	}
+	if s.UnarchiveRepositories && !s.ArchiveRepositories {
+		return errors.New("simulator unarchive_repositories requires archive_repositories")
 	}
 	if s.WebhookRetryLimit < 0 || s.WebhookRetryLimit > 30 {
 		return errors.New("simulator webhook_retry_limit must be between 0 and 30")
@@ -260,6 +267,14 @@ func (s Scenario) Generate() ([]Delivery, error) {
 			return nil, err
 		}
 	}
+	if s.CreateRepositories {
+		if err := appendDelivery("repository", map[string]any{
+			"action": "created", "repository": map[string]any{"id": 1, "full_name": repositories[0]},
+			"installation": map[string]int{"id": 1},
+		}, true); err != nil {
+			return nil, err
+		}
+	}
 
 	workflowEvents := make([]Delivery, 0, s.Repositories*s.EventsPerRepository)
 	for i := 0; i < s.Repositories*s.EventsPerRepository; i++ {
@@ -327,6 +342,20 @@ func (s Scenario) Generate() ([]Delivery, error) {
 			"repositories_added": []any{}, "repositories_removed": []map[string]string{
 				{"full_name": repositories[0]},
 			},
+		}, false); err != nil {
+			return nil, err
+		}
+	}
+	for _, event := range []struct {
+		enabled bool
+		action  string
+	}{{s.ArchiveRepositories, "archived"}, {s.UnarchiveRepositories, "unarchived"}, {s.DeleteRepositories, "deleted"}} {
+		if !event.enabled {
+			continue
+		}
+		if err := appendDelivery("repository", map[string]any{
+			"action": event.action, "repository": map[string]any{"id": 1, "full_name": repositories[0]},
+			"installation": map[string]int{"id": 1},
 		}, false); err != nil {
 			return nil, err
 		}

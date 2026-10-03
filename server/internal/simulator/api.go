@@ -155,7 +155,7 @@ func NewAPIHandler(scenario Scenario, timeScale float64) (*API, error) {
 			_ = json.NewEncoder(writer).Encode(payload)
 			return
 		}
-		writeGitHubSuccess(writer, request, rate)
+		writeGitHubSuccess(writer, request, rate, scenario)
 	}
 	mux.HandleFunc("GET /healthz", func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
@@ -363,7 +363,7 @@ func writeFailure(writer http.ResponseWriter, window APIWindow) bool {
 	return true
 }
 
-func writeGitHubSuccess(writer http.ResponseWriter, request *http.Request, rate rateHeaders) {
+func writeGitHubSuccess(writer http.ResponseWriter, request *http.Request, rate rateHeaders, scenario Scenario) {
 	setRateHeaders(writer, rate)
 	writer.Header().Set("Content-Type", "application/json")
 	switch {
@@ -395,10 +395,15 @@ func writeGitHubSuccess(writer http.ResponseWriter, request *http.Request, rate 
 	case strings.HasPrefix(request.URL.Path, "/repos/"):
 		parts := strings.Split(strings.Trim(request.URL.Path, "/"), "/")
 		if len(parts) >= 3 {
+			if scenario.DeleteRepositories && parts[1]+"/"+parts[2] == repositoryName(0) {
+				writeNotFound(writer)
+				return
+			}
 			_ = json.NewEncoder(writer).Encode(map[string]any{
 				"id":        1,
 				"full_name": parts[1] + "/" + parts[2],
 				"private":   false,
+				"archived":  scenario.ArchiveRepositories && !scenario.UnarchiveRepositories && parts[1]+"/"+parts[2] == repositoryName(0),
 				"owner":     map[string]string{"login": parts[1]},
 			})
 			return

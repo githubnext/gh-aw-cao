@@ -153,15 +153,17 @@ func (s *Store) StreamEnqueueDelivery(
 	if redis.call("EXISTS", KEYS[1]) == 1 then
 	  return 0
 	end
-	if redis.call("EXISTS", KEYS[3]) == 1 then
+	if ARGV[4] == "1" and redis.call("EXISTS", KEYS[3]) == 1 then
 	  redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
 	  return 1
 	end
 	if ARGV[3] ~= "0" and redis.call("XLEN", KEYS[2]) + redis.call("ZCARD", KEYS[4]) >= tonumber(ARGV[3]) then
 	  return -1
 	end
-	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 4))
-	redis.call("SET", KEYS[3], "1", "PX", ARGV[2])
+	redis.call("XADD", KEYS[2], "*", unpack(ARGV, 5))
+	if ARGV[4] == "1" then
+	  redis.call("SET", KEYS[3], "1", "PX", ARGV[2])
+	end
 	redis.call("SET", KEYS[1], "1", "PX", ARGV[1])
 	return 2`
 	arguments := appendStreamFields([]string{
@@ -169,6 +171,7 @@ func (s *Store) StreamEnqueueDelivery(
 		strconv.FormatInt(deliveryTTL.Milliseconds(), 10),
 		strconv.FormatInt(debounceTTL.Milliseconds(), 10),
 		strconv.FormatInt(maxLength, 10),
+		map[bool]string{true: "1", false: "0"}[debounceKey != ""],
 	}, fields)
 	value, err := s.Client.Do(ctx, arguments...)
 	if err != nil {

@@ -275,6 +275,9 @@ func normalizeEnumeratedRepositories(covered []githubapp.Repository) (names []st
 			continue
 		}
 		names = append(names, normalized)
+		if repository.Archived {
+			continue
+		}
 		repositories = append(repositories, enrolledRepository{
 			name: normalized, pushedAt: repository.PushedAt,
 		})

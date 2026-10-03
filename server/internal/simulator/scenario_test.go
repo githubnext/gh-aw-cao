@@ -104,6 +104,7 @@ func TestGenerateIssueLifecycleDeliveries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var actions []string
 	for _, delivery := range deliveries {
 		if delivery.Event != "issues" {
@@ -145,6 +146,61 @@ func TestGenerateIssueLifecycleDeliveries(t *testing.T) {
 	}
 	if _, err := LoadScenario([]byte(`{"name":"too-many","repositories":2,"events_per_repository":500000,"issue_events_per_repository":1}`)); err == nil {
 		t.Fatal("accepted a combined event count over the limit")
+	}
+}
+
+func TestGenerateRepositoryLifecycleDeliveries(t *testing.T) {
+	scenario := Scenario{Name: "repository-lifecycle", Repositories: 1,
+		CreateRepositories: true, ArchiveRepositories: true, UnarchiveRepositories: true, DeleteRepositories: true}
+	deliveries, err := scenario.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var actions []string
+	for _, delivery := range deliveries {
+		if delivery.Event != "repository" {
+			continue
+		}
+		var payload struct {
+			Action     string `json:"action"`
+			Repository struct {
+				ID       int64  `json:"id"`
+				FullName string `json:"full_name"`
+			} `json:"repository"`
+		}
+		if err := json.Unmarshal(delivery.Payload, &payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Repository.ID != 1 || payload.Repository.FullName != "simulator/repo-00001" {
+			t.Fatalf("invalid repository delivery: %+v", payload)
+		}
+		actions = append(actions, payload.Action)
+	}
+	want := []string{"created", "archived", "unarchived", "deleted"}
+	if len(actions) != len(want) {
+		t.Fatalf("actions = %v, want %v", actions, want)
+	}
+	for i := range want {
+		if actions[i] != want[i] {
+			t.Fatalf("actions = %v, want %v", actions, want)
+		}
+	}
+	if _, err := LoadScenario([]byte(`{"name":"invalid","repositories":1,"unarchive_repositories":true}`)); err == nil {
+		t.Fatal("unarchive without archive was accepted")
+	}
+	scenario.Repositories = 150
+	deliveries, err = scenario.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := 0
+	for _, delivery := range deliveries {
+		if delivery.Event == "repository" && delivery.Bootstrap {
+			created++
+		}
+	}
+	if created != 1 {
+		t.Fatalf("multi-page installation emitted %d created deliveries, want one", created)
 	}
 }
 

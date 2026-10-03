@@ -95,6 +95,7 @@ func (s Scenario) historyResponse(writer http.ResponseWriter, request *http.Requ
 			repositories = append(repositories, map[string]any{
 				"id": index + 1, "full_name": repositoryName(index), "private": false,
 				"visibility": "public", "pushed_at": s.History.AsOf,
+				"archived": index == 0 && s.ArchiveRepositories && !s.UnarchiveRepositories,
 			})
 		}
 		return map[string]any{"total_count": s.Repositories, "repositories": repositories}, true, nil

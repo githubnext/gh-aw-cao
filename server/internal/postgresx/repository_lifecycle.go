@@ -12,9 +12,12 @@ import (
 
 // UpdateRepositoryLifecycle records a verified, enrolled repository delivery.
 // The collector state is independent of the replaceable canonical projection.
-func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, repository, lifecycle string) error {
+func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, repository, lifecycle string, admittedAt time.Time) error {
 	if githubID <= 0 || (lifecycle != "active" && lifecycle != "archived" && lifecycle != "deleted") {
 		return errors.New("invalid repository lifecycle update")
+	}
+	if admittedAt.IsZero() {
+		return errors.New("repository lifecycle admission timestamp is required")
 	}
 	owner, name, ok := strings.Cut(repository, "/")
 	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
@@ -35,10 +38,12 @@ func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, r
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO cao_repository_lifecycle(namespace,id,owner,name,lifecycle,changed_at)
 		VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(namespace,id) DO UPDATE SET
-		owner=excluded.owner,name=excluded.name,lifecycle=excluded.lifecycle,changed_at=excluded.changed_at`,
-		s.namespace, id, owner, name, lifecycle, time.Now().UTC()); err != nil {
+		owner=excluded.owner,name=excluded.name,lifecycle=excluded.lifecycle,changed_at=excluded.changed_at
+		WHERE cao_repository_lifecycle.changed_at<=excluded.changed_at`,
+		s.namespace, id, owner, name, lifecycle, admittedAt.UTC()); err != nil {
 		return err
 	}
+
 	if err = overlayRepositoryLifecycle(ctx, s.namespace, func(ctx context.Context, statement string, args ...any) error {
 		_, err := tx.ExecContext(ctx, statement, args...)
 		return err
@@ -49,6 +54,20 @@ func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, r
 		return err
 	}
 	return tx.Commit()
+}
+
+// RepositoryActive reports whether a repository's latest admitted lifecycle
+// still allows fresh collection; unknown repositories remain eligible.
+func (s *Store) RepositoryActive(ctx context.Context, repository string) (bool, error) {
+	owner, name, ok := strings.Cut(repository, "/")
+	if !ok || owner == "" || name == "" {
+		return false, errors.New("invalid repository coordinate")
+	}
+	var inactive bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM cao_repository_lifecycle
+		WHERE namespace=$1 AND owner=$2 AND name=$3 AND lifecycle IN ('archived','deleted'))`,
+		s.namespace, owner, name).Scan(&inactive)
+	return !inactive, err
 }
 
 func repositoryLifecyclePresence() string {

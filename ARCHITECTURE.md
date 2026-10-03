@@ -435,8 +435,14 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   `GET /api/v1/github-quota/usage` and the `github-quota-usage` runtime source
   that the Ingestion page charts. Existing collection budgets do not use this
   service yet.
+- Signed repository lifecycle deliveries are durably queued with collection
+  work; workers preserve archived/deleted repository identities in Postgres
+  without hiding retained history. Declarative discovery excludes inactive
+  repositories, while explicit installation scope withdrawal still erases
+  evidence immediately. Retention maintenance purges inactive identities only
+  after the retention window and their references have expired.
 - The ingestion reliability simulator uses strict, seeded JSON scenarios to
-  generate up to 20,000 synthetic repositories and 1,000,000 workflow and
+  generate up to 50,000 synthetic repositories and 1,000,000 workflow and
   optional issue events combined.
   Signed webhook traffic uses the production endpoint and queue admission path;
   a bounded fake GitHub REST API supplies timed latency, outage, rate-limit, and

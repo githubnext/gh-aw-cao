@@ -244,6 +244,7 @@
         ]
       }
     ],
+    "filter": { "predicates": [{ "field": "lifecycle", "in": [null, "active"] }] },
     "select": [
       { "field": "id" },
       { "field": "owner", "as": "organization" },

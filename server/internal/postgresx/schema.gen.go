@@ -17,6 +17,7 @@ var entityTables = map[string]entityTable{
 		{field: "repositoryLink.href", name: "repository_link_href", kind: "", sql: "TEXT"},
 		{field: "repositoryLink.label", name: "repository_link_label", kind: "", sql: "TEXT"},
 		{field: "rolloutMode", name: "rollout_mode", kind: "", sql: "TEXT"},
+		{field: "lifecycle", name: "lifecycle", kind: "", sql: "TEXT"},
 		{field: "visibility", name: "visibility", kind: "", sql: "TEXT"},
 	}},
 	"$workflows": {name: "workflows", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{

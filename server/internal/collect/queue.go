@@ -36,9 +36,9 @@ type Task struct {
 	// Erase requests deletion of the repository's retained evidence instead of
 	// collection. An admission-only process has no evidence lake, so
 	// withdrawing consent is queued for a worker that does.
-	Erase bool `json:"erase,omitempty"`
-	RepositoryID int64 `json:"repositoryId,omitempty"`
-	Lifecycle string `json:"lifecycle,omitempty"`
+	Erase        bool   `json:"erase,omitempty"`
+	RepositoryID int64  `json:"repositoryId,omitempty"`
+	Lifecycle    string `json:"lifecycle,omitempty"`
 }
 
 // RunTask is one durable historical workflow-run item. Key is the stable
