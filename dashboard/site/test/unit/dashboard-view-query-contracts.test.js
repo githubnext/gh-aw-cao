@@ -558,6 +558,30 @@ describe('dashboard view query contracts', () => {
     });
   });
 
+  it('compiles each operational-value source independently with campaign scope', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
+    );
+    const sourceNames = [
+      'campaign-operational-value-primary-series',
+      'campaign-operational-value-run-days',
+      'campaign-operational-value-evidence-state'
+    ];
+    for (const sourceName of sourceNames) {
+      const payload = compileDashboardViewPayloadQueries(page, 'campaign-insights', {
+        viewId: 'campaign-operational-value-history',
+        sourceNames: [sourceName],
+        routeParameters: { campaign: 'optimization' },
+        queries
+      });
+      expect(payload.aliases).toHaveLength(1);
+      expect(payload.queries.at(-1)).toMatchObject({
+        name: payload.aliases[0],
+        filter: { predicates: [{ field: 'campaign', equals: 'optimization' }] }
+      });
+    }
+  });
+
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
