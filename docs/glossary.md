@@ -34,6 +34,10 @@ A general description for work performed with limited manual intervention. Autom
 
 Continuous centralized agentic work that pursues your goals for your enterprise as a whole.
 
+## Campaign intelligence contract
+
+A stable, versioned, descriptive record compiled for an installed campaign and its worker workflows, containing the repository-native problem, eligible-opportunity population, intended outcome, target population, trigger and schedule, resource envelope, and other semantic fields defined in the intelligence specification. A campaign intelligence contract is derived evidence only: it MUST NOT grant rollout, target, credential, or write authority, and an undeclared field remains `null` rather than an inferred observation.
+
 ## Canonical data
 
 The consistent entities, identities, and relationships produced by applying the dashboard data model to published activity evidence. Canonical data is source-neutral derived state, not a new source of authority.
