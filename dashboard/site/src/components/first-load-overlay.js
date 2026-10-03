@@ -1,9 +1,10 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { effect, render } from '../reactive.js';
+import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad } from '../browser-first-load.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
+import { createFirstLoadMessagePicker, FIRST_LOAD_MESSAGE_INTERVAL_MS } from './first-load-messages.js';
 
 /**
  * Browser-local import presentation cannot be expressed as a canonical data query.
@@ -26,6 +27,13 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
     onClick: retry
   }, 'Retry import');
   const title = h('h2');
+  const message = h('p', { className: 'first-load-message', 'aria-live': 'off' });
+  const nextMessage = createFirstLoadMessagePicker();
+  const currentMessage = state(nextMessage());
+  const rotating = derived(() => {
+    const current = browserFirstLoad.get();
+    return current.status === 'loading' && !current.dismissed;
+  }, { signal });
   const status = h('p', { className: 'first-load-status', role: 'status' });
   const progress = h('div', { className: 'first-load-progress' });
   const dismissControl = renderCloseButton({
@@ -41,6 +49,7 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
     h('p', { className: 'first-load-description' },
       'This browser does not have a dashboard snapshot yet. We are downloading the published activity data and building a local database so you can explore your campaigns.'),
     progress,
+    message,
     status,
     h('ol', { className: 'first-load-steps' },
       h('li', null, h('strong', null, 'Download'), h('span', null, 'Collect the latest published snapshot')),
@@ -60,6 +69,13 @@ export function mountFirstLoadOverlay({ document, signal, retry }) {
   render(title, () => browserFirstLoad.get().status === 'failed'
     ? 'The first import could not finish.'
     : 'Making room for your campaigns.', { signal });
+  render(message, () => currentMessage.get(), { signal });
+  effect(() => {
+    message.hidden = !rotating.get();
+    if (!rotating.get()) return;
+    const timer = setInterval(() => currentMessage.set(nextMessage()), FIRST_LOAD_MESSAGE_INTERVAL_MS);
+    onCleanup(() => clearInterval(timer));
+  }, { signal });
   render(status, () => {
     const current = browserFirstLoad.get();
     if (current.status === 'failed') return 'Campaign status is not available yet. Retry the import to finish preparing your dashboard.';

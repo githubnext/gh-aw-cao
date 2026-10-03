@@ -47,7 +47,10 @@ than calling campaigns idle. The import screen closes when a complete snapshot
 is ready. If preparation fails or is cancelled, Overview reports an incomplete
 import and lets you reopen the screen to retry. Later visits use the cached
 snapshot during refresh. Backend-backed dashboards do not use this browser-local
-first-import experience.
+first-import experience. While the import screen is visible, 100 friendly notes
+rotate randomly every six seconds without repeating within a cycle. These notes
+are separate from factual import progress and pause when the screen is dismissed
+or the import is no longer running.
 
 ## Read a result
 

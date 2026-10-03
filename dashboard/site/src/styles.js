@@ -1615,6 +1615,7 @@ main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 
 .first-load-card h2 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.5rem); line-height: 1.15; font-weight: 600; }
 .first-load-description { margin: 16px 0 24px; color: var(--muted); line-height: 1.6; }
 .first-load-progress progress { display: block; width: 100%; height: 8px; accent-color: var(--accent); }
+.first-load-message { min-height: 3em; margin: 16px 0 0; color: var(--accent); font-size: .875rem; line-height: 1.5; }
 .first-load-status { margin: 12px 0 24px; color: var(--muted); font-size: .8125rem; line-height: 1.5; }
 .first-load-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0 0 24px; padding: 20px 0; border-block: 1px solid var(--border-muted); list-style: none; }
 .first-load-steps strong, .first-load-steps span { display: block; font-size: .8125rem; line-height: 1.5; }

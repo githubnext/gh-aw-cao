@@ -3,6 +3,7 @@ import { browserFirstLoad, showBrowserFirstLoad } from '../../src/browser-first-
 import { mountFirstLoadOverlay } from '../../src/components/first-load-overlay.js';
 import { renderFactoryHeader } from '../../src/components/factory-header.js';
 import { scopedStorageKey } from '../../src/storage-scope.js';
+import { createFirstLoadMessagePicker, FIRST_LOAD_MESSAGES, FIRST_LOAD_MESSAGE_INTERVAL_MS } from '../../src/components/first-load-messages.js';
 
 let owner = new AbortController();
 
@@ -16,9 +17,67 @@ afterEach(() => {
   owner.abort();
   browserFirstLoad.set({ status: 'inactive', dismissed: false });
   localStorage.removeItem(scopedStorageKey('central-agentic-ops.dashboard.theme'));
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('browser first-load presentation', () => {
+  it('contains exactly 100 distinct messages and visits every message once per randomized cycle', () => {
+    expect(FIRST_LOAD_MESSAGES).toHaveLength(100);
+    expect(new Set(FIRST_LOAD_MESSAGES).size).toBe(100);
+    for (const message of FIRST_LOAD_MESSAGES) {
+      expect(message).toBe(message.trim());
+      expect(message.length).toBeLessThanOrEqual(72);
+      expect(message).toMatch(/^[\x20-\x7e]+$/);
+    }
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const next = createFirstLoadMessagePicker();
+    const firstCycle = Array.from({ length: 100 }, next);
+    const secondCycle = Array.from({ length: 100 }, next);
+    expect(new Set(firstCycle).size).toBe(100);
+    expect(new Set(secondCycle).size).toBe(100);
+    expect(firstCycle.toSorted()).toEqual(FIRST_LOAD_MESSAGES.toSorted());
+    expect(secondCycle[0]).not.toBe(firstCycle.at(-1));
+    expect(firstCycle).not.toEqual(FIRST_LOAD_MESSAGES);
+  });
+
+  it('rotates at six-second intervals without progress updates restarting the timer', () => {
+    vi.useFakeTimers();
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    const message = document.querySelector('.first-load-message');
+    const original = message?.textContent;
+    expect(FIRST_LOAD_MESSAGES).toContain(original);
+    expect(message?.getAttribute('aria-live')).toBe('off');
+    vi.advanceTimersByTime(FIRST_LOAD_MESSAGE_INTERVAL_MS / 2);
+    browserFirstLoad.set({ status: 'loading', dismissed: false, completed: 1, total: 5 });
+    vi.advanceTimersByTime(FIRST_LOAD_MESSAGE_INTERVAL_MS / 2);
+    expect(message?.textContent).not.toBe(original);
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('1 of 5');
+  });
+
+  it('pauses rotation when dismissed, failed or complete and releases its timer on abort', () => {
+    vi.useFakeTimers();
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    const message = document.querySelector('.first-load-message');
+    browserFirstLoad.set({ status: 'loading', dismissed: true });
+    const original = message?.textContent;
+    vi.advanceTimersByTime(FIRST_LOAD_MESSAGE_INTERVAL_MS * 2);
+    expect(message?.textContent).toBe(original);
+    expect(vi.getTimerCount()).toBe(0);
+    showBrowserFirstLoad();
+    vi.advanceTimersByTime(FIRST_LOAD_MESSAGE_INTERVAL_MS);
+    expect(message?.textContent).not.toBe(original);
+    browserFirstLoad.set({ status: 'failed', dismissed: false });
+    expect(message?.hasAttribute('hidden')).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    browserFirstLoad.set({ status: 'inactive', dismissed: false });
+    expect(vi.getTimerCount()).toBe(0);
+    browserFirstLoad.set({ status: 'loading', dismissed: false });
+    expect(vi.getTimerCount()).toBe(1);
+    owner.abort();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('explains the import, reports actual file progress, and dismisses without cancelling', () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     const dialog = document.querySelector('dialog');
