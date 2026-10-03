@@ -194,3 +194,36 @@ func TestServerLogsRouteRequiresAuthenticationAndOptIn(t *testing.T) {
 		})
 	}
 }
+
+func TestCollectionQueueCounts(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		client      logCounterClient
+		wantDepth   int64
+		wantPending int64
+		wantDead    int64
+		wantErr     bool
+	}{
+		{"available", logCounterClient{}, 3, 4, 5, false},
+		{"unavailable", logCounterClient{queueErr: errors.New("private queue detail")}, 0, 0, 0, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := redisx.NewStore(test.client, "queue-test")
+			queue := collect.Queue{Store: store}
+			depth, pending, dead, err := collectionQueueCounts(t.Context(), queue)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if depth != test.wantDepth || pending != test.wantPending || dead != test.wantDead {
+				t.Fatalf("counts = (%d, %d, %d), want (%d, %d, %d)",
+					depth, pending, dead, test.wantDepth, test.wantPending, test.wantDead)
+			}
+		})
+	}
+}
