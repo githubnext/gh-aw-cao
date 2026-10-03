@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-03T19:46:00Z",
+  "last_updated": "2026-10-03T11:03:07Z",
   "status": "needs-work",
   "affected_languages": [
     "javascript"
@@ -102,28 +102,16 @@
     }
   },
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
-    "true_positive_count": 0,
-    "false_positive_count": 0,
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
+    "true_positive_count": 1,
+    "false_positive_count": 15,
     "false_negative_count": 0,
-    "readiness_for_target": "not-applicable",
-    "reason": "No .astro files, no actively-tuned theme CSS, and no test asserting a literal color value exist in this Node.js CLI/Docker firewall repository; the rule's unsafe pattern cannot occur here.",
-    "txn_id": "refiner-37148534961-2"
+    "readiness_for_target": "needs-work",
+    "reason": "Re-confirmed unchanged on HEAD 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since intervening merges (collector workflow fix, account-menu docs) which did not touch evidence files.",
+    "txn_id": "refiner-37118181288-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37148534961",
-  "last_updated_target_repo": "github/gh-aw-firewall",
-  "last_seen_at": "2026-10-03T19:46:00Z",
-  "additional_target_evaluations": [
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
-      "true_positive_count": 1,
-      "false_positive_count": 15,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since intervening merges (collector workflow fix, account-menu docs) which did not touch evidence files.",
-      "txn_id": "refiner-37118181288-1"
-    }
-  ]
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_seen_at": "2026-10-03T11:03:07Z"
 }

@@ -1,0 +1,56 @@
+{
+  "rule_key": "ts-no-duplicate-behavioral-test-in-barrel-reexport-file",
+  "language": "typescript",
+  "additional_languages": [],
+  "unsafe_pattern": "Adding behavioral/table-driven assertions for a re-exported function's actual logic (e.g. parseDifcProxyHost host/port parsing, scheme stripping, IPv6 handling, invalid-port errors; filterCapDrop capability bounding-set filtering) directly into a barrel re-export smoke-test file such as src/docker-manager.test.ts, whose file-header comment states it verifies only that the barrel 're-exports every expected symbol and that each symbol has the expected shape (function)...without duplicating the underlying module tests.' The real function already has a dedicated, more complete behavioral suite elsewhere (src/docker-manager-host-config.test.ts for parseDifcProxyHost; src/capability-filter.ts's own test file for filterCapDrop).",
+  "consequence": "The new assertions pass (the barrel re-export makes them trivially correct) but duplicate coverage already provided by the dedicated module test file, bloat an intentionally symbol-shape-only barrel smoke-test file, and contradict its documented purpose. A human maintainer must manually revert the addition every time, producing a recurring low-value diff and review burden; this happened identically three times from the same automated Test Coverage Improver workflow.",
+  "mechanical_correction": "When adding coverage for a function, first check whether it already has a behavioral test file for its defining module (e.g. via existing `<module>.test.ts` or `<module>-host-config.test.ts` conventions) before adding assertions to a barrel/re-export test file. If the barrel file's header comment states it checks re-export shape only, confine additions there to `typeof x === 'function'`-style shape checks and add real behavioral assertions to the defining module's own test file instead.",
+  "evidence": [
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9308,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated 'test: extend docker-manager barrel tests' commit (87c49c8d) added parseDifcProxyHost behavioral assertions (defaults, scheme stripping, IPv6 brackets, malformed host/port errors) and filterCapDrop capability-filtering assertions directly into src/docker-manager.test.ts (the barrel re-export smoke-test file). A maintainer's follow-up commits 314a3930 ('Remove tests for parseDifcProxyHost') and 6ef9045d ('Remove filterCapDrop capability filtering tests') reverted both additions before merge.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9368,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated 'test: cover parseDifcProxyHost via docker-manager barrel' commit (b0b6134b) re-added the identical parseDifcProxyHost behavioral assertions to src/docker-manager.test.ts. Maintainer commit 6645bd15 ('Remove tests for parseDifcProxyHost') reverted it again before merge, same commit message as #9308's revert.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9408,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated 'test: expand docker-manager barrel tests' commit (6237a56f) added the same parseDifcProxyHost behavioral assertions plus new filterCapDrop/isCapDropSkipped behavioral assertions to src/docker-manager.test.ts. Maintainer commit 82fe4c5b ('Remove tests for parseDifcProxyHost') reverted the parseDifcProxyHost portion again (third time, identical commit message), while the filterCapDrop portion was kept this time.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
+    }
+  ],
+  "occurrence_count": 3,
+  "affected_paths": [
+    "src/docker-manager.test.ts"
+  ],
+  "syntactic_constructs": [
+    "describe('<reexportedFunctionName> via barrel', ...) added inside a *.test.ts file whose header comment documents barrel-shape-only testing scope",
+    "behavioral expect(...).toEqual(...)/toThrow(...) assertions on a re-exported function inside a re-export smoke-test suite"
+  ],
+  "likely_false_positives": "A barrel test file without an explicit 'shape-only, no duplication' scope comment is not a violation; adding the first behavioral test for a function that has no dedicated module test file elsewhere is legitimate and should not be flagged.",
+  "autofix_safe": false,
+  "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
+  "status": "candidate",
+  "last_seen_at": "2026-10-03T19:56:02Z",
+  "last_updated": "2026-10-03T19:56:02Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37147942638",
+  "last_updated_target_repo": "github/gh-aw-firewall"
+}
