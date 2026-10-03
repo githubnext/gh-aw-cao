@@ -3,7 +3,7 @@
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
   "last_updated": "2026-10-03T11:03:07Z",
-  "status": "deprecated",
+  "status": "needs-work",
   "affected_languages": [
     "javascript"
   ],
