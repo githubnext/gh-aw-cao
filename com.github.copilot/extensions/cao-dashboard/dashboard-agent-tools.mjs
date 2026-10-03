@@ -1,43 +1,16 @@
-import { access, readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+import { resolveBundledResource } from "./bundled-resources.mjs";
 
-const extensionDirectory = dirname(fileURLToPath(import.meta.url));
 const maximumSpecificationLines = 400;
 const maximumToolResultBytes = 1_000_000;
 
 export async function executeDashboardQueryRequest({
-  workingDirectory,
   queries,
   sources,
   requested,
 }) {
-  const queryEnginePath = await findFirstExistingPath([
-    join(
-      workingDirectory,
-      "dashboard",
-      "site",
-      "src",
-      "data",
-      "queries",
-      "declarative.js",
-    ),
-    join(
-      workingDirectory,
-      ".github",
-      "aw",
-      "dashboard",
-      "site",
-      "src",
-      "data",
-      "queries",
-      "declarative.js",
-    ),
-    resolve(
-      extensionDirectory,
-      "../../../dashboard/site/src/data/queries/declarative.js",
-    ),
-  ]);
+  const queryEnginePath = await resolveBundledResource("queryEngine");
   const queryEngine = await import(pathToFileURL(queryEnginePath).href);
   if (typeof queryEngine.executeDashboardQueries !== "function") {
     throw new Error(
@@ -77,7 +50,6 @@ export async function executeDashboardQueryRequest({
 }
 
 export async function readDashboardDataSpecification({
-  workingDirectory,
   startLine = 1,
   endLine = startLine + 199,
 }) {
@@ -89,18 +61,7 @@ export async function readDashboardDataSpecification({
       `A specification read is limited to ${maximumSpecificationLines} lines.`,
     );
   }
-  const specificationPath = await findFirstExistingPath([
-    join(workingDirectory, "specs", "dashboard-data.md"),
-    join(
-      workingDirectory,
-      ".github",
-      "aw",
-      "dashboard",
-      "specs",
-      "dashboard-data.md",
-    ),
-    resolve(extensionDirectory, "../../../specs/dashboard-data.md"),
-  ]);
+  const specificationPath = await resolveBundledResource("dataSpecification");
   const lines = (await readFile(specificationPath, "utf8")).split("\n");
   const boundedStart = Math.min(startLine, lines.length + 1);
   const boundedEnd = Math.min(endLine, lines.length);
@@ -150,18 +111,4 @@ function normalizeLogicalSource(name, input) {
       ...(input.metadata ?? {}),
     },
   };
-}
-
-async function findFirstExistingPath(candidates) {
-  for (const candidate of new Set(candidates)) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Continue to the next supported installation layout.
-    }
-  }
-  throw new Error(
-    `Could not find a dashboard resource. Checked: ${candidates.join(", ")}`,
-  );
 }

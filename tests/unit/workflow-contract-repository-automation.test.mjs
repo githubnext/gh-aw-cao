@@ -126,7 +126,7 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   assert.match(contracts, /needs: unit/);
   assert.match(contracts, /if: \$\{\{ !cancelled\(\) \}\}/);
   assert.match(contracts, /UNIT_RESULT: \$\{\{ needs\.unit\.result \}\}/);
-  for (const command of ["lint", "typecheck:cao", "compile"]) {
+  for (const command of ["lint", "typecheck:cao", "typecheck:copilot", "compile"]) {
     assert.ok(contracts.includes(`npm run ${command}\n`), `missing ${command} from contract checks`);
   }
   assert.doesNotMatch(contracts, /test:integration|test:load|check:svg|docs:build|dashboard:server:spec:check/);

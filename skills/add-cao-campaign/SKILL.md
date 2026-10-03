@@ -1,7 +1,8 @@
 ---
 name: add-cao-campaign
 description: "Discover, compare, recommend, or install an existing Central Agentic Ops (CAO) catalog campaign. Use when a user wants to browse the CAO catalog, find an operation for an outcome, compare campaigns, or add a campaign to a control repository safely."
-argument-hint: "Describe the desired operational outcome or name a CAO catalog campaign"
+metadata:
+  argument-hint: "Describe the desired operational outcome or name a CAO catalog campaign"
 ---
 
 # Add a CAO Campaign

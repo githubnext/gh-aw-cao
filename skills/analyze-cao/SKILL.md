@@ -1,9 +1,9 @@
 ---
 name: analyze-cao
 description: Download and query CAO activity data with the cao CLI.
-argument-hint: "[dashboard-data-url-or-owner/repo]"
 allowed-tools: bash jq
 metadata:
+  argument-hint: "[dashboard-data-url-or-owner/repo]"
   version: "1.0.0"
 ---
 
