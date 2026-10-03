@@ -16,12 +16,7 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 	data := integrationPostgres(t, ctx)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	prepareWorkerCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh", "exit 0")
 	node := writeFakeBinary(t, workspace, "node", "exit 0")
 
@@ -114,12 +109,7 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	store, ctx := integrationStore(t)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	prepareWorkerCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh", `echo "rate limited" >&2; exit 1`)
 	node := writeFakeBinary(t, workspace, "node", "exit 0")
 	lake := Lake{Directory: filepath.Join(workspace, "lake")}
@@ -173,5 +163,25 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	}
 	if pending {
 		t.Fatal("a failed collection must not request projection")
+	}
+}
+
+func prepareWorkerCatalog(t *testing.T, catalogRoot string) {
+	t.Helper()
+	for _, directory := range []string{
+		filepath.Join(catalogRoot, "activity"),
+		filepath.Join(catalogRoot, ".github", "workflows"),
+	} {
+		if err := os.MkdirAll(directory, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for path, contents := range map[string]string{
+		filepath.Join(catalogRoot, "activity", "cao.mjs"):                   "//",
+		filepath.Join(catalogRoot, ".github", "workflows", "test.lock.yml"): "name: test\n",
+	} {
+		if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
