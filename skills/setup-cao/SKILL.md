@@ -1,7 +1,8 @@
 ---
 name: setup-cao
 description: "Set up a bare Central Agentic Ops (CAO) control plane. Use when a user asks to create, bootstrap, initialize, install, or get started with CAO. Create or reuse one control repository, install the runtime, establish exact repository scope, configure authentication, and stop before campaign installation or execution."
-argument-hint: "Optionally provide the control repository and repositories CAO should read"
+metadata:
+  argument-hint: "Optionally provide the control repository and repositories CAO should read"
 ---
 
 # Set Up Central Agentic Ops

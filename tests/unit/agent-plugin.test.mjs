@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import YAML from "yaml";
+import { validateAgentPlugin } from "../../scripts/validate-agent-plugin.mjs";
 
 const root = new URL("../../", import.meta.url);
 
@@ -102,14 +105,15 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   const metadata = JSON.parse(
     await readFile(new URL("copilot-extension.json", extensionRoot), "utf8"),
   );
-  const source = await readFile(
-    new URL("extension.mjs", extensionRoot),
-    "utf8",
-  );
+  const [entry, source] = await Promise.all([
+    readFile(new URL("extension.mjs", extensionRoot), "utf8"),
+    readFile(new URL("dashboard-extension.mjs", extensionRoot), "utf8"),
+  ]);
 
   assert.deepEqual(metadata, { name: "cao-dashboard", version: 1 });
-  assert.match(source, /@github\/copilot-sdk\/extension/);
-  assert.match(source, /joinSession\(\{[\s\S]*canvases:/);
+  assert.match(entry, /@github\/copilot-sdk\/extension/);
+  assert.match(entry, /joinSession\(config\)/);
+  assert.match(source, /canvases:/);
   assert.match(source, /createCanvas\(\{/);
   assert.match(source, /context\.session\?\.workingDirectory/);
   assert.match(source, /startLocalDashboardPreview/);
@@ -118,7 +122,53 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.match(source, /cao_dashboard_execute_query/);
   assert.match(source, /cao_dashboard_read_data_specification/);
   assert.match(source, /onSessionStart:/);
+  assert.match(source, /onSessionEnd: closePreviews/);
   assert.match(source, /onClose:/);
   assert.match(source, /additionalProperties: false/);
   assert.doesNotMatch(source, /github\.io|https:/);
+  assert.match(entry, /process\.once\("SIGTERM", shutdown\)/);
+  assert.doesNotMatch(entry, /process\.once\("exit"/);
+  assert.match(entry, /approveDashboardCommand\(session, request\)/);
+});
+
+test("the complete plugin passes portable metadata, link, and bundled-resource validation", async () => {
+  assert.deepEqual(await validateAgentPlugin(new URL("../../", import.meta.url)), []);
+});
+
+test("portable skill validation rejects client-specific top-level fields and broken references", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-plugin-validation-"));
+  try {
+    await writeFile(join(directory, "plugin.json"), JSON.stringify({
+      $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+      name: "example",
+    }));
+    const skill = join(directory, "skills", "example");
+    await mkdir(skill, { recursive: true });
+    await writeFile(join(skill, "SKILL.md"), [
+      "---", "name: example", "description: Example skill", "argument-hint: invalid", "---",
+      "[Missing](references/missing.md)",
+    ].join("\n"));
+    const errors = await validateAgentPlugin(directory);
+    assert.ok(errors.some((error) => error.includes("unsupported skill field argument-hint")));
+    assert.ok(errors.some((error) => error.includes("references/missing.md: missing package file")));
+    await writeFile(join(skill, "SKILL.md"), [
+      "---", "name: example", "description: Example skill", "metadata:", "  argument-hint: valid", "---",
+    ].join("\n"));
+    const fixedErrors = await validateAgentPlugin(directory);
+    assert.ok(!fixedErrors.some((error) => error.includes("unsupported skill field")));
+    assert.ok(fixedErrors.some((error) => error.includes("dashboard/local-server.mjs: missing package file")));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("plugin validation rejects package paths outside the installed root", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-plugin-path-validation-"));
+  try {
+    const plugin = join(directory, "plugin");
+    await mkdir(plugin);
+    const manifest = join(directory, "outside.json");
+    await writeFile(manifest, "{}");
+    await symlink(manifest, join(plugin, "plugin.json"));
+    const errors = await validateAgentPlugin(plugin);
+    assert.ok(errors.some((error) => error.includes("plugin.json: package path resolves outside the plugin root")));
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

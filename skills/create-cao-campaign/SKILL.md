@@ -1,7 +1,8 @@
 ---
 name: create-cao-campaign
 description: Create a governed CAO campaign with one orchestrator, bounded workers, policy declarations, packaging, and validation.
-argument-hint: "Describe the operational outcome, target repositories, and desired outputs"
+metadata:
+  argument-hint: "Describe the operational outcome, target repositories, and desired outputs"
 ---
 
 # Create a CAO Campaign
@@ -70,10 +71,10 @@ argument-hint: "Describe the operational outcome, target repositories, and desir
   authoring sequence and package shape.
 - [Orchestrators and Workers](../../docs/orchestrators-and-workers.md):
   execution roles.
-- [Control policy](../../specs/control-policy.md): rollout authority.
+- [Control policy](../../docs/control-policy-specification.md): rollout authority.
 - [Control architecture](../../specs/control-architecture.md): normative
   dispatch and enforcement.
-- [Operational value](../../specs/operational-value.md): evaluator contract.
+- [Operational value](../../docs/operational-value.md): evaluator contract.
 - [Computations](../../specs/computations.md): deterministic package
   computations.
 

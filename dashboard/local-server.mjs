@@ -34,6 +34,7 @@ import { fileURLToPath } from "node:url";
 import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
+import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -162,11 +163,13 @@ function sendJson(response, statusCode, value) {
 }
 
 async function readJsonRequest(request, maximumBytes = 8192) {
+  const tooLarge = () => Object.assign(new Error("Request body is too large."), { code: "REQUEST_TOO_LARGE" });
+  if (Number(request.headers["content-length"]) > maximumBytes) throw tooLarge();
   const chunks = [];
   let total = 0;
   for await (const chunk of request) {
     total += chunk.length;
-    if (total > maximumBytes) throw new Error("Request body is too large.");
+    if (total > maximumBytes) throw tooLarge();
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
@@ -211,7 +214,8 @@ async function campaignDashboardPaths(catalogRoot) {
   return paths.toSorted();
 }
 
-async function downloadDashboardData(destination, repository, ghExecutable) {
+async function downloadDashboardData(destination, repository, ghExecutable, workingDirectory) {
+  const options = { cwd: workingDirectory };
   const repositoryPath = repository || "{owner}/{repo}";
   let defaultBranch;
   let runId;
@@ -221,14 +225,14 @@ async function downloadDashboardData(destination, repository, ghExecutable) {
       `repos/${repositoryPath}`,
       "--jq",
       ".default_branch",
-    ]);
+    ], options);
     defaultBranch = repositoryResult.stdout.trim();
     const result = await executeFile(ghExecutable, [
       "api",
       `repos/${repositoryPath}/actions/artifacts?name=${dataArtifactName}&per_page=100`,
       "--jq",
       "[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id // empty",
-    ]);
+    ], options);
     runId = result.stdout.trim();
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
@@ -248,7 +252,7 @@ async function downloadDashboardData(destination, repository, ghExecutable) {
       `repos/${repositoryPath}/actions/runs/${runId}`,
       "--jq",
       "[.conclusion, .head_branch, .path] | @tsv",
-    ]);
+    ], options);
     provenance = result.stdout.trim().split("\t");
   } catch {
     throw new Error(`Unable to verify ${dataArtifactName} from workflow run ${runId}.`);
@@ -262,7 +266,7 @@ async function downloadDashboardData(destination, repository, ghExecutable) {
   const arguments_ = ["run", "download", runId, "--name", dataArtifactName, "--dir", destination];
   if (repository) arguments_.push("--repo", repository);
   try {
-    await executeFile(ghExecutable, arguments_);
+    await executeFile(ghExecutable, arguments_, options);
   } catch {
     throw new Error(`Unable to download ${dataArtifactName} from workflow run ${runId}.`);
   }
@@ -598,9 +602,10 @@ function readWebsocketFrames(buffer) {
  *   catalogRoot?: string | null,
  *   repository?: string,
  *   ghExecutable?: string,
- *   downloadData?: (destination: string, repository?: string, ghExecutable?: string) => Promise<void>,
+ *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void>,
  *   canvas?: boolean,
  *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
+ *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   traceFile?: string,
  *   traceOutput?: (message: string) => void,
  *   requestOutput?: (message: string) => void,
@@ -618,6 +623,7 @@ export async function startDashboardServer({
   downloadData = downloadDashboardData,
   canvas = false,
   executeCliAction,
+  approveCliAction,
   allowMissingOrigin = false,
   traceFile,
   traceOutput = console.log,
@@ -629,6 +635,9 @@ export async function startDashboardServer({
 } = {}) {
   if (canvas && typeof executeCliAction !== "function") {
     throw new Error("Canvas mode requires a CLI action executor.");
+  }
+  if (canvas && typeof approveCliAction !== "function") {
+    throw new Error("Canvas mode requires trusted CLI action approval.");
   }
   const resolvedWorkingDirectory = await realpath(workingDirectory);
   const resolvedTraceFile = traceFile ? resolve(resolvedWorkingDirectory, traceFile) : null;
@@ -662,7 +671,7 @@ export async function startDashboardServer({
   let repositoryMemoryDirectory;
   const splitSourceContent = new Map();
   try {
-    await downloadData(dashboardDataDirectory, repository, ghExecutable);
+    await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
       const payloadHashes = {};
@@ -716,6 +725,7 @@ export async function startDashboardServer({
   let refreshPromise = Promise.resolve();
   let refreshRetryCount = 0;
   let closed = false;
+  let cliActionInProgress = false;
 
   const broadcastDashboard = (traceId) => {
     output("Broadcasting dashboard preview update.", { socketCount: sockets.size });
@@ -892,9 +902,11 @@ export async function startDashboardServer({
         }
         let payload;
         try {
-          payload = await readJsonRequest(request);
-        } catch {
-          sendJson(response, 400, { error: "Invalid CLI action request." });
+          payload = await readJsonRequest(request, maximumCliActionRequestBytes);
+        } catch (error) {
+          sendJson(response, error?.code === "REQUEST_TOO_LARGE" ? 413 : 400, {
+            error: error?.code === "REQUEST_TOO_LARGE" ? "CLI action request is too large." : "Invalid CLI action request.",
+          });
           return;
         }
         if (!payload || typeof payload !== "object" || Array.isArray(payload)
@@ -905,7 +917,8 @@ export async function startDashboardServer({
             || (payload.values !== undefined
               && (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)))
             || (payload.input !== undefined
-              && (typeof payload.input !== "string" || payload.input.length === 0 || payload.input.length > 100_000))) {
+              && (typeof payload.input !== "string" || payload.input.length === 0
+                || payload.input.length > maximumCliActionInputCharacters))) {
           sendJson(response, 400, { error: "Invalid CLI action identifier." });
           return;
         }
@@ -956,30 +969,59 @@ export async function startDashboardServer({
           sendJson(response, 400, { error: "CLI action input is not valid for this command." });
           return;
         }
-        response.writeHead(200, {
-          "Cache-Control": "no-store",
-          "Content-Type": "application/x-ndjson; charset=utf-8",
-        });
-        const emit = (event) => {
-          if (!response.destroyed && !response.writableEnded) {
-            response.write(`${JSON.stringify(event)}\n`);
-          }
-        };
-        try {
-          const result = await executeCliAction({
-            id: action.id,
-            command,
-            ...(payload.input === undefined ? {} : { input: payload.input }),
-            onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
-          });
-          emit({ type: "complete", result });
-        } catch (error) {
-          emit({
-            type: "error",
-            error: error instanceof Error ? error.message : "CLI action could not be executed.",
-          });
+        if (closed || response.destroyed) return;
+        if (cliActionInProgress) {
+          sendJson(response, 409, { error: "Another CLI action is awaiting approval or running." });
+          return;
         }
-        response.end();
+        const invocation = Object.freeze({
+          id: action.id,
+          command,
+          ...(payload.input === undefined ? {} : { input: payload.input }),
+        });
+        cliActionInProgress = true;
+        try {
+          let approved;
+          try {
+            approved = await approveCliAction(invocation);
+          } catch (error) {
+            if (!closed && !response.destroyed) {
+              sendJson(response, 503, {
+                error: error instanceof Error ? error.message : "Trusted CLI action approval is unavailable.",
+              });
+            }
+            return;
+          }
+          if (closed || response.destroyed) return;
+          if (approved !== true) {
+            sendJson(response, 403, { error: "CLI action was not approved by the trusted host." });
+            return;
+          }
+          response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": "application/x-ndjson; charset=utf-8",
+          });
+          const emit = (event) => {
+            if (!response.destroyed && !response.writableEnded) {
+              response.write(`${JSON.stringify(event)}\n`);
+            }
+          };
+          try {
+            const result = await executeCliAction({
+              ...invocation,
+              onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
+            });
+            emit({ type: "complete", result });
+          } catch (error) {
+            emit({
+              type: "error",
+              error: error instanceof Error ? error.message : "CLI action could not be executed.",
+            });
+          }
+          response.end();
+        } finally {
+          cliActionInProgress = false;
+        }
         return;
       }
       if (request.method !== "GET" && request.method !== "HEAD") {
@@ -1213,7 +1255,9 @@ export async function startDashboardServer({
       clearTimeout(refreshTimer);
       for (const watcher of watchers.values()) watcher.close();
       for (const socket of sockets) socket.end(websocketCloseFrame());
-      await new Promise((accept, reject) => server.close((error) => error ? reject(error) : accept()));
+      const shutdown = new Promise((accept, reject) => server.close((error) => error ? reject(error) : accept()));
+      server.closeAllConnections();
+      await shutdown;
       await refreshPromise;
       await rm(temporaryDirectory, { recursive: true, force: true });
       trace.record("server", "server.stopped");
