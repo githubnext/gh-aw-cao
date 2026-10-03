@@ -15,12 +15,14 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
 const (
-	maxRepositories = 20000
+	maxRepositories = 50000
 	maxEvents       = 1000000
 	maxConcurrency  = 512
 )
@@ -44,7 +46,10 @@ type Scenario struct {
 	API                      []APIWindow `json:"api"`
 	// RateLimit optionally meters GitHub API traffic with a fixed-window
 	// primary rate limit, so load tests can exhaust a deliberately low budget.
-	RateLimit *APIRateLimit `json:"rate_limit,omitempty"`
+	RateLimit         *APIRateLimit `json:"rate_limit,omitempty"`
+	History           *History      `json:"history,omitempty"`
+	Faults            []APIFault    `json:"faults,omitempty"`
+	WebhookRetryLimit int           `json:"webhook_retry_limit,omitempty"`
 }
 
 // APIRateLimit is a fixed-window primary rate limit. Window is measured in
@@ -143,9 +148,25 @@ func (s Scenario) Validate() error {
 	if s.ReplayCount < 0 || s.ReplayCount > s.Repositories*s.EventsPerRepository {
 		return errors.New("simulator replay_count exceeds generated workflow events")
 	}
+	if s.WebhookRetryLimit < 0 || s.WebhookRetryLimit > 30 {
+		return errors.New("simulator webhook_retry_limit must be between 0 and 30")
+	}
 	if s.RateLimit != nil {
 		if s.RateLimit.Limit < 1 || s.RateLimit.Limit > 1_000_000 {
 			return errors.New("simulator rate_limit.limit must be between 1 and 1000000")
+		}
+		if s.History != nil {
+			if err := s.History.Validate(s.Repositories); err != nil {
+				return err
+			}
+		}
+		if len(s.Faults) > 100 {
+			return errors.New("simulator cannot have more than 100 proxy faults")
+		}
+		for _, fault := range s.Faults {
+			if err := fault.Validate(); err != nil {
+				return err
+			}
 		}
 		window, err := time.ParseDuration(s.RateLimit.Window)
 		if err != nil || window < time.Millisecond {
@@ -342,14 +363,32 @@ type RunResult struct {
 	Dropped    int `json:"dropped"`
 	Duplicates int `json:"duplicates"`
 	Replayed   int `json:"replayed"`
+	Retries    int `json:"retries"`
+}
+
+type webhookRetryKey struct{}
+type webhookRetryConfig struct {
+	limit int
+	total *atomic.Int64
 }
 
 // Deliver sends the scenario's signed events to the real CAO webhook endpoint.
 // It uses bounded concurrency and reuses delivery IDs for duplicates/replays.
-func (s Scenario) Deliver(ctx context.Context, client *http.Client, endpoint, secret string, concurrency int) (RunResult, error) {
+func (s Scenario) Deliver(ctx context.Context, client *http.Client, endpoint, secret string, concurrency int) (result RunResult, err error) {
+	var retries atomic.Int64
+	ctx = context.WithValue(ctx, webhookRetryKey{}, webhookRetryConfig{limit: s.WebhookRetryLimit, total: &retries})
+	defer func() { result.Retries = int(retries.Load()) }()
 	if client == nil {
 		client = http.DefaultClient
 	}
+	transport, err := NewLocalTransport(endpoint)
+	if err != nil {
+		return RunResult{}, err
+	}
+	defer transport.CloseIdleConnections()
+	localClient := *client
+	localClient.Transport = transport
+	client = &localClient
 	if strings.TrimSpace(secret) == "" {
 		return RunResult{}, errors.New("webhook signing secret is required")
 	}
@@ -368,7 +407,6 @@ func (s Scenario) Deliver(ctx context.Context, client *http.Client, endpoint, se
 		return RunResult{}, fmt.Errorf("simulator concurrency cannot exceed %d", maxConcurrency)
 	}
 
-	var result RunResult
 	bootstrap := make([]Delivery, 0)
 	delayed := make([]Delivery, 0)
 	primary := make([]Delivery, 0, len(deliveries))
@@ -511,9 +549,36 @@ func sendDeliveries(ctx context.Context, client *http.Client, endpoint, secret s
 }
 
 func sendDelivery(ctx context.Context, client *http.Client, endpoint, secret string, delivery Delivery) bool {
+	config, _ := ctx.Value(webhookRetryKey{}).(webhookRetryConfig)
+	for attempt := 0; attempt <= config.limit; attempt++ {
+		status, retryAfter := sendDeliveryOnce(ctx, client, endpoint, secret, delivery)
+		if status >= 200 && status < 300 {
+			return true
+		}
+		if attempt == config.limit || (status != 0 && status != http.StatusTooManyRequests &&
+			status != http.StatusBadGateway && status != http.StatusServiceUnavailable && status != http.StatusGatewayTimeout) {
+			return false
+		}
+		config.total.Add(1)
+		delay := time.Duration(min(attempt+1, 10)) * 100 * time.Millisecond
+		if retryAfter > 0 {
+			delay = retryAfter
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return false
+		case <-timer.C:
+		}
+	}
+	return false
+}
+
+func sendDeliveryOnce(ctx context.Context, client *http.Client, endpoint, secret string, delivery Delivery) (int, time.Duration) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(delivery.Payload))
 	if err != nil {
-		return false
+		return 0, 0
 	}
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write(delivery.Payload)
@@ -523,9 +588,15 @@ func sendDelivery(ctx context.Context, client *http.Client, endpoint, secret str
 	request.Header.Set("X-Hub-Signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	response, err := client.Do(request)
 	if err != nil {
-		return false
+		return 0, 0
 	}
 	_, _ = io.Copy(io.Discard, response.Body)
 	_ = response.Body.Close()
-	return response.StatusCode >= 200 && response.StatusCode < 300
+	delay := time.Duration(0)
+	if seconds, err := strconv.Atoi(response.Header.Get("Retry-After")); err == nil && seconds > 0 && seconds <= 86400 {
+		delay = time.Duration(seconds) * time.Second
+	} else if retryAt, err := http.ParseTime(response.Header.Get("Retry-After")); err == nil {
+		delay = time.Until(retryAt)
+	}
+	return response.StatusCode, delay
 }

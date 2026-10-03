@@ -37,7 +37,7 @@ const debugUiElements = createDebug('ui-elements');
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
- *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
+ *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -62,6 +62,14 @@ const ELEMENT_RENDERERS = new Map([
 /** Elements that load declared sources independently of the active page subscription. */
 const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list']);
 
+/** Elements that retain their DOM while the active page publishes subscribed results. */
+const PAGE_BOUND_ELEMENTS = new Set(['problem-detail']);
+
+/** @param {string} name */
+export function elementBindsPageSources(name) {
+  return PAGE_BOUND_ELEMENTS.has(name);
+}
+
 /**
  * Reports whether an element loads its declared sources on its own.
  * @param {string} name
@@ -85,7 +93,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'link-button-list',
   'markdown'
 ]);
-const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
+const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

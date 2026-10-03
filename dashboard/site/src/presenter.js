@@ -11,7 +11,8 @@ import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderDashboardViewSkeleton, renderEmptyMessage } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
+import { elementBindsPageSources, elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
+import { publishSource, sourceState } from './source-store.js';
 import { renderDataView, renderPromptPreviewAction, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { renderPageLoadError } from './components/page-load-error.js';
 import { declaredAgentTaskActionId } from './components/cli-actions.js';
@@ -795,7 +796,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   }
   const renderedViews = views.map((view, index) => {
     const viewSourceNames = getViewSources(view);
-    const isSelfBound = isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element);
+    const isPageBound = isPlainObject(view) && typeof view.element === 'string' && elementBindsPageSources(view.element);
+    const isSelfBound = isPageBound || (isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element));
     /** @param {Record<string, LogicalSourceInput>} current */
     const viewIsPending = (current) => binding?.loading.get() === true
       && viewSourceNames.some((name, sourceIndex) => (
@@ -946,7 +948,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           return next;
         }
       });
-    if (binding && viewSourceNames.length > 0 && !isSelfBound) {
+    if (binding && viewSourceNames.length > 0 && (!isSelfBound || isPageBound)) {
       let initial = true;
       let previousSources = binding.sources.get();
       let previousPending = viewIsPending(previousSources);
@@ -963,6 +965,19 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         });
         previousSources = current;
         previousPending = pending;
+        if (isPageBound) {
+          if (!changed) return;
+          batch(() => {
+            for (const [sourceIndex, name] of viewSourceNames.entries()) {
+              const resolved = resolveViewSourceName(current, page.id, view, index, name, sourceIndex);
+              const key = dashboardViewAliasName(page.id, view, index, name, sourceIndex);
+              const source = current[resolved];
+              if (source) publishSource(name, source, key);
+              else if (!pending) sourceState(key).set({ status: 'missing', origin: 'view', source: null });
+            }
+          });
+          return;
+        }
         const target = disclosure === 'supplemental'
           ? rendered.querySelector(':scope > :not(summary)')
           : rendered;

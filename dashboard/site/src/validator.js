@@ -2874,6 +2874,15 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      if (view.config['browser-first-load'] !== undefined) {
+        if (view.element !== 'factory-header' || typeof view.config['browser-first-load'] !== 'boolean') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.browser-first-load must be a boolean on the factory-header element.',
+            `${path}.config.browser-first-load`
+          ));
+        }
+      }
       if (view.config.sources !== undefined) {
         if (view.element !== 'factory-header' && view.element !== 'factory-floor') {
           errors.push(createError(

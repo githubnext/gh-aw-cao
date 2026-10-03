@@ -273,7 +273,6 @@
         "createdAt": { "field": "created-at", "trim": true, "omitEmpty": true }, "updatedAt": { "field": "updated-at", "trim": true, "omitEmpty": true },
         "ghAwVersion": { "field": "gh-aw-version", "default": "unknown" }, "ghAwCurrentVersion": { "field": "gh-aw-current-version", "default": "unknown" },
         "ghAwVersionLabel": { "field": "gh-aw-version-label" }, "ghAwUpdateState": { "field": "gh-aw-update-state", "default": "unknown" },
-        "ghAwMetadata": { "field": "gh-aw-metadata" }, "ghAwManifest": { "field": "gh-aw-manifest" },
         "workflowLink": { "field": "workflow-link", "default": null }, "organizationLink": { "field": "organization-link", "default": null },
         "repositoryLink": { "field": "repository-link", "default": null }, "externalLink": { "field": "external-link", "default": null },
         "campaignId": { "field": "_campaign-id" }, "campaign": { "field": "_campaign", "omitEmpty": true },
@@ -311,7 +310,7 @@
         "engine": { "field": "engine", "default": "unknown" }, "engineVersion": { "field": "engine-version", "default": "unknown" },
         "requestedModel": { "field": "requested-model", "default": "unknown" }, "resolvedModel": { "field": "resolved-model", "default": "unknown" },
         "engineId": { "field": "engine-id" }, "agentRuntime": { "field": "agent-runtime" }, "firewallVersion": { "field": "firewall-version" },
-        "gatewayVersion": { "field": "gateway-version" }, "data": { "field": "data" }, "logsPayload": { "field": "logs-payload" }
+        "gatewayVersion": { "field": "gateway-version" }
       }
     },
     {
@@ -347,7 +346,7 @@
     "mcpProtocolVersion": { "field": "mcp-protocol-version" }, "mcpTool": { "field": "mcp-tool" },
     "requestBytes": { "field": "request-bytes", "nonnegativeInteger": true }, "responseBytes": { "field": "response-bytes", "nonnegativeInteger": true },
     "safeOutputType": { "field": "safe-output-type" }, "githubEntityType": { "field": "github-entity-type" },
-    "isPullRequest": { "field": "is-pull-request", "equals": true }, "toolType": { "field": "tool-type" }, "isSkill": { "field": "is-skill", "equals": true },
+    "isPullRequest": { "field": "is-pull-request", "equals": true }, "toolType": { "field": "tool-type" },
     "state": { "field": "issue-state" }, "closed": { "field": "issue-closed" }, "stateReason": { "field": "issue-state-reason" },
     "closedAt": { "field": "issue-closed-at" }, "statusObservedAt": { "field": "issue-status-observed-at" },
     "name": { "field": "name" }, "invocationCount": { "field": "invocation-count", "nonnegativeInteger": true },

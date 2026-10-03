@@ -73,7 +73,22 @@ async function navigateToPage(page, pageId) {
   }, pageId);
 }
 
-test('Runs lazy list loads on scroll during and after activity ingestion', async ({ context, page }) => {
+/** @param {import('@playwright/test').Page} page @param {boolean} mobile */
+async function selectTable(page, mobile) {
+  if (mobile) {
+    await page.getByRole('button', { name: 'Switch to Cards view' }).click();
+    await page.getByRole('button', { name: 'Switch to Table view' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Table', exact: true }).click();
+  }
+}
+
+/**
+ * @param {{ context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page }} fixture
+ * @param {boolean} mobile
+ */
+async function exerciseFirstImport({ context, page }, mobile) {
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   const shardCount = 12;
   const runsPerShard = 10;
   let requestedShards = 0;
@@ -156,13 +171,54 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
   });
 
   await page.goto(`${origin}/`);
+  const importScreen = page.getByRole('dialog', { name: 'Preparing your dashboard' });
+  await expect(importScreen).toBeVisible();
+  await expect(importScreen).toContainText('The first import can take several minutes');
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  if (mobile) {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }]) {
+      await page.setViewportSize(viewport);
+      await expect(importScreen.getByRole('heading', { name: 'Preparing your dashboard.' })).toBeVisible();
+      await expect(importScreen.locator('.first-load-steps')).not.toBeVisible();
+      await expect(importScreen.getByRole('button', { name: 'Explore while data loads' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toBeInViewport({ ratio: 1 });
+      await expect.poll(() => importScreen.evaluate((element) => ({
+        horizontal: element.scrollWidth > element.clientWidth,
+        vertical: element.scrollHeight > element.clientHeight
+      }))).toEqual({ horizontal: false, vertical: false });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+  }
+  const readBackground = (/** @type {Element} */ element) => {
+    const css = getComputedStyle(element, '::before');
+    return { image: css.backgroundImage, size: css.backgroundSize, border: css.borderRightColor };
+  };
+  const overviewGrid = await page.locator('.factory-floor').evaluate(readBackground);
+  expect(await importScreen.locator('.first-load-background').evaluate(readBackground)).toEqual(overviewGrid);
+  await expect.poll(() => importScreen.locator('.first-load-background').evaluate((element) => (
+    getComputedStyle(element, '::before').animationName
+  ))).toBe('first-load-grid-breathe');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => importScreen.locator('.first-load-background').evaluate((element) => (
+    getComputedStyle(element, '::before').animationName
+  ))).toBe('none');
+  await page.keyboard.press('Escape');
+  await expect(importScreen).not.toBeVisible();
+  await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
+  await page.getByRole('button', { name: 'Show import progress' }).click();
+  await expect(importScreen).toBeVisible();
+  await page.getByRole('button', { name: 'Explore while data loads' }).click();
+  await expect(importScreen).not.toBeVisible();
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
+  await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
+  await expect(page.locator('.factory-intro .factory-rhythm')).not.toBeVisible();
   await page.locator('.dashboard-notification-toggle').click();
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sync queries', exact: true })).toHaveCount(0);
+  await page.locator('.dashboard-notification-toggle').click();
   await navigateToPage(page, 'runs');
-  await page.getByRole('button', { name: 'Table' }).click();
+  await selectTable(page, mobile);
   await expect(page.locator('td[data-field="run"]', { hasText: '1001' })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
@@ -175,10 +231,24 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
     }
   }
 
+  await navigateToPage(page, 'overview');
+  await page.getByRole('button', { name: 'Show import progress' }).click();
+  await expect(importScreen).toBeVisible();
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
+  await expect(importScreen).toHaveCount(0);
+  await navigateToPage(page, 'overview');
+  await expect(page.locator('#agent-factory-heading')).not.toHaveText('Your dashboard is taking shape.');
+  await expect(page.getByRole('button', { name: 'Show import progress' })).not.toBeVisible();
+  await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'runs');
-  await page.getByRole('button', { name: 'Table' }).click();
+  await selectTable(page, mobile);
   expect(requestedShards).toBe(shardCount);
   await expectRunsLoadOnScroll(page, shardCount * runsPerShard);
-});
+}
+
+for (const mobile of [false, true]) {
+  test(`First import stays honest while browsing on ${mobile ? 'mobile' : 'desktop'}`, async ({ context, page }) => {
+    await exerciseFirstImport({ context, page }, mobile);
+  });
+}

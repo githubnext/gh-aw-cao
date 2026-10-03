@@ -235,6 +235,7 @@ func NewCollector(
 		Store: ops, Enrollment: enrollment, Queue: queue,
 		Projector: projector, Lake: lake, Enumerator: client, RunEnumerator: client,
 		Quota: quota, QuotaApp: quotaApp,
+		WindowDays: config.WindowDays,
 	}
 	return &Collector{
 		config:     config,

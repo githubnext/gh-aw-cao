@@ -1,4 +1,5 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, relationshipErrors } from '../model/schema.js';
+import { pruneCanonicalRecord } from '../model/fields.js';
 import { recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
@@ -7,7 +8,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 33;
+export const DATABASE_VERSION = 34;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -534,7 +535,8 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
     const records = batch[storeName] ?? [];
     for (let offset = 0; offset < records.length; offset += batchSize) {
       options.signal?.throwIfAborted();
-      const boundedRecords = records.slice(offset, offset + batchSize);
+      const boundedRecords = records.slice(offset, offset + batchSize)
+        .map((record) => pruneCanonicalRecord(storeName, record));
       const transaction = readwriteTransaction(database, storeName);
       const done = transactionDone(transaction);
       const store = transaction.objectStore(storeName);
@@ -1090,7 +1092,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const recordsToWrite = Object.fromEntries(ENTITY_STORES.map((storeName) => {
     const previous = new Map((options.previousBatch?.[storeName] ?? [])
       .map((record) => [String(record.id), record]));
-    return [storeName, (batch[storeName] ?? []).filter((record) => {
+    return [storeName, (batch[storeName] ?? []).map((record) => pruneCanonicalRecord(storeName, record)).filter((record) => {
       const retained = previous.get(String(record.id));
       return retained !== record
         && (!retained || JSON.stringify(retained) !== JSON.stringify(record));

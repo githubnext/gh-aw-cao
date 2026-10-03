@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   activateTableViewMode,
+  configureDeployedStorageQuota,
   deployedDashboardUrl as dashboardUrl,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
@@ -49,7 +50,9 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   });
 
   let diagnostics;
+  let storageSession;
   try {
+    storageSession = await configureDeployedStorageQuota(page, dashboardUrl);
     await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
     await page.waitForFunction(() =>
@@ -118,7 +121,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
         await scrollRenderedViewsIntoView(activePage);
         expect(await activePage.locator("[data-lazy-view]").count()).toBe(0);
       }).toPass({ timeout: 60_000 });
-      await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0);
+      await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 120_000 });
       await expect(activePage.locator('[aria-label^="Unable to load "]')).toHaveCount(0);
       const populatedRows = activePage.locator("tbody > tr").filter({ has: page.locator("td") });
       await expect(populatedRows.first(), `${pageId} should render populated rows`).toBeVisible();
@@ -132,6 +135,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);
   } finally {
+    await storageSession?.detach();
     const summary = {
       generatedAt: new Date().toISOString(),
       dashboardUrl,

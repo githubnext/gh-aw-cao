@@ -8,6 +8,7 @@ const siteRoot = fileURLToPath(new URL("../..", import.meta.url));
 const origin = "http://cached-refresh.dashboard.test";
 const metadata = { "as-of": "2026-09-15T10:00:00Z" };
 const shardName = `gh-aw-logs-runs/logs-${"a".repeat(64)}-${"b".repeat(16)}.jsonl`;
+const nextShardName = `gh-aw-logs-runs/logs-${"c".repeat(64)}-${"d".repeat(16)}.jsonl`;
 
 const dashboard = {
   "language-version": "0.1.0",
@@ -90,6 +91,7 @@ test("cached view is populated before background ingestion updates it", async ({
     releaseFreshData = resolve;
   });
   let freshDataRequested = false;
+  let nextShardAvailable = false;
 
   await context.route(`${origin}/**`, async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -113,7 +115,10 @@ test("cached view is populated before background ingestion updates it", async ({
     if (pathname === "/payload-hashes.json") {
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ [shardName]: "a".repeat(64) }),
+        body: JSON.stringify({
+          [shardName]: "a".repeat(64),
+          ...(nextShardAvailable ? { [nextShardName]: "c".repeat(64) } : {}),
+        }),
       });
       return;
     }
@@ -137,6 +142,29 @@ test("cached view is populated before background ingestion updates it", async ({
             conclusion: "success",
             created_at: "2026-09-15T11:00:00Z",
             updated_at: "2026-09-15T11:05:00Z",
+          },
+        })}\n`),
+      });
+      return;
+    }
+    if (pathname === `/${nextShardName}`) {
+      await route.fulfill({
+        contentType: "application/x-ndjson",
+        body: normalizedRunShard(`${JSON.stringify({
+          schema_version: 2,
+          kind: "run",
+          run: {
+            run_id: 102,
+            run_attempt: 1,
+            organization: "githubnext",
+            repository: "gh-aw-cao",
+            workflow_name: "Dashboard",
+            workflow_path: ".github/workflows/dashboard.md",
+            display_title: "Run ingested after reload",
+            status: "completed",
+            conclusion: "success",
+            created_at: "2026-09-15T12:00:00Z",
+            updated_at: "2026-09-15T12:05:00Z",
           },
         })}\n`),
       });
@@ -194,4 +222,18 @@ test("cached view is populated before background ingestion updates it", async ({
   await expect(page.locator(".dashboard-snapshot-status")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Dashboard data is current" })).toBeVisible();
   await expect(page.locator(".dashboard-current-status .octicon-check-circle-fill")).toBeVisible();
+
+  nextShardAvailable = true;
+  await page.reload();
+  await expect(page.getByRole("cell", { name: "Fresh dashboard run" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Run ingested after reload" })).toBeVisible();
+  await expect.poll(() => page.evaluate(async (url) => {
+    const { readCollection } = await import(url);
+    return (await readCollection(indexedDB, "runs"))
+      .map((/** @type {{ id: string }} */ run) => run.id).sort();
+  }, `${origin}/src/data/storage/indexeddb.js`)).toEqual([
+    "github:run:githubnext/gh-aw-cao:100",
+    "github:run:githubnext/gh-aw-cao:101",
+    "github:run:githubnext/gh-aw-cao:102",
+  ]);
 });

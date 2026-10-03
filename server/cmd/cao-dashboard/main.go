@@ -759,9 +759,14 @@ func newBackfillCommand() *cobra.Command {
 		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	replayOnly := cmd.Flags().Bool("replay-only", false,
 		"reproject the evidence lake without contacting GitHub")
-	cmd.RunE = func(*cobra.Command, []string) error {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
+		if err != nil {
+			return err
+		}
+		defer closeTelemetry()
 		collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
 		if err != nil {
 			return err

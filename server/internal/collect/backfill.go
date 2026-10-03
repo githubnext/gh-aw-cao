@@ -50,6 +50,12 @@ type WorkflowRunQuotaRefresher interface {
 	QuotaRateLimit(ctx context.Context, installationID int64) (githubquota.ResponseQuota, error)
 }
 
+type WorkflowRunWindowEnumerator interface {
+	ListWorkflowRunsWindow(
+		context.Context, int64, string, int, int, time.Time, time.Time,
+	) ([]githubapp.WorkflowRun, int, githubquota.ResponseQuota, error)
+}
+
 type RunQuotaService interface {
 	Reserve(
 		ctx context.Context, bucket githubquota.BucketID, request githubquota.ReservationRequest,
@@ -77,6 +83,10 @@ type Backfill struct {
 	RunEnumerator WorkflowRunEnumerator
 	Quota         RunQuotaService
 	QuotaApp      string
+	// WindowDays is opt-in; zero preserves unbounded historical enumeration.
+	WindowDays int
+	runAfter   time.Time
+	runBefore  time.Time
 }
 
 // BackfillState is the resumable checkpoint, published for status reporting.
@@ -96,10 +106,21 @@ type BackfillState struct {
 
 // Run performs cold start: replay, enumerate, seed repository tasks, and admit
 // paginated historical workflow-run tasks. It does not process run artifacts.
-func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
+func (b Backfill) Run(ctx context.Context) (result BackfillState, err error) {
+	ctx, finish := startBackfillTelemetry(ctx, b.WindowDays)
+	defer func() { finish(result, err) }()
 	state := BackfillState{Phase: "replaying", StartedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	backfillLog.Printf("cold start backfill started")
-	b.publish(ctx, state)
+	if err := b.publish(ctx, state); err != nil {
+		return b.fail(ctx, state, err)
+	}
+	if b.WindowDays < 0 || b.WindowDays > 365 {
+		return b.fail(ctx, state, errors.New("backfill window must be between 0 and 365 days"))
+	}
+	if b.WindowDays > 0 {
+		b.runBefore, _ = time.Parse(time.RFC3339Nano, state.StartedAt)
+		b.runAfter = b.runBefore.Add(-time.Duration(b.WindowDays) * 24 * time.Hour)
+	}
 	populated, err := b.Lake.Populated()
 	if err != nil {
 		return b.fail(ctx, state, err)
@@ -114,7 +135,9 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 		backfillLog.Printf("replayed evidence lake revision=%d", result.Revision)
 	}
 	state.Phase = "enumerating"
-	b.publish(ctx, state)
+	if err := b.publish(ctx, state); err != nil {
+		return b.fail(ctx, state, err)
+	}
 	repositories, installations, enumerationFailures, err := b.enumerate(ctx)
 	if err != nil {
 		return b.fail(ctx, state, err)
@@ -127,7 +150,9 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 		installations, len(repositories), enumerationFailures,
 	)
 	state.Phase = "seeding"
-	b.publish(ctx, state)
+	if err := b.publish(ctx, state); err != nil {
+		return b.fail(ctx, state, err)
+	}
 	queued, err := b.seed(ctx, repositories)
 	if err != nil {
 		return b.fail(ctx, state, err)
@@ -144,7 +169,9 @@ func (b Backfill) Run(ctx context.Context) (BackfillState, error) {
 		state.Phase = "partial"
 	}
 	state.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	b.publish(ctx, state)
+	if err := b.publish(ctx, state); err != nil {
+		return b.fail(ctx, state, err)
+	}
 	backfillLog.Printf(
 		"cold start seeded repositories=%d queued=%d run_tasks=%d enumeration_failures=%d",
 		len(repositories), queued, runTasks, state.EnumerationFailures,
@@ -210,11 +237,29 @@ func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, int
 			backfillLog.Printf("dropped invalid repository names installation=%d skipped=%d", installation.ID, skipped)
 		}
 		repositories = append(repositories, enrolled...)
-		if err := b.Enrollment.AddRepositories(ctx, installation.ID, names); err != nil {
+		if err := b.enrollRepositories(ctx, installation.ID, names); err != nil {
 			return nil, 0, failures, err
 		}
 	}
 	return repositories, len(installations), failures, nil
+}
+
+func (b Backfill) enrollRepositories(ctx context.Context, installation int64, names []string) error {
+	for {
+		err := b.Enrollment.AddRepositories(ctx, installation, names)
+		if !errors.Is(err, ErrEnrollmentMutationBusy) {
+			return err
+		}
+		recordBackfillCounter(ctx, "cao_dashboard.collection.backfill.enrollment_wait.count",
+			"Retries while a concurrent webhook holds the enrollment mutation lease")
+		timer := time.NewTimer(50 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 // normalizeEnumeratedRepositories canonicalizes one installation's enumerated
@@ -444,8 +489,7 @@ func (b Backfill) listWorkflowRuns(
 	ctx context.Context, installationID int64, repository string, page int,
 ) ([]githubapp.WorkflowRun, int, error) {
 	if b.Quota == nil {
-		runs, nextPage, _, err := b.RunEnumerator.ListWorkflowRuns(
-			ctx, installationID, repository, page, runBackfillPageSize)
+		runs, nextPage, _, err := b.workflowRuns(ctx, installationID, repository, page)
 		return runs, nextPage, err
 	}
 	if strings.TrimSpace(b.QuotaApp) == "" {
@@ -486,12 +530,24 @@ func (b Backfill) listWorkflowRuns(
 	if err != nil {
 		return nil, 0, err
 	}
-	runs, nextPage, responseQuota, listErr := b.RunEnumerator.ListWorkflowRuns(
-		ctx, installationID, repository, page, runBackfillPageSize)
+	runs, nextPage, responseQuota, listErr := b.workflowRuns(ctx, installationID, repository, page)
 	if quotaErr := b.reconcileRunQuota(ctx, bucket, reservation, responseQuota); quotaErr != nil {
 		return nil, 0, fmt.Errorf("record workflow run quota response: %w", quotaErr)
 	}
 	return runs, nextPage, listErr
+}
+
+func (b Backfill) workflowRuns(
+	ctx context.Context, installationID int64, repository string, page int,
+) ([]githubapp.WorkflowRun, int, githubquota.ResponseQuota, error) {
+	if !b.runAfter.IsZero() {
+		windowed, ok := b.RunEnumerator.(WorkflowRunWindowEnumerator)
+		if !ok {
+			return nil, 0, githubquota.ResponseQuota{}, errors.New("configured backfill window requires windowed enumeration")
+		}
+		return windowed.ListWorkflowRunsWindow(ctx, installationID, repository, page, runBackfillPageSize, b.runAfter, b.runBefore)
+	}
+	return b.RunEnumerator.ListWorkflowRuns(ctx, installationID, repository, page, runBackfillPageSize)
 }
 
 func (b Backfill) reconcileRunQuota(
@@ -651,16 +707,21 @@ func (b Backfill) fail(ctx context.Context, state BackfillState, cause error) (B
 	previousPhase := state.Phase
 	failed := failedBackfillState(state, cause, time.Now().UTC().Format(time.RFC3339Nano))
 	backfillLog.Printf("backfill aborted phase=%s", previousPhase)
-	b.publish(ctx, failed)
-	return failed, cause
+	checkpoint, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancel()
+	return failed, errors.Join(cause, b.publish(checkpoint, failed))
 }
 
-func (b Backfill) publish(ctx context.Context, state BackfillState) {
+func (b Backfill) publish(ctx context.Context, state BackfillState) error {
 	payload, err := json.Marshal(state)
 	if err != nil {
-		return
+		return err
 	}
-	_ = b.Store.SetOperationalState(ctx, backfillStateKey, payload)
+	if err := b.Store.SetOperationalState(ctx, backfillStateKey, payload); err != nil {
+		backfillLog.Printf("backfill checkpoint write failed")
+		return errors.New("persist backfill checkpoint")
+	}
+	return nil
 }
 
 // State reads the last published cold-start checkpoint.

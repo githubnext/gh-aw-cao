@@ -1,5 +1,6 @@
 import { issueCoordinates, issueId, operationalValueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
+import { pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 
 const debugNormalize = createDebug('normalize:index');
@@ -196,7 +197,7 @@ export function normalize(observations, options = {}) {
       : {};
     entities[collection].set(id, {
       ...current,
-      ...withoutUndefined(observation.data),
+      ...withoutUndefined(pruneCanonicalRecord(collection, observation.data)),
       ...definitionRange,
       id,
       observedAt,

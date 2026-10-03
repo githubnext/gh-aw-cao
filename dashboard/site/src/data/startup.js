@@ -3,6 +3,7 @@ import {
   loadCanonicalDashboardPage,
   refreshCanonicalDashboardSources,
   subscribeCanonicalDashboardView,
+  subscribeWorkerLoadingProgress,
 } from "../data-processor.js";
 import { bindSourceContinuations, continuationRequests } from "./continuation.js";
 import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "../debug-events.js";
@@ -15,6 +16,8 @@ import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
 import { createDebug, diagnosticErrorName } from "../debug.js";
 import { publishNotification } from "../notification-service.js";
+import { browserFirstLoad } from "../browser-first-load.js";
+import { mountFirstLoadOverlay } from "../components/first-load-overlay.js";
 
 const debugStartup = createDebug("startup");
 
@@ -359,12 +362,31 @@ export async function startDashboardData(options) {
   });
   const remoteDataBackend = usesRemoteDataBackend(document);
   let hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
+  const firstBrowserLoad = !hasCompleteSnapshot;
+  let stopFirstLoadProgress = () => {};
+  const finishFirstLoad = () => {
+    stopFirstLoadProgress();
+    stopFirstLoadProgress = () => {};
+    browserFirstLoad.set({ status: "inactive", dismissed: false });
+  };
+  if (firstBrowserLoad) {
+    browserFirstLoad.set({ status: "loading", dismissed: false });
+    stopFirstLoadProgress = subscribeWorkerLoadingProgress((progress) => {
+      if (browserFirstLoad.get().status !== "loading" || progress.phase !== "update") return;
+      browserFirstLoad.set((current) => ({
+        ...current,
+        completed: progress.completed,
+        total: progress.total,
+      }));
+    });
+    cleanup.signal.addEventListener("abort", finishFirstLoad, { once: true });
+  }
   render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
   const showStaleSources = (error) => {
-    if (refreshFailed) return;
+    if (refreshFailed || cleanup.signal.aborted) return;
     refreshFailed = true;
     refreshPending = false;
     const message = error instanceof Error ? error.message : String(error);
@@ -379,12 +401,18 @@ export async function startDashboardData(options) {
       status: "failed",
       message,
     });
+    if (firstBrowserLoad && !hasCompleteSnapshot) {
+      browserFirstLoad.set((current) => ({ ...current, status: "failed" }));
+    }
     render({}, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
     refreshFailed = false;
     refreshPending = true;
+    if (firstBrowserLoad && !hasCompleteSnapshot) {
+      browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined }));
+    }
     emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
       kind: "refresh",
       status: "started",
@@ -398,9 +426,13 @@ export async function startDashboardData(options) {
       dashboardContext,
     ).then(
       async ({ changed }) => {
-        refreshPending = false;
-        snapshot = await loadDashboardSnapshotMetadata().catch(() => null) ?? snapshot;
+        if (cleanup.signal.aborted) return;
+        snapshot = await loadDashboardSnapshotMetadata() ?? snapshot;
+        if (cleanup.signal.aborted) return;
         hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
+        if (!hasCompleteSnapshot) throw new Error("Dashboard import finished without a complete snapshot.");
+        refreshPending = false;
+        if (firstBrowserLoad) finishFirstLoad();
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",
           status: "completed",
@@ -415,14 +447,16 @@ export async function startDashboardData(options) {
           render({}, "ready", loadPageSources, undefined, snapshot);
         }
       },
-      showStaleSources,
-    );
+    ).catch(showStaleSources);
   };
   browserWindow.addEventListener(DASHBOARD_REFRESH_REQUEST_EVENT, () => refreshSources(), {
     signal: cleanup.signal,
   });
 
   await settleUi();
+  if (firstBrowserLoad && !cleanup.signal.aborted) {
+    mountFirstLoadOverlay({ document, signal: cleanup.signal, retry: () => refreshSources() });
+  }
   // The active page is subscribed and painted before lower-priority work begins.
   startBackgroundWork();
   if (!cleanup.signal.aborted) {

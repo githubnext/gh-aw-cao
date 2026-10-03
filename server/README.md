@@ -97,10 +97,49 @@ repositories, a five-hour GitHub API outage, recovery rate limiting, signed
 duplicate/replayed deliveries, out-of-order activity, and a delayed delivery
 batch. Scenarios are strict JSON; supported traffic distributions are uniform,
 hot-repository, long-tail, and synchronized. Repository counts are bounded at
-20,000 and generated workflow and issue events combined at one million. Set
+50,000 and generated workflow and issue events combined at one million. Set
 `issue_events_per_repository` in a scenario to generate ordered `issues`
 `opened`, `closed`, `reopened`, and `edited` webhook deliveries for each synthetic
-repository; the default is zero.
+repository; the default is zero. The optional
+`history` object adds deterministic installation/repository pagination and
+historical workflow runs to the same GitHub API simulator:
+
+```json
+{
+  "name": "historical-backfill",
+  "repositories": 1000,
+  "history": {
+    "days": 14,
+    "runs_per_day": 1,
+    "as_of": "2026-10-01T12:00:00Z"
+  },
+  "faults": [
+    {
+      "path": "/repos/simulator/repo-00001/actions/runs",
+      "page": 2,
+      "count": 1,
+      "mode": "service-unavailable"
+    }
+  ],
+  "webhook_retry_limit": 20
+}
+```
+
+Start a healthy `simulate-api` origin, then start a second `simulate-api`
+with `--proxy-upstream http://127.0.0.1:PORT` and a scenario containing
+`faults`. The proxy can inject bounded 5xx, authorization, malformed-response,
+connection-loss, timeout, missing-quota, primary-limit, and secondary-limit
+failures on selected paths/pages. Each fault expires after its declared count.
+Historical APIs honor GitHub's inclusive `created=START..END` filter and return
+at most 100 rows per page without materializing the complete enterprise corpus.
+`webhook_retry_limit` defaults to zero; explicit retries preserve signed
+delivery identities, apply only to transient responses/transport loss, and
+are reported separately.
+
+Simulation webhook delivery and proxy transports require explicit numeric
+loopback HTTP endpoints. They reject hostnames, credentials in URLs, external
+redirects, and environment proxies. Never point these tools at live GitHub or
+production services.
 
 Start the fake GitHub API in one terminal. `--time-scale 3600` advances one
 scenario hour per wall-clock second:
@@ -746,6 +785,11 @@ The same binary runs every role:
 | `cao-dashboard backfill --replay-only` | repopulate the database from retained evidence with no GitHub requests |
 | `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
 | `cao-dashboard otel-smoke` | verify that one live CAO request is indexed by OpenObserve without reporting credentials or trace identifiers |
+
+Set `CAO_COLLECT_WINDOW_DAYS=7` to restrict historical run discovery to a
+seven-day GitHub `created` range. Zero/unset preserves the existing unbounded
+discovery behavior. The window limits new run-task admissions, not the
+authoritative retained lake replay.
 
 `GET /api/admin/collection/status` reports enrollment coverage, shared collection queue
 depth (including webhook and backfill tasks), in-flight tasks, cumulative
@@ -1398,6 +1442,102 @@ volume; `docker-compose -f server/otel-compose.yml down` stops it without
 deleting that volume. Do not use `down -v` unless you intend to erase its data.
 For hosted deployments, supply exporter authentication through the deployment
 secret manager instead of exporting it from an interactive shell.
+
+### PostgreSQL backfill integration
+
+From the repository root, run:
+
+```bash
+npm run test:integration:dashboard-backfill
+```
+
+The harness requires Go, Docker, Compose (plugin or standalone), curl, and
+OpenSSL. It starts isolated PostgreSQL, Redis, and OpenObserve containers using
+`server/backfill-compose.yml`, generates ephemeral credentials, waits for
+readiness, and starts a real loopback Go HTTP server inside the test. Random
+host ports and a unique Compose project avoid interfering with existing local
+services. All containers and their disposable data are removed on exit; your
+normal dashboard and OpenObserve volumes are untouched.
+
+The replay suite uses the checked-in deployed snapshot and the production
+GitHub App client against the local synthetic API and fault proxy; it needs
+no GitHub token or live repository access. It verifies cold-start
+native rows and relationships, durable repository/run admissions, idempotent
+reruns and enumeration checkpoints, replay after PostgreSQL projection loss
+without GitHub access, empty-lake rejection, and preservation of committed rows
+and HTTP readiness after a hash-valid malformed replacement. A repaired replay
+must clear the retry marker without advancing an unchanged data revision.
+OpenObserve searches must find ingestion, PostgreSQL, and query spans, match
+the HTTP response's W3C trace ID, and contain positive PostgreSQL and backfill
+queue/deduplication metric samples. Fault tests exercise paginated resume after
+5xx, malformed JSON, unauthorized responses, connection loss, timeouts,
+primary/secondary limits, bootstrap/token-mint failures, and cancellation.
+Missing quota headers must leave unknown request cost reserved.
+
+Service-backed replay/fault tests also run during ordinary Go tests when
+Postgres and Redis endpoints are configured. Explicit OTEL runs fail rather
+than skip when any required service or exporter configuration is missing. The
+separate **Postgres backfill and OpenObserve integration** job in
+`.github/workflows/cgo.yml` runs the same harness and uploads Go results and
+service logs to `go-server-backfill`. Local reports are in `.tmp/go-backfill/`
+(override with `CAO_BACKFILL_REPORT_DIR`).
+
+The previous collection-only replay test is consolidated into this suite.
+Collection/HTTP tests share a private-schema Postgres fixture; profile parity
+compares actual native rows and quality metadata, not only counts.
+
+### Synthetic enterprise backfill stress
+
+The daily-only `backfill-stress.yml` workflow runs at 04:23 UTC with separate jobs for
+1,000, 10,000, and 50,000 repositories. Every repository has at least
+one synthetic run per day in 14 days of API history; the real backfill admits
+only the configured seven-day window. There are no PR, push, or manual-dispatch
+triggers for the full matrix. Scheduled runs append a combined report and
+artifact links to the tracking issue; the test jobs remain read-only, and a
+separate reporting job owns issue-write permission. Local runs can select
+more daily runs within the five-million-history-run safety bound.
+
+```bash
+CAO_BACKFILL_REPOSITORIES=10000 CAO_BACKFILL_RUNS_PER_DAY=1 \
+  npm run test:stress:dashboard-backfill
+```
+
+The harness streams a seven-day canonical evidence lake into fresh Postgres,
+uses the production client/quota/admission paths to discover durable historical
+run tasks, and concurrently delivers signed, shuffled, duplicated, and replayed
+webhooks through the live Go HTTP handler. It checks every durable run identity,
+rejects out-of-window or duplicate admissions, verifies native row counts and
+bounded native HTTP queries, and requires webhook/backfill overlap and an
+idempotent rerun. At one run per day, the expected totals are 7,000, 70,000,
+and 350,000 runs. This measures lake recovery and historical discovery/
+admission, not `gh aw logs` artifact downloads or run-task worker execution.
+
+The 50,000 case exceeds the native query engine's 200,000-input-row
+guard for runs. The harness asserts that run queries fail at that boundary
+rather than weakening it, then verifies a bounded repository query. Durable
+run-task identities and Postgres ingestion counts still must match the complete
+seven-day dataset.
+
+All simulated GitHub traffic is pinned to the exact numeric-loopback
+origin/proxy, and inherited GitHub credentials are removed. A default live
+GitHub base URL or a redirect to another port is blocked before dialing.
+Postgres/Redis/OpenObserve use isolated containers and random loopback ports.
+
+OpenObserve evidence is downloaded before teardown on success or failure:
+bounded recent traces, correlated summary/debug logs, and counter samples.
+Root backfill spans include window, phase, repository/run counts, and failure
+counts; a lifecycle counter and duration histogram provide low-cardinality
+timing evidence. The `backfill` CLI now initializes and flushes the standard
+OTEL exporters too. Reviewed namespaces are enabled only by the local harness;
+production logging remains opt-in. Reports and service logs are uploaded by
+the workflow or retained in `.tmp/go-backfill/` locally.
+
+Concurrent installation webhooks and backfill share an enrollment mutation
+lease. Backfill waits cancellation-safely for that lease; enrollment ownership
+reads/writes are pipelined in bounded batches so a large installation does not
+hold it across hundreds of thousands of serial Redis round trips.
+
+### Local serving
 
 `serve` prints a capability URL such as:
 

@@ -38,6 +38,25 @@ test("Copilot setup uses Node 24", () => {
   assert.match(source, /actions\/setup-node@[0-9a-f]{40}[\s\S]*?node-version: 24[\s\S]*?cache: npm[\s\S]*?run: npm ci/);
 });
 
+test("Copilot setup installs and caches every npm package's locked dependencies", () => {
+  const setup = parse(readFileSync(join(root, ".github", "workflows", "copilot-setup-steps.yml"), "utf8"));
+  const steps = setup.jobs["copilot-setup-steps"].steps;
+  const node = steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
+  const lockfiles = node.with["cache-dependency-path"].trim().split("\n");
+  assert.deepEqual(lockfiles.sort(), [
+    "dashboard/site/package-lock.json",
+    "package-lock.json",
+    "server/spec/package-lock.json",
+  ]);
+  for (const directory of [".", "dashboard/site", "server/spec"]) {
+    const install = steps.find((step) =>
+      (step["working-directory"] ?? ".") === directory && step.run === "npm ci"
+    );
+    assert.ok(install, `missing locked dependency install in ${directory}`);
+    assert.ok(steps.indexOf(node) < steps.indexOf(install));
+  }
+});
+
 test("Copilot setup installs the Go lint tooling used by server CI", () => {
   const setup = parse(readFileSync(join(root, ".github", "workflows", "copilot-setup-steps.yml"), "utf8"));
   const ci = parse(readFileSync(join(root, ".github", "workflows", "cgo.yml"), "utf8"));

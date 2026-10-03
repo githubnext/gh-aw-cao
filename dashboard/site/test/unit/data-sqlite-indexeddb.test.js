@@ -111,21 +111,35 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
   });
 
-  it('upgrades existing eval mirrors with experiment linkage', async () => {
+  it('rebuilds outdated eval mirrors from canonical records without duplicate documents', async () => {
     const filename = temporaryDatabase();
+    const record = {
+      id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
+      experimentId: 'experiment:1', variant: 'candidate',
+      observedAt: '2026-09-10T00:00:00Z', provenance: { source: 'gh-aw-logs' }
+    };
+    const indexedDB = installSqliteIndexedDB(filename);
+    const evidence = batch();
+    evidence.experiments?.push({
+      id: 'experiment:1', workflowId: 'workflow:1', observedAt: record.observedAt, provenance: record.provenance
+    });
+    evidence.evals?.push({
+      id: 'eval:1', workflowId: 'workflow:1', observedAt: record.observedAt, provenance: record.provenance
+    });
+    evidence.evalObservations?.push(record);
+    await upsertCanonicalBatch(indexedDB, evidence);
     const connection = new DatabaseSync(filename);
     connection.exec(`
+      DROP TRIGGER eval_observations_insert;
+      DROP TRIGGER eval_observations_update;
+      DROP TRIGGER eval_observations_delete;
+      DROP TABLE eval_observations;
       CREATE TABLE eval_observations (
         database_name TEXT NOT NULL, id TEXT NOT NULL, run_id TEXT, eval_id TEXT,
         observed_at TEXT NOT NULL, provenance TEXT NOT NULL, record_json TEXT NOT NULL,
         PRIMARY KEY (database_name, id)
       );
     `);
-    const record = {
-      id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
-      experimentId: 'experiment:1', variant: 'candidate',
-      observedAt: '2026-09-10T00:00:00Z', provenance: { source: 'gh-aw-logs' }
-    };
     connection.prepare(`
       INSERT INTO eval_observations
         (database_name, id, run_id, eval_id, observed_at, provenance, record_json)
@@ -134,12 +148,15 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       record.observedAt, JSON.stringify(record.provenance), JSON.stringify(record));
     connection.close();
 
-    const indexedDB = installSqliteIndexedDB(filename);
-    (await openCanonicalDatabase(indexedDB)).close();
+    const reopened = createSqliteIndexedDB(filename);
+    (await openCanonicalDatabase(reopened)).close();
     const upgraded = new DatabaseSync(filename);
     expect(upgraded.prepare('SELECT experiment_id, variant FROM eval_observations').get())
       .toMatchObject({ experiment_id: 'experiment:1', variant: 'candidate' });
+    expect(upgraded.prepare('PRAGMA table_info(eval_observations)').all().map((row) => row.name))
+      .not.toContain('record_json');
     upgraded.close();
+    expect(await readCollection(reopened, 'evalObservations')).toEqual([record]);
   });
 
   it('projects the six evidence collections into transactional relational SQLite tables', async () => {
@@ -175,6 +192,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       'grader_observations', 'evals', 'eval_observations'
     ]) {
       expect(connection.prepare(`SELECT count(*) AS count FROM ${table}`).get()).toMatchObject({ count: 1 });
+      expect(connection.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name))
+        .not.toContain('record_json');
     }
     expect(connection.prepare('SELECT run_id, experiment_id, variant, included, exclusion_reason FROM experiment_assignments').get())
       .toMatchObject({ run_id: 'run:1', experiment_id: 'experiment:1',

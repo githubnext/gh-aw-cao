@@ -7,6 +7,8 @@ import { ENTITY_STORES } from "../../dashboard/site/src/data/storage/indexeddb.j
 import config from "../playwright/configs/dashboard-deployed.config.mjs";
 import {
   activateTableViewMode,
+  configureDeployedStorageQuota,
+  DEPLOYED_STORAGE_QUOTA_BYTES,
   deployedDashboardUrl,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
@@ -18,6 +20,40 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
 test("deployed dashboard test has enough time for sequential refresh checks", () => {
   assert.equal(config.timeout, 600_000);
+});
+
+test("deployed dashboard quota is bounded and scoped to the tested origin", async () => {
+  const calls = [];
+  const session = {
+    async send(method, parameters) { calls.push({ method, parameters }); },
+    async detach() { assert.fail("quota session must survive ingestion"); },
+  };
+  const page = { context: () => ({
+    async newCDPSession(target) {
+      assert.equal(target, page);
+      return session;
+    },
+  }) };
+  assert.equal(await configureDeployedStorageQuota(page, "http://127.0.0.1:1234/cao/"), session);
+  assert.equal(DEPLOYED_STORAGE_QUOTA_BYTES, 2 * 1024 ** 3);
+  assert.deepEqual(calls, [{
+    method: "Storage.overrideQuotaForOrigin",
+    parameters: { origin: "http://127.0.0.1:1234", quotaSize: DEPLOYED_STORAGE_QUOTA_BYTES },
+  }]);
+});
+
+test("deployed dashboard quota configuration fails visibly and releases the session", async () => {
+  let detached = false;
+  const page = { context: () => ({
+    async newCDPSession() {
+      return {
+        async send() { throw new Error("quota override failed"); },
+        async detach() { detached = true; },
+      };
+    },
+  }) };
+  await assert.rejects(configureDeployedStorageQuota(page, deployedDashboardUrl), /quota override failed/);
+  assert.equal(detached, true);
 });
 
 test("deployed dashboard check targets declared navigation pages", () => {

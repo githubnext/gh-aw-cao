@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
-import { render } from '../reactive.js';
+import { effect, render } from '../reactive.js';
+import { browserFirstLoad, showBrowserFirstLoad } from '../browser-first-load.js';
 import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 import { createDebug } from '../debug.js';
@@ -14,8 +15,9 @@ const debugFactoryHeader = createDebug('factory-header');
  * @param {SourceBindings} sources
  * @param {HeaderScope} scope
  * @param {Record<string, string>} roleNames
+ * @param {boolean} [showFirstLoad]
  */
-export function renderFactoryHeader(sources, scope, roleNames) {
+export function renderFactoryHeader(sources, scope, roleNames, showFirstLoad = false) {
   debugFactoryHeader({
     event: 'composed',
     presentationSource: roleNames.presentation,
@@ -23,17 +25,24 @@ export function renderFactoryHeader(sources, scope, roleNames) {
   });
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p');
+  const firstLoadStatus = () => showFirstLoad ? browserFirstLoad.get().status : 'inactive';
 
   render(heading, () => {
     const presentation = sources[roleNames.presentation];
-    const pending = presentation.pending();
+    const initialStatus = firstLoadStatus();
+    const pending = initialStatus === 'inactive' && presentation.pending();
     const unavailable = presentation.unavailable();
     const candidate = presentation.rows()[0]?.heading;
     const hasHeading = !pending && !unavailable && typeof candidate === 'string' && Boolean(candidate);
     heading.classList.toggle('factory-heading-pending', pending);
-    heading.toggleAttribute('aria-busy', pending);
+    if (pending || initialStatus === 'loading') heading.setAttribute('aria-busy', 'true');
+    else heading.removeAttribute('aria-busy');
     if (!pending) debugFactoryHeader({ event: 'heading-settled', unavailable, hasHeading });
-    return pending
+    return initialStatus === 'loading'
+      ? 'Your dashboard is taking shape.'
+      : initialStatus === 'failed'
+      ? 'Your dashboard import is incomplete.'
+      : pending
       ? ''
       : hasHeading
       ? candidate
@@ -42,20 +51,38 @@ export function renderFactoryHeader(sources, scope, roleNames) {
 
   render(summary, () => {
     const presentation = sources[roleNames.presentation];
+    const initialStatus = firstLoadStatus();
     const pending = presentation.pending();
     const candidate = presentation.rows()[0]?.summary;
-    const text = typeof candidate === 'string' ? candidate : '';
-    summary.hidden = pending || !text;
+    const text = initialStatus === 'loading'
+      ? 'We are preparing the first activity snapshot in this browser. Campaign status will appear when the import is complete.'
+      : initialStatus === 'failed'
+      ? 'Campaign status is not available yet. Open the import screen to retry.'
+      : typeof candidate === 'string' ? candidate : '';
+    summary.hidden = initialStatus === 'inactive' && (pending || !text);
     if (!pending) debugFactoryHeader({ event: 'summary-settled', hasSummary: Boolean(text) });
-    return pending ? '' : text;
+    return initialStatus === 'inactive' && pending ? '' : text;
   }, { signal: scope.signal });
 
-  return h(
+  const rhythm = renderFactoryRhythm(sources[roleNames.rhythm], scope);
+  const details = h('button', {
+    type: 'button',
+    className: 'first-load-details',
+    onClick: showBrowserFirstLoad
+  }, 'Show import progress');
+  const header = h(
     'header',
     { className: 'factory-intro' },
-    h('div', { className: 'factory-intro-copy' }, heading, summary),
-    renderFactoryRhythm(sources[roleNames.rhythm], scope)
+    h('div', { className: 'factory-intro-copy' }, heading, summary, details),
+    rhythm
   );
+  effect(() => {
+    const initialStatus = firstLoadStatus();
+    details.hidden = initialStatus === 'inactive';
+    rhythm.hidden = initialStatus !== 'inactive';
+    header.classList.toggle('factory-intro-importing', initialStatus !== 'inactive');
+  }, { signal: scope.signal });
+  return header;
 }
 
 /**
@@ -78,6 +105,8 @@ export function renderFactoryHeaderElement(context) {
     context,
     HEADER_DEFAULT_SOURCES,
     (roleNames) => Object.values(roleNames),
-    renderFactoryHeader
+    (sources, scope, roleNames) => renderFactoryHeader(
+      sources, scope, roleNames, context.elementConfig?.['browser-first-load'] === true
+    )
   );
 }

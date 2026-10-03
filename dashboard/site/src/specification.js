@@ -84,7 +84,7 @@ export const MAX_PAGE_ROUTE_TABS = 8;
 export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata', 'query-context'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'label-badge-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'browser-first-load', 'view-all-page', 'view-all-label', 'label-field', 'label-badge-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
@@ -451,7 +451,7 @@ export const TABLE_FIELDS = {
   runs: ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'target-repository', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'failure-kind', 'terminal-outcome', 'terminal-outcome-detail', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-log', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   'overview-runs': ['id', 'organization', 'repository', 'workflow', 'workflow-name', 'workflow-role', 'campaign', 'campaign-name', 'run', 'target-repository', 'event', 'started-at', 'run-status', 'run-conclusion', 'rollout-mode'],
   domains: [...RUN_RECORD_FIELDS, 'domain', 'decision'],
-  tools: [...RUN_RECORD_FIELDS, 'tool-type', 'is-skill', 'name'],
+  tools: [...RUN_RECORD_FIELDS, 'tool-type', 'name'],
   skills: [...RUN_RECORD_FIELDS, 'name', 'invocation-count', 'failed-count', 'activation-source'],
   friction: [...RUN_RECORD_FIELDS, 'measurement-state', 'canonical-unit', 'total-events', 'total-occurrences', 'counted-occurrences', 'suppressed-occurrences', 'linked-invocations', 'unattributed-occurrences', 'aic', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'total-tokens', 'turns', 'tool-calls', 'latency-ms', 'total-run-aic', 'friction-ratio', 'derived', 'events-truncated'],
   audits: RUN_RECORD_FIELDS,

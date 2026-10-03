@@ -1132,6 +1132,26 @@ An element that presents counted summary boxes may declare `config.labels`, a ma
 
 `factory-header` and `factory-floor` are independently loading named elements. Their page shell does not wait for a combined page projection: each declared presentation query is bound to the view separately. An unresolved source places only its dependent widget in a loading state; resolving or refreshing one source updates only widgets that consume that source. A page-level subscription must not emit aliases for independently bound sources it did not request.
 
+`factory-header` may declare the boolean `config.browser-first-load` (default
+`false`) to present the browser's first-import lifecycle instead of campaign
+status until a complete local snapshot is available. This flag is supported
+only by `factory-header`. It does not change the element's declared queries:
+browser-local import progress and dismissal are transient interaction state,
+not canonical campaign evidence. An incomplete or failed first import must not
+be represented as an idle campaign. Backend-backed dashboards and refreshes
+with an existing complete snapshot must not enter this first-import state.
+
+The `problem-detail` element consumes its declared, route-scoped problem query
+through the active page's abort-scoped subscription and updates retained
+evidence without rebuilding its repair control or resetting log scroll position.
+Its specialized definition-list and
+raw-log presentation cannot be expressed by the existing table or card marks.
+Loading, incomplete, unavailable, and complete empty evidence remain distinct;
+missing telemetry must not imply automatic model selection or an initialization
+failure. The element and its repair prompt release reactive resources when
+their owned roots detach. Campaign navigation consumes already route-scoped
+worker payloads rather than filtering campaign rows in the browser.
+
 A chart may set `chart` to `area`, `line`, `dot`, `bar`, `horizontal-bar`, `pie`, `heatmap`, `histogram`, `scatter`, or `swimlane`. When `chart` is omitted, temporal `x` has a line time-series default and any other valid chart has a bar default. Area charts show a quantitative `y` over an ordinal or temporal `x`; temporal values use the same explicit UTC bucketing and ordering machinery as line charts. An area chart without `color` fills from zero to its values. When `color` is present, the presenter groups by that nominal or ordinal field and stacks the non-negative series in deterministic series order, matching Vega-Lite's normal stacked-area behavior. Version 0.1.0 exposes no separate stack control; authors use existing aggregation on `y` and must not use area charts for negative contributions. Line, dot, and scatter charts use temporal `x`. Dot charts preserve exact timestamps, do not connect observations, and may encode quantitative `reference` values as horizontal lines. Scatter charts preserve exact timestamps as proportional positions on the time axis and do not connect observations. A pie chart uses nominal or ordinal `x` for categories and quantitative `y` for values. A horizontal bar chart uses nominal or ordinal `x` for text labels, quantitative `y` for left-aligned bars, and must declare `data.limit` no greater than 100. A histogram uses nominal or ordinal `x` to identify each sample and automatically bins the resulting quantitative `y` values after aggregation, ordering, and limiting. Its deterministic bin count is the smaller of the sample count and Sturges' value `ceil(log2(sample count) + 1)`; an empty sample produces no bins and an equal-valued sample produces one bin. A histogram does not use `color` or `href`. A heatmap uses nominal or ordinal `x` and `y` axes to define discrete cells and an aggregated quantitative `color` value. A heatmap is intended only for compact matrices: authors must set `data.limit` no greater than 100, and presenters must reject visual matrices larger than 100 cells or 12 categories on either axis. Every cell must expose its two category labels and formatted value as text, not color alone. A swimlane chart uses an unbucketed temporal `x` and an unaggregated nominal or ordinal `y`; its presenter may coalesce visually contiguous observations in the same labeled categorical lane into one range without connecting observations across gaps or implying quantitative distance between lanes. Charts render only their visualization and legend; authors use a separate table view when row-level evidence is required. These known widget types and defaults are semantic; this specification does not define visual styling.
 
 Minimal area chart:

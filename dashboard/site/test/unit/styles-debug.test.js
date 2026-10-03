@@ -28,6 +28,21 @@ async function loadStylesWithDebug(search) {
 }
 
 describe('styles debug logging', () => {
+  it('includes first-load styles in the shared stylesheet before the remaining factory rules', async () => {
+    const { primerStylesheet } = await loadStylesWithDebug('');
+    const css = primerStylesheet();
+
+    expect(css).toContain('.first-load-overlay[open]{display:grid;align-items:center}');
+    expect(css).toContain('.first-load-close:focus-visible, .first-load-browse:focus-visible, .first-load-details:focus-visible{outline:2px solid var(--focus);outline-offset:3px}');
+    expect(css).toContain('@media (max-width:700px){.first-load-overlay{padding:12px}');
+    expect(css).toContain('.first-load-wide-copy, .first-load-steps, .first-load-eyebrow{display:none}');
+    expect(css).toContain('.first-load-background::before{animation:none;opacity:.75}');
+    expect(css).toContain('.factory-floor::before, .first-load-background::before{content:""');
+    const overlayIndex = css.indexOf('.first-load-overlay{');
+    expect(overlayIndex).toBeGreaterThan(css.indexOf('.factory-intro h2{'));
+    expect(overlayIndex).toBeLessThan(css.indexOf('.factory-intro h2.factory-heading-pending'));
+  });
+
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const { primerStylesheet, notificationStylesheet, output } = await loadStylesWithDebug('');
 

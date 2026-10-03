@@ -93,7 +93,10 @@ describe('campaign route shell debug logging', () => {
 
     output.debug.mockClear();
     resetStoreForTest();
-    const notFound = renderCampaignRouteVariant(context(), 'overview');
+    const notFound = renderCampaignRouteVariant({
+      ...context(),
+      sources: { workflows: { source: 'workflows', metadata, rows: [] } }
+    }, 'overview');
     notFound.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'missing' }
     }));

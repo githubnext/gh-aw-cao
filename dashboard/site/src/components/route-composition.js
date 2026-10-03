@@ -31,8 +31,9 @@ export function selectNamedComposition(compositions, selected, fallback) {
  * @param {HTMLElement} root
  * @param {string | undefined} routeParameter
  * @param {(routeValue: string) => void} render
+ * @param {AbortSignal} [signal]
  */
-export function bindRouteChangeListener(root, routeParameter, render) {
+export function bindRouteChangeListener(root, routeParameter, render, signal) {
   root.dataset.routeView = '';
   if (routeParameter !== undefined) root.dataset.routeParameter = routeParameter;
   root.addEventListener('dashboard-route-change', (event) => {
@@ -41,8 +42,8 @@ export function bindRouteChangeListener(root, routeParameter, render) {
       return;
     }
     debugRouteComposition({ event: 'change-applied', routeParameter, hasValue: Boolean(event.detail.value) });
-    render(event.detail.value);
-  });
+    render(typeof event.detail.value === 'string' ? event.detail.value : '');
+  }, { signal });
   debugRouteComposition({ event: 'bound', routeParameter });
   render('');
 }

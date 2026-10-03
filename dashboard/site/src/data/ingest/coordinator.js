@@ -40,8 +40,8 @@ import { createDebug } from '../../debug.js';
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
-const GH_AW_JSONL_INGESTION_VERSION = 5;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 6;
+const GH_AW_JSONL_INGESTION_VERSION = 6;
 export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
 const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
 const PRE_EVIDENCE_INGESTION_VERSION = 3;

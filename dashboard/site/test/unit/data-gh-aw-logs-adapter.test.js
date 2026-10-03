@@ -317,7 +317,6 @@ describe('gh-aw logs adapter', () => {
       expect.objectContaining({
         id: 'github:run:githubnext/gh-aw-cao:303',
         workflowPath: '.github/workflows/dashboard.md',
-        number: 7,
         targetRepository: 'github/gh-aw',
         rolloutMode: 'live',
         terminalOutcome: 'report_incomplete',
@@ -340,6 +339,7 @@ describe('gh-aw logs adapter', () => {
         firewallVersion: 'v0.28.15'
       })
     ]);
+    expect(batch.runs[0]).not.toHaveProperty('number');
     expect(batch.audits.map((event) => event.type)).toEqual(expect.arrayContaining([
       'workflow_run_started',
       'workflow_run_completed',

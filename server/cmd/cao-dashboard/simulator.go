@@ -212,6 +212,7 @@ func newSimulateAPICommand() *cobra.Command {
 	scenarioPath := cmd.Flags().String("scenario", "", "JSON simulator scenario file")
 	listen := cmd.Flags().String("listen", "127.0.0.1:8081", "local address for the fake GitHub API")
 	timeScale := cmd.Flags().Float64("time-scale", 1, "scenario-time multiplier (for example, 3600 maps one hour to one second)")
+	upstream := cmd.Flags().String("proxy-upstream", "", "optional loopback synthetic GitHub API to proxy with scenario faults")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		if *scenarioPath == "" {
 			return errors.New("--scenario is required")
@@ -220,9 +221,25 @@ func newSimulateAPICommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		handler, err := simulator.NewAPIHandler(scenario, *timeScale)
+		var handler http.Handler
+		handler, err = simulator.NewAPIHandler(scenario, *timeScale)
 		if err != nil {
 			return err
+		}
+		if *upstream != "" {
+			proxy, err := simulator.NewFaultProxy(*upstream)
+			if err != nil {
+				return err
+			}
+			defer proxy.Close()
+			for _, fault := range scenario.Faults {
+				if err := proxy.Inject(fault); err != nil {
+					return err
+				}
+			}
+			handler = proxy
+		} else if len(scenario.Faults) > 0 {
+			return errors.New("scenario faults require --proxy-upstream")
 		}
 		server, listener, err := simulator.Listen(cmd.Context(), *listen, handler)
 		if err != nil {

@@ -157,6 +157,15 @@ Node.js 24 can apply the same ingestion and query layer to a persistent SQLite
 file. The database remains local, disposable derived state and does not change
 the static dashboard's deployment boundary.
 
+Campaigns are first-class stored entities even when no workflows have run.
+IndexedDB uses the `campaigns` store; SQLite exposes a transactional `campaigns`
+table keyed by `(database_name, id)` and indexed by `(database_name, slug)`.
+The SQLite table exposes inventory and maintenance columns alongside the full
+canonical record, and is populated from existing canonical records when first
+created. The hosted PostgreSQL implementation also uses a native `campaigns`
+table, keyed by `(namespace, id)`. Refreshing a campaign version preserves its
+identity, and run-detail retention does not remove the campaign.
+
 See [Data ingestion](dashboard-data-ingestion.md#use-local-sqlite) for download,
 ingestion, query, and repair commands.
 

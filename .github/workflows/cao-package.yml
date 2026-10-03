@@ -399,6 +399,7 @@ jobs:
         run: |
           set -euo pipefail
           npm --prefix dashboard/site ci
+          npm --prefix server/spec ci
           npm run dashboard:server:build
       - name: Summarize package tests
         if: always()

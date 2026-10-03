@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { SQL_EXPORT_VERSION } from "../../dashboard/site/src/data/adapters/sql-export.js";
-import { CANONICAL_SCHEMA_VERSION } from "../../dashboard/site/src/data/model/schema.js";
+import { CANONICAL_SCHEMA_VERSION, ENTITY_KINDS } from "../../dashboard/site/src/data/model/schema.js";
+import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_VERSION,
+  ENTITY_STORES,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import { root } from "./workflow-contract.helpers.mjs";
 
@@ -42,6 +44,21 @@ test("dashboard data specification lists every implemented store and index", () 
       );
     }
   }
+});
+
+test("Campaign is a required canonical entity and persisted database collection", () => {
+  const coreEntities = specification.match(/## 6\.1 Core Entities[\s\S]*?```text\n([\s\S]*?)```/);
+  assert.ok(coreEntities, "missing normative core entity list");
+  assert.ok(coreEntities[1].split("\n").includes("Campaign"));
+  assert.match(specification, /\*\*CAM-001\*\*/);
+  assert.match(specification, /SQLite and Postgres SHALL expose a physical `campaigns`\s+table/);
+  assert.ok(ENTITY_KINDS.includes("campaign"));
+  assert.ok(ENTITY_STORES.includes("campaigns"));
+  assert.deepEqual(normalize([]).campaigns, []);
+  assert.deepEqual(CANONICAL_DATABASE_SCHEMA.campaigns, {
+    keyPath: "id",
+    indexes: { bySlug: "slug" },
+  });
 });
 
 test("run identity documentation matches canonical normalization", () => {

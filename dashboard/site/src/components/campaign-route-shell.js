@@ -73,13 +73,12 @@ export function renderCampaignRouteShell(context, config) {
       routeValue,
       title,
       description,
-      campaignTabCounts(routeValue, bindings)
+      campaignTabCounts(bindings)
     ),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
-      const workflows = bindings.workflows.rows()
-        .filter((workflow) => campaignId && String(workflow.campaign).toLowerCase() === campaignId.toLowerCase());
+      const workflows = bindings.workflows.rows();
       if (workflows.length === 0) {
         const databaseLoading = bindings.workflows.pending();
         if (databaseLoading) {
@@ -203,13 +202,11 @@ function campaignFolderHref(repositoryHref, readmePath) {
 }
 
 /**
- * @param {string} campaignId
  * @param {Record<string, { rows: () => Array<Record<string, unknown>> }>} bindings
  */
-function campaignTabCounts(campaignId, bindings) {
+function campaignTabCounts(bindings) {
   return Object.fromEntries(Object.entries(CAMPAIGN_TAB_COUNT_SOURCES).map(([tabId, sourceName]) => {
-    const row = bindings[sourceName].rows()
-      .find((candidate) => String(candidate.campaign).toLowerCase() === campaignId.toLowerCase());
+    const row = bindings[sourceName].rows()[0];
     const count = Number(row?.items);
     return [tabId, Number.isFinite(count) && count > 0 ? count : 0];
   }));

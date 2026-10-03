@@ -40,6 +40,23 @@ evidence from collection into the browser, while the
 [Data model](dashboard-data-model.md) explains the records and relationships
 available to every view.
 
+On the first visit to a static dashboard, a dismissible import screen explains
+how the browser downloads and caches its first snapshot. Dismissing it keeps
+the import running; Overview continues to show preparation progress rather
+than calling campaigns idle. The import screen is automatically removed when a
+complete snapshot is ready, and its animation timers and progress subscription
+are released. If preparation fails or is cancelled, Overview reports an incomplete
+import and lets you reopen the screen to retry. Later visits use the cached
+snapshot during refresh. Backend-backed dashboards do not use this browser-local
+first-import experience. While the import screen is visible, 100 friendly notes
+rotate randomly every six seconds without repeating within a cycle. These notes
+are separate from factual import progress and pause when the screen is dismissed
+or the import is no longer running.
+Small screens use shorter copy and omit the explanatory step list so the main
+action stays in view. The backdrop shares the exact grid styling used on
+Overview, with a slow opacity animation disabled when the browser requests
+reduced motion. The grid is decorative, not campaign telemetry.
+
 ## Read a result
 
 Treat each result as a starting point for investigation, not as a scorecard. A

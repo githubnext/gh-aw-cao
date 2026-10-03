@@ -39,6 +39,11 @@ export default defineConfig({
       name: 'desktop-safari',
       testMatch: ['**/pwa-compatibility.spec.js', '**/indexeddb-stress.spec.js'],
       use: devices['Desktop Safari']
+    },
+    {
+      name: 'iphone-safari',
+      testMatch: ['**/ios-indexeddb-cache.spec.js', '**/cached-refresh.spec.js'],
+      use: devices['iPhone 13']
     }
   ]
 });

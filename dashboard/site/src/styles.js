@@ -3,6 +3,8 @@
  */
 
 import { createDebug } from './debug.js';
+import { firstLoadStyles } from './styles-first-load.js';
+import { overviewGridStyles } from './styles-overview-grid.js';
 
 const debug = createDebug('styles');
 
@@ -151,7 +153,7 @@ function primerStylesheetSource() {
     --focus: #0969da;
   }
 }
-.dashboard-root[data-theme="dark"] {
+:is(.dashboard-root, .first-load-overlay)[data-theme="dark"] {
   color-scheme: dark;
   --canvas: #0d1117;
   --canvas-subtle: #151b23;
@@ -180,7 +182,7 @@ function primerStylesheetSource() {
   --focus: #58a6ff;
   --on-emphasis: #ffffff;
 }
-.dashboard-root[data-theme="light"] {
+:is(.dashboard-root, .first-load-overlay)[data-theme="light"] {
   color-scheme: light;
   --canvas: #ffffff;
   --canvas-subtle: #f6f8fa;
@@ -1602,9 +1604,10 @@ main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 
 .dashboard-overview-page .factory-floor { border: 0; }
 .factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background: linear-gradient(115deg, color-mix(in srgb, var(--success) 8%, var(--canvas)) 0 34%, var(--canvas) 68%, color-mix(in srgb, var(--accent) 6%, var(--canvas)) 100%); }
 .factory-intro h2 { max-width: 680px; margin: 0; font-size: clamp(2rem, 3.5vw, 3.25rem); font-weight: 600; letter-spacing: 0; line-height: 1.05; }
+${firstLoadStyles}
 .factory-intro h2.factory-heading-pending { width: min(100%, 560px); height: 3.25rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-floor { min-height: 250px; position: relative; display: grid; align-items: center; padding: 38px 48px; overflow: hidden; border-block: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-floor::before { content: ""; width: round(down, 100%, 32px); height: round(down, 100%, 32px); position: absolute; top: 50%; left: 50%; border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); background-image: linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px); background-size: 32px 32px; transform: translate(-50%, -50%); }
+${overviewGridStyles}
 .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 22%, transparent); background: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 10%, transparent), transparent 70%), var(--canvas-subtle); }
 .factory-floor-active::before { border-color: var(--factory-floor-grid); background-image: linear-gradient(var(--factory-floor-grid) 1px, transparent 1px), linear-gradient(90deg, var(--factory-floor-grid) 1px, transparent 1px); }
 .dashboard-root[data-theme="light"] .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 34%, transparent); background-image: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 18%, transparent), transparent 72%); }
@@ -1638,6 +1641,7 @@ main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 
 .factory-station a:hover { color: var(--accent); text-decoration: underline; }
 .factory-rhythm { min-width: 0; display: grid; grid-template-columns: minmax(180px, .35fr) minmax(0, 1fr); align-items: center; gap: 32px; padding: 24px 40px; border-bottom: 1px solid var(--border); background: var(--canvas); }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }
+.factory-intro .factory-rhythm[hidden] { display: none; }
 .factory-rhythm-heading { display: grid; gap: 5px; }
 .factory-rhythm-heading > span { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .factory-rhythm-heading strong, .factory-rhythm-legend { color: var(--muted); font-size: .6875rem; font-weight: 400; }

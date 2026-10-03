@@ -3,13 +3,17 @@
  */
 
 import { h } from '../dom.js';
-import { formatUtcDateTime, renderDlRow } from './ui-primitives.js';
+import { derived, effect, render, state, untracked } from '../reactive.js';
+import { createDebug } from '../debug.js';
+import { formatUtcDateTime, renderDlRow, renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
 import { renderModeBadge, renderStatusBadge } from './badge.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderIntentAction } from './data-view.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
-import { renderRouteDetailView } from './route-detail-view.js';
-import { rowsFor } from './source-rows.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
+import { bindRouteChangeListener } from './route-composition.js';
+
+const debug = createDebug('problem-detail');
 
 const REPAIR_ACTION = {
   action: 'create-agent-task',
@@ -68,10 +72,10 @@ const DETAIL_GROUPS = [
     title: 'Runtime environment',
     fields: [
       { label: 'gh-aw version', field: 'gh-aw-version', missing: 'The compiler version was not recorded for this run.' },
-      { label: 'Engine', field: 'engine', missing: 'The engine did not initialize before the failure.' },
-      { label: 'Engine version', field: 'engine-version', missing: 'The engine version was not emitted before the failure.' },
-      { label: 'Requested model', field: 'requested-model', missing: 'Automatic model selection was requested.' },
-      { label: 'Resolved model', field: 'resolved-model', missing: 'Model resolution did not complete before the failure.' }
+      { label: 'Engine', field: 'engine', missing: 'The engine was not recorded for this run.' },
+      { label: 'Engine version', field: 'engine-version', missing: 'The engine version was not recorded for this run.' },
+      { label: 'Requested model', field: 'requested-model', missing: 'The requested model was not recorded for this run.' },
+      { label: 'Resolved model', field: 'resolved-model', missing: 'The resolved model was not recorded for this run.' }
     ]
   }
 ];
@@ -81,58 +85,121 @@ const DETAIL_GROUPS = [
  * @returns {HTMLElement}
  */
 export function renderProblemDetail(context) {
-  const problems = rowsFor(context.sources, 'campaign-problem-items');
-  return renderRouteDetailView(context, {
-    category: 'problem-detail',
-    rootClassName: 'problem-detail',
-    datasetKey: 'targetRepository',
-    selectMessage: 'Select a runtime problem to view its details.',
-    notFoundMessage: 'This runtime problem is no longer present in the selected horizon.',
-    rows: problems,
-    match: (rows) => rows[0],
-    allocation: (problem) => ({
-      title: text(problem['problem-title']) || 'Runtime problem',
-      description: problemDescription(problem)
-    }),
-    renderContent: (problem) => renderProblem(problem)
-  });
+  const source = bindFactorySources(context.sources, context.sourceNames, context, {
+    requestMissingSources: false
+  })[context.sourceNames[0]];
+  const scope = createFactoryScope();
+  const root = h('div', { className: 'problem-detail' });
+  const route = state('');
+  const problem = () => source.rows()[0];
+  debug({ event: 'initialized', pageId: context.pageId, availability: source.source()?.metadata?.availability ?? 'unavailable' });
+  bindRouteChangeListener(root, context.routeParameter, (value) => {
+    root.dataset.targetRepository = value;
+    route.set(value);
+  }, scope.signal);
+  const display = derived(() => {
+    if (!route.get().trim()) return 'select';
+    if (source.pending()) return 'loading';
+    if (!source.source() || source.unavailable()) return 'unavailable';
+    if (problem()) return 'matched';
+    return source.source()?.metadata?.completeness === 'complete' ? 'not-found' : 'partial';
+  }, { signal: scope.signal });
+  render(root, () => {
+    const status = display.get();
+    root.setAttribute('aria-busy', String(status === 'loading'));
+    if (status === 'matched') {
+      // The content owns smaller render boundaries, including a stable prompt control.
+      return untracked(() => renderProblem(problem, source));
+    }
+    if (status === 'loading') return renderLoadingMessage('Loading runtime problem evidence...');
+    const messages = {
+      select: 'Select a runtime problem to view its details.',
+      unavailable: 'Runtime problem evidence is unavailable. This does not mean the problem is resolved.',
+      partial: 'Runtime problem evidence is incomplete. This problem may not have been collected yet.',
+      'not-found': 'This runtime problem is no longer present in the selected horizon.'
+    };
+    return renderEmptyMessage(messages[status], { role: 'status' });
+  }, { signal: scope.signal });
+  effect(() => {
+    const status = display.get();
+    if (status === 'matched') {
+      const row = problem();
+      if (!row) return;
+      debug({ event: 'matched', pageId: context.pageId });
+      root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
+        bubbles: true,
+        detail: {
+          title: text(row['problem-title']) || 'Runtime problem',
+          description: problemDescription(row)
+        }
+      }));
+    } else if (status !== 'select') {
+      debug({ event: status, pageId: context.pageId });
+    }
+  }, { signal: scope.signal });
+  scope.bind(root);
+  return root;
 }
 
-/** @param {Record<string, unknown>} problem */
-function renderProblem(problem) {
-  const runLink = findLink(problem, 'run-link');
-  return h(
+/**
+ * @param {() => Record<string, unknown> | undefined} problem
+ * @param {import('./factory-elements.js').SourceBinding} source
+ */
+function renderProblem(problem, source) {
+  const scope = createFactoryScope();
+  const summary = h('div');
+  const highlights = h('dl', { className: 'problem-view-highlights', 'aria-label': 'Problem summary' });
+  const sections = h('div', { className: 'problem-view-sections' });
+  const log = h('div');
+  const partial = h('div');
+  const root = h(
     'article',
     { className: 'problem-view' },
+    partial,
     h(
       'header',
       { className: 'problem-view-header' },
-      h(
-        'div',
-        null,
-        h('div', { className: 'problem-view-badges' },
-          renderStatusBadge(titleCase(text(problem['problem-kind']) || text(problem.status))),
-          renderModeBadge(titleCase(text(problem['rollout-mode'])))
-        ),
-        h('p', { className: 'problem-view-summary' }, text(problem['failure-message']) || text(problem['status-detail']) || 'No failure summary was retained.')
-      ),
+      summary,
       renderIntentAction(REPAIR_ACTION, problem)
     ),
-    h(
-      'dl',
-      { className: 'problem-view-highlights', 'aria-label': 'Problem summary' },
-      renderHighlight('Occurrences', problem['occurrence-count']),
-      renderHighlight('Failures', problem['failure-count']),
-      renderHighlight('Observed', formatUtcDateTime(problem['started-at'])),
-      renderHighlight('Workflow run', renderExternalLinkOrFallback(runLink, runLink?.externalHref ?? runLink?.href))
-    ),
-    h(
-      'div',
-      { className: 'problem-view-sections' },
-      ...DETAIL_GROUPS.map((group) => renderDetailGroup(group, problem))
-    ),
-    renderFailureLog(problem)
+    highlights,
+    sections,
+    log
   );
+  render(partial, () => source.source()?.metadata?.completeness !== 'complete'
+    ? renderEmptyMessage('Runtime problem evidence is incomplete. Additional failures may not have been collected.', { role: 'status' })
+    : null, { signal: scope.signal });
+  render(summary, () => {
+    const row = problem();
+    return row ? [
+      h('div', { className: 'problem-view-badges' },
+        renderStatusBadge(titleCase(text(row['problem-kind']) || text(row.status))),
+        renderModeBadge(titleCase(text(row['rollout-mode'])))
+      ),
+      h('p', { className: 'problem-view-summary' }, text(row['failure-message']) || text(row['status-detail']) || 'No failure summary was retained.')
+    ] : null;
+  }, { signal: scope.signal });
+  render(highlights, () => {
+    const row = problem();
+    if (!row) return null;
+    const runLink = findLink(row, 'run-link');
+    return [
+      renderHighlight('Occurrences', row['occurrence-count']),
+      renderHighlight('Failures', row['failure-count']),
+      renderHighlight('Observed', formatUtcDateTime(row['started-at'])),
+      renderHighlight('Workflow run', renderExternalLinkOrFallback(runLink, runLink?.externalHref ?? runLink?.href))
+    ];
+  }, { signal: scope.signal });
+  render(sections, () => {
+    const row = problem();
+    return row ? DETAIL_GROUPS.map((group) => renderDetailGroup(group, row)) : null;
+  }, { signal: scope.signal });
+  render(log, () => {
+    const row = problem();
+    return row ? renderFailureLog(row) : null;
+  }, { signal: scope.signal });
+  scope.bind(root);
+  return root;
 }
 
 /** @param {string} label @param {unknown} value */

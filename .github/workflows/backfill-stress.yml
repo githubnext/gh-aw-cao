@@ -1,0 +1,110 @@
+name: Synthetic Postgres Backfill Stress
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+
+concurrency:
+  group: daily-synthetic-backfill-stress
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill-stress:
+    name: Backfill 7 days across ${{ matrix.repositories }} synthetic repos
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        repositories: [1000, 10000, 50000]
+    env:
+      CAO_BACKFILL_STRESS: "1"
+      CAO_BACKFILL_REPOSITORIES: ${{ matrix.repositories }}
+      CAO_BACKFILL_RUNS_PER_DAY: "1"
+      GH_TOKEN: ""
+      GITHUB_TOKEN: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Backfill synthetic history with concurrent signed webhooks
+        run: bash scripts/test-dashboard-backfill.sh
+      - name: Summarize results
+        if: always()
+        env:
+          CASE_RESULT: ${{ job.status }}
+        run: |
+          jq -n --argjson repositories "$CAO_BACKFILL_REPOSITORIES" --arg status "$CASE_RESULT" \
+            '{repositories: $repositories, status: $status}' > .tmp/go-backfill/case-status.json
+          {
+            echo "## Seven-day synthetic backfill: ${CAO_BACKFILL_REPOSITORIES} repositories"
+            echo "All GitHub API and webhook traffic is restricted to exact numeric-loopback simulator endpoints."
+            report=".tmp/go-backfill/stress-${CAO_BACKFILL_REPOSITORIES}.json"
+            if [ -f "$report" ]; then
+              echo '```json'
+              cat "$report"
+              echo '```'
+            else
+              echo "No completed report; inspect the test and service logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload stress report and local service logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: postgres-backfill-stress-${{ matrix.repositories }}
+          path: .tmp/go-backfill/
+          if-no-files-found: error
+          retention-days: 14
+
+  report:
+    name: Append daily stress report to tracking issue
+    needs: backfill-stress
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          pattern: postgres-backfill-stress-*
+          path: backfill-stress-results
+      - name: Publish combined report
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          STRESS_RESULT: ${{ needs.backfill-stress.result }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const path = require('node:path')
+            const { buildBackfillStressReport, readBackfillStressCases } = await import(
+              pathToFileURL(path.resolve('scripts/report-backfill-stress.mjs')).href
+            )
+            const body = buildBackfillStressReport({
+              repository: `${context.repo.owner}/${context.repo.repo}`,
+              serverUrl: context.serverUrl,
+              runId: context.runId,
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+              sha: context.sha,
+              result: process.env.STRESS_RESULT,
+              cases: readBackfillStressCases('backfill-stress-results'),
+            })
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: 15886,
+              body,
+            })
+            await core.summary.addRaw(body).write()

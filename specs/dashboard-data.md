@@ -47,6 +47,8 @@ Repository
        └── Run
             ├── Domain
             ├── Tool
+            ├── Skill
+            ├── Friction
             ├── Audit
             └── Issue
 ```
@@ -74,10 +76,12 @@ IndexedDB and Postgres dashboard sources SHALL be reconstructable from
 authoritative inputs and MUST NOT become authoritative evidence storage.
 
 Domain records SHALL contain allowed and blocked firewall observations. Tool
-records SHALL contain MCP, Bash, and skill calls, with skills identified as a
-special tool type. Audit records SHALL contain all other execution observations.
+records SHALL contain MCP and Bash execution events. Skill records SHALL contain
+separately extracted skill activity, and Friction records SHALL contain
+precomputed avoidable execution-cost attribution. Audit records SHALL contain
+all other execution observations.
 Issue records SHALL contain both issues and pull requests, distinguished by an
-`isPullRequest` flag. Every record in these four tables SHALL reference its
+`isPullRequest` flag. Every record in these six tables SHALL reference its
 owning Run.
 
 The architecture SHALL support eventual consistency, idempotent conversion,
@@ -308,7 +312,7 @@ browser reuses its cached ingestion instead of redownloading the shard.
 The local SQLite projection and browser IndexedDB projection SHALL use the same
 adapters, identities, normalization, object-store definitions, and relationship
 validation. The local SQLite file implements the IndexedDB subset used by the
-canonical storage API. It additionally mirrors the six experiment-evidence
+canonical storage API. It additionally mirrors Campaign and the six experiment-evidence
 stores into queryable relational tables within the same write transaction;
 these mirrors are derived from canonical records, not an independent ingestion
 or acquisition path. It MAY use a different retention window when explicitly
@@ -331,10 +335,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 25 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 33 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 33 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus six transactional relational evidence mirrors |
-| Go server Postgres sources | Canonical model 14 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Canonical model | 26 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 34 | Eighteen canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 34 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Go server Postgres sources | Canonical model 15 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -398,6 +402,45 @@ logical database version, store names, key paths, indexes, and record values.
 The metadata tables are an emulation detail and MUST NOT be presented as
 canonical domain tables.
 
+Every canonical storage implementation MUST persist Campaign as a first-class
+entity, including campaigns with no Workflows or Runs. IndexedDB SHALL use the
+`campaigns` object store; SQLite and Postgres SHALL expose a physical `campaigns`
+table. The key SHALL be `id` in IndexedDB, `(database_name, id)` in SQLite, and
+`(namespace, id)` in Postgres. Campaign data MUST NOT be reconstructed from
+Workflow classifications or stored only as incidental Workflow fields.
+
+The local SQLite `campaigns` table SHALL mirror the canonical object store
+transactionally. It SHALL expose `slug`, `name`, `description`, `icon`, `mode`,
+`enabled`, `experimental`, `version`, `current_version`, `min_version`,
+`update_state`, `readme_path`, `readme`, `worker_count`, `inventory_warnings`,
+`max_repositories`, `rollout_percent`, `ai_credit_allowance`,
+`monthly_ai_credit_budget`, `campaign_link`, and `intelligence_declaration`.
+Boolean columns SHALL use SQLite integers; numeric columns SHALL use INTEGER
+or REAL as appropriate. Structured links and declarations SHALL use JSON TEXT.
+`observed_at` and JSON TEXT `provenance` SHALL preserve observation metadata.
+The complete canonical observation SHALL be stored only in `__idb_records.value`;
+relational mirrors MUST NOT duplicate it in `record_json`. Partial records MAY
+omit observation metadata; the
+mirror MUST NOT fabricate it. A `(database_name, slug)` index SHALL support
+the same campaign lookup as IndexedDB's `bySlug` index.
+
+Creating or rebuilding a SQLite mirror for an existing logical database SHALL
+populate it from that database's canonical Campaign records without changing their IDs,
+values, or logical schema version. Inserts, updates, replacement, deletion,
+and rollback SHALL keep the mirror consistent with the object store. Store or
+database deletion SHALL remove only the corresponding database's mirror rows.
+Campaigns SHALL remain exempt from run-detail retention.
+The SQLite doctor SHALL diagnose a missing Campaign table or required column
+and restore the table from retained canonical records inside its backed-up
+repair transaction.
+
+The Postgres table SHALL use the query-required native fields declared in
+`server/spec/storage.tsp`, with presence bits preserving missing versus null
+values and the existing fresh-schema contract. Its generated DDL and Go
+bindings MUST include `campaigns` and `$campaigns`, respectively. Storage
+conformance tests MUST verify Campaign persistence, stable identity on refresh,
+and deletion in each implementation.
+
 The local SQLite evidence mirrors are `experiments`,
 `experiment_assignments`, `graders`, `grader_observations`, `evals`, and
 `eval_observations`, each keyed by `(database_name, id)`. Definitions expose
@@ -407,10 +450,19 @@ expose `run_id`, `experiment_id`, and `variant`; grader observations expose
 `audit_id`, and `evaluator_digest`; eval observations expose `run_id`,
 `eval_id`, `eval_result`, `status`, and optional `experiment_id`/`variant`,
 `audit_id`, and `requested_model`/`resolved_model`. Optional inclusion and exclusion fields,
-`observed_at`, `provenance`, and `record_json` preserve the canonical record
-without requiring queries to parse Audit JSON. Relationship-key indexes follow
+`observed_at` and `provenance` preserve observation metadata without requiring
+queries to parse Audit JSON. The full record is available by joining
+`__idb_records` on `database_name`, the canonical `store_name`, and
+`record_key = json_quote(id)`; mirrors MUST NOT store another complete JSON copy.
+Relationship-key indexes follow
 the corresponding IndexedDB indexes. Store deletion and retention SHALL remove
 mirror rows in the same SQLite transaction.
+Outdated mirror layouts SHALL be rebuilt transactionally from
+`__idb_records`, preserving every logical database's scope, rather than
+converting or trusting the obsolete mirror's stored document. Failed rebuilds
+MUST roll back both DDL and data changes. The SQLite doctor SHALL diagnose
+missing or unexpected columns in all seven mirrors and use its backed-up
+repair transaction to restore the current layout.
 
 ## 5.2 Completeness and archives
 
@@ -918,6 +970,7 @@ not an acceptable privacy boundary.
 Version 1 SHALL define:
 
 ```text
+Campaign
 Repository
 Workflow
 Run
@@ -947,7 +1000,8 @@ erDiagram
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
   RUN ||--o{ DOMAIN : records
-  RUN ||--o{ TOOL : invokes
+  RUN ||--o{ TOOL : records
+  RUN ||--o{ SKILL : activates
   RUN ||--o{ AUDIT : records
   RUN ||--o{ ISSUE : creates
 
@@ -999,9 +1053,16 @@ erDiagram
   TOOL {
     string id PK "deterministic semantic ID"
     string runId FK "required owning run"
-    string toolType "mcp, bash, or skill"
-    boolean isSkill
+    string toolType "mcp or bash"
     string name
+  }
+  SKILL {
+    string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
+    string name
+    number invocationCount
+    number failedCount
+    string activationSource
   }
   AUDIT {
     string id PK "deterministic semantic ID"
@@ -1036,6 +1097,40 @@ efficiency, but remain mandatory canonical relationships. Every Domain, Tool,
 Audit, and Issue MUST reference exactly one Run. Partial observations MAY exist
 during normalization; all mandatory relationships MUST resolve before a
 complete batch is reconciled or a streamed record phase is marked current.
+
+## 6.3 Campaign
+
+A Campaign represents one installed campaign independently of execution
+activity. Its stable slug defines a deterministic, source-namespaced canonical
+`id`, such as `campaign:dashboard-sources:dependabot`. Version, name, mode, and
+observation time are mutable evidence, not identity.
+
+```js
+{
+  id: "campaign:dashboard-sources:dependabot",
+  slug: "dependabot",
+  name: "Dependabot",
+  mode: "review",
+  enabled: true,
+  version: "v1",
+  currentVersion: "v2",
+  updateState: "update-available",
+  observedAt: "2026-10-02T00:00:00Z"
+}
+```
+
+**CAM-001** — Every implementation MUST define the Campaign store/table and
+persist campaigns even when they have no workflows.
+
+**CAM-002** — Refreshing mutable inventory fields MUST enrich the existing
+Campaign rather than create a version-specific record.
+
+**CAM-003** — Campaign records have no mandatory execution parent and MUST NOT
+be deleted merely because Runs or run-owned details expire.
+
+**CAM-004** — Stored mode, enablement, scope, and budgets are descriptive
+evidence, not control-plane authority. Their presence MUST NOT authorize live
+work or widen reviewed policy.
 
 ---
 
@@ -1186,6 +1281,21 @@ persisted in canonical SQLite or IndexedDB tables. Job-shaped performance data
 MAY be projected directly from authoritative inputs. Run detail MUST be projected from Run and its Domain, Tool, Skill, Friction,
 Audit, and Issue records.
 
+Canonical Run records SHALL retain scalar query metrics and separately keyed
+experiment, grader, and eval evidence rather than copying the original nested
+payload. Unconsumed `tokenUsage`, `ambientContext`, `workingSet`,
+`behaviorFingerprint`, `taskDomain`, `comparison`, `agenticAssessments`,
+`graders`, `context`, `data`, `logsPayload`, `logsPath`, and `auditPath` remain
+upstream, not in the derived Run. The unused GitHub run `number` and
+`intentionalFailure` fields and duplicate `aic` SHALL NOT be persisted;
+`githubRunId`, `attempt`, `classification`, `failureKind`, and `aicTotal` retain
+their distinct meanings. Workflow `ghAwMetadata` and `ghAwManifest` remain
+upstream declarations. Pruning SHALL occur during normalization and at the
+storage write boundary, including ingestion of previously published shards.
+Unknown evidence fields MUST NOT be removed by a speculative query-only
+allowlist. Source provenance, explicit nulls, immutable Run aggregates, and
+historical execution metadata SHALL be preserved.
+
 ---
 
 # 11. Run-Owned Record Classification
@@ -1265,6 +1375,27 @@ Issue records SHALL preserve the safe-output action and canonical GitHub entity
 type. The SQLite interchange SHALL expose these values as nullable
 `safe_output_type` and `github_entity_type` columns. Missing entity-type
 evidence MUST remain absent rather than be inferred as a generic issue.
+
+Issue lifecycle fields SHALL use `state`, `closed`, `stateReason`, `closedAt`,
+and `statusObservedAt`, without duplicate `issueState`, `issueClosed`,
+`issueStateReason`, `issueClosedAt`, or `issueStatusObservedAt` copies.
+Tool and Skill membership is determined by their separate collections; the
+unused `isSkill` flag SHALL NOT be persisted or projected.
+
+The current Tool collection and TypeSpec `tools` table are event-grain facts,
+not a configured-tool inventory or one row per invocation. A `tool.call` and
+its correlated result or error SHALL retain separate identities, timestamps,
+status, and size evidence.
+
+A future physical normalization MAY factor repeated observed tool identity
+into a namespace-scoped dictionary and reference it from tool-event facts.
+Dictionary identity MUST distinguish server, tool name, type, versions, and
+missing values. It MUST NOT infer configured definitions from runtime use.
+Existing logical Tool query payloads and observation ordering MUST be preserved
+through the SQL query boundary. A `toolCalls` invocation table requires an
+explicit correlation and aggregation contract before collapsing events;
+renaming the current facts alone does not establish invocation grain.
+This dictionary/invocation split is not implemented by the current storage profile.
 
 Example:
 
@@ -1909,6 +2040,12 @@ computationMetadata
 # 28. Core Indexes
 
 Indexes SHOULD initially reflect known query paths.
+
+### campaigns
+
+```text
+slug
+```
 
 ### repositories
 

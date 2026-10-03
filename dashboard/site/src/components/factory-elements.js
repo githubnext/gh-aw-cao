@@ -36,7 +36,7 @@ export function resolveFactorySourceNames(defaults, config) {
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
  * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], routeParameters?: Record<string, string>, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
- * @param {{ refreshViewSources?: boolean }} [options]
+ * @param {{ refreshViewSources?: boolean, requestMissingSources?: boolean }} [options]
  * @returns {SourceBindings}
  */
 export function bindFactorySources(sources, names, request, options) {
@@ -50,7 +50,9 @@ export function bindFactorySources(sources, names, request, options) {
         ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
         : name;
       if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
-      if (!source || options?.refreshViewSources === true) {
+      if (!source && options?.requestMissingSources === false) {
+        sourceState(bindingKey).set({ status: 'loading', origin: 'view', source: null });
+      } else if (!source || options?.refreshViewSources === true) {
         requestedCount += 1;
         requestSource(name, {
           ...request,

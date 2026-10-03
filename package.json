@@ -21,6 +21,8 @@
     "dashboard:server:otel-smoke": "go -C server run ./cmd/cao-dashboard otel-smoke",
     "dashboard:server:lint": "cd server && golangci-lint fmt --diff && golangci-lint run ./...",
     "dashboard:server:test": "go -C server test ./...",
+    "test:integration:dashboard-backfill": "bash scripts/test-dashboard-backfill.sh",
+    "test:stress:dashboard-backfill": "CAO_BACKFILL_STRESS=1 bash scripts/test-dashboard-backfill.sh",
     "dashboard:server:spec": "npm --prefix server/spec run generate",
     "dashboard:server:spec:check": "npm --prefix server/spec run check",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=tests/playwright/configs/mobile.config.mjs",
