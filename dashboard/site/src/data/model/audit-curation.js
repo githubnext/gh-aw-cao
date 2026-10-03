@@ -1,5 +1,9 @@
+import { createDebug } from '../../debug.js';
+
 export const AUDIT_CURATION_VERSION = 1;
 export const AUDIT_CURATION_TRANSACTION_ID = 'maintenance:audit-curation';
+
+const debugAuditCuration = createDebug('audit-curation');
 
 const SHARED_FIELDS = new Set([
   'id', 'runId', 'timestamp', 'source', 'type', 'summary', 'status',
@@ -108,6 +112,13 @@ export function curateBatchAudits(batch) {
   const referenced = new Set([
     ...batch.graderObservations ?? [], ...batch.evalObservations ?? [], ...batch.experimentAssignments ?? []
   ].map((observation) => observation.auditId).filter((id) => typeof id === 'string'));
-  return batch.audits.filter((audit) =>
+  const curated = batch.audits.filter((audit) =>
     (typeof audit.id === 'string' && referenced.has(audit.id)) || !discardAudit(audit, runs.get(audit.runId)));
+  debugAuditCuration({
+    event: 'curate-complete',
+    auditCount: batch.audits.length,
+    retainedCount: curated.length,
+    discardedCount: batch.audits.length - curated.length
+  });
+  return curated;
 }
