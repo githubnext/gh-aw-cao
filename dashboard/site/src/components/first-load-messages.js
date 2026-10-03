@@ -1,3 +1,7 @@
+import { createDebug } from '../debug.js';
+
+const debugFirstLoadMessages = createDebug('first-load-messages');
+
 export const FIRST_LOAD_MESSAGE_INTERVAL_MS = 6_000;
 
 export const FIRST_LOAD_MESSAGES = [
@@ -108,6 +112,8 @@ export function createFirstLoadMessagePicker() {
   /** @type {string[]} */
   let remaining = [];
   let previous = '';
+  let cycleCount = 0;
+  debugFirstLoadMessages({ event: 'picker-created', messageCount: FIRST_LOAD_MESSAGES.length });
   return () => {
     if (!remaining.length) {
       remaining = [...FIRST_LOAD_MESSAGES];
@@ -119,6 +125,8 @@ export function createFirstLoadMessagePicker() {
         const last = remaining.length - 1;
         [remaining[0], remaining[last]] = [remaining[last], remaining[0]];
       }
+      cycleCount += 1;
+      debugFirstLoadMessages({ event: 'cycle-reshuffled', cycleCount });
     }
     const next = remaining.pop();
     if (!next) throw new Error('First-load presentation messages are missing.');
