@@ -7,7 +7,11 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var sqlbuilderLog = logger.New("cao:sqlbuilder")
 
 type Identifier string
 
@@ -19,14 +23,47 @@ func QuoteIdentifier(name string) string {
 	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }
 
+// rejectionStage identifies which structural precondition a Builder failed,
+// so a malformed call site is diagnosable without logging the SQL template,
+// identifier, or fragment text that triggered it.
+type rejectionStage string
+
+const (
+	rejectionStageNone             rejectionStage = "none"
+	rejectionStagePlaceholderCount rejectionStage = "placeholder-count"
+	rejectionStageIdentifier       rejectionStage = "identifier"
+	rejectionStageFragment         rejectionStage = "fragment"
+)
+
+// validateIdentifier reports whether name is safe to quote as a SQL
+// identifier. It is a pure function extracted from Write so this precondition
+// is independently testable without constructing a Builder.
+func validateIdentifier(name string) error {
+	if name == "" || strings.ContainsRune(name, 0) || !utf8.ValidString(name) {
+		return errors.New("invalid SQL identifier")
+	}
+	return nil
+}
+
+// validateFragment reports whether a compiler-produced SQL fragment is safe
+// to splice verbatim. It is a pure function extracted from Write so this
+// precondition is independently testable without constructing a Builder.
+func validateFragment(fragment string) error {
+	if strings.ContainsRune(fragment, 0) {
+		return errors.New("invalid compiler SQL fragment")
+	}
+	return nil
+}
+
 type Builder struct {
-	text strings.Builder
-	args []any
-	err  error
+	text  strings.Builder
+	args  []any
+	err   error
+	stage rejectionStage
 }
 
 func New(arguments ...any) *Builder {
-	return &Builder{args: append([]any{}, arguments...)}
+	return &Builder{args: append([]any{}, arguments...), stage: rejectionStageNone}
 }
 
 func (builder *Builder) Write(template string, parameters ...any) {
@@ -36,21 +73,23 @@ func (builder *Builder) Write(template string, parameters ...any) {
 	parts := strings.Split(template, "{}")
 	if len(parts) != len(parameters)+1 {
 		builder.err = errors.New("SQL builder placeholder count mismatch")
+		builder.stage = rejectionStagePlaceholderCount
 		return
 	}
 	builder.text.WriteString(parts[0])
 	for index, parameter := range parameters {
 		switch value := parameter.(type) {
 		case Identifier:
-			name := string(value)
-			if name == "" || strings.ContainsRune(name, 0) || !utf8.ValidString(name) {
-				builder.err = errors.New("invalid SQL identifier")
+			if err := validateIdentifier(string(value)); err != nil {
+				builder.err = err
+				builder.stage = rejectionStageIdentifier
 				return
 			}
-			builder.text.WriteString(QuoteIdentifier(name))
+			builder.text.WriteString(QuoteIdentifier(string(value)))
 		case Fragment:
-			if strings.ContainsRune(string(value), 0) {
-				builder.err = errors.New("invalid compiler SQL fragment")
+			if err := validateFragment(string(value)); err != nil {
+				builder.err = err
+				builder.stage = rejectionStageFragment
 				return
 			}
 			builder.text.WriteString(string(value))
@@ -68,6 +107,7 @@ func (builder *Builder) Bind(value any) string {
 
 func (builder *Builder) Statement() (string, []any, error) {
 	if builder.err != nil {
+		sqlbuilderLog.Printf("SQL builder rejected statement stage=%s", builder.stage)
 		return "", nil, builder.err
 	}
 	return builder.text.String(), append([]any{}, builder.args...), nil
