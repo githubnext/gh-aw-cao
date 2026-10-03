@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -243,5 +244,48 @@ func TestBenchmarkCleanupPreservesOtherNamespaces(t *testing.T) {
 	state, err = second.State(ctx)
 	if err != nil || !state.Ready || state.Counts["$runs"] != 1 {
 		t.Fatalf("other namespace was damaged: %+v, %v", state, err)
+	}
+}
+
+func TestLoadBenchmarkCandidatesReadsValidFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "candidates.json")
+	if err := os.WriteFile(path, []byte(`["overview","cso-summary"]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	candidates, err := loadBenchmarkCandidates(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(candidates) != 2 || candidates[0] != "overview" || candidates[1] != "cso-summary" {
+		t.Fatalf("unexpected candidates: %+v", candidates)
+	}
+}
+
+func TestLoadBenchmarkCandidatesRejectsMissingFile(t *testing.T) {
+	_, err := loadBenchmarkCandidates(filepath.Join(t.TempDir(), "missing.json"))
+	if err == nil || !strings.Contains(err.Error(), "read candidates") {
+		t.Fatalf("expected a read error, got %v", err)
+	}
+}
+
+func TestLoadBenchmarkCandidatesRejectsInvalidJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "candidates.json")
+	if err := os.WriteFile(path, []byte(`not json`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := loadBenchmarkCandidates(path)
+	if err == nil || !strings.Contains(err.Error(), "parse candidates") {
+		t.Fatalf("expected a parse error, got %v", err)
+	}
+}
+
+func TestLoadBenchmarkCandidatesRejectsEmptyList(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "candidates.json")
+	if err := os.WriteFile(path, []byte(`[]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := loadBenchmarkCandidates(path)
+	if err == nil || !strings.Contains(err.Error(), "no query candidates") {
+		t.Fatalf("expected an empty-candidates error, got %v", err)
 	}
 }
