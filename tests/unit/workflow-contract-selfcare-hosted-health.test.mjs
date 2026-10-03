@@ -21,9 +21,13 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /allowed: \[cao_catalog, cao_query\]/);
   assert.match(worker, /url: \$\{\{ vars\.CAO_OTEL_MCP_URL \}\}/);
   assert.match(worker, /CAO_OTEL_MCP_READ_AUTHORIZATION/);
+  assert.match(worker, /allowed: \[list_instances, list_streams, get_stream_schema, search_logs, batch_query\]/);
+  assert.match(worker, /read_pull_requests: read/);
+  assert.match(worker, /id-token: write/);
   assert.match(worker, /cache-memory:/);
   assert.match(worker, /rolling four-hour UTC window/);
   assert.match(worker, /close-older-issues: true/);
+  assert.match(worker, /deduplicate-by-title: true/);
   assert.match(worker, /If the OTEL MCP URL, credential, server, or query capabilities are absent/);
   assert.doesNotMatch(worker, /^\s+(contents|actions|issues|pull-requests): write$/m);
 });

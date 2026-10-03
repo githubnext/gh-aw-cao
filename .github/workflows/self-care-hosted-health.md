@@ -96,6 +96,7 @@ tools:
   cache-memory:
     retention-days: 90
     allowed-extensions: [".json"]
+  edit:
   bash: [cat, curl, cao, otel]
 
 mcp-servers:
@@ -112,6 +113,7 @@ mcp-servers:
     url: ${{ vars.CAO_OTEL_MCP_URL }}
     headers:
       Authorization: ${{ secrets.CAO_OTEL_MCP_READ_AUTHORIZATION }}
+    allowed: [list_instances, list_streams, get_stream_schema, search_logs, batch_query]
     required: false
 
 safe-outputs:
@@ -121,13 +123,11 @@ safe-outputs:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[self-care:hosted-health] "
     labels: [self-care, self-care:hosted-health]
+    deduplicate-by-title: true
     close-older-issues: true
     close-older-key: self-care-hosted-health
     max: 1
-    expires: 7d
-  noop:
-    max: 1
-    report-as-issue: false
+    expires: 3d
 
 pre-agent-steps:
   - name: Prepare hosted MCP credentials
@@ -157,8 +157,8 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first. Work only when the precom
 
 Check `https://cao.githubnext.com/api/readiness`, `/api/health`, and `/api/v1/health` with bounded timeouts, recording status and elapsed time without logging response bodies. Use the hosted `cao` MCP `cao_catalog` and a small bounded `cao_query` for current data availability; do not treat the local dashboard cache as production health. Use the read-only `otel` MCP to inspect production `cao-dashboard` and `cao-collector` telemetry. If the OTEL MCP URL, credential, server, or query capabilities are absent, state exactly which checks could not run; never treat missing evidence as healthy or invent values. The OTEL MCP must be a read-only endpoint reachable within `*.githubnext.com`; provision `CAO_OTEL_MCP_URL` and `CAO_OTEL_MCP_READ_AUTHORIZATION` in the control repository before expecting full reports. Only use read/query/list tools; never mutate telemetry or alert configuration.
 
-Use a rolling four-hour UTC window ending at run start. Compare with the preceding four-hour window and the last comparable successful window in `/tmp/gh-aw/cache-memory/hosted-health.json` when available. Store only version, window end, coarse aggregate counts and latency/memory measures, evidence availability, and at most 12 recent evaluations; never persist raw traces, URLs with query strings, credentials, headers, or identifying attributes. On a cache miss or invalid state, use the preceding window as baseline and mark historical comparison unavailable. Cache is advisory, not authority. Group findings by availability, request/query latency and errors, collector/backfill throughput and queues, and resource pressure. Bound all queries to the two windows, the two service names, low-cardinality dimensions, and aggregate results (at most 100 rows). Prefer rates and p50/p95/p99 over isolated slow spans; require repeated evidence before claiming a regression or root cause. Look for queue growth, retries, lock/pool contention, slow database spans, duplicate or wasteful work, goroutine growth, resident memory/heap trends and GC pauses, and OOM/restarts. Explicitly distinguish missing instrumentation from zero events. Recommend concrete, minimal OTEL metrics or read-only APIs when the evidence needed to confirm a suspicion is missing, including the instrument name, units, dimensions, and diagnostic question; do not claim the missing signal exists.
+Use a rolling four-hour UTC window ending at run start. Compare with the preceding four-hour window and the last comparable successful window in `/tmp/gh-aw/cache-memory/hosted-health.json` when available. After evaluation write the updated JSON there using the edit tool. Store only version, window end, coarse aggregate counts and latency/memory measures, evidence availability, and at most 12 recent evaluations; never persist raw traces, URLs with query strings, credentials, headers, or identifying attributes. On a cache miss or invalid state, use the preceding window as baseline and mark historical comparison unavailable. Cache is advisory, not authority. Group findings by availability, request/query latency and errors, collector/backfill throughput and queues, and resource pressure. Bound all queries to the two windows, the two service names, low-cardinality dimensions, and aggregate results (at most 100 rows). Prefer rates and p50/p95/p99 over isolated slow spans; require repeated evidence before claiming a regression or root cause. Look for queue growth, retries, lock/pool contention, slow database spans, duplicate or wasteful work, goroutine growth, resident memory/heap trends and GC pauses, and OOM/restarts. Explicitly distinguish missing instrumentation from zero events. Recommend concrete, minimal OTEL metrics or read-only APIs when the evidence needed to confirm a suspicion is missing, including the instrument name, units, dimensions, and diagnostic question; do not claim the missing signal exists.
 
-Publish one issue per authorized evaluation, even when healthy or incomplete, titled only with the unprefixed UTC window end and health classification (`healthy`, `degraded`, `unhealthy`, or `incomplete`). The configured safe output replaces older reports; do not create duplicate issues or PRs. Include `### Summary` with a direct answer to “Is cao.githubnext.com healthy?”, confidence and window; `### Evidence` with the check matrix (pass/fail/unavailable, window, source and aggregate counts); `### Bottlenecks and pressure`; `### Missing telemetry and recommended metrics or APIs`; `### Actions`; `### Control Plane` with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and run `${{ inputs.control_plane_run_url }}`. Keep serious findings and next actions visible, with at most three evidence links. Do not expose sensitive telemetry, tokens, raw traces, personal data, or untrusted prose. If safe output cannot be published, call `noop` exactly once and explain the blocker.
+Publish one issue per authorized evaluation, even when healthy or incomplete. Provide only the unprefixed UTC window end and health classification (`healthy`, `degraded`, `unhealthy`, or `incomplete`) as the title: the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. The configured safe output replaces older reports; do not create duplicate issues or PRs. Begin directly with a concise executive summary answering “Is cao.githubnext.com healthy?”, followed by one `**Action:**` sentence. Include `### Evidence` with the check matrix (pass/fail/unavailable, window, source and aggregate counts); `### Bottlenecks and pressure`; `### Missing telemetry and recommended metrics or APIs`; and `### Actions`. Let shared control append its linked provenance footer with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and run `${{ inputs.control_plane_run_url }}`; do not duplicate it in a section. Keep serious findings and next actions visible, with at most three evidence links. Do not expose sensitive telemetry, tokens, raw traces, personal data, or untrusted prose. If safe output cannot be published, call `noop` exactly once and explain the blocker.
 
 {{#runtime-import? .github/cao/self-care.md}}
