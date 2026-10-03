@@ -8,6 +8,7 @@ test("every root unit test runs in exactly one topical area", () => {
   const partition = partitionUnitTests(files);
   assert.deepEqual(Object.keys(partition), Object.keys(unitTestAreas));
   assert.deepEqual(Object.values(partition).flat().sort(), files);
+  assert.ok(partition.tooling.includes("backfill-stress-report.test.mjs"));
   assert.throws(() => partitionUnitTests([...files, "unclassified.test.mjs"]), /exactly one area/);
 });
 

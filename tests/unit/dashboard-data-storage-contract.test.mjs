@@ -23,6 +23,7 @@ test("dashboard data specification matches implemented storage versions", () => 
   assert.match(specification, new RegExp(`\\| Static SQL export \\| ${SQL_EXPORT_VERSION} \\|`));
   assert.match(specification, new RegExp(`const DATABASE_NAME = "${DATABASE_NAME}";`));
   assert.match(specification, new RegExp(`const DATABASE_VERSION = ${DATABASE_VERSION};`));
+  assert.match(specification, new RegExp(`IndexedDB version ${DATABASE_VERSION} SHALL define:`));
 
   for (const document of [dataModel, ingestion]) {
     assert.match(document, new RegExp(`canonical model is version ${CANONICAL_SCHEMA_VERSION}`, "i"));
