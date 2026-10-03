@@ -3,7 +3,7 @@
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
   "last_updated": "2026-10-03T11:03:07Z",
-  "status": "needs-work",
+  "status": "deprecated",
   "affected_languages": [
     "javascript"
   ],
@@ -113,7 +113,7 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-03T23:36:42Z",
+  "last_seen_at": "2026-10-03T11:03:07Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-firewall",
@@ -124,16 +124,6 @@
       "readiness_for_target": "not-applicable",
       "reason": "No .astro files, themed UI components, or color-mix()/hex-literal test assertions exist anywhere in this infrastructure/CLI-firewall repository; the rule's unsafe pattern cannot occur here.",
       "txn_id": "refiner-37156057344-2"
-    },
-    {
-      "target_repo": "github/gh-aw-actions",
-      "target_commit": "8a5b99ba734d5cb564e3a0c85ea0580d881002e0",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "No .astro files, themed UI components, CSS custom properties, or color-mix()/hex-literal test assertions exist anywhere in this GitHub Actions library repository; the rule's unsafe pattern cannot occur here.",
-      "txn_id": "refiner-37162075777-1"
     }
   ]
 }

@@ -100,18 +100,6 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-03T23:36:42Z",
-  "last_updated": "2026-10-03T11:03:07Z",
-  "additional_target_evaluations": [
-    {
-      "target_repo": "github/gh-aw-actions",
-      "target_commit": "8a5b99ba734d5cb564e3a0c85ea0580d881002e0",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "No dashboard/UI components and no reactive.js/factory-elements.js createFactoryScope()/state()/effect() convention exist anywhere in this repository's sources; the rule's unsafe pattern has no syntactic surface to attach to here.",
-      "txn_id": "refiner-37162075777-2"
-    }
-  ]
+  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_updated": "2026-10-03T11:03:07Z"
 }
