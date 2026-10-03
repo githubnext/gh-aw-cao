@@ -5,6 +5,7 @@ import "@typespec/json-schema";
 import "./common.tsp";
 import "./query.tsp";
 import "./health.tsp";
+import "./discovery.tsp";
 import "./auth.tsp";
 import "./canonical.tsp";
 import "./memory.tsp";

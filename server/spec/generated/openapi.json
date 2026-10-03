@@ -13,6 +13,9 @@
       "name": "Health"
     },
     {
+      "name": "Agent discovery"
+    },
+    {
       "name": "Hosted authentication"
     },
     {
@@ -2666,6 +2669,116 @@
         ]
       }
     },
+    "/llms.txt": {
+      "get": {
+        "operationId": "Discovery_agentGuide",
+        "description": "Public in local and hosted profiles, without a bearer capability or OAuth\nsession. Returns the server's agent guide, documentation links and build\ncommit SHA (or \"unknown\"). The guide describes MCP availability but does not\nenable the optional MCP endpoint. Hosted requests are limited per client\naddress; an externally hosted handler returns 503 before startup or after\nshutdown.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "text/plain; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentGuideText"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Agent discovery"
+        ]
+      },
+      "head": {
+        "operationId": "Discovery_agentGuideHeaders",
+        "description": "Same public access and success headers as GET /llms.txt, without a response body.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "content-type": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "text/plain; charset=utf-8"
+                  ]
+                }
+              },
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error"
+          },
+          "503": {
+            "description": "Service unavailable."
+          }
+        },
+        "tags": [
+          "Agent discovery"
+        ]
+      }
+    },
     "/mcp": {
       "post": {
         "operationId": "Mcp_exchange",
@@ -2869,6 +2982,15 @@
             "login": "octocat",
             "avatarUrl": "https://avatars.githubusercontent.com/u/1"
           }
+        ]
+      },
+      "AgentGuideHeaders": {
+        "type": "object"
+      },
+      "AgentGuideText": {
+        "type": "string",
+        "examples": [
+          "# Central Agentic Ops dashboard server\n\nServer commit SHA: unknown\n"
         ]
       },
       "AggregateValue": {
