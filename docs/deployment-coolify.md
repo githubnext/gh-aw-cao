@@ -240,7 +240,7 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_SERVER_LOGS_ENABLED` | No. Defaults to `true` in Coolify. | No | Mounts `GET /api/admin/logs`, a JSON download of up to 10,000 recent server debug records plus Redis ingestion counters and collection queue counts. Set to `false` to disable. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | No | Shared base OTLP/HTTP endpoint. The exporter appends the signal path. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | No | No | Full OTLP/HTTP trace endpoint. Use this to reuse the control plane's `GH_AW_DEFAULT_OTLP_ENDPOINT`. |
-| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | No | No | Full OTLP/HTTP metrics endpoint. |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | No | No | Full OTLP/HTTP metrics endpoint, including `/api/ORGANIZATION/v1/metrics` for OpenObserve. Enables application metrics plus stable Go runtime memory and goroutine metrics. |
 | `OTEL_EXPORTER_OTLP_HEADERS_ROTATED` | No | Yes | Shared OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_HEADERS` in each container. |
 | `OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED` | No | Yes | Trace-specific OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_TRACES_HEADERS` in each container. |
 | `OTEL_EXPORTER_OTLP_METRICS_HEADERS_ROTATED` | No | Yes | Metrics-specific OTLP authentication headers. Compose maps this rotatable Coolify input to `OTEL_EXPORTER_OTLP_METRICS_HEADERS` in each container. |
@@ -356,24 +356,39 @@ single-node service, persists `/data`, and doesn't require another database.
 1. Keep the OpenObserve UI restricted to administrators. Do not expose its
    ingestion endpoint publicly when the CAO application can reach it through
    the predefined network.
-1. In OpenObserve, open **Data Sources**, select OTLP traces, and copy the
-   generated HTTP endpoint and `Authorization` header. The trace endpoint
-   includes the organization path, for example
-   `/api/default/v1/traces`; preserve that complete path.
+1. In OpenObserve, create a dedicated ingestion service account that is
+   separate from the Hosted Health read account. Open **Data Sources**, select
+   OTLP traces and metrics, and copy both generated HTTP endpoints and the
+   ingestion `Authorization` header. The endpoints include the organization
+   path, for example `/api/default/v1/traces` and
+   `/api/default/v1/metrics`; preserve each complete path.
 1. Set the CAO application's `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to the full
    internal endpoint, using the OpenObserve service's Coolify network name and
    port `5080` in place of its public origin. Store the copied header as a
    Coolify secret in `OTEL_EXPORTER_OTLP_TRACES_HEADERS_ROTATED`, using the
    OpenTelemetry environment format `Authorization=Basic%20...`.
+1. Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the complete internal metrics
+   endpoint and store the ingestion header in
+   `OTEL_EXPORTER_OTLP_METRICS_HEADERS_ROTATED`. The dashboard, collector, and
+   backfill then export their application metrics plus the stable Go runtime
+   instruments, including `go.memory.allocated` in bytes and
+   `go.goroutine.count` in goroutines. The upstream stable runtime
+   instrumentation does not currently emit a GC-pause distribution; treat
+   that signal as unavailable rather than zero until a dedicated instrument
+   is added.
 1. To send workflow traces to the same OpenObserve instance, expose a
    separately reviewed HTTPS ingestion route that GitHub-hosted runners can
-   reach. Set that full trace endpoint as `GH_AW_DEFAULT_OTLP_ENDPOINT` and the
-   same OpenTelemetry-formatted header as the
+   reach. Create a separate Actions ingestion credential rather than reusing
+   the Hosted Health read credential. Set that full trace endpoint as
+   `GH_AW_DEFAULT_OTLP_ENDPOINT` and its OpenTelemetry-formatted header as the
    `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret. Do not put OpenObserve's
    private Coolify network address in the control repository; omit these
    workflow settings when no secure runner-reachable route exists.
 1. Redeploy CAO, make one authenticated request, and confirm that the returned
-   request ID finds the `cao-dashboard` trace in OpenObserve.
+   request ID finds the `cao-dashboard` trace in OpenObserve. In OpenObserve,
+   verify that a metrics stream exists and contains both
+   `go.memory.allocated` and `go.goroutine.count` for `cao-dashboard` and
+   `cao-collector`.
 
 To let the SelfCare Hosted Health worker query that telemetry, create a
 dedicated OpenObserve service account for Actions. On Enterprise, grant only
@@ -425,6 +440,15 @@ review a separate metrics query capability only when
 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is enabled and the deployed streams have
 been verified.
 
+The same pre-agent phase probes `/api/readiness`, `/api/health`, and
+`/api/v1/health` with bounded timeouts and retains only status codes and
+elapsed milliseconds. It also verifies `cao_catalog`, `cao_query`, one catalog
+read, and one one-row query when the workflow OIDC token is from the repository
+default branch. Feature-branch runs are expected to receive
+`provenance_mismatch`; the worker reports that as a pre-merge evidence
+restriction and verifies hosted CAO MCP access after merge. Do not broaden the
+server to accept feature-branch provenance.
+
 OpenObserve is optional infrastructure, not dashboard authority. It receives
 telemetry only; PostgreSQL remains the dashboard entity store and Redis remains
 operational state.
@@ -434,6 +458,8 @@ producer-side path: instrumenting MCP server methods and exporting their OTEL
 spans and metrics. Treat that as write-side telemetry configuration using
 `GH_AW_DEFAULT_OTLP_ENDPOINT` and `GH_AW_DEFAULT_OTLP_HEADERS`; it does not
 replace the read-side native MCP endpoint or its service-account credential.
+The endpoint variable alone is not sufficient: gh-aw disables export until the
+matching header secret is present.
 
 ### Logs
 

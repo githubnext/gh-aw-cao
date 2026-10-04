@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 
+	otelruntime "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -151,6 +152,13 @@ func Setup(ctx context.Context, version string) (Shutdown, error) {
 			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
 			sdkmetric.WithResource(res),
 		)
+		if runtimeErr := otelruntime.Start(otelruntime.WithMeterProvider(meterProvider)); runtimeErr != nil {
+			_ = meterProvider.Shutdown(ctx)
+			if traceProvider != nil {
+				_ = traceProvider.Shutdown(ctx)
+			}
+			return noop, fmt.Errorf("start Go runtime metric instrumentation: %w", runtimeErr)
+		}
 	}
 
 	var logProvider *sdklog.LoggerProvider

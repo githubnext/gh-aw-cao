@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	logspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+	metricspb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -250,6 +251,66 @@ func TestSetupWithMetricsEndpointConfiguresMeterProviderOnly(t *testing.T) {
 	}
 	if otel.GetTracerProvider() != previousTracerProvider {
 		t.Fatal("metrics-only configuration must not replace the tracer provider")
+	}
+}
+
+func TestSetupExportsGoRuntimeMetrics(t *testing.T) {
+	requests := make(chan *metricspb.ExportMetricsServiceRequest, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/metrics" {
+			http.Error(w, "unexpected path", http.StatusNotFound)
+			return
+		}
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		var request metricspb.ExportMetricsServiceRequest
+		if err := proto.Unmarshal(data, &request); err != nil {
+			http.Error(w, "invalid protobuf", http.StatusBadRequest)
+			return
+		}
+		requests <- &request
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(receiver.Close)
+
+	previousMeterProvider := otel.GetMeterProvider()
+	t.Cleanup(func() { otel.SetMeterProvider(previousMeterProvider) })
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", receiver.URL+"/v1/metrics")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
+
+	shutdown, err := Setup(t.Context(), "test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := shutdown(shutdownCtx); err != nil {
+		t.Fatalf("shutdown exporter: %v", err)
+	}
+
+	select {
+	case request := <-requests:
+		names := make(map[string]bool)
+		for _, resourceMetrics := range request.GetResourceMetrics() {
+			for _, scopeMetrics := range resourceMetrics.GetScopeMetrics() {
+				for _, metric := range scopeMetrics.GetMetrics() {
+					names[metric.GetName()] = true
+				}
+			}
+		}
+		for _, name := range []string{"go.memory.allocated", "go.goroutine.count"} {
+			if !names[name] {
+				t.Errorf("exported metrics do not include %q: %v", name, names)
+			}
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for exported metrics")
 	}
 }
 

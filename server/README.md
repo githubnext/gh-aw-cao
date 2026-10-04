@@ -1275,13 +1275,17 @@ metrics are independently optional; logs additionally require that opt-in:
 | --- | --- |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables trace and metric OTLP/HTTP exporters and sets their shared destination; also supplies the log destination when log export is enabled. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Enables the OTLP/HTTP trace exporter and sets its destination. Spans remain no-ops when neither this nor the shared endpoint is set. |
-| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Enables the OTLP/HTTP metric exporter and sets its destination. In addition to CAO application instruments, the exporter reports stable Go runtime metrics including `go.memory.allocated`, `go.memory.used`, and `go.goroutine.count`. |
 | `CAO_OTEL_LOGS_ENABLED` | Set to `true` to export `DEBUG`-selected server log namespaces when a log endpoint is configured. Stderr behavior is unchanged. |
 | `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` | Log-specific OTLP/HTTP destination; takes priority over the shared endpoint and includes the complete `/v1/logs` path. |
 | `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_METRICS_HEADERS`, `OTEL_EXPORTER_OTLP_LOGS_HEADERS` | Authentication headers read directly by the corresponding OTLP exporter. Supply them through the deployment platform's secret manager; never place values in command-line arguments, checked-in configuration, or logs. |
 | `OTEL_SERVICE_NAME` | Overrides the default `cao-dashboard` `service.name` resource attribute. |
 | `OTEL_RESOURCE_ATTRIBUTES` | Adds deployment-selected resource attributes; only configure reviewed, non-identifying values. Hostname detection is not enabled by default. |
 | `OTEL_SDK_DISABLED` | Set to `true` to keep all providers as no-ops even when endpoints are configured. |
+
+The stable upstream Go runtime instrumentation does not currently emit a
+GC-pause distribution. A missing GC-pause metric therefore means that signal
+is not instrumented, not that pauses are zero.
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry

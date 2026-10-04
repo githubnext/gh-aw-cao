@@ -23,6 +23,20 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
 
   assert.match(worker, /url: https:\/\/cao\.githubnext\.com\/mcp/);
   assert.match(worker, /allowed: \[cao_catalog, cao_query\]/);
+  assert.match(worker, /name: Verify hosted CAO health and MCP access/);
+  assert.match(worker, /cao-hosted-smoke\.json/);
+  assert.match(worker, /\/api\/readiness \/api\/health \/api\/v1\/health/);
+  assert.match(worker, /--output \/dev\/null/);
+  assert.match(worker, /MCP-Protocol-Version: 2026-07-28/);
+  assert.match(worker, /provenance_mismatch/);
+  assert.match(worker, /non_default_branch_provenance/);
+  assert.match(worker, /non_default_branch_accepted/);
+  assert.match(worker, /query_payload=.*campaign-runs.*limit\\":1/);
+  assert.match(worker, /authorization_scope: "default_branch_only"/);
+  assert.match(worker, /expected pre-merge review boundary/);
+  assert.match(worker, /never recommend weakening default-branch OIDC provenance/);
+  assert.match(worker, /do not call those endpoints directly from the agent/);
+  assert.match(worker, /MCP runtime mismatch rather than missing credentials/);
   assert.match(worker, /url: \$\{\{ vars\.CAO_OTEL_MCP_URL \}\}/);
   assert.match(worker, /CAO_OTEL_MCP_READ_AUTHORIZATION/);
   assert.match(worker, /allowed: \[SearchSQL, StreamList, StreamSchema, GetLatestTraces\]/);
@@ -50,5 +64,6 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /do not recommend replacing it/);
   assert.match(worker, /do not assume Prometheus-compatible query access/);
   assert.match(worker, /Do not use `tool_search`, `tools_call`, or any mutation-capable OpenObserve tool/);
+  assert.doesNotMatch(worker, /bash: \[[^\]]*curl/);
   assert.doesNotMatch(worker, /^\s+(contents|actions|issues|pull-requests): write$/m);
 });

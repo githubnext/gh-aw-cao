@@ -259,7 +259,10 @@ gh variable set GH_AW_DEFAULT_OTLP_ENDPOINT \
 gh secret set GH_AW_DEFAULT_OTLP_HEADERS --repo "$CONTROL_REPO"
 ```
 
-At the secret prompt, enter the complete exporter header string, such as `Authorization=Bearer <token>` or `Authorization=Basic <credentials>,X-Scope-OrgID=<tenant>`.
+At the secret prompt, enter the complete exporter header string, such as
+`Authorization=Bearer <token>` or
+`Authorization=Basic <credentials>,X-Scope-OrgID=<tenant>`. Use an ingestion
+credential dedicated to Actions; do not reuse an observability read credential.
 
 The optional `shared/sentry.md`, `shared/grafana.md`, and `shared/datadog.md` imports configure exporters only; they do not create the dispatcher span. Their headers are:
 
