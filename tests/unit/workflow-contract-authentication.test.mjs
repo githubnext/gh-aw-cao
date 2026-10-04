@@ -150,6 +150,46 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
   }
 });
 
+test("Repo Assist uses configured CAO GitHub authentication and organization-billed Copilot", () => {
+  const workflowIds = [
+    "repo-assist",
+    "repo-assist-issue-triage",
+    "repo-assist-issue-fix",
+    "repo-assist-maintenance",
+    "repo-assist-pr-upkeep",
+  ];
+
+  for (const workflowId of workflowIds) {
+    const source = workflow(`${workflowId}.md`);
+    const lock = workflow(`${workflowId}.lock.yml`);
+    const precomputeStep = /\n\s+- name: Run CAO control precompute\n[\s\S]*?(?=\n\s+- name: )/.exec(lock)?.[0];
+
+    assert.match(source, /uses: shared\/control\.md/, `${workflowId}.md must use shared CAO authentication`);
+    assert.match(source, /engine: copilot/, `${workflowId}.md must use Copilot`);
+    assert.match(source, /copilot-requests: write/, `${workflowId}.md must use organization billing`);
+    assert.doesNotMatch(source, /COPILOT_GITHUB_TOKEN/, `${workflowId}.md must not select token billing`);
+
+    assert.ok(precomputeStep, `${workflowId}.lock.yml must include CAO precompute`);
+    assert.match(precomputeStep, /GH_TOKEN:.*steps\.cao_pre_activation_app_token\.outputs\.token/);
+    assert.match(precomputeStep, /GH_AW_GITHUB_AUTH_MODE == 'pat'/);
+    assert.match(precomputeStep, /GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
+    assert.match(
+      lock,
+      /Start CLI Proxy[\s\S]*?GH_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
+      `${workflowId}.lock.yml CLI discovery must use the shared target read credential`,
+    );
+    assert.match(
+      lock,
+      /GITHUB_MCP_SERVER_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
+      `${workflowId}.lock.yml GitHub tools must use the shared target read credential`,
+    );
+
+    assert.match(lock, /copilot-requests: write/, `${workflowId}.lock.yml must grant Copilot requests`);
+    assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/, `${workflowId}.lock.yml must use the workflow token`);
+    assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/, `${workflowId}.lock.yml must not use a Copilot token secret`);
+  }
+});
+
 test("public read-only operation uses the built-in token without widening access", () => {
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
