@@ -793,7 +793,7 @@ The same binary runs every role:
 | `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
 | `cao-dashboard backfill --replay-only` | repopulate the database from retained evidence with no GitHub requests |
 | `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
-| `cao-dashboard otel-smoke` | verify that one live CAO request is indexed by OpenObserve without reporting credentials or trace identifiers |
+| `cao-dashboard otel-smoke` | verify that one live CAO request and, when configured or required, the stable Go runtime metrics are indexed by OpenObserve without reporting credentials or identifiers |
 
 Set `CAO_COLLECT_WINDOW_DAYS=7` to restrict historical run discovery to a
 seven-day GitHub `created` range. Zero/unset preserves the existing unbounded
@@ -874,17 +874,24 @@ Run `cao-dashboard otel-smoke` inside the live CAO container after configuring
 the standard `OTEL_*` variables. The command requests the local readiness
 endpoint, confirms that the response carries valid trace and span identifiers,
 checks the OpenObserve `/healthz` endpoint derived from the OTLP traces
-endpoint, and polls the `default` trace stream for the emitted trace.
+endpoint, and polls the `default` trace stream for the emitted trace. When a
+metrics endpoint is configured, it also executes bounded SQL queries against
+OpenObserve's normalized `go_memory_allocated` and `go_goroutine_count`
+streams.
 
 ```bash
-/app/cao-dashboard otel-smoke
+/app/cao-dashboard otel-smoke --require-metrics --timeout 2m
 ```
 
 Use `--trace-stream` when OpenObserve stores CAO traces outside `default`.
+`--require-metrics` makes a missing metrics endpoint fail the smoke;
 `--timeout` bounds the complete test and `--poll-interval` controls lookup
-frequency. The command exits non-zero unless every stage succeeds. Its JSON
-report contains only HTTP status codes and booleans; it never includes the
-readiness URL, OTLP endpoint, authorization header, trace ID, or span ID.
+frequency. When metrics are configured, their query failure fails the smoke
+even without `--require-metrics`. The versioned JSON report distinguishes
+endpoint presence, search statuses, and whether both runtime streams contain
+recent samples. It contains only HTTP status codes and booleans; it never
+includes the readiness URL, OTLP endpoint, authorization header, trace ID, or
+span ID.
 
 ### Collection settings
 

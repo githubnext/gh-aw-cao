@@ -428,21 +428,29 @@ func newTelemetrySmokeCommand() *cobra.Command {
 		"live CAO readiness URL",
 	)
 	traceStream := cmd.Flags().String("trace-stream", "default", "OpenObserve trace stream")
+	requireMetrics := cmd.Flags().Bool(
+		"require-metrics",
+		false,
+		"require readable go.memory.allocated and go.goroutine.count metric streams",
+	)
 	timeout := cmd.Flags().Duration("timeout", 30*time.Second, "whole smoke-test timeout")
 	pollInterval := cmd.Flags().Duration("poll-interval", time.Second, "OpenObserve trace lookup interval")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		report, err := telemetry.RunSmoke(ctx, telemetry.SmokeConfig{
-			CAOReadinessURL:   *readinessURL,
-			OTELSDKDisabled:   os.Getenv("OTEL_SDK_DISABLED"),
-			OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-			OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
-			OTLPTraceEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
-			OTLPTraceHeaders:  os.Getenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS"),
-			TraceStream:       *traceStream,
-			Timeout:           *timeout,
-			PollInterval:      *pollInterval,
+			CAOReadinessURL:    *readinessURL,
+			OTELSDKDisabled:    os.Getenv("OTEL_SDK_DISABLED"),
+			OTLPEndpoint:       os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			OTLPHeaders:        os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
+			OTLPTraceEndpoint:  os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+			OTLPTraceHeaders:   os.Getenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS"),
+			OTLPMetricEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
+			OTLPMetricHeaders:  os.Getenv("OTEL_EXPORTER_OTLP_METRICS_HEADERS"),
+			TraceStream:        *traceStream,
+			RequireMetrics:     *requireMetrics,
+			Timeout:            *timeout,
+			PollInterval:       *pollInterval,
 		})
 		if err != nil {
 			return err

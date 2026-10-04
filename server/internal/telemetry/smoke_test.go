@@ -91,6 +91,164 @@ func TestRunSmokeFindsExportedTraceWithoutReportingSecrets(t *testing.T) {
 	}
 }
 
+func TestRunSmokeVerifiesConfiguredGoRuntimeMetrics(t *testing.T) {
+	const (
+		traceID                   = "4bf92f3577b34da6a3ce929d0e0e4736"
+		spanID                    = "00f067aa0ba902b7"
+		traceAuthorizationHeader  = "Basic trace-credential"
+		metricAuthorizationHeader = "Basic metric-credential"
+	)
+	cao := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set(TraceIDHeader, traceID)
+		response.Header().Set(SpanIDHeader, spanID)
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(cao.Close)
+
+	metricQueries := make(map[string]int)
+	openObserve := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/healthz":
+			response.WriteHeader(http.StatusOK)
+		case "/api/default/default/traces/latest":
+			if got := request.Header.Get("Authorization"); got != traceAuthorizationHeader {
+				t.Errorf("trace authorization header = %q, want %q", got, traceAuthorizationHeader)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"hits":[{"trace_id":"` + traceID + `"}]}`))
+		case "/api/default/_search":
+			if request.Method != http.MethodPost {
+				t.Errorf("metric search method = %q, want POST", request.Method)
+			}
+			if got := request.Header.Get("Authorization"); got != metricAuthorizationHeader {
+				t.Errorf("metric authorization header = %q, want %q", got, metricAuthorizationHeader)
+			}
+			if got := request.URL.Query().Get("type"); got != "metrics" {
+				t.Errorf("metric search type = %q, want metrics", got)
+			}
+			var payload struct {
+				Query struct {
+					SQL       string `json:"sql"`
+					StartTime int64  `json:"start_time"`
+					EndTime   int64  `json:"end_time"`
+					From      int    `json:"from"`
+					Size      int    `json:"size"`
+				} `json:"query"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode metric search request: %v", err)
+			}
+			if payload.Query.StartTime == 0 || payload.Query.EndTime <= payload.Query.StartTime ||
+				payload.Query.From != 0 || payload.Query.Size != 1 {
+				t.Errorf("metric search is not bounded: %+v", payload.Query)
+			}
+			switch {
+			case strings.Contains(payload.Query.SQL, `"`+goMemoryAllocatedStream+`"`):
+				metricQueries[goMemoryAllocatedStream]++
+			case strings.Contains(payload.Query.SQL, `"`+goGoroutineCountStream+`"`):
+				metricQueries[goGoroutineCountStream]++
+			default:
+				t.Errorf("unexpected metric SQL %q", payload.Query.SQL)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"hits":[{"metric_rows":2}]}`))
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	t.Cleanup(openObserve.Close)
+
+	report, err := RunSmoke(t.Context(), SmokeConfig{
+		CAOReadinessURL:    cao.URL + "/api/readiness",
+		OTLPTraceEndpoint:  openObserve.URL + "/api/default/v1/traces",
+		OTLPTraceHeaders:   "Authorization=Basic%20trace-credential",
+		OTLPMetricEndpoint: openObserve.URL + "/api/default/v1/metrics",
+		OTLPMetricHeaders:  "Authorization=Basic%20metric-credential",
+		TraceStream:        "default",
+		RequireMetrics:     true,
+		Timeout:            time.Second,
+		PollInterval:       time.Millisecond,
+		Now:                func() time.Time { return time.Date(2026, 10, 2, 16, 0, 0, 0, time.UTC) },
+	})
+	if err != nil {
+		t.Fatalf("RunSmoke() error = %v", err)
+	}
+	if !report.MetricsRequired || !report.MetricsConfigured || !report.MetricsVerified || !report.Passed {
+		t.Fatalf("metric smoke report = %+v, want required configured verified pass", report)
+	}
+	if report.GoMemoryAllocatedSearchStatus != http.StatusOK || !report.GoMemoryAllocatedFound {
+		t.Errorf("go.memory.allocated search = (%d, %t), want (200, true)",
+			report.GoMemoryAllocatedSearchStatus, report.GoMemoryAllocatedFound)
+	}
+	if report.GoGoroutineCountSearchStatus != http.StatusOK || !report.GoGoroutineCountFound {
+		t.Errorf("go.goroutine.count search = (%d, %t), want (200, true)",
+			report.GoGoroutineCountSearchStatus, report.GoGoroutineCountFound)
+	}
+	for _, stream := range []string{goMemoryAllocatedStream, goGoroutineCountStream} {
+		if metricQueries[stream] != 1 {
+			t.Errorf("metric query count for %q = %d, want 1", stream, metricQueries[stream])
+		}
+	}
+
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{
+		traceID,
+		traceAuthorizationHeader,
+		metricAuthorizationHeader,
+		cao.URL,
+		openObserve.URL,
+	} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Errorf("metric smoke report contains sensitive runtime value %q", forbidden)
+		}
+	}
+}
+
+func TestRunSmokeFailsWhenRequiredMetricsAreNotConfigured(t *testing.T) {
+	const (
+		traceID = "4bf92f3577b34da6a3ce929d0e0e4736"
+		spanID  = "00f067aa0ba902b7"
+	)
+	cao := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set(TraceIDHeader, traceID)
+		response.Header().Set(SpanIDHeader, spanID)
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(cao.Close)
+	openObserve := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/healthz":
+			response.WriteHeader(http.StatusOK)
+		case "/api/default/default/traces/latest":
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"hits":[{"trace_id":"` + traceID + `"}]}`))
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	t.Cleanup(openObserve.Close)
+
+	report, err := RunSmoke(t.Context(), SmokeConfig{
+		CAOReadinessURL:   cao.URL + "/api/readiness",
+		OTLPTraceEndpoint: openObserve.URL + "/api/default/v1/traces",
+		OTLPTraceHeaders:  "Authorization=Basic%20trace-credential",
+		TraceStream:       "default",
+		RequireMetrics:    true,
+		Timeout:           time.Second,
+		PollInterval:      time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("RunSmoke() error = %v", err)
+	}
+	if !report.TraceFound || !report.MetricsRequired || report.MetricsConfigured ||
+		report.MetricsVerified || report.Passed {
+		t.Fatalf("required-but-unconfigured metric smoke report = %+v", report)
+	}
+}
+
 func TestRunSmokeReportsAuthorizationFailure(t *testing.T) {
 	const (
 		traceID = "4bf92f3577b34da6a3ce929d0e0e4736"
@@ -170,6 +328,28 @@ func TestRunSmokeRejectsInvalidConfigurationWithoutEchoingValues(t *testing.T) {
 				OTLPTraceEndpoint: "http://user:" + secret + "@collector/api/default/v1/traces",
 				OTLPTraceHeaders:  "Authorization=" + secret,
 				TraceStream:       "default",
+			},
+		},
+		{
+			name: "metrics endpoint carries credentials",
+			config: SmokeConfig{
+				CAOReadinessURL:    "http://127.0.0.1:8080/api/readiness",
+				OTLPTraceEndpoint:  "http://collector/api/default/v1/traces",
+				OTLPTraceHeaders:   "Authorization=trace",
+				OTLPMetricEndpoint: "http://user:" + secret + "@collector/api/default/v1/metrics",
+				OTLPMetricHeaders:  "Authorization=metric",
+				TraceStream:        "default",
+			},
+		},
+		{
+			name: "missing metrics authorization header",
+			config: SmokeConfig{
+				CAOReadinessURL:    "http://127.0.0.1:8080/api/readiness",
+				OTLPTraceEndpoint:  "http://collector/api/default/v1/traces",
+				OTLPTraceHeaders:   "Authorization=trace",
+				OTLPMetricEndpoint: "http://collector/api/default/v1/metrics",
+				OTLPMetricHeaders:  "X-Private=" + secret,
+				TraceStream:        "default",
 			},
 		},
 	}
@@ -341,6 +521,12 @@ func TestSmokeResponseReadersPropagateErrorsAndBoundReads(t *testing.T) {
 	if found, err := smokeSearchContainsTrace(&smokeTestBody{readErr: readErr}, traceID); found || !errors.Is(err, readErr) {
 		t.Errorf("smokeSearchContainsTrace() = (%t, %v), want (false, %v)", found, err, readErr)
 	}
+	if found, err := smokeMetricSearchHasRows(&smokeTestBody{readErr: readErr}); found || !errors.Is(err, readErr) {
+		t.Errorf("smokeMetricSearchHasRows() = (%t, %v), want (false, %v)", found, err, readErr)
+	}
+	if found, err := smokeMetricSearchHasRows(strings.NewReader(`{"hits":[{"metric_rows":1}]}`)); err != nil || !found {
+		t.Errorf("smokeMetricSearchHasRows() = (%t, %v), want (true, nil)", found, err)
+	}
 	oversized := strings.Repeat(" ", maxSmokeResponseBytes) + `{"trace_id":"` + traceID + `"}`
 	body := &smokeTestBody{reader: strings.NewReader(oversized)}
 	if found, err := smokeSearchContainsTrace(body, traceID); found || err == nil {
@@ -348,6 +534,13 @@ func TestSmokeResponseReadersPropagateErrorsAndBoundReads(t *testing.T) {
 	}
 	if body.bytesRead != maxSmokeResponseBytes {
 		t.Errorf("search bytes read = %d, want %d", body.bytesRead, maxSmokeResponseBytes)
+	}
+	body = &smokeTestBody{reader: strings.NewReader(oversized)}
+	if found, err := smokeMetricSearchHasRows(body); found || err == nil {
+		t.Errorf("oversized smokeMetricSearchHasRows() = (%t, %v), want (false, error)", found, err)
+	}
+	if body.bytesRead != maxSmokeResponseBytes {
+		t.Errorf("metric search bytes read = %d, want %d", body.bytesRead, maxSmokeResponseBytes)
 	}
 	body = &smokeTestBody{reader: strings.NewReader(oversized)}
 	if err := discardSmokeBody(body); err != nil {

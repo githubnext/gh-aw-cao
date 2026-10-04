@@ -384,11 +384,19 @@ single-node service, persists `/data`, and doesn't require another database.
    `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret. Do not put OpenObserve's
    private Coolify network address in the control repository; omit these
    workflow settings when no secure runner-reachable route exists.
-1. Redeploy CAO, make one authenticated request, and confirm that the returned
-   request ID finds the `cao-dashboard` trace in OpenObserve. In OpenObserve,
-   verify that a metrics stream exists and contains both
-   `go.memory.allocated` and `go.goroutine.count` for `cao-dashboard` and
-   `cao-collector`.
+1. Redeploy CAO, then run
+   `/app/cao-dashboard otel-smoke --require-metrics --timeout 2m` in the live
+   dashboard container. The smoke requests readiness, confirms the resulting
+   trace, and executes bounded queries against OpenObserve's normalized
+   `go_memory_allocated` and `go_goroutine_count` metric streams. A report with
+   `metricsConfigured: false` means the container did not receive a metrics
+   endpoint; metric-search `401` or `403` statuses identify a rejected
+   credential; other non-passing search statuses or a timeout identify a
+   delivery or query failure that needs OpenObserve and container-log
+   inspection. The report never includes endpoints, headers, trace IDs, or
+   credentials.
+1. In OpenObserve, additionally confirm that both metric streams contain
+   samples for `cao-dashboard` and `cao-collector`.
 
 To let the SelfCare Hosted Health worker query that telemetry, create a
 dedicated OpenObserve service account for Actions. On Enterprise, grant only
@@ -428,17 +436,20 @@ unreviewed OpenObserve upgrade.
 
 Before the agent starts in either authorized review or live mode, the worker
 performs an authenticated MCP smoke check that verifies the pinned read-only
-tool catalog, lists trace streams, runs one bounded aggregate SQL query, and
-requests at most one recent trace summary. Only a sanitized pass/fail record
-and the public backend version reach the agent; credentials and query responses
-remain ephemeral. A `mcp_endpoint_not_found` reason identifies the authenticated
-404 case without retaining its response body. The agent can then use `StreamList`,
-`StreamSchema`, `GetLatestTraces`, and bounded aggregate `SearchSQL`. It cannot
-use OpenObserve's generic tool discovery or dispatch tools, which could
-otherwise reach mutation-capable APIs. Metrics are not assumed: configure and
-review a separate metrics query capability only when
-`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is enabled and the deployed streams have
-been verified.
+tool catalog, lists trace streams, runs one bounded trace aggregate, and
+requests at most one recent trace summary. It separately lists metrics streams
+and runs bounded aggregate SQL against `go_memory_allocated` and
+`go_goroutine_count`. Only a sanitized pass/fail record and the public backend
+version reach the agent; credentials and query responses remain ephemeral. A
+`mcp_endpoint_not_found` reason identifies the authenticated 404 case without
+retaining its response body. A passing trace smoke remains usable when the
+separate metrics smoke fails, but the agent must not query or report runtime
+metrics until `metrics_status` is `passed`. It reports the bounded metrics
+reason without guessing whether ingestion configuration, credentials, delivery,
+or querying caused the gap. The agent can use `StreamList`, `StreamSchema`,
+`GetLatestTraces`, and bounded aggregate `SearchSQL`. It cannot use
+OpenObserve's generic tool discovery or dispatch tools, which could otherwise
+reach mutation-capable APIs.
 
 The same pre-agent phase probes `/api/readiness`, `/api/health`, and
 `/api/v1/health` with bounded timeouts and retains only status codes and
@@ -486,19 +497,22 @@ For collection-specific state, use the authenticated
 growing queue depth, in-flight work that does not drain, partial or failed cold
 start, exhausted installation headroom, or any dead-letter count.
 
-To verify the complete CAO-to-OpenObserve path, run the smoke test inside the
-live CAO container after a deployment:
+To verify the complete CAO-to-OpenObserve trace and metrics paths, run the
+smoke test inside the live CAO container after a deployment:
 
 ```bash
-/app/cao-dashboard otel-smoke
+/app/cao-dashboard otel-smoke --require-metrics --timeout 2m
 ```
 
 The command requests local readiness, checks the internal OpenObserve health
-endpoint, and polls OpenObserve for the resulting trace. It exits non-zero
-unless every stage succeeds. Its JSON output contains only HTTP status codes
+endpoint, polls OpenObserve for the resulting trace, and runs bounded queries
+against the normalized Go runtime metric streams. It exits non-zero unless
+every required stage succeeds. Its JSON output contains only HTTP status codes
 and booleans; it never reports endpoints, authorization headers, trace IDs, or
-span IDs. Pass `--trace-stream NAME` only when OpenObserve stores CAO traces
-outside the default `default` stream.
+span IDs. `metricsConfigured: false` distinguishes a missing container endpoint
+from a configured endpoint whose search statuses show rejected or unavailable
+data. Pass `--trace-stream NAME` only when OpenObserve stores CAO traces outside
+the default `default` stream.
 
 ### Delivery history
 

@@ -1,9 +1,11 @@
 package telemetry
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,43 +18,55 @@ import (
 
 const (
 	// SmokeReportSchemaVersion versions the deployment smoke report.
-	SmokeReportSchemaVersion = 1
+	SmokeReportSchemaVersion = 2
 	defaultSmokeTimeout      = 30 * time.Second
 	defaultSmokePollInterval = time.Second
 	defaultSmokeLookback     = 5 * time.Minute
 	maxSmokeResponseBytes    = 1 << 20
+	goMemoryAllocatedStream  = "go_memory_allocated"
+	goGoroutineCountStream   = "go_goroutine_count"
 )
 
-// SmokeConfig configures an end-to-end trace export and OpenObserve lookup.
+// SmokeConfig configures end-to-end trace and optional metric OpenObserve lookups.
 // Endpoint and header values are consumed only for requests and never copied
 // into the report.
 type SmokeConfig struct {
-	CAOReadinessURL   string
-	OTELSDKDisabled   string
-	OTLPEndpoint      string
-	OTLPHeaders       string
-	OTLPTraceEndpoint string
-	OTLPTraceHeaders  string
-	TraceStream       string
-	Timeout           time.Duration
-	PollInterval      time.Duration
-	Lookback          time.Duration
-	HTTPClient        *http.Client
-	Now               func() time.Time
+	CAOReadinessURL    string
+	OTELSDKDisabled    string
+	OTLPEndpoint       string
+	OTLPHeaders        string
+	OTLPTraceEndpoint  string
+	OTLPTraceHeaders   string
+	OTLPMetricEndpoint string
+	OTLPMetricHeaders  string
+	TraceStream        string
+	RequireMetrics     bool
+	Timeout            time.Duration
+	PollInterval       time.Duration
+	Lookback           time.Duration
+	HTTPClient         *http.Client
+	Now                func() time.Time
 }
 
 // SmokeReport contains only status codes and booleans so it is safe to retain
 // in deployment logs.
 type SmokeReport struct {
-	SchemaVersion           int  `json:"schemaVersion"`
-	CAOReadinessStatus      int  `json:"caoReadinessStatus"`
-	CAOReadinessOK          bool `json:"caoReadinessOK"`
-	TraceHeadersPresent     bool `json:"traceHeadersPresent"`
-	OpenObserveHealthStatus int  `json:"openObserveHealthStatus"`
-	OpenObserveHealthOK     bool `json:"openObserveHealthOK"`
-	OpenObserveSearchStatus int  `json:"openObserveSearchStatus"`
-	TraceFound              bool `json:"traceFound"`
-	Passed                  bool `json:"passed"`
+	SchemaVersion                 int  `json:"schemaVersion"`
+	CAOReadinessStatus            int  `json:"caoReadinessStatus"`
+	CAOReadinessOK                bool `json:"caoReadinessOK"`
+	TraceHeadersPresent           bool `json:"traceHeadersPresent"`
+	OpenObserveHealthStatus       int  `json:"openObserveHealthStatus"`
+	OpenObserveHealthOK           bool `json:"openObserveHealthOK"`
+	OpenObserveSearchStatus       int  `json:"openObserveSearchStatus"`
+	TraceFound                    bool `json:"traceFound"`
+	MetricsRequired               bool `json:"metricsRequired"`
+	MetricsConfigured             bool `json:"metricsConfigured"`
+	GoMemoryAllocatedSearchStatus int  `json:"goMemoryAllocatedSearchStatus"`
+	GoMemoryAllocatedFound        bool `json:"goMemoryAllocatedFound"`
+	GoGoroutineCountSearchStatus  int  `json:"goGoroutineCountSearchStatus"`
+	GoGoroutineCountFound         bool `json:"goGoroutineCountFound"`
+	MetricsVerified               bool `json:"metricsVerified"`
+	Passed                        bool `json:"passed"`
 }
 
 type openObserveTarget struct {
@@ -68,11 +82,21 @@ type openObserveTraceSearch struct {
 	} `json:"hits"`
 }
 
+type openObserveMetricSearch struct {
+	Hits []struct {
+		MetricRows float64 `json:"metric_rows"`
+	} `json:"hits"`
+}
+
 // RunSmoke requests CAO readiness, confirms OpenObserve health, and polls for
-// the resulting trace. Operational failures are represented in the report;
-// errors are reserved for invalid configuration.
+// the resulting trace and configured Go runtime metric streams. Operational
+// failures are represented in the report; errors are reserved for invalid
+// configuration.
 func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
-	report := SmokeReport{SchemaVersion: SmokeReportSchemaVersion}
+	report := SmokeReport{
+		SchemaVersion:   SmokeReportSchemaVersion,
+		MetricsRequired: config.RequireMetrics,
+	}
 	readinessURL, err := parseSmokeReadinessURL(config.CAOReadinessURL)
 	if err != nil {
 		return report, err
@@ -81,6 +105,11 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 	if err != nil {
 		return report, err
 	}
+	metricTarget, metricsConfigured, err := resolveOpenObserveMetricTarget(config)
+	if err != nil {
+		return report, err
+	}
+	report.MetricsConfigured = metricsConfigured
 	stream := strings.TrimSpace(config.TraceStream)
 	if !validOpenObserveSegment(stream) {
 		return report, errors.New("OpenObserve trace stream must be a non-empty path segment")
@@ -173,8 +202,7 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 				report.TraceFound = false
 			}
 			if report.TraceFound {
-				report.Passed = true
-				return report, nil
+				break
 			}
 			if searchResponse.StatusCode >= http.StatusBadRequest &&
 				searchResponse.StatusCode < http.StatusInternalServerError &&
@@ -182,6 +210,63 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 				searchResponse.StatusCode != http.StatusTooManyRequests {
 				return report, nil
 			}
+		}
+
+		timer := time.NewTimer(pollInterval)
+		select {
+		case <-smokeCtx.Done():
+			timer.Stop()
+			return report, nil
+		case <-timer.C:
+		}
+	}
+
+	if !report.MetricsConfigured {
+		report.Passed = !report.MetricsRequired
+		return report, nil
+	}
+
+	for {
+		permanentFailure := false
+		if !report.GoMemoryAllocatedFound {
+			status, found, retry, queryErr := queryOpenObserveMetric(
+				smokeCtx,
+				client,
+				metricTarget,
+				goMemoryAllocatedStream,
+				windowStart,
+				now().UTC().Add(time.Minute),
+			)
+			if queryErr != nil {
+				return report, queryErr
+			}
+			report.GoMemoryAllocatedSearchStatus = status
+			report.GoMemoryAllocatedFound = found
+			permanentFailure = permanentFailure || (!found && !retry)
+		}
+		if !report.GoGoroutineCountFound && !permanentFailure {
+			status, found, retry, queryErr := queryOpenObserveMetric(
+				smokeCtx,
+				client,
+				metricTarget,
+				goGoroutineCountStream,
+				windowStart,
+				now().UTC().Add(time.Minute),
+			)
+			if queryErr != nil {
+				return report, queryErr
+			}
+			report.GoGoroutineCountSearchStatus = status
+			report.GoGoroutineCountFound = found
+			permanentFailure = !found && !retry
+		}
+		if report.GoMemoryAllocatedFound && report.GoGoroutineCountFound {
+			report.MetricsVerified = true
+			report.Passed = true
+			return report, nil
+		}
+		if permanentFailure {
+			return report, nil
 		}
 
 		timer := time.NewTimer(pollInterval)
@@ -207,25 +292,63 @@ func resolveOpenObserveTarget(config SmokeConfig) (openObserveTarget, error) {
 		return openObserveTarget{}, errors.New("OTLP traces endpoint is not configured")
 	case exporterDecisionConfigured:
 	}
-	if strings.TrimSpace(config.OTLPTraceEndpoint) == "" {
+	return parseOpenObserveTarget(
+		endpoint,
+		config.OTLPTraceEndpoint,
+		firstNonEmpty(config.OTLPTraceHeaders, config.OTLPHeaders),
+		"traces",
+	)
+}
+
+func resolveOpenObserveMetricTarget(config SmokeConfig) (openObserveTarget, bool, error) {
+	endpoint, decision := resolveExporterDecision(
+		config.OTELSDKDisabled,
+		config.OTLPMetricEndpoint,
+		config.OTLPEndpoint,
+	)
+	switch decision {
+	case exporterDecisionDisabled:
+		return openObserveTarget{}, false, errors.New("OpenTelemetry SDK is disabled")
+	case exporterDecisionNoEndpoint:
+		return openObserveTarget{}, false, nil
+	case exporterDecisionConfigured:
+	}
+	target, err := parseOpenObserveTarget(
+		endpoint,
+		config.OTLPMetricEndpoint,
+		firstNonEmpty(config.OTLPMetricHeaders, config.OTLPHeaders),
+		"metrics",
+	)
+	return target, err == nil, err
+}
+
+func parseOpenObserveTarget(endpoint, signalEndpoint, headers, signal string) (openObserveTarget, error) {
+	if strings.TrimSpace(signalEndpoint) == "" {
 		parsed, err := url.Parse(endpoint)
 		if err != nil {
 			return openObserveTarget{}, errors.New("OTLP endpoint is not a valid URL")
 		}
-		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/v1/traces"
+		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/v1/" + signal
 		endpoint = parsed.String()
 	}
 	parsed, err := url.Parse(endpoint)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
 		parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return openObserveTarget{}, errors.New("OTLP traces endpoint must be an absolute HTTP(S) URL without credentials, query, or fragment")
+		return openObserveTarget{}, fmt.Errorf(
+			"OTLP %s endpoint must be an absolute HTTP(S) URL without credentials, query, or fragment",
+			signal,
+		)
 	}
 	segments := strings.Split(strings.Trim(parsed.Path, "/"), "/")
-	if len(segments) != 4 || segments[0] != "api" || segments[2] != "v1" || segments[3] != "traces" ||
+	if len(segments) != 4 || segments[0] != "api" || segments[2] != "v1" || segments[3] != signal ||
 		!validOpenObserveSegment(segments[1]) {
-		return openObserveTarget{}, errors.New("OTLP traces endpoint must end with /api/{organization}/v1/traces")
+		return openObserveTarget{}, fmt.Errorf(
+			"OTLP %s endpoint must end with /api/{organization}/v1/%s",
+			signal,
+			signal,
+		)
 	}
-	authorization, err := extractAuthorizationHeader(firstNonEmpty(config.OTLPTraceHeaders, config.OTLPHeaders))
+	authorization, err := extractAuthorizationHeader(headers)
 	if err != nil {
 		return openObserveTarget{}, err
 	}
@@ -234,6 +357,62 @@ func resolveOpenObserveTarget(config SmokeConfig) (openObserveTarget, error) {
 		organization:  segments[1],
 		authorization: authorization,
 	}, nil
+}
+
+func queryOpenObserveMetric(
+	ctx context.Context,
+	client *http.Client,
+	target openObserveTarget,
+	stream string,
+	windowStart time.Time,
+	windowEnd time.Time,
+) (status int, found bool, retry bool, err error) {
+	searchURL := target.baseURL
+	searchURL.Path = "/api/" + target.organization + "/_search"
+	query := searchURL.Query()
+	query.Set("type", "metrics")
+	searchURL.RawQuery = query.Encode()
+	payload, err := json.Marshal(map[string]any{
+		"query": map[string]any{
+			"sql":        fmt.Sprintf("SELECT COUNT(*) AS metric_rows FROM %q", stream),
+			"start_time": windowStart.UnixMicro(),
+			"end_time":   windowEnd.UnixMicro(),
+			"from":       0,
+			"size":       1,
+		},
+	})
+	if err != nil {
+		return 0, false, false, errors.New("build OpenObserve metric search payload")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, searchURL.String(), bytes.NewReader(payload))
+	if err != nil {
+		return 0, false, false, errors.New("build OpenObserve metric search request")
+	}
+	request.Header.Set("Authorization", target.authorization)
+	request.Header.Set("Content-Type", "application/json")
+	response, requestErr := client.Do(request)
+	if requestErr != nil {
+		return 0, false, true, nil
+	}
+	status = response.StatusCode
+	var readErr error
+	if status == http.StatusOK {
+		found, readErr = smokeMetricSearchHasRows(response.Body)
+	} else {
+		readErr = discardSmokeBody(response.Body)
+	}
+	closeErr := response.Body.Close()
+	if readErr != nil || closeErr != nil {
+		return status, false, true, nil
+	}
+	if found {
+		return status, true, false, nil
+	}
+	retry = status == http.StatusOK ||
+		status >= http.StatusInternalServerError ||
+		status == http.StatusRequestTimeout ||
+		status == http.StatusTooManyRequests
+	return status, false, retry, nil
 }
 
 func extractAuthorizationHeader(raw string) (string, error) {
@@ -285,6 +464,19 @@ func smokeSearchContainsTrace(body io.Reader, traceID string) (bool, error) {
 	}
 	for _, hit := range result.Hits {
 		if strings.EqualFold(hit.TraceID, traceID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func smokeMetricSearchHasRows(body io.Reader) (bool, error) {
+	var result openObserveMetricSearch
+	if err := json.NewDecoder(io.LimitReader(body, maxSmokeResponseBytes)).Decode(&result); err != nil {
+		return false, err
+	}
+	for _, hit := range result.Hits {
+		if hit.MetricRows > 0 {
 			return true, nil
 		}
 	}

@@ -634,6 +634,12 @@ func TestTelemetrySmokeCommandUsesEnvironmentWithoutReportingSecrets(t *testing.
 			}
 			response.Header().Set("Content-Type", "application/json")
 			_, _ = response.Write([]byte(`{"hits":[{"trace_id":"` + traceID + `"}]}`))
+		case "/api/default/_search":
+			if got := request.Header.Get("Authorization"); got != authorizationHeader {
+				t.Errorf("metrics authorization header = %q, want %q", got, authorizationHeader)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"hits":[{"metric_rows":1}]}`))
 		default:
 			http.NotFound(response, request)
 		}
@@ -645,12 +651,15 @@ func TestTelemetrySmokeCommandUsesEnvironmentWithoutReportingSecrets(t *testing.
 	t.Setenv("OTEL_EXPORTER_OTLP_HEADERS", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", openObserve.URL+"/api/default/v1/traces")
 	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "Authorization="+authorizationHeader)
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", openObserve.URL+"/api/default/v1/metrics")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_HEADERS", "Authorization="+authorizationHeader)
 
 	var output bytes.Buffer
 	command := newTelemetrySmokeCommand()
 	command.SetOut(&output)
 	command.SetArgs([]string{
 		"--cao-readiness-url", cao.URL + "/api/readiness",
+		"--require-metrics",
 		"--timeout", "1s",
 		"--poll-interval", "1ms",
 	})
@@ -661,8 +670,8 @@ func TestTelemetrySmokeCommandUsesEnvironmentWithoutReportingSecrets(t *testing.
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatalf("decode smoke report: %v", err)
 	}
-	if !report.Passed {
-		t.Fatalf("smoke report passed = false, report = %+v", report)
+	if !report.Passed || !report.MetricsVerified {
+		t.Fatalf("smoke report did not verify traces and metrics: %+v", report)
 	}
 	for _, forbidden := range []string{traceID, authorizationHeader, cao.URL, openObserve.URL} {
 		if strings.Contains(output.String(), forbidden) {
