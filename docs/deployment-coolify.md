@@ -375,6 +375,38 @@ single-node service, persists `/data`, and doesn't require another database.
 1. Redeploy CAO, make one authenticated request, and confirm that the returned
    request ID finds the `cao-dashboard` trace in OpenObserve.
 
+To let the SelfCare Hosted Health worker query that telemetry, create a
+dedicated OpenObserve service account for Actions. On Enterprise, grant only
+the Viewer role. Open-source OpenObserve service accounts have full backend
+access, so never use a root or personal identity and rely on the workflow's
+explicit MCP allowlist as an additional boundary. Configure the public MCP
+endpoint and its complete authorization header separately from the ingestion
+credential:
+
+```bash
+CONTROL_REPO="githubnext/gh-aw-cao"
+gh variable set CAO_OTEL_MCP_URL \
+  --repo "$CONTROL_REPO" \
+  --body "https://openobserve.example.com/api/default/mcp"
+gh variable set CAO_OTEL_TRACE_STREAM \
+  --repo "$CONTROL_REPO" \
+  --body "default"
+gh secret set CAO_OTEL_MCP_READ_AUTHORIZATION --repo "$CONTROL_REPO"
+```
+
+At the secret prompt, enter `Basic <base64(service-account-email:token)>`.
+Before the agent starts, the worker performs an authenticated MCP smoke check
+that verifies the pinned read-only tool catalog, lists trace streams, runs one
+bounded aggregate SQL query, and requests at most one recent trace summary.
+Only a sanitized pass/fail record reaches the agent; credentials and query
+responses remain ephemeral. The agent can then use `StreamList`,
+`StreamSchema`, `GetLatestTraces`, and bounded aggregate `SearchSQL`. It cannot
+use OpenObserve's generic tool discovery or dispatch tools, which could
+otherwise reach mutation-capable APIs. Metrics are not assumed: configure and
+review a separate metrics query capability only when
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is enabled and the deployed streams have
+been verified.
+
 OpenObserve is optional infrastructure, not dashboard authority. It receives
 telemetry only; PostgreSQL remains the dashboard entity store and Redis remains
 operational state.
