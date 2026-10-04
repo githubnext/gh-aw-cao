@@ -9,6 +9,8 @@ includes:
 resources:
   - source: .github/workflows/shared/control.mjs
     destination: .github/workflows/shared/control.mjs
+  - source: .github/workflows/shared/campaign-maturation.mjs
+    destination: .github/workflows/shared/campaign-maturation.mjs
   - source: .github/workflows/shared/policy.mjs
     destination: .github/workflows/shared/policy.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs

@@ -92,7 +92,6 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ".github/workflows/cao-evolution-integrity.md",
     ".github/workflows/cao-evolution-reliability.md",
     ".github/workflows/cao-evolution.md",
-    "campaign-maturation.mjs",
   ]);
   assert.deepEqual(policy["control-plane"].campaigns["cao-evolution"], {
     icon: "gear",
@@ -138,7 +137,13 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(maturation, /only a separately reviewed `\.github\/workflows\/cao\.json` change may grant live authority/);
   assert.match(maturation, /Attach every child as a sub-issue of the parent/);
   assert.match(maturation, /require-temporary-id: true/);
-  assert.match(maturation, /fingerprint=<sha256>;decision=<decision>;budget=/);
+  assert.match(maturation, /node \.github\/workflows\/shared\/campaign-maturation\.mjs/);
+  assert.match(maturation, /never reproduce its selection, fingerprint, decision, identity, or transition logic/);
+  assert.doesNotMatch(maturation, /fingerprint=<sha256>;decision=<decision>;budget=/);
+  const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
+  assert.ok(rootManifest.resources.some((resource) => (
+    resource.destination === ".github/workflows/shared/campaign-maturation.mjs"
+  )));
 
   const campaignSkill = portableSkill("create-cao-campaign");
   assert.match(campaignSkill, /When a worker optimizes a campaign or campaign portfolio/);
