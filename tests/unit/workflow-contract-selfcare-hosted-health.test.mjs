@@ -8,9 +8,13 @@ test("hosted health is a four-hour, policy-gated SelfCare worker", () => {
 
   assert.match(orchestrator, /self-care-hosted-health.*preceding four hours/);
   assert.match(orchestrator, /If any run history is unavailable or ambiguous, fail closed/);
+  assert.match(orchestrator, /`review` permits only `self-care-hosted-health`/);
+  assert.match(orchestrator, /Never dispatch a worker other than `self-care-hosted-health` in review mode/);
   assert.match(worker, /worker: hosted-health/);
   assert.match(worker, /cao_authorized == 'true'/);
-  assert.match(worker, /precomputed `target_repo` is exactly `githubnext\/gh-aw-cao` and `safe_output_mode` is `live`/);
+  assert.match(worker, /precomputed `target_repo` is exactly `githubnext\/gh-aw-cao` and `safe_output_mode` is either `review` or `live`/);
+  assert.match(worker, /In `review` mode, publish only through the configured review safe-output repository/);
+  assert.doesNotMatch(worker, /inputs\.safe_output_mode \|\| 'review'\) == 'live'/);
   assert.doesNotMatch(worker, /^\s+schedule:/m);
 });
 
