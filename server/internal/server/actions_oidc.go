@@ -15,7 +15,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var actionsOIDCLog = logger.New("cao:server:actions-oidc")
 
 const (
 	actionsOIDCIssuer   = "https://token.actions.githubusercontent.com"
@@ -202,37 +206,23 @@ func verifyActionsOIDC(ctx context.Context, config Config, token string) (action
 	return claims, nil
 }
 
-func fetchActionsOIDCKey(ctx context.Context, client *http.Client, keyID string) (*rsa.PublicKey, error) {
-	if client == nil {
-		client = &http.Client{Timeout: 5 * time.Second}
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, actionsOIDCJWKS, nil)
-	if err != nil {
-		return nil, err
-	}
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("actions OIDC JWKS is unavailable")
-	}
-	var jwks struct {
-		Keys []struct {
-			ID       string `json:"kid"`
-			Type     string `json:"kty"`
-			Use      string `json:"use"`
-			Alg      string `json:"alg"`
-			Modulus  string `json:"n"`
-			Exponent string `json:"e"`
-		} `json:"keys"`
-	}
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 64<<10))
-	if decoder.Decode(&jwks) != nil || len(jwks.Keys) > 32 {
-		return nil, errors.New("invalid Actions OIDC JWKS")
-	}
-	for _, key := range jwks.Keys {
+// jwksKey is one entry in the Actions OIDC JSON Web Key Set response.
+type jwksKey struct {
+	ID       string `json:"kid"`
+	Type     string `json:"kty"`
+	Use      string `json:"use"`
+	Alg      string `json:"alg"`
+	Modulus  string `json:"n"`
+	Exponent string `json:"e"`
+}
+
+// selectActionsOIDCKey finds the RSA signature key identified by keyID among
+// keys and decodes it into an *rsa.PublicKey. It is a pure function extracted
+// from fetchActionsOIDCKey's inline loop, so the key-matching, modulus/
+// exponent bounds, and odd-public-exponent rejection rules are each testable
+// directly against constructed JWKS entries, without an HTTP round trip.
+func selectActionsOIDCKey(keys []jwksKey, keyID string) (*rsa.PublicKey, error) {
+	for _, key := range keys {
 		if key.ID != keyID || key.Type != "RSA" || key.Use != "sig" ||
 			(key.Alg != "" && key.Alg != "RS256") {
 			continue
@@ -250,4 +240,38 @@ func fetchActionsOIDCKey(ctx context.Context, client *http.Client, keyID string)
 		return &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(exponent.Int64())}, nil
 	}
 	return nil, errors.New("actions OIDC signing key is unknown")
+}
+
+func fetchActionsOIDCKey(ctx context.Context, client *http.Client, keyID string) (*rsa.PublicKey, error) {
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, actionsOIDCJWKS, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		actionsOIDCLog.Printf("jwks fetch request failed")
+		return nil, err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		actionsOIDCLog.Printf("jwks fetch rejected status=%d", response.StatusCode)
+		return nil, errors.New("actions OIDC JWKS is unavailable")
+	}
+	var jwks struct {
+		Keys []jwksKey `json:"keys"`
+	}
+	decoder := json.NewDecoder(io.LimitReader(response.Body, 64<<10))
+	if decoder.Decode(&jwks) != nil || len(jwks.Keys) > 32 {
+		actionsOIDCLog.Printf("jwks decode failed")
+		return nil, errors.New("invalid Actions OIDC JWKS")
+	}
+	key, err := selectActionsOIDCKey(jwks.Keys, keyID)
+	if err != nil {
+		actionsOIDCLog.Printf("jwks key selection failed count=%d", len(jwks.Keys))
+		return nil, err
+	}
+	return key, nil
 }
