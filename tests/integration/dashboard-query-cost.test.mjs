@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { DATABASE_VERSION } from "../../dashboard/site/src/data/storage/indexeddb.js";
+import { DATABASE_VERSION, openCanonicalDatabase } from "../../dashboard/site/src/data/storage/indexeddb.js";
+import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
 import {
   benchmarkDashboardQueryCost,
   dashboardQueryCostMarkdown,
@@ -121,14 +122,24 @@ test("benchmark keeps indexing table-count dependencies available", async (t) =>
 test("benchmark reports an empty snapshot instead of an all-zero measurement", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "cao-query-cost-empty-"));
   t.after(() => rm(root, { recursive: true, force: true }));
+  const database = path.join(root, "empty.sqlite");
+  const previousIndexedDB = globalThis.indexedDB;
+  const previousKeyRange = globalThis.IDBKeyRange;
+  try {
+    const connection = await openCanonicalDatabase(installSqliteIndexedDB(database));
+    connection.close();
+  } finally {
+    globalThis.indexedDB = previousIndexedDB;
+    globalThis.IDBKeyRange = previousKeyRange;
+  }
   const report = await benchmarkDashboardQueryCost({
-    databasePath: path.join(root, "empty.sqlite"),
+    databasePath: database,
     document: dashboardDocument,
     limit: 3,
   });
   assert.equal(report.database["records-read"], 0);
-  assert.equal(report.database["snapshot-version"], null);
-  assert.equal(report.database["version-compatible"], false);
+  assert.equal(report.database["snapshot-version"], DATABASE_VERSION);
+  assert.equal(report.database["version-compatible"], true);
   assert.deepEqual(
     report.database["empty-sources"].toSorted(),
     Object.keys(report.database["source-records"]).toSorted(),
@@ -137,6 +148,18 @@ test("benchmark reports an empty snapshot instead of an all-zero measurement", a
     dashboardQueryCostMarkdown(report),
     /canonical projection returned no records/,
   );
+});
+
+test("benchmark rejects a missing snapshot without creating a database", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "cao-query-cost-missing-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const database = path.join(root, "missing.sqlite");
+  await assert.rejects(benchmarkDashboardQueryCost({
+    databasePath: database,
+    document: dashboardDocument,
+    limit: 1,
+  }), /download a fresh database/);
+  assert.equal(readSnapshotDatabaseVersion(database), null);
 });
 
 /** Rewrites a snapshot's recorded schema version to simulate lagging data. */
@@ -158,7 +181,7 @@ function assertSnapshotIntact(database, records, version) {
   after.close();
 }
 
-test("benchmark rebuilds an outdated snapshot from the deployed payloads", async (t) => {
+test("benchmark rejects an outdated snapshot even when source payloads exist", async (t) => {
   const { root, database } = await syntheticSnapshot();
   t.after(() => rm(root, { recursive: true, force: true }));
   const outdated = DATABASE_VERSION - 1;
@@ -166,26 +189,16 @@ test("benchmark rebuilds an outdated snapshot from the deployed payloads", async
   assert.ok(records > 0);
   assert.equal(readSnapshotDatabaseVersion(database), outdated);
 
-  const report = await benchmarkDashboardQueryCost({
+  await assert.rejects(benchmarkDashboardQueryCost({
     databasePath: database,
     document: dashboardDocument,
     limit: 2,
-  });
-  assert.equal(report.database["snapshot-version"], outdated);
-  assert.equal(report.database["version-compatible"], false);
-  // The published snapshot lags the reader after a schema bump, so the
-  // authoritative JSONL payloads are re-ingested instead of measuring nothing.
-  assert.equal(report.database["rebuilt-from-payloads"], true);
-  assert.ok(report.database["records-read"] > 0);
-  assert.match(
-    dashboardQueryCostMarkdown(report),
-    /rebuilt from the deployed JSONL payloads before measuring/,
-  );
+  }), /download a fresh database/);
 
   assertSnapshotIntact(database, records, outdated);
 });
 
-test("benchmark rebuilds from previously published version-three phased shards", async (t) => {
+test("benchmark never imports older phased shards as database compatibility support", async (t) => {
   const { root, database } = await syntheticSnapshot();
   t.after(() => rm(root, { recursive: true, force: true }));
   const outdated = DATABASE_VERSION - 1;
@@ -197,35 +210,25 @@ test("benchmark rebuilds from previously published version-three phased shards",
     await writeFile(path.join(directory, "subset.jsonl"),
       fixture.replace('"schemaVersion":13', '"schemaVersion":22'));
   }
-  const report = await benchmarkDashboardQueryCost({
+  await assert.rejects(benchmarkDashboardQueryCost({
     databasePath: database,
     document: dashboardDocument,
     limit: 1,
-  });
-  assert.equal(report.database["rebuilt-from-payloads"], true, report.database["rebuild-error"]);
-  assert.ok(report.database["records-read"] > 0);
+  }), /download a fresh database/);
   assertSnapshotIntact(database, records, outdated);
 });
 
-test("benchmark reports an outdated snapshot it cannot rebuild", async (t) => {
+test("benchmark leaves incompatible snapshots intact instead of upgrading them", async (t) => {
   const { root, database } = await syntheticSnapshot();
   t.after(() => rm(root, { recursive: true, force: true }));
   await rm(path.join(root, "gh-aw-logs-shards"), { recursive: true, force: true });
   const outdated = DATABASE_VERSION - 1;
   const records = downgradeSnapshot(database, outdated);
 
-  const report = await benchmarkDashboardQueryCost({
+  await assert.rejects(benchmarkDashboardQueryCost({
     databasePath: database,
     document: dashboardDocument,
     limit: 2,
-  });
-  assert.equal(report.database["rebuilt-from-payloads"], false);
-  assert.ok(
-    dashboardQueryCostMarkdown(report)
-      .includes(`written at canonical schema version **${outdated}** but the reader expects **${DATABASE_VERSION}**`),
-  );
-
-  // Opening an outdated canonical database rebuilds its stores, so the
-  // benchmark must measure a copy and leave the downloaded snapshot intact.
+  }), /download a fresh database/);
   assertSnapshotIntact(database, records, outdated);
 });

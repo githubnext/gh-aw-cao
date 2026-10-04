@@ -100,13 +100,9 @@ test(
   { skip: snapshotAvailable ? false : "deployed SQLite snapshot is unavailable" },
   () => {
     assert.ok(report, "benchmark report is available");
-    // An older snapshot is rebuilt from scratch on open, which discards every
-    // record and turns the benchmark into a meaningless all-zero report. A
-    // lagging snapshot is acceptable only when the deployed JSONL payloads were
-    // re-ingested at the current schema version instead.
-    assert.ok(
-      report.database["version-compatible"] || report.database["rebuilt-from-payloads"],
-      `Deployed snapshot ${report.database.path} records canonical schema version ${report.database["snapshot-version"]}, but the reader expects ${report.database["expected-version"]}, and the deployed JSONL payloads could not be re-ingested${report.database["rebuild-error"] ? `: ${report.database["rebuild-error"]}` : "."}`,
+    assert.equal(
+      report.database["version-compatible"], true,
+      `Deployed snapshot ${report.database.path} records canonical schema version ${report.database["snapshot-version"]}, but the reader expects ${report.database["expected-version"]}; download a fresh database.`,
     );
   },
 );
