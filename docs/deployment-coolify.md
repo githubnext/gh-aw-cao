@@ -449,56 +449,6 @@ default branch. Feature-branch runs are expected to receive
 restriction and verifies hosted CAO MCP access after merge. Do not broaden the
 server to accept feature-branch provenance.
 
-To let the SelfCare Hosted Health worker query that telemetry, create a
-dedicated OpenObserve service account for Actions. On Enterprise, grant only
-the Viewer role. Open-source OpenObserve service accounts have full backend
-access, so never use a root or personal identity and rely on the workflow's
-explicit MCP allowlist as an additional boundary. Configure the public MCP
-endpoint and its complete authorization header separately from the ingestion
-credential:
-
-```bash
-CONTROL_REPO="githubnext/gh-aw-cao"
-gh variable set CAO_OTEL_MCP_URL \
-  --repo "$CONTROL_REPO" \
-  --body "https://openobserve.example.com/api/default/mcp"
-gh variable set CAO_OTEL_TRACE_STREAM \
-  --repo "$CONTROL_REPO" \
-  --body "default"
-gh secret set CAO_OTEL_MCP_READ_AUTHORIZATION --repo "$CONTROL_REPO"
-```
-
-At the secret prompt, enter `Basic <base64(service-account-email:token)>`.
-Confirm that the deployed OpenObserve release exposes the documented
-`/api/{organization}/mcp` endpoint before enabling Hosted Health. An
-authenticated `404` means the configured release or deployment does not
-provide that native MCP route; upgrade OpenObserve or enable the route rather
-than replacing a valid credential. The public `/config` response reports build
-metadata. In particular, the previously deployed OSS `v0.90.0` image did not
-expose this route and had to be upgraded to a current release with OSS MCP support.
-Current releases use `ZO_MCP_ENABLED`, which defaults to `true`; ensure the
-Coolify service does not override it to `false`. Older Enterprise deployments
-also require `O2_AI_ENABLED=true` and
-`O2_TOOL_API_URL` set to the instance base URL, as documented by OpenObserve;
-those settings do not add native MCP support to the `v0.90.0` OSS image.
-After validating an upgrade from `public.ecr.aws/zinclabs/openobserve:latest`,
-pin the tested release tag or image digest so a redeploy cannot introduce an
-unreviewed OpenObserve upgrade.
-
-Before the agent starts in either authorized review or live mode, the worker
-performs an authenticated MCP smoke check that verifies the pinned read-only
-tool catalog, lists trace streams, runs one bounded aggregate SQL query, and
-requests at most one recent trace summary. Only a sanitized pass/fail record
-and the public backend version reach the agent; credentials and query responses
-remain ephemeral. A `mcp_endpoint_not_found` reason identifies the authenticated
-404 case without retaining its response body. The agent can then use `StreamList`,
-`StreamSchema`, `GetLatestTraces`, and bounded aggregate `SearchSQL`. It cannot
-use OpenObserve's generic tool discovery or dispatch tools, which could
-otherwise reach mutation-capable APIs. Metrics are not assumed: configure and
-review a separate metrics query capability only when
-`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is enabled and the deployed streams have
-been verified.
-
 OpenObserve is optional infrastructure, not dashboard authority. It receives
 telemetry only; PostgreSQL remains the dashboard entity store and Redis remains
 operational state.
