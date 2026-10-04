@@ -1,6 +1,6 @@
 {
-  "source_sha": "5a49bde0050053d4f3ab5b1952b8600f78aec798",
-  "next_category": 4,
+  "source_sha": "d31d9b0deee9321c42200cdc4d04425f474b5c31",
+  "next_category": 5,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -366,6 +366,33 @@
         37170594659
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-04T02:46Z to 11:12Z shows reusable dashboard generation is already effectively cached on the docs consumer path. Queue median/p90 was 3.5s/4.0s, full-workflow median/p90 54s/71s, build-job median/p90 46s/51s, deploy-job median/p90 13.5s/17.4s on the 4 runs that deployed, and schedule-freshness median/p90 6s/8.2s on the 5 scheduled runs. Trusted step metadata showed Restore cached CAO Dashboard succeeded in all 11 build-bearing docs runs with 3s median, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 11, confirming cache hits from execution evidence rather than workflow syntax. Restore node_modules also hit in all 11 build-bearing docs runs, with Install dependencies and Save node_modules skipped every time. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37186494374, 37180036028, 37175637035, 37171932587, 37170594659) showed producer workflow median/p90 200s/205.2s and build median/p90 181s/186s; Assemble Dashboard Language site itself was only 3s median and Upload dashboard artifact 8s median, while Upgrade fallback activity data still dominated at 133s median/135.2s p90. The only docs-side savings above threshold in this window remain same-SHA workflow_run duplicates after dashboard completion, but open issue #16054 already tracks that scheduling fix and this category is reusable dashboard generation. Because the docs consumer already reuses the dashboard cache on every comparable run and the remaining producer cost is upstream of this category cycle, no new non-duplicate reusable-dashboard recommendation meets the >=60s or >=15% threshold from this evidence window.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T13:20:00Z",
+      "worker_run_id": "37205597039",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37204913726,
+        37199541684,
+        37198601503,
+        37197923621,
+        37192816378,
+        37192644820,
+        37187666078,
+        37186672098,
+        37185576082,
+        37180194367,
+        37179495456,
+        37175823605,
+        37175366659,
+        37198409028,
+        37186494374,
+        37180036028,
+        37175637035,
+        37171932587
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 13 recent completed successful runs from 2026-10-04T03:53Z to 13:15Z shows docs-side artifact transfer and Pages packaging remain below the action threshold. Queue median/p90 was 0s/0s; full-workflow median/p90 52s/67s; build-job median/p90 47s/51.9s across 12 build-bearing runs; deploy-job median/p90 16s/17.2s on the 5 runs that actually deployed; and schedule-freshness median/p90 6.5s/8.0s on the 5 scheduled runs. Trusted step evidence showed Restore node_modules succeeded in all 12 build-bearing runs with 6s median/7s p90 while Install dependencies and Save node_modules were skipped in all 12, and Restore cached CAO Dashboard succeeded in all 12 with 3s median while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 12, confirming both caches hit from execution evidence rather than syntax. Build documentation took 12.5s median/13.9s p90, Upload Pages artifact 8.5s median/10s p90, and Deploy Pages 14s median/14.6s p90, so even eliminating all docs-side packaging would save well under the required >=60s absolute threshold and under 15% of the 52s median workflow duration. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37198409028, 37186494374, 37180036028, 37175637035, 37171932587) showed producer workflow median/p90 195s/199.6s and build median/p90 182s/186s; Upload dashboard artifact was only 8s median/8.6s p90 and Assemble Dashboard Language site only 3s median/4.2s p90, while Upgrade fallback activity data dominated at 134s median/136s p90. Bounded trusted logs for those producer runs confirmed each build recopied a 508.1-519.0 MiB gh-aw-logs.sqlite plus 347-353 activity shards totaling 302.5-308.9 MiB before uploading the dashboard artifact. That large upstream copy cost belongs to reusable dashboard generation rather than docs Pages packaging, and this category has no new non-duplicate workflow change that meets the savings threshold without weakening deployment safety.",
       "suggestion_fingerprint": null
     }
   ]
