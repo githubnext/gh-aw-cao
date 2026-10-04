@@ -68,7 +68,9 @@ permissions:
   copilot-requests: write
   pull-requests: read
 
-engine: copilot
+engine:
+  id: pi
+  model: copilot/gpt-5.4
 strict: true
 max-ai-credits: 400
 max-daily-ai-credits: -1
@@ -165,11 +167,13 @@ Audit the deployed GitHub Pages dashboard at `https://githubnext.github.io/gh-aw
 
 ## Evidence
 
-1. Read `self-care-pages-health-evidence/collector-exit-code`, `self-care-pages-health-evidence/summary.json`, and the referenced per-page Lighthouse JSON reports. Do not rerun the collector or install dependencies.
+1. Read `self-care-pages-health-evidence/collector-exit-code` and `self-care-pages-health-evidence/summary.json` first. Use the summary's navigation status, errors, Lighthouse scores, and metrics for complete page/profile coverage. Do not dump full Lighthouse reports into context; extract only the audit fields needed to investigate at most three ranked opportunities from the referenced per-page Lighthouse JSON reports. Do not rerun the collector or install dependencies.
 2. Verify that every page in `summary.json.declaredPages` and every view in `summary.json.declaredViews` has navigation evidence, and that every page has one Lighthouse result in each of the `desktop`, `mobile`, and `low-bandwidth` profiles.
 3. Treat console errors, uncaught page errors, failed requests, HTTP responses at or above 400, incomplete navigation, and incomplete Lighthouse runs as explicit findings. Never classify an incomplete check as passing.
 4. Report the Lighthouse performance score, First Contentful Paint, Largest Contentful Paint, Cumulative Layout Shift, Speed Index, and Total Blocking Time for every page and profile. Compare profiles without inventing thresholds or causal claims.
 5. Inspect only the JavaScript source needed to connect the three most important opportunities to concrete, bounded improvements. Prefer measured production evidence. If the collector is incomplete or fewer than three measured opportunities exist, use current repository evidence for the remaining quick wins, explicitly mark them as not performance-validated, and never invent metrics or claim measured impact. Recommendations must not propose removing useful content, weakening tests, or suppressing audits.
+
+Keep investigation within ten agent tool calls before selecting the quick wins or declaring a blocker; reserve the remaining work for implementation, focused validation, artifact upload, and the final safe output. If the collector is incomplete, upload the existing evidence and call `noop` immediately without source investigation. Do not widen the investigation or repeatedly reanalyze the same reports when no bounded, validated fix is available.
 
 ## Output
 

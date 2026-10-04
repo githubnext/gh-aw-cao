@@ -339,6 +339,26 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   assert.doesNotMatch(source, /^graders:/m);
 });
 
+test("SelfCare Pages health bounds inference without changing organization billing", () => {
+  const source = workflow("self-care-pages-health.md");
+  const compiled = workflow("self-care-pages-health.lock.yml");
+
+  assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
+  assert.match(source, /^max-ai-credits: 400$/m);
+  assert.match(source, /^\s+copilot-requests: write$/m);
+  assert.match(compiled, /GH_AW_ENGINE_ID: "pi"/);
+  assert.match(compiled, /GH_AW_PI_MODEL: copilot\/gpt-5\.4/);
+  assert.match(compiled, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(compiled, /^\s+copilot-requests: write$/m);
+  assert.doesNotMatch(compiled, /secrets\.COPILOT_GITHUB_TOKEN/);
+  assert.match(source, /Use the summary's navigation status, errors, Lighthouse scores, and metrics for complete page\/profile coverage/);
+  assert.match(source, /Do not dump full Lighthouse reports into context/);
+  assert.match(source, /at most three ranked opportunities/);
+  assert.match(source, /within ten agent tool calls/);
+  assert.match(source, /reserve the remaining work for implementation, focused validation, artifact upload, and the final safe output/);
+  assert.match(source, /If the collector is incomplete, upload the existing evidence and call `noop` immediately without source investigation/);
+});
+
 test("SelfCare code improvement preserves its focused dashboard component mission", () => {
   const source = workflow("self-care-code-improvement.md");
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
