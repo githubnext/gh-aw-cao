@@ -192,13 +192,19 @@ function renderCliActionControl(action, options = {}) {
   let trigger;
   /** @type {HTMLElement} */
   let command;
+  // `commandPreviewText` is the command node's entire visible state; the
+  // effect below is the only place that writes it onto the owned `command`
+  // node, replacing the three scattered `command.textContent` writes
+  // previously made from the checkbox listener, `resetArguments`, and the
+  // dialog-open handler.
+  const commandPreviewText = state(commandPreview(action, argumentValues, templateValues));
   const inputs = (action.arguments ?? []).map((argument) => {
     const input = /** @type {HTMLInputElement} */ (h('input', {
       type: 'checkbox',
       checked: argument.default === true,
       onChange: (/** @type {Event} */ event) => {
         argumentValues[argument.id] = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
-        command.textContent = commandPreview(action, argumentValues, templateValues);
+        commandPreviewText.set(commandPreview(action, argumentValues, templateValues));
       }
     }));
     return {
@@ -223,7 +229,7 @@ function renderCliActionControl(action, options = {}) {
       argumentValues[argument.id] = checked;
       input.checked = checked;
     }
-    command.textContent = commandPreview(action, argumentValues, templateValues);
+    commandPreviewText.set(commandPreview(action, argumentValues, templateValues));
   };
   const { dialog, open, close } = createModalDialog({
     className: 'cli-action-dialog',
@@ -231,7 +237,7 @@ function renderCliActionControl(action, options = {}) {
     onFallbackClose: () => trigger.focus()
   });
   const copyControl = canExecute ? null : createCopyControl({
-    getContent: () => command.textContent ?? '',
+    getContent: () => commandPreviewText.get(),
     label: 'Copy command',
     buttonClassName: 'cli-action-confirm',
     statusClassName: 'cli-action-status',
@@ -327,7 +333,10 @@ function renderCliActionControl(action, options = {}) {
       !rowPresentation && action.description ? h('small', null, action.description) : null
     )
   ));
-  command = h('code', { className: 'cli-action-command' }, commandPreview(action, argumentValues, templateValues));
+  command = h('code', { className: 'cli-action-command' }, commandPreviewText.get());
+  effect(() => {
+    command.textContent = commandPreviewText.get();
+  }, { signal: scope.signal });
   dialog.append(
     h(
       'header',
@@ -359,7 +368,7 @@ function renderCliActionControl(action, options = {}) {
   dialog.addEventListener('close', () => {
     trigger.focus();
   });
-  if (canExecute) scope.bind(trigger);
+  scope.bind(trigger);
   return { trigger, dialog };
 }
 

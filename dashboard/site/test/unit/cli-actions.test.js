@@ -450,4 +450,34 @@ describe('CLI actions', () => {
     vi.doUnmock('../../src/debug.js');
     vi.resetModules();
   });
+
+  it('stops updating the command preview after the control is detached', async () => {
+    const rendered = renderCliActions([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict',
+      arguments: [{
+        id: 'pre-releases',
+        label: 'Include pre-releases',
+        type: 'boolean',
+        flag: '--pre-releases',
+        default: false
+      }]
+    }]);
+    const root = /** @type {HTMLElement} */ (rendered);
+    document.body.append(root);
+
+    root.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    const command = root.querySelector('.cli-action-command');
+    const checkbox = /** @type {HTMLInputElement} */ (root.querySelector('.cli-action-argument input'));
+    expect(command?.textContent).toBe('gh aw compile --strict');
+
+    root.remove();
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change'));
+
+    expect(command?.textContent).toBe('gh aw compile --strict');
+  });
 });
