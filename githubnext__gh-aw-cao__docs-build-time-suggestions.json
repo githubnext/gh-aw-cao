@@ -1,6 +1,6 @@
 {
-  "source_sha": "1676df554d23b7abb0ea215ef479412782bc22d5",
-  "next_category": 3,
+  "source_sha": "5a49bde0050053d4f3ab5b1952b8600f78aec798",
+  "next_category": 4,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -340,6 +340,32 @@
         37169128940
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 15 recent successful completed runs from 2026-10-04T00:23Z to 2026-10-04T08:03Z shows Astro documentation generation is not the dominant cost. Queue median/p90 across available job-start metadata was 7s/56.2s; full-workflow median/p90 was 55s/74.8s; build-job median/p90 47.5s/52.4s; deploy-job median/p90 11s/18s on the 5 runs that deployed; and schedule-freshness median/p90 7s/8.5s on the 6 scheduled runs that executed it. Trusted build-step metadata showed Build documentation itself at only 13s median and 15s p90 across 14 build-bearing runs, while Restore node_modules hit on all 14 and both Install dependencies and Save node_modules were skipped on all 14, confirming dependency setup was already amortized. Restore cached CAO Dashboard also hit on all 14 build-bearing runs, with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped every time. The only repeated savings above threshold in this window remain same-SHA workflow_run duplicates after dashboard completions: docs runs 37180194367, 37175823605, 37172102349, and 37169304756 each rebuilt for 52-62s immediately after a successful deploy-bearing scheduled run on the same SHA, totaling 223s of avoidable work, but open issues #16054 and #15029 already track that scheduling fix under suggestion fingerprint docs-workflow-run-freshness-gate-same-sha. Cross-checking 6 recent successful cao-dashboard.yml producer runs (37186494374, 37180036028, 37175637035, 37171932587, 37170594659, 37169128940) showed producer build median/p90 182s/190s, with Upgrade fallback activity data still dominating at 133.5s median/p90 138s while Assemble Dashboard Language site stayed only 3s median/p90 4s. Bounded trusted logs for runs 37186494374 and 37180036028 confirmed the producer still copies a 512.5-514.3 MiB gh-aw-logs.sqlite plus 349-350 activity shards totaling 305.0-306.1 MiB before upload. Because Astro generation contributes only about 24% of the median docs build job and about 13s of a 55s median workflow, no new Astro-focused workflow change can credibly save >=60s or >=15% of median execution time without duplicating already-open scheduling or reusable-dashboard work.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T11:12:33Z",
+      "worker_run_id": "37197848044",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37197923621,
+        37192816378,
+        37192644820,
+        37187666078,
+        37186672098,
+        37186434876,
+        37185576082,
+        37180194367,
+        37179495456,
+        37175823605,
+        37175366659,
+        37172102349,
+        37186494374,
+        37180036028,
+        37175637035,
+        37171932587,
+        37170594659
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-04T02:46Z to 11:12Z shows reusable dashboard generation is already effectively cached on the docs consumer path. Queue median/p90 was 3.5s/4.0s, full-workflow median/p90 54s/71s, build-job median/p90 46s/51s, deploy-job median/p90 13.5s/17.4s on the 4 runs that deployed, and schedule-freshness median/p90 6s/8.2s on the 5 scheduled runs. Trusted step metadata showed Restore cached CAO Dashboard succeeded in all 11 build-bearing docs runs with 3s median, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 11, confirming cache hits from execution evidence rather than workflow syntax. Restore node_modules also hit in all 11 build-bearing docs runs, with Install dependencies and Save node_modules skipped every time. Cross-checking 5 recent successful cao-dashboard.yml producer runs (37186494374, 37180036028, 37175637035, 37171932587, 37170594659) showed producer workflow median/p90 200s/205.2s and build median/p90 181s/186s; Assemble Dashboard Language site itself was only 3s median and Upload dashboard artifact 8s median, while Upgrade fallback activity data still dominated at 133s median/135.2s p90. The only docs-side savings above threshold in this window remain same-SHA workflow_run duplicates after dashboard completion, but open issue #16054 already tracks that scheduling fix and this category is reusable dashboard generation. Because the docs consumer already reuses the dashboard cache on every comparable run and the remaining producer cost is upstream of this category cycle, no new non-duplicate reusable-dashboard recommendation meets the >=60s or >=15% threshold from this evidence window.",
       "suggestion_fingerprint": null
     }
   ]
