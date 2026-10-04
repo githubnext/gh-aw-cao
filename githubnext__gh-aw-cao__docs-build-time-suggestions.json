@@ -1,6 +1,6 @@
 {
-  "source_sha": "212e6267abf74369c7deb3987077db4300bf59eb",
-  "next_category": 1,
+  "source_sha": "c9491d0a0712afef608c0e8f0c616dcf3e211003",
+  "next_category": 4,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -229,6 +229,33 @@
         37152803777
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 successful completed runs from 2026-10-03T20:50Z to 2026-10-04T01:53Z reconfirms that scheduling waste is limited to the already-tracked same-SHA workflow_run duplicates. Queue median/p90 stayed 0s/0s; full-workflow median/p90 was 53s/75.9s; build-job median/p90 43.5s/50s; deploy-job median/p90 0s/16.3s across all successful runs (17s median and 19.1s p90 on the 4 runs that actually deployed); and schedule-freshness remained cheap at 7s median/7.7s p90 on the 5 scheduled runs. Trusted execution metadata showed node cache hits on every build-bearing docs run and a dashboard cache hit on run 37169304756, while the remaining docs workflow_run executions after successful CAO Dashboard runs on the same SHA still cost 47-58s each: 37169304756 after dashboard 37169128940, 37164778890 after 37164600450, 37162152527 after 37161913366, 37158661126 after 37158468282, 37154791215 after 37154616442, and 37153008249 after 37152803777. That duplicate class averages 51.2s per run (307s total in this sample) but is already represented by open issue #16043 / suggestion fingerprint docs-workflow-run-freshness-gate-same-sha. Because the next-category rotation returned to scheduling and the source SHA is unchanged, no new non-duplicate scheduling recommendation is actionable from this window.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T03:05:00Z",
+      "worker_run_id": "37173277271",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37172102349,
+        37171551028,
+        37170764048,
+        37169304756,
+        37169227889,
+        37165191064,
+        37164778890,
+        37162438211,
+        37162152527,
+        37159365088,
+        37158661126,
+        37156176361,
+        37171932587,
+        37170594659,
+        37169128940,
+        37164600450,
+        37161913366,
+        37158468282
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-03T21:44Z to 2026-10-04T02:47Z again shows the only material avoidable rebuild pattern is the already-tracked same-SHA workflow_run duplicate. Queue median/p90 remained 0s/0s; full-workflow median/p90 was 56s/75.9s; build-job median/p90 44.5s/50s; deploy-job median/p90 9s/18.6s across the 8 runs where deploy metadata was present; and schedule-freshness median/p90 6.5s/7.9s on the 8 runs that executed it. Trusted step metadata showed Restore node_modules succeeded in every build-bearing run, Install dependencies and Save node_modules were skipped in all of them, Restore cached CAO Dashboard succeeded in every build-bearing run, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all of them, confirming caches were already effective. The current source still produced repeated same-SHA workflow_run docs rebuilds after successful CAO Dashboard runs: docs 37172102349 followed dashboard 37171932587 on c9491d0a0712afef608c0e8f0c616dcf3e211003 (52s total, 47s build), docs 37169304756 followed dashboard 37169128940 on 212e6267abf74369c7deb3987077db4300bf59eb (54s total, 50s build), docs 37164778890 followed dashboard 37164600450 on the same SHA (58s total, 53s build), docs 37162152527 followed dashboard 37161913366 (48s total, 44s build), and docs 37158661126 followed dashboard 37158468282 (52s total, 45s build). Those five duplicates alone consumed 264s total, averaging 52.8s each, but open issue #16054 already tracks the freshness-gate fix for suggestion fingerprint docs-workflow-run-freshness-gate-same-sha. Because this category cycle returned to scheduling and the evidence has not materially changed beyond reaffirming the same duplicate, no new non-duplicate recommendation is actionable from this window.",
       "suggestion_fingerprint": null
     }
   ]
