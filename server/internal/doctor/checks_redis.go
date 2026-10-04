@@ -464,43 +464,83 @@ func (d Doctor) checkRedisClients(ctx context.Context) Check {
 	}
 }
 
-// checkRedisTransport reports how this process reaches Redis. The client
-// already refuses plaintext to a non-loopback host, so this reports the posture
-// rather than re-validating it.
+// redisTransportReason names why checkRedisTransport reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the configured Redis URL.
+type redisTransportReason string
+
+const (
+	redisTransportReasonUnconfigured redisTransportReason = "unconfigured"
+	redisTransportReasonInvalid      redisTransportReason = "invalid"
+	redisTransportReasonEncrypted    redisTransportReason = "encrypted"
+	redisTransportReasonPlaintext    redisTransportReason = "plaintext-loopback"
+)
+
+// redisTransportClassification is the status, summary, remedy, and reason
+// classifyRedisTransport derives from a configured Redis URL.
+type redisTransportClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  redisTransportReason
+}
+
+// classifyRedisTransport decides the redis.transport check's outcome from
+// the configured URL and whether redisx.New accepts it. redisx.New already
+// refuses plaintext to a non-loopback host, so this reports the posture
+// rather than re-validating it. It is a pure function so each outcome is
+// testable without constructing a Doctor or a live Redis client.
+func classifyRedisTransport(configured string, newErr error) redisTransportClassification {
+	if configured == "" {
+		return redisTransportClassification{
+			status:  StatusFail,
+			summary: "no Redis URL is configured",
+			remedy:  "pass --redis-url or set CAO_REDIS_URL",
+			reason:  redisTransportReasonUnconfigured,
+		}
+	}
+	if newErr != nil {
+		return redisTransportClassification{
+			status:  StatusFail,
+			summary: "the Redis URL is not safe or valid: " + newErr.Error(),
+			remedy:  "use redis:// only for loopback development; use rediss:// with a verifiable hostname for a remote Redis",
+			reason:  redisTransportReasonInvalid,
+		}
+	}
+	if strings.HasPrefix(strings.ToLower(configured), "rediss://") {
+		return redisTransportClassification{
+			status:  StatusPass,
+			summary: "connecting over TLS with certificate verification",
+			reason:  redisTransportReasonEncrypted,
+		}
+	}
+	return redisTransportClassification{
+		status:  StatusPass,
+		summary: "connecting in plaintext to a loopback address, which the client permits only for local development",
+		reason:  redisTransportReasonPlaintext,
+	}
+}
+
+// checkRedisTransport reports how this process reaches Redis.
 func (d Doctor) checkRedisTransport(context.Context) Check {
 	const id, title = "redis.transport", "Redis transport"
 	configured := strings.TrimSpace(d.RedisURL)
-	if configured == "" {
+	_, newErr := redisx.New(configured)
+	classification := classifyRedisTransport(configured, newErr)
+	doctorLog.Printf("redis transport classified status=%s reason=%s", classification.status, classification.reason)
+	if classification.reason == redisTransportReasonUnconfigured {
 		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-			Summary: "no Redis URL is configured",
-			Remedy:  "pass --redis-url or set CAO_REDIS_URL",
+			ID: id, Area: areaRedis, Title: title, Status: classification.status,
+			Summary: classification.summary, Remedy: classification.remedy,
 		}
 	}
-	if _, err := redisx.New(configured); err != nil {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-			Summary: "the Redis URL is not safe or valid: " + err.Error(),
-			Details: []Detail{detail("endpoint", redactRedisURL(configured))},
-			Remedy:  "use redis:// only for loopback development; use rediss:// with a verifiable hostname for a remote Redis",
-		}
-	}
-	encrypted := strings.HasPrefix(strings.ToLower(configured), "rediss://")
-	details := []Detail{
-		detail("endpoint", redactRedisURL(configured)),
-		detail("encrypted", fmt.Sprint(encrypted)),
-	}
-	if encrypted {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-			Summary: "connecting over TLS with certificate verification",
-			Details: details,
-		}
+	details := []Detail{detail("endpoint", redactRedisURL(configured))}
+	if classification.reason != redisTransportReasonInvalid {
+		details = append(details, detail("encrypted", fmt.Sprint(classification.reason == redisTransportReasonEncrypted)))
 	}
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: "connecting in plaintext to a loopback address, which the client permits only for local development",
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

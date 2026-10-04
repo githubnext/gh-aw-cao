@@ -409,3 +409,60 @@ func TestForeignNamespacesOf(t *testing.T) {
 		})
 	}
 }
+
+func TestClassifyRedisTransport(t *testing.T) {
+	invalidURLErr := fmt.Errorf("unsafe redis URL")
+	cases := []struct {
+		name       string
+		configured string
+		newErr     error
+		wantStatus Status
+		wantReason redisTransportReason
+	}{
+		{
+			name:       "unconfigured URL fails before validation runs",
+			configured: "",
+			newErr:     invalidURLErr,
+			wantStatus: StatusFail,
+			wantReason: redisTransportReasonUnconfigured,
+		},
+		{
+			name:       "redisx.New rejection is reported as invalid",
+			configured: "redis://redis.example:6379/0",
+			newErr:     invalidURLErr,
+			wantStatus: StatusFail,
+			wantReason: redisTransportReasonInvalid,
+		},
+		{
+			name:       "rediss scheme is classified as encrypted",
+			configured: "rediss://redis.example:6380/0",
+			newErr:     nil,
+			wantStatus: StatusPass,
+			wantReason: redisTransportReasonEncrypted,
+		},
+		{
+			name:       "redis scheme without rejection is classified as plaintext loopback",
+			configured: "redis://127.0.0.1:6379/0",
+			newErr:     nil,
+			wantStatus: StatusPass,
+			wantReason: redisTransportReasonPlaintext,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := classifyRedisTransport(testCase.configured, testCase.newErr)
+			if got.status != testCase.wantStatus {
+				t.Fatalf("status = %s, want %s", got.status, testCase.wantStatus)
+			}
+			if got.reason != testCase.wantReason {
+				t.Fatalf("reason = %s, want %s", got.reason, testCase.wantReason)
+			}
+			if testCase.wantReason == redisTransportReasonUnconfigured && !strings.Contains(got.remedy, "--redis-url") {
+				t.Fatalf("remedy does not mention --redis-url: %s", got.remedy)
+			}
+			if testCase.wantReason == redisTransportReasonInvalid && !strings.Contains(got.summary, invalidURLErr.Error()) {
+				t.Fatalf("summary does not include underlying error: %s", got.summary)
+			}
+		})
+	}
+}
