@@ -8,6 +8,9 @@ import { renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderRouteDetailView } from './route-detail-view.js';
 import { rowsFor } from './source-rows.js';
 import { text, titleCase } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugOutcomeDetailAllocation = createDebug('outcome-detail:allocation');
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -23,11 +26,20 @@ export function renderOutcomeDetail(context) {
     notFoundMessage: 'Outcome not found.',
     rows: outcomes,
     match: (rows, routeValue) => rows.find((row) => String(row['safe-output']) === routeValue.trim()),
-    allocation: (outcome, routeValue) => ({
-      title: text(outcome['outcome-title']) || routeValue.trim(),
-      description: outcomeDescription(outcome),
-      titleLink: resolveTitleLink(outcome, context.titleLink)
-    }),
+    allocation: (outcome, routeValue) => {
+      const title = text(outcome['outcome-title']);
+      const titleLink = resolveTitleLink(outcome, context.titleLink);
+      debugOutcomeDetailAllocation({
+        event: 'allocated',
+        usedTitleFallback: title.length === 0,
+        hasTitleLink: titleLink !== null
+      });
+      return {
+        title: title || routeValue.trim(),
+        description: outcomeDescription(outcome),
+        titleLink
+      };
+    },
     renderContent: (outcome) => renderOutcome(outcome)
   });
 }

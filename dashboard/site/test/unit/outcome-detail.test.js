@@ -177,3 +177,114 @@ describe('outcome detail debug logging', () => {
     expect(output.debug).not.toHaveBeenCalled();
   });
 });
+
+describe('outcome detail allocation debug logging', () => {
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithoutDebug } = await import('../../src/components/outcome-detail.js');
+
+    const rendered = renderOutcomeDetailWithoutDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs allocation with predictable category and scalar metadata, not the resolved title or link', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=outcome-detail:allocation', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithDebug } = await import('../../src/components/outcome-detail.js');
+
+    const rendered = renderOutcomeDetailWithDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:outcome-detail:allocation]', {
+      event: 'allocated',
+      usedTitleFallback: false,
+      hasTitleLink: true
+    });
+    for (const call of output.debug.mock.calls) {
+      for (const value of Object.values(call[1])) {
+        expect(value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean').toBe(true);
+      }
+    }
+  });
+
+  it('reports a used title fallback and a missing title link when neither is available', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=outcome-detail:allocation', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithDebug } = await import('../../src/components/outcome-detail.js');
+
+    const bareContext = context();
+    bareContext.sources.outcomes.rows[0]['outcome-title'] = '';
+    bareContext.sources.outcomes.rows[0]['external-link'] = /** @type {any} */ (null);
+    const rendered = renderOutcomeDetailWithDebug(bareContext);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:outcome-detail:allocation]', {
+      event: 'allocated',
+      usedTitleFallback: true,
+      hasTitleLink: false
+    });
+  });
+
+  it('only logs under the "outcome-detail:allocation" category, independent of the parent "outcome-detail" category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=outcome-detail', output })
+      };
+    });
+    vi.resetModules();
+    const { renderOutcomeDetail: renderOutcomeDetailWithDebug } = await import('../../src/components/outcome-detail.js');
+
+    const rendered = renderOutcomeDetailWithDebug(context());
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'outcome', value: 'outcome-1' }
+    }));
+
+    expect(output.debug).not.toHaveBeenCalledWith('[cao:outcome-detail:allocation]', expect.anything());
+  });
+});
