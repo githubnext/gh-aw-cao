@@ -205,4 +205,22 @@ If the selected source-level fix is focused, before/after evidence proves improv
 
 Call `noop` exactly once after updating memory when no actionable non-duplicate candidate exists, the change boundary cannot contain the fix, improvement is not measurable, a persona regresses, or validation fails. Never finish with only a textual response.
 
+### Safe-output delivery
+
+This pi engine submits safe outputs through the `safeoutputs` CLI in bash. Writing `Result: noop` in the final response does not submit a safe output. Do not invoke `noop`, `upload_artifact`, or `create_pull_request` as bare shell commands.
+
+When evidence files exist, submit the evidence before the terminal decision:
+
+```bash
+safeoutputs upload_artifact '{"name":"self-care-dashboard-performance-${{ github.run_id }}","path":"${{ github.workspace }}/self-care-dashboard-performance-evidence"}'
+```
+
+For a no-op, replace the message with the exact evidence-backed reason and execute:
+
+```bash
+safeoutputs noop '{"message":"No measurable improvement was demonstrated; no pull request was created."}'
+```
+
+For a validated improvement, pipe the final JSON object containing `title` and `body` to `safeoutputs create_pull_request .` instead. Submit exactly one terminal decision: `create_pull_request` or `noop`. Confirm that the CLI accepted the submission before writing the final response; an evidence upload alone is not a terminal decision.
+
 {{#runtime-import? .github/cao/self-care.md}}

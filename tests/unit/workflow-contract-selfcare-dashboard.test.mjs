@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
@@ -306,6 +307,41 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
   }
   assert.doesNotMatch(source, /^evals:/m);
   assert.doesNotMatch(source, /^graders:/m);
+});
+
+test("SelfCare dashboard performance submits safe outputs through executable CLI examples", () => {
+  const source = workflow("self-care-dashboard-performance.md");
+  const delivery = source.split("### Safe-output delivery\n")[1]?.split("{{#runtime-import?")[0];
+  assert.ok(delivery);
+  assert.match(delivery, /Writing `Result: noop` in the final response does not submit a safe output/);
+  assert.match(delivery, /safeoutputs create_pull_request \./);
+  assert.match(delivery, /Submit exactly one terminal decision: `create_pull_request` or `noop`/);
+  assert.match(delivery, /Confirm that the CLI accepted the submission/);
+  assert.match(delivery, /an evidence upload alone is not a terminal decision/);
+
+  const examples = [...delivery.matchAll(/```bash\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  assert.equal(examples.length, 2);
+  const calls = examples.map((example) => {
+    const output = execFileSync("bash", ["-c", `
+safeoutputs() { printf '%s\\n' "$1" "$2"; }
+${example}
+`], { encoding: "utf8" }).trim().split("\n");
+    assert.equal(output.length, 2);
+    return { tool: output[0], payload: JSON.parse(output[1]) };
+  });
+  assert.deepEqual(calls, [
+    {
+      tool: "upload_artifact",
+      payload: {
+        name: "self-care-dashboard-performance-${{ github.run_id }}",
+        path: "${{ github.workspace }}/self-care-dashboard-performance-evidence",
+      },
+    },
+    {
+      tool: "noop",
+      payload: { message: "No measurable improvement was demonstrated; no pull request was created." },
+    },
+  ]);
 });
 
 test("SelfCare no longer dispatches the obsolete experimental views worker", () => {
