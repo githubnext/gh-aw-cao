@@ -26,6 +26,7 @@ export const APP_PROFILES = Object.freeze([
       checks: "read",
       contents: "read",
       issues: "read",
+      packages: "read",
       pull_requests: "read",
       secret_scanning_alerts: "read",
       security_events: "read",

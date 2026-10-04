@@ -30,7 +30,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 | --- | --- |
 | App ownership | Permission to create private GitHub Apps in the owning organization. For several organizations, you need this permission in the enterprise. Public apps aren't supported. |
 | App installation | An organization owner in every enrolled organization who can approve an installation on selected repositories. |
-| Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. |
+| Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Packages, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. |
 | Write app permissions | Write access to Actions, Contents, Issues, and Pull requests. Read access to Administration and Metadata. |
 | Webhooks | Turned off for both apps. |
 
