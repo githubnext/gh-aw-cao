@@ -229,7 +229,7 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 	for {
 		permanentFailure := false
 		if !report.GoMemoryAllocatedFound {
-			status, found, retry, queryErr := queryOpenObserveMetric(
+			status, found, retry := queryOpenObserveMetric(
 				smokeCtx,
 				client,
 				metricTarget,
@@ -237,15 +237,12 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 				windowStart,
 				now().UTC().Add(time.Minute),
 			)
-			if queryErr != nil {
-				return report, queryErr
-			}
 			report.GoMemoryAllocatedSearchStatus = status
 			report.GoMemoryAllocatedFound = found
 			permanentFailure = permanentFailure || (!found && !retry)
 		}
 		if !report.GoGoroutineCountFound && !permanentFailure {
-			status, found, retry, queryErr := queryOpenObserveMetric(
+			status, found, retry := queryOpenObserveMetric(
 				smokeCtx,
 				client,
 				metricTarget,
@@ -253,9 +250,6 @@ func RunSmoke(ctx context.Context, config SmokeConfig) (SmokeReport, error) {
 				windowStart,
 				now().UTC().Add(time.Minute),
 			)
-			if queryErr != nil {
-				return report, queryErr
-			}
 			report.GoGoroutineCountSearchStatus = status
 			report.GoGoroutineCountFound = found
 			permanentFailure = !found && !retry
@@ -366,7 +360,7 @@ func queryOpenObserveMetric(
 	stream string,
 	windowStart time.Time,
 	windowEnd time.Time,
-) (status int, found bool, retry bool, err error) {
+) (status int, found bool, retry bool) {
 	searchURL := target.baseURL
 	searchURL.Path = "/api/" + target.organization + "/_search"
 	query := searchURL.Query()
@@ -382,17 +376,17 @@ func queryOpenObserveMetric(
 		},
 	})
 	if err != nil {
-		return 0, false, false, errors.New("build OpenObserve metric search payload")
+		return 0, false, false
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, searchURL.String(), bytes.NewReader(payload))
 	if err != nil {
-		return 0, false, false, errors.New("build OpenObserve metric search request")
+		return 0, false, false
 	}
 	request.Header.Set("Authorization", target.authorization)
 	request.Header.Set("Content-Type", "application/json")
 	response, requestErr := client.Do(request)
 	if requestErr != nil {
-		return 0, false, true, nil
+		return 0, false, true
 	}
 	status = response.StatusCode
 	var readErr error
@@ -403,16 +397,16 @@ func queryOpenObserveMetric(
 	}
 	closeErr := response.Body.Close()
 	if readErr != nil || closeErr != nil {
-		return status, false, true, nil
+		return status, false, true
 	}
 	if found {
-		return status, true, false, nil
+		return status, true, false
 	}
 	retry = status == http.StatusOK ||
 		status >= http.StatusInternalServerError ||
 		status == http.StatusRequestTimeout ||
 		status == http.StatusTooManyRequests
-	return status, false, retry, nil
+	return status, false, retry
 }
 
 func extractAuthorizationHeader(raw string) (string, error) {
