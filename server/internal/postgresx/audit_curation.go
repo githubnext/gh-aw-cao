@@ -2,13 +2,17 @@ package postgresx
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+var auditCurationLog = logger.New("cao:postgresx:audit_curation")
 
 func auditMetadataField(field string) bool {
 	switch field {
@@ -175,40 +179,53 @@ func (s *Store) CurateAudits(ctx context.Context) (State, error) {
 		return State{}, err
 	}
 	if state.Ready {
-		result, err := tx.ExecContext(ctx, auditCurationStatement(), s.namespace)
-		if err != nil {
-			return State{}, fmt.Errorf("curate native audits: %w", err)
-		}
-		deleted, err := result.RowsAffected()
+		state, err = s.applyAuditCuration(ctx, tx, reader)
 		if err != nil {
 			return State{}, err
-		}
-		if deleted > 0 {
-			result, err := tx.ExecContext(ctx, `UPDATE cao_quality SET
-				availability=CASE WHEN availability='unavailable' THEN availability
-					WHEN EXISTS(SELECT 1 FROM audits WHERE namespace=$1) THEN 'available' ELSE 'empty' END
-				WHERE namespace=$1 AND collection='$audits'`, s.namespace)
-			if err != nil {
-				return State{}, err
-			}
-			updated, err := result.RowsAffected()
-			if err != nil {
-				return State{}, err
-			}
-			if updated != 1 {
-				return State{}, errors.New("published native audits are missing quality metadata")
-			}
-			if _, err := tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1 WHERE namespace=$1`, s.namespace); err != nil {
-				return State{}, err
-			}
-			state, err = reader.State(ctx)
-			if err != nil {
-				return State{}, err
-			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return State{}, err
 	}
 	return state, nil
+}
+
+// applyAuditCuration deletes metadata-only audit rows for one ready
+// namespace, republishes quality availability, and advances the revision
+// only when a deletion actually occurred. It is extracted from CurateAudits
+// so the delete-then-publish decision is a single, independently testable
+// unit boundary against a real transaction, separate from CurateAudits'
+// readiness gate and advisory lock.
+func (s *Store) applyAuditCuration(ctx context.Context, tx *sql.Tx, reader *readTransaction) (State, error) {
+	result, err := tx.ExecContext(ctx, auditCurationStatement(), s.namespace)
+	if err != nil {
+		return State{}, fmt.Errorf("curate native audits: %w", err)
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return State{}, err
+	}
+	if deleted == 0 {
+		auditCurationLog.Printf("audit curation found nothing to delete namespace=%s", s.namespace)
+		return reader.State(ctx)
+	}
+	result, err = tx.ExecContext(ctx, `UPDATE cao_quality SET
+		availability=CASE WHEN availability='unavailable' THEN availability
+			WHEN EXISTS(SELECT 1 FROM audits WHERE namespace=$1) THEN 'available' ELSE 'empty' END
+		WHERE namespace=$1 AND collection='$audits'`, s.namespace)
+	if err != nil {
+		return State{}, err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return State{}, err
+	}
+	if updated != 1 {
+		return State{}, errors.New("published native audits are missing quality metadata")
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1 WHERE namespace=$1`, s.namespace); err != nil {
+		return State{}, err
+	}
+	auditCurationLog.Printf("audit curation deleted rows namespace=%s deleted=%d", s.namespace, deleted)
+	return reader.State(ctx)
 }

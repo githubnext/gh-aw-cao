@@ -271,6 +271,65 @@ func seedUncuratedAudits(t *testing.T, store *Store) State {
 	return state
 }
 
+// TestApplyAuditCurationSkipsPublishWithoutDeletion exercises
+// applyAuditCuration's two outcomes directly against a real transaction: a
+// namespace with nothing to delete must leave the revision and quality
+// availability untouched, while a namespace with curatable rows must
+// publish a new revision and recompute availability.
+func TestApplyAuditCurationSkipsPublishWithoutDeletion(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	before := seedUncuratedAudits(t, store)
+	// Mark the row as retained evidence by attaching an unsupported field, so
+	// the curation statement finds nothing eligible to delete this round.
+	if _, err := store.db.ExecContext(t.Context(),
+		"UPDATE audits SET status='pending' WHERE namespace=$1", store.namespace); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := store.db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	reader := &readTransaction{store: store, tx: tx}
+	noop, err := store.applyAuditCuration(t.Context(), tx, reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if noop.Revision != before.Revision || noop.Counts["$audits"] != before.Counts["$audits"] {
+		t.Fatalf("no-op curation changed published state: before=%+v after=%+v", before, noop)
+	}
+	var availability string
+	if err := tx.QueryRowContext(t.Context(),
+		"SELECT availability FROM cao_quality WHERE namespace=$1 AND collection='$audits'", store.namespace,
+	).Scan(&availability); err != nil {
+		t.Fatal(err)
+	}
+	if availability != "available" {
+		t.Fatalf("no-op curation changed quality availability: %s", availability)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+
+	deletable := seedUncuratedAudits(t, store)
+	tx, err = store.db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	reader = &readTransaction{store: store, tx: tx}
+	published, err := store.applyAuditCuration(t.Context(), tx, reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if published.Revision != deletable.Revision+1 || published.Counts["$audits"] != 0 {
+		t.Fatalf("deleting curation did not publish: before=%+v after=%+v", deletable, published)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAuditCurationExistingNamespaceAndIdempotence(t *testing.T) {
 	store, config := nativeTestStore(t)
 	before := seedUncuratedAudits(t, store)
