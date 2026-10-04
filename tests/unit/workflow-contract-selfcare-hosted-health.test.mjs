@@ -43,9 +43,11 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /rolling four-hour UTC window/);
   assert.match(worker, /close-older-issues: true/);
   assert.match(worker, /deduplicate-by-title: true/);
-  assert.match(worker, /If the OTEL MCP URL, credential, server, smoke result, or query capabilities are absent/);
+  assert.match(worker, /If the OTEL MCP server, smoke result, or query capabilities are unavailable/);
   assert.match(worker, /Never infer that either is absent by inspecting environment variables/);
   assert.match(worker, /only a smoke reason of `missing_configuration` establishes that condition/);
+  assert.match(worker, /Recommend provisioning the Actions variable or secret only for `missing_configuration`/);
+  assert.match(worker, /do not recommend replacing it/);
   assert.match(worker, /do not assume Prometheus-compatible query access/);
   assert.match(worker, /Do not use `tool_search`, `tools_call`, or any mutation-capable OpenObserve tool/);
   assert.doesNotMatch(worker, /^\s+(contents|actions|issues|pull-requests): write$/m);
