@@ -16,7 +16,20 @@
   border-radius: 0.5rem;
 }
 
-:root[data-theme="dark"] .sl-skip-link:focus-visible {
+:where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button, summary):focus-visible,
+:where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) a:focus-visible,
+:where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) button:focus-visible,
+:where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) summary:focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+
+:root[data-theme="dark"] .sl-skip-link:focus-visible,
+:root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button, summary):focus-visible,
+:root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) a:focus-visible,
+:root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) button:focus-visible,
+:root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) summary:focus-visible {
   outline-color: #79c0ff;
 }
 
