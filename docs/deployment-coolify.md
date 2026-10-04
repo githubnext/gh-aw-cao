@@ -399,14 +399,17 @@ Confirm that the deployed OpenObserve release exposes the documented
 `/api/{organization}/mcp` endpoint before enabling Hosted Health. An
 authenticated `404` means the configured release or deployment does not
 provide that native MCP route; upgrade OpenObserve or enable the route rather
-than replacing a valid credential. The public `/config` response reports the
-deployed version. In particular, the hosted OSS `v0.90.0` image does not expose
-this route and must be upgraded to a current release with OSS MCP support.
+than replacing a valid credential. The public `/config` response reports build
+metadata. In particular, the previously deployed OSS `v0.90.0` image did not
+expose this route and had to be upgraded to a current release with OSS MCP support.
 Current releases use `ZO_MCP_ENABLED`, which defaults to `true`; ensure the
 Coolify service does not override it to `false`. Older Enterprise deployments
 also require `O2_AI_ENABLED=true` and
 `O2_TOOL_API_URL` set to the instance base URL, as documented by OpenObserve;
 those settings do not add native MCP support to the `v0.90.0` OSS image.
+After validating an upgrade from `public.ecr.aws/zinclabs/openobserve:latest`,
+pin the tested release tag or image digest so a redeploy cannot introduce an
+unreviewed OpenObserve upgrade.
 
 Before the agent starts in either authorized review or live mode, the worker
 performs an authenticated MCP smoke check that verifies the pinned read-only
