@@ -994,7 +994,7 @@ partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
 fail closed rather than creating partitions during ingestion. At startup and
 every 24 hours while the process is running, maintenance checks existing
 partitions, creates any missing current and four future weeks first, and removes complete
-weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 400, allowed 7–3650).
+weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
 Retention detaches and drops events, sessions, other run-owned tables, then
 runs together, updating affected source counts and revisions. Repeated maintenance
 is a no-op when partitions are already present and none have expired; a restart

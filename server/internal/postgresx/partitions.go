@@ -14,7 +14,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
-const defaultRunRetentionDays = 400
+const defaultRunRetentionDays = 30
 const futureRunWeeks = 4
 const partitionMaintenanceInterval = 24 * time.Hour
 
