@@ -400,7 +400,13 @@ Confirm that the deployed OpenObserve release exposes the documented
 authenticated `404` means the configured release or deployment does not
 provide that native MCP route; upgrade OpenObserve or enable the route rather
 than replacing a valid credential. The public `/config` response reports the
-deployed version.
+deployed version. In particular, the hosted OSS `v0.90.0` image does not expose
+this route and must be upgraded to a current release with OSS MCP support.
+Current releases use `ZO_MCP_ENABLED`, which defaults to `true`; ensure the
+Coolify service does not override it to `false`. Older Enterprise deployments
+also require `O2_AI_ENABLED=true` and
+`O2_TOOL_API_URL` set to the instance base URL, as documented by OpenObserve;
+those settings do not add native MCP support to the `v0.90.0` OSS image.
 
 Before the agent starts in either authorized review or live mode, the worker
 performs an authenticated MCP smoke check that verifies the pinned read-only
@@ -419,6 +425,12 @@ been verified.
 OpenObserve is optional infrastructure, not dashboard authority. It receives
 telemetry only; PostgreSQL remains the dashboard entity store and Redis remains
 operational state.
+
+OpenObserve's MCP-server observability guidance describes the opposite,
+producer-side path: instrumenting MCP server methods and exporting their OTEL
+spans and metrics. Treat that as write-side telemetry configuration using
+`GH_AW_DEFAULT_OTLP_ENDPOINT` and `GH_AW_DEFAULT_OTLP_HEADERS`; it does not
+replace the read-side native MCP endpoint or its service-account credential.
 
 ### Logs
 
