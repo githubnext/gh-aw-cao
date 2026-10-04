@@ -248,6 +248,7 @@ Grant only permissions required by installed campaigns. The current full catalog
 | Checks | Read | None | Inspect checks |
 | Contents | Read | Write | Read repositories and create approved changes |
 | Issues | Read | Write | Inspect issues and emit issue or comment safe outputs |
+| Packages | Read | None | Inspect published package evidence |
 | Pull requests | Read | Write | Inspect pull requests and emit approved pull-request outputs |
 | Secret scanning alerts | Read | None | Inspect code-security evidence |
 | Security events | Read | None | Inspect code-security evidence |

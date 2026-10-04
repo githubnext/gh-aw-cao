@@ -24,6 +24,7 @@ test("deterministic workflows pin third-party actions by commit SHA", () => {
     join(".github", "workflows", "review-smoke.yml"),
     join(".github", "workflows", "cao-activity.yml"),
     join(".github", "workflows", "cao-dashboard.yml"),
+    join(".github", "workflows", "target-read-access-probe.yml"),
   ]) {
     const source = readFileSync(join(root, relativePath), "utf8");
     for (const action of source.matchAll(/^\s*uses:\s+([^./\s][^@\s]+)@([^\s#]+)/gm)) {
