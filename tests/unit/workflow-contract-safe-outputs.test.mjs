@@ -115,7 +115,8 @@ test("operations creation guidance scopes detection and omits worker evals", () 
   assert.match(campaignSkill, /no `evals` configuration; use deterministic graders for worker measurement/);
   assert.match(campaignSkill, /Confirm the orchestrator disables threat detection and every worker omits `evals`/);
   assert.match(campaignSkill, /CAO does not require organization-billed Copilot inference/);
-  assert.match(campaignSkill, /Choose a supported gh-aw engine and model for each workflow/);
+  assert.match(campaignSkill, /Follow the control\s+repository's selected engine and inference\/billing profile/);
+  assert.match(campaignSkill, /A different supported gh-aw engine\/provider is valid when explicitly configured for the control repository/);
   assert.match(campaignSkill, /not as a blocker to authoring campaigns for other providers/);
   assert.match(campaignSkill, /gh api orgs\/<organization>\/copilot\/billing/);
   assert.match(campaignSkill, /is completely optional: the user's token may not have access to billing information/);
