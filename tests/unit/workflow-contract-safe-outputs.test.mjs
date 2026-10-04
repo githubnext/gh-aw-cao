@@ -416,6 +416,7 @@ test("comment-producing safe outputs expose one formatting contract", () => {
 
   assert.deepEqual(producers.toSorted(([left], [right]) => left.localeCompare(right)), [
     ["cao-evolution-catalog-advisor.md", ["add-comment"]],
+    ["cao-evolution-campaign-maturation.md", ["add-comment"]],
     ["cao-evolution-efficiency.md", ["add-comment"]],
     ["cao-evolution-integrity.md", ["add-comment"]],
     ["cao-evolution-reliability.md", ["add-comment"]],

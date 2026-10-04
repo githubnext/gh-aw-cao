@@ -1,6 +1,102 @@
 {
   "queries": [
     {
+      "name": "campaign-maturation-progress",
+      "subject": "Expose campaign maturation cycles emitted from bounded canonical safe-output evidence.",
+      "objective": "Review the active cycle, blockers, budget disposition, and advisory readiness decision for one campaign.",
+      "acceptance": "Every row preserves the exact campaign, fingerprint, decision, budget disposition, blocker count, issue state, and provenance extracted from a canonical campaign-maturation marker; absent rows remain unknown, and ready-for-live-decision never grants live authority.",
+      "description": "Canonical campaign-maturation cycle observations for declarative campaign progress views.",
+      "from": "run-records",
+      "filter": {
+        "predicates": [
+          {
+            "field": "event-type",
+            "equals": "safe_output.created"
+          },
+          {
+            "field": "maturation-decision",
+            "in": [
+              "continue-observing",
+              "improvement-ready",
+              "validating",
+              "ready-for-live-decision",
+              "retire"
+            ]
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "maturation-active-cycle",
+          "function": "if",
+          "args": [
+            {
+              "field": "issue-closed"
+            },
+            {
+              "value": "closed"
+            },
+            {
+              "value": "active"
+            }
+          ]
+        },
+        {
+          "as": "maturation-issue-link",
+          "function": "link",
+          "args": [
+            {
+              "field": "correlation-id"
+            },
+            {
+              "value": "View maturation cycle"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "maturation-campaign",
+          "as": "campaign"
+        },
+        {
+          "field": "maturation-fingerprint"
+        },
+        {
+          "field": "maturation-decision",
+          "as": "readiness-decision"
+        },
+        {
+          "field": "maturation-active-cycle",
+          "as": "active-cycle"
+        },
+        {
+          "field": "maturation-budget-disposition",
+          "as": "budget-disposition"
+        },
+        {
+          "field": "maturation-blocker-count",
+          "as": "blockers"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "maturation-issue-link",
+          "as": "cycle-link"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
       "name": "campaign-operational-value-primary-series",
       "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
       "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
@@ -253,6 +349,71 @@
           "config": {
             "measure-source": "operational-value",
             "empty-message": "No repository operational-value observations have been published for this campaign yet."
+          }
+        },
+        {
+          "id": "campaign-maturation-status",
+          "title": "Campaign maturation",
+          "subject": "See the latest evidence-backed maturation cycle observations for this review campaign.",
+          "objective": "Identify the active cycle, blockers, budget disposition, and advisory readiness decision.",
+          "acceptance": "Rows come only from canonical maturation markers; missing evidence stays unknown, native operational value remains in the separate measure view, and no displayed decision grants live authority.",
+          "description": "Declarative maturation progress derived from canonical safe-output evidence.",
+          "data": {
+            "source": "campaign-maturation-progress",
+            "route-field": "campaign",
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ],
+            "limit": 5
+          },
+          "mark": "list",
+          "layout": "full",
+          "list": {
+            "style": "entity-cards",
+            "card": "generic",
+            "icon": "milestone",
+            "drill": {
+              "type": "external",
+              "field": "cycle-link"
+            }
+          },
+          "empty-message": "No canonical campaign-maturation cycle has been observed for this campaign.",
+          "encoding": {
+            "href": {
+              "field": "cycle-link"
+            },
+            "columns": [
+              {
+                "field": "readiness-decision",
+                "type": "nominal",
+                "title": "Readiness decision",
+                "display": "status"
+              },
+              {
+                "field": "active-cycle",
+                "type": "nominal",
+                "title": "Cycle"
+              },
+              {
+                "field": "blockers",
+                "type": "quantitative",
+                "title": "Blockers"
+              },
+              {
+                "field": "budget-disposition",
+                "type": "nominal",
+                "title": "Budget"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              }
+            ]
           }
         },
         {

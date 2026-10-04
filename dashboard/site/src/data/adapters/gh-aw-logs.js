@@ -2129,6 +2129,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         && !Array.isArray(record.github_issue_status)
         ? /** @type {Record<string, unknown>} */ (record.github_issue_status)
         : {};
+      const maturation = typeof record.body === 'string'
+        ? /<!--\s*cao-campaign-maturation:campaign=([a-z0-9][a-z0-9-]*);fingerprint=(sha256:[a-f0-9]{64});decision=(continue-observing|improvement-ready|validating|ready-for-live-decision|retire);budget=(unknown|within|exceeded|not-applicable);blockers=([0-9]+)\s*-->/.exec(record.body)
+        : null;
       emitEvent(
         'safe_output.created',
         timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
@@ -2153,6 +2156,11 @@ function createCachedGhAwJsonlAccumulator(options) {
             : optionalString(issueStatus.state_reason),
           issueClosedAt: issueStatus.closed_at === null ? null : optionalString(issueStatus.closed_at),
           issueStatusObservedAt: optionalString(issueStatus.observed_at),
+          maturationCampaign: maturation?.[1],
+          maturationFingerprint: maturation?.[2],
+          maturationDecision: maturation?.[3],
+          maturationBudgetDisposition: maturation?.[4],
+          maturationBlockerCount: maturation ? Number(maturation[5]) : undefined,
           payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );

@@ -131,6 +131,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
     ["cao-evolution-failures-investigator.md", "cao-evolution", "failures-investigator"],
     ["cao-evolution-compiler-security.md", "cao-evolution", "compiler-security"],
+    ["cao-evolution-campaign-maturation.md", "cao-evolution", "campaign-maturation"],
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
     ["cao-evolution-integrity.md", "cao-evolution", "integrity"],
     ["cao-evolution-reliability.md", "cao-evolution", "reliability"],

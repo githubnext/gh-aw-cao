@@ -72,6 +72,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-evolution.md");
   const workers = [
+    ["campaign-maturation", "cao-evolution-campaign-maturation"],
     ["catalog-advisor", "cao-evolution-catalog-advisor"],
     ["compiler-security", "cao-evolution-compiler-security"],
     ["efficiency", "cao-evolution-efficiency"],
@@ -83,6 +84,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.equal(manifest.name, "CAO Evolution");
   assert.deepEqual(manifest.includes.sort(), [
     "../aw.yml",
+    ".github/workflows/cao-evolution-campaign-maturation.md",
     ".github/workflows/cao-evolution-catalog-advisor.md",
     ".github/workflows/cao-evolution-compiler-security.md",
     ".github/workflows/cao-evolution-efficiency.md",
@@ -102,7 +104,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
   assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` campaign manifest/);
-  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
+  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-campaign-maturation, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
     const source = workflow(`${workflowName}.md`);
@@ -110,7 +112,8 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     assert.match(source, /deduplicate-by-title: true/);
     assert.match(source, /(?:required-labels|labels): \[cao-evolution, cao-evolution:/);
   }
-  assert.match(orchestrator, /Dispatch the integrity, reliability, efficiency, and catalog-advisor workers only for verified control repositories/);
+  assert.match(orchestrator, /Dispatch the integrity, reliability, efficiency, campaign-maturation, and catalog-advisor workers only for verified control repositories/);
+  assert.match(orchestrator, /campaign-maturation worker is eligible only when the effective mode is `review`/);
   assert.match(orchestrator, /Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories/);
   const catalogAdvisor = workflow("cao-evolution-catalog-advisor.md");
   assert.match(catalogAdvisor, /Use `githubnext\/gh-aw-cao` as the official Operations Catalog/);
@@ -123,6 +126,14 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /open review backlog, oldest review age, review-decision latency, accepted outcomes, rejected or closed-unmerged outcomes/);
   assert.match(efficiency, /Select one campaign and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `Optimization`/);
+  const maturation = workflow("cao-evolution-campaign-maturation.md");
+  assert.match(maturation, /worker: campaign-maturation/);
+  assert.match(maturation, /one evidence-backed improvement cycle for one campaign that is still in `review` mode/);
+  assert.match(maturation, /continue-observing.*improvement-ready.*validating.*ready-for-live-decision.*retire/s);
+  assert.match(maturation, /only a separately reviewed `\.github\/workflows\/cao\.json` change may grant live authority/);
+  assert.match(maturation, /Attach every child as a sub-issue of the parent/);
+  assert.match(maturation, /require-temporary-id: true/);
+  assert.match(maturation, /fingerprint=<sha256>;decision=<decision>;budget=/);
 
   const campaignSkill = portableSkill("create-cao-campaign");
   assert.match(campaignSkill, /When a worker optimizes a campaign or campaign portfolio/);

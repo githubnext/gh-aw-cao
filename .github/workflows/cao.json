@@ -56,6 +56,10 @@
         "mode": "review",
         "max-repositories": 1,
         "workers": {
+          "campaign-maturation": {
+            "workflow": "cao-evolution-campaign-maturation",
+            "max-mode": "review"
+          },
           "catalog-advisor": {
             "workflow": "cao-evolution-catalog-advisor"
           },

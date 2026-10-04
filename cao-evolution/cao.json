@@ -2,6 +2,7 @@
   "campaign": "cao-evolution",
   "orchestrator": "cao-evolution",
   "workers": {
+    "campaign-maturation": "cao-evolution-campaign-maturation",
     "catalog-advisor": "cao-evolution-catalog-advisor",
     "compiler-security": "cao-evolution-compiler-security",
     "efficiency": "cao-evolution-efficiency",

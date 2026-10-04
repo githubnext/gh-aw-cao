@@ -207,6 +207,7 @@ describe('gh-aw logs adapter', () => {
               url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
               number: 42,
               repo: 'githubnext/gh-aw-cao',
+              body: '<!-- cao-campaign-maturation:campaign=dependabot;fingerprint=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;decision=validating;budget=within;blockers=2 -->',
               timestamp: '2026-09-09T04:00:45Z'
             }]
           },
@@ -407,6 +408,14 @@ describe('gh-aw logs adapter', () => {
       })
     ]);
     expect(batch.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        safeOutputType: 'create_issue',
+        maturationCampaign: 'dependabot',
+        maturationFingerprint: `sha256:${'a'.repeat(64)}`,
+        maturationDecision: 'validating',
+        maturationBudgetDisposition: 'within',
+        maturationBlockerCount: 2
+      }),
       expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',

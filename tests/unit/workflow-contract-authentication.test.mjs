@@ -80,6 +80,7 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
     "cao-evolution-failures-investigator",
     "cao-evolution-compiler-security",
     "cao-evolution",
+    "cao-evolution-campaign-maturation",
     "cao-evolution-efficiency",
     "cao-evolution-integrity",
     "cao-evolution-reliability",
