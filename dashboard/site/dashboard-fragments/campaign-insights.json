@@ -2,20 +2,13 @@
   "queries": [
     {
       "name": "campaign-maturation-progress",
-      "subject": "Expose campaign maturation cycles emitted from bounded canonical safe-output evidence.",
-      "objective": "Review the active cycle, blockers, budget disposition, and advisory readiness decision for one campaign.",
-      "acceptance": "Every row preserves the exact campaign, fingerprint, decision, budget disposition, blocker count, issue state, and provenance extracted from a canonical campaign-maturation marker; absent rows remain unknown, and ready-for-live-decision never grants live authority.",
-      "description": "Canonical campaign-maturation cycle observations for declarative campaign progress views.",
+      "subject": "Expose campaign maturation evidence.",
+      "objective": "Review cycle, blockers, budget, and readiness.",
+      "acceptance": "Preserve markers; absence is unknown; readiness never grants live authority.",
+      "description": "Campaign maturation progress.",
       "from": "outcomes",
       "filter": {
         "predicates": [
-          {
-            "field": "safe-output-kind",
-            "in": [
-              "create-issue",
-              "update_issue"
-            ]
-          },
           {
             "field": "maturation-decision",
             "in": [
@@ -51,9 +44,6 @@
           "as": "campaign"
         },
         {
-          "field": "maturation-fingerprint"
-        },
-        {
           "field": "maturation-decision",
           "as": "readiness-decision"
         },
@@ -74,9 +64,6 @@
         },
         {
           "field": "issue-link"
-        },
-        {
-          "field": "run-link"
         }
       ],
       "order-by": [

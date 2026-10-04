@@ -524,6 +524,7 @@
         "audit-event-summary-buckets",
         "campaign-insight-tab-counts",
         "campaign-issue-tab-counts",
+        "campaign-maturation-progress",
         "campaign-operational-value-evidence-state",
         "campaign-operational-value-primary-series",
         "campaign-operational-value-run-days",
@@ -2923,6 +2924,32 @@
           "overview-runs",
           "runs",
           "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-maturation-progress",
+      "subject": "Expose campaign maturation evidence.",
+      "objective": "Review cycle, blockers, budget, and readiness.",
+      "acceptance": "Preserve markers; absence is unknown; readiness never grants live authority.",
+      "description": "Campaign maturation progress.",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "outcomes"
+      ],
+      "used-by-pages": [
+        "campaign-insights"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes"
         ]
       }
     },

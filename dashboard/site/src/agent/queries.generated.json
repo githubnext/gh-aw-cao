@@ -7234,6 +7234,79 @@
   }
  },
  {
+  "name": "campaign-maturation-progress",
+  "subject": "Expose campaign maturation evidence.",
+  "objective": "Review cycle, blockers, budget, and readiness.",
+  "acceptance": "Preserve markers; absence is unknown; readiness never grants live authority.",
+  "description": "Campaign maturation progress.",
+  "from": "outcomes",
+  "filter": {
+   "predicates": [
+    {
+     "field": "maturation-decision",
+     "in": [
+      "continue-observing",
+      "improvement-ready",
+      "validating",
+      "ready-for-live-decision",
+      "retire"
+     ]
+    }
+   ]
+  },
+  "compute": [
+   {
+    "as": "maturation-active-cycle",
+    "function": "if",
+    "args": [
+     {
+      "field": "issue-closed"
+     },
+     {
+      "value": "closed"
+     },
+     {
+      "value": "active"
+     }
+    ]
+   }
+  ],
+  "select": [
+   {
+    "field": "maturation-campaign",
+    "as": "campaign"
+   },
+   {
+    "field": "maturation-decision",
+    "as": "readiness-decision"
+   },
+   {
+    "field": "maturation-active-cycle",
+    "as": "active-cycle"
+   },
+   {
+    "field": "maturation-budget-disposition",
+    "as": "budget-disposition"
+   },
+   {
+    "field": "maturation-blocker-count",
+    "as": "blockers"
+   },
+   {
+    "field": "observed-at"
+   },
+   {
+    "field": "issue-link"
+   }
+  ],
+  "order-by": [
+   {
+    "field": "observed-at",
+    "direction": "desc"
+   }
+  ]
+ },
+ {
   "name": "campaign-operational-value-primary-series",
   "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
   "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
