@@ -359,6 +359,10 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)
 		}
 	}
+	var counters int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM tool_counters WHERE namespace=$1", store.namespace).Scan(&counters); err != nil || counters != 2 {
+		t.Fatalf("Tool counters were not expired with their Run: %d %v", counters, err)
+	}
 	if _, err := store.db.ExecContext(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
 		VALUES($1,2,repeat('0',73)::bit varying,'unroutable','repository','workflow','1900-01-01')`, store.namespace); err == nil || !strings.Contains(err.Error(), "no partition") {
 		t.Fatalf("write unexpectedly created an out-of-window partition: %v", err)
@@ -384,7 +388,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	missingWeek := now.AddDate(0, 0, 7*futureRunWeeks)
 	missingWeek = missingWeek.AddDate(0, 0, -((int(missingWeek.Weekday()) + 6) % 7))
 	missingName := "tools_w" + missingWeek.Format("20060102")
-	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE tool_counters_w"+missingWeek.Format("20060102")); err != nil {
+	if _, err := store.db.ExecContext(t.Context(), "ALTER TABLE tools DETACH PARTITION "+missingName); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE "+missingName); err != nil {
