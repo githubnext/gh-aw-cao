@@ -87,23 +87,36 @@ func resolveRedisEndpoint(flagValue, envValue, defaultValue string) (string, red
 	return defaultValue, redisEndpointSourceDefault
 }
 
+// postgresEndpointSource identifies which input determined a resolved
+// Postgres endpoint. It is useful for diagnosing misconfiguration without
+// logging the endpoint URL itself, which can contain credentials.
+type postgresEndpointSource string
+
+const (
+	postgresEndpointSourceFlag postgresEndpointSource = "flag"
+	postgresEndpointSourceEnv  postgresEndpointSource = "env"
+)
+
 // resolvePostgresEndpoint requires an explicit flag or environment value; never
-// include the endpoint in errors because it can contain credentials.
-func resolvePostgresEndpoint(flagValue, envValue string) (string, error) {
+// include the endpoint in errors or logs because it can contain credentials.
+// It returns which input supplied the endpoint, so callers can log the
+// source without exposing the value.
+func resolvePostgresEndpoint(flagValue, envValue string) (string, postgresEndpointSource, error) {
 	if endpoint := strings.TrimSpace(flagValue); endpoint != "" {
-		return endpoint, nil
+		return endpoint, postgresEndpointSourceFlag, nil
 	}
 	if endpoint := strings.TrimSpace(envValue); endpoint != "" {
-		return endpoint, nil
+		return endpoint, postgresEndpointSourceEnv, nil
 	}
-	return "", errors.New("--postgres-url or CAO_POSTGRES_URL is required")
+	return "", "", errors.New("--postgres-url or CAO_POSTGRES_URL is required")
 }
 
 func newPostgresStore(ctx context.Context, flagValue, namespace string) (*postgresx.Store, error) {
-	endpoint, err := resolvePostgresEndpoint(flagValue, os.Getenv("CAO_POSTGRES_URL"))
+	endpoint, source, err := resolvePostgresEndpoint(flagValue, os.Getenv("CAO_POSTGRES_URL"))
 	if err != nil {
 		return nil, err
 	}
+	commandLog.Printf("postgres endpoint resolved source=%s", source)
 	store, err := postgresx.NewWithNamespace(ctx, endpoint, namespace)
 	if err != nil {
 		return nil, errors.New("postgres is unavailable")
@@ -569,7 +582,7 @@ func newServeCommand() *cobra.Command {
 		if namespaceErr != nil {
 			return namespaceErr
 		}
-		if _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
+		if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
 			return err
 		}
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
@@ -638,7 +651,7 @@ func newIngestCommand() *cobra.Command {
 		if namespaceErr != nil {
 			return namespaceErr
 		}
-		if _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
+		if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
 			return err
 		}
 		resolvedSource, sourceOrigin, err := resolveIngestSource(*source, args)

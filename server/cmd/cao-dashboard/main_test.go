@@ -100,6 +100,72 @@ func TestResolveRedisEndpoint(t *testing.T) {
 	}
 }
 
+func TestResolvePostgresEndpoint(t *testing.T) {
+	tests := []struct {
+		name       string
+		flagValue  string
+		envValue   string
+		wantURL    string
+		wantSource postgresEndpointSource
+		wantErr    bool
+	}{
+		{
+			name:       "flag takes priority over env",
+			flagValue:  "postgres://flag/db",
+			envValue:   "postgres://env/db",
+			wantURL:    "postgres://flag/db",
+			wantSource: postgresEndpointSourceFlag,
+		},
+		{
+			name:       "env used when flag is empty",
+			flagValue:  "",
+			envValue:   "postgres://env/db",
+			wantURL:    "postgres://env/db",
+			wantSource: postgresEndpointSourceEnv,
+		},
+		{
+			name:       "env used when flag is only whitespace",
+			flagValue:  "   ",
+			envValue:   "postgres://env/db",
+			wantURL:    "postgres://env/db",
+			wantSource: postgresEndpointSourceEnv,
+		},
+		{
+			name:      "error when flag and env are empty",
+			flagValue: "",
+			envValue:  "",
+			wantErr:   true,
+		},
+		{
+			name:      "error when flag and env are only whitespace",
+			flagValue: "  ",
+			envValue:  "  ",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotURL, gotSource, err := resolvePostgresEndpoint(tt.flagValue, tt.envValue)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error for a missing Postgres endpoint")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotURL != tt.wantURL {
+				t.Errorf("resolvePostgresEndpoint() url = %q, want %q", gotURL, tt.wantURL)
+			}
+			if gotSource != tt.wantSource {
+				t.Errorf("resolvePostgresEndpoint() source = %q, want %q", gotSource, tt.wantSource)
+			}
+		})
+	}
+}
+
 func TestResolveVersion(t *testing.T) {
 	const buildVersion = "1.2.3"
 
