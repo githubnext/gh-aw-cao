@@ -1,6 +1,6 @@
 {
   "source_sha": "5b9b73047ea6f1e9b28eea964c0154295c5af98e",
-  "next_category": 5,
+  "next_category": 1,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -640,6 +640,36 @@
         37238567316
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 16 successful completed runs from 2026-10-04T21:41Z to 23:34Z shows docs-side artifact transfer and Pages packaging remain below the action threshold. Queue median/p90 was 0s/0s; full-workflow median/p90 70.5s/86.5s; build-job median/p90 45s/52.8s across 12 build-bearing runs; deploy-job median/p90 13s/17.4s on the 9 runs that actually deployed; and schedule-freshness median/p90 8s/8s on the 13 runs that executed it. Trusted step metadata showed Restore node_modules succeeded in all 12 build-bearing runs with Install dependencies and Save node_modules skipped in all 12, and Restore cached CAO Dashboard succeeded in all 12 with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped in all 12, confirming both caches hit from execution evidence rather than syntax. Build documentation took 12.5s median/14s p90 and Upload Pages artifact 9.5s median/10s p90, so even eliminating docs-side packaging would save well under the required >=60s threshold and under 15% of median workflow time. Cross-checking recent successful cao-dashboard.yml producer runs 37244018397, 37241294004, 37240519882, and 37238567316 showed producer build median/p90 197s/202.4s, with Upload dashboard artifact only 9s median and Assemble Dashboard Language site 5.5s median while Upgrade fallback activity data dominated at 135.5s median/p90 142.6s. Bounded trusted logs for run 37244018397 confirmed the producer copied a 544.9 MiB gh-aw-logs.sqlite plus 368 activity shards totaling 324.4 MiB before uploading a 48,259,980-byte artifact. That larger upstream copy cost belongs to reusable dashboard generation rather than docs Pages packaging, and the open issue #16054 already covers the only currently actionable docs-build-time improvement visible in this source state.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T23:59:00Z",
+      "worker_run_id": "37245285399",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37244955642,
+        37244880391,
+        37244189053,
+        37244182070,
+        37243537307,
+        37242227449,
+        37241512448,
+        37241284012,
+        37240754303,
+        37240479693,
+        37239807702,
+        37239189684,
+        37238888545,
+        37238818353,
+        37238407212,
+        37238026039,
+        37244626913,
+        37244018397,
+        37241294004,
+        37240519882,
+        37237793599
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 16 comparable successful completed runs from 2026-10-04T21:55Z to 23:46Z shows same-SHA workflow_run duplicates still occur, but they are already represented by the open duplicate-rebuild issue and no materially new savings category emerged in this cycle. Queue median/p90 stayed 0s/0s; full-workflow median/p90 was 70.5s/86.5s; build-job median/p90 46s/53s; deploy-job median/p90 11s/17.4s on the 9 runs that deployed; and schedule-freshness median/p90 7s/8s on the 5 scheduled runs. Trusted step metadata showed Restore node_modules succeeded in all 11 build-bearing runs while Install dependencies and Save node_modules were skipped in all 11, and Restore cached CAO Dashboard succeeded in all 11 while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 11, confirming docs-side cache hits from execution evidence rather than syntax. The current source still produced same-SHA workflow_run docs rebuilds after successful CAO Dashboard runs: docs 37244880391 after dashboard 37244626913 on 5b9b73047ea6f1e9b28eea964c0154295c5af98e (71s total), docs 37244189053 after 37244018397 on the same SHA (88s), docs 37241512448 after 37241294004 on the same SHA (70s), docs 37240754303 after 37240519882 on 805a12693e9aa047f74262a51e17f80e66be9694 (113s), and docs 37238026039 after 37237793599 on 4ffa6343f56c89c21ee0a014a2c616fef441e0a3 (67s). Those five duplicates consumed 409s total, averaging 81.8s each, and two later workflow_run invocations on the current SHA already skipped entirely (37241646819 and 37241811871), indicating the behavior is in flux but still within the previously tracked duplicate-rebuild class. Cross-checking recent successful cao-dashboard.yml producer runs showed build median/p90 195s/206.3s, with Upgrade fallback activity data still dominating at 142.5s median/147.3s p90 while Install dashboard build dependencies, Assemble Dashboard Language site, and Upload dashboard artifact stayed at 8s, 3s, and 9s medians. Bounded trusted logs for runs 37244626913 and 37244018397 confirmed the producer still copied a 544.9-545.2 MiB gh-aw-logs.sqlite plus 368 activity shards totaling 324.4-324.5 MiB before upload. Because open issue #16054 already tracks the workflow_run freshness-gate fix under suggestion fingerprint docs-workflow-run-freshness-gate-same-sha, no new non-duplicate recommendation is actionable from this evidence window.",
       "suggestion_fingerprint": null
     }
   ]
