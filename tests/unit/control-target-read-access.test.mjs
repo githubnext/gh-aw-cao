@@ -188,7 +188,15 @@ function dependabotPrefetch() {
   return step;
 }
 
-async function runDependabotPrefetch({ target = "acme/service", precompute, pages = [[]], failure }) {
+async function runDependabotPrefetch({
+  target = "acme/service",
+  control = "acme/control",
+  targetPrivate = false,
+  controlPrivate = true,
+  precompute,
+  pages = [[]],
+  failure,
+}) {
   const files = new Map([
     ["/tmp/gh-aw/agent/control-precompute.json", JSON.stringify(precompute ?? {
       authorized: true, control_role: "worker", target_repo: target,
@@ -207,6 +215,7 @@ async function runDependabotPrefetch({ target = "acme/service", precompute, page
   const github = {
     request: async (route, parameters) => {
       readRequests.push({ route, ...parameters });
+      if (route === "GET /repos/{owner}/{repo}") return { data: { private: targetPrivate } };
       if (failure) throw failure;
       return { data: pages[parameters.page - 1] ?? [] };
     },
@@ -214,7 +223,7 @@ async function runDependabotPrefetch({ target = "acme/service", precompute, page
   const getOctokit = (token) => ({
     request: async (route, parameters) => {
       actionRequests.push({ token, route, ...parameters });
-      return { data: { private: false } };
+      return { data: { private: controlPrivate } };
     },
   });
   const warnings = [];
@@ -228,7 +237,7 @@ async function runDependabotPrefetch({ target = "acme/service", precompute, page
       assert.equal(id, "node:fs");
       return fs;
     },
-    { env: { TARGET_REPO: target, GITHUB_ACTION_TOKEN: "workflow-token" } },
+    { env: { TARGET_REPO: target, CONTROL_REPO: control, GITHUB_ACTION_TOKEN: "workflow-token" } },
     github,
     getOctokit,
     core,
@@ -253,10 +262,15 @@ test("Dependabot planner reads complete target alert evidence through the target
   });
 
   assert.deepEqual(readRequests.map(({ route, owner, repo, state, page }) => ({ route, owner, repo, state, page })), [
+    { route: "GET /repos/{owner}/{repo}", owner: "acme", repo: "service", state: undefined, page: undefined },
     { route: "GET /repos/{owner}/{repo}/dependabot/alerts", owner: "acme", repo: "service", state: "open", page: 1 },
     { route: "GET /repos/{owner}/{repo}/dependabot/alerts", owner: "acme", repo: "service", state: "open", page: 2 },
   ]);
-  assert.ok(actionRequests.every(({ route }) => route === "GET /repos/{owner}/{repo}"), "alerts must not use the workflow token");
+  assert.deepEqual(
+    actionRequests.map(({ token, route, owner, repo }) => ({ token, route, owner, repo })),
+    [{ token: "workflow-token", route: "GET /repos/{owner}/{repo}", owner: "acme", repo: "control" }],
+    "the workflow token may only read control repository visibility",
+  );
   assert.equal(evidence.target_repo, "acme/service");
   assert.equal(evidence.complete, true);
   assert.equal(evidence.alerts.length, 101);
@@ -287,4 +301,25 @@ test("Dependabot planner refuses to read alerts for a target other than the admi
     }),
     /does not match the authorized worker target/,
   );
+});
+
+test("Dependabot planner reads non-public target alerts only for a private control plane", async () => {
+  const privateControl = await runDependabotPrefetch({ targetPrivate: true, controlPrivate: true, pages: [[{ number: 1 }]] });
+  assert.equal(privateControl.evidence.complete, true);
+  assert.equal(privateControl.evidence.alerts.length, 1);
+
+  const publicTargetPublicControl = await runDependabotPrefetch({ controlPrivate: false, pages: [[{ number: 2 }]] });
+  assert.equal(publicTargetPublicControl.evidence.complete, true);
+
+  for (const visibility of [{ controlPrivate: false }, { controlPrivate: null }]) {
+    const { evidence, readRequests, warnings } = await runDependabotPrefetch({ targetPrivate: true, ...visibility });
+    assert.equal(evidence.complete, false);
+    assert.equal(evidence.alerts, null);
+    assert.equal(evidence.unavailable_reason, "non_public_target_requires_private_control_plane");
+    assert.ok(readRequests.every(({ route }) => !route.endsWith("/dependabot/alerts")), "must not read private alerts");
+    assert.equal(warnings.length, 1);
+  }
+
+  const unknownTarget = await runDependabotPrefetch({ targetPrivate: null, controlPrivate: false });
+  assert.equal(unknownTarget.evidence.unavailable_reason, "non_public_target_requires_private_control_plane");
 });
