@@ -7,8 +7,8 @@ export async function waitForServer(url, {
   const deadline = Date.now() + timeoutMs;
   let lastError;
   while (Date.now() < deadline) {
-    if (child?.exitCode !== null && child?.exitCode !== undefined) {
-      throw new Error(`Postgres dashboard server exited with code ${child.exitCode}`);
+    if (child?.exitCode != null || child?.signalCode != null) {
+      throw new Error(`Postgres dashboard server exited with ${child.signalCode ?? `code ${child.exitCode}`}`);
     }
     try {
       const response = await fetchHealth(`${url}/api/v1/health`);

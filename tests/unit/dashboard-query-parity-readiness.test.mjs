@@ -30,3 +30,11 @@ test("fails promptly if the server exits before becoming healthy", async () => {
     /Postgres dashboard server exited with code 1/,
   );
 });
+
+test("fails promptly if the server is terminated by a signal", async () => {
+  const child = { exitCode: null, signalCode: "SIGTERM" };
+  await assert.rejects(
+    waitForServer("http://127.0.0.1:18443", { child }),
+    /Postgres dashboard server exited with SIGTERM/,
+  );
+});
