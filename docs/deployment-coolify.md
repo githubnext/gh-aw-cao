@@ -395,12 +395,20 @@ gh secret set CAO_OTEL_MCP_READ_AUTHORIZATION --repo "$CONTROL_REPO"
 ```
 
 At the secret prompt, enter `Basic <base64(service-account-email:token)>`.
+Confirm that the deployed OpenObserve release exposes the documented
+`/api/{organization}/mcp` endpoint before enabling Hosted Health. An
+authenticated `404` means the configured release or deployment does not
+provide that native MCP route; upgrade OpenObserve or enable the route rather
+than replacing a valid credential. The public `/config` response reports the
+deployed version.
+
 Before the agent starts in either authorized review or live mode, the worker
 performs an authenticated MCP smoke check that verifies the pinned read-only
 tool catalog, lists trace streams, runs one bounded aggregate SQL query, and
 requests at most one recent trace summary. Only a sanitized pass/fail record
-reaches the agent; credentials and query responses remain ephemeral. The agent
-can then use `StreamList`,
+and the public backend version reach the agent; credentials and query responses
+remain ephemeral. A `mcp_endpoint_not_found` reason identifies the authenticated
+404 case without retaining its response body. The agent can then use `StreamList`,
 `StreamSchema`, `GetLatestTraces`, and bounded aggregate `SearchSQL`. It cannot
 use OpenObserve's generic tool discovery or dispatch tools, which could
 otherwise reach mutation-capable APIs. Metrics are not assumed: configure and

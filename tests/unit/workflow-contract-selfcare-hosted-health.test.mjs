@@ -30,6 +30,9 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.doesNotMatch(worker, /allowed: \[[^\]]*(tool_search|tools_call)/);
   assert.match(worker, /name: Verify OpenObserve MCP read access/);
   assert.match(worker, /openobserve-smoke\.json/);
+  assert.match(worker, /backend_version: \$backend_version/);
+  assert.match(worker, /mcp_endpoint_not_found/);
+  assert.match(worker, /"\$openobserve_origin\/config"/);
   assert.match(worker, /"method":"tools\/list"/);
   assert.match(worker, /name: "SearchSQL"/);
   assert.match(worker, /name: "GetLatestTraces"/);
@@ -41,6 +44,8 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /close-older-issues: true/);
   assert.match(worker, /deduplicate-by-title: true/);
   assert.match(worker, /If the OTEL MCP URL, credential, server, smoke result, or query capabilities are absent/);
+  assert.match(worker, /Never infer that either is absent by inspecting environment variables/);
+  assert.match(worker, /only a smoke reason of `missing_configuration` establishes that condition/);
   assert.match(worker, /do not assume Prometheus-compatible query access/);
   assert.match(worker, /Do not use `tool_search`, `tools_call`, or any mutation-capable OpenObserve tool/);
   assert.doesNotMatch(worker, /^\s+(contents|actions|issues|pull-requests): write$/m);
