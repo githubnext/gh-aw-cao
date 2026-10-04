@@ -3,6 +3,9 @@
  */
 
 import { renderLinkTabs } from './tab-nav.js';
+import { createDebug } from '../debug.js';
+
+const debugRouteTabSet = createDebug('route-tab-set');
 
 /**
  * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string, routeTitle?: string, routeDescription?: string }} RouteTab
@@ -18,6 +21,7 @@ import { renderLinkTabs } from './tab-nav.js';
  * @returns {HTMLElement}
  */
 export function renderRouteTabSet(options) {
+  const hasCurrentMatch = options.tabs.some((tab) => tab.id === options.currentTab);
   const tabs = renderLinkTabs({
     className: options.className,
     ariaLabel: options.ariaLabel,
@@ -30,6 +34,7 @@ export function renderRouteTabSet(options) {
       current: tab.id === options.currentTab
     }))
   });
+  debugRouteTabSet({ event: 'composed', tabCount: options.tabs.length, hasCurrentMatch });
   tabs.dataset.routeTabs = '';
   tabs.dataset.routeTabsCurrent = options.currentTab;
   for (const [index, link] of [...tabs.querySelectorAll('a')].entries()) {
