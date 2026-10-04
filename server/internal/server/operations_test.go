@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -68,6 +69,53 @@ func TestWebhookSignatureVerification(t *testing.T) {
 	}
 	if validWebhookSignature([]byte(`{"action":"tampered"}`), signature, secret) {
 		t.Fatal("tampered webhook payload was accepted")
+	}
+}
+
+func TestReconcileInterruptedRebuildLeavesHeldLockUntouched(t *testing.T) {
+	status := rebuildStatus{State: "running", StartedAt: "2026-01-01T00:00:00Z"}
+	completedAt := time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)
+
+	got := reconcileInterruptedRebuild(status, true, false, completedAt)
+
+	if !reflect.DeepEqual(got, status) {
+		t.Fatalf("held lock must leave status untouched: got %+v, want %+v", got, status)
+	}
+}
+
+func TestReconcileInterruptedRebuildIgnoresNonRunningState(t *testing.T) {
+	status := rebuildStatus{State: "succeeded", Revision: 7}
+	completedAt := time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)
+
+	got := reconcileInterruptedRebuild(status, false, true, completedAt)
+
+	if !reflect.DeepEqual(got, status) {
+		t.Fatalf("non-running status must be left untouched: got %+v, want %+v", got, status)
+	}
+}
+
+func TestReconcileInterruptedRebuildMarksRequiredWhenDatabaseNotReady(t *testing.T) {
+	status := rebuildStatus{State: "running", StartedAt: "2026-01-01T00:00:00Z"}
+	completedAt := time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)
+
+	got := reconcileInterruptedRebuild(status, false, false, completedAt)
+
+	if got.State != "interrupted" || !got.Required {
+		t.Fatalf("unready database must report interrupted and required: %+v", got)
+	}
+	if got.CompletedAt != completedAt.Format(time.RFC3339Nano) {
+		t.Fatalf("CompletedAt = %q, want %q", got.CompletedAt, completedAt.Format(time.RFC3339Nano))
+	}
+}
+
+func TestReconcileInterruptedRebuildClearsRequiredWhenDatabaseReady(t *testing.T) {
+	status := rebuildStatus{State: "running", StartedAt: "2026-01-01T00:00:00Z"}
+	completedAt := time.Date(2026, 1, 1, 0, 5, 0, 0, time.UTC)
+
+	got := reconcileInterruptedRebuild(status, false, true, completedAt)
+
+	if got.State != "interrupted" || got.Required {
+		t.Fatalf("ready database must report interrupted without requiring a rebuild: %+v", got)
 	}
 }
 

@@ -13,8 +13,11 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
+
+var operationsLog = logger.New("cao:server:operations")
 
 const (
 	projectionLockTTL = 30 * time.Minute
@@ -329,6 +332,21 @@ func (a *App) writeRebuildStatus(ctx context.Context, status rebuildStatus) erro
 	return a.store.SetOperationalState(ctx, "rebuild", payload)
 }
 
+// reconcileInterruptedRebuild applies the pure decision behind readRebuildStatus's
+// "running" branch: a rebuild recorded as running without a held projection lock
+// must be reported as interrupted, with Required reflecting whether the database
+// is still not ready. completedAt is injected so the decision stays testable
+// without depending on wall-clock time.
+func reconcileInterruptedRebuild(status rebuildStatus, lockHeld bool, databaseReady bool, completedAt time.Time) rebuildStatus {
+	if status.State != "running" || lockHeld {
+		return status
+	}
+	status.State = "interrupted"
+	status.Required = !databaseReady
+	status.CompletedAt = completedAt.Format(time.RFC3339Nano)
+	return status
+}
+
 func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 	payload, err := a.store.OperationalState(ctx, "rebuild")
 	if err != nil {
@@ -349,9 +367,8 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 				if err != nil {
 					return rebuildStatus{}, err
 				}
-				status.State = "interrupted"
-				status.Required = !active.Ready
-				status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
+				status = reconcileInterruptedRebuild(status, held, active.Ready, time.Now().UTC())
+				operationsLog.Printf("rebuild status reconciled as interrupted required=%v", status.Required)
 			}
 		}
 		return status, nil
