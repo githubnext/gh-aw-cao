@@ -105,7 +105,7 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
   }
 });
 
-test("repository-local SelfCare uses its declared Copilot authentication profile", () => {
+test("repository-local SelfCare uses organization-billed Copilot authentication", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const selfCareManifest = readFileSync(join(root, "self-care", "aw.yml"), "utf8");
   const workflowIds = [
@@ -126,6 +126,7 @@ test("repository-local SelfCare uses its declared Copilot authentication profile
     "self-care-pages-health",
     "self-care-primer-brand-checker",
     "self-care-reactive-ui-expert",
+    "self-care-redis-query-optimization",
     "self-care-release-blogger",
     "self-care-server-go-logging",
     "self-care-specs-maintainer",
@@ -147,16 +148,6 @@ test("repository-local SelfCare uses its declared Copilot authentication profile
     assert.match(lock, /copilot-requests: write/, `${workflowId}.lock.yml must grant Copilot requests`);
     assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/, `${workflowId}.lock.yml must use the workflow token`);
   }
-});
-
-test("Redis query optimization uses individual Copilot billing", () => {
-  const source = workflow("self-care-redis-query-optimization.md");
-  const lock = workflow("self-care-redis-query-optimization.lock.yml");
-
-  assert.match(source, /copilot-requests: none/);
-  assert.doesNotMatch(source, /copilot-requests: write/);
-  assert.match(lock, /copilot-requests: none/);
-  assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}/);
 });
 
 test("public read-only operation uses the built-in token without widening access", () => {
