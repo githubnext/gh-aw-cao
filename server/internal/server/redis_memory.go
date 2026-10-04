@@ -13,7 +13,7 @@ import (
 const redisMaintenanceInterval = 30 * time.Second
 const redisMaintenanceTimeout = 10 * time.Second
 
-func redisMaxBytesFromEnv(explicit int64) (int64, error) {
+func RedisMaxBytesFromEnv(explicit int64) (int64, error) {
 	if explicit < 0 {
 		return 0, errors.New("redis memory budget must be a positive byte count")
 	}
@@ -69,7 +69,11 @@ func (a *App) initializeRedisMaintenance(ctx context.Context) error {
 	if a.store == nil {
 		return nil
 	}
-	if err := a.maintainRedisCaches(ctx); err != nil {
+	err := a.maintainRedisCaches(ctx)
+	if (err == nil || errors.Is(err, redisx.ErrMemoryPressure)) && !a.store.DisposableCachesEnabled() {
+		a.config.Logger.Printf("Redis disposable caching disabled reason=atomic-memory-introspection-unsupported; protected storage remains enabled")
+	}
+	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

@@ -149,7 +149,7 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	config.QueryCache = cache
-	maxRedisBytes, err := redisMaxBytesFromEnv(config.RedisMaxBytes)
+	maxRedisBytes, err := RedisMaxBytesFromEnv(config.RedisMaxBytes)
 	if err != nil {
 		return nil, err
 	}

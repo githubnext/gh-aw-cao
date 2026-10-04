@@ -95,7 +95,7 @@ func TestRedactRedisURLNeverReportsPassword(t *testing.T) {
 func TestRedisMemoryWarnsWhenEvictionCanDiscardOperationalState(t *testing.T) {
 	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
 		if len(arguments) == 2 && arguments[0] == "INFO" && arguments[1] == "memory" {
-			return "# Memory\r\nused_memory:734003200\r\nmaxmemory:1073741824\r\nmaxmemory_policy:allkeys-lru\r\nmem_fragmentation_ratio:1.10\r\n", nil
+			return "# Memory\r\nused_memory:73400320\r\nmaxmemory:1073741824\r\nmaxmemory_policy:allkeys-lru\r\nmem_fragmentation_ratio:1.10\r\n", nil
 		}
 		return nil, fmt.Errorf("unexpected command %v", arguments)
 	}})

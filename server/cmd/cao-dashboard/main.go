@@ -392,6 +392,10 @@ func newDoctorCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
+		if err != nil {
+			return err
+		}
 		check := doctor.Doctor{
 			RedisURL:            endpoint,
 			Namespace:           namespace,
@@ -401,6 +405,11 @@ func newDoctorCommand() *cobra.Command {
 			Timeout:             *timeout,
 		}
 		check.Store = doctorStore(endpoint, namespace)
+		if check.Store != nil {
+			if err := check.Store.SetMaxMemoryBytes(maxRedisBytes); err != nil {
+				return err
+			}
+		}
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		report := check.Run(ctx)

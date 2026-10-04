@@ -1,10 +1,86 @@
 package doctor
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestRedisMemoryReportsConfiguredCachePressureBudget(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		used      int64
+		maximum   int64
+		budget    int64
+		effective string
+		status    Status
+	}{
+		{"configured budget exceeded despite provider headroom", 250_000_000, 1_000_000_000, 200_000_000, "200000000", StatusFail},
+		{"provider headroom caps configured budget", 85_000_000, 100_000_000, 200_000_000, "80000000", StatusFail},
+		{"configured budget under provider capacity", 50_000_000, 1_000_000_000, 100_000_000, "100000000", StatusPass},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+				if len(arguments) == 2 && arguments[0] == "INFO" && arguments[1] == "memory" {
+					return fmt.Sprintf("# Memory\r\nused_memory:%d\r\nmaxmemory:%d\r\nmaxmemory_policy:noeviction\r\n", test.used, test.maximum), nil
+				}
+				return nil, fmt.Errorf("unexpected command %v", arguments)
+			}})
+			if err := doctor.Store.SetMaxMemoryBytes(test.budget); err != nil {
+				t.Fatal(err)
+			}
+			check := doctor.checkRedisMemory(context.Background())
+			if check.Status != test.status {
+				t.Fatalf("status=%s expected=%s summary=%s", check.Status, test.status, check.Summary)
+			}
+			found := false
+			for _, field := range check.Details {
+				if field.Name == "cachePressureBudgetBytes" && field.Value == test.effective {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("effective budget not reported: %+v", check.Details)
+			}
+		})
+	}
+}
+
+func TestRedisMemoryDistinguishesUnknownProviderLimit(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(...string) (any, error) {
+		return "# Memory\r\nused_memory:50000000\r\nmaxmemory_policy:noeviction\r\n", nil
+	}})
+	check := doctor.checkRedisMemory(context.Background())
+	if check.Status != StatusWarn || !strings.Contains(check.Summary, "not reported") {
+		t.Fatalf("missing provider quota was hidden or treated as unlimited: %+v", check)
+	}
+	found := false
+	for _, field := range check.Details {
+		if field.Name == "cachePressureBudgetBytes" && field.Value == "200000000" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("unknown provider quota discarded the finite configured budget: %+v", check.Details)
+	}
+}
+
+func TestRedisMemoryRejectsInvalidUsageOrReportedLimit(t *testing.T) {
+	for _, info := range []string{
+		"maxmemory:100000000\r\n",
+		"used_memory:invalid\r\nmaxmemory:100000000\r\n",
+		"used_memory:-1\r\nmaxmemory:100000000\r\n",
+		"used_memory:1000\r\nmaxmemory:invalid\r\n",
+		"used_memory:1000\r\nmaxmemory:-1\r\n",
+	} {
+		doctor := testDoctor(fakeClient{do: func(...string) (any, error) { return info, nil }})
+		if check := doctor.checkRedisMemory(context.Background()); check.Status != StatusFail {
+			t.Fatalf("invalid statistics appeared healthy: %+v", check)
+		}
+	}
+}
 
 func TestClassifyRedisMemory(t *testing.T) {
 	cases := []struct {

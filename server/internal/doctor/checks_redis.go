@@ -2,8 +2,10 @@ package doctor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,13 +104,35 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
-	used := infoInt(fields, "used_memory")
-	maximum := infoInt(fields, "maxmemory")
+	used, err := strconv.ParseInt(fields["used_memory"], 10, 64)
+	if err != nil || used < 0 {
+		return failed(id, areaRedis, title, errors.New("redis used_memory is missing or invalid"))
+	}
+	var maximum int64
+	limitValue, limitReported := fields["maxmemory"]
+	if limitReported {
+		maximum, err = strconv.ParseInt(limitValue, 10, 64)
+		if err != nil || maximum < 0 {
+			return failed(id, areaRedis, title, errors.New("redis maxmemory is invalid"))
+		}
+	}
+	budget, err := d.Store.EffectiveMaxMemoryBytes(maximum)
+	if err != nil {
+		return failed(id, areaRedis, title, err)
+	}
 	policy := strings.TrimSpace(fields["maxmemory_policy"])
+	providerLimit := memoryLimitLabel(maximum)
+	if !limitReported {
+		providerLimit = "not reported"
+	}
 	details := []Detail{
 		detail("used", humanBytes(used)),
 		detail("usedBytes", fmt.Sprint(used)),
-		detail("maxmemory", memoryLimitLabel(maximum)),
+		detail("maxmemory", providerLimit),
+		detail("providerMemoryLimitReported", strconv.FormatBool(limitReported)),
+		detail("configuredCachePressureBudgetBytes", fmt.Sprint(d.Store.MaxMemoryBytes())),
+		detail("cachePressureBudgetBytes", fmt.Sprint(budget)),
+		detail("cachePressureUtilization", fmt.Sprintf("%.1f%%", 100*float64(used)/float64(budget))),
 		detail("policy", policy),
 		detail("fragmentationRatio", fields["mem_fragmentation_ratio"]),
 	}
@@ -116,6 +140,18 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 		details = append(details, detail("utilization", fmt.Sprintf("%.1f%%", 100*float64(used)/float64(maximum))))
 	}
 	classification := classifyRedisMemory(used, maximum, policy)
+	if !limitReported && classification.reason == memoryReasonNoLimit {
+		classification.reason = memoryReasonUnknownLimit
+		classification.summary = "provider memory limit is not reported; the configured CAO cache-pressure budget applies"
+		classification.remedy = "verify capacity in the provider management plane and set CAO_REDIS_MAX_BYTES consistently across all roles"
+	}
+	if used > budget {
+		classification.status = StatusFail
+		classification.reason = memoryReasonCachePressure
+		classification.summary = fmt.Sprintf("memory usage %s exceeds the effective CAO cache-pressure budget %s",
+			humanBytes(used), humanBytes(budget))
+		classification.remedy = "reclaim disposable caches; if protected state still exceeds the budget, scale Redis and raise CAO_REDIS_MAX_BYTES consistently across all roles"
+	}
 	doctorLog.Printf("redis memory classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
 		ID: id, Area: areaRedis, Title: title, Status: classification.status,
@@ -134,6 +170,8 @@ const (
 	memoryReasonHighUtilization     memoryClassificationReason = "high-utilization"
 	memoryReasonNoLimit             memoryClassificationReason = "no-limit"
 	memoryReasonHealthy             memoryClassificationReason = "healthy"
+	memoryReasonCachePressure       memoryClassificationReason = "cache-pressure"
+	memoryReasonUnknownLimit        memoryClassificationReason = "unknown-provider-limit"
 )
 
 // memoryClassification is the status, summary, and remedy classifyRedisMemory

@@ -159,22 +159,41 @@ Malformed, zero, and negative values fail configuration. Azure has no permanent
 free Redis tier: this default leaves headroom on the smallest Azure Cache for
 Redis tier (250 MB), not a free-service guarantee.
 
-Cache admission measures Redis `INFO memory` usage, including operational state,
+Cache pressure measures Redis `INFO memory` usage, including operational state,
 connection buffers, and Redis overhead. If the provider reports `maxmemory`, the
 effective budget is the smaller of the configured budget and **80% of
-`maxmemory`**. Query-result writes atomically retire expired and oldest cached
+`maxmemory`**. Azure Managed Redis may omit `maxmemory`; the finite configured
+CAO budget still applies, but an unknown provider quota is not reported as an
+unlimited instance. Check the SKU capacity in the provider management plane.
+Query-result writes atomically retire expired and oldest cached
 results before admission, and remeasure after writing. Marketplace and
 repository-memory cache writes atomically decline admission when there is not
 enough headroom and discard a newly written entry if its actual allocation
-exceeds the budget. Rejected admissions are logged; they do not discard the
-freshly computed response.
+exceeds the budget. Before copying or returning a cached payload, reads reserve
+conservative outgoing-response headroom against the global budget. That reserve
+is separate from the local stored-query limit and does not renew cache TTLs.
+Unsafe reads become ordinary cache misses. Rejected admissions are logged; they
+do not discard the freshly computed response.
+
+Startup probes the scripting capabilities, not the provider name. Redis
+Software/Cloud [prohibit `INFO` inside Lua](https://redis.io/docs/latest/operate/rs/references/compatibility/commands/server/#monitoring-commands),
+including [Azure Managed Redis's Enterprise-based engine](https://learn.microsoft.com/en-us/azure/redis/architecture).
+On these providers, disposable-cache admission **and serving are explicitly
+disabled**, with a sanitized startup warning. Protected storage and fresh
+source evaluation remain enabled. Pressure measurement and reclamation use
+`INFO memory` outside Lua and allowlisted deletions. This is intentional
+fail-closed degradation of optional caches, not independently sampled concurrent
+admission or an unbounded compatibility cache. Missing or malformed required
+memory statistics still fail maintenance explicitly.
 
 Startup and a cancellation-scoped **30-second maintenance loop** also enforce
 the budget without requiring cache traffic. Maintenance trims query results
-first, then incrementally scans and deletes only allowlisted marketplace and
-repository-memory cache keys in the current namespace until usage is below the
-effective budget. Existing cache TTLs are preserved. ACLs must additionally
-allow `INFO memory`, `SCAN`, and `SET` from the cache admission scripts.
+first, then traverses the namespace once with a bounded `SCAN COUNT 1024` hint.
+Only allowlisted marketplace and repository-memory digest keys may be deleted.
+Empty or nonmatching batches also refresh pressure, and final statistics are
+always refreshed before reporting an unattainable budget. Existing cache TTLs
+are preserved. ACLs must allow external `INFO memory`, `SCAN`, and `DEL`; enabled
+caches additionally need the script commands described below.
 
 This is an automatic cache-pressure target, not permission to discard required
 operational state or a hard limit on process RSS, disk persistence, or other
@@ -184,8 +203,12 @@ changed. If these protected allocations alone exceed the budget, startup fails
 explicitly, running maintenance reports memory pressure, and further cache
 admissions are declined. Scale Redis or reduce operational state in that case;
 cache eviction cannot safely guarantee a whole-node cap against non-cache
-growth. Use the same budget across replicas sharing a Redis node and retain the
-provider's `noeviction` policy to protect operational state.
+growth. `INFO memory` is node/database scoped, so this is not a cluster-wide cap.
+Use the same budget across replicas sharing a Redis node and retain the
+provider's `noeviction` policy to protect operational state. Scaling the instance
+does not automatically raise `CAO_REDIS_MAX_BYTES`; change both when required.
+The read-only `doctor` memory check resolves the same configuration and reports
+configured/effective budgets alongside provider utilization.
 
 ## Bounded query-result caching
 
@@ -222,10 +245,11 @@ separate per-cache limit; the whole-node budget above also applies. No global
 Partial key eviction discards the remaining cache structure rather than losing
 its accounting. Redis errors surface as a query 503, never as empty results or
 an unbounded local-cache fallback.
-Restricted Redis ACLs must allow the cache's `EVAL` and the commands called by
+For enabled caches, restricted Redis ACLs must allow the cache's `EVAL` and the commands called by
 its script: `TIME`, `EXISTS`, `DEL`, `MEMORY USAGE`, `HGET`, `HSET`, `HDEL`,
 `HSTRLEN`, `HEXISTS`, `ZADD`, `ZREM`, `ZRANGE`, `ZRANGEBYSCORE`, `ZSCORE`,
-`ZCARD`, and `PEXPIRE`, scoped to the application namespace.
+`ZCARD`, `PEXPIRE`, `INFO memory`, and `STRLEN`, scoped to the application namespace
+where applicable.
 
 Enable cache debug logs with `DEBUG=cao:server:query-cache` (or
 `DEBUG=cao:server:*`). Logs contain only fixed decisions, timings, byte counts,

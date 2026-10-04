@@ -14,10 +14,16 @@ type marketplaceStoreCommandClient struct {
 
 func (client *marketplaceStoreCommandClient) Do(_ context.Context, command ...string) (any, error) {
 	client.command = append([]string{}, command...)
-	if command[0] == "GET" {
-		return client.getValue, nil
+	if command[0] == "INFO" {
+		return testMemoryInfo, nil
 	}
 	if command[0] == "EVAL" {
+		if command[1] == cacheCapabilityScript {
+			return testCacheCapabilityReply(), nil
+		}
+		if command[1] == cachedValueScript {
+			return client.getValue, nil
+		}
 		return int64(1), nil
 	}
 	return "OK", nil
@@ -134,8 +140,8 @@ func TestCachedMarketplaceRegistryReturnsStoredPayloadOnHit(t *testing.T) {
 	if string(data) != client.getValue {
 		t.Fatalf("unexpected cached payload: %s", data)
 	}
-	if client.command[1] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
-		t.Fatalf("unexpected GET key: %s", client.command[1])
+	if client.command[0] != "EVAL" || client.command[3] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
+		t.Fatalf("unexpected bounded read: %v", client.command)
 	}
 }
 

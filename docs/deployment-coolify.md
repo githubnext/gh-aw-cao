@@ -141,6 +141,13 @@ GitHub App webhook tells Coolify to fetch the new `main` commit, build the
 Compose service, and deploy it. Coolify owns build logs, deployment history,
 health evaluation, and rollback.
 
+`CAO_REDIS_MAX_BYTES` is a non-secret capacity setting shared by the dashboard,
+collector, and backfill roles. It defaults to `200000000` bytes. Increasing the
+Redis instance size does not automatically raise this application budget; raise
+the setting consistently across roles when protected operational state requires
+more capacity. The read-only `doctor` memory check reports both configured and
+effective budgets alongside provider utilization.
+
 ### Updating the data
 
 Data updates do not require a source commit or deployment. A completed workflow

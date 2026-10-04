@@ -25,25 +25,40 @@ func TestRedisMemoryBudgetAndReplyValidation(t *testing.T) {
 		t.Fatalf("explicit budget not applied: %v", err)
 	}
 	for _, invalid := range []any{
-		nil, "invalid", []any{int64(1)}, []any{"1", int64(100), int64(0)},
-		[]any{int64(-1), int64(100), int64(0)},
-		[]any{int64(1), int64(0), int64(0)},
-		[]any{int64(1), int64(100), int64(2)},
+		nil, "invalid", []any{int64(1)},
+		"maxmemory:0\r\n", "used_memory:1\r\nmaxmemory:\r\n",
+		"used_memory:1\r\nmaxmemory:invalid\r\n",
+		"used_memory:-1\r\nmaxmemory:0\r\n",
+		"used_memory:1\r\nmaxmemory:-1\r\n",
+		"used_memory:1\r\nmaxmemory:1\r\n",
+		"used_memory:1\r\nused_memory:2\r\nmaxmemory:0\r\n",
+		"used_memory:1\r\nmaxmemory:0\r\nmaxmemory:0\r\n",
+		"used_memory:+1\r\nmaxmemory:0\r\n",
+		"used_memory:1\r\nmaxmemory:9223372036854775808\r\n",
 	} {
-		if _, err := decodeMemoryStats(invalid); err == nil {
+		if _, err := store.parseMemoryInfo(invalid); err == nil {
 			t.Fatalf("invalid memory statistics accepted: %v", invalid)
 		}
 	}
-	stats, err := decodeMemoryStats([]any{int64(1024), int64(4096), int64(1)})
-	if err != nil || stats != (MemoryStats{UsedBytes: 1024, BudgetBytes: 4096, Evicted: 1}) {
+	stats, err := store.parseMemoryInfo(testMemoryInfo)
+	if err != nil || stats != (MemoryStats{UsedBytes: 1024, BudgetBytes: 4096}) {
 		t.Fatalf("statistics = %+v, error = %v", stats, err)
 	}
-	store = NewStore(queryCacheReplyClient{reply: []any{int64(1024), int64(8192), int64(0)}}, "memory-unit")
-	if err := store.SetMaxMemoryBytes(4096); err != nil {
-		t.Fatal(err)
+	stats, err = store.parseMemoryInfo("used_memory:1024\r\nmaxmemory:4096\r\n")
+	if err != nil || stats.BudgetBytes != 3276 {
+		t.Fatalf("provider budget was not enforced: %+v, %v", stats, err)
 	}
-	if _, err := store.memoryStats(t.Context(), ""); err == nil {
-		t.Fatal("Redis widened the configured memory budget")
+	for _, test := range []struct {
+		info     string
+		reported bool
+	}{
+		{info: "used_memory:5000\r\n"},
+		{info: "used_memory:5000\r\nmaxmemory:0\r\n", reported: true},
+	} {
+		stats, reported, err := store.parseMemoryInfoWithQuota(test.info)
+		if err != nil || reported != test.reported || stats.UsedBytes != 5000 || stats.BudgetBytes != 4096 {
+			t.Fatalf("unknown/zero quota: stats=%+v reported=%t err=%v", stats, reported, err)
+		}
 	}
 }
 

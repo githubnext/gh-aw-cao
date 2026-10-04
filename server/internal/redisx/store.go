@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -42,6 +43,8 @@ type Store struct {
 	namespace       string
 	processIsolated bool
 	maxMemoryBytes  atomic.Int64
+	cacheInitMu     sync.Mutex
+	cacheCapability atomic.Uint32
 }
 
 type CommandClient interface {
@@ -382,12 +385,8 @@ func repositoryMemoryCacheKey(parts ...string) string {
 }
 
 func (s *Store) CachedRepositoryMemoryCampaign(ctx context.Context, campaign string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key(
+	return s.cachedValue(ctx, s.Key(
 		"repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
 }
 
 func (s *Store) CacheRepositoryMemoryCampaign(
@@ -400,12 +399,8 @@ func (s *Store) CacheRepositoryMemoryCampaign(
 func (s *Store) CachedRepositoryMemoryFile(
 	ctx context.Context, campaign, commit, path string,
 ) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key(
+	return s.cachedValue(ctx, s.Key(
 		"repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
 }
 
 func (s *Store) CacheRepositoryMemoryFile(
@@ -423,11 +418,7 @@ func marketplaceCacheKey(registryID, generation string) string {
 // package list for the given data revision, or nil if no entry is cached.
 // The cache key isolates both registry identity and revision.
 func (s *Store) CachedMarketplaceRegistry(ctx context.Context, registryID, generation string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
+	return s.cachedValue(ctx, s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
 }
 
 // CacheMarketplaceRegistry stores one registry's normalized package list for

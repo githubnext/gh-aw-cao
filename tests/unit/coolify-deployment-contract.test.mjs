@@ -78,6 +78,9 @@ test("Coolify Compose builds the checked-out source with admission-only public s
   const source = await text("server/coolify/compose.yml");
   const compose = parse(source);
   const dashboard = compose.services.dashboard;
+  for (const role of ["dashboard", "collector", "backfill"]) {
+    assert.equal(compose.services[role].environment.CAO_REDIS_MAX_BYTES, "${CAO_REDIS_MAX_BYTES:-200000000}");
+  }
 
   assert.equal(dashboard.image, undefined);
   assert.deepEqual(dashboard.build, {

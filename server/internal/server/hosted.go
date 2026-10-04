@@ -290,7 +290,7 @@ func loopbackProxyPrefixes() []netip.Prefix {
 // collection roles reuse it so there is one definition of the hosted Redis
 // contract.
 func StoreFromEnv(ctx context.Context) (*redisx.Store, error) {
-	maxBytes, err := redisMaxBytesFromEnv(0)
+	maxBytes, err := RedisMaxBytesFromEnv(0)
 	if err != nil {
 		return nil, err
 	}

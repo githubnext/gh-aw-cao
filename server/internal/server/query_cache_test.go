@@ -34,9 +34,21 @@ type queryCacheClient struct {
 	writeErr error
 }
 
+const cacheTestMemoryInfo = "# Memory\r\nused_memory:1024\r\nmaxmemory:0\r\n"
+
+func cacheTestCapabilityReply() []any {
+	return []any{[]any{int64(1), cacheTestMemoryInfo}, []any{int64(1), nil}}
+}
+
 func (client *queryCacheClient) Do(_ context.Context, args ...string) (any, error) {
 	if client.err != nil {
 		return nil, client.err
+	}
+	if args[0] == "INFO" {
+		return cacheTestMemoryInfo, nil
+	}
+	if args[0] == "EVAL" && strings.Contains(args[1], `return {probe("INFO"`) {
+		return cacheTestCapabilityReply(), nil
 	}
 	if args[0] == "EVAL" && args[1] != "" && len(args) == 13 {
 		switch args[5] {

@@ -20,23 +20,23 @@ func TestRedisMaxBytesConfiguration(t *testing.T) {
 	if err := os.Unsetenv("CAO_REDIS_MAX_BYTES"); err != nil {
 		t.Fatal(err)
 	}
-	if maximum, err := redisMaxBytesFromEnv(0); err != nil || maximum != 200_000_000 {
+	if maximum, err := RedisMaxBytesFromEnv(0); err != nil || maximum != 200_000_000 {
 		t.Fatalf("default budget: %d, %v", maximum, err)
 	}
 	t.Setenv("CAO_REDIS_MAX_BYTES", "200000000")
-	if maximum, err := redisMaxBytesFromEnv(0); err != nil || maximum != 200_000_000 {
+	if maximum, err := RedisMaxBytesFromEnv(0); err != nil || maximum != 200_000_000 {
 		t.Fatalf("default-sized budget: %d, %v", maximum, err)
 	}
 	for _, invalid := range []string{"", "0", "-1", "200MB", "9223372036854775808"} {
 		t.Setenv("CAO_REDIS_MAX_BYTES", invalid)
-		if _, err := redisMaxBytesFromEnv(0); err == nil {
+		if _, err := RedisMaxBytesFromEnv(0); err == nil {
 			t.Fatalf("invalid environment budget accepted: %q", invalid)
 		}
-		if maximum, err := redisMaxBytesFromEnv(4096); err != nil || maximum != 4096 {
+		if maximum, err := RedisMaxBytesFromEnv(4096); err != nil || maximum != 4096 {
 			t.Fatalf("environment overrides explicit config: %d, %v", maximum, err)
 		}
 	}
-	if _, err := redisMaxBytesFromEnv(-1); err == nil {
+	if _, err := RedisMaxBytesFromEnv(-1); err == nil {
 		t.Fatal("negative configuration accepted")
 	}
 }
@@ -82,8 +82,11 @@ func (client redisMaintenanceClient) Do(ctx context.Context, command ...string) 
 	if client.err != nil {
 		return nil, client.err
 	}
-	if strings.Contains(command[1], "return {used, budget, evicted}") {
-		return []any{int64(1024), int64(200_000_000), int64(0)}, nil
+	if command[0] == "INFO" {
+		return cacheTestMemoryInfo, nil
+	}
+	if command[0] == "EVAL" && strings.Contains(command[1], `return {probe("INFO"`) {
+		return cacheTestCapabilityReply(), nil
 	}
 	return []any{nil, int64(0), int64(0), int64(0), int64(0)}, nil
 }
@@ -169,5 +172,47 @@ func TestAzureRedisMaintenanceStopsOnDrain(t *testing.T) {
 	handler.Drain()
 	if ctx.Err() == nil {
 		t.Fatal("platform maintenance outlived drain")
+	}
+}
+
+type managedRedisMaintenanceClient struct{}
+
+func (managedRedisMaintenanceClient) Do(_ context.Context, command ...string) (any, error) {
+	switch command[0] {
+	case "INFO":
+		return "used_memory:1024\r\n", nil
+	case "EVAL":
+		return []any{
+			[]any{int64(0), "ERR command is not allowed in scripts"},
+			[]any{int64(1), nil},
+		}, nil
+	case "DEL":
+		return int64(0), nil
+	default:
+		return nil, errors.New("unexpected managed maintenance command")
+	}
+}
+
+func (managedRedisMaintenanceClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, errors.New("unexpected managed maintenance pipeline")
+}
+
+func TestRedisMaintenanceReportsUnsupportedCachingWithoutBlockingStartup(t *testing.T) {
+	var output bytes.Buffer
+	app := maintenanceApp(redisMaintenanceClient{}, &output)
+	app.store = redisx.NewStore(managedRedisMaintenanceClient{}, "managed-startup")
+	if err := app.Start(t.Context()); err != nil {
+		t.Fatalf("optional cache capabilities blocked protected storage startup: %v", err)
+	}
+	stopCtx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := app.Stop(stopCtx); err != nil {
+		t.Fatal(err)
+	}
+	if app.store.DisposableCachesEnabled() {
+		t.Fatal("unsupported managed-provider caches remained enabled")
+	}
+	if !strings.Contains(output.String(), "disposable caching disabled") || !strings.Contains(output.String(), "protected storage remains enabled") {
+		t.Fatalf("cache degradation was not reported explicitly: %q", output.String())
 	}
 }

@@ -54,7 +54,7 @@ func redisCommandName(args []string) string {
 		return "_OTHER"
 	}
 	switch command := strings.ToUpper(args[0]); command {
-	case "AUTH", "SELECT", "PING", "GET", "SET", "DEL", "UNLINK", "EXISTS",
+	case "AUTH", "SELECT", "PING", "INFO", "GET", "SET", "DEL", "UNLINK", "EXISTS",
 		"EXPIRE", "PEXPIRE", "TTL", "PTTL", "TIME", "EVAL", "EVALSHA",
 		"HGET", "HGETALL", "HMGET", "HSET", "HDEL", "HLEN", "HINCRBY",
 		"SMEMBERS", "SADD", "SREM", "SISMEMBER", "SCARD", "SSCAN", "SCAN",

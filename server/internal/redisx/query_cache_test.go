@@ -24,7 +24,21 @@ type queryCacheReplyClient struct {
 	err   error
 }
 
-func (client queryCacheReplyClient) Do(context.Context, ...string) (any, error) {
+const testMemoryInfo = "# Memory\r\nused_memory:1024\r\nmaxmemory:0\r\n"
+
+func testCacheCapabilityReply() []any {
+	return []any{[]any{int64(1), testMemoryInfo}, []any{int64(1), nil}}
+}
+
+func (client queryCacheReplyClient) Do(_ context.Context, command ...string) (any, error) {
+	if client.err == nil {
+		if command[0] == "INFO" {
+			return testMemoryInfo, nil
+		}
+		if command[0] == "EVAL" && command[1] == cacheCapabilityScript {
+			return testCacheCapabilityReply(), nil
+		}
+	}
 	return client.reply, client.err
 }
 

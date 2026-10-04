@@ -3,6 +3,22 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const bicep = await readFile(new URL('../../server/azure/main.bicep', import.meta.url), 'utf8');
+const collector = await readFile(new URL('../../server/azure/collector.bicep', import.meta.url), 'utf8');
+const generated = JSON.parse(await readFile(new URL('../../server/azure/main.json', import.meta.url), 'utf8'));
+
+test('Azure shares one positive Redis memory budget across dashboard and collection roles', () => {
+  for (const source of [bicep, collector]) {
+    assert.match(source, /@minValue\(1\)\s*@description\('[^']*'\)\s*param redisMaxBytes int = 200000000/);
+    assert.match(source, /name:\s*'CAO_REDIS_MAX_BYTES'\s+value:\s*string\(redisMaxBytes\)/);
+  }
+  assert.match(bicep, /redisMaxBytes:\s*redisMaxBytes/);
+  assert.equal(generated.parameters.redisMaxBytes.defaultValue, 200000000);
+  assert.equal(generated.parameters.redisMaxBytes.minValue, 1);
+  const collection = generated.resources.find((resource) => resource.type === 'Microsoft.Resources/deployments' && resource.name === 'collection-workers');
+  assert.equal(collection.properties.parameters.redisMaxBytes.value, "[parameters('redisMaxBytes')]");
+  assert.equal(collection.properties.template.parameters.redisMaxBytes.defaultValue, 200000000);
+  assert.equal(collection.properties.template.parameters.redisMaxBytes.minValue, 1);
+});
 
 test('Azure dashboard Bicep uses module-free Redis with TLS app settings', () => {
   assert.match(bicep, /Experimental Azure Functions deployment baseline/);

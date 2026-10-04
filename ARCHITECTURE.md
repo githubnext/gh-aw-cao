@@ -132,9 +132,14 @@ and queues. Cached payloads retain their original evidence revision and
 evaluation time; cache hits report no fresh query-plan work.
 All server profiles also have a configurable whole-node Redis memory-pressure
 budget, defaulting to 200,000,000 bytes and capped at 80% of provider-reported
-`maxmemory`. Atomic query-result, marketplace, and repository-memory cache
-admission measures actual Redis usage. Startup and cancellation-scoped
-30-second maintenance reclaim only disposable caches in the current namespace.
+`maxmemory`. Providers supporting scripted memory introspection use atomic
+query-result, marketplace, and repository-memory admission and reserve outgoing
+allocation before serving cache hits. Providers prohibiting that introspection
+explicitly disable disposable-cache admission and serving rather than spend
+independently sampled headroom; protected storage stays enabled. Startup and
+cancellation-scoped 30-second maintenance use provider-compatible pressure
+measurement and one namespace-scoped cursor pass to reclaim only disposable
+caches. Final pressure reporting always refreshes the memory evidence.
 Sessions, queues, quota state, revocation retries, and other namespaces remain
 protected. Unreclaimable operational pressure fails startup or is reported by
 running maintenance; cache writes decline admission rather than widening the

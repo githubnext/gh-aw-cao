@@ -48,13 +48,14 @@ local function memory(key)
   return redis.call("MEMORY", "USAGE", key, "SAMPLES", 0) or 0
 end
 local cache_bytes, cache_count = 0, 0
-local function trim(reserve)
+local function trim(reserve, outgoing)
+  local global_reserve = reserve + (outgoing or 0)
   cache_count = redis.call("ZCARD", index)
   cache_bytes = memory(entries) + memory(index)
   local used, global_budget = pressure()
-  while cache_count > 0 and (cache_count > max_entries or cache_bytes + reserve > budget or used + reserve > global_budget) do
+  while cache_count > 0 and (cache_count > max_entries or cache_bytes + reserve > budget or used + global_reserve > global_budget) do
     local batch = math.max(1, cache_count - max_entries)
-    local excess = math.max(cache_bytes + reserve - budget, used + reserve - global_budget)
+    local excess = math.max(cache_bytes + reserve - budget, used + global_reserve - global_budget)
     if excess > 0 and cache_bytes > 0 then
       batch = math.max(batch, math.ceil(cache_count * excess / cache_bytes))
     end
@@ -72,7 +73,7 @@ local function trim(reserve)
     cache_bytes = 0
     used, global_budget = pressure()
   end
-  return used + reserve <= global_budget and cache_bytes + reserve <= budget
+  return used + global_reserve <= global_budget and cache_bytes + reserve <= budget
 end
 local function reply(value)
   return {value, cache_bytes, cache_count, expired, evicted}
@@ -81,21 +82,22 @@ if ARGV[1] == "maintain" then
   trim(0)
   return reply(false)
 end
-if redis.call("HSTRLEN", entries, ARGV[5]) > tonumber(ARGV[7]) then
+local length = redis.call("HSTRLEN", entries, ARGV[5])
+if length > tonumber(ARGV[7]) then
   remove(ARGV[5])
   evicted = evicted + 1
 end
-local value = redis.call("HGET", entries, ARGV[5])
-if value and not redis.call("ZSCORE", index, ARGV[5]) then
+local present = redis.call("HEXISTS", entries, ARGV[5]) == 1
+if present and not redis.call("ZSCORE", index, ARGV[5]) then
   remove(ARGV[5])
-  value = false
+  present = false
 end
 if ARGV[1] == "get" then
-  trim(0)
-  if redis.call("HEXISTS", entries, ARGV[5]) == 0 then return reply(false) end
-  return reply(value)
+  local safe = trim(0, present and outgoing_reserve(length) or 0)
+  if not safe or redis.call("HEXISTS", entries, ARGV[5]) == 0 then return reply(false) end
+  return reply(redis.call("HGET", entries, ARGV[5]))
 end
-if not value then
+if not present then
   if not trim(string.len(ARGV[6]) + string.len(ARGV[5]) + 1024) then return reply(0) end
   redis.call("HSET", entries, ARGV[5], ARGV[6])
   redis.call("ZADD", index, now + ttl, ARGV[5])
@@ -147,10 +149,19 @@ func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, da
 	if maxResultBytes <= 0 || maxBytes <= 0 {
 		return nil, QueryCacheStats{}, errors.New("query cache size limits must be positive")
 	}
+	if err := s.InitializeDisposableCaches(ctx); err != nil {
+		return nil, QueryCacheStats{}, err
+	}
+	if !s.DisposableCachesEnabled() {
+		if operation == "put" {
+			return int64(0), QueryCacheStats{}, nil
+		}
+		return nil, QueryCacheStats{}, nil
+	}
 	// The hash tag keeps all keys in one slot on clustered Redis providers.
-	prefix := s.Key("{query-cache:v1}:")
+	keys := s.queryCacheKeys()
 	value, err := s.Client.Do(ctx, "EVAL", queryCacheScript, "2",
-		prefix+"entries", prefix+"expiry",
+		keys[0], keys[1],
 		operation, strconv.FormatInt(QueryCacheTTL.Milliseconds(), 10),
 		strconv.FormatInt(maxBytes, 10), strconv.Itoa(QueryCacheMaxEntries), key, string(data),
 		strconv.FormatInt(maxResultBytes, 10), strconv.FormatInt(s.MaxMemoryBytes(), 10))
@@ -166,6 +177,11 @@ func (s *Store) queryCacheCommand(ctx context.Context, operation, key string, da
 			operation, stats.Expired, stats.Evicted, stats.Entries)
 	}
 	return result, stats, nil
+}
+
+func (s *Store) queryCacheKeys() [2]string {
+	prefix := s.Key("{query-cache:v1}:")
+	return [2]string{prefix + "entries", prefix + "expiry"}
 }
 
 func (s *Store) CachedQueryResult(ctx context.Context, key string, maxResultBytes, maxBytes int64) ([]byte, QueryCacheStats, error) {
