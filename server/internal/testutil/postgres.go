@@ -49,6 +49,7 @@ func Postgres(t testing.TB, parent context.Context, environment ...string) *post
 			t.Error("list isolated Postgres partitions")
 			return
 		}
+		defer func() { _ = rows.Close() }()
 		var parents []string
 		for rows.Next() {
 			var name string

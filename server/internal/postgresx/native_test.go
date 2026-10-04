@@ -40,6 +40,7 @@ func nativeTestStore(t *testing.T) (*Store, *pgx.ConnConfig) {
 			JOIN pg_namespace n ON n.oid=c.relnamespace
 			WHERE n.nspname=$1 AND c.relkind='p'`, schema)
 		if err == nil {
+			defer func() { _ = rows.Close() }()
 			var parents []string
 			for rows.Next() {
 				var name string
