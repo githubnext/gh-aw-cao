@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -54,7 +55,8 @@ func TestAuditCurationValidatesEveryTransportedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordContent := []byte("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1}\n" +
+	recordContent := []byte(fmt.Sprintf("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1,\"schemaVersion\":%d,\"ingestionVersion\":%d}\n",
+		model.CanonicalSchemaVersion, model.NormalizedIngestionVersion) +
 		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"curate\",\"runId\":\"run:424242\",\"source\":\"agent\",\"type\":\"agent.session\",\"status\":\"completed\",\"summary\":\"\",\"timestamp\":\"2026-01-01T00:00:00Z\"}}\n")
 	manifest := Manifest{}
 	for name, content := range map[string][]byte{"gh-aw-logs-runs/subset.jsonl": runContent, "gh-aw-logs-records/subset.jsonl": recordContent} {
@@ -143,7 +145,8 @@ func TestAuditCurationDoesNotHideTransportedOrphan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordContent := []byte("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1}\n" +
+	recordContent := []byte(fmt.Sprintf("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1,\"schemaVersion\":%d,\"ingestionVersion\":%d}\n",
+		model.CanonicalSchemaVersion, model.NormalizedIngestionVersion) +
 		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"eligible-orphan\",\"runId\":\"run:missing\",\"timestamp\":\"2026-01-01T00:00:00Z\",\"source\":\"gh-aw-logs\",\"type\":\"workflow_run_working_set\",\"status\":\"observed\",\"summary\":\"Working set measured\"}}\n")
 	manifest := Manifest{}
 	for name, content := range map[string][]byte{"gh-aw-logs-runs/subset.jsonl": runContent, "gh-aw-logs-records/subset.jsonl": recordContent} {
