@@ -173,6 +173,11 @@ test("Repo Assist uses configured CAO GitHub authentication and organization-bil
     assert.match(precomputeStep, /GH_TOKEN:.*steps\.cao_pre_activation_app_token\.outputs\.token/);
     assert.match(precomputeStep, /GH_AW_GITHUB_AUTH_MODE == 'pat'/);
     assert.match(precomputeStep, /GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
+    assert.doesNotMatch(
+      precomputeStep,
+      /GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets\.GH_AW_GITHUB_READ_PAT/,
+      `${workflowId}.lock.yml must not fall back from App mode to a PAT`,
+    );
     assert.match(
       lock,
       /Start CLI Proxy[\s\S]*?GH_TOKEN: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/,
@@ -221,14 +226,15 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?vars\.GH_AW_GITHUB_READ_APP_ID/);
-  assert.match(control, /private-key: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?secrets\.GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
-  assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?vars\.GH_AW_GITHUB_WRITE_APP_ID/);
-  assert.match(control, /private-key: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE != 'pat'[\s\S]*?secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY/);
-  assert.match(control, /github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
+  assert.match(control, /github-app:\n\s+client-id: \$\{\{ \(vars\.GH_AW_GITHUB_AUTH_MODE == 'app' \|\| vars\.GH_AW_GITHUB_AUTH_MODE == ''\)[\s\S]*?vars\.GH_AW_GITHUB_READ_APP_ID/);
+  assert.match(control, /private-key: \$\{\{ \(vars\.GH_AW_GITHUB_AUTH_MODE == 'app' \|\| vars\.GH_AW_GITHUB_AUTH_MODE == ''\)[\s\S]*?secrets\.GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
+  assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ \(vars\.GH_AW_GITHUB_AUTH_MODE == 'app' \|\| vars\.GH_AW_GITHUB_AUTH_MODE == ''\)[\s\S]*?vars\.GH_AW_GITHUB_WRITE_APP_ID/);
+  assert.match(control, /private-key: \$\{\{ \(vars\.GH_AW_GITHUB_AUTH_MODE == 'app' \|\| vars\.GH_AW_GITHUB_AUTH_MODE == ''\)[\s\S]*?secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY/);
+  assert.match(control, /github-token: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?GH_AW_GITHUB_AUTH_MODE == '' && secrets\.GH_AW_GITHUB_READ_PAT/);
+  assert.doesNotMatch(control, /GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets\.GH_AW_GITHUB_(?:READ|WRITE)_PAT/);
   assert.match(
     control,
-    /safe-outputs:[\s\S]*?github-token: \$\{\{ env\.CAO_ROLE == 'orchestrator' && \(\(inputs\.safe_output_mode[\s\S]*?== github\.repository && github\.token \|\| vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/,
+    /safe-outputs:[\s\S]*?github-token: \$\{\{ env\.CAO_ROLE == 'orchestrator' && \(\(inputs\.safe_output_mode[\s\S]*?== github\.repository && github\.token \|\| vars\.GH_AW_GITHUB_AUTH_MODE == 'pat'[\s\S]*?GH_AW_GITHUB_WRITE_PAT_REPOSITORIES[\s\S]*?GH_AW_GITHUB_AUTH_MODE == '' && secrets\.GH_AW_GITHUB_WRITE_PAT/,
   );
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
@@ -236,7 +242,7 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
     control,
     /safe-outputs:\n\s+github-app:\n\s+client-id:[\s\S]*?ignore-if-missing: true\n\s+repositories:\n\s+- \$\{\{ inputs\.safe_output_repo \|\| github\.repository \}\}/,
   );
-  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
+  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?GH_AW_GITHUB_AUTH_MODE == '' && secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
   assert.match(control, /name: Resolve CAO GitHub read scope[\s\S]*?CAO_READ_REPOSITORY: \$\{\{ github\.aw\.import-inputs\.read_repository \}\}/);
   assert.match(control, /name: Generate CAO target-scoped read App token[\s\S]*?owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
   assert.match(control, /echo "permission_vulnerability_alerts=\$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}"/);
