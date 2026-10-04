@@ -5,14 +5,20 @@ import {
   readRecord,
   readTransactions
 } from '../storage/indexeddb.js';
+import { createDebug } from '../../debug.js';
+
+const debugQueries = createDebug('queries:index');
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
   return {
     campaigns: {
       list: () => readCollection(indexedDB, 'campaigns'),
-      getBySlug: async (/** @type {string} */ slug) =>
-        (await readIndex(indexedDB, 'campaigns', 'bySlug', [slug]))[0] ?? null
+      getBySlug: async (/** @type {string} */ slug) => {
+        const match = (await readIndex(indexedDB, 'campaigns', 'bySlug', [slug]))[0] ?? null;
+        debugQueries({ event: 'campaigns.get-by-slug', found: match !== null });
+        return match;
+      }
     },
     repositories: {
       list: () => readCollection(indexedDB, 'repositories'),
@@ -30,7 +36,7 @@ export function createCanonicalQueries(indexedDB) {
       forWorkflow: (/** @type {string} */ workflowId) =>
         readIndex(indexedDB, 'runs', 'byWorkflow', [workflowId]),
       recentFailures: async () => {
-        return queryCollection(indexedDB, 'runs', [
+        const rows = await queryCollection(indexedDB, 'runs', [
           {
             op: 'filter',
             predicates: [{
@@ -40,6 +46,8 @@ export function createCanonicalQueries(indexedDB) {
           },
           { op: 'arrange', by: [{ field: 'startedAt', direction: 'desc' }] }
         ]);
+        debugQueries({ event: 'runs.recent-failures', count: rows.length });
+        return rows;
       }
     },
     domains: runLinkedQueries(indexedDB, 'domains'),
@@ -68,8 +76,12 @@ export function createCanonicalQueries(indexedDB) {
 function runLinkedQueries(indexedDB, collection) {
   return {
     list: () => readCollection(indexedDB, collection),
-    forRun: async (/** @type {string} */ runId) => (
-      await readIndex(indexedDB, collection, 'byRun', [runId])
-    ).sort((left, right) => Number(left.sequence) - Number(right.sequence))
+    forRun: async (/** @type {string} */ runId) => {
+      const rows = (
+        await readIndex(indexedDB, collection, 'byRun', [runId])
+      ).sort((left, right) => Number(left.sequence) - Number(right.sequence));
+      debugQueries({ event: 'run-linked.for-run', collection, count: rows.length });
+      return rows;
+    }
   };
 }

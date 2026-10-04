@@ -37,6 +37,7 @@ import {
   MCP_PROTOCOL_VERSION,
   handleMcpRequest,
 } from "../../activity/mcp-server.mjs";
+import { waitForServer } from "./dashboard-query-parity-readiness.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const siteRoot = join(repositoryRoot, "dashboard/site");
@@ -522,21 +523,6 @@ async function writeDeployedArtifact(directory, factory, sources) {
   ]);
 }
 
-async function waitForServer() {
-  let lastError;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    try {
-      const response = await fetch(`${serverURL}/api/v1/health`);
-      if (response.ok) return;
-      lastError = new Error(`health returned ${response.status}`);
-    } catch (error) {
-      lastError = error;
-    }
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
-  }
-  throw new Error(`Postgres dashboard server did not become ready: ${lastError}`);
-}
-
 async function executePostgresBackend(
   artifactDirectory,
   dashboardDocumentPath,
@@ -575,7 +561,7 @@ async function executePostgresBackend(
   child.stdout.on("data", (chunk) => { logs += chunk; });
   child.stderr.on("data", (chunk) => { logs += chunk; });
   try {
-    await waitForServer();
+    await waitForServer(serverURL, { child });
     const response = await fetch(`${serverURL}/api/v1/query`, {
       method: "POST",
       headers: {
