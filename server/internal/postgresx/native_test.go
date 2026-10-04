@@ -34,9 +34,37 @@ func nativeTestStore(t *testing.T) (*Store, *pgx.ConnConfig) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_, _ = admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE")
+		rows, err := admin.QueryContext(ctx, `SELECT c.relname FROM pg_class c
+			JOIN pg_namespace n ON n.oid=c.relnamespace
+			WHERE n.nspname=$1 AND c.relkind='p'`, schema)
+		if err == nil {
+			var parents []string
+			for rows.Next() {
+				var name string
+				if err = rows.Scan(&name); err != nil {
+					break
+				}
+				parents = append(parents, name)
+			}
+			if err == nil {
+				err = rows.Err()
+			}
+			_ = rows.Close()
+			if err == nil {
+				for _, name := range parents {
+					if _, err = admin.ExecContext(ctx, "DROP TABLE "+pgx.Identifier{schema, name}.Sanitize()+" CASCADE"); err != nil {
+						break
+					}
+				}
+			}
+		}
+		if err != nil {
+			t.Error("remove isolated Postgres partitioned tables")
+		} else if _, err := admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
+			t.Error("remove isolated Postgres test schema")
+		}
 		_ = admin.Close()
 	})
 	config.RuntimeParams["search_path"] = schema

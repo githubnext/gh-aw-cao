@@ -38,8 +38,39 @@ func Postgres(t testing.TB, parent context.Context, environment ...string) *post
 		t.Fatal("create isolated Postgres test schema")
 	}
 	t.Cleanup(func() {
-		cleanup, stop := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
+		cleanup, stop := context.WithTimeout(context.WithoutCancel(parent), 30*time.Second)
 		defer stop()
+		// Drop partitioned parents in separate transactions so their child
+		// partitions do not exhaust PostgreSQL's shared lock table.
+		rows, err := admin.QueryContext(cleanup, `SELECT c.relname FROM pg_class c
+			JOIN pg_namespace n ON n.oid=c.relnamespace
+			WHERE n.nspname=$1 AND c.relkind='p'`, schema)
+		if err != nil {
+			t.Error("list isolated Postgres partitions")
+			return
+		}
+		var parents []string
+		for rows.Next() {
+			var name string
+			if err = rows.Scan(&name); err != nil {
+				break
+			}
+			parents = append(parents, name)
+		}
+		if err == nil {
+			err = rows.Err()
+		}
+		_ = rows.Close()
+		if err != nil {
+			t.Error("list isolated Postgres partitions")
+			return
+		}
+		for _, name := range parents {
+			if _, err := admin.ExecContext(cleanup, "DROP TABLE "+pgx.Identifier{schema, name}.Sanitize()+" CASCADE"); err != nil {
+				t.Error("remove isolated Postgres partitioned table")
+				return
+			}
+		}
 		if _, err := admin.ExecContext(cleanup, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
 			t.Error("remove isolated Postgres test schema")
 		}
