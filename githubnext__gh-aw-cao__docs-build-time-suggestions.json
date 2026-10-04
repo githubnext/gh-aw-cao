@@ -1,6 +1,6 @@
 {
-  "source_sha": "c9491d0a0712afef608c0e8f0c616dcf3e211003",
-  "next_category": 4,
+  "source_sha": "f06effe50c39b065b0d858608ac90c129d3ed863",
+  "next_category": 1,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -256,6 +256,31 @@
         37158468282
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-03T21:44Z to 2026-10-04T02:47Z again shows the only material avoidable rebuild pattern is the already-tracked same-SHA workflow_run duplicate. Queue median/p90 remained 0s/0s; full-workflow median/p90 was 56s/75.9s; build-job median/p90 44.5s/50s; deploy-job median/p90 9s/18.6s across the 8 runs where deploy metadata was present; and schedule-freshness median/p90 6.5s/7.9s on the 8 runs that executed it. Trusted step metadata showed Restore node_modules succeeded in every build-bearing run, Install dependencies and Save node_modules were skipped in all of them, Restore cached CAO Dashboard succeeded in every build-bearing run, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all of them, confirming caches were already effective. The current source still produced repeated same-SHA workflow_run docs rebuilds after successful CAO Dashboard runs: docs 37172102349 followed dashboard 37171932587 on c9491d0a0712afef608c0e8f0c616dcf3e211003 (52s total, 47s build), docs 37169304756 followed dashboard 37169128940 on 212e6267abf74369c7deb3987077db4300bf59eb (54s total, 50s build), docs 37164778890 followed dashboard 37164600450 on the same SHA (58s total, 53s build), docs 37162152527 followed dashboard 37161913366 (48s total, 44s build), and docs 37158661126 followed dashboard 37158468282 (52s total, 45s build). Those five duplicates alone consumed 264s total, averaging 52.8s each, but open issue #16054 already tracks the freshness-gate fix for suggestion fingerprint docs-workflow-run-freshness-gate-same-sha. Because this category cycle returned to scheduling and the evidence has not materially changed beyond reaffirming the same duplicate, no new non-duplicate recommendation is actionable from this window.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T04:10:00Z",
+      "worker_run_id": "37178300248",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37175823605,
+        37175366659,
+        37172102349,
+        37171551028,
+        37170764048,
+        37169304756,
+        37169227889,
+        37165191064,
+        37164778890,
+        37162438211,
+        37162152527,
+        37171932587,
+        37170594659,
+        37169128940,
+        37164600450,
+        37161913366
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across the latest 16 completed successful runs in the last 14 days continues to show the already-tracked same-SHA workflow_run duplicate as the only material avoidable rebuild. Queue time stayed effectively negligible at 0s median/p90 from job-start metadata. Full workflow duration was 56s median and 85s p90; successful build jobs were 45s median and 53s p90; successful deploy jobs were 17.5s median and 20s p90 on the six runs that deployed; and schedule-freshness was 7s median and 9s p90 on the seven scheduled runs that executed it. Trusted step metadata showed Restore node_modules succeeded in every build-bearing docs run, while Install dependencies and Save node_modules were skipped in all of them, confirming dependency cache hits from execution evidence. Restore cached CAO Dashboard also succeeded in every build-bearing docs run, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all of them, confirming dashboard cache hits from execution evidence. Despite that, workflow_run rebuilds still followed successful CAO Dashboard completions on identical SHAs: docs 37175823605 after dashboard 37175563218 on f06effe50c39b065b0d858608ac90c129d3ed863 (62s total, 57s build), docs 37172102349 after dashboard 37171932587 on c9491d0a0712afef608c0e8f0c616dcf3e211003 (52s total, 47s build), docs 37169304756 after dashboard 37169128940 on 212e6267abf74369c7deb3987077db4300bf59eb (54s total, 50s build), docs 37164778890 after dashboard 37164600450 on the same SHA (58s total, 53s build), and docs 37162152527 after dashboard 37161913366 on the same SHA (48s total, 44s build). Those five duplicates alone consumed 274s total, averaging 54.8s each, and schedule run 37169227889 already skipped in 11s for one of the same SHAs, reinforcing that freshness logic exists but is not applied to workflow_run. Bounded trusted logs for run 37175366659 show Upload Pages artifact transferred a 48,371,435-byte github-pages artifact in about 7s, so packaging is not the dominant repeated cost. Open issue #16054 already tracks the recommendation with fingerprint docs-workflow-run-freshness-gate-same-sha, and the source SHA changed only by further evidence that supports the same fix rather than a new one, so no new non-duplicate actionable suggestion is warranted in this cycle.",
       "suggestion_fingerprint": null
     }
   ]
