@@ -558,11 +558,20 @@ function controlSourcePath() {
 }
 
 async function loadWorkflowInventory(repository) {
-  const parsed = parseJsonOutput(await ghApi(`repos/${repository}/actions/workflows?per_page=100`, {
-    jq: ".workflows[] | {id, name, path, state}",
-  }));
-  const workflows = Array.isArray(parsed) ? parsed : parsed.workflows ?? [parsed];
-  return workflows.map(({ id, name, path, state }) => ({ id, name, path, state }));
+  const workflows = [];
+  for (let page = 1; page <= 101; page += 1) {
+    const parsed = parseJsonOutput(await ghApi(`repos/${repository}/actions/workflows?per_page=100&page=${page}`, {
+      jq: ".workflows[] | {id, name, path, state}",
+    }));
+    const batch = Array.isArray(parsed) ? parsed : parsed.workflows ?? [parsed];
+    if (page > 100) {
+      if (batch.length > 0) throw new ControlError("workflow inventory exceeds 10000 workflows");
+      return workflows;
+    }
+    workflows.push(...batch.map(({ id, name, path, state }) => ({ id, name, path, state })));
+    if (batch.length < 100) return workflows;
+  }
+  return workflows;
 }
 
 async function loadRepository(endpoint) {

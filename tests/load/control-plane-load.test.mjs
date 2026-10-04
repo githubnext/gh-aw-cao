@@ -31,7 +31,16 @@ elif [[ "$arguments" == *"repos/acme/control/contents/.github/workflows/cao.json
 elif [[ "$arguments" == *"contents/.github/workflows/dependabot.md"* ]]; then
   printf '%s\\n' "$CONTROL_SOURCE_B64"
 elif [[ "$arguments" == *"actions/workflows?per_page=100"* ]]; then
-  printf '%s\\n' '{"id":1,"name":"Dependabot / Update Planner","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}'
+  page=$(printf '%s' "$arguments" | sed -n 's/.*[?&]page=\\([0-9][0-9]*\\).*/\\1/p')
+  if [[ "\${MOCK_PAGINATED_WORKFLOWS:-false}" == "true" && "$page" == "1" ]]; then
+    for item in $(seq 1 100); do
+      printf '{"id":%s,"name":"Placeholder %s","path":".github/workflows/placeholder-%s.lock.yml","state":"active"}\n' "$item" "$item" "$item"
+    done
+  elif [[ "\${MOCK_PAGINATED_WORKFLOWS:-false}" == "true" && "$page" == "2" ]]; then
+    printf '%s\\n' '{"id":101,"name":"Dependabot / Update Planner","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}'
+  elif [[ "\${MOCK_PAGINATED_WORKFLOWS:-false}" != "true" ]]; then
+    printf '%s\\n' '{"id":1,"name":"Dependabot / Update Planner","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}'
+  fi
 elif [[ "$arguments" == aw\\ logs\\ dependabot\\ --start-date* ]]; then
   if [[ "\${MOCK_FAIL_BUDGET:-false}" == "true" ]]; then
     printf 'invalid budget data\n'
@@ -225,6 +234,33 @@ test("control precompute attaches campaign target modes to candidates", () => {
     } finally {
       rmSync(narrowedRun.temporaryDirectory, { recursive: true, force: true });
     }
+  } finally {
+    rmSync(run.temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("control precompute discovers worker workflows after the first API page", () => {
+  const run = runPrecompute({ MOCK_PAGINATED_WORKFLOWS: "true" }, controlPolicy({
+    inventory: { "max-scan-repositories": 100 },
+    campaignPolicy: { "max-repositories": 10 },
+  }));
+
+  try {
+    assert.equal(run.result.status, 0, run.result.stderr);
+    const output = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
+    assert.deepEqual(output.worker_workflows[0], {
+      configured: "dependabot-update-planner",
+      matched: true,
+      worker: "update-planner",
+      policy_enabled: true,
+      max_mode: null,
+      id: 101,
+      name: "Dependabot / Update Planner",
+      path: ".github/workflows/dependabot-update-planner.lock.yml",
+      state: "active",
+      eligible: true,
+      skip_reason: null,
+    });
   } finally {
     rmSync(run.temporaryDirectory, { recursive: true, force: true });
   }
