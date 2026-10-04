@@ -239,7 +239,7 @@ describe('canonical view sources', () => {
 
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-    const tableNames = DATABASE_STORES.filter(name => !['toolIdentities', 'toolCounters', 'toolEvidence'].includes(name));
+    const tableNames = DATABASE_STORES.filter(name => !['toolIdentities', 'toolCounters'].includes(name));
     const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,

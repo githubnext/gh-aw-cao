@@ -91,15 +91,15 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 28. The browser database is
-`gh-aw-cao-dashboard-data-v28`, IndexedDB version 1. Its canonical stores are
+The canonical model is version 29. The browser database is
+`gh-aw-cao-dashboard-data-v29`, IndexedDB version 1. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`toolIdentities`, `toolCounters`, `toolEvidence`, `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
+`toolIdentities`, `toolCounters`, `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
 
-Normalized schema 28 and ingestion version 5 are exact-version contracts.
+Normalized schema 29 and ingestion version 6 are exact-version contracts.
 Older normalized shards and existing PostgreSQL/SQLite databases are not
 upgraded or converted: create a fresh database and regenerate the projection
 from authoritative source logs. The upstream gh-aw schema-v2 log format remains
@@ -108,11 +108,13 @@ an acquisition input, not an old normalized-database compatibility format.
 Activity deduplicates Tool event IDs and compacts one usage fact per
 Run/tool/source, an observed-identity dictionary, and exact UTC-day categorical
 counters. It counts measurements once per call and keeps incomplete/unknown
-outcomes separate from confirmed failures. Original events are published as
-`gh-aw-logs-tools/<sha256>.jsonl.gz` with bounded Run-owned locators; browsers
-do not load those shards during normal ingestion. Run evidence revisions
-exclude superseded facts during refresh, and PostgreSQL usage, counters, and
-locators use weekly `run_at` partitions.
+outcomes separate from confirmed failures. Original Tool events are discarded
+after aggregation. Compaction consumes one in-memory input buffer at a time and
+uses a private in-memory SQLite deduplication index, with no temporary Tool files.
+No cold archives,
+locators or exact-event API are published. Acquisition logs remain upstream
+rebuild inputs. Run evidence revisions exclude superseded facts during refresh,
+and PostgreSQL usage and counters use weekly `run_at` partitions.
 The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. The disposable
 Overview aggregates are computed by request-scoped queries over canonical runs

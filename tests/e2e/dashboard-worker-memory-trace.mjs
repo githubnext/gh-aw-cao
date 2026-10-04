@@ -202,7 +202,7 @@ for (const sample of samples.filter((_, index) => index % 8 === 0)) {
 }
 const state = await page.evaluate(async () => {
   const databases = await indexedDB.databases();
-  const descriptor = databases.find(({ name }) => name?.startsWith("gh-aw-cao-dashboard-data-v28"));
+  const descriptor = databases.find(({ name }) => name?.startsWith("gh-aw-cao-dashboard-data-v29"));
   if (!descriptor?.name) return { counts: {} };
   const database = await new Promise((resolve) => {
     const request = indexedDB.open(descriptor.name, descriptor.version);

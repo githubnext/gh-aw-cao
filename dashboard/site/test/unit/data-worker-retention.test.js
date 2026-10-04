@@ -154,7 +154,7 @@ describe('canonical dashboard worker retention updates', () => {
     const normalizedPayload = `${JSON.stringify({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 5,
+      ingestionVersion: 6,
       sourceRecords: 0,
       phase: 'runs',
       records: 0

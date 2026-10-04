@@ -57,7 +57,6 @@ export const SQLITE_RELATIONAL_STORES = Object.freeze({
   toolCounters: { runId: 'TEXT', usageId: 'TEXT', evidenceRevision: 'TEXT', type: 'TEXT', status: 'TEXT', eventCount: 'INTEGER',
     timestamp: 'TEXT', lastTimestamp: 'TEXT',
     requestBytes: 'INTEGER', requestBytesCount: 'INTEGER', responseBytes: 'INTEGER', responseBytesCount: 'INTEGER' },
-  toolEvidence: { runId: 'TEXT', evidenceRevision: 'TEXT', payloadRef: 'TEXT', payloadHash: 'TEXT', eventCount: 'INTEGER' },
   experiments: { workflowId: 'TEXT', name: 'TEXT', firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
   experimentAssignments: { runId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
     included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
@@ -113,7 +112,7 @@ export function createSqliteRelationalTables(connection) {
     const rebuild = existing.size > 0
       && (existing.size !== expected.length || expected.some((column) => !existing.has(column)));
     if (rebuild) throw new Error('SQLite storage contract changed; create a fresh database');
-    const observationRequired = store === 'campaigns' || ['tools', 'toolIdentities', 'toolCounters', 'toolEvidence'].includes(store)
+    const observationRequired = store === 'campaigns' || ['tools', 'toolIdentities', 'toolCounters'].includes(store)
       ? '' : ' NOT NULL';
     connection.exec(`
       CREATE TABLE IF NOT EXISTS ${table} (
@@ -176,7 +175,7 @@ function createConnection(filename) {
   ));
   connection.exec('PRAGMA busy_timeout = 5000;');
   const metadataExists = connection.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='__idb_databases'").get();
-  const outdated = metadataExists && connection.prepare("SELECT name FROM __idb_databases WHERE name LIKE 'gh-aw-cao-dashboard-data%' AND name <> 'gh-aw-cao-dashboard-data-v28' AND name NOT LIKE 'gh-aw-cao-dashboard-data-v28:%' LIMIT 1").get();
+  const outdated = metadataExists && connection.prepare("SELECT name FROM __idb_databases WHERE name LIKE 'gh-aw-cao-dashboard-data%' AND name <> 'gh-aw-cao-dashboard-data-v29' AND name NOT LIKE 'gh-aw-cao-dashboard-data-v29:%' LIMIT 1").get();
   if (outdated) {
     connection.close();
     throw new Error('Canonical SQLite contract changed; create a fresh database');

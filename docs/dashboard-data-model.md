@@ -99,10 +99,10 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 28. The browser database is
-`gh-aw-cao-dashboard-data-v28`, IndexedDB version 1. Its canonical stores are
+The canonical model is version 29. The browser database is
+`gh-aw-cao-dashboard-data-v29`, IndexedDB version 1. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`toolIdentities`, `toolCounters`, `toolEvidence`, `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
+`toolIdentities`, `toolCounters`, `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
@@ -113,11 +113,11 @@ and latency retain their known-value denominators. Incomplete is not confirmed
 failure, and equal timestamps are not measured latency. Run evidence revisions
 prevent stale counters from accumulating on replay.
 
-PostgreSQL usage, counter, and evidence-locator tables use weekly `run_at`
-partitions. Exact events remain in manifested compressed shards, outside the
-hot databases. The hosted authenticated `/api/runs/{id}/tool-events` endpoint
-returns bounded detail with total/omitted counts, or an explicit unavailable
-error. This is a fresh-only contract; existing databases and old normalized
+PostgreSQL usage and counter tables use weekly `run_at` partitions.
+Original Tool events are discarded after aggregation: there is no cold archive,
+locator table or exact-event endpoint. Daily counts and available measurement
+totals remain exact; intraday sequences, correlations and percentiles are
+unavailable. This is a fresh-only contract; existing databases and old normalized
 payloads are rejected without migration or legacy support.
 The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Overview aggregates are

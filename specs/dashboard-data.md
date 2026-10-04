@@ -363,11 +363,11 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 28 | Campaign, Repository, Workflow, Run, Domain, Tool usage, observed Tool Identity, Tool Counter, Tool Evidence locator, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 1 | Twenty-one canonical entity stores and `transactions` in a new versioned database namespace |
+| Canonical model | 29 | Campaign, Repository, Workflow, Run, Domain, Tool usage, observed Tool Identity, Tool Counter, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 1 | Twenty canonical entity stores and `transactions` in a new versioned database namespace |
 | Local SQLite projection | IndexedDB 1 | Current object-store metadata and canonical records plus transactional typed mirrors, including compact Tool facts; incompatible files are rejected without conversion |
-| Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined native tables with presence bits and weekly Run-owned partitions; no stored JSON documents or legacy migrations |
-| Static SQL export | 4 | Versioned JSON interchange with aggregate Tool facts and native categorical counter rows |
+| Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined native tables with presence bits and weekly Run-owned partitions; no stored JSON documents or legacy migrations |
+| Static SQL export | 5 | Versioned JSON interchange with aggregate Tool facts and native categorical counter rows |
 
 ## 5.2 Go server profile
 
@@ -404,7 +404,7 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
-`gh-aw-cao-dashboard-data-v28` is the logical database name. Every implemented
+`gh-aw-cao-dashboard-data-v29` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
 
 | Store | Indexes |
@@ -417,7 +417,6 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `tools` | `byRun -> runId`, `byTool -> toolId` |
 | `toolIdentities` | none |
 | `toolCounters` | `byRun -> runId`, `byRunType -> [runId, type]`, `byUsage -> usageId` |
-| `toolEvidence` | `byRun -> runId` |
 | `audits` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
 | `issues` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary` |
 | `skills`, `friction` | `byRun -> runId` |
@@ -1487,7 +1486,7 @@ and `statusObservedAt`, without duplicate `issueState`, `issueClosed`,
 Tool and Skill membership is determined by their separate collections; the
 unused `isSkill` flag SHALL NOT be persisted or projected.
 
-### Tool usage contract (canonical model 28)
+### Tool usage contract (canonical model 29)
 
 `tools` SHALL contain one usage fact per canonical Run, observed tool identity,
 and evidence source. `toolIdentities` SHALL be a namespace-scoped dictionary,
@@ -1506,7 +1505,7 @@ again for its outcome. Equal event timestamps MUST NOT imply measured latency.
 UTC event day. Absent and null categorical values remain distinct. Counters
 retain call-grain size totals and known-value counts. Day-level totals are
 exact; arbitrary within-day windows, sequences, retries, and percentiles
-require exact cold evidence rather than fabricated event rows.
+are unavailable from this aggregate-only model and MUST NOT be fabricated.
 
 Correlation SHALL be scoped to the owning Run, winning attempt, and source.
 Only a unique call/outcome pair with matching observed identity may supply a
@@ -1516,20 +1515,18 @@ facts instead of incrementing counters. Aggregate counters describe
 observations, not verified executions or operational value.
 
 A Run's `toolUsageRevision` binds its complete current Tool evidence.
-Usage, counter, and locator `evidenceRevision` MUST match that revision.
+Usage and counter `evidenceRevision` MUST match that revision.
 Canonical queries MUST exclude superseded facts and counters during refresh;
 stale status combinations cannot accumulate after enrichment or reruns.
 
-`toolEvidence` SHALL contain only Run-owned locators and original event counts
-for checksum-addressed `gh-aw-logs-tools/<sha256>.jsonl.gz` shards. The uncompressed
-event bodies SHALL stay outside PostgreSQL, SQLite, and IndexedDB. Exact reads
-validate the canonical schema, compressed checksum, declared counts, Run
-ownership, and bounded compressed/decompressed sizes; missing, corrupt, expired,
-or over-budget evidence fails unavailable, not an empty successful history.
-The hosted authenticated endpoint `/api/runs/{id}/tool-events` returns at most
-2,000 events (default 20), with exact total and omitted counts.
+Original Tool events SHALL be discarded after aggregation. Publications SHALL
+NOT contain cold Tool event shards or Run-owned archive locators. PostgreSQL,
+SQLite and IndexedDB SHALL retain only identities, usage facts and counters.
+There is no exact Tool-event endpoint. Runtime diagnostics SHALL identify exact
+Tool detail as unavailable, not an empty successful event history. Acquisition
+logs remain upstream inputs to deterministic, revision-safe aggregate rebuilds.
 
-PostgreSQL `tools`, `tool_counters`, and `tool_evidence` SHALL be sharded using
+PostgreSQL `tools` and `tool_counters` SHALL be sharded using
 the existing weekly `PARTITION BY RANGE (run_at)` contract. Run ownership fixes
 the partition key, foreign keys include it, and maintenance expires complete
 weeks in child-before-parent order. The small namespace-scoped identity
@@ -1762,7 +1759,7 @@ The version 4 JSON document SHALL contain:
 ```js
 {
   contract: "gh-aw-cao.dashboard-sql-export",
-  schema_version: 4,
+  schema_version: 5,
   source: "stable-source-name",
   generation: "immutable-generation-id",
   exported_at: "RFC3339 timestamp",
@@ -2131,7 +2128,7 @@ A completely empty IndexedDB MUST be recoverable.
 The canonical browser database SHALL use:
 
 ```js
-const DATABASE_NAME = "gh-aw-cao-dashboard-data-v28";
+const DATABASE_NAME = "gh-aw-cao-dashboard-data-v29";
 const DATABASE_VERSION = 1;
 ```
 
@@ -2155,7 +2152,6 @@ domains
 tools
 toolIdentities
 toolCounters
-toolEvidence
 skills
 friction
 audits

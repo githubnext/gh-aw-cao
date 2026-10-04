@@ -10,13 +10,13 @@ import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import { publishedToolMeasures } from '../tool-fixtures.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const databaseName = 'gh-aw-cao-dashboard-data-v28';
+const databaseName = 'gh-aw-cao-dashboard-data-v29';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'evalObservations', 'evals', 'experimentAssignments',
   'experiments', 'friction', 'graderObservations', 'graders', 'issues', 'marketplacePackages',
-  'operationalValues', 'repositories', 'runs', 'skills', 'toolCounters', 'toolEvidence',
+  'operationalValues', 'repositories', 'runs', 'skills', 'toolCounters',
   'toolIdentities', 'tools', 'workflows'
 ];
 

@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '3.0.0')
+  assert.equal(openapi.info.version, '4.0.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -65,12 +65,7 @@ test('the generated contract describes the implemented security and wire formats
   assert.equal(openapi.paths['/api/health'].get.security, undefined)
   assert.equal(openapi.paths['/api/github/webhook'].post.security, undefined)
   assert.ok(openapi.paths['/api/v1/events'].get.responses['200'].content['text/event-stream'])
-  const toolEvidence = openapi.paths['/api/runs/{id}/tool-events'].get
-  assert.ok(toolEvidence.security.some(entry => 'BearerAuth' in entry))
-  assert.ok(toolEvidence.security.some(entry => 'ApiKeyAuth' in entry))
-  assert.ok(toolEvidence.responses['400'])
-  assert.ok(toolEvidence.responses['503'])
-  assert.equal(toolEvidence.parameters.find(parameter => parameter.name === 'limit').schema.maximum, 2000)
+  assert.equal(openapi.paths['/api/runs/{id}/tool-events'], undefined)
   assert.ok(openapi.paths['/api/github/webhook'].post.responses['202'])
   const mcp = openapi.paths['/mcp'].post
   assert.ok(mcp.security.some(entry => 'BearerAuth' in entry))

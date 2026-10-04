@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$workflows','$runs','$audits','$campaigns','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$toolIdentities','$tools','$toolCounters','$toolEvidence','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$workflows','$runs','$audits','$campaigns','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$toolIdentities','$tools','$toolCounters','$transactions','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -949,29 +949,6 @@ CREATE TABLE IF NOT EXISTS tool_counters (
 CREATE INDEX IF NOT EXISTS tool_counters_run_id ON tool_counters (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS tool_counters_usage_id ON tool_counters (namespace, usage_id, ordinal);
-
-CREATE TABLE IF NOT EXISTS tool_evidence (
-  namespace TEXT NOT NULL,
-  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
-  present_fields BIT VARYING NOT NULL,
-  evidence_revision TEXT NOT NULL,
-  event_count BIGINT NOT NULL,
-  id TEXT NOT NULL CHECK (id <> ''),
-  observed_at TIMESTAMPTZ NOT NULL,
-  payload_ref TEXT NOT NULL,
-  payload_hash TEXT NOT NULL,
-  run_id TEXT NOT NULL,
-  run_at TIMESTAMPTZ NOT NULL,
-
-  PRIMARY KEY (namespace, id, run_at),
-  UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 7),
-  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (run_id IS NOT NULL AND run_id <> ''),
-  FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED
-) PARTITION BY RANGE (run_at);
-
-CREATE INDEX IF NOT EXISTS tool_evidence_run_id ON tool_evidence (namespace, run_id, ordinal);
 
 CREATE TABLE IF NOT EXISTS transactions (
   namespace TEXT NOT NULL,

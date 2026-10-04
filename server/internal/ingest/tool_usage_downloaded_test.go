@@ -126,7 +126,7 @@ func TestDownloadedToolAggregatePrecisionAndFootprint(t *testing.T) {
 	rows, err := db.QueryContext(ctx, `
 		WITH roots AS (
 			SELECT c.oid,c.relname,c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-			WHERE n.nspname=current_schema() AND c.relname IN ('tools','tool_identities','tool_counters','tool_evidence')
+			WHERE n.nspname=current_schema() AND c.relname IN ('tools','tool_identities','tool_counters')
 		), relations AS (
 			SELECT relname,oid AS relid FROM roots WHERE relkind <> 'p'
 			UNION ALL
@@ -159,7 +159,7 @@ func TestDownloadedToolAggregatePrecisionAndFootprint(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if len(footprint) != 4 {
+	if len(footprint) != 3 {
 		t.Fatalf("physical Tool footprint omitted a supporting table: %+v", footprint)
 	}
 	receipt := map[string]any{"ingestion": result, "totals": totals, "metrics": metrics,

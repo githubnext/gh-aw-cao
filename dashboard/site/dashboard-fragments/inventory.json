@@ -303,7 +303,7 @@
     {
       "id": "run-events",
       "title": "Events",
-      "description": "Retained events and UTC-day Tool observation counters for the selected run. Exact Tool sequences are available through the authenticated Tool evidence endpoint.",
+      "description": "Retained events and exact UTC-day Tool observation counters for the selected run. Original Tool events and exact sequences are not retained.",
       "data": {
         "source": "entity-events",
         "arguments": [

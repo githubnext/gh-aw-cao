@@ -22,8 +22,7 @@ import {
   NORMALIZED_JSONL_INGESTION_VERSION
 } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize, normalizeWithToolEvidence } from '../dashboard/site/src/data/normalize/index.js';
-import { TOOL_EVIDENCE_DIRECTORY } from './tool-evidence.mjs';
-import { compactToolEventCaches } from './tool-compaction.mjs';
+import { compactToolEventBuffers } from './tool-compaction.mjs';
 import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
@@ -1600,11 +1599,10 @@ export async function downloadDeployedDashboardData({
         .filter(([name, digest]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/.test(name)
           && validDigest(digest))
         .sort(([left], [right]) => left.localeCompare(right));
-      const toolEntries = Object.entries(hashes)
-        .filter(([name, digest]) => /^gh-aw-logs-tools\/[a-f0-9]{64}\.jsonl\.gz$/.test(name)
-          && validDigest(digest))
-        .sort(([left], [right]) => left.localeCompare(right));
-      const payloadEntries = [...runEntries, ...recordEntries, ...toolEntries];
+      if (Object.keys(hashes).some(name => name.startsWith('gh-aw-logs-tools/'))) {
+        throw new Error('Cold Tool event shards are not supported; download a fresh aggregate-only snapshot.');
+      }
+      const payloadEntries = [...runEntries, ...recordEntries];
       if (runEntries.length === 0) throw new Error('Activity shard manifest requires current normalized Run shards.');
       await mkdir(temporaryPayloads);
       for (const [name, expectedDigest] of payloadEntries) {
@@ -1814,13 +1812,12 @@ async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
 async function consolidatePhasePayloads(
   phase, cachePaths, outputDirectory, maxBytes, {
     runWorkflowIds = new Map(), runFacts = new Map(), runAttempts = new Map(), referencedAuditIds = new Set(),
-    toolEventPaths = [], toolEvidenceDirectory, toolCompaction
+    toolEventBuffers, toolCompaction
   } = {}
 ) {
   /** @type {Map<string, Map<string, Record<string, unknown>>>} */
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
   let sourceRecords = 0;
-  let toolEvidenceNames = [];
   for (const cachePath of cachePaths) {
     for await (const line of jsonlLines([cachePath])) {
       const entry = JSON.parse(line);
@@ -1847,8 +1844,8 @@ async function consolidatePhasePayloads(
   if (phase === 'runs') {
     runAttempts = new Map([...deduped.get('runs').values()].map(run => [String(run.id), run.attempt]));
   }
-  if (phase === 'runs' && toolEvidenceDirectory) {
-    toolCompaction = await compactToolEventCaches(toolEventPaths, runAttempts, toolEvidenceDirectory, maxBytes);
+  if (phase === 'runs' && toolEventBuffers) {
+    toolCompaction = await compactToolEventBuffers(toolEventBuffers, runAttempts);
     for (const [runId, revision] of toolCompaction.revisions) {
       const run = deduped.get('runs').get(runId);
       if (run) run.toolUsageRevision = revision;
@@ -1858,7 +1855,6 @@ async function consolidatePhasePayloads(
     for (const [collection, records] of Object.entries(toolCompaction.batch)) {
       deduped.set(collection, new Map(records.map(record => [String(record.id), record])));
     }
-    toolEvidenceNames = toolCompaction.names;
   }
   if (phase === 'records' && runWorkflowIds.size > 0) {
     const batch = Object.fromEntries(
@@ -1922,7 +1918,7 @@ async function consolidatePhasePayloads(
       phase, STRUCTURAL_CONSOLIDATION_BUCKET, [], outputDirectory, maxBytes
     ));
   }
-  return { names: written, toolCompaction, toolEvidenceNames, runWorkflowIds: consolidatedRunWorkflowIds, runFacts, runAttempts, referencedAuditIds };
+  return { names: written, toolCompaction, runWorkflowIds: consolidatedRunWorkflowIds, runFacts, runAttempts, referencedAuditIds };
 }
 
 async function hashActivityPayloads({
@@ -1973,7 +1969,7 @@ async function hashActivityPayloads({
       records: new Set()
     };
     const cachePaths = { runs: [], records: [] };
-    const toolEventPaths = [];
+    const toolEventInputs = [];
     const cacheDirectories = {
       runs: runsDirectory ? path.join(runsDirectory, PAYLOAD_CACHE_DIRECTORY) : null,
       records: recordsDirectory ? path.join(recordsDirectory, PAYLOAD_CACHE_DIRECTORY) : null
@@ -1981,8 +1977,6 @@ async function hashActivityPayloads({
     if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(cacheDirectories.runs, { recursive: true });
     if (recordsDirectory) await mkdir(cacheDirectories.records, { recursive: true });
-    const toolCacheDirectory = recordsDirectory ? path.join(cacheDirectories.records, 'tools') : null;
-    if (toolCacheDirectory) await mkdir(toolCacheDirectory, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       if ((await stat(shardPath)).size === 0) {
@@ -2003,8 +1997,6 @@ async function hashActivityPayloads({
         recordsDirectory ? ['records', path.join(cacheDirectories.records, phasedPayloadName)] : null
       ].filter(Boolean);
       const missing = [];
-      const toolCachePath = toolCacheDirectory ? path.join(toolCacheDirectory, phasedPayloadName) : null;
-      const toolCacheMissing = toolCachePath && !existsSync(toolCachePath);
       for (const output of outputPaths) {
         try {
           await stat(output[1]);
@@ -2013,17 +2005,12 @@ async function hashActivityPayloads({
           missing.push(output);
         }
       }
-      if (missing.length > 0 || toolCacheMissing) {
+      if (missing.length > 0) {
         const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), {
           workflowHints,
           payloadIdentity: rawHash
         });
-        const { batch, toolEvents } = normalizeWithToolEvidence(adapted.observations);
-        if (toolCachePath) {
-          const temporaryPath = `${toolCachePath}.${process.pid}.tmp`;
-          await writeFile(temporaryPath, JSON.stringify(toolEvents), { flag: 'wx' });
-          await rename(temporaryPath, toolCachePath);
-        }
+        const batch = normalize(adapted.observations);
         const metadata = {
           schemaVersion: CANONICAL_SCHEMA_VERSION,
           ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
@@ -2051,7 +2038,7 @@ async function hashActivityPayloads({
           await rename(temporaryPath, outputPath);
         }));
       }
-      if (toolCachePath) toolEventPaths.push(toolCachePath);
+      if (recordsDirectory) toolEventInputs.push({ shardPath, rawHash });
       for (const [phase, outputPath] of outputPaths) {
         if (!await payloadHasRecords(outputPath)) {
           await rm(outputPath, { force: true });
@@ -2071,8 +2058,16 @@ async function hashActivityPayloads({
     let runFacts = new Map();
     let runAttempts = new Map();
     let referencedAuditIds = new Set();
-    let toolEvidenceNames = [];
     let toolCompaction;
+    const toolEventBuffers = recordsDirectory ? (async function* () {
+      for (const { shardPath, rawHash } of toolEventInputs) {
+        const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), {
+          workflowHints, payloadIdentity: rawHash
+        });
+        const { toolEvents } = normalizeWithToolEvidence(adapted.observations);
+        yield Buffer.from(JSON.stringify(toolEvents));
+      }
+    })() : undefined;
     for (const [phase, directory] of [
       ['runs', runsDirectory],
       ['records', recordsDirectory]
@@ -2082,8 +2077,7 @@ async function hashActivityPayloads({
         cachePaths[phase],
         directory,
         maxBytes,
-        { runWorkflowIds, runFacts, runAttempts, referencedAuditIds, toolEventPaths, toolCompaction,
-          toolEvidenceDirectory: recordsDirectory ? path.join(path.dirname(recordsDirectory), TOOL_EVIDENCE_DIRECTORY) : undefined }
+        { runWorkflowIds, runFacts, runAttempts, referencedAuditIds, toolEventBuffers, toolCompaction }
       );
       if (phase === 'runs') {
         runWorkflowIds = consolidated.runWorkflowIds;
@@ -2092,7 +2086,6 @@ async function hashActivityPayloads({
         toolCompaction = consolidated.toolCompaction;
         referencedAuditIds = consolidated.referencedAuditIds;
       }
-      if (phase === 'records') toolEvidenceNames = consolidated.toolEvidenceNames;
       for (const name of consolidated.names) {
         retainedPayloads[phase].add(name);
         hashes[`${path.basename(directory)}/${name}`] = await hashFile(path.join(directory, name));
@@ -2104,14 +2097,6 @@ async function hashActivityPayloads({
       }
     }
     if (recordsDirectory) {
-      const evidenceDirectory = path.join(path.dirname(recordsDirectory), TOOL_EVIDENCE_DIRECTORY);
-      for (const name of toolEvidenceNames) {
-        hashes[`${TOOL_EVIDENCE_DIRECTORY}/${name}`] = await hashFile(path.join(evidenceDirectory, name));
-      }
-      const retainedToolCaches = new Set(toolEventPaths.map(file => path.basename(file)));
-      for (const name of await readdir(toolCacheDirectory)) {
-        if (name.endsWith('.jsonl') && !retainedToolCaches.has(name)) await rm(path.join(toolCacheDirectory, name));
-      }
     }
     for (const [phase, directory] of [
       ['normalized', normalizedDirectory],

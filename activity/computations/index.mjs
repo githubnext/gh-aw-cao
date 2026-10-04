@@ -4,7 +4,6 @@ import { queryDashboardSourceObservations } from '../../dashboard/site/src/data/
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { queryCollection, readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { createDebug } from '../debug.mjs';
-import { readToolEvidence } from '../read-tool-evidence.mjs';
 import { compileCampaignIntelligenceContracts } from './intelligence-contracts.mjs';
 import { computeIntelligencePortfolio } from './intelligence.mjs';
 import {
@@ -489,38 +488,23 @@ export async function queryRuntimeHealth(indexedDB, options = {}) {
   if (options.diagnose) {
     const selections = selectDiagnosticGroups(result);
     const diagnosticRunIds = [...new Set(selections.flatMap((selection) => selection.failureRunIds))];
-    const [audits, references, domains, issues] = diagnosticRunIds.length === 0
-      ? [[], [], [], []]
-      : await Promise.all(['audits', 'toolEvidence', 'domains', 'issues'].map((collection) => queryCollection(
+    const [audits, domains, issues] = diagnosticRunIds.length === 0
+      ? [[], [], []]
+      : await Promise.all(['audits', 'domains', 'issues'].map((collection) => queryCollection(
         indexedDB,
         collection,
         [{ op: 'filter', predicates: [{ field: 'runId', in: diagnosticRunIds }] }]
       )));
-    const tools = [];
-    const omittedByRun = new Map();
-    for (const runId of diagnosticRunIds) {
-      const owned = references.filter(reference => reference.runId === runId);
-      if (!owned.length) {
-        omittedByRun.set(runId, { unavailable: true });
-        continue;
-      }
-      const evidence = await readToolEvidence(owned, {
-        directory: options.evidenceDirectory, runId, limit: DIAGNOSTIC_RECORD_LIMIT, type: 'tool.error'
-      });
-      tools.push(...evidence.rows);
-      omittedByRun.set(runId, { omitted: evidence.omittedEvents });
-    }
     diagnostics = buildRuntimeHealthDiagnostics(result, {
       runs,
       audits,
-      tools,
+      tools: [],
       domains,
       issues
     });
     for (const failure of diagnostics.failures) {
-      const evidence = omittedByRun.get(failure.failedRuns[0]?.id);
-      failure.evidence.toolEvidenceAvailability = evidence?.unavailable ? 'unavailable' : 'available';
-      failure.omittedEvidence.toolErrors = evidence?.unavailable ? null : evidence?.omitted ?? 0;
+      failure.evidence.toolEvidenceAvailability = 'unavailable';
+      failure.omittedEvidence.toolErrors = null;
     }
   }
   const durationMilliseconds = performance.now() - startedAt;

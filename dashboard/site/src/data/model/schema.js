@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 28;
+export const CANONICAL_SCHEMA_VERSION = 29;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -14,7 +14,6 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'tool-event',
   'tool-identity',
   'tool-counter',
-  'tool-evidence',
   'skill',
   'friction',
   'audit',
@@ -42,7 +41,6 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'domains',
   'tools',
   'toolCounters',
-  'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -73,7 +71,6 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} tools
  * @property {Record<string, unknown>[]} [toolIdentities]
  * @property {Record<string, unknown>[]} [toolCounters]
- * @property {Record<string, unknown>[]} [toolEvidence]
  * @property {Record<string, unknown>[]} skills
  * @property {Record<string, unknown>[]} friction
  * @property {Record<string, unknown>[]} audits

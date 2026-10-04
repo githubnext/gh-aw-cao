@@ -39,7 +39,7 @@ const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 7;
 const GH_AW_JSONL_INGESTION_VERSION = 7;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 5;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 6;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -49,7 +49,7 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
-  'toolIdentities', 'toolCounters', 'toolEvidence',
+  'toolIdentities', 'toolCounters',
   'skills',
   'friction',
   'audits',
@@ -674,7 +674,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
           }
           const excluded = header.phase === 'runs'
-            ? ['domains', 'tools', 'toolIdentities', 'toolCounters', 'toolEvidence', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+            ? ['domains', 'tools', 'toolIdentities', 'toolCounters', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
               'graders', 'graderObservations', 'evals', 'evalObservations']
             : header.phase === 'records'
             ? ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']

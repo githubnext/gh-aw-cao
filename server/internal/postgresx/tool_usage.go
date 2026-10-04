@@ -8,7 +8,7 @@ import (
 )
 
 func validateToolProjection(source string, row model.Row) error {
-	if source != "$tools" && source != "$toolCounters" && source != "$toolEvidence" {
+	if source != "$tools" && source != "$toolCounters" {
 		return nil
 	}
 	strings := []string{"runId", "evidenceRevision"}
@@ -22,8 +22,6 @@ func validateToolProjection(source string, row model.Row) error {
 	case "$toolCounters":
 		strings = append(strings, "usageId")
 		numbers = append(numbers, "requestBytes", "requestBytesCount", "responseBytes", "responseBytesCount")
-	default:
-		strings = append(strings, "payloadRef", "payloadHash")
 	}
 	for _, field := range strings {
 		if value, ok := row[field].(string); !ok || value == "" {

@@ -11,6 +11,7 @@ import {
   relationshipSafeEvidenceBatch
 } from '../../activity/normalized-phase.mjs';
 import { NORMALIZED_COLLECTIONS } from '../../activity/cli-usage.mjs';
+import { syntheticGhAwLogs } from '../helpers/synthetic-gh-aw-logs.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -52,8 +53,7 @@ async function readNormalizedJsonl(filePath) {
   const lines = (await readFile(filePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   const [metadata, ...records] = lines;
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
-      'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations']
+    NORMALIZED_COLLECTIONS
       .map((collection) => [collection, []])
   );
   for (const envelope of records) batch[envelope.collection].push(envelope.record);
@@ -72,8 +72,7 @@ async function readPhasePayload(directory) {
   const names = await readShardNames(directory);
   const payloads = await Promise.all(names.map((name) => readNormalizedJsonl(path.join(directory, name))));
   const batch = Object.fromEntries(
-    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
-      'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations']
+    NORMALIZED_COLLECTIONS
       .map((collection) => [collection, []])
   );
   for (const payload of payloads) {
@@ -90,6 +89,38 @@ async function fixture() {
   await cp(sourceShard, path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'));
   return { root, shardDirectory, databasePath: path.join(root, 'gh-aw-logs.sqlite') };
 }
+
+test('publication buffers Tool events and retains only replay-stable aggregates', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-tool-buffers-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const shardDirectory = path.join(root, 'gh-aw-logs-shards');
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+  await mkdir(shardDirectory);
+  const content = syntheticGhAwLogs({ runs: 2, toolCallsPerRun: 3 });
+  await writeFile(path.join(shardDirectory, 'first.jsonl'), content);
+  await writeFile(path.join(shardDirectory, 'duplicate.jsonl'), content);
+  const publish = async () => {
+    const { stdout } = await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'hash-payloads',
+      '--shard-dir', shardDirectory, '--runs-dir', runsDirectory, '--records-dir', recordsDirectory
+    ]);
+    return JSON.parse(stdout);
+  };
+  const first = await publish();
+  const { batch } = await readPhasePayload(recordsDirectory);
+  assert.equal(batch.tools.length, 2);
+  assert.equal(batch.toolIdentities.length, 1);
+  assert.equal(batch.toolCounters.length, 4);
+  assert.equal(batch.tools.reduce((total, row) => total + row.callCount, 0), 6);
+  assert.equal(batch.tools.reduce((total, row) => total + row.eventCount, 0), 12);
+  assert.equal(batch.tools.reduce((total, row) => total + row.requestBytes, 0), 252);
+  assert.deepEqual(await publish(), first);
+  assert.deepEqual((await readPhasePayload(recordsDirectory)).batch, batch);
+  assert.equal(Object.keys(first.hashes ?? first).some(name => name.startsWith('gh-aw-logs-tools/')), false);
+  await assert.rejects(stat(path.join(root, 'gh-aw-logs-tools')), { code: 'ENOENT' });
+  await assert.rejects(stat(path.join(recordsDirectory, '.payloads', 'tools')), { code: 'ENOENT' });
+});
 
 async function ingest(shardDirectory, databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
@@ -722,13 +753,7 @@ test('hash-payloads drops empty source payloads and publishes one header-only sh
     assert.deepEqual(lines.map(({ kind, phase: linePhase, records }) => [kind, linePhase, records]), [['metadata', phase, 0]]);
     assert.deepEqual(Object.keys(hashes).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`)), [`gh-aw-logs-${phase}/${names[0]}`]);
     const caches = await readdir(path.join(directory, '.payloads'));
-    assert.deepEqual(caches, phase === 'records' ? ['tools'] : []);
-    if (phase === 'records') {
-      const toolCaches = path.join(directory, '.payloads', 'tools');
-      for (const name of await readdir(toolCaches)) {
-        assert.deepEqual(JSON.parse(await readFile(path.join(toolCaches, name), 'utf8')), []);
-      }
-    }
+    assert.deepEqual(caches, []);
   }
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
   await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });

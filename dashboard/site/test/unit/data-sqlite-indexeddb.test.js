@@ -421,7 +421,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(normalizedMetadata).toMatchObject({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 5,
+      ingestionVersion: 6,
       sourceRecords: 3,
       phase: 'all',
       records: normalizedRecords.length

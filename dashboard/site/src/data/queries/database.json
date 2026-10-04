@@ -845,34 +845,6 @@
     ]
   },
   {
-    "name": "tool-evidence",
-    "stores": [
-      "toolEvidence",
-      "runs"
-    ],
-    "from": "$toolEvidence",
-    "joins": [
-      {
-        "source": "$runs",
-        "type": "inner",
-        "on": [
-          { "left": "runId", "right": "id" },
-          { "left": "evidenceRevision", "right": "toolUsageRevision" }
-        ],
-        "fields": []
-      }
-    ],
-    "select": [
-      { "field": "evidenceRevision", "as": "evidence-revision" },
-      { "field": "id" },
-      { "field": "runId", "as": "run-id" },
-      { "field": "eventCount", "as": "event-count" },
-      { "field": "payloadRef", "as": "payload-ref" },
-      { "field": "payloadHash", "as": "payload-hash" },
-      { "field": "observedAt", "as": "observed-at" }
-    ]
-  },
-  {
     "name": "run-records",
     "stores": [
       "runs"

@@ -14,7 +14,7 @@ import {
 
 const debug = createDebug('data:indexeddb');
 
-export const DATABASE_NAME = 'gh-aw-cao-dashboard-data-v28';
+export const DATABASE_NAME = 'gh-aw-cao-dashboard-data-v29';
 export const DATABASE_VERSION = 1;
 
 export const CANONICAL_QUERY_INDEX_FIELDS = /** @type {Record<string, string[]>} */ ({
@@ -34,7 +34,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
-  'toolIdentities', 'toolCounters', 'toolEvidence',
+  'toolIdentities', 'toolCounters',
   'skills',
   'friction',
   'audits',
@@ -85,7 +85,6 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  },
  toolIdentities: { keyPath: 'id', indexes: {} },
  toolCounters: { keyPath: 'id', indexes: { byRun: 'runId', byRunType: ['runId', 'type'], byUsage: 'usageId' } },
- toolEvidence: { keyPath: 'id', indexes: { byRun: 'runId' } },
  skills: {
    keyPath: 'id',
    indexes: { byRun: 'runId' }
@@ -148,7 +147,7 @@ const RETENTION_TIMESTAMPS = new Set([
   'runs',
   'domains',
   'tools',
-  'toolCounters', 'toolEvidence',
+  'toolCounters',
   'skills',
   'friction',
   'audits',
@@ -159,7 +158,7 @@ const RETENTION_TIMESTAMPS = new Set([
 const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
   'tools',
-  'toolCounters', 'toolEvidence',
+  'toolCounters',
   'skills',
   'friction',
   'audits',

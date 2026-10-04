@@ -136,7 +136,7 @@ describe('first-pass canonical Audit curation', () => {
     const incoming = batch();
     await upsertCanonicalBatch(indexedDB, { ...incoming, audits: [] });
     const envelopes = [
-      { kind: 'metadata', schemaVersion: 28, ingestionVersion: 5, phase: 'records', records: incoming.audits.length },
+      { kind: 'metadata', schemaVersion: 29, ingestionVersion: 6, phase: 'records', records: incoming.audits.length },
       ...incoming.audits.map((record) => ({ kind: 'record', collection: 'audits', record }))
     ];
     const payload = envelopes.map((envelope) => JSON.stringify(envelope)).join('\n');

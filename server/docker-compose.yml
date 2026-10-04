@@ -21,7 +21,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres-data-v28:/var/lib/postgresql/data
+      - postgres-data-v29:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cao_dashboard -d cao_dashboard"]
       interval: 2s
@@ -31,4 +31,4 @@ services:
 
 volumes:
   redis-data:
-  postgres-data-v28:
+  postgres-data-v29:

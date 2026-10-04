@@ -88,16 +88,15 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
             ${{ runner.temp }}/cao-activity/gh-aw-logs-records
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-tools
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
-          key: cao-activity-v6-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cao-activity-v7-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cao-activity-v6-
+            cao-activity-v7-
 
       - name: Resolve fallback activity run
         id: activity-artifact-run
@@ -267,7 +266,6 @@ jobs:
             const payloadHashes = Object.fromEntries(Object.entries(sourceManifest).filter(([name]) =>
               name === 'gh-aw-logs.sqlite'
               || /^gh-aw-logs-(?:runs|records)\/[^/]+\.jsonl$/.test(name)
-              || /^gh-aw-logs-tools\/[a-f0-9]{64}\.jsonl\.gz$/.test(name),
             ))
             payloadHashes['gh-aw-logs.sqlite'] = crypto
               .createHash('sha256')
@@ -289,7 +287,7 @@ jobs:
             core.info('Copied campaign repository memory')
             // Copy only manifest-listed shards so the incremental normalization
             // cache under gh-aw-logs-*/.payloads/ is never published.
-            for (const directory of ['gh-aw-logs-runs', 'gh-aw-logs-records', 'gh-aw-logs-tools']) {
+            for (const directory of ['gh-aw-logs-runs', 'gh-aw-logs-records']) {
               fs.mkdirSync(path.join(process.env.REPORT_OUTPUT, directory), { recursive: true })
             }
             let publishedShardBytes = 0

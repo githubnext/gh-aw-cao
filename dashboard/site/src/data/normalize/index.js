@@ -18,7 +18,6 @@ const COLLECTIONS = {
   'tool-event': 'tools',
   'tool-identity': 'toolIdentities',
   'tool-counter': 'toolCounters',
-  'tool-evidence': 'toolEvidence',
   skill: 'skills',
   friction: 'friction',
   audit: 'audits',
@@ -99,7 +98,6 @@ function identityFor(observation) {
     case 'tool':
     case 'tool-identity':
     case 'tool-counter':
-    case 'tool-evidence':
     case 'skill':
     case 'friction':
     case 'audit':
@@ -181,7 +179,6 @@ export function normalizeWithToolEvidence(observations, options = {}) {
     tools: new Map(),
     toolIdentities: new Map(),
     toolCounters: new Map(),
-    toolEvidence: new Map(),
     skills: new Map(),
     friction: new Map(),
     audits: new Map(),

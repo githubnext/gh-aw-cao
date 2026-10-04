@@ -546,8 +546,6 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			WHERE c.namespace=$1 AND (c.run_id<>t.run_id OR c.evidence_revision<>t.evidence_revision) LIMIT 1`,
 		`SELECT 1 FROM tools t JOIN runs r ON r.namespace=t.namespace AND r.id=t.run_id AND r.run_at=t.run_at
 			WHERE t.namespace=$1 AND t.evidence_revision IS DISTINCT FROM r.tool_usage_revision LIMIT 1`,
-		`SELECT 1 FROM tool_evidence t JOIN runs r ON r.namespace=t.namespace AND r.id=t.run_id AND r.run_at=t.run_at
-			WHERE t.namespace=$1 AND t.evidence_revision IS DISTINCT FROM r.tool_usage_revision LIMIT 1`,
 	} {
 		var invalid int
 		if err := w.tx.QueryRow(ctx, check, w.store.namespace).Scan(&invalid); err == nil {

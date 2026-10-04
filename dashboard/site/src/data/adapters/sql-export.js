@@ -5,7 +5,7 @@ import { createDebug } from '../../debug.js';
 const debugSqlExport = createDebug('data:adapters:sql-export');
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
-export const SQL_EXPORT_VERSION = 4;
+export const SQL_EXPORT_VERSION = 5;
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -257,8 +257,7 @@ export function adaptSqlExport(input) {
           if (Object.hasOwn(row, key)) data[field] = row[key] === null ? null : requiredString(row[key], key);
         }
         break;
-      case 'tool-counter':
-      case 'tool-evidence': {
+      case 'tool-counter': {
         const coordinates = coordinatesFor(row, index, kind);
         data = {
           id: sourceId(kind, source, sourceRecordId),
@@ -266,20 +265,15 @@ export function adaptSqlExport(input) {
           runId: runId(coordinates.owner, coordinates.repository, identifier(row.github_run_id, 'github_run_id')),
           eventCount: optionalNumber(row.event_count, 'event_count')
         };
-        if (kind === 'tool-counter') {
-          data.usageId = sourceId('tool', source, requiredString(row.tool_usage_source_id, 'tool_usage_source_id'));
-          data.timestamp = canonicalTimestamp(row.first_timestamp, 'first_timestamp');
-          data.lastTimestamp = canonicalTimestamp(row.last_timestamp, 'last_timestamp');
-          for (const field of ['type', 'status']) {
-            if (Object.hasOwn(row, field)) data[field] = row[field] === null ? null : requiredString(row[field], field);
-          }
-          for (const field of ['requestBytes', 'requestBytesCount', 'responseBytes', 'responseBytesCount']) {
-            const key = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-            data[field] = optionalNumber(row[key], key);
-          }
-        } else {
-          data.payloadRef = requiredString(row.payload_ref, 'payload_ref');
-          data.payloadHash = requiredString(row.payload_hash, 'payload_hash');
+        data.usageId = sourceId('tool', source, requiredString(row.tool_usage_source_id, 'tool_usage_source_id'));
+        data.timestamp = canonicalTimestamp(row.first_timestamp, 'first_timestamp');
+        data.lastTimestamp = canonicalTimestamp(row.last_timestamp, 'last_timestamp');
+        for (const field of ['type', 'status']) {
+          if (Object.hasOwn(row, field)) data[field] = row[field] === null ? null : requiredString(row[field], field);
+        }
+        for (const field of ['requestBytes', 'requestBytesCount', 'responseBytes', 'responseBytesCount']) {
+          const key = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          data[field] = optionalNumber(row[key], key);
         }
         break;
       }

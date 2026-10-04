@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const databaseName = 'gh-aw-cao-dashboard-data-v28';
+const databaseName = 'gh-aw-cao-dashboard-data-v29';
 
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/**', async (route) => {

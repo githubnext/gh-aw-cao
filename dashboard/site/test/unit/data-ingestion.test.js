@@ -22,7 +22,7 @@ import {
 import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v4.json'), 'utf8'));
+const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v5.json'), 'utf8'));
 const sources = {
   repositories: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],
@@ -85,7 +85,7 @@ describe('database table ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         sourceRecords: 1,
         phase: 'runs',
         records: 1
@@ -141,7 +141,7 @@ describe('database table ingestion and queries', () => {
     ]);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v5`,
+        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v6`,
         kind: 'ingest-normalized-jsonl',
         payloadHash: options.payloadIdentity
       })
@@ -161,7 +161,7 @@ describe('database table ingestion and queries', () => {
       yield JSON.stringify({
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         phase: 'runs',
         records: 0
       });
@@ -173,7 +173,7 @@ describe('database table ingestion and queries', () => {
     })).resolves.toMatchObject({ updated: true });
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v5`,
+        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v6`,
         kind: 'ingest-normalized-jsonl'
       })
     ]));
@@ -258,7 +258,7 @@ describe('database table ingestion and queries', () => {
     const shard = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof records} */ entries) =>
       async function* () {
         yield [
-          { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: 5,
+          { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: 6,
             phase, records: entries.length },
           ...entries.map(({ collection, record }) => ({ kind: 'record', collection, record }))
         ].map((line) => JSON.stringify(line)).join('\n');
@@ -293,7 +293,7 @@ describe('database table ingestion and queries', () => {
         {
           kind: 'metadata',
           schemaVersion: CANONICAL_SCHEMA_VERSION,
-          ingestionVersion: 5,
+          ingestionVersion: 6,
           sourceRecords: runs.length,
           phase: 'runs',
           records: runs.length
@@ -352,7 +352,7 @@ describe('database table ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         sourceRecords: records.length,
         phase: 'all',
         records: records.length
@@ -399,7 +399,7 @@ describe('database table ingestion and queries', () => {
         {
           kind: 'metadata',
           schemaVersion: CANONICAL_SCHEMA_VERSION,
-          ingestionVersion: 5,
+          ingestionVersion: 6,
           sourceRecords: records.length,
           phase: 'all',
           records: records.length
@@ -438,7 +438,7 @@ describe('database table ingestion and queries', () => {
     const metadata = {
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 5,
+      ingestionVersion: 6,
       sourceRecords: 251,
       phase: 'all',
       records: 251

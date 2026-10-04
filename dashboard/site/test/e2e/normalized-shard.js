@@ -18,7 +18,7 @@ export function normalizedActivityShards(jsonl) {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         sourceRecords,
         phase,
         records: records.length
@@ -28,7 +28,7 @@ export function normalizedActivityShards(jsonl) {
   };
   return {
     runs: encode('runs', ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']),
-    records: encode('records', ['domains', 'tools', 'toolIdentities', 'toolCounters', 'toolEvidence', 'skills', 'friction', 'audits', 'issues',
+    records: encode('records', ['domains', 'tools', 'toolIdentities', 'toolCounters', 'skills', 'friction', 'audits', 'issues',
       'operationalValues', 'graders', 'graderObservations', 'evals', 'evalObservations'])
   };
 }

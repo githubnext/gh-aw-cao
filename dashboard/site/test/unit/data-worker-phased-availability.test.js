@@ -52,7 +52,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         sourceRecords: 1,
         phase,
         records: records.length
@@ -83,7 +83,6 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
         ? new Response(null, { headers: { 'content-length': '1' } })
         : new Response(normalized('runs', {
             ...batch, domains: [], tools: [], skills: [], friction: [], audits: [], issues: [], operationalValues: [],
-            marketplacePackages: [], toolIdentities: [], toolCounters: [], toolEvidence: []
           }));
     }
     if (init?.method !== 'HEAD') downloadedShards.push(url);
@@ -94,7 +93,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       : new Response(normalized('records', {
           campaigns: [], repositories: [], workflows: [], runs: [],
           domains: batch.domains, tools: batch.tools, skills: batch.skills, friction: batch.friction,
-          toolIdentities: batch.toolIdentities ?? [], toolCounters: batch.toolCounters ?? [], toolEvidence: batch.toolEvidence ?? [],
+          toolIdentities: batch.toolIdentities ?? [], toolCounters: batch.toolCounters ?? [],
           audits: batch.audits, issues: batch.issues,
           operationalValues: batch.operationalValues,
           marketplacePackages: batch.marketplacePackages

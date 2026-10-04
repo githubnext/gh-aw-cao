@@ -1,6 +1,6 @@
 {
   "contract": "gh-aw-cao.dashboard-sql-export",
-  "schema_version": 4,
+  "schema_version": 5,
   "source": "enterprise-warehouse",
   "generation": "warehouse-2026-09-09-05",
   "exported_at": "2026-09-09T05:00:00Z",

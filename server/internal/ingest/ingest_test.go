@@ -51,7 +51,7 @@ func TestValidateManifestVerifiesHashesAndRunShard(t *testing.T) {
 	}
 }
 func TestValidateManifestFailsClosed(t *testing.T) {
-	for _, name := range []string{"../escape", "/absolute", "gh-aw-logs-shards/raw.jsonl", "inventory-sources.json"} {
+	for _, name := range []string{"../escape", "/absolute", "gh-aw-logs-shards/raw.jsonl", "inventory-sources.json", "gh-aw-logs-tools/" + strings.Repeat("a", 64) + ".jsonl.gz"} {
 		directory := scratchDirectory(t)
 		content, _ := json.Marshal(Manifest{name: strings.Repeat("a", 64)})
 		writeTestFile(t, filepath.Join(directory, "payload-hashes.json"), content)

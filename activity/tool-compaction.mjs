@@ -1,25 +1,22 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import path from 'node:path';
 import { aggregateToolEvents, toolMeasureId } from '../dashboard/site/src/data/model/tool-usage.js';
-import { writeToolEvidence } from './tool-evidence.mjs';
 
 const MAX_RUN_EVENTS = 200000;
 
-/** Deduplicate raw evidence on disposable disk, keeping at most one Run's events in memory. */
-export async function compactToolEventCaches(paths, attempts, outputDirectory, maxBytes) {
-  const temporary = await mkdtemp(path.join(path.dirname(outputDirectory), '.tool-compaction-'));
-  const filename = path.join(temporary, 'events.sqlite');
-  const database = new DatabaseSync(filename);
+/** Consume buffered inputs in memory, materializing at most one Run for aggregation. */
+export async function compactToolEventBuffers(buffers, attempts) {
+  const database = new DatabaseSync(':memory:');
   try {
-    database.exec(`CREATE TABLE events (
+    database.exec(`PRAGMA temp_store=MEMORY;
+    CREATE TABLE events (
       id TEXT PRIMARY KEY, run_id TEXT NOT NULL, attempt INTEGER NOT NULL,
       timestamp TEXT NOT NULL, value TEXT NOT NULL
     ); CREATE INDEX by_run ON events(run_id,timestamp,id);`);
     const put = database.prepare('INSERT OR REPLACE INTO events VALUES(?,?,?,?,?)');
-    for (const file of paths) {
-      const events = JSON.parse(await readFile(file, 'utf8'));
-      if (!Array.isArray(events)) throw new TypeError('Tool event cache must contain an event array');
+    for await (const buffer of buffers) {
+      if (!Buffer.isBuffer(buffer)) throw new TypeError('Tool compaction inputs must be buffers');
+      const events = JSON.parse(buffer.toString('utf8'));
+      if (!Array.isArray(events)) throw new TypeError('Tool event buffer must contain an event array');
       database.exec('BEGIN');
       try {
         for (const event of events) {
@@ -50,19 +47,11 @@ export async function compactToolEventCaches(paths, attempts, outputDirectory, m
       counters.push(...aggregated.toolCounters);
       revisions.set(runId, aggregated.tools[0]?.evidenceRevision ?? toolMeasureId('tool-evidence-revision', []));
     }
-    const stream = async function* () {
-      for (const row of database.prepare('SELECT value FROM events ORDER BY run_id,timestamp,id').iterate()) {
-        yield JSON.parse(row.value);
-      }
-    };
-    const evidence = await writeToolEvidence(stream(), outputDirectory, maxBytes);
-    for (const reference of evidence.references) reference.evidenceRevision = revisions.get(reference.runId);
     return {
-      batch: { tools, toolIdentities: [...identities.values()], toolCounters: counters, toolEvidence: evidence.references },
-      revisions, names: evidence.names
+      batch: { tools, toolIdentities: [...identities.values()], toolCounters: counters },
+      revisions
     };
   } finally {
     database.close();
-    await rm(temporary, { recursive: true });
   }
 }

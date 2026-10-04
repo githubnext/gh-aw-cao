@@ -28,7 +28,7 @@ const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
 const RUN_RECORD_STORES = new Set(['domains', 'skills', 'friction', 'audits', 'issues']);
-const TOOL_AGGREGATE_SOURCES = new Set(['tools', 'mcp-calls', 'tool-observations', 'tool-counters', 'tool-evidence']);
+const TOOL_AGGREGATE_SOURCES = new Set(['tools', 'mcp-calls', 'tool-observations', 'tool-counters']);
 const DIRECT_EVIDENCE_SOURCES = new Set([
   'experiments', 'experiment-assignments', 'graders',
   'grader-observations', 'evals', 'eval-observations'
@@ -38,7 +38,7 @@ const DATABASE_TABLE_SOURCES = new Set([
   'repositories',
   'workflows',
   'runs',
-  'tools', 'tool-identities', 'tool-counters', 'tool-evidence', 'tool-observations',
+  'tools', 'tool-identities', 'tool-counters', 'tool-observations',
   ...RUN_RECORD_STORES,
   'operational-values',
   'marketplace-packages',

@@ -129,7 +129,7 @@ ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
       for (const [field] of parents.get(table.collection) ?? []) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_${snake(field)} ON ${table.name} (namespace, ${snake(field)}, ordinal);`);
       }
-      if (table.partitioned && !['tools', 'toolCounters', 'toolEvidence'].includes(table.collection)) {
+      if (table.partitioned && !['tools', 'toolCounters'].includes(table.collection)) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
       }
     }

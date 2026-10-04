@@ -48,7 +48,7 @@ function inputFields(definition) {
 test('TypeSpec declares exactly one root table per canonical dashboard collection', () => {
   assert.deepEqual([...tables.keys()].sort(), [
     '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues',
-    '$marketplacePackages', '$toolIdentities', '$tools', '$toolCounters', '$toolEvidence', '$experiments', '$experimentAssignments',
+    '$marketplacePackages', '$toolIdentities', '$tools', '$toolCounters', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations'
   ].sort());
 });

@@ -47,13 +47,14 @@ source. `toolIdentities` shares repeated identities within a namespace.
 outcomes are not confirmed failures, and sizes are counted at call grain only.
 All facts reference the owning Run's current `toolUsageRevision`.
 
-`tools`, `tool_counters`, and `tool_evidence` use weekly `run_at` range
+`tools` and `tool_counters` use weekly `run_at` range
 partitions, with partition-aware foreign keys and child-first expiry.
-`tool_evidence` stores small locators to bounded compressed event shards, not
-event bodies. `/api/runs/{id}/tool-events` provides authenticated, checksum-
-verified exact drilldown and reports unavailable evidence explicitly.
+Original Tool events are discarded after aggregation. There is no cold archive,
+locator table or exact-event endpoint. Intraday sequence, original correlation
+and percentile analysis are unavailable; diagnostics report exact Tool detail
+as unavailable rather than inventing an empty history.
 
-Canonical model 28, Go model 17, SQL export 4, and the new browser namespace
+Canonical model 29, Go model 18, SQL export 5, and the new browser namespace
 are breaking contracts. Use fresh databases; old layouts and normalized
 payloads are rejected. There are no upgrades, migrations, event-grain
 compatibility sources, or retained hot event copies. See the normative Tool

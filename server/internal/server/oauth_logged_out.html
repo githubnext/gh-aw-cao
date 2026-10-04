@@ -74,7 +74,7 @@ h1 { margin: 0; font-size: clamp(20px, 4vw, 24px); font-weight: 600; line-height
 </main><script>const status = document.getElementById('cleanup-status');
 const signIn = document.getElementById('sign-in');
 try {
-  const request = indexedDB.deleteDatabase('gh-aw-cao-dashboard-data-v28');
+  const request = indexedDB.deleteDatabase('gh-aw-cao-dashboard-data-v29');
   request.onsuccess = () => {
     status.textContent = 'Dashboard data cleared from this browser.';
     signIn.hidden = false;

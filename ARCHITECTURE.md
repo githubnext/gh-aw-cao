@@ -153,14 +153,14 @@ GitHub or mutates either store, and requires deep mode to read every source.
 
 Tool storage uses one observed identity dictionary and one usage fact per
 Run/tool/source, with exact native categorical counters by UTC event day.
-Run-owned usage, counters, and cold-evidence locators use the same weekly
+Run-owned usage and counters use the same weekly
 `run_at` partitions and child-first retention as Runs. A Run evidence revision
 excludes superseded Tool observations during refresh. Original Tool events
-remain in manifested, checksum-addressed compressed shards outside hot
-Postgres, SQLite, and browser storage; authenticated bounded server reads
-provide exact drilldown. Incomplete outcomes are not failures, size measurements
+are discarded after aggregation; no cold archives, evidence-locator table or
+exact-event API is retained. Intraday sequences and percentiles are unavailable.
+Incomplete outcomes are not failures, size measurements
 are counted once at call grain, and absent latency is not fabricated.
-Canonical model 28 uses a new browser namespace and rejects older normalized
+Canonical model 29 uses a new browser namespace and rejects older normalized
 payloads and databases. Existing databases are never upgraded or migrated.
 
 Server construction independently resolves an app server target module and a

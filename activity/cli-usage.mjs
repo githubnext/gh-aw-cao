@@ -13,7 +13,6 @@ export const ENTITY_COLLECTIONS = [
   'tools',
   'toolIdentities',
   'toolCounters',
-  'toolEvidence',
   'skills',
   'friction',
   'audits',

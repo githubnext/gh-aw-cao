@@ -8,7 +8,6 @@
     { "name": "$tools", "sources": ["tools"] },
     { "name": "$tool-identities", "sources": ["tool-identities"] },
     { "name": "$tool-counters", "sources": ["tool-counters"] },
-    { "name": "$tool-evidence", "sources": ["tool-evidence"] },
     { "name": "$skills", "sources": ["skills"] },
     { "name": "$friction", "sources": ["friction"] },
     { "name": "$audits", "sources": ["audits"] },
@@ -148,11 +147,6 @@
     {
       "name": "tool-counter-records",
       "from": "$tool-counters",
-      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
-    },
-    {
-      "name": "tool-evidence-records",
-      "from": "$tool-evidence",
       "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
     },
     {
@@ -372,14 +366,6 @@
         "eventCount": { "field": "event-count", "nonnegativeInteger": true },
         "requestBytes": { "field": "request-bytes", "nonnegativeInteger": true }, "requestBytesCount": { "field": "request-bytes-count", "nonnegativeInteger": true },
         "responseBytes": { "field": "response-bytes", "nonnegativeInteger": true }, "responseBytesCount": { "field": "response-bytes-count", "nonnegativeInteger": true }
-      }
-    },
-    {
-      "query": "tool-evidence-records", "input": "$tool-evidence", "kind": "tool-evidence", "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "payload-ref", "payload-hash"],
-      "data": {
-        "id": { "field": "id" }, "runId": { "field": "run-id" }, "payloadRef": { "field": "payload-ref" }, "payloadHash": { "field": "payload-hash" },
-        "evidenceRevision": { "field": "evidence-revision" },
-        "eventCount": { "field": "event-count", "nonnegativeInteger": true }
       }
     },
     {

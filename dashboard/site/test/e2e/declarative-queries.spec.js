@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const databaseName = 'gh-aw-cao-dashboard-data-v28';
+const databaseName = 'gh-aw-cao-dashboard-data-v29';
 const generation = 'query-scenarios';
 const asOf = '2026-09-09T05:00:00Z';
 

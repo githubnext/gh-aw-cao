@@ -664,15 +664,6 @@ var entityTables = map[string]entityTable{
 		{field: "status", name: "status", kind: "", sql: "TEXT"},
 		{field: "type", name: "type", kind: "", sql: "TEXT"},
 	}},
-	"$toolEvidence": {name: "tool_evidence", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
-		{field: "evidenceRevision", name: "evidence_revision", kind: "", sql: "TEXT"},
-		{field: "eventCount", name: "event_count", kind: "numeric", sql: "BIGINT"},
-		{field: "id", name: "id", kind: "", sql: "TEXT"},
-		{field: "observedAt", name: "observed_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
-		{field: "payloadRef", name: "payload_ref", kind: "", sql: "TEXT"},
-		{field: "payloadHash", name: "payload_hash", kind: "", sql: "TEXT"},
-		{field: "runId", name: "run_id", kind: "", sql: "TEXT"},
-	}},
 	"$transactions": {name: "transactions", runtime: false, canonical: false, partitioned: false, columns: []entityColumn{
 		{field: "id", name: "id", kind: "", sql: "TEXT"},
 		{field: "kind", name: "kind", kind: "", sql: "TEXT"},

@@ -38,7 +38,6 @@ type Result struct {
 type Options struct {
 	DatabaseQueriesPath string
 	Force               bool
-	MaintainEvidence    bool
 }
 type Manifest map[string]string
 
@@ -76,10 +75,7 @@ func ValidateManifest(directory string) (Manifest, []string, []string, error) {
 			records = append(records, name)
 			shard = true
 		case strings.HasPrefix(name, "gh-aw-logs-tools/") && strings.HasSuffix(name, ".jsonl.gz"):
-			if name != "gh-aw-logs-tools/"+strings.ToLower(expected)+".jsonl.gz" {
-				return nil, nil, nil, errors.New("tool evidence manifest requires a content-addressed shard name")
-			}
-			shard = true
+			return nil, nil, nil, errors.New("cold Tool event shards are not supported; publish aggregate-only evidence")
 		case strings.HasPrefix(name, "gh-aw-logs-shards/"):
 			return nil, nil, nil, errors.New("raw activity JSONL is not supported; compacted run/record shards are required")
 		}
@@ -170,9 +166,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		if err != nil {
 			return Result{}, err
 		}
-		if options.MaintainEvidence {
-			reportToolEvidenceMaintenance(directory, manifest)
-		}
 		return stateResult(active), nil
 	}
 	writer, err := store.BeginIngestion(ctx)
@@ -186,9 +179,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		if err != nil {
 			return Result{}, err
 		}
-		if options.MaintainEvidence {
-			reportToolEvidenceMaintenance(directory, manifest)
-		}
 		return stateResult(active), nil
 	}
 	for _, source := range []string{"$security-findings", "$outcomes", "work-items"} {
@@ -197,7 +187,7 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		}
 	}
 	if len(records) == 0 {
-		for _, source := range []string{"$domains", "$tools", "$toolIdentities", "$toolCounters", "$toolEvidence", "$skills", "$friction", "$audits", "$issues", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
+		for _, source := range []string{"$domains", "$tools", "$toolIdentities", "$toolCounters", "$skills", "$friction", "$audits", "$issues", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
 			if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
 				return Result{}, err
 			}
@@ -226,9 +216,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		return Result{}, err
 	}
 	ingestLog.Printf("published native revision=%d collections=%d", active.Revision, len(active.Counts))
-	if options.MaintainEvidence {
-		reportToolEvidenceMaintenance(directory, manifest)
-	}
 	return stateResult(active), nil
 }
 

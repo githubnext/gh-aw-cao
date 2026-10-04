@@ -168,7 +168,7 @@ model domains {
   type?: string;
 }
 
-/** One observed tool/source usage fact per canonical Run. Exact events remain in manifested cold evidence. */
+/** One observed tool/source usage fact per canonical Run. Original events are not published or retained for drilldown. */
 @runPartition
 model tools {
   evidenceRevision: string;
@@ -233,19 +233,6 @@ model toolCounters {
   usageId: string;
   status?: string;
   type?: string;
-}
-
-/** Locators for bounded, checksum-addressed compressed Tool event shards, never hot event documents. */
-@runPartition
-model toolEvidence {
-  evidenceRevision: string;
-  eventCount: int64;
-  id: string;
-  observedAt: utcDateTime;
-  payloadRef: string;
-  payloadHash: string;
-  @parent("runs")
-  runId: string;
 }
 
 /** Separate skill activity; collection membership replaces the unused isSkill flag. */

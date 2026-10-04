@@ -12,7 +12,6 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-runs",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-records",
-  "${{ runner.temp }}/cao-activity/gh-aw-logs-tools",
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
