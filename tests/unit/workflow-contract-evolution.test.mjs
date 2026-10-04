@@ -92,6 +92,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ".github/workflows/cao-evolution-integrity.md",
     ".github/workflows/cao-evolution-reliability.md",
     ".github/workflows/cao-evolution.md",
+    "campaign-maturation.mjs",
   ]);
   assert.deepEqual(policy["control-plane"].campaigns["cao-evolution"], {
     icon: "gear",
@@ -99,7 +100,9 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     "max-repositories": 1,
     workers: Object.fromEntries(workers.map(([workerName, workflowName]) => [
       workerName,
-      { workflow: workflowName },
+      workerName === "campaign-maturation"
+        ? { workflow: workflowName, "max-mode": "review" }
+        : { workflow: workflowName },
     ])),
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
@@ -129,7 +132,9 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const maturation = workflow("cao-evolution-campaign-maturation.md");
   assert.match(maturation, /worker: campaign-maturation/);
   assert.match(maturation, /one evidence-backed improvement cycle for one campaign that is still in `review` mode/);
-  assert.match(maturation, /continue-observing.*improvement-ready.*validating.*ready-for-live-decision.*retire/s);
+  for (const decision of ["continue-observing", "improvement-ready", "validating", "ready-for-live-decision", "retire"]) {
+    assert.match(maturation, new RegExp(decision));
+  }
   assert.match(maturation, /only a separately reviewed `\.github\/workflows\/cao\.json` change may grant live authority/);
   assert.match(maturation, /Attach every child as a sub-issue of the parent/);
   assert.match(maturation, /require-temporary-id: true/);

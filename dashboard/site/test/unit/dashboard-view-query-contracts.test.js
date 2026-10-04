@@ -529,6 +529,15 @@ describe('dashboard view query contracts', () => {
     });
 
     expect(viewsOf(insights)[2]).toMatchObject({
+      id: 'campaign-maturation-status',
+      data: {
+        source: 'campaign-maturation-progress',
+        'route-field': 'campaign'
+      },
+      mark: 'table'
+    });
+
+    expect(viewsOf(insights)[3]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',

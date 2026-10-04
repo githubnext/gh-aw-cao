@@ -101,31 +101,31 @@ tools:
 safe-outputs:
   mentions: false
   allowed-github-references: []
-  max-bot-mentions: 0
   update-issue:
     target: "*"
-    target-repo: ${{ inputs.safe_output_repo || github.repository }}
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     body: true
     required-title-prefix: "[cao-evolution:campaign-maturation] "
     max: 6
   add-comment:
     target: "*"
-    target-repo: ${{ inputs.safe_output_repo || github.repository }}
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     required-labels: [cao-evolution, cao-evolution:campaign-maturation]
     required-title-prefix: "[cao-evolution:campaign-maturation] "
     pull-requests: false
     hide-older-comments: true
     max: 1
   create-issue:
-    target-repo: ${{ inputs.safe_output_repo || github.repository }}
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[cao-evolution:campaign-maturation] "
     labels: [cao-evolution, cao-evolution:campaign-maturation]
     deduplicate-by-title: true
     require-temporary-id: true
+    expires: 30d
     max: 6
   close-issue:
     target: "*"
-    target-repo: ${{ inputs.safe_output_repo || github.repository }}
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     required-title-prefix: "[cao-evolution:campaign-maturation] "
     state-reason: [completed, not_planned]
     max: 6
@@ -166,7 +166,7 @@ Use the contract's maturation window and a closed UTC evidence window ending at 
 
 ## Deterministic decision
 
-Apply these gates in order and record every gate result:
+Write the validated gate booleans to a temporary JSON file and pass it on standard input to `node cao-evolution/campaign-maturation.mjs`. If the installed deterministic evaluator is absent or rejects the snapshot, call `report_incomplete`; never reproduce its decision logic in the prompt or infer a decision. Use its decision and gate output unchanged. The evaluator applies these gates in order:
 
 1. `continue-observing`: required evidence is incomplete, the maturation period has not elapsed, a bounded observation is still active, or no material fingerprint change exists.
 2. `retire`: a declared stop condition is satisfied, evidence shows the campaign is not useful enough to continue, or an explicit human rejection applies to the current fingerprint.
@@ -189,6 +189,8 @@ Each child represents exactly one bounded code change, experiment, or human deci
 `<!-- cao-campaign-maturation-task:campaign=<campaign>;cycle=<parent-fingerprint>;key=<stable-key> -->`
 
 Attach every child as a sub-issue of the parent. Use temporary IDs when creating a parent and children together. A child must contain one owner, one acceptance check, exact scope, safety boundary, validation, and the parent cycle reference. Include an agent prompt only for one safely delegable implementation; never assign an agent from this workflow.
+
+Supply only these unprefixed canonical subjects to `create_issue`; the configured `title-prefix` is added automatically. Do not add a semantically equivalent category prefix.
 
 Search open prefixed issues in `SAFE_OUTPUT_REPO`, reuse exact cycle and task markers, and never create duplicate active work. Update bodies only when the fingerprint, decision, gates, task scope, or issue state materially changes. Create at most one new parent cycle and only the minimum children needed for the selected decision.
 

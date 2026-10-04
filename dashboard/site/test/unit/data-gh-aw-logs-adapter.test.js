@@ -273,6 +273,7 @@ describe('gh-aw logs adapter', () => {
           run_id: 303,
           type: 'create_issue',
           temporaryId: 'draft-issue',
+          body: '<!-- cao-campaign-maturation:campaign=dependabot;fingerprint=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;decision=validating;budget=within;blockers=2 -->',
           timestamp: '2026-09-09T04:00:52Z'
         }
       },
@@ -409,14 +410,6 @@ describe('gh-aw logs adapter', () => {
     ]);
     expect(batch.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        safeOutputType: 'create_issue',
-        maturationCampaign: 'dependabot',
-        maturationFingerprint: `sha256:${'a'.repeat(64)}`,
-        maturationDecision: 'validating',
-        maturationBudgetDisposition: 'within',
-        maturationBlockerCount: 2
-      }),
-      expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',
         safeOutputType: 'create_pull_request',
@@ -432,7 +425,12 @@ describe('gh-aw logs adapter', () => {
         source: 'safe-output',
         type: 'safe_output.created',
         safeOutputType: 'create_issue',
-        correlationId: 'draft-issue'
+        correlationId: 'draft-issue',
+        maturationCampaign: 'dependabot',
+        maturationFingerprint: `sha256:${'a'.repeat(64)}`,
+        maturationDecision: 'validating',
+        maturationBudgetDisposition: 'within',
+        maturationBlockerCount: 2
       }),
       expect.objectContaining({
         source: 'safe-output',

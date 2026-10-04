@@ -6,12 +6,15 @@
       "objective": "Review the active cycle, blockers, budget disposition, and advisory readiness decision for one campaign.",
       "acceptance": "Every row preserves the exact campaign, fingerprint, decision, budget disposition, blocker count, issue state, and provenance extracted from a canonical campaign-maturation marker; absent rows remain unknown, and ready-for-live-decision never grants live authority.",
       "description": "Canonical campaign-maturation cycle observations for declarative campaign progress views.",
-      "from": "run-records",
+      "from": "outcomes",
       "filter": {
         "predicates": [
           {
-            "field": "event-type",
-            "equals": "safe_output.created"
+            "field": "safe-output-kind",
+            "in": [
+              "create-issue",
+              "update_issue"
+            ]
           },
           {
             "field": "maturation-decision",
@@ -38,18 +41,6 @@
             },
             {
               "value": "active"
-            }
-          ]
-        },
-        {
-          "as": "maturation-issue-link",
-          "function": "link",
-          "args": [
-            {
-              "field": "correlation-id"
-            },
-            {
-              "value": "View maturation cycle"
             }
           ]
         }
@@ -82,8 +73,7 @@
           "field": "observed-at"
         },
         {
-          "field": "maturation-issue-link",
-          "as": "cycle-link"
+          "field": "issue-link"
         },
         {
           "field": "run-link"
@@ -353,7 +343,6 @@
         },
         {
           "id": "campaign-maturation-status",
-          "title": "Campaign maturation",
           "subject": "See the latest evidence-backed maturation cycle observations for this review campaign.",
           "objective": "Identify the active cycle, blockers, budget disposition, and advisory readiness decision.",
           "acceptance": "Rows come only from canonical maturation markers; missing evidence stays unknown, native operational value remains in the separate measure view, and no displayed decision grants live authority.",
@@ -369,21 +358,13 @@
             ],
             "limit": 5
           },
-          "mark": "list",
+          "mark": "table",
           "layout": "full",
-          "list": {
-            "style": "entity-cards",
-            "card": "generic",
-            "icon": "milestone",
-            "drill": {
-              "type": "external",
-              "field": "cycle-link"
-            }
-          },
+          "disclosure": "supplemental",
           "empty-message": "No canonical campaign-maturation cycle has been observed for this campaign.",
           "encoding": {
             "href": {
-              "field": "cycle-link"
+              "field": "issue-link"
             },
             "columns": [
               {

@@ -4,6 +4,7 @@ min-version: v0.89.22
 experimental: true
 includes:
   - ../aw.yml
+  - campaign-maturation.mjs
   - .github/workflows/cao-evolution-campaign-maturation.md
   - .github/workflows/cao-evolution-catalog-advisor.md
   - .github/workflows/cao-evolution-failures-investigator.md
