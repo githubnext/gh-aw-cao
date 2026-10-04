@@ -35,7 +35,9 @@ concurrency:
 
 jobs:
   schedule-freshness:
-    if: github.event_name == 'schedule'
+    if: >-
+      github.event_name == 'schedule'
+      || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -96,14 +98,14 @@ jobs:
             core.setOutput('should-build', String(shouldBuild))
             if (!shouldBuild) {
               await core.summary
-                .addRaw('Scheduled documentation build skipped because the deployed docs and dashboard are current.\n')
+                .addRaw('Documentation build skipped because the deployed docs and dashboard are current.\n')
                 .write()
             }
 
   build:
     needs: schedule-freshness
     if: >-
-      !failure() && !cancelled() && (github.event_name != 'schedule' || needs.schedule-freshness.outputs.should-build == 'true')
+      !failure() && !cancelled() && ((github.event_name != 'schedule' && github.event_name != 'workflow_run') || needs.schedule-freshness.outputs.should-build == 'true')
       && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch))
     runs-on: ubuntu-latest
     permissions:
