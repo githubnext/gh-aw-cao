@@ -721,7 +721,14 @@ test('hash-payloads drops empty source payloads and publishes one header-only sh
     const lines = (await readFile(path.join(directory, names[0]), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     assert.deepEqual(lines.map(({ kind, phase: linePhase, records }) => [kind, linePhase, records]), [['metadata', phase, 0]]);
     assert.deepEqual(Object.keys(hashes).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`)), [`gh-aw-logs-${phase}/${names[0]}`]);
-    assert.deepEqual(await readdir(path.join(directory, '.payloads')), []);
+    const caches = await readdir(path.join(directory, '.payloads'));
+    assert.deepEqual(caches, phase === 'records' ? ['tools'] : []);
+    if (phase === 'records') {
+      const toolCaches = path.join(directory, '.payloads', 'tools');
+      for (const name of await readdir(toolCaches)) {
+        assert.deepEqual(JSON.parse(await readFile(path.join(toolCaches, name), 'utf8')), []);
+      }
+    }
   }
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
   await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });

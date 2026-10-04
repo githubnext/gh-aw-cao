@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 function fixture() {
-  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v3.json'), 'utf8'));
+  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v4.json'), 'utf8'));
 }
 
 afterEach(() => {

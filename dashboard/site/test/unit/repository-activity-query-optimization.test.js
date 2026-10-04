@@ -10,6 +10,7 @@ import {
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { publishedToolMeasures } from '../tool-fixtures.js';
 
 /** @typedef {import('../../src/presenter.js').LogicalSourceInput} Source */
 /** @typedef {import('../../src/data/queries/declarative.js').DashboardQuery} Query */
@@ -118,7 +119,11 @@ function fixture() {
     runs: source('runs', runs),
     audits: source('audits', [record('100', 'audit-one'), record('100', 'audit-two')]),
     domains: source('domains', [record('101', 'domain-one')]),
-    tools: source('tools', [record('102', 'tool-one')]),
+    tools: source('tools', [{
+      ...record('102', 'tool-one'), ...publishedToolMeasures, id: 'tool-one', 'tool-id': 'observed-tool:fixture',
+      'last-event-timestamp': '2026-09-20T00:00:10Z'
+    }]),
+    'tool-identities': source('tool-identities', [{ id: 'observed-tool:fixture', name: 'fixture' }]),
     issues: source('issues', [
       record('103', 'issue-one', 'safe_output.created'),
       record('300', 'issue-two', 'safe_output.created'),

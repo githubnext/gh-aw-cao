@@ -8,7 +8,7 @@
       "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
       "from": "audits",
       "union": [
-        "tools"
+        "tool-observations"
       ],
       "filter": {
         "predicates": [
@@ -69,9 +69,9 @@
         ],
         "values": [
           {
-            "field": "event",
+            "field": "event-count",
             "as": "events",
-            "reducer": "count"
+            "reducer": "sum"
           }
         ]
       },

@@ -141,7 +141,10 @@ components:
     responsibility: rebuildable per-browser data projection
   postgres_entity_store:
     path: server/internal/postgresx/
-    responsibility: initialize a fresh TypeSpec-generated schema and transactionally replace and read fifteen query-minimal native entity tables, entity-owned relational child values, quality metadata, diagnostics, and revision state; preserve missing versus null with compact presence bits; compile and execute bounded Dashboard Language plans as SQL in a repeatable-read snapshot without persisted documents, duplicate scalar representations, or compatibility migrations
+    responsibility: initialize a fresh TypeSpec-generated schema and transactionally replace query-minimal native entities, including namespace-scoped observed Tool identities and Run/tool/source usage with exact UTC-day categorical counters; partition Run-owned usage, counters, and cold-evidence locators by weekly run_at; gate Tool facts by the owning Run evidence revision; preserve missing versus null with compact presence bits; execute bounded declarative SQL without event documents, duplicate scalar representations, or compatibility migrations
+  tool_event_evidence:
+    path: activity/tool-evidence.mjs
+    responsibility: publish manifested compressed Tool event shards outside hot database state and provide authenticated, bounded, checksum-verified exact drilldown; missing or corrupt evidence is unavailable, never an empty successful history
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution

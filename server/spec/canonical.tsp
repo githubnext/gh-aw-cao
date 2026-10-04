@@ -6,6 +6,14 @@ namespace Cao;
 /** Canonical rows are open objects: source-specific columns are owned by the canonical data schema. */
 alias CanonicalRow = JsonObject;
 
+/** Bounded exact cold evidence; absence is an error, never an empty successful history. */
+model ToolEventEvidence {
+  rows: CanonicalRow[];
+  totalEvents: int64;
+  returnedEvents: int64;
+  omittedEvents: int64;
+}
+
 @tag("Canonical entities")
 @useAuth(DashboardAuth)
 namespace Canonical {
@@ -20,4 +28,11 @@ namespace Canonical {
 
   @route("/api/workflows/{id}/runs")
   @get op workflowRuns(@path id: string): CanonicalRow[] | Unauthorized | NotFound | Unavailable;
+
+  @route("/api/runs/{id}/tool-events")
+  @get op toolEvents(
+    @path id: string,
+    @query @minValue(1) @maxValue(2000) limit?: int32 = 20,
+    @query type?: string
+  ): ToolEventEvidence | BadRequest | Unauthorized | NotFound | Unavailable;
 }

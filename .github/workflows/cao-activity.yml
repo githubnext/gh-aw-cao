@@ -85,7 +85,7 @@ jobs:
 
       - name: Resolve activity cache key
         id: activity-cache-key
-        run: echo "value=cao-activity-v5-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=cao-activity-v6-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
   collect:
     needs: plan
@@ -128,7 +128,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ needs.plan.outputs.cache-key }}
           restore-keys: |
-            cao-activity-v5-
+            cao-activity-v6-
 
       - name: Generate owner-scoped GitHub App token
         id: activity-app-token
@@ -343,6 +343,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
             ${{ runner.temp }}/cao-activity/gh-aw-logs-records
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-tools
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -351,24 +352,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/memory
           key: ${{ needs.plan.outputs.cache-key }}
           restore-keys: |
-            cao-activity-v5-
-
-      - name: Restore legacy activity cache layout
-        if: steps.activity-cache.outputs.cache-matched-key == ''
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
-            ${{ runner.temp }}/cao-activity/payload-hashes.json
-            ${{ runner.temp }}/cao-activity/control-settings.json
-            ${{ runner.temp }}/cao-activity/inventory-sources.json
-            ${{ runner.temp }}/cao-activity/agent-summary.json
-            ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: ${{ needs.plan.outputs.cache-key }}
-          restore-keys: |
-            cao-activity-v3-
+            cao-activity-v6-
 
       - name: Download owner-scoped activity fragments
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -498,6 +482,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
             ${{ runner.temp }}/cao-activity/gh-aw-logs-records
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-tools
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -563,6 +548,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
             ${{ runner.temp }}/cao-activity/gh-aw-logs-records
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-tools
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json

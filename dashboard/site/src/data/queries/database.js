@@ -9,6 +9,7 @@ import {
   readCollectionQueryKeys,
   readCollectionQueryKeyRecords,
   readCollections,
+  readRecord,
   readTransactions
 } from '../storage/indexeddb.js';
 import {
@@ -26,7 +27,8 @@ import { createDebug } from '../../debug.js';
 const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
-const RUN_RECORD_STORES = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues']);
+const RUN_RECORD_STORES = new Set(['domains', 'skills', 'friction', 'audits', 'issues']);
+const TOOL_AGGREGATE_SOURCES = new Set(['tools', 'mcp-calls', 'tool-observations', 'tool-counters', 'tool-evidence']);
 const DIRECT_EVIDENCE_SOURCES = new Set([
   'experiments', 'experiment-assignments', 'graders',
   'grader-observations', 'evals', 'eval-observations'
@@ -36,6 +38,7 @@ const DATABASE_TABLE_SOURCES = new Set([
   'repositories',
   'workflows',
   'runs',
+  'tools', 'tool-identities', 'tool-counters', 'tool-evidence', 'tool-observations',
   ...RUN_RECORD_STORES,
   'operational-values',
   'marketplace-packages',
@@ -209,6 +212,59 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   budget.checkpoint();
   const index = dashboardQueryIndex(definitions);
   const defects = dashboardQueryDefects(definitions);
+  const toolPlans = [...requested].flatMap(name => {
+    const definition = index.get(name);
+    const flattened = definition && !defects.has(name) ? flattenIndexedRecordQuery(index, definition) : null;
+    if (!flattened || !TOOL_AGGREGATE_SOURCES.has(flattened.from) || flattened.union?.length) return [];
+    const projection = databaseQueryIndex.get(flattened.from);
+    const runJoin = projection?.joins?.find(join => join.source === '$runs');
+    if (!projection || !runJoin) return [];
+    const aliases = new Map(runJoin.fields.map(field => [field.as ?? field.field, field.field]));
+    if (projection.select?.some(field => field.field === 'runId' && field.as === 'run-id')) aliases.set('run-id', 'id');
+    const predicates = flattened.filter?.predicates?.filter(predicate => aliases.has(predicate.field));
+    if (!predicates?.length || predicates.some(predicate => predicate.optional)) return [];
+    return [{ name, definition: flattened, projection, predicates: predicates.map(predicate => ({
+      ...predicate, field: /** @type {string} */ (aliases.get(predicate.field))
+    })) }];
+  });
+  const toolSelections = await Promise.all(toolPlans.map(async ({ name, definition, projection, predicates }) => {
+    const runs = await queryCollection(indexedDB, 'runs', [{ op: 'filter', predicates }],
+      { maxRows: DASHBOARD_QUERY_LIMITS['max-input-rows'] });
+    const runIds = runs.map(run => run.id);
+    /** @type {Record<string, Record<string, unknown>[]>} */
+    const records = { runs };
+    const joinedFields = new Set((projection.joins ?? []).flatMap(join => join.fields.map(field => field.as ?? field.field)));
+    const computedFields = new Set((projection.compute ?? []).map(computed => computed.as));
+    for (const store of (projection.stores ?? []).filter(store => store !== 'runs' && store !== 'toolIdentities')) {
+      const rows = [];
+      const ownPredicates = projection.from === `$${store}`
+        ? (projection.filter?.predicates ?? []).filter(predicate => !predicate.optional
+          && !joinedFields.has(predicate.field) && !computedFields.has(predicate.field)) : [];
+      for (let offset = 0; offset < runIds.length; offset += 32) {
+        budget.checkpoint();
+        rows.push(...await queryCollection(indexedDB,
+          /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (store),
+          [{ op: 'filter', predicates: [{ field: 'runId', in: runIds.slice(offset, offset + 32) }, ...ownPredicates] }],
+          { maxRows: DASHBOARD_QUERY_LIMITS['max-input-rows'] - rows.length }));
+      }
+      records[store] = rows;
+    }
+    if (projection.stores?.includes('toolIdentities')) {
+      const ids = [...new Set((records.tools ?? []).map(tool => tool.toolId))];
+      records.toolIdentities = [];
+      for (const id of ids) {
+        budget.checkpoint();
+        const identity = await readRecord(indexedDB, 'toolIdentities', String(id));
+        if (!identity) throw new Error('Tool usage references a missing observed identity');
+        records.toolIdentities.push(identity);
+      }
+    }
+    const inputs = Object.fromEntries(Object.entries(records).map(([store, rows]) => [
+      `$${store}`, { source: `$${store}`, rows, metadata: queryMetadata(logicalSources, store, store, true) }
+    ]));
+    const projected = executeDatabaseQuery(projection.name, inputs, logicalSources, definition.from);
+    return [name, executeDashboardQueries([definition], { [definition.from]: projected }, [name], { budget })[name]];
+  }));
   const keySelectionPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     if (!definition || defects.has(name)) return [];
@@ -471,6 +527,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     ...Object.fromEntries(filtered),
     ...Object.fromEntries(recordAggregates.filter((entry) => entry !== null)),
     ...Object.fromEntries(recordSelections),
+    ...Object.fromEntries(toolSelections),
     ...Object.fromEntries(keySelections.filter((entry) => entry !== null))
   };
 }
@@ -647,7 +704,7 @@ function executeRowLocalRecordGraph(queries, inputs, name, budget) {
  * @returns {import('./declarative.js').DashboardQuery | null}
  */
 function flattenIndexedRecordQuery(index, definition, seen = new Set()) {
-  if (RUN_RECORD_STORES.has(definition.from)) return definition;
+  if (RUN_RECORD_STORES.has(definition.from) || TOOL_AGGREGATE_SOURCES.has(definition.from)) return definition;
   if (seen.has(definition.name)) return null;
   seen.add(definition.name);
   const parent = index.get(definition.from);
@@ -939,8 +996,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       result[name] = executeRunRecordsQuery(name, collections[name] ?? [], collections.runs ?? [], sources);
       continue;
     }
-    if (name === 'mcp-calls' || name === 'findings' || name === 'firewall-observations') {
-      const store = name === 'mcp-calls' ? 'tools' : name === 'findings' ? 'audits' : 'domains';
+    if (name === 'findings' || name === 'firewall-observations') {
+      const store = name === 'findings' ? 'audits' : 'domains';
       const records = executeRunRecordsQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
       result[name] = executeDatabaseQuery(name, {
         'run-records': records

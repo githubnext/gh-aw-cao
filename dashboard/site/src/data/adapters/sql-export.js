@@ -5,7 +5,7 @@ import { createDebug } from '../../debug.js';
 const debugSqlExport = createDebug('data:adapters:sql-export');
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
-export const SQL_EXPORT_VERSION = 3;
+export const SQL_EXPORT_VERSION = 4;
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -137,7 +137,7 @@ export function adaptSqlExport(input) {
   for (const [index, candidate] of document.rows.entries()) {
     const row = objectValue(candidate, `SQL export row ${index}`);
     const kind = requiredString(row.entity_kind, `SQL export row ${index}.entity_kind`);
-    if (!ENTITY_KINDS.includes(/** @type {import('../model/schema.js').EntityKind} */ (kind))) {
+    if (kind === 'tool-event' || !ENTITY_KINDS.includes(/** @type {import('../model/schema.js').EntityKind} */ (kind))) {
       throw new TypeError(`Unsupported SQL export entity kind: ${kind}`);
     }
     const sourceRecordId = requiredString(row.source_id, `SQL export row ${index}.source_id`);
@@ -186,6 +186,7 @@ export function adaptSqlExport(input) {
         const attempt = positiveInteger(row.run_attempt, 'run_attempt');
         const coordinates = coordinatesFor(row, index, kind);
         data = {
+          toolUsageRevision: optionalString(row.tool_usage_revision),
           githubRunId,
           attempt,
           owner: coordinates.owner,
@@ -224,21 +225,62 @@ export function adaptSqlExport(input) {
       case 'tool': {
         const coordinates = coordinatesFor(row, index, kind);
         data = {
+          id: sourceId('tool', source, sourceRecordId),
+          evidenceRevision: requiredString(row.evidence_revision, 'evidence_revision'),
           runId: runId(
             coordinates.owner,
             coordinates.repository,
             identifier(row.github_run_id, 'github_run_id')
           ),
-          timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
-          source: optionalString(row.source) ?? 'mcp',
-          type: optionalString(row.type) ?? 'tool.call',
-          toolType: optionalString(row.tool_type) ?? 'mcp',
-          name: requiredString(row.name, 'name'),
-          mcpServer: optionalString(row.mcp_server),
-          mcpTool: optionalString(row.mcp_tool),
-          status: optionalString(row.status),
-          correlationId: optionalString(row.correlation_id)
+          toolId: sourceId('tool-identity', source, requiredString(row.tool_identity_source_id, 'tool_identity_source_id')),
+          timestamp: canonicalTimestamp(row.first_timestamp, 'first_timestamp'),
+          lastTimestamp: canonicalTimestamp(row.last_timestamp, 'last_timestamp'),
+          source: requiredString(row.source, 'tool source'),
+          latencySum: optionalNumber(row.latency_sum, 'latency_sum'),
+          latencyMin: optionalNumber(row.latency_min, 'latency_min'),
+          latencyMax: optionalNumber(row.latency_max, 'latency_max'),
+          sampleCallId: optionalString(row.sample_call_id),
+          sampleOutcomeId: optionalString(row.sample_outcome_id)
         };
+        for (const field of ['eventCount', 'callCount', 'outcomeCount', 'successCount', 'failedCount', 'incompleteCount',
+          'unknownOutcomeCount', 'unmatchedCount', 'ambiguousCount', 'requestBytes', 'requestBytesCount',
+          'responseBytes', 'responseBytesCount', 'latencyCount']) {
+          const key = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          data[field] = optionalNumber(row[key], key);
+        }
+        break;
+      }
+      case 'tool-identity':
+        data = { id: sourceId('tool-identity', source, sourceRecordId) };
+        for (const [field, key] of [['name', 'name'], ['toolType', 'tool_type'], ['mcpServer', 'mcp_server'],
+          ['mcpTool', 'mcp_tool'], ['mcpServerVersion', 'mcp_server_version'], ['mcpProtocolVersion', 'mcp_protocol_version']]) {
+          if (Object.hasOwn(row, key)) data[field] = row[key] === null ? null : requiredString(row[key], key);
+        }
+        break;
+      case 'tool-counter':
+      case 'tool-evidence': {
+        const coordinates = coordinatesFor(row, index, kind);
+        data = {
+          id: sourceId(kind, source, sourceRecordId),
+          evidenceRevision: requiredString(row.evidence_revision, 'evidence_revision'),
+          runId: runId(coordinates.owner, coordinates.repository, identifier(row.github_run_id, 'github_run_id')),
+          eventCount: optionalNumber(row.event_count, 'event_count')
+        };
+        if (kind === 'tool-counter') {
+          data.usageId = sourceId('tool', source, requiredString(row.tool_usage_source_id, 'tool_usage_source_id'));
+          data.timestamp = canonicalTimestamp(row.first_timestamp, 'first_timestamp');
+          data.lastTimestamp = canonicalTimestamp(row.last_timestamp, 'last_timestamp');
+          for (const field of ['type', 'status']) {
+            if (Object.hasOwn(row, field)) data[field] = row[field] === null ? null : requiredString(row[field], field);
+          }
+          for (const field of ['requestBytes', 'requestBytesCount', 'responseBytes', 'responseBytesCount']) {
+            const key = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+            data[field] = optionalNumber(row[key], key);
+          }
+        } else {
+          data.payloadRef = requiredString(row.payload_ref, 'payload_ref');
+          data.payloadHash = requiredString(row.payload_hash, 'payload_hash');
+        }
         break;
       }
       case 'issue': {

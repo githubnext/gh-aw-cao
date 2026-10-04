@@ -11,7 +11,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-var recordSources = []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues"}
+var recordSources = []string{"$domains", "$skills", "$friction", "$audits", "$issues"}
 
 func sqlKind(column entityColumn) query.SQLKind {
 	switch column.kind {

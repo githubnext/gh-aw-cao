@@ -18,12 +18,12 @@ test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', as
   assert.equal(output.result.updated, true);
   assert.equal(output.runs[0].id, 'github:run:githubnext/gh-aw-cao:303');
   assert.equal(output.records.every((record) => record.runId === output.runs[0].id), true);
-  assert.deepEqual(output.records.map((record) => record.type), [
+  assert.deepEqual(output.records.filter(record => record.type !== undefined).map((record) => record.type), [
     'net_allowed',
-    'tool_call',
-    'agent_tool_start',
-    'agent_tool_done',
     'agent_turn',
     'assistant_message',
   ]);
+  const usage = output.records.filter(record => record.toolId !== undefined);
+  assert.equal(usage.length, 2);
+  assert.equal(usage.reduce((total, record) => total + record.eventCount, 0), 3);
 });

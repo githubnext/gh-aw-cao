@@ -9,7 +9,7 @@ const debug = createDebug('ingestion');
 /**
  * @typedef {{ field?: string, fields?: string[], default?: unknown, trim?: boolean,
  *   omitEmpty?: boolean, equals?: unknown, notEquals?: unknown,
- *   nonnegativeInteger?: boolean }} FieldMapping
+ *   nonnegativeInteger?: boolean, preserveNull?: boolean }} FieldMapping
  */
 
 /** @param {unknown} value */
@@ -49,6 +49,7 @@ function queryInputs(sources) {
 /** @param {Record<string, unknown>} row @param {FieldMapping} mapping */
 function mappedValue(row, mapping) {
   const fields = mapping.fields ?? (mapping.field ? [mapping.field] : []);
+  if (mapping.preserveNull && fields.length === 1 && row[fields[0]] === null) return null;
   /** @type {unknown} */
   let value = fields.map((field) => row[field]).find((candidate) => candidate !== undefined && candidate !== null);
   if (value === undefined || value === null) value = mapping.default;
@@ -59,7 +60,7 @@ function mappedValue(row, mapping) {
   if (Object.hasOwn(mapping, 'notEquals')) return value !== mapping.notEquals;
   if (mapping.nonnegativeInteger) {
     const number = Number(value);
-    return Number.isInteger(number) && number >= 0 ? number : undefined;
+    return Number.isSafeInteger(number) && number >= 0 ? number : undefined;
   }
   return value;
 }

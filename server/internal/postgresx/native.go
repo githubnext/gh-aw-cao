@@ -241,6 +241,9 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 			return err
 		}
 	}
+	if err := validateToolProjection(source, row); err != nil {
+		return err
+	}
 	if err := validateAuditReferenceProjection(source, row); err != nil {
 		return err
 	}
@@ -399,6 +402,18 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.Flush(ctx); err != nil {
 		return State{}, err
 	}
+	// COPY and temporary staging tables have no useful statistics until
+	// explicitly analyzed. Autovacuum also never analyzes partitioned parents.
+	// Publish current cardinalities with the data, before readers plan joins.
+	for _, source := range tableNames() {
+		name := entityTables[source].name
+		if w.staged[source] {
+			name += "_stage"
+		}
+		if err := w.analyze(ctx, name); err != nil {
+			return State{}, err
+		}
+	}
 	var duplicate bool
 	if err := w.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs WHERE namespace=$1 GROUP BY id HAVING count(*)>1)`, w.store.namespace).Scan(&duplicate); err != nil {
 		return State{}, err
@@ -431,6 +446,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		}
 		if tag.RowsAffected() != w.ordinals[source] {
 			return State{}, fmt.Errorf("run-owned %s references a missing or ambiguous parent", name)
+		}
+		if err := w.analyze(ctx, name); err != nil {
+			return State{}, err
 		}
 		if err := w.tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM "+query.SQLIdentifier(name)+" WHERE namespace=$1 GROUP BY id HAVING count(*)>1)", w.store.namespace).Scan(&duplicate); err != nil {
 			return State{}, err
@@ -481,6 +499,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		if _, err := w.tx.Exec(ctx, statement, args...); err != nil {
 			return State{}, fmt.Errorf("publish typed inventory %s: %w", source, err)
 		}
+		if err := w.analyze(ctx, table.name); err != nil {
+			return State{}, err
+		}
 	}
 	if err := overlayRepositoryLifecycle(ctx, w.store.namespace, func(ctx context.Context, statement string, args ...any) error {
 		_, err := w.tx.Exec(ctx, statement, args...)
@@ -490,6 +511,25 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	}
 	// Deferred parent checks and native primary keys reject orphans and duplicates
 	// before the publication state becomes visible to readers.
+	var invalidToolCounts bool
+	if err := w.tx.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM tools t LEFT JOIN (
+			SELECT namespace,usage_id,run_at,sum(event_count) AS events,
+				sum(event_count) FILTER (WHERE type IN ('tool.call','tool_call','agent_tool_start')) AS calls,
+				sum(request_bytes) AS requests,sum(request_bytes_count) AS request_measurements,
+				sum(response_bytes) AS responses,sum(response_bytes_count) AS response_measurements
+			FROM tool_counters WHERE namespace=$1 GROUP BY namespace,usage_id,run_at
+		) c ON c.namespace=t.namespace AND c.usage_id=t.id AND c.run_at=t.run_at
+		WHERE t.namespace=$1 AND (
+			t.event_count<>coalesce(c.events,0) OR t.call_count<>coalesce(c.calls,0) OR
+			t.request_bytes<>coalesce(c.requests,0) OR t.request_bytes_count<>coalesce(c.request_measurements,0) OR
+			t.response_bytes<>coalesce(c.responses,0) OR t.response_bytes_count<>coalesce(c.response_measurements,0))
+	)`, w.store.namespace).Scan(&invalidToolCounts); err != nil {
+		return State{}, err
+	}
+	if invalidToolCounts {
+		return State{}, errors.New("tool usage counters do not match their native categorical evidence")
+	}
 	if _, err := w.tx.Exec(ctx, "SET CONSTRAINTS ALL IMMEDIATE"); err != nil {
 		return State{}, fmt.Errorf("validate canonical relationships: %w", err)
 	}
@@ -502,6 +542,12 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			JOIN graders d ON d.namespace=o.namespace AND d.id=o.grader_id WHERE o.namespace=$1 AND r.workflow_id<>d.workflow_id LIMIT 1`,
 		`SELECT 1 FROM eval_observations o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id
 			JOIN evals d ON d.namespace=o.namespace AND d.id=o.eval_id WHERE o.namespace=$1 AND r.workflow_id<>d.workflow_id LIMIT 1`,
+		`SELECT 1 FROM tool_counters c JOIN tools t ON t.namespace=c.namespace AND t.id=c.usage_id AND t.run_at=c.run_at
+			WHERE c.namespace=$1 AND (c.run_id<>t.run_id OR c.evidence_revision<>t.evidence_revision) LIMIT 1`,
+		`SELECT 1 FROM tools t JOIN runs r ON r.namespace=t.namespace AND r.id=t.run_id AND r.run_at=t.run_at
+			WHERE t.namespace=$1 AND t.evidence_revision IS DISTINCT FROM r.tool_usage_revision LIMIT 1`,
+		`SELECT 1 FROM tool_evidence t JOIN runs r ON r.namespace=t.namespace AND r.id=t.run_id AND r.run_at=t.run_at
+			WHERE t.namespace=$1 AND t.evidence_revision IS DISTINCT FROM r.tool_usage_revision LIMIT 1`,
 	} {
 		var invalid int
 		if err := w.tx.QueryRow(ctx, check, w.store.namespace).Scan(&invalid); err == nil {
@@ -535,6 +581,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if _, err := w.tx.Exec(ctx, auditCurationStatement(), w.store.namespace); err != nil {
 		return State{}, fmt.Errorf("curate native audits before publication: %w", err)
 	}
+	if err := w.analyze(ctx, entityTables["$audits"].name); err != nil {
+		return State{}, err
+	}
 	state := State{Ready: true, DataRevision: dataRevision, EvaluatedAt: w.evaluatedAt.UTC(), Counts: map[string]int{}}
 	for _, source := range tableNames() {
 		var count int
@@ -560,4 +609,11 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	_ = w.connection.Close(ctx)
 	w.connection = nil
 	return state, nil
+}
+
+func (w *Writer) analyze(ctx context.Context, table string) error {
+	if _, err := w.tx.Exec(ctx, "ANALYZE "+query.SQLIdentifier(table)); err != nil {
+		return fmt.Errorf("analyze native %s before publication: %w", table, err)
+	}
+	return nil
 }

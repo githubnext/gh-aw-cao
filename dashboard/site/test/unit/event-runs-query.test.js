@@ -23,7 +23,7 @@ it('counts events per run across sources without materializing the raw-event uni
    */
   const event = (run, attempt = '1') => ({
     organization: 'example', repository: 'repo', workflow: 'workflow', run,
-    'run-attempt': attempt, event: 'created'
+    'run-attempt': attempt, event: 'created', 'event-count': 1
   });
   const input = {
     audits: { source: 'audits', metadata, rows: [event('1'), event('1'), event('2')] },

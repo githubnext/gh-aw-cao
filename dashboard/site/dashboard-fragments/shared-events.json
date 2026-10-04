@@ -8,7 +8,7 @@
       "from": "audits",
       "union": [
         "domains",
-        "tools",
+        "tool-observations",
         "issues"
       ],
       "select": [
@@ -18,6 +18,7 @@
         { "field": "run" },
         { "field": "run-attempt" },
         { "field": "event" },
+        { "field": "event-count" },
         { "field": "event-source" },
         { "field": "event-type" },
         { "field": "event-summary" },
@@ -55,13 +56,13 @@
     },
     {
       "name": "tool-event-runs",
-      "subject": "Count imported tool records per run before combining event sources.",
+      "subject": "Sum original imported Tool event counts per run from compact usage facts.",
       "objective": "Bound tool evidence for run import-coverage analysis.",
-      "acceptance": "Count only retained tool records with event identity by run attempt; missing evidence does not establish zero activity.",
+      "acceptance": "Sum original retained event counts, not aggregate rows, by winning Run attempt; missing evidence does not establish zero activity.",
       "from": "tools",
       "aggregate": {
         "by": ["organization", "repository", "workflow", "run", "run-attempt"],
-        "values": [{ "field": "event", "as": "events", "reducer": "count" }]
+        "values": [{ "field": "event-count", "as": "events", "reducer": "sum" }]
       }
     },
     {
@@ -294,7 +295,7 @@
       "aggregate": {
         "by": ["safe-output-server", "mcp-tool-label", "mcp-server", "mcp-tool", "workflow-key"],
         "values": [
-          { "field": "mcp-observation", "as": "calls", "reducer": "count" },
+          { "field": "call-count", "as": "calls", "reducer": "sum" },
           { "field": "request-bytes", "as": "request-bytes", "reducer": "sum" },
           { "field": "response-bytes", "as": "response-bytes", "reducer": "sum" }
         ]

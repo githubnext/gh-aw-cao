@@ -3,7 +3,7 @@ import { NORMALIZED_COLLECTIONS } from './cli-usage.mjs';
 const RUN_COLLECTIONS = new Set([
   'campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments'
 ]);
-const STRUCTURAL_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals']);
+const STRUCTURAL_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals', 'toolIdentities']);
 export const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
 const TIMESTAMP_FIELDS = ['startedAt', 'observedAt', 'timestamp', 'completedAt', 'createdAt', 'updatedAt'];
 
@@ -56,4 +56,24 @@ export function normalizedPhaseBatch(batch, phase) {
       ? records.filter((audit) => String(audit.status ?? '').trim().toLowerCase() !== 'info')
       : records];
   }));
+}
+
+export function workflowHintsFromInventory(input) {
+  const rows = input?.workflows?.rows;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((candidate) => (
+    candidate
+      && typeof candidate === 'object'
+      && typeof candidate.organization === 'string'
+      && typeof candidate.repository === 'string'
+      && typeof candidate['workflow-name'] === 'string'
+      && typeof candidate.workflow === 'string'
+      ? [{
+          owner: candidate.organization,
+          repository: candidate.repository,
+          name: candidate['workflow-name'],
+          path: candidate.workflow
+        }]
+      : []
+  ));
 }

@@ -45,9 +45,9 @@
         ],
         "values": [
           {
-            "field": "mcp-observation",
+            "field": "call-count",
             "as": "observations",
-            "reducer": "count"
+            "reducer": "sum"
           }
         ]
       },
@@ -415,7 +415,7 @@
         {
           "id": "tool-runs-table",
           "title": "Related runs",
-          "description": "Run records related to this tool.",
+          "description": "Observed calls aggregated by tool, run, source, and call status.",
           "data": {
             "source": "mcp-tool-calls",
             "arguments": [
@@ -460,6 +460,11 @@
                 "type": "nominal",
                 "title": "Status",
                 "display": "status"
+              },
+              {
+                "field": "call-count",
+                "type": "quantitative",
+                "title": "Calls"
               },
               {
                 "field": "observed-at",

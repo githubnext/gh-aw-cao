@@ -182,7 +182,7 @@ describe('canonical ingestion termination', () => {
       yield `${JSON.stringify({
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 4,
+        ingestionVersion: 5,
         phase: 'runs',
         records: 4
       })}\n`;

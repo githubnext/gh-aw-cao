@@ -72,7 +72,7 @@ function evidence() {
     repository: 'gh-aw-cao', workflowPath: 'activity.md', attempt: 1,
     repositoryId: 'repository:1', workflowId: 'workflow:1'
   })));
-  for (const store of /** @type {const} */ (['tools', 'audits'])) {
+  for (const store of /** @type {const} */ (['audits'])) {
     canonical[store].push(
       { id: `${store}:a`, runId: 'run:42', summary: 'selected', status: 'success' },
       { id: `${store}:b`, runId: 'run:42', summary: null },
@@ -91,7 +91,7 @@ afterEach(() => {
 });
 
 describe('real SQLite native record selection', () => {
-  it.each(['tools', 'audits'])('scopes %s to run 42 before applying the input-row budget', async (source) => {
+  it.each(['audits'])('scopes %s to run 42 before applying the input-row budget', async (source) => {
     const factory = sqliteFactory();
     await upsertCanonicalBatch(factory, evidence());
     const query = {
@@ -127,7 +127,7 @@ describe('real SQLite native record selection', () => {
     }
   });
 
-  it.each(['tools', 'audits'])('rejects over-budget %s selections without reading event rows', async (source) => {
+  it.each(['audits'])('rejects over-budget %s selections without reading event rows', async (source) => {
     const factory = sqliteFactory();
     const canonical = evidence();
     canonical[/** @type {'tools' | 'audits'} */ (source)].push(
@@ -165,7 +165,7 @@ describe('real SQLite native record selection', () => {
     const factory = sqliteFactory();
     vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);
     const canonical = evidence();
-    canonical.tools = [
+    canonical.audits = [
       { id: 'a', runId: 'run:42', summary: null, source: 'mcp', type: 'tool.call', mcpTool: 'missing-server' },
       { id: 'b', runId: 'run:42', source: 'mcp', type: 'tool.call', mcpServer: null, mcpTool: 'missing-server' },
       { id: 'c', runId: 'run:42', summary: '', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'tool' }
@@ -173,24 +173,24 @@ describe('real SQLite native record selection', () => {
     await upsertCanonicalBatch(factory, canonical);
     const database = await openCanonicalDatabase(factory);
     try {
-      const transaction = database.transaction('tools');
+      const transaction = database.transaction('audits');
       const done = completed(transaction);
-      const store = transaction.objectStore('tools');
+      const store = transaction.objectStore('audits');
       const counts = await Promise.all([
         result(store.index('byQuerySummary').count()),
         result(store.index('byQuerySummary').count('[null]')),
-        result(store.index('byQueryMcpIdentity').count('["mcp","tool.call",null,"missing-server"]'))
+        result(store.index('byQuerySummary').count('[""]'))
       ]);
-      expect(counts).toEqual([3, 2, 2]);
+      expect(counts).toEqual([3, 2, 1]);
       await done;
     } finally {
       database.close();
     }
-    const nullable = await readIndex(factory, 'tools', 'byQuerySummary', ['[null]']);
-    expect(nullable).toEqual(canonical.tools.slice(0, 2));
-    expect((await readCollection(factory, 'tools')).every((row) => !('_queryKeys' in row))).toBe(true);
+    const nullable = await readIndex(factory, 'audits', 'byQuerySummary', ['[null]']);
+    expect(nullable).toEqual(canonical.audits.slice(0, 2));
+    expect((await readCollection(factory, 'audits')).every((row) => !('_queryKeys' in row))).toBe(true);
     const query = {
-      name: 'nullable', from: 'tools',
+      name: 'nullable', from: 'audits',
       filter: { predicates: [{ field: 'event-summary', equals: null }] },
       select: [{ field: 'event' }]
     };

@@ -26,7 +26,7 @@ navigateProgram(program, {
   }
 });
 const definitions = JSON.parse(readFileSync(new URL('../../dashboard/site/src/data/queries/database.json', import.meta.url)));
-const records = ['$domains', '$tools', '$skills', '$friction', '$audits', '$issues'];
+const records = ['$domains', '$skills', '$friction', '$audits', '$issues'];
 
 function inputFields(definition) {
   const derived = new Set();
@@ -48,7 +48,7 @@ function inputFields(definition) {
 test('TypeSpec declares exactly one root table per canonical dashboard collection', () => {
   assert.deepEqual([...tables.keys()].sort(), [
     '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues',
-    '$marketplacePackages', '$experiments', '$experimentAssignments',
+    '$marketplacePackages', '$toolIdentities', '$tools', '$toolCounters', '$toolEvidence', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations'
   ].sort());
 });

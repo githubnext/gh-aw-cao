@@ -109,6 +109,9 @@ export async function $onEmit(context) {
         `CHECK (bit_length(present_fields) = ${table.columns.length})`,
         'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE'
       ];
+      if (table.collection === 'tools') {
+        constraints.push('UNIQUE (namespace, run_id, tool_id, source, run_at)');
+      }
       for (const [field, parent, optional] of parents.get(table.collection) ?? []) {
         if (!table.columns.some((c) => c.field === field)) throw new Error(`Missing relationship ${table.collection}.${field}`);
         if (!optional) constraints.push(`CHECK (${snake(field)} IS NOT NULL AND ${snake(field)} <> '')`);
@@ -119,14 +122,16 @@ export async function $onEmit(context) {
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
-${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : ''}`).join(',\n')},
+${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : c.required ? ' NOT NULL' : ''}`).join(',\n')},
 ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
   ${constraints.join(',\n  ')}
 )${table.partitioned ? ' PARTITION BY RANGE (run_at)' : ''};`);
       for (const [field] of parents.get(table.collection) ?? []) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_${snake(field)} ON ${table.name} (namespace, ${snake(field)}, ordinal);`);
       }
-      if (table.partitioned) statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
+      if (table.partitioned && !['tools', 'toolCounters', 'toolEvidence'].includes(table.collection)) {
+        statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
+      }
     }
     go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned}, columns: []entityColumn{`);
     for (const column of table.columns) {

@@ -36,7 +36,7 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	if _, err := lock.Exec(ctx, "SELECT pg_advisory_lock(712083241, 17484)"); err != nil {
 		return err
 	}
-	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
+	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tool_counters", "tool_evidence", "tools", "runs"}
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
 	week := func(t time.Time) time.Time {
 		t = t.UTC()
@@ -89,11 +89,11 @@ func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = rows.Close() }()
 	var ids []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
 			return err
 		}
 		ids = append(ids, id)
@@ -128,7 +128,7 @@ func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[s
 		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
 		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
 		('audits','domains','eval_observations','experiment_assignments',
-		 'friction','grader_observations','issues','skills','tools','runs')`)
+		 'friction','grader_observations','issues','skills','tool_counters','tool_evidence','tools','runs')`)
 	if err != nil {
 		return nil, nil, err
 	}

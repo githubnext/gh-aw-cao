@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coordinator.js';
@@ -8,15 +7,17 @@ import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { normalizedActivityShards } from './normalized-shard.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { publishedToolMeasures } from '../tool-fixtures.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const databaseName = 'gh-aw-cao-dashboard-data';
+const databaseName = 'gh-aw-cao-dashboard-data-v28';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'evalObservations', 'evals', 'experimentAssignments',
   'experiments', 'friction', 'graderObservations', 'graders', 'issues', 'marketplacePackages',
-  'operationalValues', 'repositories', 'runs', 'skills', 'tools', 'workflows'
+  'operationalValues', 'repositories', 'runs', 'skills', 'toolCounters', 'toolEvidence',
+  'toolIdentities', 'tools', 'workflows'
 ];
 
 function ghAwLogInput() {
@@ -116,22 +117,42 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     tools: {
-      rows: [
-        {
+      rows: [{
+          ...publishedToolMeasures,
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, event: `tool-call-${run}`,
+          'run-attempt': 2, id: `tool-usage-${run}`, 'tool-id': 'observed-tool:github-search',
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
-          'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
+          'last-event-timestamp': '2026-09-09T04:02:01Z',
+          'event-count': 2, 'outcome-count': 1, 'success-count': 1, 'unmatched-count': 0,
+          'sample-call-id': `tool-call-${run}`, 'sample-outcome-id': `tool-result-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
-          'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
-          'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
-          'observed-at': '2026-09-09T05:00:00Z'
-        }
-      ],
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    'tool-identities': {
+      rows: [{
+        id: 'observed-tool:github-search', name: 'github/search_issues',
+        'mcp-server': 'github', 'mcp-tool': 'search_issues',
+        'observed-at': '2026-09-09T05:00:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    'tool-counters': {
+      rows: [{
+        id: `tool-counter-call-${run}`, 'run-id': `github:run:githubnext/gh-aw-cao:${run}`,
+        'usage-id': `tool-usage-${run}`, 'evidence-revision': publishedToolMeasures['evidence-revision'],
+        'event-timestamp': '2026-09-09T04:02:00Z', 'last-event-timestamp': '2026-09-09T04:02:00Z',
+        'event-type': 'tool.call', 'event-count': 1,
+        'request-bytes': 0, 'request-bytes-count': 0, 'response-bytes': 0, 'response-bytes-count': 0,
+        'observed-at': '2026-09-09T05:00:00Z'
+      }, {
+        id: `tool-counter-result-${run}`, 'run-id': `github:run:githubnext/gh-aw-cao:${run}`,
+        'usage-id': `tool-usage-${run}`, 'evidence-revision': publishedToolMeasures['evidence-revision'],
+        'event-timestamp': '2026-09-09T04:02:01Z', 'last-event-timestamp': '2026-09-09T04:02:01Z',
+        'event-type': 'tool.result', 'event-status': 'success', 'event-count': 1,
+        'request-bytes': 0, 'request-bytes-count': 0, 'response-bytes': 0, 'response-bytes-count': 0,
+        'observed-at': '2026-09-09T05:00:00Z'
+      }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     issues: {
@@ -607,6 +628,51 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
   }
 });
 
+test('authored audit summaries preserve weighted Tool observation counts and categorical precision', async ({ context, page }) => {
+  const sources = canonicalWarningSources();
+  sources.tools.rows[0]['event-count'] = 5;
+  sources['tool-counters'].rows.push({
+    id: 'tool-counter-audit-12345', 'run-id': 'github:run:githubnext/gh-aw-cao:12345',
+    'usage-id': 'tool-usage-12345', 'evidence-revision': publishedToolMeasures['evidence-revision'],
+    'event-timestamp': '2026-09-09T04:02:00Z', 'last-event-timestamp': '2026-09-09T04:02:01Z',
+    'event-type': 'audit.mcp_failure', 'event-status': 'high', 'event-count': 3,
+    'request-bytes': 0, 'request-bytes-count': 0, 'response-bytes': 0, 'response-bytes-count': 0,
+    'observed-at': '2026-09-09T05:00:00Z'
+  });
+  await context.route('http://dashboard.test/tool-audit-sources.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(sources)
+  }));
+  const result = await page.evaluate(async () => {
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboard } = await fetch('/dashboard.json').then((response) => response.json());
+    const context = { pages: [], queries: dashboard.queries };
+    const sourceNames = ['audit-event-summary-buckets', 'tool-observations', 'tool-event-runs'];
+    const initial = await loadCanonicalDashboardSources(`${location.origin}/tool-audit-sources.json`, sourceNames, context);
+    const navigated = await loadCanonicalDashboardPage(sourceNames, context);
+    return { initial, navigated };
+  });
+  for (const payload of [result.initial, result.navigated]) {
+    expect(payload['audit-event-summary-buckets'].metadata.availability).toBe('available');
+    expect(payload['audit-event-summary-buckets'].rows).toEqual([
+      {
+        campaign: 'dashboard', 'event-status': 'high', workflow: '.github/workflows/dashboard.md',
+        'event-summary': 'Tool observations: github/search_issues', events: 3
+      },
+      {
+        campaign: 'dashboard', 'event-status': 'high', workflow: '.github/workflows/dashboard.md',
+        'event-summary': 'Prompt injection detected', events: 1
+      }
+    ]);
+    expect(payload['tool-event-runs'].rows).toMatchObject([{ run: '12345', 'run-attempt': 2, events: 5 }]);
+    expect(payload['tool-observations'].rows).toHaveLength(3);
+    expect(payload['tool-observations'].rows.find((/** @type {Record<string, unknown>} */ row) => row['event-type'] === 'audit.mcp_failure'))
+      .toMatchObject({
+        event: 'tool-counter-audit-12345', 'event-count': 3, 'event-status': 'high',
+        'event-timestamp': '2026-09-09T04:02:00Z', 'last-event-timestamp': '2026-09-09T04:02:01Z'
+      });
+  }
+});
+
 test('data worker reports an already ingested payload as unchanged', async ({ page }) => {
   const refreshes = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
@@ -860,12 +926,17 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
     return { initial, navigated, topToolsAlias, base, direct };
   });
 
-  expect(result.base['mcp-calls'].rows).toHaveLength(3);
-  expect(result.base['mcp-calls'].rows[0]).toMatchObject({
+  expect(result.base['mcp-calls'].rows).toHaveLength(2);
+  expect(result.base['mcp-calls'].rows.find((/** @type {Record<string, unknown>} */ row) => row['mcp-server'] === 'github')).toMatchObject({
     'mcp-server': 'github',
-    'mcp-tool': 'search_issues'
+    'mcp-tool': 'search_issues',
+    'call-count': 2, 'run-attempt': 1,
+    'request-bytes': 84, 'request-bytes-count': 2,
+    'response-bytes': 256, 'response-bytes-count': 2
   });
-  expect(result.direct['mcp-tool-calls'].rows).toHaveLength(3);
+  expect(result.base['mcp-calls'].rows.every((/** @type {Record<string, unknown>} */ row) =>
+    typeof row['tool-usage-id'] === 'string' && !Object.hasOwn(row, 'mcp-observation'))).toBe(true);
+  expect(result.direct['mcp-tool-calls'].rows).toHaveLength(2);
   expect(result.direct['mcp-tool-totals'].rows).toHaveLength(1);
   for (const payload of [result.initial]) {
     expect(Object.keys(payload)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
@@ -1139,7 +1210,7 @@ test('data worker serves work items and security findings without dedicated cano
   });
 });
 
-test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async ({ page }) => {
+test('Chromium ingests gh-aw artifacts as a Run, compact Tool measures, and ordered event records', async ({ page }) => {
   const result = await page.evaluate(async (input) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const queriesUrl = `${location.origin}/src/data/queries/index.js`;
@@ -1151,13 +1222,16 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
     const runId = String(runs[0].id);
-    const [domains, tools, audits, issues] = await Promise.all([
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const [domains, tools, audits, issues, identities, counters] = await Promise.all([
       queries.domains.forRun(runId),
       queries.tools.forRun(runId),
       queries.audits.forRun(runId),
-      queries.issues.forRun(runId)
+      queries.issues.forRun(runId),
+      storage.readCollection(indexedDB, 'toolIdentities'),
+      storage.readCollection(indexedDB, 'toolCounters')
     ]);
-    return { ingestion, runs, domains, tools, audits, issues };
+    return { ingestion, runs, domains, tools, audits, issues, identities, counters };
   }, ghAwLogInput());
 
   expect(result.ingestion).toMatchObject({ updated: true });
@@ -1165,11 +1239,21 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
     [0, 'firewall', 'net_allowed']
   ]);
-  expect(result.tools.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'gateway', 'tool_call'],
-    [1, 'agent', 'agent_tool_start'],
-    [2, 'agent', 'agent_tool_done']
+  expect(result.tools).toHaveLength(2);
+  expect(result.tools.find((/** @type {Record<string, unknown>} */ row) => row.source === 'gateway'))
+    .toMatchObject({ eventCount: 1, callCount: 1, outcomeCount: 0, unmatchedCount: 1 });
+  expect(result.tools.find((/** @type {Record<string, unknown>} */ row) => row.source === 'agent'))
+    .toMatchObject({ eventCount: 2, callCount: 1, outcomeCount: 1, successCount: 1, unmatchedCount: 0 });
+  expect(result.tools.every((/** @type {Record<string, unknown>} */ row) =>
+    row.evidenceRevision === result.runs[0].toolUsageRevision && !Object.hasOwn(row, 'sequence')
+      && !Object.hasOwn(row, 'type'))).toBe(true);
+  expect(result.identities).toEqual([expect.objectContaining({ name: 'github/get_file', toolType: 'mcp' })]);
+  expect(new Set(result.tools.map((/** @type {Record<string, unknown>} */ row) => row.toolId)).size).toBe(1);
+  expect(result.counters.map((/** @type {Record<string, unknown>} */ row) => [row.type, row.eventCount]).sort()).toEqual([
+    ['agent_tool_done', 1], ['agent_tool_start', 1], ['tool_call', 1]
   ]);
+  expect(result.counters.every((/** @type {Record<string, unknown>} */ row) =>
+    row.evidenceRevision === result.runs[0].toolUsageRevision)).toBe(true);
   expect(result.audits.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
     [0, 'agent', 'agent_turn'],
     [1, 'agent', 'assistant_message']
@@ -1177,9 +1261,10 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   expect(result.issues).toEqual([]);
 });
 
-test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }) => {
+test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }, testInfo) => {
   const input = ghAwLogInput();
-  const directory = mkdtempSync(join(tmpdir(), 'cao-ingestion-compliance-'));
+  const directory = testInfo.outputPath('cao-ingestion-compliance');
+  mkdirSync(directory, { recursive: true });
   try {
     const sqliteIndexedDB = createSqliteIndexedDB(join(directory, 'dashboard.sqlite'));
     await ingestNodeGhAwLogs(sqliteIndexedDB, input);
@@ -1202,13 +1287,13 @@ test('SQLite and browser IndexedDB ingestion produce identical populated tables'
       link.click();
     }, input);
     const download = await downloadPromise;
-    const browserExportPath = await download.path();
-    expect(browserExportPath).not.toBeNull();
-    const browserRows = JSON.parse(readFileSync(/** @type {string} */ (browserExportPath), 'utf8'));
+    const browserExportPath = join(directory, 'indexeddb-canonical-data.json');
+    await download.saveAs(browserExportPath);
+    const browserRows = JSON.parse(readFileSync(browserExportPath, 'utf8'));
 
     for (const [backend, tables] of Object.entries({ SQLite: sqliteRows, IndexedDB: browserRows })) {
       expect(Object.keys(tables).sort()).toEqual(canonicalEntityTables);
-      for (const table of ['repositories', 'workflows', 'runs', 'domains', 'tools', 'audits']) {
+      for (const table of ['repositories', 'workflows', 'runs', 'domains', 'tools', 'toolIdentities', 'toolCounters', 'audits']) {
         expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
       }
     }

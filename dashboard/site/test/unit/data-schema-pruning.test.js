@@ -5,6 +5,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PRUNED_CANONICAL_FIELDS, pruneCanonicalRecord } from '../../src/data/model/fields.js';
 import { normalize } from '../../src/data/normalize/index.js';
+import { canonicalToolMeasures } from '../tool-fixtures.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import definitions from '../../src/data/queries/database.json' with { type: 'json' };
 import { readCollection, replaceCanonicalBatch, upsertCanonicalBatch } from '../../src/data/storage/indexeddb.js';
@@ -33,11 +34,15 @@ function batch() {
     logsPayload: { raw: 'logs' }, customEvidence: { retained: true }
   });
   value.tools.push({
+    ...canonicalToolMeasures, source: 'mcp', toolId: 'observed-tool:1', lastTimestamp: observedAt,
     id: 'tool:1', runId: value.runs[0].id, timestamp: observedAt, observedAt,
     type: 'tool.call', name: 'search', mcpServer: 'github', mcpTool: 'search',
-    toolType: 'mcp', isSkill: false, requestBytes: 42, responseBytes: 0,
+    toolType: 'mcp', isSkill: false, requestBytes: 42, requestBytesCount: 1, responseBytes: 0,
     correlationId: 'call-1', provenance: { source: 'gh-aw-logs', sourceId: 'call-1', observedAt }
   });
+  value.toolIdentities?.push({ id: 'observed-tool:1', name: 'search', mcpServer: 'github',
+    mcpTool: 'search', toolType: 'mcp', observedAt });
+  value.runs[0].toolUsageRevision = canonicalToolMeasures.evidenceRevision;
   value.issues.push({
     id: 'issue:1', runId: value.runs[0].id, timestamp: observedAt, observedAt,
     state: 'closed', closed: true, stateReason: null, issueState: 'closed',
@@ -48,7 +53,7 @@ function batch() {
 
 describe('canonical field pruning', () => {
   it('never prunes a field required by a canonical database query', () => {
-    const recordStores = ['domains', 'tools', 'skills', 'friction', 'audits', 'issues'];
+    const recordStores = ['domains', 'skills', 'friction', 'audits', 'issues'];
     for (const definition of definitions) {
       const stores = definition.from === '$records' ? recordStores : [definition.from.slice(1)];
       const derived = new Set([
@@ -116,7 +121,8 @@ describe.each(['IndexedDB', 'SQLite'])('pruning at the %s storage boundary', (ba
       for (const field of PRUNED_CANONICAL_FIELDS[store]) expect(record).not.toHaveProperty(field);
     }
     expect(before.runs.rows[0]).toMatchObject({ 'aic-total': 2.5, 'run-attempt': 2, 'input-tokens': 100 });
-    expect(before.tools.rows[0]).toMatchObject({ 'mcp-tool': 'search', 'request-bytes': 42, 'correlation-id': 'call-1' });
+    expect(before.tools.rows[0]).toMatchObject({ 'mcp-tool': 'search', 'request-bytes': 42, 'call-count': 1 });
+    expect(before.tools.rows[0]).not.toHaveProperty('correlation-id');
     expect(before.tools.rows[0]).not.toHaveProperty('is-skill');
     expect(before.issues.rows[0]).toMatchObject({ 'issue-state': 'closed', 'issue-state-reason': null });
     await replaceCanonicalBatch(indexedDB, input, { previousBatch: input });

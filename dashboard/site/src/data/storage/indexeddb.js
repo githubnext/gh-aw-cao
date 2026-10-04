@@ -4,6 +4,7 @@ import { recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
+import { mergeToolRunRevision, validateToolUsage } from '../model/tool-usage.js';
 import {
   AUDIT_CURATION_TRANSACTION_ID,
   AUDIT_CURATION_VERSION,
@@ -13,13 +14,12 @@ import {
 
 const debug = createDebug('data:indexeddb');
 
-export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 36;
+export const DATABASE_NAME = 'gh-aw-cao-dashboard-data-v28';
+export const DATABASE_VERSION = 1;
 
 export const CANONICAL_QUERY_INDEX_FIELDS = /** @type {Record<string, string[]>} */ ({
   byQuerySummary: ['summary'],
-  byQueryDomain: ['domain'],
-  byQueryMcpIdentity: ['source', 'type', 'mcpServer', 'mcpTool']
+  byQueryDomain: ['domain']
 });
 
 /** @param {string} [pathname] */
@@ -34,6 +34,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'toolIdentities', 'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -64,6 +65,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
    indexes: {
      byRepository: 'repositoryId',
      byWorkflow: 'workflowId',
+     byGithubRun: 'githubRunId',
      byConclusion: 'conclusion',
      byEvent: 'event',
      byEventConclusion: ['event', 'conclusion']
@@ -79,14 +81,11 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  },
  tools: {
    keyPath: 'id',
-   indexes: {
-     byRun: 'runId',
-     byQuerySummary: '_queryKeys.byQuerySummary',
-     byQueryMcpIdentity: '_queryKeys.byQueryMcpIdentity',
-     byTypeStatusRun: ['type', 'status', 'runId'],
-     byTypeStatusRunSummary: ['type', 'status', 'runId', 'summary']
-   }
+   indexes: { byRun: 'runId', byTool: 'toolId' }
  },
+ toolIdentities: { keyPath: 'id', indexes: {} },
+ toolCounters: { keyPath: 'id', indexes: { byRun: 'runId', byRunType: ['runId', 'type'], byUsage: 'usageId' } },
+ toolEvidence: { keyPath: 'id', indexes: { byRun: 'runId' } },
  skills: {
    keyPath: 'id',
    indexes: { byRun: 'runId' }
@@ -149,6 +148,7 @@ const RETENTION_TIMESTAMPS = new Set([
   'runs',
   'domains',
   'tools',
+  'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -159,6 +159,7 @@ const RETENTION_TIMESTAMPS = new Set([
 const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
   'tools',
+  'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -168,6 +169,9 @@ const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
   'workflowId',
+  'githubRunId',
+  'id',
+  'type',
   'runId',
   'valueId',
   'conclusion',
@@ -183,6 +187,7 @@ const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
  * @param {Record<string, unknown>} record
  */
 export function prepareCanonicalRecord(storeName, record) {
+  if (storeName === 'tools') validateToolUsage(record);
   const indexes = Object.keys(CANONICAL_DATABASE_SCHEMA[storeName]?.indexes ?? {})
     .filter((name) => Object.hasOwn(CANONICAL_QUERY_INDEX_FIELDS, name));
   if (indexes.length === 0) return record;
@@ -487,13 +492,12 @@ export function openCanonicalDatabase(indexedDB) {
           event: 'open-upgrade-completed', openId, elapsedMs: elapsed()
         }));
       }
-      if (event.oldVersion < DATABASE_VERSION) {
-        // Canonical data is a derived cache. Rebuild incompatible identities and
-        // schemas from authoritative dashboard inputs instead of migrating them.
-        debug('upgrading database schema', name, { from: event.oldVersion, to: DATABASE_VERSION });
-        for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
-        createSchema(database);
+      if (event.oldVersion !== 0) {
+        upgrade?.abort();
+        reject(new Error('Canonical storage contract changed; create a fresh database'));
+        return;
       }
+      createSchema(database);
     };
     let blocked = false;
     request.onsuccess = () => {
@@ -514,6 +518,11 @@ export function openCanonicalDatabase(indexedDB) {
         missingStores,
         elapsedMs: elapsed()
       });
+      if (missingStores.length || database.objectStoreNames.length !== Object.keys(CANONICAL_DATABASE_SCHEMA).length) {
+        database.close();
+        reject(new Error('Canonical storage schema is incompatible; create a fresh database'));
+        return;
+      }
       database.onversionchange = (event) => {
         debug({
           event: 'connection-version-change',
@@ -592,7 +601,17 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
       const transaction = readwriteTransaction(database, storeName);
       const done = transactionDone(transaction);
       const store = transaction.objectStore(storeName);
-      if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
+      if (storeName === 'runs') {
+        for (const record of boundedRecords) {
+          if (Object.hasOwn(record, 'toolUsageRevision')) {
+            store.put(record);
+            continue;
+          }
+          const lookup = store.get(/** @type {IDBValidKey} */ (record.id));
+          lookup.onsuccess = () => store.put(mergeToolRunRevision(lookup.result, record));
+          lookup.onerror = () => transaction.abort();
+        }
+      } else if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
         let pendingLookups = boundedRecords.length;
         for (const record of boundedRecords) {
           const lookup = store.get(/** @type {IDBValidKey} */ (record.id));

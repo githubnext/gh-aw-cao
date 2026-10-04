@@ -224,6 +224,9 @@ describe('canonical IndexedDB', () => {
       'repositories',
       'runs',
       'skills',
+      'toolCounters',
+      'toolEvidence',
+      'toolIdentities',
       'tools',
       'transactions',
       'workflows'
@@ -232,11 +235,11 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('repositories').objectStore('repositories').indexNames]).toEqual([]);
     expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byRepository']);
     expect([...database.transaction('runs').objectStore('runs').indexNames])
-      .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byRepository', 'byWorkflow']);
+      .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byGithubRun', 'byRepository', 'byWorkflow']);
     expect([...database.transaction('domains').objectStore('domains').indexNames])
       .toEqual(['byQueryDomain', 'byQuerySummary', 'byRun']);
     expect([...database.transaction('tools').objectStore('tools').indexNames])
-      .toEqual(['byQueryMcpIdentity', 'byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
+      .toEqual(['byRun', 'byTool']);
     expect([...database.transaction('audits').objectStore('audits').indexNames])
       .toEqual(['byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
     expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byQuerySummary', 'byRun']);
@@ -253,9 +256,9 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
-  it('removes persisted aggregate stores when upgrading an existing database', async () => {
+  it('opens a fresh namespace without upgrading an older aggregate database', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      const request = indexedDB.open('gh-aw-cao-dashboard-data:old-aggregates', 36);
       request.onupgradeneeded = () => {
         request.result.createObjectStore('dailyOverviewAggregates', { keyPath: 'id' });
         request.result.createObjectStore('overviewAggregateMetadata', { keyPath: 'id' });
@@ -294,7 +297,7 @@ describe('canonical IndexedDB', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
-  it('rebuilds disposable canonical stores during upgrade', async () => {
+  it('rejects an incompatible database version without rewriting its records', async () => {
     const legacy = await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, 9);
       request.onupgradeneeded = () => {
@@ -309,37 +312,12 @@ describe('canonical IndexedDB', () => {
     });
     legacy.close();
 
-    const database = await openCanonicalDatabase(indexedDB);
-
-    expect(database.version).toBe(DATABASE_VERSION);
-    expect([...database.objectStoreNames]).toEqual([
-      'audits',
-      'campaigns',
-      'domains',
-      'evalObservations',
-      'evals',
-      'experimentAssignments',
-      'experiments',
-      'friction',
-      'graderObservations',
-      'graders',
-      'issues',
-      'marketplacePackages',
-      'operationalValues',
-      'repositories',
-      'runs',
-      'skills',
-      'tools',
-      'transactions',
-      'workflows'
-    ]);
-    expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
-    database.close();
+    await expect(openCanonicalDatabase(indexedDB)).rejects.toMatchObject({ name: 'VersionError' });
   });
 
-  it('clears stale marketplace snapshots when package identity changes', async () => {
+  it('does not import older marketplace snapshots into the fresh namespace', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      const request = indexedDB.open('gh-aw-cao-dashboard-data:old-marketplace', 36);
       request.onupgradeneeded = () => {
         const packages = request.result.createObjectStore('marketplacePackages', { keyPath: 'id' });
         packages.put({ id: 'official:example/packages/demo@old' });
@@ -356,9 +334,9 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
-  it('rebuilds package-store caches during the campaigns schema upgrade', async () => {
+  it('does not upgrade package-store caches into the aggregate schema', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, LEGACY_PACKAGES_DATABASE_VERSION);
+      const request = indexedDB.open('gh-aw-cao-dashboard-data:old-packages', LEGACY_PACKAGES_DATABASE_VERSION);
       request.onupgradeneeded = () => {
         const packages = request.result.createObjectStore('packages', { keyPath: 'id' });
         packages.createIndex('bySlug', 'slug');
@@ -394,6 +372,9 @@ describe('canonical IndexedDB', () => {
       'repositories',
       'runs',
       'skills',
+      'toolCounters',
+      'toolEvidence',
+      'toolIdentities',
       'tools',
       'transactions',
       'workflows'
@@ -1160,9 +1141,7 @@ describe('canonical database bootstrap diagnostics', () => {
       request.onerror = () => reject(request.error);
     });
     const { module, events } = await importWithDebug('?debug=data:indexeddb');
-    const database = await module.openCanonicalDatabase(indexedDB);
-    database.close();
-
+    await expect(module.openCanonicalDatabase(indexedDB)).rejects.toThrow('create a fresh database');
     const mismatch = events().find((event) => event.event === 'open-schema-mismatch');
     expect(mismatch).toBeDefined();
     expect(mismatch.missingStores).toContain('campaigns');

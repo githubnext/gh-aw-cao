@@ -47,7 +47,7 @@ the exact identities and parent relationships.
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
 | **Run** | `github:run:<owner>/<repository>:<run-id>` | Repository and Workflow | Converges observations for one repository-scoped GitHub Actions run while retaining the latest observed attempt. |
 | **Domain** | Namespaced deterministic source ID | Run | Records allowed and blocked firewall observations. |
-| **Tool** | Namespaced deterministic source ID | Run | Records MCP and Bash calls. |
+| **Tool** | Deterministic Run/tool/source identity | Run and observed Tool Identity | Exact usage and measurement counters, not one hot row per event. |
 | **Skill** | Namespaced deterministic source ID | Run | Records extracted skill invocation counts and failures. |
 | **Friction** | Namespaced deterministic source ID | Run | Records gh-aw's precomputed friction-cost summary. |
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
@@ -99,13 +99,26 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 27. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 36. Its canonical stores are
+The canonical model is version 28. The browser database is
+`gh-aw-cao-dashboard-data-v28`, IndexedDB version 1. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
+`toolIdentities`, `toolCounters`, `toolEvidence`, `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
+
+Tool usage is compacted by Run, observed tool identity, and source. Exact
+event-type/status counters retain UTC-day precision, while measured sizes
+and latency retain their known-value denominators. Incomplete is not confirmed
+failure, and equal timestamps are not measured latency. Run evidence revisions
+prevent stale counters from accumulating on replay.
+
+PostgreSQL usage, counter, and evidence-locator tables use weekly `run_at`
+partitions. Exact events remain in manifested compressed shards, outside the
+hot databases. The hosted authenticated `/api/runs/{id}/tool-events` endpoint
+returns bounded detail with total/omitted counts, or an explicit unavailable
+error. This is a fresh-only contract; existing databases and old normalized
+payloads are rejected without migration or legacy support.
 The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Overview aggregates are
 computed by request-scoped queries over canonical runs. Schema upgrades rebuild all stores from

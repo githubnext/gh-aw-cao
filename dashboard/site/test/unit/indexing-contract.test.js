@@ -84,7 +84,7 @@ describe('indexing dashboard', () => {
       { table: 'campaigns', records: 1 },
       { table: 'issue events', records: 1 },
       { table: 'repositories', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'tool usage aggregates', records: 1 }
     ]);
     const tableLabels = results['indexing-database-table-counts'].rows.map((row) => row.table);
     expect(tableLabels).not.toContain('network domains');

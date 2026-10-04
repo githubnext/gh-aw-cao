@@ -6,6 +6,9 @@
     { "name": "$runs", "sources": ["runs"] },
     { "name": "$domains", "sources": ["domains"] },
     { "name": "$tools", "sources": ["tools"] },
+    { "name": "$tool-identities", "sources": ["tool-identities"] },
+    { "name": "$tool-counters", "sources": ["tool-counters"] },
+    { "name": "$tool-evidence", "sources": ["tool-evidence"] },
     { "name": "$skills", "sources": ["skills"] },
     { "name": "$friction", "sources": ["friction"] },
     { "name": "$audits", "sources": ["audits"] },
@@ -136,6 +139,21 @@
       "name": "tool-records",
       "from": "tool-keys",
       "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
+    },
+    {
+      "name": "tool-identity-records",
+      "from": "$tool-identities",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "tool-counter-records",
+      "from": "$tool-counters",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "tool-evidence-records",
+      "from": "$tool-evidence",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
     },
     {
       "name": "skill-keys",
@@ -289,6 +307,7 @@
         "id": { "field": "_id" }, "repositoryId": { "field": "_repository-id" }, "workflowId": { "field": "_workflow-id" },
         "owner": { "field": "_owner" }, "repository": { "field": "_repository" }, "repositoryFullName": { "field": "_full-name" },
         "workflowPath": { "field": "_path" }, "githubRunId": { "field": "_github-run-id" }, "attempt": { "field": "_attempt" },
+        "toolUsageRevision": { "field": "tool-usage-revision" },
         "title": { "fields": ["run-title", "_title-default"] }, "targetRepository": { "field": "target-repository" },
         "event": { "field": "event", "default": "unknown" }, "branch": { "field": "branch" }, "headSha": { "field": "head-sha" },
         "createdAt": { "field": "created-at" }, "status": { "field": "run-status", "default": "unknown" }, "conclusion": { "field": "run-conclusion", "default": null },
@@ -318,8 +337,50 @@
       "data": {}
     },
     {
-      "query": "tool-records", "input": "$tools", "chunkInputs": ["$published-runs"], "kind": "tool", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
-      "data": {}
+      "query": "tool-records", "input": "$tools", "chunkInputs": ["$published-runs"], "kind": "tool", "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "tool-id", "event-timestamp", "event-source"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "_run-id" }, "toolId": { "field": "tool-id" },
+        "evidenceRevision": { "field": "evidence-revision" },
+        "source": { "field": "event-source" }, "timestamp": { "field": "event-timestamp" }, "lastTimestamp": { "field": "last-event-timestamp" },
+        "eventCount": { "field": "event-count", "nonnegativeInteger": true }, "callCount": { "field": "call-count", "nonnegativeInteger": true },
+        "outcomeCount": { "field": "outcome-count", "nonnegativeInteger": true }, "successCount": { "field": "success-count", "nonnegativeInteger": true },
+        "failedCount": { "field": "failed-count", "nonnegativeInteger": true }, "incompleteCount": { "field": "incomplete-count", "nonnegativeInteger": true },
+        "unknownOutcomeCount": { "field": "unknown-outcome-count", "nonnegativeInteger": true },
+        "unmatchedCount": { "field": "unmatched-count", "nonnegativeInteger": true }, "ambiguousCount": { "field": "ambiguous-count", "nonnegativeInteger": true },
+        "requestBytes": { "field": "request-bytes", "nonnegativeInteger": true }, "requestBytesCount": { "field": "request-bytes-count", "nonnegativeInteger": true },
+        "responseBytes": { "field": "response-bytes", "nonnegativeInteger": true }, "responseBytesCount": { "field": "response-bytes-count", "nonnegativeInteger": true },
+        "latencySum": { "field": "latency-sum" }, "latencyCount": { "field": "latency-count", "nonnegativeInteger": true },
+        "latencyMin": { "field": "latency-min" }, "latencyMax": { "field": "latency-max" },
+        "sampleCallId": { "field": "sample-call-id" }, "sampleOutcomeId": { "field": "sample-outcome-id" }
+      }
+    },
+    {
+      "query": "tool-identity-records", "input": "$tool-identities", "kind": "tool-identity", "sourceId": "id", "observedAt": "_observed-at", "required": ["id"],
+      "data": {
+        "id": { "field": "id" }, "name": { "field": "name", "preserveNull": true }, "toolType": { "field": "tool-type", "preserveNull": true },
+        "mcpServer": { "field": "mcp-server", "preserveNull": true }, "mcpTool": { "field": "mcp-tool", "preserveNull": true },
+        "mcpServerVersion": { "field": "mcp-server-version", "preserveNull": true }, "mcpProtocolVersion": { "field": "mcp-protocol-version", "preserveNull": true }
+      }
+    },
+    {
+      "query": "tool-counter-records", "input": "$tool-counters", "kind": "tool-counter", "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "usage-id"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "run-id" }, "usageId": { "field": "usage-id" },
+        "evidenceRevision": { "field": "evidence-revision" },
+        "timestamp": { "field": "event-timestamp" }, "lastTimestamp": { "field": "last-event-timestamp" },
+        "type": { "field": "event-type", "preserveNull": true }, "status": { "field": "event-status", "preserveNull": true },
+        "eventCount": { "field": "event-count", "nonnegativeInteger": true },
+        "requestBytes": { "field": "request-bytes", "nonnegativeInteger": true }, "requestBytesCount": { "field": "request-bytes-count", "nonnegativeInteger": true },
+        "responseBytes": { "field": "response-bytes", "nonnegativeInteger": true }, "responseBytesCount": { "field": "response-bytes-count", "nonnegativeInteger": true }
+      }
+    },
+    {
+      "query": "tool-evidence-records", "input": "$tool-evidence", "kind": "tool-evidence", "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "payload-ref", "payload-hash"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "run-id" }, "payloadRef": { "field": "payload-ref" }, "payloadHash": { "field": "payload-hash" },
+        "evidenceRevision": { "field": "evidence-revision" },
+        "eventCount": { "field": "event-count", "nonnegativeInteger": true }
+      }
     },
     {
       "query": "skill-records", "input": "$skills", "chunkInputs": ["$published-runs"], "kind": "skill", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],

@@ -30,11 +30,11 @@ describe('gh-aw logs adapter', () => {
     expect([...batch.domains, ...batch.tools, ...batch.audits]
       .every((record) => record.runId === 'github:run:githubnext/gh-aw-cao:303')).toBe(true);
     expect(batch.domains.map((record) => record.type)).toEqual(['net_allowed']);
-    expect(batch.tools.map((record) => record.type)).toEqual([
-      'tool_call', 'agent_tool_start', 'agent_tool_done'
+    expect(batch.toolCounters?.map((record) => record.type).sort()).toEqual([
+      'agent_tool_done', 'agent_tool_start', 'tool_call'
     ]);
     expect(batch.audits.map((record) => record.type)).toEqual(['agent_turn', 'assistant_message']);
-    expect(batch.tools.filter((record) => record.correlationId === 'call-1')).toHaveLength(3);
+    expect(batch.tools.reduce((total, record) => total + Number(record.eventCount), 0)).toBe(3);
   });
 
   it('stores gateway-denied tool calls in the tools table', () => {
@@ -49,7 +49,7 @@ describe('gh-aw logs adapter', () => {
       files: [{ path: 'run-303/mcp-logs/gateway.jsonl', content }]
     }).observations);
 
-    expect(batch.tools.map((record) => record.type)).toEqual(['difc_filtered', 'guard_blocked']);
+    expect(batch.toolCounters?.map((record) => record.type).sort()).toEqual(['difc_filtered', 'guard_blocked']);
     expect(batch.audits).toEqual([]);
   });
 
@@ -373,17 +373,12 @@ describe('gh-aw logs adapter', () => {
     expect(batch.tools).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'mcp',
-        type: 'tool.call',
-        correlationId: 'call-7',
-        summary: 'github/get_file',
+        callCount: 1,
+        outcomeCount: 1,
+        eventCount: 2,
+        successCount: 1,
         requestBytes: 42,
         responseBytes: 128
-      }),
-      expect.objectContaining({
-        source: 'mcp',
-        type: 'tool.result',
-        correlationId: 'call-7',
-        status: 'success'
       }),
     ]));
     expect(batch.skills).toEqual([

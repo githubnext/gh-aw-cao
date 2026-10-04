@@ -7,6 +7,7 @@ import {
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
+import { validateToolUsage } from '../model/tool-usage.js';
 import { normalize } from '../normalize/index.js';
 import {
   maintainCanonicalDatabase,
@@ -36,12 +37,9 @@ import { AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION } from '../model/
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 6;
-const GH_AW_JSONL_INGESTION_VERSION = 6;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
-const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
-const PRE_EVIDENCE_INGESTION_VERSION = 3;
-const LAST_PRE_EVIDENCE_SCHEMA_VERSION = 22;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 7;
+const GH_AW_JSONL_INGESTION_VERSION = 7;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 5;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -51,6 +49,7 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'toolIdentities', 'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -637,15 +636,10 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             if (envelope.kind !== 'metadata') {
               throw new TypeError('Normalized activity JSONL must start with metadata');
             }
-            const schemaVersion = Number(envelope.schemaVersion);
-            if (!Number.isSafeInteger(schemaVersion)
-                || schemaVersion < MIN_NORMALIZED_JSONL_SCHEMA_VERSION
-                || schemaVersion > CANONICAL_SCHEMA_VERSION) {
+            if (envelope.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
               throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
             }
-            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION
-                && !(envelope.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION
-                  && schemaVersion <= LAST_PRE_EVIDENCE_SCHEMA_VERSION)) {
+            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
               throw new TypeError(`Unsupported normalized activity ingestion version: ${String(envelope.ingestionVersion)}`);
             }
             if (typeof envelope.phase !== 'string'
@@ -674,15 +668,13 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           if (envelope.kind !== 'record'
               || collection === null
               || !NORMALIZED_BATCH_COLLECTIONS.includes(collection)
-              || (header.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION && ['experiments', 'experimentAssignments', 'graders',
-                'graderObservations', 'evals', 'evalObservations'].includes(collection))
               || !envelope.record
               || typeof envelope.record !== 'object'
               || Array.isArray(envelope.record)) {
             throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
           }
           const excluded = header.phase === 'runs'
-            ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+            ? ['domains', 'tools', 'toolIdentities', 'toolCounters', 'toolEvidence', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
               'graders', 'graderObservations', 'evals', 'evalObservations']
             : header.phase === 'records'
             ? ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']
@@ -691,6 +683,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError(`Normalized ${header.phase} payload must not include ${collection}`);
           }
           if (collection === 'runs') rawRuns += 1;
+          if (collection === 'tools') validateToolUsage(/** @type {Record<string, unknown>} */ (envelope.record));
           batch[collection]?.push(/** @type {never} */ (envelope.record));
           bufferedRecords += 1;
           if (bufferedRecords >= NORMALIZED_JSONL_WRITE_BATCH_SIZE) await flush();

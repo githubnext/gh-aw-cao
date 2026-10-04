@@ -7,7 +7,7 @@
   "from": "audits",
   "union": [
    "domains",
-   "tools",
+   "tool-observations",
    "issues"
   ],
   "select": [
@@ -28,6 +28,9 @@
    },
    {
     "field": "event"
+   },
+   {
+    "field": "event-count"
    },
    {
     "field": "event-source"
@@ -112,9 +115,9 @@
  },
  {
   "name": "tool-event-runs",
-  "subject": "Count imported tool records per run before combining event sources.",
+  "subject": "Sum original imported Tool event counts per run from compact usage facts.",
   "objective": "Bound tool evidence for run import-coverage analysis.",
-  "acceptance": "Count only retained tool records with event identity by run attempt; missing evidence does not establish zero activity.",
+  "acceptance": "Sum original retained event counts, not aggregate rows, by winning Run attempt; missing evidence does not establish zero activity.",
   "from": "tools",
   "aggregate": {
    "by": [
@@ -126,9 +129,9 @@
    ],
    "values": [
     {
-     "field": "event",
+     "field": "event-count",
      "as": "events",
-     "reducer": "count"
+     "reducer": "sum"
     }
    ]
   }
@@ -416,9 +419,9 @@
    ],
    "values": [
     {
-     "field": "mcp-observation",
+     "field": "call-count",
      "as": "calls",
-     "reducer": "count"
+     "reducer": "sum"
     },
     {
      "field": "request-bytes",
@@ -5633,7 +5636,7 @@
   "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
   "from": "audits",
   "union": [
-   "tools"
+   "tool-observations"
   ],
   "filter": {
    "predicates": [
@@ -5694,9 +5697,9 @@
    ],
    "values": [
     {
-     "field": "event",
+     "field": "event-count",
      "as": "events",
-     "reducer": "count"
+     "reducer": "sum"
     }
    ]
   },
@@ -7471,6 +7474,9 @@
     "field": "event"
    },
    {
+    "field": "event-count"
+   },
+   {
     "field": "event-source"
    },
    {
@@ -8485,9 +8491,9 @@
  },
  {
   "name": "indexing-tools-table-count",
-  "subject": "Count retained tool events rows in the dashboard database.",
-  "objective": "Provide the retained tool events row count for the table-count diagnostic.",
-  "acceptance": "Label the result tool events and count tool event rows in the current database; absence or zero does not prove no tool use.",
+  "subject": "Count retained tool usage aggregate rows in the dashboard database.",
+  "objective": "Provide the physical tool usage fact count, not the original event count.",
+  "acceptance": "Label the result tool usage aggregates; count aggregate identities, not calls or original events. Missing evidence does not prove no tool use.",
   "from": "tools",
   "compute": [
    {
@@ -8495,7 +8501,7 @@
     "function": "literal",
     "args": [
      {
-      "value": "tool events"
+      "value": "tool usage aggregates"
      }
     ]
    }
@@ -12300,9 +12306,9 @@
    ],
    "values": [
     {
-     "field": "mcp-observation",
+     "field": "call-count",
      "as": "observations",
-     "reducer": "count"
+     "reducer": "sum"
     }
    ]
   },

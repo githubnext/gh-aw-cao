@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 27;
+export const CANONICAL_SCHEMA_VERSION = 28;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -11,6 +11,10 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'run',
   'domain',
   'tool',
+  'tool-event',
+  'tool-identity',
+  'tool-counter',
+  'tool-evidence',
   'skill',
   'friction',
   'audit',
@@ -37,6 +41,8 @@ export function mergeEvidenceDefinition(previous, incoming) {
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'domains',
   'tools',
+  'toolCounters',
+  'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -65,6 +71,9 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} runs
  * @property {Record<string, unknown>[]} domains
  * @property {Record<string, unknown>[]} tools
+ * @property {Record<string, unknown>[]} [toolIdentities]
+ * @property {Record<string, unknown>[]} [toolCounters]
+ * @property {Record<string, unknown>[]} [toolEvidence]
  * @property {Record<string, unknown>[]} skills
  * @property {Record<string, unknown>[]} friction
  * @property {Record<string, unknown>[]} audits
@@ -169,6 +178,15 @@ export function relationshipErrors(batch) {
     for (const record of batch[collection] ?? []) {
       requireReference(record, 'runId', 'runs');
     }
+  }
+  const tools = new Map((batch.tools ?? []).map((record) => [record.id, record]));
+  const toolIds = new Set((batch.toolIdentities ?? []).map((record) => record.id));
+  for (const record of batch.tools ?? []) {
+    if (!toolIds.has(record.toolId)) errors.push(`${String(record.id)}.toolId does not reference an observed tool identity`);
+  }
+  for (const record of batch.toolCounters ?? []) {
+    const usage = tools.get(record.usageId);
+    if (!usage || usage.runId !== record.runId) errors.push(`${String(record.id)}.usageId does not reference its owning Run's tool usage`);
   }
   for (const record of batch.operationalValues ?? []) {
     requireReference(record, 'repositoryId', 'repositories');

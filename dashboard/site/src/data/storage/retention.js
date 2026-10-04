@@ -1,6 +1,7 @@
 import { orderRunRecords } from '../normalize/index.js';
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
+import { mergeToolRunRevision } from '../model/tool-usage.js';
 
 const debugRetention = createDebug('retention');
 
@@ -19,7 +20,9 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
 const RETENTION_TIMESTAMPS = {
   runs: ['completedAt', 'startedAt', 'observedAt'],
   domains: ['timestamp', 'observedAt'],
-  tools: ['timestamp', 'observedAt'],
+  tools: ['lastTimestamp', 'observedAt'],
+  toolCounters: ['observedAt'],
+  toolEvidence: ['observedAt'],
   skills: ['timestamp', 'observedAt'],
   friction: ['timestamp', 'observedAt'],
   audits: ['timestamp', 'observedAt'],
@@ -37,6 +40,7 @@ const STORES = /** @type {const} */ ([
   'runs',
   'domains',
   'tools',
+  'toolIdentities', 'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -48,6 +52,7 @@ const STORES = /** @type {const} */ ([
 const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
   'tools',
+  'toolCounters', 'toolEvidence',
   'skills',
   'friction',
   'audits',
@@ -250,7 +255,7 @@ function upsertRecords(
           continue;
         }
       }
-      records.set(id, EVIDENCE_DEFINITION_STORES.has(storeName)
+      records.set(id, storeName === 'runs' ? mergeToolRunRevision(records.get(id), record) : EVIDENCE_DEFINITION_STORES.has(storeName)
         ? mergeEvidenceDefinition(records.get(id), record) : record);
     }
     merged[storeName] = records;
@@ -290,6 +295,14 @@ function pruneOrphans(merged) {
     for (const [id, record] of merged[storeName]) {
       if (!runs.has(String(record.runId))) merged[storeName].delete(id);
     }
+  }
+  for (const [id, counter] of merged.toolCounters) {
+    const usage = merged.tools.get(String(counter.usageId));
+    if (!usage || usage.runId !== counter.runId) merged.toolCounters.delete(id);
+  }
+  const retainedToolIds = new Set([...merged.tools.values()].map(tool => String(tool.toolId)));
+  for (const id of merged.toolIdentities.keys()) {
+    if (!retainedToolIds.has(id)) merged.toolIdentities.delete(id);
   }
   for (const storeName of ['experiments', 'graders', 'evals']) {
     for (const [id, record] of merged[storeName]) {

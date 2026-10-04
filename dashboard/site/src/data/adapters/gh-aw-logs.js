@@ -435,7 +435,7 @@ function stableDigest(value) {
 /**
  * @param {string} type
  * @param {Record<string, unknown>} fields
- * @returns {'domain' | 'tool' | 'skill' | 'friction' | 'audit' | 'issue'}
+ * @returns {'domain' | 'tool-event' | 'skill' | 'friction' | 'audit' | 'issue'}
  */
 function recordKind(type, fields) {
   if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
@@ -456,11 +456,11 @@ function recordKind(type, fields) {
     || type === 'agent_tool_start'
     || type === 'agent_tool_done'
     || type === 'guard_blocked'
-    || type === 'difc_filtered') return 'tool';
+    || type === 'difc_filtered') return 'tool-event';
   return 'audit';
 }
 
-/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'skill' | 'friction' | 'audit' | 'issue'} kind */
+/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool-event' | 'skill' | 'friction' | 'audit' | 'issue'} kind */
 function specializedFields(type, fields, kind) {
   if (kind === 'issue') {
     const url = requiredString(fields.correlationId, 'safe output URL');
@@ -480,7 +480,7 @@ function specializedFields(type, fields, kind) {
       statusObservedAt: optionalString(fields.issueStatusObservedAt)
     };
   }
-  if (kind === 'tool') {
+  if (kind === 'tool-event') {
     const name = optionalString(fields.mcpTool ?? fields.toolName ?? fields.summary) ?? 'unknown';
     const isBash = /(^|[/.:_-])(bash|shell)(?:$|[/.:_-])/i.test(name);
     return {
@@ -1523,6 +1523,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         observedAt: enriched.observedAt,
         data: withoutUndefined({
           runId: id,
+          ...(kind === 'tool-event' ? {
+            runAttempt: positiveInteger(run.run_attempt ?? rawRuns.get(id)?.value.attempt ?? 1, 'Tool event runAttempt')
+          } : {}),
           timestamp: eventTimestamp,
           source: fields.source ?? 'gh-aw-logs',
           type,
@@ -1966,10 +1969,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       && !Array.isArray(audit.mcp_tool_usage)
       ? /** @type {Record<string, unknown>} */ (audit.mcp_tool_usage)
       : {};
-    const mcpToolUsage = Array.isArray(runMcpToolUsage.tool_calls)
-      && runMcpToolUsage.tool_calls.length > 0
-      ? runMcpToolUsage
-      : auditMcpToolUsage;
+    const mcpToolUsage = Object.hasOwn(run, 'mcp_tool_usage') ? runMcpToolUsage : auditMcpToolUsage;
     const toolCalls = Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
     toolCalls.forEach((toolCall, index) => {
       const record = toolCall && typeof toolCall === 'object' && !Array.isArray(toolCall)
@@ -2351,7 +2351,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     unenrichedRuns: runIds.size - enrichedRuns.size,
     recordsByKind: observations.reduce((counts, observation) => {
       if (observation.kind === 'domain') counts.domains += 1;
-      if (observation.kind === 'tool') counts.tools += 1;
+      if (observation.kind === 'tool-event') counts.tools += 1;
       if (observation.kind === 'skill') counts.skills += 1;
       if (observation.kind === 'friction') counts.friction += 1;
       if (observation.kind === 'audit') counts.audits += 1;

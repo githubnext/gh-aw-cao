@@ -605,6 +605,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/repositories/{id}", a.repository)
 	register("GET /api/repositories/{id}/runs", a.repositoryRuns)
 	register("GET /api/workflows/{id}/runs", a.workflowRuns)
+	register("GET /api/runs/{id}/tool-events", a.toolEvents)
 	register("POST /api/github/webhook", a.githubWebhook)
 	register("POST /api/admin/rebuild", a.rebuild)
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)

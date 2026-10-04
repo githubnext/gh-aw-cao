@@ -185,6 +185,7 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	result, err := ingest.Run(ctx, p.Data, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
 		Force:               force,
+		MaintainEvidence:    true,
 	})
 	if err != nil {
 		// The lake is unchanged and the previous data keeps serving, so

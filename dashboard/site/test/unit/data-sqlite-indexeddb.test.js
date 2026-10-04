@@ -109,7 +109,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
   });
 
-  it('rebuilds outdated eval mirrors from canonical records without duplicate documents', async () => {
+  it('rejects outdated eval mirrors without rebuilding existing databases', async () => {
     const filename = temporaryDatabase();
     const record = {
       id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
@@ -147,14 +147,10 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     connection.close();
 
     const reopened = createSqliteIndexedDB(filename);
-    (await openCanonicalDatabase(reopened)).close();
-    const upgraded = new DatabaseSync(filename);
-    expect(upgraded.prepare('SELECT experiment_id, variant FROM eval_observations').get())
-      .toMatchObject({ experiment_id: 'experiment:1', variant: 'candidate' });
-    expect(upgraded.prepare('PRAGMA table_info(eval_observations)').all().map((row) => row.name))
-      .not.toContain('record_json');
-    upgraded.close();
-    expect(await readCollection(reopened, 'evalObservations')).toEqual([record]);
+    await expect(openCanonicalDatabase(reopened)).rejects.toThrow('create a fresh database');
+    const unchanged = new DatabaseSync(filename);
+    expect(unchanged.prepare('PRAGMA table_info(eval_observations)').all().map((row) => row.name)).toContain('record_json');
+    unchanged.close();
   });
 
   it('projects the six evidence collections into transactional relational SQLite tables', async () => {
@@ -339,7 +335,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--context', context,
       '--logs', logs
     ], { encoding: 'utf8' }));
-    expect(ingestion.counts).toMatchObject({ runs: 1, domains: 1, tools: 3, audits: 2, issues: 0 });
+    expect(ingestion.counts).toMatchObject({ runs: 1, domains: 1, tools: 2, audits: 2, issues: 0 });
 
     const runs = JSON.parse(execFileSync(process.execPath, [
       script,
@@ -363,7 +359,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       healthy: true,
       after: {
         counts: {
-          repositories: 1, workflows: 1, runs: 1, domains: 1, tools: 3, audits: 2, issues: 0
+          repositories: 1, workflows: 1, runs: 1, domains: 1, tools: 2, audits: 2, issues: 0
         }
       }
     });
@@ -425,7 +421,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(normalizedMetadata).toMatchObject({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 4,
+      ingestionVersion: 5,
       sourceRecords: 3,
       phase: 'all',
       records: normalizedRecords.length

@@ -1,6 +1,9 @@
 package model
 
-const SchemaVersion = 16
+const SchemaVersion = 17
+
+const CanonicalSchemaVersion = 28
+const NormalizedIngestionVersion = 5
 
 type Row map[string]any
 

@@ -628,22 +628,285 @@
     ]
   },
   {
+    "name": "tools",
+    "stores": [
+      "runs",
+      "tools",
+      "toolIdentities"
+    ],
+    "from": "$tools",
+    "joins": [
+      {
+        "source": "$toolIdentities",
+        "type": "inner",
+        "on": [
+          { "left": "toolId", "right": "id" }
+        ],
+        "fields": [
+          { "field": "name", "as": "name" },
+          { "field": "toolType", "as": "toolType" },
+          { "field": "mcpServer", "as": "mcpServer" },
+          { "field": "mcpTool", "as": "mcpTool" },
+          { "field": "mcpServerVersion", "as": "mcpServerVersion" },
+          { "field": "mcpProtocolVersion", "as": "mcpProtocolVersion" }
+        ]
+      },
+      {
+        "source": "$runs",
+        "type": "inner",
+        "on": [
+          { "left": "runId", "right": "id" },
+          { "left": "evidenceRevision", "right": "toolUsageRevision" }
+        ],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "repository", "as": "repository" },
+          { "field": "workflowPath", "as": "workflow" },
+          { "field": "githubRunId", "as": "run" },
+          { "field": "attempt", "as": "run-attempt" },
+          { "field": "runLink", "as": "run-link" },
+          { "field": "engineVersion", "as": "engine-version" },
+          { "field": "ghAwVersion", "as": "gh-aw-version" },
+          { "field": "rolloutMode", "as": "rollout-mode" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "runId", "as": "run-id" },
+      { "field": "toolId", "as": "tool-id" },
+      { "field": "evidenceRevision", "as": "evidence-revision" },
+      { "field": "organization" },
+      { "field": "repository", "as": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "run-attempt" },
+      { "field": "run-link" },
+      { "field": "engine-version" },
+      { "field": "gh-aw-version" },
+      { "field": "rollout-mode" },
+      { "field": "source", "as": "event-source" },
+      { "field": "eventCount", "as": "event-count" },
+      { "field": "callCount", "as": "call-count" },
+      { "field": "outcomeCount", "as": "outcome-count" },
+      { "field": "successCount", "as": "success-count" },
+      { "field": "failedCount", "as": "failed-count" },
+      { "field": "incompleteCount", "as": "incomplete-count" },
+      { "field": "unknownOutcomeCount", "as": "unknown-outcome-count" },
+      { "field": "unmatchedCount", "as": "unmatched-count" },
+      { "field": "ambiguousCount", "as": "ambiguous-count" },
+      { "field": "requestBytes", "as": "request-bytes" },
+      { "field": "requestBytesCount", "as": "request-bytes-count" },
+      { "field": "responseBytes", "as": "response-bytes" },
+      { "field": "responseBytesCount", "as": "response-bytes-count" },
+      { "field": "latencySum", "as": "latency-sum" },
+      { "field": "latencyCount", "as": "latency-count" },
+      { "field": "latencyMin", "as": "latency-min" },
+      { "field": "latencyMax", "as": "latency-max" },
+      { "field": "timestamp", "as": "event-timestamp" },
+      { "field": "lastTimestamp", "as": "last-event-timestamp" },
+      { "field": "observedAt", "as": "observed-at" },
+      { "field": "sampleCallId", "as": "sample-call-id" },
+      { "field": "sampleOutcomeId", "as": "sample-outcome-id" },
+      { "field": "name", "as": "name" },
+      { "field": "toolType", "as": "tool-type" },
+      { "field": "mcpServer", "as": "mcp-server" },
+      { "field": "mcpTool", "as": "mcp-tool" },
+      { "field": "mcpServerVersion", "as": "mcp-server-version" },
+      { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" }
+    ]
+  },
+  {
+    "name": "tool-identities",
+    "stores": [
+      "toolIdentities"
+    ],
+    "from": "$toolIdentities",
+    "select": [
+      { "field": "id" },
+      { "field": "name" },
+      { "field": "toolType", "as": "tool-type" },
+      { "field": "mcpServer", "as": "mcp-server" },
+      { "field": "mcpTool", "as": "mcp-tool" },
+      { "field": "mcpServerVersion", "as": "mcp-server-version" },
+      { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" },
+      { "field": "observedAt", "as": "observed-at" }
+    ]
+  },
+  {
+    "name": "tool-counters",
+    "stores": [
+      "toolCounters",
+      "runs"
+    ],
+    "from": "$toolCounters",
+    "joins": [
+      {
+        "source": "$runs",
+        "type": "inner",
+        "on": [
+          { "left": "runId", "right": "id" },
+          { "left": "evidenceRevision", "right": "toolUsageRevision" }
+        ],
+        "fields": []
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "runId", "as": "run-id" },
+      { "field": "usageId", "as": "usage-id" },
+      { "field": "evidenceRevision", "as": "evidence-revision" },
+      { "field": "type", "as": "event-type" },
+      { "field": "status", "as": "event-status" },
+      { "field": "timestamp", "as": "event-timestamp" },
+      { "field": "lastTimestamp", "as": "last-event-timestamp" },
+      { "field": "eventCount", "as": "event-count" },
+      { "field": "requestBytes", "as": "request-bytes" },
+      { "field": "responseBytes", "as": "response-bytes" },
+      { "field": "requestBytesCount", "as": "request-bytes-count" },
+      { "field": "responseBytesCount", "as": "response-bytes-count" },
+      { "field": "observedAt", "as": "observed-at" }
+    ]
+  },
+  {
+    "name": "tool-observations",
+    "stores": [
+      "runs",
+      "tools",
+      "toolIdentities",
+      "toolCounters"
+    ],
+    "from": "$toolCounters",
+    "joins": [
+      {
+        "source": "$tools",
+        "type": "inner",
+        "on": [
+          { "left": "usageId", "right": "id" }
+        ],
+        "fields": [
+          { "field": "source", "as": "event-source" },
+          { "field": "toolId", "as": "toolId" }
+        ]
+      },
+      {
+        "source": "$toolIdentities",
+        "type": "inner",
+        "on": [
+          { "left": "toolId", "right": "id" }
+        ],
+        "fields": [
+          { "field": "name", "as": "_tool-name" }
+        ]
+      },
+      {
+        "source": "$runs",
+        "type": "inner",
+        "on": [
+          { "left": "runId", "right": "id" },
+          { "left": "evidenceRevision", "right": "toolUsageRevision" }
+        ],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "repository", "as": "repository" },
+          { "field": "workflowPath", "as": "workflow" },
+          { "field": "githubRunId", "as": "run" },
+          { "field": "attempt", "as": "run-attempt" },
+          { "field": "runLink", "as": "run-link" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "event-summary",
+        "function": "concat",
+        "args": [
+          { "value": "Tool observations: " },
+          { "field": "_tool-name" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id", "as": "event" },
+      { "field": "organization" },
+      { "field": "repository", "as": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "run-attempt" },
+      { "field": "run-link" },
+      { "field": "type", "as": "event-type" },
+      { "field": "status", "as": "event-status" },
+      { "field": "event-summary" },
+      { "field": "event-source" },
+      { "field": "eventCount", "as": "event-count" },
+      { "field": "timestamp", "as": "event-timestamp" },
+      { "field": "lastTimestamp", "as": "last-event-timestamp" },
+      { "field": "observedAt", "as": "observed-at" }
+    ]
+  },
+  {
+    "name": "tool-evidence",
+    "stores": [
+      "toolEvidence",
+      "runs"
+    ],
+    "from": "$toolEvidence",
+    "joins": [
+      {
+        "source": "$runs",
+        "type": "inner",
+        "on": [
+          { "left": "runId", "right": "id" },
+          { "left": "evidenceRevision", "right": "toolUsageRevision" }
+        ],
+        "fields": []
+      }
+    ],
+    "select": [
+      { "field": "evidenceRevision", "as": "evidence-revision" },
+      { "field": "id" },
+      { "field": "runId", "as": "run-id" },
+      { "field": "eventCount", "as": "event-count" },
+      { "field": "payloadRef", "as": "payload-ref" },
+      { "field": "payloadHash", "as": "payload-hash" },
+      { "field": "observedAt", "as": "observed-at" }
+    ]
+  },
+  {
     "name": "run-records",
-    "stores": ["runs"],
+    "stores": [
+      "runs"
+    ],
     "stores-by-source": {
-      "domains": ["runs", "domains"],
-      "tools": ["runs", "tools"],
-      "skills": ["runs", "skills"],
-      "friction": ["runs", "friction"],
-      "audits": ["runs", "audits"],
-      "issues": ["runs", "issues"]
+      "domains": [
+        "runs",
+        "domains"
+      ],
+      "skills": [
+        "runs",
+        "skills"
+      ],
+      "friction": [
+        "runs",
+        "friction"
+      ],
+      "audits": [
+        "runs",
+        "audits"
+      ],
+      "issues": [
+        "runs",
+        "issues"
+      ]
     },
     "from": "$records",
     "joins": [
       {
         "source": "$runs",
         "type": "left",
-        "on": [{ "left": "runId", "right": "id" }],
+        "on": [
+          { "left": "runId", "right": "id" }
+        ],
         "fields": [
           { "field": "owner", "as": "organization" },
           { "field": "repository", "as": "repository" },
@@ -672,17 +935,25 @@
       {
         "as": "run",
         "function": "concat",
-        "args": [{ "field": "_github-run-id" }]
+        "args": [
+          { "field": "_github-run-id" }
+        ]
       },
       {
         "as": "_firewall-allowed",
         "function": "equals-any",
-        "args": [{ "field": "type" }, { "value": "net_allowed" }]
+        "args": [
+          { "field": "type" },
+          { "value": "net_allowed" }
+        ]
       },
       {
         "as": "_firewall-blocked",
         "function": "equals-any",
-        "args": [{ "field": "type" }, { "value": "net_blocked" }]
+        "args": [
+          { "field": "type" },
+          { "value": "net_blocked" }
+        ]
       },
       {
         "as": "_allowed-event-type",
@@ -701,6 +972,13 @@
           { "value": "firewall.request.blocked" },
           { "field": "_allowed-event-type" }
         ]
+      },
+      {
+        "as": "event-count",
+        "function": "literal",
+        "args": [
+          { "value": 1 }
+        ]
       }
     ],
     "select": [
@@ -711,6 +989,7 @@
       { "field": "run" },
       { "field": "run-attempt" },
       { "field": "id", "as": "event" },
+      { "field": "event-count" },
       { "field": "timestamp", "as": "event-timestamp" },
       { "field": "source", "as": "event-source" },
       { "field": "event-type" },
@@ -720,12 +999,6 @@
       { "field": "requestCount", "as": "request-count" },
       { "field": "correlationId", "as": "correlation-id" },
       { "field": "payloadRef", "as": "payload-ref" },
-      { "field": "mcpServer", "as": "mcp-server" },
-      { "field": "mcpServerVersion", "as": "mcp-server-version" },
-      { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" },
-      { "field": "mcpTool", "as": "mcp-tool" },
-      { "field": "requestBytes", "as": "request-bytes" },
-      { "field": "responseBytes", "as": "response-bytes" },
       { "field": "safeOutputType", "as": "safe-output-type" },
       { "field": "githubEntityType", "as": "github-entity-type" },
       { "field": "isPullRequest", "as": "is-pull-request" },
@@ -1009,31 +1282,85 @@
   },
   {
     "name": "mcp-calls",
-    "stores": ["runs", "tools"],
-    "from": "run-records",
+    "stores": [
+      "runs",
+      "tools",
+      "toolIdentities",
+      "toolCounters"
+    ],
+    "from": "$toolCounters",
+    "joins": [
+      {
+        "source": "$tools",
+        "type": "inner",
+        "on": [
+          { "left": "usageId", "right": "id" }
+        ],
+        "fields": [
+          { "field": "source", "as": "event-source" },
+          { "field": "toolId", "as": "toolId" }
+        ]
+      },
+      {
+        "source": "$toolIdentities",
+        "type": "inner",
+        "on": [
+          { "left": "toolId", "right": "id" }
+        ],
+        "fields": [
+          { "field": "mcpServer", "as": "mcp-server" },
+          { "field": "mcpTool", "as": "mcp-tool" },
+          { "field": "mcpServerVersion", "as": "mcp-server-version" },
+          { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" }
+        ]
+      },
+      {
+        "source": "$runs",
+        "type": "inner",
+        "on": [
+          { "left": "runId", "right": "id" },
+          { "left": "evidenceRevision", "right": "toolUsageRevision" }
+        ],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "repository", "as": "repository" },
+          { "field": "workflowPath", "as": "workflow" },
+          { "field": "githubRunId", "as": "run" },
+          { "field": "attempt", "as": "run-attempt" },
+          { "field": "runLink", "as": "run-link" },
+          { "field": "engineVersion", "as": "engine-version" },
+          { "field": "ghAwVersion", "as": "gh-aw-version" },
+          { "field": "rolloutMode", "as": "rollout-mode" }
+        ]
+      }
+    ],
     "filter": {
       "predicates": [
         { "field": "event-source", "equals": "mcp" },
-        { "field": "event-type", "equals": "tool.call" }
+        { "field": "type", "equals": "tool.call" }
       ]
     },
     "select": [
       { "field": "organization" },
-      { "field": "repository" },
+      { "field": "repository", "as": "repository" },
       { "field": "workflow" },
       { "field": "run" },
-      { "field": "event", "as": "mcp-observation" },
+      { "field": "eventCount", "as": "call-count" },
+      { "field": "usageId", "as": "tool-usage-id" },
+      { "field": "run-attempt" },
       { "field": "mcp-server" },
       { "field": "mcp-server-version" },
       { "field": "mcp-protocol-version" },
       { "field": "mcp-tool" },
-      { "field": "event-status", "as": "mcp-status" },
-      { "field": "request-bytes" },
-      { "field": "response-bytes" },
+      { "field": "status", "as": "mcp-status" },
+      { "field": "requestBytes", "as": "request-bytes" },
+      { "field": "responseBytes", "as": "response-bytes" },
+      { "field": "requestBytesCount", "as": "request-bytes-count" },
+      { "field": "responseBytesCount", "as": "response-bytes-count" },
       { "field": "rollout-mode" },
       { "field": "engine-version" },
       { "field": "gh-aw-version" },
-      { "field": "observed-at" },
+      { "field": "observedAt", "as": "observed-at" },
       { "field": "run-link" }
     ]
   },

@@ -505,9 +505,9 @@
     },
     {
       "name": "indexing-tools-table-count",
-      "subject": "Count retained tool events rows in the dashboard database.",
-      "objective": "Provide the retained tool events row count for the table-count diagnostic.",
-      "acceptance": "Label the result tool events and count tool event rows in the current database; absence or zero does not prove no tool use.",
+      "subject": "Count retained tool usage aggregate rows in the dashboard database.",
+      "objective": "Provide the physical tool usage fact count, not the original event count.",
+      "acceptance": "Label the result tool usage aggregates; count aggregate identities, not calls or original events. Missing evidence does not prove no tool use.",
       "from": "tools",
       "compute": [
         {
@@ -515,7 +515,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "tool events"
+              "value": "tool usage aggregates"
             }
           ]
         }

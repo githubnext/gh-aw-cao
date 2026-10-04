@@ -13,6 +13,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { publishedToolMeasures } from '../tool-fixtures.js';
 
 /** @typedef {import('../../src/data/queries/declarative.js').DashboardQuery} Query */
 /** @typedef {import('../../src/presenter.js').LogicalSourceInput} Source */
@@ -139,13 +140,17 @@ function evidence(scale = 1) {
     name,
     source(name, runRows.flatMap((run, index) => (
       Array.from({ length: scale === 1 ? 1 : 4 }, (_, record) => ({
+        ...(name === 'tools' ? {
+          ...publishedToolMeasures, id: `tool-usage-${index}-${record}`, 'tool-id': 'observed-tool:fixture',
+          'event-source': `fixture:${record}`, 'last-event-timestamp': run['started-at']
+        } : {}),
         organization: run.organization,
         repository: run.repository,
         workflow: run.workflow,
         run: run.run,
         'run-attempt': run['run-attempt'],
         event: `${name}-${index}-${record}`,
-        'event-source': 'fixture',
+        'event-source': name === 'tools' ? `fixture:${record}` : 'fixture',
         'safe-output-url': name === 'issues'
           ? `https://github.com/example/${run.repository}/issues/${index * 4 + record + 1}` : '',
         'event-type': name === 'audits' && index % 2 ? 'safe_output.created' : 'tool.call',
@@ -168,6 +173,7 @@ function evidence(scale = 1) {
     ]),
     workflows: source('workflows', workflowRows),
     runs: source('runs', runRows),
+    'tool-identities': source('tool-identities', [{ id: 'observed-tool:fixture', name: 'fixture' }]),
     ...recordSources
   };
 }

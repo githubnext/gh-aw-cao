@@ -110,11 +110,12 @@ describe('declarative dashboard queries', () => {
   it('projects shared event fields before materializing event consumers', () => {
     const fields = [
       'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event',
+      'event-count',
       'event-source', 'event-type', 'event-summary', 'event-status', 'github-entity-type',
       'safe-output-type', 'safe-output-url', 'correlation-id',
       'implementation-pull-request-url', 'event-timestamp', 'run-link'
     ];
-    const sources = Object.fromEntries(['audits', 'domains', 'tools', 'issues'].map((source) => [
+    const sources = Object.fromEntries(['audits', 'domains', 'tool-observations', 'issues'].map((source) => [
       source,
       {
         source,
@@ -126,6 +127,7 @@ describe('declarative dashboard queries', () => {
           run: source,
           'run-attempt': '1',
           event: `event-${source}`,
+          'event-count': 1,
           'safe-output-url': `https://example.com/${source}`,
           'campaign-readme': 'x'.repeat(10000)
         }],
@@ -135,7 +137,8 @@ describe('declarative dashboard queries', () => {
 
     const result = executeDashboardQueries(
       dashboardQueries,
-      sources,
+      { ...sources, tools: { source: 'tools', rows: [{ organization: 'example', repository: 'repo', workflow: 'workflow',
+        run: 'tool-observations', 'run-attempt': '1', 'event-count': 1 }], metadata: metadata('tools') } },
       ['event-base', 'entity-events', 'event-runs']
     );
 
@@ -186,7 +189,7 @@ describe('declarative dashboard queries', () => {
       runs: { source: 'runs', rows: ['1', '2', '3', '4'].map(run), metadata: metadata('runs') },
       audits: { source: 'audits', rows: [{ ...run('1'), event: 'audit-1' }], metadata: metadata('audits') },
       domains: { source: 'domains', rows: [{ ...run('2'), event: 'domain-1' }], metadata: metadata('domains') },
-      tools: { source: 'tools', rows: [{ ...run('3'), event: 'tool-1' }], metadata: metadata('tools') },
+      tools: { source: 'tools', rows: [{ ...run('3'), id: 'tool-usage-1', 'event-count': 1 }], metadata: metadata('tools') },
       issues: { source: 'issues', rows: [{ ...run('4'), event: 'issue-1' }], metadata: metadata('issues') }
     };
 
@@ -1140,22 +1143,22 @@ describe('declarative dashboard queries', () => {
         rows: [
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'call-count': 1, 'tool-usage-id': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
             'request-bytes': 10, 'response-bytes': 20
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
-            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
+            'call-count': 1, 'tool-usage-id': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues',
             'request-bytes': 30, 'response-bytes': 40
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue',
+            'call-count': 1, 'tool-usage-id': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue',
             'request-bytes': 50, 'response-bytes': 60
           },
           {
             organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-            'mcp-observation': 'call-4', 'mcp-server': 'safe_outputs', 'mcp-tool': 'create_issue'
+            'call-count': 1, 'tool-usage-id': 'call-4', 'mcp-server': 'safe_outputs', 'mcp-tool': 'create_issue'
           }
         ],
         metadata: metadata('mcp-calls')

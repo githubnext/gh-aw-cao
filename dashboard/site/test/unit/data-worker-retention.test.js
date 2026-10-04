@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
+import { publishedToolMeasures } from '../tool-fixtures.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 
@@ -28,6 +29,7 @@ function collection(generation, toolRows) {
     },
     domains: { rows: [], metadata: collected },
     tools: { rows: toolRows, metadata: collected },
+    'tool-identities': { rows: [{ id: 'observed-tool:fixture', name: 'list_issues' }], metadata: collected },
     audits: { rows: [], metadata: collected },
     issues: { rows: [], metadata: collected }
   };
@@ -35,6 +37,8 @@ function collection(generation, toolRows) {
 
 const toolRows = [
   {
+    ...publishedToolMeasures, id: 'tool-usage:fixture', 'tool-id': 'observed-tool:fixture',
+    'last-event-timestamp': '2026-09-09T04:00:10Z',
     run: '42', 'run-attempt': 1, event: 'event:tool-call',
     'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
     'event-summary': 'github.list_issues', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
@@ -46,8 +50,8 @@ const context = {
   queries: [{
     name: 'tool-inspection',
     from: 'tools',
-    select: [{ field: 'event' }, { field: 'event-type' }],
-    'order-by': [{ field: 'event', direction: 'asc' }]
+    select: [{ field: 'id' }, { field: 'call-count' }],
+    'order-by': [{ field: 'id', direction: 'asc' }]
   }]
 };
 
@@ -140,7 +144,7 @@ describe('canonical dashboard worker retention updates', () => {
     const rows = /** @type {{ data: Record<string, { rows: Record<string, unknown>[] }> }} */ (republished)
       .data['tool-inspection'].rows;
 
-    expect(rows.map((row) => row.event)).toEqual(['event:tool-call']);
+    expect(rows.map((row) => row.id)).toEqual(['tool-usage:fixture']);
 
     /** @type {(RequestInit | undefined)[]} */
     const jsonlRequests = [];
@@ -150,7 +154,7 @@ describe('canonical dashboard worker retention updates', () => {
     const normalizedPayload = `${JSON.stringify({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 4,
+      ingestionVersion: 5,
       sourceRecords: 0,
       phase: 'runs',
       records: 0

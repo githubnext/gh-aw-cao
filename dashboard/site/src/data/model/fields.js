@@ -7,7 +7,8 @@ export const PRUNED_CANONICAL_FIELDS = /** @type {Readonly<Record<string, readon
     'logsPath', 'auditPath'
   ]),
   workflows: Object.freeze(['ghAwMetadata', 'ghAwManifest']),
-  tools: Object.freeze(['isSkill']),
+  tools: Object.freeze(['isSkill', 'correlationId', 'payloadRef', 'sourceSequence', 'sequence', 'type', 'status', 'summary',
+    'name', 'toolType', 'mcpServer', 'mcpTool', 'mcpServerVersion', 'mcpProtocolVersion', 'invocationCount', 'latencyMs']),
   skills: Object.freeze(['isSkill']),
   issues: Object.freeze([
     'issueState', 'issueClosed', 'issueStateReason', 'issueClosedAt',

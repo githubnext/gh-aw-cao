@@ -60,7 +60,7 @@ async function canonicalDatabaseState(page) {
     // to be discovered rather than guessed; opening a guessed name would
     // silently create an empty database instead.
     const databases = await indexedDB.databases();
-    const descriptor = databases.find(({ name }) => name?.startsWith("gh-aw-cao-dashboard-data"));
+    const descriptor = databases.find(({ name }) => name?.startsWith("gh-aw-cao-dashboard-data-v28"));
     if (!descriptor?.name) return { name: null, version: 0, storeNames: [], counts: {} };
     const database = await new Promise((resolve, reject) => {
       const request = indexedDB.open(descriptor.name, descriptor.version);

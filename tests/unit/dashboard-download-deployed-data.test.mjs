@@ -218,7 +218,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
     const databaseContent = Buffer.from("default sqlite bytes");
     const manifest = JSON.stringify({
       "gh-aw-logs.sqlite": createHash("sha256").update(databaseContent).digest("hex"),
-      "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+      "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
     const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
     const server = createServer((request, response) => {
@@ -241,7 +241,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
         "--url",
         `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
       ], { cwd: root });
-      assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
+      assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), logsContent);
       assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
       assert.equal(await readFile(path.join(root, ".cao", "inventory-sources.json"), "utf8"), inventoryContent);
     } finally {

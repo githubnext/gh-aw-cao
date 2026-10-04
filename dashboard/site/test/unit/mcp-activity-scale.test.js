@@ -8,13 +8,13 @@ describe('bounded MCP activity inventory', () => {
     const count = DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1;
     const rows = Array.from({ length: count }, (_, index) => ({
       organization: 'githubnext', repository: 'gh-aw-cao',
-      workflow: `workflow-${index % 3}.md`, 'mcp-observation': `call-${index}`,
+      workflow: `workflow-${index % 3}.md`, 'tool-usage-id': `usage-${index}`, 'call-count': 1,
       'mcp-server': 'github', 'mcp-tool': 'list_issues',
       'request-bytes': 2, 'response-bytes': 3
     }));
     rows.push({
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'workflow-0.md',
-      'mcp-observation': 'safe-output-call', 'mcp-server': 'safe_outputs',
+      'tool-usage-id': 'safe-output-usage', 'call-count': 1, 'mcp-server': 'safe_outputs',
       'mcp-tool': 'create_issue', 'request-bytes': 100, 'response-bytes': 200
     });
     const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (

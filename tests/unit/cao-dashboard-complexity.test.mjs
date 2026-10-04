@@ -197,15 +197,15 @@ test('weights database tables by normalized deployed row counts', async (t) => {
   const connection = new DatabaseSync(databasePath);
   connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
   connection.prepare('INSERT INTO __idb_databases (name, version) VALUES (?, 1)')
-    .run('gh-aw-cao-dashboard-data');
+    .run('gh-aw-cao-dashboard-data-v28');
   for (const [table, count] of [['repositories', 4], ['runs', 8], ['workflows', 2]]) {
     connection.prepare('INSERT INTO __idb_stores (database_name, name, key_path) VALUES (?, ?, ?)')
-      .run('gh-aw-cao-dashboard-data', table, '"id"');
+      .run('gh-aw-cao-dashboard-data-v28', table, '"id"');
     for (let index = 0; index < count; index += 1) {
       connection.prepare(`
         INSERT INTO __idb_records (database_name, store_name, record_key, value)
         VALUES (?, ?, ?, ?)
-      `).run('gh-aw-cao-dashboard-data', table, String(index), '{}');
+      `).run('gh-aw-cao-dashboard-data-v28', table, String(index), '{}');
     }
   }
   connection.close();

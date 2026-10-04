@@ -46,6 +46,18 @@ export const SQLITE_RELATIONAL_STORES = Object.freeze({
     maxRepositories: 'INTEGER', rolloutPercent: 'REAL', aiCreditAllowance: 'REAL',
     monthlyAiCreditBudget: 'REAL', campaignLink: 'TEXT', intelligenceDeclaration: 'TEXT'
   },
+  toolIdentities: { name: 'TEXT', toolType: 'TEXT', mcpServer: 'TEXT', mcpTool: 'TEXT',
+    mcpServerVersion: 'TEXT', mcpProtocolVersion: 'TEXT' },
+  tools: { runId: 'TEXT', toolId: 'TEXT', source: 'TEXT', evidenceRevision: 'TEXT', eventCount: 'INTEGER', callCount: 'INTEGER',
+    outcomeCount: 'INTEGER', successCount: 'INTEGER', failedCount: 'INTEGER', incompleteCount: 'INTEGER',
+    unknownOutcomeCount: 'INTEGER', unmatchedCount: 'INTEGER', ambiguousCount: 'INTEGER',
+    requestBytes: 'INTEGER', requestBytesCount: 'INTEGER', responseBytes: 'INTEGER', responseBytesCount: 'INTEGER',
+    latencySum: 'REAL', latencyCount: 'INTEGER', latencyMin: 'REAL', latencyMax: 'REAL',
+    timestamp: 'TEXT', lastTimestamp: 'TEXT', sampleCallId: 'TEXT', sampleOutcomeId: 'TEXT' },
+  toolCounters: { runId: 'TEXT', usageId: 'TEXT', evidenceRevision: 'TEXT', type: 'TEXT', status: 'TEXT', eventCount: 'INTEGER',
+    timestamp: 'TEXT', lastTimestamp: 'TEXT',
+    requestBytes: 'INTEGER', requestBytesCount: 'INTEGER', responseBytes: 'INTEGER', responseBytesCount: 'INTEGER' },
+  toolEvidence: { runId: 'TEXT', evidenceRevision: 'TEXT', payloadRef: 'TEXT', payloadHash: 'TEXT', eventCount: 'INTEGER' },
   experiments: { workflowId: 'TEXT', name: 'TEXT', firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },
   experimentAssignments: { runId: 'TEXT', experimentId: 'TEXT', variant: 'TEXT',
     included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT',
@@ -100,15 +112,9 @@ export function createSqliteRelationalTables(connection) {
     const expected = ['database_name', 'id', ...columns, 'observed_at', 'provenance'];
     const rebuild = existing.size > 0
       && (existing.size !== expected.length || expected.some((column) => !existing.has(column)));
-    if (rebuild) {
-      connection.exec(`
-        DROP TRIGGER IF EXISTS ${table}_insert;
-        DROP TRIGGER IF EXISTS ${table}_update;
-        DROP TRIGGER IF EXISTS ${table}_delete;
-        DROP TABLE ${table};
-      `);
-    }
-    const observationRequired = store === 'campaigns' ? '' : ' NOT NULL';
+    if (rebuild) throw new Error('SQLite storage contract changed; create a fresh database');
+    const observationRequired = store === 'campaigns' || ['tools', 'toolIdentities', 'toolCounters', 'toolEvidence'].includes(store)
+      ? '' : ' NOT NULL';
     connection.exec(`
       CREATE TABLE IF NOT EXISTS ${table} (
         database_name TEXT NOT NULL,
@@ -169,6 +175,12 @@ function createConnection(filename) {
     compareKeys(JSON.parse(String(left)), JSON.parse(String(right)))
   ));
   connection.exec('PRAGMA busy_timeout = 5000;');
+  const metadataExists = connection.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='__idb_databases'").get();
+  const outdated = metadataExists && connection.prepare("SELECT name FROM __idb_databases WHERE name LIKE 'gh-aw-cao-dashboard-data%' AND name <> 'gh-aw-cao-dashboard-data-v28' AND name NOT LIKE 'gh-aw-cao-dashboard-data-v28:%' LIMIT 1").get();
+  if (outdated) {
+    connection.close();
+    throw new Error('Canonical SQLite contract changed; create a fresh database');
+  }
   connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
   connection.exec('BEGIN IMMEDIATE;');
   try {

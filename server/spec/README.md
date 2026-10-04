@@ -14,7 +14,7 @@ standalone DDL for downstream implementations; the Go file supplies the same
 entity names, fields, and native types to ingestion and reads. Both are generated
 artifacts. Edit TypeSpec, never the generated SQL or bindings.
 
-Each of the fifteen canonical collections has one root table. Only fields
+Each canonical collection has one root table. Only fields
 consumed by `dashboard/site/src/data/queries/database.json` and its joins are
 retained, plus identity/storage keys. Counters use `BIGINT`, fractional measures
 use `NUMERIC`, booleans use `BOOLEAN`, timestamps use `TIMESTAMPTZ`, and identifiers
@@ -39,23 +39,25 @@ Workflow declaration copies, Issue lifecycle aliases, and the unused
 `dashboard/site/src/data/model/fields.js`; provenance and unrecognized
 evidence remain intact.
 
-### Tool structure assessment
+### Compact Tool storage
 
-The current logical `tools` collection is execution-event evidence: one
-invocation can emit a start, result, error, or policy-block observation.
-A future SQL dictionary can separate repeated observed tool identity
-(`server`, `name`, tool type, server/protocol versions) from event facts
-(`runId`, correlation ID, timestamp, status, request/response sizes, latency,
-and provenance). Dictionary identity must be namespace-scoped and distinguish
-versions and missing values, not key on tool name alone.
+`tools` stores one usage fact per Run, observed tool identity, and evidence
+source. `toolIdentities` shares repeated identities within a namespace.
+`toolCounters` owns exact categorical counters by UTC event day; incomplete
+outcomes are not confirmed failures, and sizes are counted at call grain only.
+All facts reference the owning Run's current `toolUsageRevision`.
 
-Do not rename those events to `toolCalls` or merge them into one invocation
-without a correlation and aggregation contract: doing so changes counts,
-ordering, failure evidence, and size measurements. Preserve the existing
-logical query source through a SQL join if introducing a physical dictionary.
-Observed identities are not configured tool definitions; the latter require
-independent workflow-declaration evidence. This split is an assessed follow-on,
-not part of the current schema.
+`tools`, `tool_counters`, and `tool_evidence` use weekly `run_at` range
+partitions, with partition-aware foreign keys and child-first expiry.
+`tool_evidence` stores small locators to bounded compressed event shards, not
+event bodies. `/api/runs/{id}/tool-events` provides authenticated, checksum-
+verified exact drilldown and reports unavailable evidence explicitly.
+
+Canonical model 28, Go model 17, SQL export 4, and the new browser namespace
+are breaking contracts. Use fresh databases; old layouts and normalized
+payloads are rejected. There are no upgrades, migrations, event-grain
+compatibility sources, or retained hot event copies. See the normative Tool
+aggregation contract in `specs/dashboard-data.md` Section 12.1.
 
 Jobs, sessions, and events are not stored as canonical entity tables or
 exposed as HTTP or query sources.

@@ -46,7 +46,7 @@ func (s Scenario) WriteLake(ctx context.Context, directory string, horizonDays i
 	encoder := json.NewEncoder(buffer)
 	result := LakeResult{Repositories: s.Repositories, Runs: s.Repositories * horizonDays * s.History.RunsPerDay}
 	if err := encoder.Encode(map[string]any{
-		"kind": "metadata", "schemaVersion": model.SchemaVersion, "ingestionVersion": 3,
+		"kind": "metadata", "schemaVersion": model.CanonicalSchemaVersion, "ingestionVersion": model.NormalizedIngestionVersion,
 		"phase": "runs", "records": result.Repositories*2 + result.Runs,
 	}); err != nil {
 		return LakeResult{}, err

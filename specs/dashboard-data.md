@@ -363,11 +363,11 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 27 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 36 | Eighteen canonical entity stores and `transactions` |
-| Local SQLite projection | IndexedDB 36 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 15 | Eighteen fresh TypeSpec-defined entity tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
-| Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
+| Canonical model | 28 | Campaign, Repository, Workflow, Run, Domain, Tool usage, observed Tool Identity, Tool Counter, Tool Evidence locator, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 1 | Twenty-one canonical entity stores and `transactions` in a new versioned database namespace |
+| Local SQLite projection | IndexedDB 1 | Current object-store metadata and canonical records plus transactional typed mirrors, including compact Tool facts; incompatible files are rejected without conversion |
+| Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined native tables with presence bits and weekly Run-owned partitions; no stored JSON documents or legacy migrations |
+| Static SQL export | 4 | Versioned JSON interchange with aggregate Tool facts and native categorical counter rows |
 
 ## 5.2 Go server profile
 
@@ -404,7 +404,7 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
-`gh-aw-cao-dashboard-data` is the logical database name. Every implemented
+`gh-aw-cao-dashboard-data-v28` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
 
 | Store | Indexes |
@@ -412,9 +412,12 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `campaigns` | `bySlug -> slug` |
 | `repositories` | none |
 | `workflows` | `byRepository -> repositoryId` |
-| `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
+| `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byGithubRun -> githubRunId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
 | `domains` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryDomain -> _queryKeys.byQueryDomain` |
-| `tools` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byQueryMcpIdentity -> _queryKeys.byQueryMcpIdentity`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
+| `tools` | `byRun -> runId`, `byTool -> toolId` |
+| `toolIdentities` | none |
+| `toolCounters` | `byRun -> runId`, `byRunType -> [runId, type]`, `byUsage -> usageId` |
+| `toolEvidence` | `byRun -> runId` |
 | `audits` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary`, `byTypeStatusRun -> [type, status, runId]`, `byTypeStatusRunSummary -> [type, status, runId, summary]` |
 | `issues` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary` |
 | `skills`, `friction` | `byRun -> runId` |
@@ -438,7 +441,7 @@ run attempts, null and missing values, ordering, provenance, pagination, and
 unavailable inputs. Unsupported plans retain normal fail-closed execution, and
 an oversized selected scope MUST NOT be truncated or have its limits raised.
 
-Physical IndexedDB upgrades SHALL rebuild every store because all browser state
+Physical IndexedDB contract changes SHALL use a fresh database namespace because all browser state
 is disposable. The SQLite-backed implementation SHALL preserve exactly the same
 logical database version, store names, key paths, indexes, and record values.
 The metadata tables are an emulation detail and MUST NOT be presented as
@@ -1484,20 +1487,59 @@ and `statusObservedAt`, without duplicate `issueState`, `issueClosed`,
 Tool and Skill membership is determined by their separate collections; the
 unused `isSkill` flag SHALL NOT be persisted or projected.
 
-The current Tool collection and TypeSpec `tools` table are event-grain facts,
-not a configured-tool inventory or one row per invocation. A `tool.call` and
-its correlated result or error SHALL retain separate identities, timestamps,
-status, and size evidence.
+### Tool usage contract (canonical model 28)
 
-A future physical normalization MAY factor repeated observed tool identity
-into a namespace-scoped dictionary and reference it from tool-event facts.
-Dictionary identity MUST distinguish server, tool name, type, versions, and
-missing values. It MUST NOT infer configured definitions from runtime use.
-Existing logical Tool query payloads and observation ordering MUST be preserved
-through the SQL query boundary. A `toolCalls` invocation table requires an
-explicit correlation and aggregation contract before collapsing events;
-renaming the current facts alone does not establish invocation grain.
-This dictionary/invocation split is not implemented by the current storage profile.
+`tools` SHALL contain one usage fact per canonical Run, observed tool identity,
+and evidence source. `toolIdentities` SHALL be a namespace-scoped dictionary,
+distinguishing server, tool, observed name, type, server/protocol versions, and
+absent versus explicit null values. Runtime observations MUST NOT establish
+configured tools or tool authority.
+
+Usage facts SHALL retain original `eventCount`, observed `callCount`, separate
+outcome counters, known-value counts for request/response bytes and measured
+latency, first/last event timestamps, and bounded representative event IDs.
+`incomplete` and unknown outcomes MUST NOT count as confirmed failures.
+Bytes SHALL be counted once at declared call grain, never once per call and
+again for its outcome. Equal event timestamps MUST NOT imply measured latency.
+
+`toolCounters` SHALL hold exact event-type/status counters per usage fact and
+UTC event day. Absent and null categorical values remain distinct. Counters
+retain call-grain size totals and known-value counts. Day-level totals are
+exact; arbitrary within-day windows, sequences, retries, and percentiles
+require exact cold evidence rather than fabricated event rows.
+
+Correlation SHALL be scoped to the owning Run, winning attempt, and source.
+Only a unique call/outcome pair with matching observed identity may supply a
+missing call-side measurement. Unmatched and ambiguous evidence remains
+explicit. Event IDs are deduplicated before aggregation; replay MUST replace
+facts instead of incrementing counters. Aggregate counters describe
+observations, not verified executions or operational value.
+
+A Run's `toolUsageRevision` binds its complete current Tool evidence.
+Usage, counter, and locator `evidenceRevision` MUST match that revision.
+Canonical queries MUST exclude superseded facts and counters during refresh;
+stale status combinations cannot accumulate after enrichment or reruns.
+
+`toolEvidence` SHALL contain only Run-owned locators and original event counts
+for checksum-addressed `gh-aw-logs-tools/<sha256>.jsonl.gz` shards. The uncompressed
+event bodies SHALL stay outside PostgreSQL, SQLite, and IndexedDB. Exact reads
+validate the canonical schema, compressed checksum, declared counts, Run
+ownership, and bounded compressed/decompressed sizes; missing, corrupt, expired,
+or over-budget evidence fails unavailable, not an empty successful history.
+The hosted authenticated endpoint `/api/runs/{id}/tool-events` returns at most
+2,000 events (default 20), with exact total and omitted counts.
+
+PostgreSQL `tools`, `tool_counters`, and `tool_evidence` SHALL be sharded using
+the existing weekly `PARTITION BY RANGE (run_at)` contract. Run ownership fixes
+the partition key, foreign keys include it, and maintenance expires complete
+weeks in child-before-parent order. The small namespace-scoped identity
+dictionary is shared rather than duplicated in every weekly partition.
+
+This is a breaking, fresh-only contract. Old event-grain Tool rows, older
+normalized schemas/ingestion versions, older SQL exports, and existing
+PostgreSQL/SQLite layouts MUST be rejected without migration or dual-format
+support. Browser storage uses a new database name and does not open or upgrade
+the old namespace.
 
 Example:
 
@@ -1715,12 +1757,12 @@ SQL-export adapter
 canonical model
 ```
 
-The version 3 JSON document SHALL contain:
+The version 4 JSON document SHALL contain:
 
 ```js
 {
   contract: "gh-aw-cao.dashboard-sql-export",
-  schema_version: 3,
+  schema_version: 4,
   source: "stable-source-name",
   generation: "immutable-generation-id",
   exported_at: "RFC3339 timestamp",
@@ -2089,20 +2131,20 @@ A completely empty IndexedDB MUST be recoverable.
 The canonical browser database SHALL use:
 
 ```js
-const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 36;
+const DATABASE_NAME = "gh-aw-cao-dashboard-data-v28";
+const DATABASE_VERSION = 1;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
-deployments on the same origin from sharing derived state. A version upgrade
-SHALL recreate the stores in Section 5.1 rather than migrate stale derived
-rows.
+deployments on the same origin from sharing derived state. Only a fresh database
+may initialize this contract. An incompatible current-name database is rejected,
+not upgraded, repaired into a different schema, or imported.
 
 ---
 
 # 27. Object Stores
 
-IndexedDB version 36 SHALL define:
+IndexedDB version 1 SHALL define:
 
 ```text
 campaigns
@@ -2111,6 +2153,9 @@ workflows
 runs
 domains
 tools
+toolIdentities
+toolCounters
+toolEvidence
 skills
 friction
 audits

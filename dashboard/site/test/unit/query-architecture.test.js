@@ -115,6 +115,7 @@ describe('dashboard query architecture', () => {
         { field: 'run' },
         { field: 'run-attempt' },
         { field: 'event' },
+        { field: 'event-count' },
         { field: 'event-source' },
         { field: 'event-type' },
         { field: 'event-summary' },
@@ -132,7 +133,9 @@ describe('dashboard query architecture', () => {
     expect(eventRuns?.union).toEqual(['domain-event-runs', 'tool-event-runs', 'issue-event-runs']);
     for (const name of [eventRuns?.from, ...eventRuns.union]) {
       expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === name)?.aggregate)
-        .toMatchObject({ values: [{ field: 'event', as: 'events', reducer: 'count' }] });
+        .toMatchObject({         values: [name === 'tool-event-runs'
+          ? { field: 'event-count', as: 'events', reducer: 'sum' }
+          : { field: 'event', as: 'events', reducer: 'count' }] });
     }
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
       .toBeUndefined();

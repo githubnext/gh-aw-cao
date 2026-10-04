@@ -74,14 +74,14 @@ describe('selected entity query compiler contracts', () => {
 
   it('pushes every run identity field into all four union branches without dropping event grain', () => {
     const payload = compileDetail('run-events', 'run-events', contract.run);
-    const branches = payload.queries.filter((query) => ['audits', 'domains', 'tools', 'issues'].includes(String(query.from)));
+    const branches = payload.queries.filter((query) => ['audits', 'domains', 'tool-observations', 'issues'].includes(String(query.from)));
     expect(branches).toHaveLength(4);
     for (const branch of branches) {
       expect(branch.filter).toEqual({
         predicates: Object.entries(contract.run).map(([field, equals]) => ({ field, equals }))
       });
     }
-    const inputs = Object.fromEntries(['audits', 'domains', 'tools', 'issues'].map((source, index) => [
+    const inputs = Object.fromEntries(['audits', 'domains', 'tool-observations', 'issues'].map((source, index) => [
       source, [
         { ...contract.run, event: `${source}:selected`, 'event-timestamp': `2026-10-02T00:00:0${index}Z` },
         { ...contract.run, event: `${source}:attempt-2`, 'run-attempt': 2 },
@@ -90,19 +90,19 @@ describe('selected entity query compiler contracts', () => {
     ]));
     const result = execute(payload.queries, payload.aliases, inputs)[payload.aliases[0]];
     expect(result.rows.map((row) => row.event)).toEqual([
-      'issues:selected', 'tools:selected', 'domains:selected', 'audits:selected'
+      'issues:selected', 'tool-observations:selected', 'domains:selected', 'audits:selected'
     ]);
     expect(result.rows.every((row) => String(row['run-attempt']) === '1')).toBe(true);
   });
 
   it('keeps computed concat equality opaque, including ambiguous delimiters and missing components', () => {
     const rows = [
-      { 'mcp-observation': 'a', 'mcp-server': 'server/with', 'mcp-tool': 'slash/tool', 'mcp-status': 'success' },
-      { 'mcp-observation': 'b', 'mcp-server': 'server', 'mcp-tool': 'with/slash/tool', 'mcp-status': 'success' },
-      { 'mcp-observation': 'c', 'mcp-tool': 'missing-server', 'mcp-status': 'success' },
-      { 'mcp-observation': 'd', 'mcp-server': 'missing-tool', 'mcp-status': 'success' },
-      { 'mcp-observation': 'e', 'mcp-server': null, 'mcp-tool': 'missing-server', 'mcp-status': 'success' },
-      { 'mcp-observation': 'f', 'mcp-server': { untrusted: true }, 'mcp-tool': 'missing-server', 'mcp-status': 'success' }
+      { 'call-count': 1, 'tool-usage-id': 'a', 'mcp-server': 'server/with', 'mcp-tool': 'slash/tool', 'mcp-status': 'success' },
+      { 'call-count': 1, 'tool-usage-id': 'b', 'mcp-server': 'server', 'mcp-tool': 'with/slash/tool', 'mcp-status': 'success' },
+      { 'call-count': 1, 'tool-usage-id': 'c', 'mcp-tool': 'missing-server', 'mcp-status': 'success' },
+      { 'call-count': 1, 'tool-usage-id': 'd', 'mcp-server': 'missing-tool', 'mcp-status': 'success' },
+      { 'call-count': 1, 'tool-usage-id': 'e', 'mcp-server': null, 'mcp-tool': 'missing-server', 'mcp-status': 'success' },
+      { 'call-count': 1, 'tool-usage-id': 'f', 'mcp-server': { untrusted: true }, 'mcp-tool': 'missing-server', 'mcp-status': 'success' }
     ];
     for (const [tool, observations] of [
       ['server/with/slash/tool', ['a', 'b']],
@@ -114,7 +114,7 @@ describe('selected entity query compiler contracts', () => {
         (/** @type {{ field: string }} */ predicate) => ['mcp-server', 'mcp-tool'].includes(predicate.field)
       ))).toBe(false);
       expect(execute(payload.queries, payload.aliases, { 'mcp-calls': rows })[payload.aliases[0]].rows
-        .map((row) => row['mcp-observation'])).toEqual(observations);
+        .map((row) => row['tool-usage-id'])).toEqual(observations);
     }
   });
 
@@ -139,11 +139,11 @@ describe('selected entity query compiler contracts', () => {
       views: [{ data: { source: 'not-excluded', arguments: [{ name: 'tool', field: 'mcp-tool-label' }] } }]
     };
     const rows = [
-      { 'mcp-observation': 'excluded', 'mcp-server': 'github', 'mcp-tool': 'issue_read' },
-      { 'mcp-observation': 'internal', 'mcp-server': 'safe_outputs', 'mcp-tool': 'optimization_skills_curator' },
-      { 'mcp-observation': 'observed-safe-output', 'mcp-server': 'safeoutputs', 'mcp-tool': 'optimization_skills_curator' },
-      { 'mcp-observation': 'ambiguous-one', 'mcp-server': 'server/with', 'mcp-tool': 'slash/tool' },
-      { 'mcp-observation': 'ambiguous-two', 'mcp-server': 'server', 'mcp-tool': 'with/slash/tool' }
+      { 'call-count': 1, 'tool-usage-id': 'excluded', 'mcp-server': 'github', 'mcp-tool': 'issue_read' },
+      { 'call-count': 1, 'tool-usage-id': 'internal', 'mcp-server': 'safe_outputs', 'mcp-tool': 'optimization_skills_curator' },
+      { 'call-count': 1, 'tool-usage-id': 'observed-safe-output', 'mcp-server': 'safeoutputs', 'mcp-tool': 'optimization_skills_curator' },
+      { 'call-count': 1, 'tool-usage-id': 'ambiguous-one', 'mcp-server': 'server/with', 'mcp-tool': 'slash/tool' },
+      { 'call-count': 1, 'tool-usage-id': 'ambiguous-two', 'mcp-server': 'server', 'mcp-tool': 'with/slash/tool' }
     ];
     for (const [tool, observations] of [
       [contract.tools[0], []],
@@ -155,7 +155,7 @@ describe('selected entity query compiler contracts', () => {
         queries, routeParameters: { tool: String(tool) }
       });
       expect(execute(payload.queries, payload.aliases, { 'mcp-calls': rows })[payload.aliases[0]].rows
-        .map((row) => row['mcp-observation'])).toEqual(observations);
+        .map((row) => row['tool-usage-id'])).toEqual(observations);
       expect(payload.queries.some((query) => /** @type {any} */ (query.filter)?.predicates?.some(
         (/** @type {{ field: string }} */ predicate) => ['mcp-server', 'mcp-tool'].includes(predicate.field)
       ))).toBe(false);
@@ -164,9 +164,9 @@ describe('selected entity query compiler contracts', () => {
 
   it('keeps absent, empty and nonmatching routes empty rather than falling back to all observations', () => {
     const rows = [
-      { 'mcp-observation': 'selected', 'mcp-server': 'github', 'mcp-tool': 'issue_read' },
-      { 'mcp-observation': 'missing-components' },
-      { 'mcp-observation': 'empty-components', 'mcp-server': '', 'mcp-tool': '' }
+      { 'call-count': 1, 'tool-usage-id': 'selected', 'mcp-server': 'github', 'mcp-tool': 'issue_read' },
+      { 'call-count': 1, 'tool-usage-id': 'missing-components' },
+      { 'call-count': 1, 'tool-usage-id': 'empty-components', 'mcp-server': '', 'mcp-tool': '' }
     ];
     for (const route of /** @type {Record<string, string>[]} */ ([
       {}, { tool: '' }, { tool: ' ' }, { tool: 'not-observed/tool' }

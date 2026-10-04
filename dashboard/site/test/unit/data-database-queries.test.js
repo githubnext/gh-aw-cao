@@ -15,6 +15,7 @@ import {
 import { processDataRequest } from '../../src/data-worker.js';
 import { createDashboardQueryBudget, executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { publishedToolMeasures } from '../tool-fixtures.js';
 
 const loadCanonicalViewSources = loadDatabaseQuerySources;
 const queryCanonicalViewSources = queryDatabaseSources;
@@ -122,6 +123,9 @@ const sources = {  campaigns: {
   tools: {
     rows: [
       {
+        ...publishedToolMeasures,
+        id: 'tool-usage:1', 'tool-id': 'observed-tool:1',
+        'last-event-timestamp': '2026-09-09T04:00:10Z',
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
         run: '42', 'run-attempt': 2, event: 'event:tool-call',
         'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
@@ -129,10 +133,24 @@ const sources = {  campaigns: {
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
         'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18',
-        'request-bytes': 128, 'response-bytes': 256,
+        'request-bytes': 128, 'request-bytes-count': 1, 'response-bytes': 256, 'response-bytes-count': 1,
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       }
     ],
+    metadata
+  },
+  'tool-identities': {
+    rows: [{ id: 'observed-tool:1', name: 'list_issues', 'tool-type': 'mcp',
+      'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18', 'observed-at': metadata['as-of'] }],
+    metadata
+  },
+  'tool-counters': {
+    rows: [{ id: 'tool-counter:1', 'usage-id': 'tool-usage:1', 'run-id': 'github:run:githubnext/gh-aw-cao:42',
+      'evidence-revision': publishedToolMeasures['evidence-revision'],
+      'event-type': 'tool.call', 'event-status': 'requested', 'event-count': 1,
+      'request-bytes': 128, 'request-bytes-count': 1, 'response-bytes': 256, 'response-bytes-count': 1,
+      'event-timestamp': '2026-09-09T04:00:10Z', 'last-event-timestamp': '2026-09-09T04:00:10Z',
+      'observed-at': metadata['as-of'] }],
     metadata
   },
   audits: {
@@ -221,7 +239,7 @@ describe('canonical view sources', () => {
 
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-    const tableNames = [...DATABASE_STORES];
+    const tableNames = DATABASE_STORES.filter(name => !['toolIdentities', 'toolCounters', 'toolEvidence'].includes(name));
     const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
@@ -440,7 +458,7 @@ describe('canonical view sources', () => {
     );
 
     expect(result['indexing-tools-table-count'].rows).toEqual([
-      { table: 'tool events', records: 1 }
+      { table: 'tool usage aggregates', records: 1 }
     ]);
     expect(result['indexing-domains-table-count'].rows).toEqual([]);
     expect(Object.keys(result)).toEqual(required.filter((name) => (
@@ -466,7 +484,7 @@ describe('canonical view sources', () => {
       .toEqual(['repositories', 'campaigns', 'operationalValues']);
     expect(results['indexing-database-table-counts'].rows).toEqual(expect.arrayContaining([
       { table: 'workflow runs', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'tool usage aggregates', records: 1 }
     ]));
   });
 
@@ -750,8 +768,9 @@ describe('canonical view sources', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         run: '42',
-        event: 'event:tool-call',
-        'event-type': 'tool.call'
+        id: 'tool-usage:1',
+        'event-count': 1,
+        'call-count': 1
       }],
       metadata: { 'source-kind': 'database-query' }
     });
@@ -761,7 +780,8 @@ describe('canonical view sources', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         run: '42',
-        'mcp-observation': 'event:tool-call',
+        'tool-usage-id': 'tool-usage:1',
+        'call-count': 1,
         'mcp-status': 'requested',
         'mcp-server-version': '1.0.0',
         'mcp-protocol-version': '2025-06-18',
@@ -774,7 +794,7 @@ describe('canonical view sources', () => {
 
   it('does not read database stores for a populated published source', async () => {
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
-    const published = { rows: [{ 'mcp-observation': 'published-call' }], metadata };
+    const published = { rows: [{ 'call-count': 1, 'tool-usage-id': 'published-call' }], metadata };
 
     const projected = await queryDatabaseSources(
       indexedDB,
@@ -793,7 +813,7 @@ describe('canonical view sources', () => {
     });
     const unavailable = {
       source: 'mcp-calls',
-      rows: [{ 'mcp-observation': 'stale-call', 'mcp-tool': 'stale_tool' }],
+      rows: [{ 'call-count': 1, 'tool-usage-id': 'stale-call', 'mcp-tool': 'stale_tool' }],
       metadata: { ...metadata, availability: 'unavailable' }
     };
 
@@ -954,14 +974,13 @@ describe('canonical view sources', () => {
         workflow: '.github/workflows/dashboard.md',
         run: '42',
         'run-attempt': 2,
-        event: 'event:tool-call',
-        'event-type': 'tool.call',
+        id: 'tool-usage:1',
+        'event-count': 1,
+        'call-count': 1,
         'event-source': 'mcp',
-        'event-summary': 'github.list_issues',
-        'request-count': 7,
-        'correlation-id': 'call-1',
-        'safe-output-type': 'create_issue',
-        'github-entity-type': 'issue'
+        'tool-id': 'observed-tool:1',
+        'request-bytes': 128,
+        'response-bytes': 256
       })
     ]);
     expect(projected.audits.rows).toEqual([

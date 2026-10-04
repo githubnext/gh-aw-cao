@@ -3,6 +3,7 @@ import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
+import { aggregateToolEvents, toolMeasureId, validateToolUsage } from '../model/tool-usage.js';
 
 const debugNormalize = createDebug('normalize:index');
 
@@ -14,6 +15,10 @@ const COLLECTIONS = {
   run: 'runs',
   domain: 'domains',
   tool: 'tools',
+  'tool-event': 'tools',
+  'tool-identity': 'toolIdentities',
+  'tool-counter': 'toolCounters',
+  'tool-evidence': 'toolEvidence',
   skill: 'skills',
   friction: 'friction',
   audit: 'audits',
@@ -26,7 +31,6 @@ const COLLECTIONS = {
 };
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
   'domains',
-  'tools',
   'skills',
   'friction',
   'audits',
@@ -93,10 +97,15 @@ function identityFor(observation) {
       });
     case 'domain':
     case 'tool':
+    case 'tool-identity':
+    case 'tool-counter':
+    case 'tool-evidence':
     case 'skill':
     case 'friction':
     case 'audit':
       return sourceId(observation.kind, observation.source, observation.sourceId);
+    case 'tool-event':
+      return sourceId('tool', observation.source, observation.sourceId);
   }
   throw new TypeError(`Unsupported observation kind: ${observation.kind}`);
 }
@@ -155,11 +164,13 @@ export function orderRunRecords(records) {
  *
  * @param {import('../model/schema.js').CanonicalObservation[]} observations
  * @param {{ sourcePrecedence?: Record<string, number> }} [options]
- * @returns {import('../model/schema.js').CanonicalBatch}
+ * @returns {{ batch: import('../model/schema.js').CanonicalBatch, toolEvents: Record<string, unknown>[] }}
  */
-export function normalize(observations, options = {}) {
+export function normalizeWithToolEvidence(observations, options = {}) {
   debugNormalize({ event: 'normalize-start', observationCount: observations.length });
   const sourcePrecedence = options.sourcePrecedence ?? {};
+  /** @type {Map<string, Record<string, unknown>>} */
+  const rawTools = new Map();
   /** @type {Record<keyof import('../model/schema.js').CanonicalBatch, Map<string, Record<string, unknown>>>} */
   const entities = {
     campaigns: new Map(),
@@ -168,6 +179,9 @@ export function normalize(observations, options = {}) {
     runs: new Map(),
     domains: new Map(),
     tools: new Map(),
+    toolIdentities: new Map(),
+    toolCounters: new Map(),
+    toolEvidence: new Map(),
     skills: new Map(),
     friction: new Map(),
     audits: new Map(),
@@ -187,7 +201,8 @@ export function normalize(observations, options = {}) {
     }
     const observedAt = canonicalTimestamp(observation.observedAt, 'observation.observedAt');
     const id = identityFor(observation);
-    const current = entities[collection].get(id) ?? {};
+    const records = observation.kind === 'tool-event' ? rawTools : entities[collection];
+    const current = records.get(id) ?? {};
     const definitionRange = EVIDENCE_DEFINITIONS.has(collection)
       ? {
           firstObservedAt: String(current.firstObservedAt ?? current.observedAt ?? observedAt) < observedAt
@@ -196,9 +211,10 @@ export function normalize(observations, options = {}) {
             ? String(current.lastObservedAt ?? current.observedAt) : observedAt
         }
       : {};
-    entities[collection].set(id, {
+    records.set(id, {
       ...current,
-      ...withoutUndefined(pruneCanonicalRecord(collection, observation.data)),
+      ...withoutUndefined(observation.kind === 'tool-event'
+        ? observation.data : pruneCanonicalRecord(collection, observation.data)),
       ...definitionRange,
       id,
       observedAt,
@@ -228,5 +244,33 @@ export function normalize(observations, options = {}) {
     entityCount,
     mergedCount: observations.length - entityCount
   });
-  return batch;
+  for (const usage of batch.tools) validateToolUsage(usage);
+  const owningRuns = new Map(batch.runs.map(run => [run.id, run]));
+  const toolEvents = orderRunRecords([...rawTools.values()].flatMap(event => {
+    const run = owningRuns.get(event.runId);
+    if (run && event.runAttempt !== undefined && event.runAttempt !== run.attempt) return [];
+    return [{ ...event, ...(event.runAttempt === undefined && run ? { runAttempt: run.attempt } : {}) }];
+  }));
+  if (toolEvents.length) {
+    if (batch.tools.length || batch.toolIdentities?.length || batch.toolCounters?.length) {
+      throw new TypeError('A normalization input cannot mix Tool aggregates and raw Tool events');
+    }
+    Object.assign(batch, aggregateToolEvents(toolEvents));
+  }
+  const toolRevisions = new Map(batch.tools.map(usage => [usage.runId, usage.evidenceRevision]));
+  for (const run of batch.runs) {
+    const revision = toolRevisions.get(run.id);
+    if (revision) run.toolUsageRevision = revision;
+    else if (run.mcpToolCalls === 0) run.toolUsageRevision = toolMeasureId('tool-evidence-revision', []);
+  }
+  return { batch, toolEvents };
+}
+
+/**
+ * @param {import('../model/schema.js').CanonicalObservation[]} observations
+ * @param {{ sourcePrecedence?: Record<string, number> }} [options]
+ * @returns {import('../model/schema.js').CanonicalBatch}
+ */
+export function normalize(observations, options = {}) {
+  return normalizeWithToolEvidence(observations, options).batch;
 }

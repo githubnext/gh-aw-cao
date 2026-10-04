@@ -277,8 +277,9 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		{"$experiments", model.Row{"id": "experiment", "workflowId": "workflow"}},
 		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
 		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
-		{"$runs", model.Row{"id": "old", "repositoryId": "repository", "workflowId": "workflow", "createdAt": old}},
-		{"$runs", model.Row{"id": "current", "repositoryId": "repository", "workflowId": "workflow", "createdAt": current}},
+		{"$toolIdentities", model.Row{"id": "observed-tool", "observedAt": current}},
+		{"$runs", model.Row{"id": "old", "repositoryId": "repository", "workflowId": "workflow", "createdAt": old, "toolUsageRevision": "revision"}},
+		{"$runs", model.Row{"id": "current", "repositoryId": "repository", "workflowId": "workflow", "createdAt": current, "toolUsageRevision": "revision"}},
 	} {
 		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
 			t.Fatal(err)
@@ -294,9 +295,27 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 				row["experimentId"] = "experiment"
 			case "$graderObservations":
 				row["graderId"] = "grader"
+			case "$tools":
+				row = testToolUsage(source+run, run, "revision", current)
 			}
 			if err := writer.Append(t.Context(), source, row); err != nil {
 				t.Fatal(err)
+			}
+			if source == "$tools" {
+				for _, kind := range []string{"tool.call", "tool.error"} {
+					bytes, known := 0, 0
+					if kind == "tool.call" {
+						bytes, known = 100, 10
+					}
+					if err := writer.Append(t.Context(), "$toolCounters", model.Row{
+						"id": kind + run, "runId": run, "usageId": source + run, "evidenceRevision": "revision",
+						"type": kind, "status": "incomplete", "eventCount": 10,
+						"requestBytes": bytes, "requestBytesCount": known, "responseBytes": 0, "responseBytesCount": known,
+						"timestamp": current, "lastTimestamp": current, "observedAt": current,
+					}); err != nil {
+						t.Fatal(err)
+					}
+				}
 			}
 		}
 	}
@@ -365,6 +384,9 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	missingWeek := now.AddDate(0, 0, 7*futureRunWeeks)
 	missingWeek = missingWeek.AddDate(0, 0, -((int(missingWeek.Weekday()) + 6) % 7))
 	missingName := "tools_w" + missingWeek.Format("20060102")
+	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE tool_counters_w"+missingWeek.Format("20060102")); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE "+missingName); err != nil {
 		t.Fatal(err)
 	}

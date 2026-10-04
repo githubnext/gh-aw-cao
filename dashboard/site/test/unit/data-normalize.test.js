@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalize } from '../../src/data/normalize/index.js';
+import { normalize, normalizeWithToolEvidence } from '../../src/data/normalize/index.js';
 
 /**
  * @param {import('../../src/data/model/schema.js').EntityKind} kind
@@ -182,7 +182,7 @@ describe('canonical normalization', () => {
     const records = [
       ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],
       ['call', '2026-09-09T03:00:01Z', 'tool.call', 10]
-    ].map(([sourceId, timestamp, type, sourceSequence]) => observation('tool', String(sourceId), String(timestamp), {
+    ].map(([sourceId, timestamp, type, sourceSequence]) => observation('tool-event', String(sourceId), String(timestamp), {
       runId: 'github:run:456:attempt:1',
       timestamp: String(timestamp),
       type: String(type),
@@ -190,9 +190,9 @@ describe('canonical normalization', () => {
       sourceSequence: Number(sourceSequence)
     }, 'gh-aw-log'));
 
-    const batch = normalize(records.reverse());
+    const { toolEvents } = normalizeWithToolEvidence(records.reverse());
 
-    expect(batch.tools.map((event) => [event.sequence, event.type])).toEqual([
+    expect(toolEvents.map((event) => [event.sequence, event.type])).toEqual([
       [0, 'tool.call'],
       [1, 'tool.result']
     ]);

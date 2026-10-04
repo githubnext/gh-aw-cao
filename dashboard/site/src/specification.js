@@ -380,6 +380,10 @@ export const TABLE_VALUES = [
   'eval-observations',
   'usage',
   'mcp-calls',
+  'tool-identities',
+  'tool-counters',
+  'tool-evidence',
+  'tool-observations',
   'mcp-servers',
   'security-observations',
   'detection-observations',
@@ -442,7 +446,7 @@ export const TABLE_VALUES = [
   'marketplace-packages'
 ];
 
-const RUN_RECORD_FIELDS = ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'code', 'request-count', 'correlation-id', 'payload-ref', 'mcp-server', 'mcp-tool', 'safe-output-type', 'github-entity-type', 'number', 'source-sequence', 'observed-at', 'run-link', 'target-repo', 'target-organization', 'target-repository', 'target-workflow-path', 'optimizer-run-attempt', 'optimizer-workflow-path', 'optimizer-workflow-name', 'claim-run-id', 'claim-run-attempt', 'actor', 'opportunity-id', 'opportunity-kind', 'assignment-run', 'experiment', 'evidence-window-start', 'evidence-window-end', 'evidence-state', 'evidence-confidence', 'cost-grain', 'intervention-id', 'lifecycle-observation-id', 'previous-intervention-state', 'intervention-state', 'previous-recommendation-disposition', 'recommendation-disposition', 'supersedes-intervention-id', 'superseded-by-intervention-id', 'recommendation-churn-count', 'recommendation-churn-rate', 'control-variant', 'optimized-variant', 'proposed-savings-aic', 'missing-reason', 'safe-output-id', 'safe-output-url', 'implementation-change-id', 'implementation-pull-request-url', 'accepted-at', 'implementation-started-at', 'implementation-completed-at', 'rejected-at', 'superseded-at'];
+const RUN_RECORD_FIELDS = ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event', 'event-count', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'code', 'request-count', 'correlation-id', 'payload-ref', 'mcp-server', 'mcp-tool', 'safe-output-type', 'github-entity-type', 'number', 'source-sequence', 'observed-at', 'run-link', 'target-repo', 'target-organization', 'target-repository', 'target-workflow-path', 'optimizer-run-attempt', 'optimizer-workflow-path', 'optimizer-workflow-name', 'claim-run-id', 'claim-run-attempt', 'actor', 'opportunity-id', 'opportunity-kind', 'assignment-run', 'experiment', 'evidence-window-start', 'evidence-window-end', 'evidence-state', 'evidence-confidence', 'cost-grain', 'intervention-id', 'lifecycle-observation-id', 'previous-intervention-state', 'intervention-state', 'previous-recommendation-disposition', 'recommendation-disposition', 'supersedes-intervention-id', 'superseded-by-intervention-id', 'recommendation-churn-count', 'recommendation-churn-rate', 'control-variant', 'optimized-variant', 'proposed-savings-aic', 'missing-reason', 'safe-output-id', 'safe-output-url', 'implementation-change-id', 'implementation-pull-request-url', 'accepted-at', 'implementation-started-at', 'implementation-completed-at', 'rejected-at', 'superseded-at'];
 
 export const TABLE_FIELDS = {
   'marketplace-packages': ['id', 'registry-id', 'registry-name', 'registry-precedence', 'package-name', 'package-description', 'publisher', 'repository', 'repository-link', 'path', 'package-ref', 'resolved-commit', 'package-version', 'package-icon', 'package-artwork', 'package-readme', 'package-readme-path', 'package-source', 'add-command', 'stars', 'forks'],
@@ -453,7 +457,20 @@ export const TABLE_FIELDS = {
   runs: ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'target-repository', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'failure-kind', 'terminal-outcome', 'terminal-outcome-detail', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-log', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   'overview-runs': ['id', 'organization', 'repository', 'workflow', 'workflow-name', 'workflow-role', 'campaign', 'campaign-name', 'run', 'target-repository', 'event', 'started-at', 'run-status', 'run-conclusion', 'rollout-mode'],
   domains: [...RUN_RECORD_FIELDS, 'domain', 'decision'],
-  tools: [...RUN_RECORD_FIELDS, 'tool-type', 'name'],
+  tools: ['id', 'organization', 'repository', 'workflow', 'run', 'run-id', 'run-attempt',
+    'tool-id', 'tool-type', 'name', 'evidence-revision', 'event-source', 'event-count', 'call-count', 'outcome-count',
+    'success-count', 'failed-count', 'incomplete-count', 'unknown-outcome-count',
+    'unmatched-count', 'ambiguous-count', 'request-bytes', 'request-bytes-count',
+    'response-bytes', 'response-bytes-count', 'latency-sum', 'latency-count', 'latency-min', 'latency-max',
+    'event-timestamp', 'last-event-timestamp', 'observed-at', 'sample-call-id', 'sample-outcome-id',
+    'mcp-server', 'mcp-tool', 'mcp-server-version', 'mcp-protocol-version',
+    'rollout-mode', 'engine-version', 'gh-aw-version', 'run-link'],
+  'tool-identities': ['id', 'name', 'tool-type', 'mcp-server', 'mcp-tool', 'mcp-server-version', 'mcp-protocol-version', 'observed-at'],
+  'tool-evidence': ['id', 'run-id', 'evidence-revision', 'event-count', 'payload-ref', 'payload-hash', 'observed-at'],
+  'tool-counters': ['id', 'run-id', 'evidence-revision', 'usage-id', 'event-type', 'event-status', 'event-count', 'event-timestamp', 'last-event-timestamp',
+    'request-bytes', 'request-bytes-count', 'response-bytes', 'response-bytes-count', 'observed-at'],
+  'tool-observations': ['event', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-link',
+    'event-type', 'event-status', 'event-summary', 'event-source', 'event-count', 'event-timestamp', 'last-event-timestamp', 'observed-at'],
   skills: [...RUN_RECORD_FIELDS, 'name', 'invocation-count', 'failed-count', 'activation-source'],
   friction: [...RUN_RECORD_FIELDS, 'measurement-state', 'canonical-unit', 'total-events', 'total-occurrences', 'counted-occurrences', 'suppressed-occurrences', 'linked-invocations', 'unattributed-occurrences', 'aic', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'total-tokens', 'turns', 'tool-calls', 'latency-ms', 'total-run-aic', 'friction-ratio', 'derived', 'events-truncated'],
   audits: RUN_RECORD_FIELDS,
@@ -470,7 +487,7 @@ export const TABLE_FIELDS = {
   evals: ['eval', 'eval-name', 'eval-question', 'requested-model', 'role', 'direction', 'observed-at'],
   'eval-observations': ['organization', 'repository', 'workflow', 'run', 'experiment', 'variant', 'eval', 'eval-result', 'status', 'included', 'exclusion-reason', 'role', 'direction', 'requested-model', 'resolved-model', 'rollout-mode', 'observed-at', 'evidence-link', 'eval-link'],
   usage: ['organization', 'repository', 'workflow', 'run', 'invocation', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'rollout-mode', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'aic', 'estimated-usd', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
-  'mcp-calls': ['organization', 'repository', 'workflow', 'run', 'mcp-observation', 'mcp-server', 'mcp-server-version', 'mcp-protocol-version', 'mcp-tool', 'mcp-status', 'request-bytes', 'response-bytes', 'rollout-mode', 'engine-version', 'gh-aw-version', 'observed-at', 'run-link'],
+  'mcp-calls': ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'tool-usage-id', 'call-count', 'mcp-server', 'mcp-server-version', 'mcp-protocol-version', 'mcp-tool', 'mcp-status', 'request-bytes', 'request-bytes-count', 'response-bytes', 'response-bytes-count', 'rollout-mode', 'engine-version', 'gh-aw-version', 'observed-at', 'run-link'],
   'mcp-servers': ['organization', 'repository', 'workflow', 'run', 'mcp-server-observation', 'mcp-server', 'mcp-server-version', 'mcp-protocol-version', 'mcp-status', 'tool-calls', 'failed-calls', 'total-response-bytes', 'max-response-bytes', 'rollout-mode', 'engine-version', 'gh-aw-version', 'observed-at', 'run-link'],
   'security-observations': ['organization', 'repository', 'workflow', 'run', 'security-observation', 'security-feature', 'security-analysis', 'security-signal', 'security-status', 'security-subject', 'security-count', 'observed-at', 'run-link'],
   'detection-observations': ['organization', 'repository', 'workflow', 'run', 'observed-at', 'run-link', 'rollout-mode', 'detection-expected', 'detection-applicable', 'detection-executed', 'verdict-available', 'usable-verdict-percent', 'detection-state', 'detection-state-label', 'detection-count', 'prompt-injection-detected', 'secret-leak-detected', 'malicious-patch-detected', 'inspection-warning-count', 'inspection-warning', 'detection-signal', 'attention-priority', 'job-status', 'job-conclusion', 'job-duration-seconds', 'runner', 'engine', 'requested-model', 'resolved-model'],
@@ -571,7 +588,7 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   evals: ['eval'],
   'eval-observations': ['eval', 'run'],
   usage: ['invocation'],
-  'mcp-calls': ['mcp-observation'],
+  'mcp-calls': ['tool-usage-id', 'mcp-status'],
   'mcp-servers': ['mcp-server-observation'],
   'security-observations': ['security-observation'],
   'detection-observations': ['run'],

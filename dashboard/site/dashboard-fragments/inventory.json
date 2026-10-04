@@ -74,6 +74,9 @@
           "field": "event"
         },
         {
+          "field": "event-count"
+        },
+        {
           "field": "event-source"
         },
         {
@@ -300,7 +303,7 @@
     {
       "id": "run-events",
       "title": "Events",
-      "description": "Observed events for the selected run.",
+      "description": "Retained events and UTC-day Tool observation counters for the selected run. Exact Tool sequences are available through the authenticated Tool evidence endpoint.",
       "data": {
         "source": "entity-events",
         "arguments": [
@@ -359,6 +362,11 @@
             "field": "event-source",
             "type": "nominal",
             "title": "Source"
+          },
+          {
+            "field": "event-count",
+            "type": "quantitative",
+            "title": "Observations"
           },
           {
             "field": "run",

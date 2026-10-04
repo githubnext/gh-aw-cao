@@ -197,18 +197,18 @@ describe('Audit dashboard view', () => {
         audits: {
           source: 'audits',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'info', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/review.md', event: '4', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '5', 'event-type': 'tool.call', 'event-status': 'high', 'event-summary': 'Repeated finding' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '1', 'event-count': 1, 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '2', 'event-count': 1, 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '3', 'event-count': 1, 'event-type': 'audit.finding', 'event-status': 'info', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/review.md', event: '4', 'event-count': 1, 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '5', 'event-count': 1, 'event-type': 'tool.call', 'event-status': 'high', 'event-summary': 'Repeated finding' }
           ],
           metadata
         },
-        tools: {
-          source: 'tools',
+        'tool-observations': {
+          source: 'tool-observations',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '6', 'event-type': 'audit.skill_activation', 'event-status': 'medium', 'event-summary': 'Skill activation' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '6', 'event-count': 1, 'event-type': 'audit.skill_activation', 'event-status': 'medium', 'event-summary': 'Skill activation' }
           ],
           metadata
         },
@@ -264,9 +264,9 @@ describe('Audit dashboard view', () => {
         audits: {
           source: 'audits',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '1', 'event-count': 1, 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '2', 'event-count': 1, 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-count': 1, 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' },
             ...Array.from({ length: 20 }, (_, index) => [0, 1].map((duplicate) => ({
               organization: 'githubnext',
               repository: 'gh-aw-cao',
@@ -279,7 +279,7 @@ describe('Audit dashboard view', () => {
           ],
           metadata
         },
-        tools: { source: 'tools', rows: [], metadata },
+        'tool-observations': { source: 'tool-observations', rows: [], metadata },
         workflows: {
           source: 'workflows',
           rows: [

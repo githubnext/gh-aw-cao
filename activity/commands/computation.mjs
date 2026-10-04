@@ -61,5 +61,6 @@ export async function runComputation({
     inventorySources,
     previousResult,
     feedback,
+    evidenceDirectory: path.dirname(path.resolve(databasePath)),
   });
 }

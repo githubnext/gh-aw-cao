@@ -141,6 +141,7 @@ model runs {
   terminalOutcome?: string;
   terminalOutcomeDetail?: string;
   title?: string;
+  toolUsageRevision?: string;
   updatedAt?: utcDateTime;
   @parent("workflows")
   workflowId: string;
@@ -167,32 +168,84 @@ model domains {
   type?: string;
 }
 
-/** Run-linked tool events, including separate call/outcome records; not configured tool definitions. */
+/** One observed tool/source usage fact per canonical Run. Exact events remain in manifested cold evidence. */
 @runPartition
 model tools {
-  correlationId?: string;
-  failedCount?: int64;
+  evidenceRevision: string;
+  ambiguousCount: int64;
+  callCount: int64;
+  eventCount: int64;
+  failedCount: int64;
   id: string;
-  invocationCount?: int64;
-  latencyMs?: decimal;
+  incompleteCount: int64;
+  latencyCount: int64;
+  latencyMax?: decimal;
+  latencyMin?: decimal;
+  latencySum: decimal;
+  observedAt: utcDateTime;
+  outcomeCount: int64;
+  requestBytes: int64;
+  requestBytesCount: int64;
+  responseBytes: int64;
+  responseBytesCount: int64;
+  @parent("runs")
+  runId: string;
+  sampleCallId?: string;
+  sampleOutcomeId?: string;
+  source: string;
+  successCount: int64;
+  timestamp: utcDateTime;
+  lastTimestamp: utcDateTime;
+  @parent("toolIdentities")
+  toolId: string;
+  unknownOutcomeCount: int64;
+  unmatchedCount: int64;
+}
+
+/** Namespace-scoped observed identities, preserving absent/null version and identity fields. */
+model toolIdentities {
+  id: string;
   mcpProtocolVersion?: string;
   mcpServer?: string;
   mcpServerVersion?: string;
   mcpTool?: string;
   name?: string;
-  observedAt?: utcDateTime;
-  payloadRef?: string;
-  requestBytes?: int64;
-  responseBytes?: int64;
+  observedAt: utcDateTime;
+  toolType?: string;
+}
+
+/** Exact native categorical counters owned by a Run/tool/source usage fact. */
+@runPartition
+model toolCounters {
+  evidenceRevision: string;
+  eventCount: int64;
+  id: string;
+  timestamp: utcDateTime;
+  lastTimestamp: utcDateTime;
+  observedAt: utcDateTime;
+  requestBytes: int64;
+  requestBytesCount: int64;
+  responseBytes: int64;
+  responseBytesCount: int64;
   @parent("runs")
   runId: string;
-  source?: string;
-  sourceSequence?: int64;
+  @parent("tools")
+  usageId: string;
   status?: string;
-  summary?: string;
-  timestamp?: utcDateTime;
-  toolType?: string;
   type?: string;
+}
+
+/** Locators for bounded, checksum-addressed compressed Tool event shards, never hot event documents. */
+@runPartition
+model toolEvidence {
+  evidenceRevision: string;
+  eventCount: int64;
+  id: string;
+  observedAt: utcDateTime;
+  payloadRef: string;
+  payloadHash: string;
+  @parent("runs")
+  runId: string;
 }
 
 /** Separate skill activity; collection membership replaces the unused isSkill flag. */
