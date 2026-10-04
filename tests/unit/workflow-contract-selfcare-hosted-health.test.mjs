@@ -59,6 +59,9 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /Call `create_issue` exactly once, only for the final report/);
   assert.match(worker, /Never use `create_issue` to test syntax, quoting, permissions, connectivity, placeholder content, or title\/body shape/);
   assert.match(worker, /Do not probe the safe-output CLI or invoke its help command/);
+  assert.match(worker, /stable instrument names `go\.memory\.allocated`.*`go\.memory\.used`.*`go\.goroutine\.count`/);
+  assert.match(worker, /never recommend deprecated `process\.runtime\.go\.\*` names/);
+  assert.match(worker, /stable runtime instrumentation does not emit GC-pause duration/);
   assert.match(worker, /close-older-issues: true/);
   assert.match(worker, /deduplicate-by-title: true/);
   assert.match(worker, /If the OTEL MCP server, smoke result, or query capabilities are unavailable/);
