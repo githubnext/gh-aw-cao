@@ -180,3 +180,48 @@ func TestClassifySourceReadProbeHandlesNoSources(t *testing.T) {
 		t.Fatalf("summary = %q, unexpected", classification.summary)
 	}
 }
+
+func TestClassifySourcesFailsWhenNoSourcesAreStored(t *testing.T) {
+	classification := classifySources(nil)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %v, want %v", classification.status, StatusFail)
+	}
+	if classification.reason != sourcesReasonNoSources {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourcesReasonNoSources)
+	}
+	if len(classification.empty) != 0 {
+		t.Fatalf("empty = %v, want none", classification.empty)
+	}
+}
+
+func TestClassifySourcesReportsExplicitlyEmptySourcesAsPassWithNames(t *testing.T) {
+	classification := classifySources(map[string]int{"runs": 10, "repositories": 0, "workflows": 0})
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != sourcesReasonSomeEmpty {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourcesReasonSomeEmpty)
+	}
+	if got, want := classification.empty, []string{"repositories", "workflows"}; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("empty = %v, want %v", got, want)
+	}
+	if classification.summary != "3 sources holding 10 rows; 2 sources explicitly published empty" {
+		t.Fatalf("summary = %q, unexpected", classification.summary)
+	}
+}
+
+func TestClassifySourcesPassesWhenAllSourcesHoldRows(t *testing.T) {
+	classification := classifySources(map[string]int{"runs": 10, "repositories": 5})
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != sourcesReasonAllNonEmpty {
+		t.Fatalf("reason = %v, want %v", classification.reason, sourcesReasonAllNonEmpty)
+	}
+	if len(classification.empty) != 0 {
+		t.Fatalf("empty = %v, want none", classification.empty)
+	}
+	if classification.summary != "2 sources holding 15 rows" {
+		t.Fatalf("summary = %q, unexpected", classification.summary)
+	}
+}

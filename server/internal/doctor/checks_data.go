@@ -221,40 +221,82 @@ func (d Doctor) checkSources(ctx context.Context) Check {
 	if !active.Ready {
 		return skipped(id, areaData, title, "there is no canonical data to inspect")
 	}
-	if len(active.Counts) == 0 {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: "canonical data contains no sources",
-			Remedy:  "reingest; stored data with no sources serves an empty dashboard",
+	classification := classifySources(active.Counts)
+	doctorLog.Printf("stored sources classified status=%s reason=%s sources=%d empty=%d",
+		classification.status, classification.reason, len(active.Counts), len(classification.empty))
+	details := classification.details
+	return Check{
+		ID: id, Area: areaData, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// sourcesReason names why classifySources reached its status, stable across
+// summary wording changes so it is useful to log without exposing source
+// names or row counts.
+type sourcesReason string
+
+const (
+	sourcesReasonNoSources   sourcesReason = "no-sources"
+	sourcesReasonSomeEmpty   sourcesReason = "some-empty"
+	sourcesReasonAllNonEmpty sourcesReason = "all-non-empty"
+)
+
+// sourcesClassification is the status, summary, remedy, details, and
+// explicitly-empty source names classifySources derives from stored source
+// row counts.
+type sourcesClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  sourcesReason
+	empty   []string
+	details []Detail
+}
+
+// classifySources decides the data.sources check's outcome from stored
+// source row counts alone. It is a pure function so the no-sources failure,
+// the explicitly-empty-sources summary, and the healthy summary are each
+// testable without a Postgres-backed state read.
+func classifySources(counts map[string]int) sourcesClassification {
+	if len(counts) == 0 {
+		return sourcesClassification{
+			status:  StatusFail,
+			summary: "canonical data contains no sources",
+			remedy:  "reingest; stored data with no sources serves an empty dashboard",
+			reason:  sourcesReasonNoSources,
 		}
 	}
 	total := 0
 	var empty []string
-	for _, name := range sortedKeys(active.Counts) {
-		count := active.Counts[name]
+	for _, name := range sortedKeys(counts) {
+		count := counts[name]
 		total += count
 		if count == 0 {
 			empty = append(empty, name)
 		}
 	}
 	details := []Detail{
-		detail("sources", fmt.Sprint(len(active.Counts))),
+		detail("sources", fmt.Sprint(len(counts))),
 		detail("rows", fmt.Sprint(total)),
-		detail("largest", largestSource(active.Counts)),
+		detail("largest", largestSource(counts)),
 	}
 	if len(empty) > 0 {
 		details = append(details, detail("emptySources", strings.Join(empty, ", ")))
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusPass,
-			Summary: fmt.Sprintf("%d sources holding %d rows; %d sources explicitly published empty",
-				len(active.Counts), total, len(empty)),
-			Details: details,
+		return sourcesClassification{
+			status: StatusPass,
+			summary: fmt.Sprintf("%d sources holding %d rows; %d sources explicitly published empty",
+				len(counts), total, len(empty)),
+			reason:  sourcesReasonSomeEmpty,
+			empty:   empty,
+			details: details,
 		}
 	}
-	return Check{
-		ID: id, Area: areaData, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("%d sources holding %d rows", len(active.Counts), total),
-		Details: details,
+	return sourcesClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("%d sources holding %d rows", len(counts), total),
+		reason:  sourcesReasonAllNonEmpty,
+		details: details,
 	}
 }
 
