@@ -9,16 +9,21 @@ and its evaluator together in one commit.
 
 ## Engine authentication
 
-CAO does not require organization-billed Copilot inference. Choose a supported
-gh-aw engine and model for each workflow and configure its provider credentials
-as Actions secrets. Checking
+CAO does not require organization-billed Copilot inference. Follow the control
+repository's selected engine and inference/billing profile when adding campaign
+workflows. A different supported gh-aw engine/provider is valid when explicitly
+configured for the control repository; apply that profile consistently to the
+campaign workflows that need inference and configure provider credentials as
+Actions secrets. Checking
 `gh api orgs/<organization>/copilot/billing` is completely optional: the user's
 token may not have access to billing information. Treat an affirmative
 `total_seats: 0` with `seat_management_setting: unconfigured` as Copilot runs
 being unavailable, not as a blocker to authoring campaigns for other providers.
-A Pi or Codex workflow using a `copilot/*` model is Copilot-backed. Do not use
-`aw.yml` bootstrap `config`, `COPILOT_GITHUB_TOKEN`, or token precedence as a
-workaround.
+A Pi or Codex workflow using a `copilot/*` model is Copilot-backed. Never infer
+or mix provider/billing profiles from available secrets, and never use target
+GitHub access credentials for model inference. Do not use `aw.yml` bootstrap
+`config` or token precedence as a workaround for a profile that is not
+configured.
 
 Add `<campaign-slug>/problem-clustering.mjs` only for a deterministic bounded
 problem definition; do not add campaign-specific clustering steps to the

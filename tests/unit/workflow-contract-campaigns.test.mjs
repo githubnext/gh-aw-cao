@@ -504,6 +504,14 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   const agent = readFileSync(join(root, ".github", "agents", "agentic-workflows.md"), "utf8");
   const agenticWorkflowsSkill = readFileSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"), "utf8");
   const campaignSkill = portableSkill("create-cao-campaign");
+  const workflowContract = readFileSync(
+    join(root, "skills", "create-cao-campaign", "references", "workflow-contract.md"),
+    "utf8",
+  );
+  const packageExtensions = readFileSync(
+    join(root, "skills", "create-cao-campaign", "references", "package-extensions.md"),
+    "utf8",
+  );
   const repositoryInstructions = readFileSync(join(root, ".github", "cao", "instructions.md"), "utf8");
 
   assert.match(agent, /\.github\/aw\/instructions\.md/);
@@ -521,6 +529,13 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   assert.match(campaignSkill, /Pass every workflow `read` permission to the `shared\/control\.md` import/);
   assert.match(campaignSkill, /checkout authentication alone is not sufficient/);
   assert.match(campaignSkill, /Do not add workflow-local read App\/PAT selection/);
+  assert.match(workflowContract, /control\s+repository's selected authentication profile/);
+  assert.match(workflowContract, /do not add a workflow-local alternative, mix\s+profiles, or fall through from an explicitly selected profile/);
+  assert.match(workflowContract, /Follow the control\s+repository's selected engine and inference\/billing\s+profile/);
+  assert.match(workflowContract, /apply the same profile consistently to the campaign workflows/);
+  assert.match(packageExtensions, /Follow the control\s+repository's selected engine and inference\/billing profile/);
+  assert.match(packageExtensions, /A different supported gh-aw engine\/provider is valid when explicitly/);
+  assert.match(packageExtensions, /Never infer\s+or mix provider\/billing profiles from available secrets/);
   assert.match(repositoryInstructions, /Keep `\.github\/workflows\/cao-dashboard\.yml` as the single dashboard builder and optional Pages publisher/);
   assert.match(repositoryInstructions, /upload the reusable dashboard artifact/);
   assert.match(repositoryInstructions, /must not add a schedule or another enable variable/);

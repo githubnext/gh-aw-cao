@@ -40,10 +40,13 @@ Use this checklist after the campaign outcome and worker split are stable.
 - Import shared control with static campaign, worker, and `role: worker`.
 - Pass each declared GitHub `read` permission to the matching
   `shared/control.md` `read_<permission>` input. The shared control import
-  resolves the dispatched repository's App installation or exact
-  owner-scoped PAT and binds GitHub MCP or CLI tools to that credential.
-  A target checkout using the correct credential does not prove that the
-  agent's GitHub tools use it.
+  resolves the dispatched repository's credential from the control
+  repository's selected authentication profile and binds GitHub MCP or CLI
+  tools to that credential. Preserve supported App, owner-scoped PAT, and
+  workflow-token profiles; do not add a workflow-local alternative, mix
+  profiles, or fall through from an explicitly selected profile. A target
+  checkout using the correct credential does not prove that the agent's GitHub
+  tools use it.
 - Use repository-scoped concurrency, least privilege, explicit tools and
   network, strict mode, bounded credits and timeout, and mission-specific safe
   outputs.
@@ -80,8 +83,13 @@ repo-memory:
   dispatches. Encourage workers to use the same campaign memory branch when
   shared history prevents repeated analysis. Treat memory as advisory, never as
   policy, target authority, credential storage, or current evidence.
-- For Copilot-backed workflows, declare `copilot-requests: write` and rely on
-  the built-in workflow token. Do not configure `COPILOT_GITHUB_TOKEN`.
+- Follow the control repository's selected engine and inference/billing
+  profile. The bundled Copilot profile declares `copilot-requests: write` and
+  uses the built-in workflow token. Other gh-aw-supported engine/provider
+  profiles are valid when explicitly configured for the control repository;
+  apply the same profile consistently to the campaign workflows that need
+  inference. Do not infer a provider from available secrets, mix billing
+  profiles, or use a target-access credential for model inference.
 - Do not add workflow-local read App/PAT selection. Keep target read credential
   resolution in `shared/control.md`, preserve exact repository scope, and fail
   closed when the explicitly selected profile cannot produce a credential.
