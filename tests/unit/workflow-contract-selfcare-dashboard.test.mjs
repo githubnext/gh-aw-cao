@@ -318,6 +318,7 @@ test("SelfCare dashboard performance submits safe outputs through executable CLI
   assert.match(delivery, /Submit exactly one terminal decision: `create_pull_request` or `noop`/);
   assert.match(delivery, /Confirm that the CLI accepted the submission/);
   assert.match(delivery, /an evidence upload alone is not a terminal decision/);
+  assert.match(source, /Do not pass `name`; the tool schema does not accept it/);
 
   const examples = [...delivery.matchAll(/```bash\n([\s\S]*?)\n```/g)].map((match) => match[1]);
   assert.equal(examples.length, 2);
@@ -333,7 +334,6 @@ ${example}
     {
       tool: "upload_artifact",
       payload: {
-        name: "self-care-dashboard-performance-${{ github.run_id }}",
         path: "${{ github.workspace }}/self-care-dashboard-performance-evidence",
       },
     },
