@@ -20,7 +20,7 @@
     "dashboard:server:serve": "go -C server run ./cmd/cao-dashboard serve",
     "dashboard:server:otel-smoke": "go -C server run ./cmd/cao-dashboard otel-smoke",
     "dashboard:server:lint": "cd server && golangci-lint fmt --diff && golangci-lint run ./...",
-    "dashboard:server:test": "go -C server test ./...",
+    "dashboard:server:test": "go -C server test -p 1 ./...",
     "test:integration:dashboard-backfill": "bash scripts/test-dashboard-backfill.sh",
     "test:stress:dashboard-backfill": "CAO_BACKFILL_STRESS=1 bash scripts/test-dashboard-backfill.sh",
     "dashboard:server:spec": "npm --prefix server/spec run generate",

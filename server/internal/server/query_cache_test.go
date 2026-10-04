@@ -38,7 +38,7 @@ func (client *queryCacheClient) Do(_ context.Context, args ...string) (any, erro
 	if client.err != nil {
 		return nil, client.err
 	}
-	if args[0] == "EVAL" && args[1] != "" && len(args) == 12 {
+	if args[0] == "EVAL" && args[1] != "" && len(args) == 13 {
 		switch args[5] {
 		case "get":
 			client.reads++

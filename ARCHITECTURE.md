@@ -130,6 +130,16 @@ oldest-first eviction bound both allocator-reported result/index memory and
 entry count without changing global Redis eviction policy or touching sessions
 and queues. Cached payloads retain their original evidence revision and
 evaluation time; cache hits report no fresh query-plan work.
+All server profiles also have a configurable whole-node Redis memory-pressure
+budget, defaulting to 200,000,000 bytes and capped at 80% of provider-reported
+`maxmemory`. Atomic query-result, marketplace, and repository-memory cache
+admission measures actual Redis usage. Startup and cancellation-scoped
+30-second maintenance reclaim only disposable caches in the current namespace.
+Sessions, queues, quota state, revocation retries, and other namespaces remain
+protected. Unreclaimable operational pressure fails startup or is reported by
+running maintenance; cache writes decline admission rather than widening the
+budget or changing Redis configuration. The budget is not a process-RSS or
+persistence-disk cap and cannot bound protected-state growth by cache eviction.
 Its local mode remains loopback-only. Its host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -40,6 +41,7 @@ type Store struct {
 	Client          CommandClient
 	namespace       string
 	processIsolated bool
+	maxMemoryBytes  atomic.Int64
 }
 
 type CommandClient interface {
@@ -391,15 +393,8 @@ func (s *Store) CachedRepositoryMemoryCampaign(ctx context.Context, campaign str
 func (s *Store) CacheRepositoryMemoryCampaign(
 	ctx context.Context, campaign string, content []byte, ttl time.Duration,
 ) error {
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
+		content, ttl.Milliseconds())
 }
 
 func (s *Store) CachedRepositoryMemoryFile(
@@ -416,15 +411,8 @@ func (s *Store) CachedRepositoryMemoryFile(
 func (s *Store) CacheRepositoryMemoryFile(
 	ctx context.Context, campaign, commit, path string, content []byte, ttl time.Duration,
 ) error {
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
+		content, ttl.Milliseconds())
 }
 
 func marketplaceCacheKey(registryID, generation string) string {
@@ -451,15 +439,8 @@ func (s *Store) CacheMarketplaceRegistry(
 	if ttl <= 0 {
 		return nil
 	}
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)),
+		content, ttl.Milliseconds())
 }
 
 func (s *Store) Key(suffix string) string {

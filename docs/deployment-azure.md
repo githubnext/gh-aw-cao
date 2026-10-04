@@ -163,6 +163,14 @@ The template creates the following app settings.
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Application Insights | Where the Functions host sends telemetry. |
 | `AzureWebJobsStorage` | Key Vault secret `azure-webjobs-storage` | Storage for the Functions runtime. |
 
+An optional `CAO_REDIS_MAX_BYTES` app setting controls the whole-node Redis memory
+budget; it defaults to **200,000,000 bytes**. The server automatically reclaims
+only disposable caches and preserves sessions, queued work, and other required
+state. Azure has no permanent free Redis tier; the default leaves headroom on
+the smallest Azure Cache for Redis tier (250 MB). See
+[Redis memory budget](deployment-managed-redis.md#redis-memory-budget) for
+admission, maintenance, and protected-state pressure behavior.
+
 The `cao-functions` handler also reads these optional settings.
 
 | App setting | Default | Description |

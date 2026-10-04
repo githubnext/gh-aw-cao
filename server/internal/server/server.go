@@ -80,6 +80,9 @@ type Config struct {
 	// the production defaults.
 	RateLimits RateLimitConfig
 	QueryCache QueryCacheConfig
+	// RedisMaxBytes bounds cache pressure against whole-node memory usage.
+	// Zero selects CAO_REDIS_MAX_BYTES or the 200 MB default.
+	RedisMaxBytes int64
 }
 
 type App struct {
@@ -146,6 +149,18 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	config.QueryCache = cache
+	maxRedisBytes, err := redisMaxBytesFromEnv(config.RedisMaxBytes)
+	if err != nil {
+		return nil, err
+	}
+	config.RedisMaxBytes = maxRedisBytes
+	serverLog.Printf("configured redis_max_bytes=%d maintenance_interval_ms=%d",
+		maxRedisBytes, redisMaintenanceInterval.Milliseconds())
+	if store != nil {
+		if err := store.SetMaxMemoryBytes(maxRedisBytes); err != nil {
+			return nil, err
+		}
+	}
 	queryCacheLog.Printf("configured enabled=%t ttl_ms=%d min_duration_ms=%d max_result_bytes=%d max_bytes=%d max_entries=%d",
 		!cache.Disabled, redisx.QueryCacheTTL.Milliseconds(), cache.MinDuration.Milliseconds(),
 		cache.MaxResultBytes, cache.MaxBytes, redisx.QueryCacheMaxEntries)
@@ -308,6 +323,10 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 		return err
 	}
 	runCtx, cancel := context.WithCancel(runtimeCtx)
+	if err := a.initializeRedisMaintenance(startupCtx); err != nil {
+		cancel()
+		return err
+	}
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
 		result, err := ingest.Run(startupCtx, a.database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
@@ -335,6 +354,9 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	}
 	a.startContext = runCtx
 	a.stop = cancel
+	if a.store != nil {
+		a.startTask(func() { a.runRedisMaintenance(runCtx, redisMaintenanceInterval) })
+	}
 	if a.oauth != nil && (a.config.SourceDirectory != "" || a.Collector() != nil) {
 		a.startTask(func() { a.oauth.runRevocationWorker(runCtx) })
 	}

@@ -1022,12 +1022,16 @@ func fakeRedis(t *testing.T) (string, func()) {
 						_, _ = fmt.Fprint(connection, "$3\r\n1-0\r\n")
 					case "EVAL":
 						// Cache semantics are covered against real Redis; this fixture always misses.
-						if len(command) == 12 && strings.HasSuffix(command[3], "{query-cache:v1}:entries") {
+						if len(command) == 13 && strings.HasSuffix(command[3], "{query-cache:v1}:entries") {
 							result := "$-1\r\n"
 							if command[5] == "put" {
 								result = ":1\r\n"
 							}
 							_, _ = fmt.Fprint(connection, "*5\r\n"+result+":0\r\n:0\r\n:0\r\n:0\r\n")
+							continue
+						}
+						if strings.Contains(command[1], "return {used, budget, evicted}") {
+							_, _ = fmt.Fprint(connection, "*3\r\n:0\r\n:200000000\r\n:0\r\n")
 							continue
 						}
 						mu.Lock()

@@ -72,6 +72,18 @@ be enforced before cache lookup. Canonical entity APIs and readiness probes
 MUST NOT use this result cache. Query ETags identify internal cache entries;
 they do not change the HTTP query response contract.
 
+The Go server SHALL apply a configurable whole-node Redis memory-pressure budget
+to query-result, marketplace, and repository-memory caches. The default SHALL be
+200,000,000 bytes; the effective budget MUST NOT exceed 80% of provider-reported
+`maxmemory` when it is nonzero. Cache admission MUST atomically check actual
+Redis usage and decline or reclaim disposable cache allocation under pressure.
+Startup and cancellation-scoped periodic maintenance SHALL reclaim disposable
+caches without requiring cache traffic. Maintenance MUST NOT evict sessions,
+queues, quota state, revocation retries, non-cache keys, or other namespaces,
+and MUST NOT modify Redis configuration. If protected state prevents attainment,
+the server MUST report pressure rather than imply the budget was enforced.
+This budget is not a process-RSS or persistence-disk limit.
+
 IndexedDB and Postgres dashboard sources SHALL be reconstructable from
 authoritative inputs and MUST NOT become authoritative evidence storage.
 
