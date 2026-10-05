@@ -1,3 +1,5 @@
+import { createDebug } from '../../debug.js';
+
 /**
  * Build SQLite statements with bound values. Identifiers must be explicitly
  * marked; values are never interpolated into SQL text. This prevents SQL
@@ -6,9 +8,12 @@
  */
 const IDENTIFIER = Symbol('sql identifier');
 
+const debugSql = createDebug('sql');
+
 /** @param {string} name */
 export function identifier(name) {
   if (typeof name !== 'string' || !name || name.includes('\0')) {
+    debugSql({ event: 'identifier-rejected', reason: typeof name !== 'string' ? 'not-a-string' : !name ? 'empty' : 'contains-nul' });
     throw new TypeError('SQL identifier must be a nonempty string without NUL');
   }
   return Object.freeze({ [IDENTIFIER]: name });
@@ -21,6 +26,7 @@ export function identifier(name) {
 export function sql(strings, ...substitutions) {
   if (!Array.isArray(strings) || !Array.isArray(strings.raw)
       || strings.length !== substitutions.length + 1) {
+    debugSql({ event: 'sql-call-rejected', reason: 'not-a-tagged-template' });
     throw new TypeError('SQL must be a tagged template');
   }
   const values = [];
@@ -34,6 +40,7 @@ export function sql(strings, ...substitutions) {
       text += '?';
       values.push(value);
     } else {
+      debugSql({ event: 'parameter-rejected', index, valueType: typeof value });
       throw new TypeError('Unsupported SQL parameter');
     }
     text += strings[index + 1];
