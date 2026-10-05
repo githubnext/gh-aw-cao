@@ -37,6 +37,8 @@ Add `?online=1` to the dashboard URL to require fresh network responses for the 
 
 Once the service worker has installed successfully, the static dashboard shell and page chunks are available without a network connection. Existing dashboard data remains available from local storage; data that has never been downloaded cannot be viewed offline. On data-saving or slow connections, cached files are preferred and automatic background downloads are deferred. Use `?clear-app=1` to remove the cached website, cached data, indexed dashboard data, and browser settings before reopening the app (a network connection is required afterward). The same action is available as **Clear app** in Settings.
 
+If a service worker update breaks the app, open the dashboard URL with `?force-update=1` while connected. This recovery runs in the cached HTML before the dashboard JavaScript, checks that the worker script is reachable, unregisters the dashboard's worker, and removes cached app files without deleting IndexedDB or downloaded data. It then navigates to a fresh `?online=1` page. If even the cached page cannot load or run scripts, clear this site's service workers and cached files in the browser's site-data settings, then revisit the dashboard.
+
 The [Overview component model](../../docs/dashboard-overview-components.md) documents that page's UI ownership boundaries, state coverage, and fixture-based visual testing convention. The [dashboard view catalog](../../docs/dashboard-view-catalog.md) indexes every standardized product view, built-in page, mark, chart, and named element.
 
 ## WebMCP adapter

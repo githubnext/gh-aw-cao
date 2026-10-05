@@ -20,7 +20,7 @@ const execFileAsync = promisify(execFile);
 
 async function builtSiteSha(destination) {
   const index = await readFile(new URL("index.html", destination), "utf8");
-  return index.match(/src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"/)?.[1];
+  return index.match(/script\.src = '\.\/src\/main\.js\?sha=([a-f0-9]{64})'/)?.[1];
 }
 
 test("dashboard site filters experimental views unless explicitly enabled", () => {
@@ -167,11 +167,11 @@ test("docs dashboard installs renderer assets without experimental campaign page
     }
     assert.match(llms, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/debug-cao\/SKILL\.md/);
     assert.match(llms, /\[Agent summary\]\(\.\/agent-summary\.json\)/);
-    const mainHash = builtIndex.match(/<script type="module" src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"><\/script>/)?.[1];
+    const mainHash = builtIndex.match(/script\.src = '\.\/src\/main\.js\?sha=([a-f0-9]{64})'/)?.[1];
     assert.ok(mainHash, "entry module includes the site content SHA");
     assert.match(
       builtIndex,
-      new RegExp(`<script type="module" src="./src/main\\.js\\?sha=${mainHash}"></script>`),
+      new RegExp(`script\\.src = './src/main\\.js\\?sha=${mainHash}'`),
     );
     assert.match(
       await readFile(new URL("src/main.js", destination), "utf8"),

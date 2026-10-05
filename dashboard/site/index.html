@@ -26,6 +26,36 @@
       <p><a href="./llms.txt">Agent access guide</a></p>
     </noscript>
     <div id="root"></div>
-    <script type="module" src="./src/main.js"></script>
+    <script>
+      if (new URL(location.href).searchParams.get('force-update') === '1') {
+        (async () => {
+          if (!navigator.onLine) throw new Error('A network connection is required to update the app.');
+          const scope = new URL('./', document.baseURI).href;
+          const workerUrl = new URL('./service-worker.js', scope);
+          workerUrl.searchParams.set('recovery', String(Date.now()));
+          const response = await fetch(workerUrl, { cache: 'no-store', credentials: 'same-origin' });
+          if (!response.ok) throw new Error('The updated app is not available yet.');
+          const registration = await navigator.serviceWorker?.getRegistration(scope);
+          if (registration?.scope === scope) await registration.unregister();
+          const keys = await caches.keys();
+          await Promise.all(keys.filter((key) => key.startsWith('central-agentic-ops-dashboard-app-'))
+            .map((key) => caches.delete(key)));
+          const url = new URL(location.href);
+          url.searchParams.delete('force-update');
+          url.searchParams.set('online', '1');
+          url.searchParams.set('recovered', String(Date.now()));
+          location.replace(url.href);
+        })().catch((error) => {
+          const root = document.getElementById('root');
+          root.setAttribute('role', 'alert');
+          root.textContent = error.message + ' Remove ?force-update=1 to return to the cached app.';
+        });
+      } else {
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = './src/main.js';
+        document.body.append(script);
+      }
+    </script>
   </body>
 </html>

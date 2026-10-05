@@ -19,7 +19,7 @@ describe("live Dashboard Language sources", () => {
     const preview = readFileSync(resolve("src/dashboard-app.js"), "utf8");
     const startup = readFileSync(resolve("src/data/startup.js"), "utf8");
 
-    expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
+    expect(shell).toContain("script.src = './src/main.js';");
     expect(main).toContain("const remoteBackend = usesRemoteDataBackend(document)");
     expect(main).toContain("if (!window.indexedDB && !remoteBackend)");
     expect(main).toContain("if (remoteBackend) await disableRemoteDashboardPwa()");

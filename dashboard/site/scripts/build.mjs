@@ -222,7 +222,7 @@ async function cacheBustSiteImports(destinationPath) {
   const serviceWorker = await readFile(serviceWorkerPath, "utf8");
   await Promise.all([
     writeFile(indexPath, index.replace(
-      /(<script\b[^>]*\bsrc=["'])(\.\/src\/main\.js)(["'][^>]*>)/,
+      /(script\.src = ["'])(\.\/src\/main\.js)(["'];)/,
       `$1$2?sha=${sha}$3`,
     )),
     writeFile(
