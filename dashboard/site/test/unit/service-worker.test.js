@@ -117,6 +117,20 @@ describe('dashboard service worker', () => {
     });
     await expect((await response)?.text()).resolves.toBe('cached script');
   });
+
+  it('loads the precached data worker when offline debugging parameters are set', async () => {
+    const { listeners, entries, fetch } = serviceWorkerHarness();
+    const script = new Request('https://example.test/dashboard/src/data-worker.js?debug=1&debug-shard-limit=2&debug-eager-ingest=1');
+    entries.set('https://example.test/dashboard/src/data-worker.js', new Response('cached worker'));
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request: script,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect((await response)?.text()).resolves.toBe('cached worker');
+  });
   it('prefers cached assets and data on slow connections without network requests', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     worker.navigator.connection.effectiveType = '2g';
@@ -134,6 +148,21 @@ describe('dashboard service worker', () => {
       });
       await expect((await response)?.text()).resolves.toBe(request === asset ? 'cached dashboard' : 'cached data');
     }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('prefers the cached manifest on slow connections even for no-store data requests', async () => {
+    const { listeners, worker, fetch, entries } = serviceWorkerHarness();
+    worker.navigator.connection.effectiveType = 'slow-2g';
+    const request = new Request('https://example.test/dashboard/payload-hashes.json', { cache: 'no-store' });
+    entries.set(String(request), new Response('cached manifest'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect((await response)?.text()).resolves.toBe('cached manifest');
     expect(fetch).not.toHaveBeenCalled();
   });
   it('leaves the server-side data API outside application caches', () => {

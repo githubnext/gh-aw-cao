@@ -240,6 +240,9 @@ async function cachedAppResponse(request) {
   const url = new URL(request.url);
   url.searchParams.delete('online');
   url.searchParams.delete('sha');
+  url.searchParams.delete('debug');
+  url.searchParams.delete('debug-shard-limit');
+  url.searchParams.delete('debug-eager-ingest');
   const cached = await cache.match(url.href) ?? await cache.match(request);
   if (cached) return cached;
   if (request.mode === 'navigate') return cache.match(new URL('./', self.registration.scope).href);
@@ -284,12 +287,14 @@ self.addEventListener('install', (event) => {
   // Updated workers wait until the page canaries them before activation.
   if (APP_ASSETS.length) event.waitUntil((async () => {
     const cache = await caches.open(APP_CACHE);
-    await Promise.all(APP_ASSETS.map(async (path) => {
-      const url = new URL(path, self.registration.scope).href;
-      const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
-      if (!response.ok) throw new Error('Unable to cache dashboard application.');
-      await cache.put(url, response);
-    }));
+    for (let index = 0; index < APP_ASSETS.length; index += 2) {
+      await Promise.all(APP_ASSETS.slice(index, index + 2).map(async (path) => {
+        const url = new URL(path, self.registration.scope).href;
+        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to cache dashboard application.');
+        await cache.put(url, response);
+      }));
+    }
   })());
 });
 
@@ -336,7 +341,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (event.request.cache === 'no-store') {
-    event.respondWith(fetch(event.request));
+    event.respondWith((async () => {
+      if (!await onlineRequest(event) && lowDataConnection() && DATA_FILES.has(new URL(event.request.url).pathname.split('/').at(-1))) {
+        const cache = await caches.open(DATA_CACHE);
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+      }
+      return fetch(event.request);
+    })());
     return;
   }
   const responseRequest = onlineRequest(event).then((online) => {
