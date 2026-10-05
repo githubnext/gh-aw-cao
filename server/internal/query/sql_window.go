@@ -117,6 +117,49 @@ func windowInstant(column SQLColumn) string {
 		" THEN " + instant + " END END END"
 }
 
+func (c *sqlCompiler) windowTextSortKeys(input SQLRelation, entry WindowField, name string) (SQLRelation, map[int]string) {
+	partition := []string{}
+	for _, field := range entry.GroupBy {
+		column := sqlField(input, field)
+		partition = append(partition, column.Presence, column.Expression)
+	}
+	over := "OVER ()"
+	if len(partition) != 0 {
+		over = "OVER (PARTITION BY " + strings.Join(partition, ",") + ")"
+	}
+	helpers := map[int]string{}
+	for index, clause := range entry.OrderBy {
+		column := sqlField(input, clause.Field)
+		if column.Kind != SQLText {
+			continue
+		}
+		key := fmt.Sprintf("__window_numeric_sort_%d", index)
+		for {
+			if _, exists := input.Columns[key]; !exists {
+				break
+			}
+			key += "_"
+		}
+		numeric := sqlFinite(sqlNumeric(SQLColumn{Expression: "replace(" + column.Expression + ", ',', '')", Kind: SQLText}))
+		valid := "coalesce(bool_and(" + numeric + " IS NOT NULL) FILTER (WHERE " + column.Expression +
+			" IS NOT NULL AND " + column.Expression + " <> '') " + over + ", FALSE)"
+		input.Columns[key] = SQLColumn{Expression: valid, Presence: "TRUE", Kind: SQLBoolean}
+		helpers[index] = key
+	}
+	if len(helpers) == 0 {
+		return input, nil
+	}
+	original := input.Columns
+	input = c.materialize(input, name, "window-sort-key", len(helpers))
+	sorts := make(map[int]string, len(helpers))
+	for index, key := range helpers {
+		sorts[index] = input.Columns[key].Expression
+		delete(original, key)
+		delete(input.Columns, key)
+	}
+	return input, sorts
+}
+
 func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) (SQLRelation, error) {
 	value := sqlField(input, entry.Field)
 	if value.Kind == SQLStructured {
@@ -130,8 +173,16 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 		}
 		partition = append(partition, group.Presence, group.Expression)
 	}
+	var numericSort map[int]string
+	input, numericSort = c.windowTextSortKeys(input, entry, name)
+	value = sqlField(input, entry.Field)
+	partition = partition[:0]
+	for _, field := range entry.GroupBy {
+		group := sqlField(input, field)
+		partition = append(partition, group.Presence, group.Expression)
+	}
 	order := make([]string, 0, len(entry.OrderBy)+1)
-	for _, field := range entry.OrderBy {
+	for index, field := range entry.OrderBy {
 		column := sqlField(input, field.Field)
 		if column.Kind == SQLStructured {
 			return SQLRelation{}, errors.New("structured window order fields are forbidden")
@@ -143,6 +194,11 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 		expression := column.Expression
 		if column.Kind == SQLText {
 			expression = "nullif(" + expression + ", '')"
+			if numeric, ok := numericSort[index]; ok {
+				asNumber := sqlFinite(sqlNumeric(SQLColumn{Expression: "replace(" + column.Expression + ", ',', '')", Kind: SQLText}))
+				order = append(order, "CASE WHEN "+numeric+" THEN "+asNumber+" END "+direction+" NULLS LAST")
+				expression = "CASE WHEN NOT " + numeric + " THEN " + expression + " END"
+			}
 		}
 		order = append(order, expression+" "+direction+" NULLS LAST")
 	}
