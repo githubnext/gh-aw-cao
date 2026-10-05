@@ -1,4 +1,7 @@
 import { ERROR_CODES, ORDER_BY_KEYS, ORDER_DIRECTION_VALUES, QUERY_WINDOW_KEYS } from './specification.js';
+import { createDebug } from './debug.js';
+
+const debugQueryWindow = createDebug('query-window-validator');
 
 /**
  * @param {unknown} definitions
@@ -23,9 +26,11 @@ export function validateQueryWindow(definitions, windowNode, path, errors, helpe
     validateStringField, createError, requireField, requireSchemaType, declareField
   } = helpers;
   if (!Array.isArray(definitions) || definitions.length === 0 || definitions.length > 8) {
+    debugQueryWindow({ event: 'window-rejected', reason: 'invalid-definition-count' });
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window must contain 1 to 8 definitions.', `${path}.window`));
     return;
   }
+  const errorCountBeforeWindow = errors.length;
   for (const [index, entry] of definitions.entries()) {
     const entryPath = `${path}.window[${index}]`;
     if (!isPlainObject(entry)) {
@@ -39,6 +44,7 @@ export function validateQueryWindow(definitions, windowNode, path, errors, helpe
     requireField(entry.field, `${entryPath}.field`);
     requireSchemaType(entry.field, `${entryPath}.field`, 'numeric');
     if (entry.operation !== 'rolling' && entry.operation !== 'change') {
+      debugQueryWindow({ event: 'operation-rejected', operation: typeof entry.operation === 'string' ? entry.operation : typeof entry.operation });
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'window operation must be rolling or change.', `${entryPath}.operation`));
     }
     if (!Array.isArray(entry['order-by']) || entry['order-by'].length === 0 || entry['order-by'].length > 8) {
@@ -106,4 +112,9 @@ export function validateQueryWindow(definitions, windowNode, path, errors, helpe
     }
     declareField(entry.as, `${entryPath}.as`);
   }
+  debugQueryWindow({
+    event: 'window-validated',
+    definitionCount: definitions.length,
+    status: errors.length === errorCountBeforeWindow ? 'ok' : 'invalid'
+  });
 }
