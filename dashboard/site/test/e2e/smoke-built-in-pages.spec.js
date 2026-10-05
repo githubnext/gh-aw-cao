@@ -310,7 +310,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
           source: 'operational-values',
           rows: [
             {
-              campaign: 'ambient-context', repository: 'gh-aw-cao', 'operational-value': 0.5,
+              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-aw-cao', 'operational-value': 0.5,
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
               'operational-value-name': 'Repository value',
@@ -318,6 +318,14 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               'rollup-denominator': 2,
               'maturity-status': 'matured',
               'observed-at': '2026-09-14T14:00:00Z'
+            },
+            {
+              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-aw-cao', 'operational-value': 1,
+              'operational-value-definition': 'ambient-context.repository-value',
+              'operational-value-role': 'primary',
+              'operational-value-name': 'Repository value',
+              'maturity-status': 'matured',
+              'observed-at': '2026-09-15T14:00:00Z'
             }
           ],
           metadata

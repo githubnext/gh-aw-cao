@@ -63,6 +63,7 @@ describe('Audit dashboard view', () => {
           source: 'operational-values',
           rows: [{
             campaign: 'optimization',
+            organization: 'githubnext',
             repository: 'gh-aw',
             'operational-value': 0.5,
             'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
@@ -73,6 +74,7 @@ describe('Audit dashboard view', () => {
             'observed-at': '2026-09-22T20:56:21Z'
           }, {
             campaign: 'optimization',
+            organization: 'githubnext',
             repository: 'gh-aw',
             'operational-value': 1,
             'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
@@ -83,6 +85,7 @@ describe('Audit dashboard view', () => {
             'observed-at': '2026-09-24T20:56:21Z'
           }, {
             campaign: 'optimization',
+            organization: 'githubnext',
             repository: 'gh-aw',
             'operational-value': 1,
             'operational-value-definition': 'optimization-token-optimizer.recommendation-acceptance-share',
@@ -93,6 +96,7 @@ describe('Audit dashboard view', () => {
             'observed-at': '2026-09-22T20:56:21Z'
           }, {
             campaign: 'optimization',
+            organization: 'githubnext',
             repository: 'gh-aw',
             'operational-value': 0.5,
             'operational-value-definition': 'optimization-token-optimizer.recommendation-acceptance-share',
@@ -113,7 +117,7 @@ describe('Audit dashboard view', () => {
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
         'normalized-operational-value-unit': '% of horizon maximum / day',
-        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 25, color: 'gh-aw' })]
+        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 25, color: 'githubnext/gh-aw' })]
       }),
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
@@ -133,7 +137,7 @@ describe('Audit dashboard view', () => {
       ['zero-first', 'a', 'zero', -2, '2026-01-01T00:00:00Z'],
       ['zero-last', 'a', 'zero', 0, '2026-01-02T00:00:00Z']
     ].map(([id, repository, definition, value, at]) => ({
-      id, campaign: 'sample', repository,
+      id, campaign: 'sample', organization: 'githubnext', repository,
       'operational-value-definition': definition,
       'operational-value': value,
       'observed-at': at
@@ -154,6 +158,32 @@ describe('Audit dashboard view', () => {
     expect(rows['same-time']).toBeNull();
     expect(rows['zero-first']).toBeNull();
     expect(rows['zero-last']).toBeNull();
+  });
+
+  it('does not join same-named repositories from different organizations into one rate series', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-operational-value-primary-series'],
+      sources: {
+        'operational-values': {
+          source: 'operational-values',
+          rows: [
+            { campaign: 'sample', organization: 'one', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 10, 'observed-at': '2026-01-01T00:00:00Z' },
+            { campaign: 'sample', organization: 'two', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 100, 'observed-at': '2026-01-01T00:00:00Z' },
+            { campaign: 'sample', organization: 'one', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 20, 'observed-at': '2026-01-02T00:00:00Z' },
+            { campaign: 'sample', organization: 'two', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 110, 'observed-at': '2026-01-02T00:00:00Z' }
+          ],
+          metadata
+        }
+      }
+    }));
+    const points = result['campaign-operational-value-primary-series'].rows.flatMap(
+      (row) => /** @type {Array<{ color: string, y: number }>} */ (row.points)
+    );
+    expect(points).toHaveLength(2);
+    expect(points.map((point) => point.color).toSorted()).toEqual(['one/service', 'two/service']);
+    expect(points.map((point) => point.y)).toEqual([expect.closeTo(1000 / 110), expect.closeTo(1000 / 110)]);
   });
 
   it('classifies interim observations independently of their native value', () => {
@@ -347,6 +377,7 @@ describe('Audit dashboard view', () => {
           source: 'operational-values',
           rows: [{
             campaign: 'combined',
+            organization: 'githubnext',
             repository: 'gh-aw-cao',
             'operational-value': 0.5,
             'operational-value-definition': 'combined.value',
@@ -355,6 +386,7 @@ describe('Audit dashboard view', () => {
             'observed-at': '2026-09-16T10:00:00Z'
           }, {
             campaign: 'combined',
+            organization: 'githubnext',
             repository: 'gh-aw-cao',
             'operational-value': 1,
             'operational-value-definition': 'combined.value',

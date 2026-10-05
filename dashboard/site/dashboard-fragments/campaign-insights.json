@@ -15,7 +15,7 @@
           "time-field": "observed-at",
           "unit": "day",
           "order-by": [{ "field": "observed-at" }],
-          "groupby": ["campaign", "repository", "operational-value-definition"]
+          "groupby": ["campaign", "organization", "repository", "operational-value-definition"]
         }
       ]
     },
@@ -74,6 +74,11 @@
           "as": "normalized-operational-value-unit",
           "function": "literal",
           "args": [{ "value": "% of horizon maximum / day" }]
+        },
+        {
+          "as": "series-repository",
+          "function": "concat",
+          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
         }
       ]
     },
@@ -86,7 +91,7 @@
       "from": "campaign-operational-value-normalized-change",
       "temporal-series": {
         "time": "observed-at",
-        "series": "repository",
+        "series": "series-repository",
         "shape": "groups",
         "carry": [
           "campaign",
@@ -185,10 +190,10 @@
     },
     {
       "name": "campaign-operational-value-plot-inventory",
-      "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "subject": "Describe each repository operational-value daily-change plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
-      "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, normalized unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "description": "Plot inventory derived from normalized repository daily-change series; maturity must be checked separately.",
       "from": "campaign-operational-value-primary-series"
     },
     {
@@ -330,7 +335,7 @@
           "layout": "full",
           "config": {
             "measure-source": "operational-value",
-            "empty-message": "No repository operational-value observations have been published for this campaign yet."
+            "empty-message": "No daily operational-value changes can be plotted in this horizon. At least two valid observations per repository and measure are needed."
           }
         },
         {
