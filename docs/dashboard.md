@@ -29,16 +29,21 @@ There is one dashboard product and browser UI, with two data backends. Both use
 the same Dashboard Language documents and are built from the dashboard site;
 they differ in where data is stored and queries execute.
 
-- **GitHub Pages (static/browser):** GitHub Actions publishes the site and its
-  data snapshot. Each viewer's browser downloads the snapshot, and a Web Worker
-  normalizes it into disposable IndexedDB storage and runs queries there. Pages
-  visibility controls access; there is no dashboard server or database to run.
-- **Go server (hosted):** The Go service serves the dashboard UI and a same-origin
-  API. It verifies the published snapshot, stores dashboard entities in
-  PostgreSQL, and executes Dashboard Language queries on the server. The browser
-  does not connect to the database. Redis is for operational state such as
-  sessions and queues, not dashboard data or queries. Hosted deployments can
-  require GitHub OAuth and organization/team authorization.
+- **GitHub Pages (static/browser):** The starter experience and default
+  deployment. GitHub Actions publishes the site and its data snapshot; each
+  viewer's browser downloads the snapshot, and a Web Worker normalizes it into
+  disposable IndexedDB storage and runs queries there. It needs no extra server,
+  database, or cloud resources to operate beyond the control repository and
+  GitHub Pages.
+- **Go server (hosted):** The scale-oriented deployment for larger datasets, or
+  when you need per-user sign-in or webhook-driven refresh. The Go service serves
+  the dashboard UI and a same-origin API. It verifies the published snapshot,
+  stores dashboard entities in PostgreSQL, and executes Dashboard Language
+  queries on the server. The browser does not connect to the database. Redis is
+  for operational state such as sessions and queues, not dashboard data or
+  queries. This option requires operating the server and its database and Redis
+  resources; hosted deployments can require GitHub OAuth and
+  organization/team authorization.
 
 These are backend modes of the same dashboard, not two separate page
 implementations. A view or data source may still be supported by only one
