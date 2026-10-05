@@ -1,6 +1,6 @@
 {
   "source_sha": "5b9b73047ea6f1e9b28eea964c0154295c5af98e",
-  "next_category": 4,
+  "next_category": 5,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -785,6 +785,27 @@
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 17 recent successful completed runs from 2026-10-04T23:01Z to 2026-10-05T03:08Z shows reusable dashboard generation is already effectively cached on the docs consumer path. Queue median/p90 was 3s/30.4s; full-workflow median/p90 70s/80.8s across the successful sample, and among the 8 build-bearing runs workflow median was 71s with build-job median/p90 44s/50.2s and deploy-job median/p90 9.5s/13s. Trusted step metadata showed Restore cached CAO Dashboard succeeded in all 8 build-bearing docs runs with 2s median/3s p90, while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 8, confirming dashboard cache hits from execution evidence rather than workflow syntax. Restore node_modules also hit in all 8 build-bearing runs, with Install dependencies and Save node_modules skipped every time. The latest 20-run window also contains 9 successful freshness-only skips plus 3 successful workflow_run skips, showing docs frequently avoids rebuilding once freshness logic applies. Cross-checking the latest 6 successful cao-dashboard.yml producer runs (37257874849, 37255101997, 37253405809, 37250797483, 37245372275, 37244626913) showed producer build median/p90 202s/220s, with Install dashboard build dependencies only 7s median/8s p90, Assemble Dashboard Language site only 3s median/p90, and Upload dashboard artifact 9.5s median/10s p90, while Upgrade fallback activity data dominated at 147.5s median/150s p90. Bounded trusted logs for run 37257874849 confirmed the producer still copies a 551.1 MiB gh-aw-logs.sqlite plus 373 activity shards totaling 328.0 MiB before uploading a 48,811,006-byte dashboard artifact. That remaining producer-side bottleneck belongs to the already-tracked upstream dashboard-input handling work, while the docs consumer already reuses the cached dashboard artifact efficiently. Because open issue #16054 already covers the only current docs-build-time improvement above threshold (same-SHA workflow_run freshness gating) and no new reusable-dashboard change here can credibly save >=60s or >=15% of median docs execution time without duplicating existing tracked work, nothing new is actionable in this category.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T03:54:05Z",
+      "worker_run_id": "37261071015",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37260919532,
+        37260179172,
+        37258138585,
+        37258134885,
+        37256850978,
+        37255351377,
+        37254541963,
+        37253641811,
+        37252821053,
+        37251020887,
+        37250131886,
+        37246049920
+      ],
+      "outcome": "no_action_duplicate_open_issue",
+      "suggestion_fingerprint": "skip-duplicate-workflow_run-rebuilds-on-current-deploy"
     }
   ]
 }
