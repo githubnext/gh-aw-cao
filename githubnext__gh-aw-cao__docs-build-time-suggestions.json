@@ -1,6 +1,6 @@
 {
   "source_sha": "e0fa4d66249599f57d2251d34c2439254a646024",
-  "next_category": 2,
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-04T22:28:12.862208Z",
@@ -622,6 +622,22 @@
       ],
       "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days provided 14 comparable successful runs and 7 build-bearing successes. Trusted step metadata showed 100% node_modules cache hits and 100% dashboard cache hits across all 7 build-bearing docs runs; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every sampled build. Median/p90 timings were queue 3s/5.4s, full workflow 74s/99.2s, build 46s/52.4s, deploy 10.5s/29.5s, schedule-freshness 8s/9s, Restore node_modules 5s/7.2s, Build documentation 13s/13.4s, Restore cached CAO Dashboard 2s/3s, and Upload Pages artifact 10s/10.8s. The docs-side dependency and artifact caches are effective; the only threshold-meeting opportunity remains the already-open duplicate workflow_run rebuild recommendation in issue #16054. Producer comparison from the latest 10 successful cao-dashboard.yml runs still shows the heavier repeated cost is upstream dashboard generation, with median build 206.5s and Upgrade fallback activity data 150.5s median / 156.2s p90. No new dependency-installation or caching change can credibly save >=60s or >=15% of median docs execution time without weakening freshness or correctness.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T12:00:00Z",
+      "worker_run_id": 37311102138,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37306843116,
+        37303943885,
+        37298660935,
+        37296965989,
+        37296563551,
+        37296069010,
+        37295654966,
+        37289327301
+      ],
+      "outcome": "no_actionable_change_existing_caches_hit_open_issue_exists_for_next_cycle_category"
     }
   ]
 }
