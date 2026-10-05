@@ -1,6 +1,6 @@
 {
   "source_sha": "5b9b73047ea6f1e9b28eea964c0154295c5af98e",
-  "next_category": 2,
+  "next_category": 3,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -727,6 +727,31 @@
         37241294004
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-04T22:50Z to 2026-10-05T01:47Z shows dependency installation and caching are already effective. Queue median/p90 was 0s/0s; full workflow median/p90 65.5s/85s; build-job median/p90 44s/53s across the 6 runs that actually built; deploy-job median/p90 9.5s/13s on the 6 deploys; and schedule-freshness median/p90 7s/8s on all 12 runs. Trusted step metadata showed Restore node_modules succeeded in all 6 build-bearing runs with 5s median/8s p90, while Install dependencies and Save node_modules were skipped in all 6, confirming node_modules cache hits from execution rather than syntax. Restore cached CAO Dashboard also succeeded in all 6 build-bearing runs with 2s median/3s p90, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 6, confirming dashboard cache hits as well. Cross-checking the latest 6 successful cao-dashboard.yml producer runs showed producer build median/p90 194s/236s, with Install dashboard build dependencies only 7s median/8s p90 while Upgrade fallback activity data dominated at 145.5s median/150s p90. Bounded trusted logs for producer run 37253405809 confirmed the producer still copies a 549.4 MiB gh-aw-logs.sqlite plus 372 activity shards totaling 326.9 MiB before uploading a 48,657,816-byte dashboard artifact, but that bottleneck belongs to reusable dashboard generation rather than dependency caching. Open issue #16054 already tracks the only current docs-build-time improvement above threshold (same-SHA workflow_run freshness gating), so nothing new in dependency installation and caching is actionable from this source state.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T02:46:51.348998Z",
+      "worker_run_id": "37256484515",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37255351377,
+        37254541963,
+        37253641811,
+        37252821053,
+        37251020887,
+        37250131886,
+        37246049920,
+        37245583143,
+        37244955642,
+        37244880391,
+        37244189053,
+        37244182070,
+        37243537307,
+        37242227449,
+        37241512448,
+        37241284012
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 16 comparable successful completed runs from 2026-10-04T22:46:26Z to 2026-10-05T02:26:46Z shows Astro documentation generation is still not the dominant cost. Queue median/p90 was 0s/0s; full-workflow median/p90 70s/84s; build-job median/p90 38.5s/48s; deploy-job median/p90 7s/13s on the 7 runs that actually deployed; and schedule-freshness median/p90 7s/8s on all 16 runs. Trusted step and bounded-log evidence show Build documentation stays about 11-14s per build-bearing run while Restore node_modules hit on every build-bearing run and Install dependencies plus Save node_modules were skipped every time; Restore cached CAO Dashboard also hit on every build-bearing run and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped every time. The only threshold-meeting optimization in the current source state remains the already-open same-SHA workflow_run freshness-gate issue #16054. Because Astro generation contributes only about 13s of a 70s median workflow and no Astro-only workflow change from this evidence can save >=60s or >=15% of median execution time without duplicating already-open work, nothing new is actionable in this category.",
       "suggestion_fingerprint": null
     }
   ]
