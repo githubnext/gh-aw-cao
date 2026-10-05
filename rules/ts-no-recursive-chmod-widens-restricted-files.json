@@ -105,15 +105,15 @@
     },
     {
       "target_repo": "github/gh-aw-firewall",
-      "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
+      "target_commit": "3469b7581ee9e7016a6e5bb477c3a8c3aabfb142",
       "true_positive_count": 2,
       "false_positive_count": 4,
       "false_negative_count": 1,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged at current HEAD (140c4fa): the auditDir/audit-tmpdir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
-      "txn_id": "refiner-37156057344-1"
+      "reason": "Re-confirmed unchanged at current HEAD (3469b758): the auditDir/audit-tmpdir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
+      "txn_id": "refiner-37277763568-1"
     }
   ],
   "last_seen_at": "2026-10-03T11:03:07Z",
-  "last_updated": "2026-10-03T22:08:51Z"
+  "last_updated": "2026-10-05T07:31:28Z"
 }
