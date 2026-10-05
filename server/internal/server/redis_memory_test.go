@@ -95,7 +95,7 @@ func (redisMaintenanceClient) DoMany(context.Context, [][]string) ([]any, error)
 	return nil, errors.New("unexpected maintenance pipeline")
 }
 
-func maintenanceApp(client redisMaintenanceClient, output io.Writer) *App {
+func maintenanceApp(client redisx.CommandClient, output io.Writer) *App {
 	return &App{
 		store: redisx.NewStore(client, "maintenance"),
 		config: Config{
