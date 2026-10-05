@@ -104,9 +104,7 @@ describe('browser first-load presentation', () => {
     expect(serverOption?.textContent).toContain('deploy a CAO backend server');
     expect(serverOption?.textContent).toContain('avoid this browser import');
     expect([...serverOption?.querySelectorAll('a') ?? []].map((link) => [link.textContent, link.href])).toEqual([
-      ['deployment options', 'https://githubnext.github.io/gh-aw-cao/deployment/'],
-      ['Azure', 'https://githubnext.github.io/gh-aw-cao/deployment-azure/'],
-      ['Coolify', 'https://githubnext.github.io/gh-aw-cao/deployment-coolify/']
+      ['deployment options', 'https://githubnext.github.io/gh-aw-cao/deployment/']
     ]);
     for (const link of serverOption?.querySelectorAll('a') ?? []) {
       expect(link.target).toBe('_blank');
