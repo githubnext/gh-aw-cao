@@ -98,8 +98,20 @@
     "reason": "Re-confirmed unchanged on HEAD 10b42295: same 7 unguarded true positives across account-menu.js, cli-actions.js, configuration-view.js, reset-dashboard-control.js, data-view.js; zero false positives. No new occurrences.",
     "txn_id": "refiner-37118181288-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37305313154",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-03T11:03:07Z",
-  "last_updated": "2026-10-03T11:03:07Z"
+  "last_seen_at": "2026-10-05T11:53:19Z",
+  "last_updated": "2026-10-05T11:53:19Z",
+  "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "3469b7581ee9e7016a6e5bb477c3a8c3aabfb142",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "No createFactoryScope/state()/effect() reactive idiom exists anywhere in this repository's source; it is a Docker-orchestration CLI with no reactive UI/dashboard component layer, so the unsafe pattern cannot occur here.",
+      "txn_id": "refiner-37305313154-1"
+    }
+  ]
 }
