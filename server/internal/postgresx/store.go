@@ -267,6 +267,10 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context
 	if _, err := tx.ExecContext(ctx, "SET LOCAL statement_timeout = '60s'"); err != nil {
 		return err
 	}
+	// JIT compilation of wide dashboard plans can consume the entire read budget.
+	if _, err := tx.ExecContext(ctx, "SET LOCAL jit = off"); err != nil {
+		return err
+	}
 	if err := fn(ctx, &readTransaction{store: s, tx: tx}); err != nil {
 		return err
 	}

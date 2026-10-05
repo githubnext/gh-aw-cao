@@ -3,12 +3,53 @@ package postgresx
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+func TestReadTransactionDisablesJITLocally(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	store.db.SetMaxOpenConns(1)
+	if _, err := store.db.ExecContext(t.Context(), "SET jit = on"); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"commit", nil},
+		{"rollback", errors.New("abort read")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader NativeReader) error {
+				var jit bool
+				var timeout string
+				if err := reader.(*readTransaction).tx.QueryRowContext(ctx,
+					"SELECT current_setting('jit')::boolean, current_setting('statement_timeout')").Scan(&jit, &timeout); err != nil {
+					return err
+				}
+				if jit || timeout != "1min" {
+					t.Errorf("read settings: jit=%t statement_timeout=%q", jit, timeout)
+				}
+				return tc.err
+			})
+			if !errors.Is(err, tc.err) {
+				t.Fatalf("read transaction error = %v, want %v", err, tc.err)
+			}
+			var jit bool
+			if err := store.db.QueryRowContext(t.Context(), "SELECT current_setting('jit')::boolean").Scan(&jit); err != nil {
+				t.Fatal(err)
+			}
+			if !jit {
+				t.Fatal("read transaction changed the session JIT setting")
+			}
+		})
+	}
+}
 
 func TestRelationalSQLExecutesInPostgres(t *testing.T) {
 	store, _ := nativeTestStore(t)
