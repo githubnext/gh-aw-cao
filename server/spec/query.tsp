@@ -46,6 +46,24 @@ model TemporalSeries {
   trend?: TemporalTrend;
 }
 model TemporalTrend { direction: string; }
+model OrderField {
+  field: string;
+  direction?: string;
+}
+/** One observation-count rolling window or elapsed-time change operation, evaluated after aggregation and before temporal-series projection. */
+model WindowField {
+  operation: string;
+  field: string;
+  as: string;
+  `order-by`: OrderField[];
+  groupby?: string[];
+  frame?: int32;
+  reducer?: string;
+  alignment?: string;
+  mode?: string;
+  `time-field`?: string;
+  unit?: string;
+}
 
 /** A Dashboard Language query definition. See dashboard/site/dashboard.json for the language vocabulary. */
 @jsonSchema
@@ -59,8 +77,11 @@ model QueryDefinition {
   aggregate?: { by?: string[]; values: AggregateValue[] };
   @encodedName("application/json", "temporal-series") temporalSeries?: TemporalSeries;
   predict?: unknown[];
+  @minItems(1)
+  @maxItems(8)
+  window?: WindowField[];
   select?: SelectedField[];
-  @encodedName("application/json", "order-by") orderBy?: { field: string; direction?: string }[];
+  @encodedName("application/json", "order-by") orderBy?: OrderField[];
   limit?: int32;
   stores?: string[];
   @encodedName("application/json", "stores-by-source") storesBySource?: Record<string[]>;

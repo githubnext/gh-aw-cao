@@ -57,6 +57,14 @@
             "type": "array",
             "items": {}
         },
+        "window": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/WindowField"
+            },
+            "minItems": 1,
+            "maxItems": 8
+        },
         "select": {
             "type": "array",
             "items": {
@@ -66,18 +74,7 @@
         "orderBy": {
             "type": "array",
             "items": {
-                "type": "object",
-                "properties": {
-                    "field": {
-                        "type": "string"
-                    },
-                    "direction": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "field"
-                ]
+                "$ref": "#/$defs/OrderField"
             }
         },
         "limit": {
@@ -318,6 +315,59 @@
                 "series"
             ]
         },
+        "WindowField": {
+            "type": "object",
+            "properties": {
+                "operation": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "as": {
+                    "type": "string"
+                },
+                "order-by": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/OrderField"
+                    }
+                },
+                "groupby": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "frame": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                },
+                "reducer": {
+                    "type": "string"
+                },
+                "alignment": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "time-field": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "operation",
+                "field",
+                "as",
+                "order-by"
+            ],
+            "description": "One observation-count rolling window or elapsed-time change operation, evaluated after aggregation and before temporal-series projection."
+        },
         "SelectedField": {
             "type": "object",
             "properties": {
@@ -325,6 +375,20 @@
                     "type": "string"
                 },
                 "as": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "field"
+            ]
+        },
+        "OrderField": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "direction": {
                     "type": "string"
                 }
             },

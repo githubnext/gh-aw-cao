@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -3209,6 +3209,20 @@
           }
         }
       },
+      "OrderField": {
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          }
+        }
+      },
       "PaginationRequest": {
         "type": "object",
         "required": [
@@ -3309,6 +3323,14 @@
             "type": "array",
             "items": {}
           },
+          "window": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WindowField"
+            },
+            "minItems": 1,
+            "maxItems": 8
+          },
           "select": {
             "type": "array",
             "items": {
@@ -3318,18 +3340,7 @@
           "order-by": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "field": {
-                  "type": "string"
-                },
-                "direction": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "field"
-              ]
+              "$ref": "#/components/schemas/OrderField"
             }
           },
           "limit": {
@@ -4094,6 +4105,58 @@
             "duplicate": true
           }
         ]
+      },
+      "WindowField": {
+        "type": "object",
+        "required": [
+          "operation",
+          "field",
+          "as",
+          "order-by"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "as": {
+            "type": "string"
+          },
+          "order-by": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderField"
+            }
+          },
+          "groupby": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "frame": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reducer": {
+            "type": "string"
+          },
+          "alignment": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "time-field": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "description": "One observation-count rolling window or elapsed-time change operation, evaluated after aggregation and before temporal-series projection."
       }
     },
     "securitySchemes": {

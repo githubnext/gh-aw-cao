@@ -37,7 +37,6 @@ import {
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
   QUERY_PREDICT_KEYS,
-  QUERY_WINDOW_KEYS,
   QUERY_REDUCER_VALUES,
   QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SELECT_KEYS,
@@ -167,6 +166,7 @@ import { findDeadDashboardQueries } from './query-usage.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './data/queries/simulation-days.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
+import { validateQueryWindow } from './query-window-validator.js';
 
 const debugValidator = createDebug('validator');
 
@@ -4764,91 +4764,10 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
   }
 
   if (query.window !== undefined) {
-    const windowNode = getValueNodeByKey(queryNode, 'window');
-    if (!Array.isArray(query.window) || query.window.length === 0 || query.window.length > 8) {
-      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window must contain 1 to 8 definitions.', `${path}.window`));
-    } else {
-      for (const [index, entry] of query.window.entries()) {
-        const entryPath = `${path}.window[${index}]`;
-        if (!isPlainObject(entry)) {
-          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window definition must be a mapping.', entryPath));
-          continue;
-        }
-        const entryNode = getSequenceItemNode(windowNode, index);
-        validateObjectKeys(entryNode, QUERY_WINDOW_KEYS, entryPath, errors);
-        validateStringField(entry.field, `${entryPath}.field`, true, errors);
-        validateStringField(entry.as, `${entryPath}.as`, true, errors);
-        requireField(entry.field, `${entryPath}.field`);
-        requireSchemaType(entry.field, `${entryPath}.field`, 'numeric');
-        if (entry.operation !== 'rolling' && entry.operation !== 'change') {
-          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'window operation must be rolling or change.', `${entryPath}.operation`));
-        }
-        if (!Array.isArray(entry['order-by']) || entry['order-by'].length === 0 || entry['order-by'].length > 8) {
-          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window order-by must contain 1 to 8 fields.', `${entryPath}.order-by`));
-        } else {
-          entry['order-by'].forEach((clause, clauseIndex) => {
-            const clausePath = `${entryPath}.order-by[${clauseIndex}]`;
-            if (!isPlainObject(clause)) {
-              errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window order-by entry must be a mapping.', clausePath));
-              return;
-            }
-            validateObjectKeys(getSequenceItemNode(getValueNodeByKey(entryNode, 'order-by'), clauseIndex), ORDER_BY_KEYS, clausePath, errors);
-            validateStringField(clause.field, `${clausePath}.field`, true, errors);
-            requireField(clause.field, `${clausePath}.field`);
-            requireSchemaType(clause.field, `${clausePath}.field`, 'scalar');
-            if (clause.direction !== undefined && !ORDER_DIRECTION_VALUES.includes(String(clause.direction))) {
-              errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'window order direction must be asc or desc.', `${clausePath}.direction`));
-            }
-          });
-        }
-        if (entry.groupby !== undefined) {
-          if (!Array.isArray(entry.groupby) || entry.groupby.length === 0 || entry.groupby.length > 8 || new Set(entry.groupby).size !== entry.groupby.length) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window groupby must contain 1 to 8 distinct fields.', `${entryPath}.groupby`));
-          } else {
-            entry.groupby.forEach((field, groupIndex) => {
-              const fieldPath = `${entryPath}.groupby[${groupIndex}]`;
-              validateStringField(field, fieldPath, true, errors);
-              requireField(field, fieldPath);
-              requireSchemaType(field, fieldPath, 'scalar');
-            });
-          }
-        }
-        if (entry.operation === 'rolling') {
-          if (!Number.isSafeInteger(entry.frame) || Number(entry.frame) < 1 || Number(entry.frame) > 1000) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'rolling frame must be an integer from 1 to 1000.', `${entryPath}.frame`));
-          }
-          if (entry.reducer !== undefined && !['sum', 'mean', 'min', 'max'].includes(String(entry.reducer))) {
-            errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'rolling reducer must be sum, mean, min, or max.', `${entryPath}.reducer`));
-          }
-          if (entry.alignment !== undefined && !['trailing', 'centered'].includes(String(entry.alignment))) {
-            errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'rolling alignment must be trailing or centered.', `${entryPath}.alignment`));
-          }
-          if (entry.alignment === 'centered' && Number(entry.frame) % 2 !== 1) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'centered rolling frame must be odd.', `${entryPath}.frame`));
-          }
-          if (entry.mode !== undefined || entry['time-field'] !== undefined || entry.unit !== undefined) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'rolling does not accept mode, time-field, or unit.', entryPath));
-          }
-        } else if (entry.operation === 'change') {
-          if (entry.frame !== undefined || entry.reducer !== undefined || entry.alignment !== undefined) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'change does not accept frame, reducer, or alignment.', entryPath));
-          }
-          if (entry.mode !== undefined && !['absolute', 'percentage', 'rate'].includes(String(entry.mode))) {
-            errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'change mode must be absolute, percentage, or rate.', `${entryPath}.mode`));
-          }
-          if (entry.mode === 'rate') {
-            validateStringField(entry['time-field'], `${entryPath}.time-field`, true, errors);
-            requireField(entry['time-field'], `${entryPath}.time-field`);
-            if (!['second', 'minute', 'hour', 'day'].includes(String(entry.unit))) {
-              errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'rate unit must be second, minute, hour, or day.', `${entryPath}.unit`));
-            }
-          } else if (entry['time-field'] !== undefined || entry.unit !== undefined) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'time-field and unit require rate mode.', entry['time-field'] !== undefined ? `${entryPath}.time-field` : `${entryPath}.unit`));
-          }
-        }
-        declareField(entry.as, `${entryPath}.as`);
-      }
-    }
+    validateQueryWindow(query.window, getValueNodeByKey(queryNode, 'window'), path, errors, {
+      isPlainObject, getValueNodeByKey, getSequenceItemNode, validateObjectKeys,
+      validateStringField, createError, requireField, requireSchemaType, declareField
+    });
   }
 
   if (query.select !== undefined) {

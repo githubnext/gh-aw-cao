@@ -77,7 +77,7 @@ export async function buildDashboardSite({
     dashboard.dashboard["github-url-base"] = url.href.replace(/\/+$/, "");
   }
   await Promise.all([
-    writeFile(join(destinationPath, "src/agent/queries.generated.json"), `${JSON.stringify(dashboard.dashboard.queries, null, 1)}\n`),
+    writeFile(join(destinationPath, "src/agent/queries.generated.json"), `${JSON.stringify(dashboard.dashboard.queries)}\n`),
     writeFile(join(destinationPath, "src/agent/catalog.generated.json"), `${JSON.stringify(agentCatalog(dashboard), null, 2)}\n`),
   ]);
   const splitDashboard = splitDashboardDocument({

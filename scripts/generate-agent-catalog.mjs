@@ -9,4 +9,4 @@ const [catalog, dashboard] = await Promise.all([
   loadAgentDashboardDocument()
 ]);
 await writeFile(output, `${JSON.stringify(catalog, null, 2)}\n`);
-await writeFile(queriesOutput, `${JSON.stringify(dashboard.dashboard.queries, null, 1)}\n`);
+await writeFile(queriesOutput, `${JSON.stringify(dashboard.dashboard.queries)}\n`);

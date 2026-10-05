@@ -135,8 +135,8 @@
       "name": "campaign-operational-value-plot-inventory",
       "subject": "Describe each repository operational-value daily-change plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, normalized unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
-      "description": "Plot inventory derived from normalized repository daily-change series; maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "description": "Plot inventory derived from native-unit repository daily-change series; maturity must be checked separately.",
       "from": "campaign-operational-value-primary-series"
     },
     {

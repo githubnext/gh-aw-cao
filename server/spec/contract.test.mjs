@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.1.0')
+  assert.equal(openapi.info.version, '2.2.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -106,6 +106,8 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
     ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],
     ['../internal/server/server.go', 'queryResponse', 'QueryResponse'],
     ['../internal/query/types.go', 'Definition', 'QueryDefinition'],
+    ['../internal/query/types.go', 'WindowField', 'WindowField'],
+    ['../internal/query/types.go', 'OrderField', 'OrderField'],
     ['../internal/model/model.go', 'Source', 'QuerySource'],
     ['../internal/model/model.go', 'Metrics', 'QueryMetrics'],
     ['../internal/server/operations.go', 'rebuildStatus', 'RebuildStatus'],
@@ -123,6 +125,30 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
       .map(([, field]) => field).sort()
     const specFields = Object.keys(openapi.components.schemas[schema].properties).sort()
     assert.deepEqual(specFields, goFields, `${schema} differs from ${file}:${name}`)
+  }
+})
+
+test('query contracts expose bounded window operations with canonical wire names', () => {
+  const schemas = openapi.components.schemas
+  const window = schemas.QueryDefinition.properties.window
+  assert.equal(window.type, 'array')
+  assert.equal(window.minItems, 1)
+  assert.equal(window.maxItems, 8)
+  assert.equal(window.items.$ref, '#/components/schemas/WindowField')
+  assert.deepEqual(schemas.WindowField.required, ['operation', 'field', 'as', 'order-by'])
+  assert.equal(schemas.WindowField.properties['order-by'].items.$ref, '#/components/schemas/OrderField')
+  assert.equal(schemas.WindowField.properties['time-field'].type, 'string')
+  assert.equal(schemas.WindowField.properties.groupby.items.type, 'string')
+  assert.equal(schemas.WindowField.properties.frame.type, 'integer')
+  const definition = JSON.parse(readFileSync(join(directory, 'generated/schemas/QueryDefinition.json'), 'utf8'))
+  assert.deepEqual(definition.properties.window, {
+    type: 'array', items: { $ref: '#/$defs/WindowField' }, minItems: 1, maxItems: 8
+  })
+  assert.deepEqual(Object.keys(definition.$defs.WindowField.properties).sort(),
+    Object.keys(schemas.WindowField.properties).sort())
+  const request = JSON.parse(readFileSync(join(directory, 'generated/schemas/QueryRequest.json'), 'utf8'))
+  for (const field of ['queries', 'compiledQueries']) {
+    assert.equal(request.properties[field].items.$ref, 'QueryDefinition.json')
   }
 })
 

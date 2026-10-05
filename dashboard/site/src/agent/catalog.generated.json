@@ -227,6 +227,7 @@
         }
       ],
       "queries": [
+        "workflow-failure-trend",
         "workflow-runs"
       ]
     },
@@ -349,6 +350,9 @@
         }
       ],
       "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
         "campaign-workflows"
       ]
     },
@@ -392,6 +396,9 @@
         }
       ],
       "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
         "campaign-workflows"
       ]
     },
@@ -412,6 +419,9 @@
         }
       ],
       "queries": [
+        "campaign-insight-tab-counts",
+        "campaign-issue-tab-counts",
+        "campaign-problem-tab-counts",
         "campaign-reports"
       ]
     },
@@ -2316,6 +2326,32 @@
       }
     },
     {
+      "id": "workflow-failure-trend",
+      "subject": "Show recent failure counts and their change for each workflow.",
+      "objective": "Spot a change in observed workflow failure activity without treating unknown conclusions as failures.",
+      "acceptance": "Each observed failure counts once within its own workflow; the first change is undefined and the seven-observation window is not a seven-day calendar interval.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "workflow-runs"
+      ],
+      "used-by-pages": [
+        "workflow-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
       "id": "workflow-reports",
       "subject": "Project retained outcomes into route-addressable workflow reports.",
       "objective": "Review retained workflow outcome reports separately from execution status before interpreting operational results.",
@@ -2478,7 +2514,10 @@
         "campaign-issues",
         "campaign-memory",
         "campaign-problems",
-        "campaign-runs"
+        "campaign-reports",
+        "campaign-repositories",
+        "campaign-runs",
+        "campaign-workflows"
       ],
       "execution": {
         "local": true,
@@ -2913,7 +2952,10 @@
         "campaign-issues",
         "campaign-memory",
         "campaign-problems",
-        "campaign-runs"
+        "campaign-reports",
+        "campaign-repositories",
+        "campaign-runs",
+        "campaign-workflows"
       ],
       "execution": {
         "local": true,
@@ -2927,11 +2969,30 @@
       }
     },
     {
+      "id": "campaign-operational-value-daily-change",
+      "subject": "Measure elapsed-day changes in each repository's operational value.",
+      "objective": "Compare rates of change across irregularly spaced observations.",
+      "acceptance": "The first observation and observations without a valid prior value or elapsed time have no rate; repositories and definitions never share a previous observation.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-values"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
       "id": "campaign-operational-value-primary-series",
-      "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
-      "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
-      "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
-      "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
+      "subject": "Project native-unit daily operational-value changes into repository temporal series.",
+      "objective": "Choose a repository and measure whose daily change needs evidence review.",
+      "acceptance": "Each plotted point is a valid elapsed-day change in the measure's native units; the first and missing changes are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
+      "description": "Repository daily rates in native units; point-level maturity and missing values require source observation review.",
       "parameters": [
         {
           "name": "campaign",
@@ -2939,7 +3000,7 @@
         }
       ],
       "sources": [
-        "operational-values"
+        "campaign-operational-value-daily-change"
       ],
       "used-by-pages": [
         "campaign-insights"
@@ -2999,10 +3060,10 @@
     },
     {
       "id": "campaign-operational-value-plot-inventory",
-      "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "subject": "Describe each repository operational-value daily-change plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
-      "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "description": "Plot inventory derived from native-unit repository daily-change series; maturity must be checked separately.",
       "parameters": [],
       "sources": [
         "campaign-operational-value-primary-series"
@@ -3081,7 +3142,10 @@
         "campaign-issues",
         "campaign-memory",
         "campaign-problems",
-        "campaign-runs"
+        "campaign-reports",
+        "campaign-repositories",
+        "campaign-runs",
+        "campaign-workflows"
       ],
       "execution": {
         "local": true,
