@@ -97,7 +97,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'markdown',
   'measure-history'
 ]);
-const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail']);
+const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

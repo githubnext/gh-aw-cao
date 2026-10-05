@@ -47,12 +47,14 @@ const debugCampaignRouteShell = createDebug('campaign-route-shell');
 export function renderCampaignRouteShell(context, config) {
   const bindingOptions = context.sourcesSubscribed ? { requestMissingSources: false } : undefined;
   const workflowBindings = bindFactorySources(context.sources, ['workflows'], context, bindingOptions);
-  const countBindings = bindFactorySources(
-    context.sources,
-    Object.values(CAMPAIGN_TAB_COUNT_SOURCES),
-    context,
-    bindingOptions
-  );
+  const declaredCounts = Object.values(CAMPAIGN_TAB_COUNT_SOURCES)
+    .filter((name) => context.sourceNames.includes(name));
+  const otherCounts = Object.values(CAMPAIGN_TAB_COUNT_SOURCES)
+    .filter((name) => !context.sourceNames.includes(name));
+  const countBindings = {
+    ...bindFactorySources(context.sources, declaredCounts, context, bindingOptions),
+    ...bindFactorySources(context.sources, otherCounts, context)
+  };
   const bindings = { ...workflowBindings, ...countBindings };
   const scope = createFactoryScope();
   const root = createRoutePageShell(context, {

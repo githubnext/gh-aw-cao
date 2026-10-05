@@ -911,6 +911,44 @@ describe('dashboard DOM provenance', () => {
     }
   });
 
+  it('preserves an unavailable campaign shell when its workflow subscription fails', async () => {
+    resetSourceStore();
+    window.history.replaceState({}, '', '#page-campaign-workflows?campaign=ambient-context');
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {
+      throw new Error('The campaign shell must not start a page-wide query.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn(() => Promise.reject(new Error('dashboard queries exceeded the max-duration-ms limit of 60000')));
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'unavailable-campaign', title: 'Unavailable campaign',
+          pages: [{
+            id: 'campaign-workflows', kind: 'custom', title: 'Campaign',
+            route: { 'hash-query-parameter': 'campaign' },
+            views: [{
+              id: 'campaign-workflow-navigation', title: 'Campaign workflows',
+              mark: 'element', element: 'campaign-route', config: { body: 'workflows' },
+              data: { sources: ['workflows'] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-workflows')?.textContent).toContain('Campaign data is unavailable.'));
+      expect(rendered.querySelector('.campaign-workflows')?.textContent).not.toContain('Campaign not found.');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      resetSourceStore();
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
   it('updates nested section views from separate queries without replacing sibling UX', async () => {
     const requests = new Map();
     const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {

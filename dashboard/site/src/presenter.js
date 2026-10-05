@@ -3,7 +3,7 @@
  */
 
 import { h } from './dom.js';
-import { batch, effect, state } from './reactive.js';
+import { batch, effect, state, untracked } from './reactive.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
@@ -1020,7 +1020,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
               const key = dashboardViewAliasName(page.id, view, index, name, sourceIndex);
               const source = current[resolved];
               if (source) publishSource(name, source, key);
-              else if (!pending) sourceState(key).set({ status: 'missing', origin: 'view', source: null });
+              else if (!pending && untracked(() => sourceState(key).get().status !== 'failed')) {
+                sourceState(key).set({ status: 'missing', origin: 'view', source: null });
+              }
             }
           });
           return;
