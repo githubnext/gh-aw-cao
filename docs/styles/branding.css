@@ -11,6 +11,14 @@
 }
 
 .sl-skip-link:focus-visible {
+  clip: unset;
+  z-index: var(--sl-z-index-skiplink);
+  display: block;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: var(--sl-color-text-invert);
+  background-color: var(--sl-color-text-accent);
+  box-shadow: var(--sl-shadow-lg);
   outline: 3px solid #1f6feb;
   outline-offset: 3px;
   border-radius: 0.5rem;
