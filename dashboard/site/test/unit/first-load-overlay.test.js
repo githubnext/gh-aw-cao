@@ -108,6 +108,11 @@ describe('browser first-load presentation', () => {
       ['Azure', 'https://githubnext.github.io/gh-aw-cao/deployment-azure/'],
       ['Coolify', 'https://githubnext.github.io/gh-aw-cao/deployment-coolify/']
     ]);
+    for (const link of serverOption?.querySelectorAll('a') ?? []) {
+      expect(link.target).toBe('_blank');
+      expect(link.rel).toBe('noopener noreferrer');
+      expect(link.getAttribute('aria-label')).toBe(`${link.textContent} (opens in a new tab)`);
+    }
     expect(dialog?.querySelector('.first-load-background')?.getAttribute('aria-hidden')).toBe('true');
     expect(dialog?.querySelector('.first-load-background')?.childElementCount).toBe(0);
     expect(dialog?.querySelector('progress')?.hasAttribute('value')).toBe(false);
