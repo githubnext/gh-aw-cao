@@ -1597,7 +1597,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-layout { grid-column: 1; grid-row: auto; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: 12px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
-main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; scrollbar-gutter: auto; }
+main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; scrollbar-gutter: auto; background-image: var(--overview-page-glows); background-attachment: local; }
 .dashboard-overview-page { margin: 0; }
 .dashboard-overview-page > .custom-view-grid { display: block; background: transparent; }
 .dashboard-overview-page .custom-view { margin: 0; }
@@ -1605,18 +1605,19 @@ main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 
 .dashboard-overview-page .link-button-list-view > header { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .dashboard-overview-page :is(.link-button-list, .link-button-list-skeleton, .link-button-list-empty) { border: 0; border-radius: 0; background: transparent; }
 .dashboard-overview-page .factory-floor { border: 0; }
-.factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background: linear-gradient(115deg, color-mix(in srgb, var(--success) 8%, var(--canvas)) 0 34%, var(--canvas) 68%, color-mix(in srgb, var(--accent) 6%, var(--canvas)) 100%); }
+.factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background-color: var(--canvas); background-image: var(--overview-page-glows); }
 .factory-intro h2 { max-width: 680px; margin: 0; font-size: clamp(2rem, 3.5vw, 3.25rem); font-weight: 600; letter-spacing: 0; line-height: 1.05; }
 ${firstLoadStyles}
 .factory-intro h2.factory-heading-pending { width: min(100%, 560px); height: 3.25rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-floor { min-height: 250px; position: relative; display: grid; align-items: center; padding: 38px 48px; overflow: hidden; border-block: 1px solid var(--border); background: var(--canvas-subtle); }
 ${overviewGridStyles}
-.factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 22%, transparent); background: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 10%, transparent), transparent 70%), var(--canvas-subtle); }
-.factory-floor-active::before { border-color: var(--factory-floor-grid); background-image: linear-gradient(var(--factory-floor-grid) 1px, transparent 1px), linear-gradient(90deg, var(--factory-floor-grid) 1px, transparent 1px); }
-.dashboard-root[data-theme="light"] .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 34%, transparent); background-image: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 18%, transparent), transparent 72%); }
+.dashboard-root { --overview-glow: color-mix(in srgb, var(--success) 22%, transparent); --overview-secondary-glow: color-mix(in srgb, var(--success) 14%, transparent); --overview-hero-glow: color-mix(in srgb, var(--success) 13%, transparent); --overview-grid-minor: color-mix(in srgb, var(--success) 9%, transparent); --overview-grid-major: color-mix(in srgb, var(--success) 22%, transparent); --overview-page-glows: radial-gradient(ellipse 58rem 42rem at 76% 8%, var(--overview-glow), transparent 72%), radial-gradient(ellipse 54rem 46rem at 16% 48%, var(--overview-secondary-glow), transparent 74%); }
+.dashboard-root[data-theme="light"] { --overview-glow: color-mix(in srgb, var(--success) 12%, transparent); --overview-secondary-glow: color-mix(in srgb, var(--success) 5.5%, transparent); --overview-hero-glow: color-mix(in srgb, var(--success) 10%, transparent); --overview-grid-minor: color-mix(in srgb, var(--success) 5.5%, transparent); --overview-grid-major: color-mix(in srgb, var(--success) 13%, transparent); --overview-page-glows: radial-gradient(circle at 76% 7%, var(--overview-glow), transparent 31rem), radial-gradient(circle at 12% 42%, var(--overview-secondary-glow), transparent 27rem); }
 @media (prefers-color-scheme: light) {
-  .dashboard-root:not([data-theme]) .factory-floor-active { --factory-floor-grid: color-mix(in srgb, var(--success) 34%, transparent); background-image: radial-gradient(ellipse at center, color-mix(in srgb, var(--success) 18%, transparent), transparent 72%); }
+  .dashboard-root:not([data-theme]) { --overview-glow: color-mix(in srgb, var(--success) 12%, transparent); --overview-secondary-glow: color-mix(in srgb, var(--success) 5.5%, transparent); --overview-hero-glow: color-mix(in srgb, var(--success) 10%, transparent); --overview-grid-minor: color-mix(in srgb, var(--success) 5.5%, transparent); --overview-grid-major: color-mix(in srgb, var(--success) 13%, transparent); --overview-page-glows: radial-gradient(circle at 76% 7%, var(--overview-glow), transparent 31rem), radial-gradient(circle at 12% 42%, var(--overview-secondary-glow), transparent 27rem); }
 }
+.factory-floor-active { background-image: radial-gradient(circle at 50% 100%, var(--overview-hero-glow), transparent 34rem); }
+.factory-floor-active::before { border-color: var(--overview-grid-major); background-image: linear-gradient(var(--overview-grid-major) 1px, transparent 1px), linear-gradient(90deg, var(--overview-grid-major) 1px, transparent 1px), linear-gradient(var(--overview-grid-minor) 1px, transparent 1px), linear-gradient(90deg, var(--overview-grid-minor) 1px, transparent 1px); background-size: 160px 160px, 160px 160px, 32px 32px, 32px 32px; }
 .factory-stations { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
 .factory-floor-compact .factory-stations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .factory-station { min-width: 0; display: grid; justify-items: center; text-align: center; animation: factory-station-enter 420ms cubic-bezier(.2, .7, .2, 1) both; }
