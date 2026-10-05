@@ -48,19 +48,19 @@
   "likely_false_positives": "A barrel test file without an explicit 'shape-only, no duplication' scope comment is not a violation; adding the first behavioral test for a function that has no dedicated module test file elsewhere is legitimate and should not be flagged.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
-  "status": "needs-work",
+  "status": "not-applicable",
   "last_seen_at": "2026-10-05T19:05:16Z",
-  "last_updated": "2026-10-05T19:05:16Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37359981927",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated": "2026-10-05T22:00:53Z",
+  "last_updated_by_run": "37378944234",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
-    "true_positive_count": 2,
-    "false_positive_count": 2,
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "fc91a70807b9a20aa5d7eb48a1a067f71f8e02b8",
+    "true_positive_count": 0,
+    "false_positive_count": 0,
     "false_negative_count": 0,
-    "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-72 still false-positive against a naive heuristic. No suppression convention.",
-    "txn_id": "refiner-37359981927-2"
+    "readiness_for_target": "not-applicable",
+    "reason": "Repository has no *.test.ts files and only 7 .ts files total (Astro content/plugin config, no test suites); the barrel re-export smoke-test pattern the rule targets does not exist here. Dashboard tests are .test.js/.test.mjs.",
+    "txn_id": "refiner-37378944234-1"
   }
 }
