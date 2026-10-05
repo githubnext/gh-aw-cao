@@ -23,9 +23,31 @@ answer a specific question:
 	<img class="docs-theme-diagram-dark" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-aw-cao/assets/dashboard-view-system-dark.svg">
 </div>
 
+## Two ways to run the dashboard
+
+There is one dashboard product and browser UI, with two data backends. Both use
+the same Dashboard Language documents and are built from the dashboard site;
+they differ in where data is stored and queries execute.
+
+- **GitHub Pages (static/browser):** GitHub Actions publishes the site and its
+  data snapshot. Each viewer's browser downloads the snapshot, and a Web Worker
+  normalizes it into disposable IndexedDB storage and runs queries there. Pages
+  visibility controls access; there is no dashboard server or database to run.
+- **Go server (hosted):** The Go service serves the dashboard UI and a same-origin
+  API. It verifies the published snapshot, stores dashboard entities in
+  PostgreSQL, and executes Dashboard Language queries on the server. The browser
+  does not connect to the database. Redis is for operational state such as
+  sessions and queues, not dashboard data or queries. Hosted deployments can
+  require GitHub OAuth and organization/team authorization.
+
+These are backend modes of the same dashboard, not two separate page
+implementations. A view or data source may still be supported by only one
+backend. Compare the [deployment options](deployment.md) before choosing where
+to run it.
+
 ## How it works
 
-Every view follows the same data flow:
+In the GitHub Pages deployment, every view follows this data flow:
 
 1. **Activity collects evidence.** The Activity workflow publishes a bounded
 	snapshot of workflow activity.
