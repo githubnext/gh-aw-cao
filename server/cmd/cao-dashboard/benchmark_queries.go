@@ -218,10 +218,11 @@ func newBenchmarkQueriesCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		endpoint, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL"))
+		endpoint, endpointSource, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL"))
 		if err != nil {
 			return err
 		}
+		benchmarkLog.Printf("benchmark postgres endpoint resolved source=%s", endpointSource)
 		config, err := benchmarkPostgresConfig(endpoint)
 		if err != nil {
 			return err
