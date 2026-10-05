@@ -174,13 +174,14 @@ type OrderField struct {
 }
 
 type TemporalSeries struct {
-	Time     string            `json:"time"`
-	Series   string            `json:"series"`
-	Shape    string            `json:"shape,omitempty"`
-	Carry    []string          `json:"carry,omitempty"`
-	Measures []TemporalMeasure `json:"measures,omitempty"`
-	Maps     []TemporalMap     `json:"maps,omitempty"`
-	Trend    *TemporalTrend    `json:"trend,omitempty"`
+	Time       string            `json:"time"`
+	Series     string            `json:"series"`
+	Shape      string            `json:"shape,omitempty"`
+	Derivative bool              `json:"derivative,omitempty"`
+	Carry      []string          `json:"carry,omitempty"`
+	Measures   []TemporalMeasure `json:"measures,omitempty"`
+	Maps       []TemporalMap     `json:"maps,omitempty"`
+	Trend      *TemporalTrend    `json:"trend,omitempty"`
 }
 
 type TemporalTrend struct {

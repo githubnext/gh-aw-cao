@@ -20,7 +20,8 @@ const MAX_OUTPUT_ROWS = 100_000;
  *   carry?: string[],
  *   measures?: Array<{ field: string, key?: string, kind: string }>,
  *   maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>,
- *   trend?: { direction: string }
+ *   trend?: { direction: string },
+ *   derivative?: boolean
  * }} TemporalSeriesDefinition
  */
 
@@ -81,9 +82,41 @@ export function projectTemporalSeries(rows, definition) {
   }
   const result = definition.shape === 'groups'
     ? groupTemporalSeries(projected, definition.carry ?? [], definition.trend?.direction)
-    : projected;
+    : definition.derivative
+      ? differentiateTemporalSeries(projected, definition.carry ?? [])
+      : projected;
   debugTemporalSeries({ event: 'projection-completed', outputRows: result.length });
   return result;
+}
+
+/**
+ * @param {Row[]} rows
+ * @param {string[]} carry
+ * @returns {Row[]}
+ */
+function differentiateTemporalSeries(rows, carry) {
+  /** @type {Map<string, Row[]>} */
+  const groups = new Map();
+  for (const row of rows) {
+    const key = JSON.stringify([...carry.map((field) => row[field] ?? null), row.series, row['metric-key']]);
+    const points = groups.get(key) ?? [];
+    points.push(row);
+    groups.set(key, points);
+  }
+  /** @type {Row[]} */
+  const rates = [];
+  for (const points of groups.values()) {
+    points.sort((left, right) => Date.parse(String(left.time)) - Date.parse(String(right.time)));
+    let previous = points[0];
+    for (const point of points.slice(1)) {
+      const days = (Date.parse(String(point.time)) - Date.parse(String(previous.time))) / 86_400_000;
+      if (days <= 0) continue;
+      const value = (Number(point.value) - Number(previous.value)) / days;
+      if (Number.isFinite(value)) append(rates, { ...point, value });
+      previous = point;
+    }
+  }
+  return rates;
 }
 
 /**

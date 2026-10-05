@@ -4471,6 +4471,10 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           && (typeof shape !== 'string' || (shape !== 'tidy' && shape !== 'groups'))) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'temporal-series shape must be tidy or groups.', `${seriesPath}.shape`));
       }
+      if (definition.derivative !== undefined
+          && (definition.derivative !== true || shape === 'groups')) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series derivative must be true and requires tidy shape.', `${seriesPath}.derivative`));
+      }
       const carry = definition.carry;
       if (carry !== undefined && (!Array.isArray(carry) || carry.length === 0 || carry.length > 16)) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series carry must contain 1 to 16 fields.', `${seriesPath}.carry`));

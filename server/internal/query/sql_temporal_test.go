@@ -95,6 +95,27 @@ func TestTemporalSQLTidyCompilation(t *testing.T) {
 	}
 }
 
+func TestTemporalSQLDerivativeCompilation(t *testing.T) {
+	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
+	definition := temporalTestDefinition()
+	definition.Shape, definition.Trend, definition.Derivative = "tidy", nil, true
+	plan := temporalTestPlan(t, input, definition)
+	for _, fragment := range []string{`"__timestamp_rank" = 1`, "lag(", "PARTITION BY",
+		"86400000::numeric", `"__previous_at"`, `"__rate" IS NOT NULL`, "__count <= 100000"} {
+		if !strings.Contains(plan.CTEs, fragment) {
+			t.Errorf("missing derivative SQL contract %q", fragment)
+		}
+	}
+	if len(plan.Steps) != 3 || plan.Steps[1].Operation != "temporal-series" ||
+		plan.Steps[2].Operation != "temporal-derivative" {
+		t.Fatalf("derivative must run after the bounded temporal projection: %+v", plan.Steps)
+	}
+	if plan.Outputs["observations"].Columns["value"].Kind != SQLNumber ||
+		len(plan.Outputs["observations"].Columns) != 13 {
+		t.Fatalf("derivative must preserve tidy output shape: %+v", plan.Outputs["observations"].Columns)
+	}
+}
+
 func TestTemporalSQLRejectsInvalidDeclarations(t *testing.T) {
 	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
 	cases := []TemporalSeries{
@@ -108,12 +129,41 @@ func TestTemporalSQLRejectsInvalidDeclarations(t *testing.T) {
 		{Time: "observed-at", Series: "repository", Maps: []TemporalMap{{Field: "value", Kind: "primary"}}},
 		{Time: "observed-at", Series: "repository", Shape: "groups", Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}, Trend: &TemporalTrend{Direction: "direction"}},
 		{Time: "observed-at", Series: "repository", Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}, Carry: []string{"direction"}, Trend: &TemporalTrend{Direction: "direction"}},
+		{Time: "observed-at", Series: "repository", Shape: "groups", Derivative: true, Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}},
 	}
 	for index, definition := range cases {
 		compiler := sqlCompiler{}
 		if _, err := compiler.temporal(input, definition, "bad"); err == nil {
 			t.Errorf("invalid temporal declaration %d was admitted", index)
 		}
+	}
+}
+
+func TestTemporalDerivativeJSONContractAndValidation(t *testing.T) {
+	var definition Definition
+	err := json.Unmarshal([]byte(`{"name":"rates","from":"observations","temporal-series":{"time":"at","series":"repo","shape":"tidy","derivative":true,"measures":[{"field":"value","kind":"primary"}]}}`), &definition)
+	if err != nil || definition.TemporalSeries == nil || !definition.TemporalSeries.Derivative {
+		t.Fatalf("derivative was dropped by query decoding: %+v %v", definition, err)
+	}
+	data, err := json.Marshal(definition)
+	if err != nil || !strings.Contains(string(data), `"derivative":true`) {
+		t.Fatalf("derivative was dropped by query encoding: %s %v", data, err)
+	}
+	if err := Validate([]Definition{definition}); err != nil {
+		t.Fatalf("tidy derivative rejected: %v", err)
+	}
+	definition.TemporalSeries.Shape = ""
+	if err := Validate([]Definition{definition}); err != nil {
+		t.Fatalf("default tidy derivative rejected: %v", err)
+	}
+	definition.TemporalSeries.Shape = "groups"
+	if err := Validate([]Definition{definition}); err == nil {
+		t.Fatal("grouped derivative must be rejected by query validation")
+	}
+	definition.TemporalSeries.Shape, definition.TemporalSeries.Derivative = "tidy", false
+	data, err = json.Marshal(definition)
+	if err != nil || strings.Contains(string(data), `"derivative"`) {
+		t.Fatalf("default derivative must remain omitted: %s %v", data, err)
 	}
 }
 
@@ -257,6 +307,60 @@ func TestTemporalSQLPostgresGroupedWorkerSemantics(t *testing.T) {
 	}
 	if !reflect.DeepEqual(rows, []map[string]any{want}) {
 		t.Fatalf("worker temporal result mismatch:\ngot  %#v\nwant %#v", rows, want)
+	}
+}
+
+func TestTemporalSQLPostgresDerivative(t *testing.T) {
+	connection := temporalTestConnection(t)
+	input := temporalTestInput(`
+		(1,'2026-01-03T12:00:00Z'::text,'repo-a'::text,30::numeric,'prod'::text,true,'x'::text,'label'::text,NULL::text,false),
+		(2,'2026-01-01T00:00:00Z','repo-a',10,'prod',true,'x','label',NULL,false),
+		(3,'2026-01-02T00:00:00Z','repo-a',15,'prod',true,'x','label',NULL,false),
+		(4,'2026-01-02T00:00:00Z','repo-a',99,'prod',true,'x','label',NULL,false),
+		(5,'2026-01-01T00:00:00Z','repo-b',100,'prod',true,'x','label',NULL,false),
+		(6,'2026-01-02T00:00:00Z','repo-b',90,'prod',true,'x','label',NULL,false),
+		(7,'2026-01-01T00:00:00Z','repo-a',1,'prod',true,'y','label',NULL,false),
+		(8,'2026-01-02T00:00:00Z','repo-a',5,'prod',true,'y','label',NULL,false),
+		(9,'2026-01-01T00:00:00Z','repo-a',50,'dev',true,'x','label',NULL,false),
+		(10,'2026-01-02T00:00:00Z','repo-a',60,'dev',true,'x','label',NULL,false),
+		(11,'not a date','repo-a',1000,'prod',true,'x','label',NULL,false),
+		(12,'2026-01-04T00:00:00Z','repo-a','NaN'::numeric,'prod',true,'x','label',NULL,false),
+		(13,'2026-01-04T00:00:00Z','repo-a',1e309::numeric,'prod',true,'x','label',NULL,false),
+		(14,'2026-01-04T00:00:00Z','repo-a',45,'prod',false,'x','label',NULL,false),
+		(15,'2026-01-04T00:00:00Z','repo-a',45,'prod',true,'x','label',NULL,false),
+		(16,'2026-01-05T00:00:00Z','repo-a',1e308::numeric,'prod',true,'x','label',NULL,false),
+		(17,'2026-01-06T00:00:00Z','repo-a',-1e308::numeric,'prod',true,'x','label',NULL,false),
+		(18,'2026-01-07T00:00:00Z','repo-a',10,'prod',true,'x','label',NULL,false)`)
+	definition := TemporalSeries{Time: "observed-at", Series: "repository", Shape: "tidy",
+		Derivative: true, Carry: []string{"direction"},
+		Measures: []TemporalMeasure{{Field: "value", Key: "identity", Kind: "primary"}}}
+	rows, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Source order breaks timestamp ties; the later duplicate must not replace the prior observation.
+	type expected struct {
+		time, series, metric, direction string
+		rate                            float64
+	}
+	want := []expected{
+		{"2026-01-02T00:00:00Z", "repo-a", "x", "prod", 5},
+		{"2026-01-02T00:00:00Z", "repo-b", "x", "prod", -10},
+		{"2026-01-02T00:00:00Z", "repo-a", "y", "prod", 4},
+		{"2026-01-02T00:00:00Z", "repo-a", "x", "dev", 10},
+		{"2026-01-03T12:00:00Z", "repo-a", "x", "prod", 10},
+		{"2026-01-04T00:00:00Z", "repo-a", "x", "prod", 30},
+	}
+	if len(rows) != len(want) {
+		t.Fatalf("wrong derivative rows: got %#v, want %#v", rows, want)
+	}
+	for index, row := range rows {
+		expected := want[index]
+		if row["time"] != expected.time || row["series"] != expected.series ||
+			row["metric"] != expected.metric || row["direction"] != expected.direction ||
+			row["value"] != expected.rate || row["metric-key"] != "primary:"+expected.metric {
+			t.Errorf("derivative row %d: got %#v, want %#v", index, row, expected)
+		}
 	}
 }
 

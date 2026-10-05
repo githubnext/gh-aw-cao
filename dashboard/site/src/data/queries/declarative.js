@@ -366,6 +366,7 @@ function queryStructuralDefect(definition) {
         || typeof series.time !== 'string'
         || typeof series.series !== 'string'
       || (series.shape !== undefined && !['tidy', 'groups'].includes(series.shape))
+        || (series.derivative !== undefined && (series.derivative !== true || series.shape === 'groups'))
         || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
         || (series.trend !== undefined && (!isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
         || (!Array.isArray(measures) || measures.length > 64)

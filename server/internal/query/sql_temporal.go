@@ -12,6 +12,9 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	if definition.Shape != "" && definition.Shape != "tidy" && definition.Shape != "groups" {
 		return SQLRelation{}, errors.New("unsupported temporal-series shape")
 	}
+	if definition.Derivative && definition.Shape == "groups" {
+		return SQLRelation{}, errors.New("temporal-series derivative requires tidy shape")
+	}
 	if len(definition.Carry) > 16 || len(definition.Measures) > 64 || len(definition.Maps) > 64 ||
 		len(definition.Measures)+len(definition.Maps) == 0 {
 		return SQLRelation{}, errors.New("invalid temporal-series declaration bounds")
@@ -156,6 +159,9 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	tidy := c.materialize(SQLRelation{SQL: bounded + " WHERE 1 / CASE WHEN __count <= 100000 THEN 1 ELSE 0 END = 1",
 		Columns: fields, Order: `"__order"`}, queryName, "temporal-series", 1)
 	if definition.Shape != "groups" {
+		if definition.Derivative {
+			tidy = c.temporalDerivative(tidy, definition, queryName)
+		}
 		output := map[string]SQLColumn{}
 		for index, field := range definition.Carry {
 			output[field] = tidy.Columns["carry"+strconv.Itoa(index)]
@@ -167,6 +173,42 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		return tidy, nil
 	}
 	return c.temporalGroups(tidy, carried, definition, queryName), nil
+}
+
+func (c *sqlCompiler) temporalDerivative(tidy SQLRelation, definition TemporalSeries, queryName string) SQLRelation {
+	point := qualifyRelation(tidy, "point")
+	partition := []string{point.Columns["series"].Expression, point.Columns["metric-key"].Expression}
+	for index := range definition.Carry {
+		partition = append(partition, point.Columns["carry"+strconv.Itoa(index)].Expression)
+	}
+	ranked := "(SELECT point.*, row_number() OVER (PARTITION BY " +
+		strings.Join(append(append([]string{}, partition...), point.Columns["__at"].Expression), ",") +
+		" ORDER BY " + point.Order + `) AS "__timestamp_rank" FROM ` + point.SQL + ") AS ranked"
+	deduplicated := "(SELECT * FROM " + ranked + ` WHERE "__timestamp_rank" = 1) AS unique_point`
+	input := qualifyRelation(tidy, "unique_point")
+	partition = []string{input.Columns["series"].Expression, input.Columns["metric-key"].Expression}
+	for index := range definition.Carry {
+		partition = append(partition, input.Columns["carry"+strconv.Itoa(index)].Expression)
+	}
+	window := "PARTITION BY " + strings.Join(partition, ",") + " ORDER BY " +
+		input.Columns["__at"].Expression + ", " + input.Order
+	previousAt := "lag(" + input.Columns["__at"].Expression + ") OVER (" + window + `) AS "__previous_at"`
+	previousValue := "lag(" + input.Columns["value"].Expression + ") OVER (" + window + `) AS "__previous_value"`
+	windowed := "(SELECT unique_point.*, " + previousAt + ", " + previousValue + " FROM " + deduplicated + ") AS previous"
+	at := tidy.Columns["__at"].Expression
+	value := tidy.Columns["value"].Expression
+	rate := sqlFinite("(" + value + ` - "__previous_value") * 86400000::numeric / nullif(` +
+		at + ` - "__previous_at", 0)`)
+	derivative := "(SELECT previous.*, " + rate + ` AS "__rate" FROM ` + windowed +
+		" WHERE " + at + ` > "__previous_at") AS derivative_rate WHERE "__rate" IS NOT NULL`
+	columns := make(map[string]SQLColumn, len(tidy.Columns))
+	for field, column := range tidy.Columns {
+		columns[field] = column
+	}
+	columns["value"] = SQLColumn{Expression: `"__rate"`, Presence: "TRUE", Kind: SQLNumber}
+	order := "row_number() OVER (ORDER BY " + at + ", " + tidy.Order + ")"
+	return c.materialize(SQLRelation{SQL: derivative, Columns: columns, Order: order},
+		queryName, "temporal-derivative", 1)
 }
 
 func temporalScalarText(column SQLColumn) string {

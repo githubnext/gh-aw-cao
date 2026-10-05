@@ -77,6 +77,10 @@ func Validate(definitions []Definition) error {
 			definition.TemporalSeries.Shape != "tidy" && definition.TemporalSeries.Shape != "groups" {
 			return fmt.Errorf("query %q has unsupported temporal-series shape %q", definition.Name, definition.TemporalSeries.Shape)
 		}
+		if definition.TemporalSeries != nil && definition.TemporalSeries.Derivative &&
+			definition.TemporalSeries.Shape == "groups" {
+			return fmt.Errorf("query %q temporal-series derivative requires tidy shape", definition.Name)
+		}
 		for _, computed := range definition.Compute {
 			minimum, maximum, ok := computeArity(computed.Function)
 			if !ok {

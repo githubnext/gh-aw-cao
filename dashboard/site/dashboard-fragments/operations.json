@@ -1314,6 +1314,22 @@
           ]
         }
       ]
+    },
+    {
+      "name": "operational-value-daily-change",
+      "subject": "Measure the per-day change between consecutive numeric operational-value observations per repository and value ID.",
+      "objective": "Show whether each native operational-value measure is rising or falling over the selected period.",
+      "acceptance": "Only successive observations of the same repository, campaign and value ID contribute; single observations and zero elapsed time have no rate. Rates do not establish verified outcomes.",
+      "from": "operational-values",
+      "temporal-series": {
+        "time": "observed-at",
+        "series": "repository",
+        "carry": ["organization", "repository", "campaign"],
+        "measures": [
+          { "field": "operational-value", "key": "operational-value-definition", "kind": "primary" }
+        ],
+        "derivative": true
+      }
     }
   ],
   "pages": [
@@ -2151,7 +2167,7 @@
       "kind": "built-in",
       "page": "operational-value",
       "title": "Operational Value",
-      "description": "Computed package-defined operational value for each repository.",
+      "description": "Daily change in package-defined operational value for each repository; raw observations remain available below.",
       "icon": "graph",
       "class-name": "value-page",
       "experimental": true,
@@ -2162,34 +2178,34 @@
         "views": [
           {
             "id": "operational-value-history",
-            "title": "Operational value over time",
-            "subject": "Track retained repository observations by package-defined operational value ID.",
-            "objective": "Identify changes in a value's native measure worth investigating.",
-            "acceptance": "Values are interpreted with their declared units, direction, and maturity; an interim observation is not claimed as a verified outcome.",
-            "description": "Each line tracks one package-defined value ID across retained repository observations.",
+            "title": "Operational value change per day",
+            "subject": "Track the per-day rate of change in repository operational value by package-defined value ID.",
+            "objective": "Identify rising or falling native measures worth investigating.",
+            "acceptance": "Each rate uses two numeric observations of the same repository, campaign and value ID, divided by elapsed UTC days. Raw units and maturity require inspecting the observation table; a rate is not a verified outcome.",
+            "description": "Each line shows change in a value ID's native units per elapsed day; the first observation of each series has no rate.",
             "data": {
-              "source": "operational-values"
+              "source": "operational-value-daily-change"
             },
             "mark": "chart",
             "chart": "line",
             "layout": "full",
-            "empty-message": "No operational-value observations are available.",
+            "empty-message": "At least two numeric observations per repository and value ID are needed to show a change rate.",
             "encoding": {
               "x": {
-                "field": "observed-at",
+                "field": "time",
                 "type": "temporal",
                 "format": "human-friendly-timestamp",
                 "time-unit": "day",
                 "title": "Observed"
               },
               "y": {
-                "field": "operational-value",
+                "field": "value",
                 "type": "quantitative",
                 "aggregate": "mean",
-                "title": "Operational value"
+                "title": "Change per day"
               },
               "color": {
-                "field": "operational-value-definition",
+                "field": "metric",
                 "type": "nominal",
                 "title": "Value ID"
               }
