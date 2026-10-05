@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  captureDashboardQueryResponse,
   dashboardAssessmentPageHash,
   declaredDashboardViewIds,
   visibleBusyViewSelector,
@@ -107,7 +108,9 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     try {
       const initialQueryResponses = [];
       const onInitialResponse = (response) => {
-        if (new URL(response.url()).pathname === "/api/v1/query") initialQueryResponses.push(response);
+        if (new URL(response.url()).pathname === "/api/v1/query") {
+          initialQueryResponses.push(captureDashboardQueryResponse(response));
+        }
       };
       page.on("response", onInitialResponse);
       await page.goto(`/?access_token=${accessToken}`);
@@ -145,7 +148,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         const onPageError = (error) => browserErrors.push(error.message);
         const onResponse = (response) => {
           if (new URL(response.url()).pathname !== "/api/v1/query") return;
-          queryResponses.push(response);
+          queryResponses.push(captureDashboardQueryResponse(response));
           remainingTokens = Math.min(remainingTokens, Number(response.headers()["ratelimit-remaining"] ?? 30));
           resetSeconds = Math.max(resetSeconds, Number(response.headers()["ratelimit-reset"] ?? 0));
         };
@@ -201,13 +204,14 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
               timeout: 30_000,
             }).toBeGreaterThan(0);
           }
-          for (const response of queryResponses) {
+          for (const { response, body } of queryResponses) {
             result.queries += 1;
             if (!response.ok()) {
               result.errors.push(`Query HTTP ${response.status()}`);
               continue;
             }
-            const payload = await response.json();
+            const { payload, error } = await body;
+            if (error) throw error;
             if (!payload.sources || typeof payload.sources !== "object") {
               result.errors.push("Query returned no sources object");
               continue;
