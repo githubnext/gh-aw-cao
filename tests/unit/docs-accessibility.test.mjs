@@ -20,6 +20,6 @@ test("dark documentation diagrams and illustration metadata use accessible contr
   assert.match(branding, /:root\[data-theme="dark"\] \.mermaid \.edgeLabel > p/);
   assert.match(branding, /background-color: #30363d !important/);
   assert.match(branding, /color: #f0f6fc !important/);
-  assert.match(dispatchIllustration, /\.repository-copy > small \{\s*color: color-mix\(in srgb, var\(--muted\) 82%, var\(--sl-color-text\) 18%\);/);
+  assert.match(dispatchIllustration, /\.repository-copy > small \{\s*color: color-mix\(in srgb, var\(--muted\) 18%, var\(--sl-color-text\) 82%\);/);
   assert.match(dispatchIllustration, /:global\(\[data-theme="dark"\]\) \.dispatch-illustration \{[^}]*--muted: #d0d7de;/);
 });
