@@ -5,6 +5,7 @@ import test from "node:test";
 import { parse } from "yaml";
 import {
   activityCollectionPlan,
+  GITHUB_AUTH_MODES,
 } from "../../activity/authentication.mjs";
 import {
   controlPrecompute,
@@ -309,6 +310,15 @@ test("CAO workflows bind GitHub tools to exact declared read permissions", () =>
     );
     assert.doesNotMatch(lock, /permission-[a-z-]+: null/, `${name} App permissions must be valid action inputs`);
   }
+});
+
+test("GitHub authentication mode identifiers are immutable", () => {
+  assert.deepEqual(GITHUB_AUTH_MODES, {
+    APP: "app",
+    PAT: "pat",
+    WORKFLOW_TOKEN: "workflow-token",
+  });
+  assert.ok(Object.isFrozen(GITHUB_AUTH_MODES));
 });
 
 test("CAO Activity defaults to the workflow token for the control repository", () => {

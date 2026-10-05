@@ -33,6 +33,11 @@ export const FINE_GRAINED_PAT_PROFILES = [
 ];
 
 export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
+export const GITHUB_AUTH_MODES = Object.freeze({
+  APP: 'app',
+  PAT: 'pat',
+  WORKFLOW_TOKEN: 'workflow-token',
+});
 
 export function checkLiveWriteAuthentication({
   execute = spawnSync,
@@ -52,11 +57,11 @@ export function checkLiveWriteAuthentication({
       ? repositoryVariableValue(repo, GITHUB_AUTH_MODE_VARIABLE, runGh)
       : '';
     let configured = false;
-    if (mode === 'app') {
+    if (mode === GITHUB_AUTH_MODES.APP) {
       const writeApp = APP_PROFILES.find((profile) => profile.role === 'write');
       configured = state.variables.has(writeApp.variable) && state.secrets.has(writeApp.secret)
         && Boolean(repositoryVariableValue(repo, writeApp.variable, runGh));
-    } else if (mode === 'pat') {
+    } else if (mode === GITHUB_AUTH_MODES.PAT) {
       const writePat = FINE_GRAINED_PAT_PROFILES.find((profile) => profile.role === 'write');
       if (state.variables.has(writePat.repositoryMapVariable)) {
         const map = JSON.parse(repositoryVariableValue(repo, writePat.repositoryMapVariable, runGh));
@@ -139,7 +144,7 @@ export function formatSetupAuthenticationSummary(result) {
     `✓ Fine-grained PAT authentication configured for ${result.repo}.`,
     `  Read scope: ${readRepositories.length} ${readRepositories.length === 1 ? 'repository' : 'repositories'} across ${readOwners.join(', ')}`,
     `  Write scope: ${writeRepositories.join(', ') || 'none'}`,
-    '  Authentication mode: pat',
+    `  Authentication mode: ${GITHUB_AUTH_MODES.PAT}`,
     '',
     'Existing GitHub App credentials, if present, are inactive while PAT mode is selected.',
     'Next: run ./cao.sh validate, then validate a bounded review workflow before removing App credentials.',
@@ -224,8 +229,8 @@ export function activityCollectionPlan(controlSettings, {
   if (!repositoryCoordinate(controlRepository)) {
     throw new Error("GITHUB_REPOSITORY must use OWNER/REPOSITORY form");
   }
-  const mode = authMode || "workflow-token";
-  if (!["app", "pat", "workflow-token"].includes(mode)) {
+  const mode = authMode || GITHUB_AUTH_MODES.WORKFLOW_TOKEN;
+  if (!Object.values(GITHUB_AUTH_MODES).includes(mode)) {
     throw new Error(
       "GH_AW_GITHUB_AUTH_MODE must select app, pat, or workflow-token for CAO Activity; "
       + `run ./cao.sh setup-auth github-app --repo ${controlRepository} or `
@@ -245,7 +250,7 @@ export function activityCollectionPlan(controlSettings, {
     throw new Error("Activity repository scope must contain exact OWNER/REPOSITORY values");
   }
 
-  if (mode === "workflow-token") {
+  if (mode === GITHUB_AUTH_MODES.WORKFLOW_TOKEN) {
     if (repositories.some((repository) => repository.toLowerCase() !== controlRepository.toLowerCase())
       || (configuredRepositories.length === 0 && configuredOwners.length > 0)) {
       throw new Error(
@@ -263,7 +268,7 @@ export function activityCollectionPlan(controlSettings, {
     }];
   }
 
-  if (mode === "pat") {
+  if (mode === GITHUB_AUTH_MODES.PAT) {
     if (configuredRepositories.length === 0) {
       throw new Error("PAT-mode CAO Activity requires an exact allowed-repositories scope");
     }
@@ -373,7 +378,7 @@ export function configureEnterpriseApps({
     }
   }
   const modeResult = execute('gh', [
-    'variable', 'set', GITHUB_AUTH_MODE_VARIABLE, '--repo', repo, '--body', 'app',
+    'variable', 'set', GITHUB_AUTH_MODE_VARIABLE, '--repo', repo, '--body', GITHUB_AUTH_MODES.APP,
   ], { encoding: 'utf8' });
   if (modeResult.error || modeResult.status !== 0) {
     throw new Error(`authentication mode setup failed: ${failureMessage(modeResult, `exit ${modeResult.status}`)}`);
