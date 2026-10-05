@@ -9,8 +9,6 @@ sidebar:
   order: 1363
 ---
 
-# Operational Observability Visualization Specification
-
 **Version:** 0.2.0
 **Status:** Working Draft
 **Editor:** GitHub Agentic Workflows Team
