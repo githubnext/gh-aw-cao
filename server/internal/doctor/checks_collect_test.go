@@ -362,3 +362,76 @@ func TestClassifyLakePopulationIgnoresSizeWhenEmpty(t *testing.T) {
 		t.Fatalf("reason = %v, want %v", classification.reason, lakePopulationReasonEmpty)
 	}
 }
+
+func TestClassifyBudgetHeadroomWarnsOnParkedBeforeLow(t *testing.T) {
+	// A parked installation alongside a low one must not mask the parked
+	// classification; parked is checked first, matching the prior inline
+	// priority.
+	rateLimits := []collect.Headroom{
+		{InstallationID: 1, Remaining: 50, ParkedUntil: "2026-01-01T00:00:00Z"},
+		{InstallationID: 2, Remaining: 5},
+	}
+	classification := classifyBudgetHeadroom(rateLimits, 10)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != budgetHeadroomReasonParked {
+		t.Fatalf("reason = %v, want %v", classification.reason, budgetHeadroomReasonParked)
+	}
+	if !strings.Contains(classification.summary, "1 installations are parked") {
+		t.Fatalf("summary = %q, want it to mention the parked count", classification.summary)
+	}
+	if classification.remedy == "" {
+		t.Fatal("expected a remedy for a parked installation")
+	}
+}
+
+func TestClassifyBudgetHeadroomWarnsWhenAtOrBelowFloor(t *testing.T) {
+	rateLimits := []collect.Headroom{
+		{InstallationID: 1, Remaining: 10},
+		{InstallationID: 2, Remaining: 500},
+	}
+	classification := classifyBudgetHeadroom(rateLimits, 10)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %v, want %v", classification.status, StatusWarn)
+	}
+	if classification.reason != budgetHeadroomReasonLow {
+		t.Fatalf("reason = %v, want %v", classification.reason, budgetHeadroomReasonLow)
+	}
+	if !strings.Contains(classification.summary, "1 installations are at or below") {
+		t.Fatalf("summary = %q, want it to mention the low count", classification.summary)
+	}
+}
+
+func TestClassifyBudgetHeadroomIgnoresFloorWhenUnconfigured(t *testing.T) {
+	// A floor of zero means no configured floor; remaining headroom must
+	// never be classified as low regardless of how small it is.
+	rateLimits := []collect.Headroom{{InstallationID: 1, Remaining: 0}}
+	classification := classifyBudgetHeadroom(rateLimits, 0)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != budgetHeadroomReasonHealthy {
+		t.Fatalf("reason = %v, want %v", classification.reason, budgetHeadroomReasonHealthy)
+	}
+}
+
+func TestClassifyBudgetHeadroomPassesWhenHealthy(t *testing.T) {
+	rateLimits := []collect.Headroom{
+		{InstallationID: 1, Remaining: 4000},
+		{InstallationID: 2, Remaining: 3000},
+	}
+	classification := classifyBudgetHeadroom(rateLimits, 10)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %v, want %v", classification.status, StatusPass)
+	}
+	if classification.reason != budgetHeadroomReasonHealthy {
+		t.Fatalf("reason = %v, want %v", classification.reason, budgetHeadroomReasonHealthy)
+	}
+	if classification.remedy != "" {
+		t.Fatalf("expected no remedy for healthy headroom, got %q", classification.remedy)
+	}
+	if !strings.Contains(classification.summary, "2 installations") {
+		t.Fatalf("summary = %q, want it to mention the installation count", classification.summary)
+	}
+}

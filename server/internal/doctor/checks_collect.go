@@ -521,39 +521,79 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 			Summary: "no rate-limit headroom has been recorded yet",
 		}
 	}
-	var parked, low []string
 	details := make([]Detail, 0, len(status.RateLimits)+1)
 	details = append(details, detail("floor", orDefault(fmt.Sprint(floor), "default")))
 	for _, headroom := range status.RateLimits {
 		label := fmt.Sprintf("%d remaining", headroom.Remaining)
 		if headroom.ParkedUntil != "" {
 			label += ", parked until " + headroom.ParkedUntil
+		}
+		details = append(details, detail("installation "+fmt.Sprint(headroom.InstallationID), label))
+	}
+	classification := classifyBudgetHeadroom(status.RateLimits, floor)
+	doctorLog.Printf("rate-limit headroom classified status=%s reason=%s", classification.status, classification.reason)
+	return Check{
+		ID: id, Area: areaCollect, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// budgetHeadroomReason names why classifyBudgetHeadroom reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the reported installation identifiers.
+type budgetHeadroomReason string
+
+const (
+	budgetHeadroomReasonParked  budgetHeadroomReason = "parked"
+	budgetHeadroomReasonLow     budgetHeadroomReason = "low"
+	budgetHeadroomReasonHealthy budgetHeadroomReason = "healthy"
+)
+
+// budgetHeadroomClassification is the status, summary, and remedy
+// classifyBudgetHeadroom derives from the recorded rate-limit headroom
+// alone.
+type budgetHeadroomClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  budgetHeadroomReason
+}
+
+// classifyBudgetHeadroom decides the collect.budget check's outcome from the
+// recorded per-installation rate-limit headroom and the configured floor
+// alone. It is a pure function extracted from checkBudget's inline loop so
+// the parked, low, and healthy outcomes are each testable without a real
+// Redis-backed budget store. A parked installation is reported first,
+// matching the prior inline priority.
+func classifyBudgetHeadroom(rateLimits []collect.Headroom, floor int) budgetHeadroomClassification {
+	var parked, low []string
+	for _, headroom := range rateLimits {
+		if headroom.ParkedUntil != "" {
 			parked = append(parked, fmt.Sprint(headroom.InstallationID))
 		} else if floor > 0 && headroom.Remaining <= floor {
 			low = append(low, fmt.Sprint(headroom.InstallationID))
 		}
-		details = append(details, detail("installation "+fmt.Sprint(headroom.InstallationID), label))
 	}
 	if len(parked) > 0 {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d installations are parked on a rate limit", len(parked)),
-			Details: details,
-			Remedy:  "collection for these installations is paused until the limit resets; this is the budget working, not a fault",
+		return budgetHeadroomClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d installations are parked on a rate limit", len(parked)),
+			remedy:  "collection for these installations is paused until the limit resets; this is the budget working, not a fault",
+			reason:  budgetHeadroomReasonParked,
 		}
 	}
 	if len(low) > 0 {
-		return Check{
-			ID: id, Area: areaCollect, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("%d installations are at or below the configured rate-limit floor", len(low)),
-			Details: details,
-			Remedy:  "collection will stop short rather than exhaust the installation; widen the window or lower the run limit",
+		return budgetHeadroomClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("%d installations are at or below the configured rate-limit floor", len(low)),
+			remedy:  "collection will stop short rather than exhaust the installation; widen the window or lower the run limit",
+			reason:  budgetHeadroomReasonLow,
 		}
 	}
-	return Check{
-		ID: id, Area: areaCollect, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("%d installations have recorded rate-limit headroom", len(status.RateLimits)),
-		Details: details,
+	return budgetHeadroomClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("%d installations have recorded rate-limit headroom", len(rateLimits)),
+		reason:  budgetHeadroomReasonHealthy,
 	}
 }
 
