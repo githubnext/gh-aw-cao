@@ -33,6 +33,7 @@ jobs:
     timeout-minutes: 120
     outputs:
       deploy: ${{ steps.deployment-policy.outputs.deploy }}
+      artifact-id: ${{ steps.dashboard-artifact.outputs.artifact-id }}
     permissions:
       actions: read
       contents: read
@@ -66,18 +67,6 @@ jobs:
             const deploy = configuredDeploy ?? true
             core.info(`Standalone Pages deployment: ${deploy ? 'enabled' : 'disabled'}`)
             core.setOutput('deploy', String(deploy))
-
-      - name: Install dashboard build dependencies
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            await exec.exec('npm', [
-              'ci',
-              '--prefix',
-              'dashboard/site',
-              '--ignore-scripts',
-            ])
-            core.info('Dashboard build dependencies installed')
 
       - name: Restore collected activity data
         id: activity-cache
@@ -113,13 +102,22 @@ jobs:
             })
             const run = data.workflow_runs[0]
             if (!run) {
-              throw new Error('No successful CAO Activity workflow run is available')
+              core.notice('No successful CAO Activity workflow run is available yet; deferring the dashboard build')
+              await core.summary
+                .addHeading('Dashboard waiting for its first Activity snapshot')
+                .addRaw('No activity cache or successful CAO Activity run is available yet. '
+                  + 'Dashboard build, cache publication, and Pages deployment were skipped; '
+                  + 'any existing dashboard is unchanged.\n\n'
+                  + 'The dashboard will rebuild automatically after CAO Activity succeeds on the default branch. '
+                  + 'Run CAO Activity manually to collect the first snapshot now.\n')
+                .write()
+              return
             }
             core.info(`Using activity artifact from workflow run ${run.id}`)
             core.setOutput('run-id', String(run.id))
 
       - name: Download fallback activity data
-        if: steps.activity-cache.outputs.cache-matched-key == ''
+        if: steps.activity-cache.outputs.cache-matched-key == '' && steps.activity-artifact-run.outputs.run-id != ''
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: cao-activity-index
@@ -128,7 +126,21 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.activity-artifact-run.outputs.run-id }}
 
+      - name: Install dashboard build dependencies
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await exec.exec('npm', [
+              'ci',
+              '--prefix',
+              'dashboard/site',
+              '--ignore-scripts',
+            ])
+            core.info('Dashboard build dependencies installed')
+
       - name: Upgrade fallback activity data
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           NODE_DEBUG: cao:ingest
@@ -176,6 +188,7 @@ jobs:
               path.join(process.env.RUNNER_TEMP, 'cao-activity', 'agent-summary.json'),
             ])
       - name: Validate restored activity data
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
@@ -198,6 +211,7 @@ jobs:
             ])
 
       - name: Assess activity database health
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -215,6 +229,7 @@ jobs:
             core.info('Activity database health assessment completed')
 
       - name: Assemble Dashboard Language site
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
         env:
           DASHBOARD_COMMIT_SHA: ${{ github.workflow_sha }}
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard
@@ -319,6 +334,8 @@ jobs:
             core.info(`Dashboard artifact assembly completed (${collectedFiles.length + 1} collected data files)`)
 
       - name: Upload dashboard artifact
+        id: dashboard-artifact
+        if: steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: central-agentic-ops-dashboard
@@ -329,6 +346,7 @@ jobs:
 
   cache:
     needs: build
+    if: needs.build.outputs.artifact-id != ''
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -371,7 +389,7 @@ jobs:
 
   deploy:
     needs: build
-    if: needs.build.outputs.deploy == 'true'
+    if: needs.build.outputs.deploy == 'true' && needs.build.outputs.artifact-id != ''
     runs-on: ubuntu-latest
     permissions:
       actions: read

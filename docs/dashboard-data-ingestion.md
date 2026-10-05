@@ -27,6 +27,21 @@ bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
+## Before the first Activity snapshot
+
+The CAO Dashboard workflow restores the Activity cache or downloads the snapshot
+from the latest successful CAO Activity run on the default branch. On a new
+deployment, neither may exist yet. In that case, the workflow succeeds with a
+notice and job summary explaining that it is waiting for its first snapshot.
+It skips the build, artifact upload, dashboard cache publication, and Pages
+deployment, leaving any existing dashboard unchanged.
+
+Run **CAO Activity** manually to collect the first snapshot, or wait for its
+scheduled run. A successful default-branch Activity run automatically triggers
+the dashboard build. API errors, missing artifacts from an existing successful
+run, and invalid restored snapshots still fail rather than being treated as
+normal startup.
+
 ## Hosted server data pipeline
 
 Server-backed deployments keep the browser isolated from both databases. The
