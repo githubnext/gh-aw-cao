@@ -142,6 +142,7 @@ function executeDatabaseProjection(definition, inputs) {
     && !definition.aggregate
     && !definition['temporal-series']
     && !definition.predict?.length
+    && !definition.window?.length
     && !definition['order-by']?.length
     && definition.limit === undefined;
   if (!rowLocal || !input || input.rows.length <= batchSize) {
@@ -316,7 +317,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const flattened = definition && !defects.has(name)
       ? flattenIndexedRecordQuery(index, definition) : null;
     const predicates = flattened?.filter?.predicates?.filter((predicate) => RECORD_RUN_FIELDS.has(predicate.field));
-    if (!flattened || flattened.aggregate || flattened['temporal-series'] || flattened.predict?.length
+    if (!flattened || flattened.aggregate || flattened['temporal-series'] || flattened.predict?.length || flattened.window?.length
         || !(predicates?.length)
         || [flattened.from, ...(flattened.union ?? [])].some((source) => !RUN_RECORD_STORES.has(source))
         || (flattened.joins ?? []).some((join) => index.has(join.source))
@@ -391,7 +392,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         || groupedFields.length !== computedFields.length
         || groupedFields.some((field) => !Object.hasOwn(computedLiterals, field))
         || definition['temporal-series']
-        || definition.predict?.length
+        || definition.predict?.length || definition.window?.length
         || definition.select?.length
         || definition['order-by']?.length
         || definition.limit !== undefined
@@ -523,7 +524,7 @@ function indexedRecordKeySelectionPlan(index, definition) {
   const seen = new Set();
   while (true) {
     if (seen.has(current.name) || current.aggregate || current.joins?.length || current.union?.length
-        || current['temporal-series'] || current.predict?.length
+        || current['temporal-series'] || current.predict?.length || current.window?.length
         || (queries.length > 0 && (current['order-by']?.length || current.limit !== undefined))) return null;
     seen.add(current.name);
     queries.unshift(current);
@@ -537,7 +538,7 @@ function indexedRecordKeySelectionPlan(index, definition) {
     : (projection?.stores ?? []).filter((store) => RUN_RECORD_STORES.has(store));
   if (stores.length !== 1 || (projection && (
     projection.from !== 'run-records' || projection.joins?.length || projection.aggregate
-    || projection.union?.length || projection['temporal-series'] || projection.predict?.length
+    || projection.union?.length || projection['temporal-series'] || projection.predict?.length || projection.window?.length
   ))) return null;
   const store = /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (stores[0]);
   /** @type {Set<string>} */
@@ -673,7 +674,7 @@ function indexedRecordAggregatePlan(definition) {
   const sources = [definition.from, ...(definition.union ?? [])];
   if (sources.some((source) => !RUN_RECORD_STORES.has(source))
       || definition.compute?.length || definition['temporal-series']
-      || definition.predict?.length || definition.filter?.search) return null;
+      || definition.predict?.length || definition.window?.length || definition.filter?.search) return null;
   const values = definition.aggregate?.values;
   if (!Array.isArray(values) || values.length === 0) return null;
   if (!definition.aggregate?.by?.length && !definition.filter && !definition.union?.length
@@ -789,7 +790,7 @@ function indexedRunOperators(definition) {
       || definition.compute?.length
       || definition.aggregate
       || definition['temporal-series']
-      || definition.predict?.length
+      || definition.predict?.length || definition.window?.length
       || definition.select?.length
       || definition.filter?.search) return null;
   const predicates = definition.filter?.predicates;
@@ -832,7 +833,7 @@ function indexedRunAggregateOperators(definition) {
       || definition.joins?.length
       || definition.compute?.length
       || definition['temporal-series']
-      || definition.predict?.length
+      || definition.predict?.length || definition.window?.length
       || definition.select?.length
       || definition['order-by']?.length
       || definition.limit !== undefined

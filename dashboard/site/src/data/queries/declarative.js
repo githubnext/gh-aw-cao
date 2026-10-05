@@ -7,7 +7,7 @@
  * `data-operations.js` so the whole pipeline runs inside the data Web Worker.
  *
  * Clause execution order is fixed and deterministic:
- * `from` -> `union` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
+ * `from` -> `union` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` -> `window` ->
  * `select` -> `order-by` -> `limit`.
  */
 
@@ -38,6 +38,7 @@ const debugQuery = createDebug('data:query');
  *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
  *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
+ *   window?: import('../../data-operations.js').WindowField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   limit?: number
@@ -444,6 +445,36 @@ function queryStructuralDefect(definition) {
       }
     }
   }
+  if (definition.window !== undefined) {
+    if (!Array.isArray(definition.window) || definition.window.length === 0 || definition.window.length > 8) {
+      return 'window must contain between 1 and 8 definitions';
+    }
+    const outputs = new Set();
+    for (const entry of definition.window) {
+      if (!isPlainObject(entry) || typeof entry.field !== 'string' || typeof entry.as !== 'string'
+          || (entry.operation !== 'rolling' && entry.operation !== 'change')
+          || !Array.isArray(entry['order-by']) || entry['order-by'].length === 0 || entry['order-by'].length > 8
+          || entry['order-by'].some((clause) => !isPlainObject(clause) || typeof clause.field !== 'string'
+            || (clause.direction !== undefined && clause.direction !== 'asc' && clause.direction !== 'desc'))
+          || (entry.groupby !== undefined && (!Array.isArray(entry.groupby) || entry.groupby.length === 0
+            || entry.groupby.length > 8 || entry.groupby.some((field) => typeof field !== 'string')))
+          || (entry.operation === 'rolling'
+            ? !Number.isSafeInteger(entry.frame) || Number(entry.frame) < 1 || Number(entry.frame) > 1000
+              || (entry.reducer !== undefined && !['sum', 'mean', 'min', 'max'].includes(String(entry.reducer)))
+              || (entry.alignment !== undefined && !['trailing', 'centered'].includes(String(entry.alignment)))
+              || (entry.alignment === 'centered' && Number(entry.frame) % 2 !== 1)
+              || entry.mode !== undefined || entry['time-field'] !== undefined || entry.unit !== undefined
+            : entry.frame !== undefined || entry.reducer !== undefined || entry.alignment !== undefined
+              || (entry.mode !== undefined && !['absolute', 'percentage', 'rate'].includes(String(entry.mode)))
+              || (entry.mode === 'rate'
+                ? typeof entry['time-field'] !== 'string' || !['second', 'minute', 'hour', 'day'].includes(String(entry.unit))
+                : entry['time-field'] !== undefined || entry.unit !== undefined))) {
+        return 'window entries require bounded ordered rolling or change definitions';
+      }
+      if (outputs.has(entry.as)) return 'window output names must be unique';
+      outputs.add(entry.as);
+    }
+  }
   if (definition.limit !== undefined
       && (!Number.isSafeInteger(definition.limit)
         || Number(definition.limit) <= 0
@@ -549,6 +580,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
     fields = [...(definition.aggregate.by ?? []), ...definition.aggregate.values.map((value) => value.as)];
   }
   for (const predicted of definition.predict ?? []) fields.push(predicted.as);
+  for (const entry of definition.window ?? []) fields.push(entry.as);
   if (definition.select) {
     fields = definition.select.map((field) => field.as ?? field.field);
   }
@@ -861,6 +893,7 @@ function queryOperatorCost(operator) {
       0
     );
   }
+  if (operator.op === 'window') return operator.values.reduce((cost, entry) => cost + (entry.operation === 'rolling' ? entry.frame ?? 1 : 1) + 32, 0);
   if (operator.op !== 'predict') return 1;
   return operator.values.reduce((cost, prediction) => {
     const predictors = Array.isArray(prediction.on) ? prediction.on.length : 1;
@@ -948,6 +981,7 @@ export function compileRowOperators(definition) {
     operators.push({ op: 'summarize', by: definition.aggregate.by ?? [], values: definition.aggregate.values });
   }
   if (definition.predict?.length) operators.push({ op: 'predict', values: definition.predict });
+  if (definition.window?.length) operators.push({ op: 'window', values: definition.window });
   if (definition.select?.length) operators.push({ op: 'select', fields: definition.select });
   if (definition['order-by']?.length) operators.push({ op: 'arrange', by: definition['order-by'] });
   if (typeof definition.limit === 'number') operators.push({ op: 'slice', limit: definition.limit });

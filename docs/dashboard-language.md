@@ -35,6 +35,7 @@ needs:
 | `order-by` | Put results in a predictable order. |
 | `limit` | Bound the number of returned rows. |
 | `predict` | Add a deterministic regression result when a trend needs one. |
+| `window` | Smooth a series or measure absolute, percentage, or elapsed-time change. |
 
 Every reusable query has a `name` and a `subject`. The subject records what its
 data is about or intended to show. Its optional `objective` explains why the query
@@ -141,6 +142,54 @@ Views turn query results into a small set of standard marks:
 - `chart` for comparisons, distributions, and trends
 - `callout` for a concise status or attention message
 - `element` for a named reusable UI element
+
+For a temporal chart, aggregate observations into buckets before smoothing a
+measure or computing its change. A rolling window counts observations, not
+elapsed calendar time: seven trailing observations include the current point
+and the preceding six, while seven centered observations include three on
+either side. Trailing windows are suitable for live dashboards; a centered
+window needs future observations and should not present its incomplete newest
+points as a complete estimate. A rate of change divides by the actual elapsed
+time between consecutive timestamps, so irregularly spaced observations do
+not imply a constant sampling interval. The first observation has no previous
+value; missing measures and zero percentage-change denominators are not zero
+changes. Keep separate series partitioned so one workflow's trend cannot
+borrow another workflow's observations.
+
+For example, the following query buckets observed usage per day, takes a
+seven-observation trailing mean for each workflow, and computes its daily
+growth from the actual elapsed time between observations:
+
+```yaml
+queries:
+  - name: daily-usage-growth
+    subject: Compare changes in daily workflow usage.
+    from: usage
+    compute:
+      - as: day
+        function: date-day
+        args: [{ field: observed-at }]
+    aggregate:
+      by: [workflow, day]
+      values:
+        - { field: aic, as: daily-aic, reducer: sum }
+    window:
+      - operation: rolling
+        field: daily-aic
+        as: smoothed-aic
+        frame: 7
+        reducer: mean
+        order-by: [{ field: day, direction: asc }]
+        groupby: [workflow]
+      - operation: change
+        field: smoothed-aic
+        as: growth-per-day
+        mode: rate
+        time-field: day
+        unit: day
+        order-by: [{ field: day, direction: asc }]
+        groupby: [workflow]
+```
 
 See the [view catalog](dashboard-view-catalog.md) for available pages, marks,
 charts, and named UI elements. For every field, function, validation rule, and

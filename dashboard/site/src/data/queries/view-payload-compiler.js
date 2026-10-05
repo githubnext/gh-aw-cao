@@ -275,7 +275,8 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       isPlainObject(join) && typeof join.source === 'string' && !declaredNames.has(join.source)
     )));
   const postQueryFields = isPlainObject(declared) ? derivedOutputFields(declared) : new Set();
-  const requiresOutputFilter = predicates.some((predicate) => (
+  const requiresOutputFilter = Boolean(isPlainObject(declared) && Array.isArray(declared.window) && declared.window.length && predicates.length)
+    || predicates.some((predicate) => (
     typeof predicate.field === 'string' && postQueryFields.has(predicate.field)
   ));
   if (isPlainObject(declared) && standalone && requiresOutputFilter) {
@@ -316,8 +317,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
       ? declaredFilter.predicates.filter(isPlainObject)
       : [];
+    const hasWindow = Array.isArray(definition.window) && definition.window.length > 0;
     const preQueryPredicates = predicates.filter((predicate) => (
-      predicate.field === '@time' || !postQueryFields.has(predicate.field)
+      predicate.field === '@time' || (!hasWindow && !postQueryFields.has(predicate.field))
     ));
     const rootPredicates = applyQueryTime(
       [...declaredPredicates, ...preQueryPredicates],
@@ -332,7 +334,7 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       ...(rootPredicates.length > 0 ? { filter: { predicates: rootPredicates } } : { filter: undefined })
     }, queryTimeEnd(rootPredicates) ?? evaluatedAt);
     const outputPredicates = predicates.filter((predicate) => (
-      predicate.field !== '@time' && postQueryFields.has(predicate.field)
+      predicate.field !== '@time' && (hasWindow || postQueryFields.has(predicate.field))
     ));
     const runtimeSearch = search && search.query.trim() && search.fields.length > 0
       ? { fields: search.fields, query: search.query.trim() }
@@ -360,7 +362,7 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
   /** @param {Record<string, unknown>} query */
   function derivedOutputFields(query) {
     const fields = new Set();
-    for (const clause of ['compute', 'predict']) {
+    for (const clause of ['compute', 'predict', 'window']) {
       if (!Array.isArray(query[clause])) continue;
       for (const item of query[clause]) {
         if (isPlainObject(item) && typeof item.as === 'string') fields.add(item.as);
@@ -562,6 +564,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
  */
 function predicatesBeforeQuery(definition, predicates) {
   if (definition.limit !== undefined
+      || (Array.isArray(definition.window) && definition.window.length > 0)
       || definition['temporal-series']
       || (Array.isArray(definition.predict) && definition.predict.length > 0)
       || (Array.isArray(definition.joins) && definition.joins.length > 0)) return [];

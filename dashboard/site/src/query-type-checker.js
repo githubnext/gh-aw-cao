@@ -363,6 +363,22 @@ function compileQuery(query, index, symbols, compiled, errors) {
     }
   }
 
+  if (Array.isArray(query.window)) {
+    for (const [index, entry] of query.window.entries()) {
+      if (!isRecord(entry)) continue;
+      const entryPath = `${path}.window[${index}]`;
+      requireField(entry.field, `${entryPath}.field`, 'numeric');
+      if (Array.isArray(entry['order-by'])) entry['order-by'].forEach((clause, clauseIndex) => {
+        if (isRecord(clause)) requireField(clause.field, `${entryPath}.order-by[${clauseIndex}].field`, 'scalar');
+      });
+      if (Array.isArray(entry.groupby)) entry.groupby.forEach((field, groupIndex) => {
+        requireField(field, `${entryPath}.groupby[${groupIndex}]`, 'scalar');
+      });
+      if (entry.mode === 'rate') requireField(entry['time-field'], `${entryPath}.time-field`, 'scalar');
+      declareField(entry.as, 'numeric', `${entryPath}.as`);
+    }
+  }
+
   if (Array.isArray(query.select)) {
     /** @type {Map<string, FieldType>} */
     const selectedFields = new Map();

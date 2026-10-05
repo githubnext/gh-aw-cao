@@ -26,10 +26,12 @@ const debugDataOperations = createDebug('data-operations');
  * @typedef {'linear'|'log'|'exp'|'pow'|'quad'|'poly'} PredictionMethod
  * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
  * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
+ * @typedef {{ field: string, as: string, operation: 'rolling'|'change', ['order-by']: Array<{ field: string, direction?: 'asc'|'desc' }>, groupby?: string[], frame?: number, reducer?: 'sum'|'mean'|'min'|'max', alignment?: 'trailing'|'centered', mode?: 'absolute'|'percentage'|'rate', ['time-field']?: string, unit?: 'second'|'minute'|'hour'|'day' }} WindowField
+ * @typedef {{ op: 'window', values: WindowField[] }} WindowOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
  * @typedef {{ time: string, series: string, shape?: 'tidy'|'groups', carry?: string[], measures?: Array<{ field: string, key?: string, kind: string }>, maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>, trend?: { direction: string } }} TemporalSeriesDefinition
  * @typedef {{ op: 'temporal-series' } & TemporalSeriesDefinition} TemporalSeriesOperator
- * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator|TemporalSeriesOperator} DataOperator
+ * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|WindowOperator|SelectOperator|TemporalSeriesOperator} DataOperator
  */
 
 /**
@@ -102,6 +104,7 @@ function applyOperator(rows, operator) {
   if (operator.op === 'arrange') return arrange(rows, operator);
   if (operator.op === 'compute') return compute(rows, operator);
   if (operator.op === 'predict') return predict(rows, operator);
+  if (operator.op === 'window') return windowRows(rows, operator);
   if (operator.op === 'select') return select(rows, operator);
   if (operator.op === 'temporal-series') return projectTemporalSeries(rows, operator);
   if (operator.op === 'slice') {
@@ -110,6 +113,79 @@ function applyOperator(rows, operator) {
   }
   debugDataOperations({ event: 'pipeline-rejected', op: String(/** @type {{ op?: unknown }} */ (operator).op) });
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
+}
+
+/**
+ * Partition and order without changing presentation row order. Stable input
+ * position breaks ties; authors should supply a unique final sort key when
+ * results must be independent of source ingestion order.
+ * @param {Row[]} rows @param {WindowOperator} operator
+ */
+function windowRows(rows, operator) {
+  const result = rows.map((row) => ({ ...row }));
+  for (const definition of operator.values) {
+    /** @type {Map<string, number[]>} */
+    const partitions = new Map();
+    result.forEach((row, index) => {
+      const key = predictionGroupKey(row, definition.groupby ?? []);
+      const indices = partitions.get(key) ?? [];
+      indices.push(index);
+      partitions.set(key, indices);
+    });
+    for (const indices of partitions.values()) {
+      indices.sort((left, right) => {
+        for (const clause of definition['order-by']) {
+          const leftValue = result[left][clause.field];
+          const rightValue = result[right][clause.field];
+          if (leftValue == null || rightValue == null) {
+            if (leftValue != rightValue) return leftValue == null ? 1 : -1;
+            continue;
+          }
+          const comparison = compareValues(leftValue, rightValue);
+          if (comparison) return clause.direction === 'desc' ? -comparison : comparison;
+        }
+        return left - right;
+      });
+      indices.forEach((index, position) => {
+        const current = numericValue(result[index][definition.field]);
+        let value = null;
+        if (definition.operation === 'rolling') {
+          const frame = /** @type {number} */ (definition.frame);
+          const start = definition.alignment === 'centered' ? position - (frame - 1) / 2 : Math.max(0, position - frame + 1);
+          const end = definition.alignment === 'centered' ? position + (frame + 1) / 2 : position + 1;
+          const values = start < 0 || end > indices.length ? [] : indices.slice(start, end)
+            .map((entry) => numericValue(result[entry][definition.field]))
+            .filter((entry) => entry !== null);
+          if (values.length) {
+            const reducer = definition.reducer ?? 'mean';
+            const sum = values.reduce((total, entry) => total + /** @type {number} */ (entry), 0);
+            value = reducer === 'sum' ? sum
+              : reducer === 'min' ? Math.min(...values)
+                : reducer === 'max' ? Math.max(...values) : sum / values.length;
+          }
+        } else if (position > 0 && current !== null) {
+          const previousRow = result[indices[position - 1]];
+          const previous = numericValue(previousRow[definition.field]);
+          if (previous !== null) {
+            const difference = current - previous;
+            if (definition.mode === 'percentage') {
+              value = previous === 0 ? null : 100 * difference / previous;
+            } else if (definition.mode === 'rate') {
+              const start = Date.parse(String(previousRow[/** @type {string} */ (definition['time-field'])]));
+              const end = Date.parse(String(result[index][/** @type {string} */ (definition['time-field'])]));
+              const millisecondsPerUnit = { second: 1000, minute: 60000, hour: 3600000, day: 86400000 }[/** @type {'second'|'minute'|'hour'|'day'} */ (definition.unit)];
+              value = Number.isFinite(start) && Number.isFinite(end) && end > start
+                ? difference / ((end - start) / millisecondsPerUnit) : null;
+            } else {
+              value = difference;
+            }
+          }
+        }
+        result[index][definition.as] = Number.isFinite(value) ? value : null;
+      });
+    }
+  }
+  return result;
 }
 
 /**

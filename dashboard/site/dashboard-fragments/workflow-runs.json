@@ -179,6 +179,50 @@
       ]
     },
     {
+      "name": "workflow-failure-trend",
+      "subject": "Show recent failure counts and their change for each workflow.",
+      "objective": "Spot a change in observed workflow failure activity without treating unknown conclusions as failures.",
+      "acceptance": "Each observed failure counts once within its own workflow; the first change is undefined and the seven-observation window is not a seven-day calendar interval.",
+      "from": "workflow-runs",
+      "compute": [
+        {
+          "as": "is-failure",
+          "function": "equals-any",
+          "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "timed_out" }]
+        },
+        {
+          "as": "failure-count",
+          "function": "if",
+          "args": [{ "field": "is-failure" }, { "value": 1 }, { "value": 0 }]
+        }
+      ],
+      "window": [
+        {
+          "operation": "rolling",
+          "field": "failure-count",
+          "as": "recent-failure-count",
+          "frame": 7,
+          "reducer": "sum",
+          "order-by": [
+            { "field": "started-at", "direction": "asc" },
+            { "field": "run", "direction": "asc" }
+          ],
+          "groupby": ["workflow-route"]
+        },
+        {
+          "operation": "change",
+          "field": "recent-failure-count",
+          "as": "failure-count-change",
+          "mode": "absolute",
+          "order-by": [
+            { "field": "started-at", "direction": "asc" },
+            { "field": "run", "direction": "asc" }
+          ],
+          "groupby": ["workflow-route"]
+        }
+      ]
+    },
+    {
       "name": "workflow-reports",
       "subject": "Project retained outcomes into route-addressable workflow reports.",
       "objective": "Review retained workflow outcome reports separately from execution status before interpreting operational results.",
@@ -551,6 +595,33 @@
             "color": {
               "field": "run-conclusion",
               "type": "nominal"
+            }
+          }
+        },
+        {
+          "id": "workflow-failure-change",
+          "title": "Change in recent failures",
+          "subject": "Track the change in the last seven observed run failures for this workflow.",
+          "objective": "Identify changes in recent failure activity for investigation.",
+          "acceptance": "Missing conclusions remain unknown and observed changes are checked against underlying runs.",
+          "description": "Change in the failure count across the most recent seven runs; the first change is undefined.",
+          "data": {
+            "source": "workflow-failure-trend",
+            "route-field": "workflow-route"
+          },
+          "mark": "chart",
+          "chart": "line",
+          "encoding": {
+            "x": {
+              "field": "started-at",
+              "type": "temporal",
+              "format": "human-friendly-timestamp",
+              "time-unit": "day"
+            },
+            "y": {
+              "field": "failure-count-change",
+              "type": "quantitative",
+              "title": "Change in recent failures"
             }
           }
         },

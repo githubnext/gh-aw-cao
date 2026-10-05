@@ -602,12 +602,50 @@ A grouped temporal series may declare `trend.direction` as the name of a carried
 
 The transform preserves source-row order and measure declaration or map-property order. It emits no more than 64 mapped metrics per input observation and no more than 100000 rows. It executes in the data Web Worker through the same serializable tidy pipeline as filtering, aggregation, and prediction.
 
-#### 5.5.4 Normative Query Requirements
+#### 5.5.4 Observation Windows
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `subject` describing what its data is about or intended to show, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. The combined `subject`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
+A query may declare a `window` sequence after `aggregate` and `predict`. Each
+entry appends one numeric field without changing the number or order of rows.
+Entries execute in declaration order, so a later entry can refer to a prior
+entry's output. An entry names its input `field`, unique output `as`, an
+`operation` (`rolling` or `change`), an ascending or descending `order-by`
+sequence, and optional `groupby` dimensions. Each group is independent. Sort
+ties retain input order; authors who need ingestion-order-independent results
+should provide a unique final ordering key. Windows operate over **observations**,
+not calendar durations; bucket and aggregate first when the desired input is
+one observation per day.
+
+`rolling` takes a positive integer `frame` (the number of observations), a
+`reducer` of `mean` (default), `sum`, `min`, or `max`, and an `alignment` of
+`trailing` (default) or `centered`. A trailing seven-observation frame is
+`[-6, 0]`; a centered seven-observation frame is `[-3, 3]`. Centered frames
+require an odd frame size and produce null at either boundary unless the full
+frame is present; the newest points on a live dashboard are therefore not
+misrepresented as complete smoothed estimates. A trailing frame uses the
+available observations at the beginning of a series. Missing numeric inputs
+do not contribute to a rolling reduction; a frame with no valid inputs yields
+null, not zero.
+
+`change` compares its input to the **immediately preceding observation** in
+the same group. Its `mode` is `absolute` (default), `percentage`, or `rate`.
+Absolute change is current minus previous. Percentage change is 100 times
+that difference divided by previous; when previous is zero the result is null.
+A `rate` names a temporal `time-field` and a `unit` (`second`, `minute`, `hour`,
+or `day`); it divides the difference by the actual elapsed time expressed in
+that unit. Equal, invalid, or decreasing timestamps cannot establish a
+positive elapsed interval and yield null. The first observation, a missing
+current or previous value, or a non-finite result likewise yields null. Null
+is not equivalent to a plotted zero. A renderer using Vega-Lite can compile
+these declarative operations to partitioned, sorted window and calculate
+transforms; a renderer without that runtime executes the same semantics in
+its data-processing worker, not in view-specific JavaScript.
+
+#### 5.5.5 Normative Query Requirements
+
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `subject` describing what its data is about or intended to show, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `window`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. The combined `subject`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 database table or registered Section 5.4 runtime source. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table, registered Section 5.4 runtime source, built-in `simulation-days` source, or query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table, runtime source, or query are available to later clauses, and a field absent from one row has a null value for query operations.
-- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
+- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `window` in declaration order, `select`, `order-by`, and finally `limit`.
 - **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address table or query fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined table or query. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
 - **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
@@ -633,6 +671,8 @@ The transform preserves source-row order and measure declaration or map-property
 - **DLS-QUERY-027:** `parameters`, when present, **MUST** be a non-empty sequence of mappings containing exactly a unique canonical `name` and a `type` of `number`, `string`, or `boolean`. A parameter reference **MUST** contain exactly `parameter` naming one parameter declared by the same query. Version 0.1.0 permits parameter references as query predicate `equals`, `gte`, or `lt` operands and as computed-field arguments. A parameter **MUST NOT** alter query topology or output schema.
 - **DLS-QUERY-028:** Before query execution, the presenter **MUST** resolve every parameter reference to one finite number, string, or Boolean value supplied by the active page form. A computed-field parameter reference resolves as a literal computed argument. A missing, structured, non-finite, undeclared, or type-incompatible value **MUST** fail the page projection closed and **MUST NOT** execute a broader query with the predicate or computation removed.
 - **DLS-QUERY-029:** A named-query agent transport **MAY** invoke a parameterized query by identifier with explicitly supplied scalar operands. It **MUST** discover parameter declarations through the query's transitive dependencies, validate each supplied value against its declared type and any bound page-form constraints, reject missing or unexpected operands, and substitute only scalar values into the reviewed query before executing through the bounded query engine. Parameter input **MUST NOT** alter query topology or execute authored scripts. A synthetic input such as `simulation-days` **MUST** remain labeled as modeled rather than measured evidence.
+- **DLS-QUERY-030:** A `window` **MUST** contain one to eight entries with unique `as` names and valid numeric input fields; each entry **MUST** declare `operation`, `field`, `as`, and a non-empty `order-by`, and **MAY** declare `groupby`. The available fields of each entry include outputs of earlier entries but not later ones. Rolling entries **MUST** specify a positive integer `frame`, **MAY** specify `reducer` and `alignment`, and **MUST NOT** specify change-only fields. Change entries **MAY** specify `mode`; `rate` **MUST** specify a temporal `time-field` and a valid `unit`, and other change modes **MUST NOT** specify these fields.
+- **DLS-QUERY-031:** Window evaluation **MUST** follow the Section 5.5.4 observation, partition, stable ordering, alignment, missing-value, division-by-zero, and elapsed-time rules. It **MUST** preserve input row order and count, and append only finite numbers or null. Window calculations **MUST** execute within the same cancellation and row-operation budgets as other declarative queries.
 
 ### 5.6 Parameterized Page Forms
 
@@ -876,6 +916,7 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | `compute` | required `values` | Appends deterministic computed fields in declaration order. |
 | `temporal-series` | `time`, `series`, optional `carry`, and bounded `measures` or `maps` | Reshapes wide observations into tidy temporal metric rows for charts, statistics, and modeling. |
 | `predict` | required `values` | Fits grouped built-in regression models and appends finite predictions or null without changing row order. |
+| `window` | required `values` | Appends partitioned, deterministically ordered rolling or change values without changing row order. |
 | `select` | required `fields` | Projects and optionally renames fields. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
