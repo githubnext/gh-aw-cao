@@ -311,6 +311,70 @@ test("CAO workflows bind GitHub tools to exact declared read permissions", () =>
   }
 });
 
+test("CAO Activity defaults to the workflow token for the control repository", () => {
+  for (const authMode of [undefined, "", "workflow-token"]) {
+    for (const settings of [
+      {},
+      { allowed_repositories: ["ACME/Control"], allowed_owners: ["acme"] },
+      { allowed_repositories: ["acme/control", "ACME/CONTROL"], allowed_owners: ["acme", "octo"] },
+    ]) {
+      assert.deepEqual(activityCollectionPlan(settings, {
+        authMode,
+        controlRepository: "acme/control",
+        patRepositoryMap: "unused-invalid-map",
+      }), [{
+        owner: "acme",
+        repositories: ["acme/control"],
+        credentialRepository: "acme/control",
+        artifact: "acme",
+      }]);
+    }
+  }
+});
+
+test("CAO Activity workflow token rejects broader collection instead of silently narrowing it", () => {
+  for (const authMode of [undefined, "", "workflow-token"]) {
+    for (const settings of [
+      { allowed_repositories: ["acme/service"] },
+      { allowed_repositories: ["octo/library"] },
+      { allowed_repositories: [], allowed_owners: ["acme"] },
+      { allowed_repositories: [], allowed_owners: ["octo"] },
+    ]) {
+      assert.throws(() => activityCollectionPlan(settings, {
+        authMode,
+        controlRepository: "acme/control",
+      }), /GITHUB_TOKEN can collect CAO Activity only for the control repository/);
+    }
+  }
+  assert.throws(() => activityCollectionPlan({}, {
+    authMode: "invalid",
+    controlRepository: "acme/control",
+  }), /must select app, pat, or workflow-token/);
+  assert.throws(() => activityCollectionPlan({}, {
+    controlRepository: "not-a-repository",
+  }), /GITHUB_REPOSITORY must use OWNER\/REPOSITORY form/);
+  assert.throws(() => activityCollectionPlan({
+    allowed_repositories: ["acme/*"],
+  }, {
+    controlRepository: "acme/control",
+  }), /Activity repository scope must contain exact OWNER\/REPOSITORY values/);
+});
+
+test("CAO Activity workflow-token API reserves fit its standard 1000-request quota", () => {
+  const activity = parse(workflow("cao-activity.yml"));
+  const steps = activity.jobs.collect.steps;
+  const logs = steps.find(({ name }) => name === "Download owner-scoped agentic workflow logs");
+  const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
+  for (const [step, appPatReserve] of [[logs, 4000], [value, 2000]]) {
+    assert.equal(
+      step.env.REPORT_MAX_GITHUB_API_RATE_LIMIT,
+      "${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-"
+        + appPatReserve + "' }}",
+    );
+  }
+  assert.match(value.run, /--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
+});
+
 test("CAO Activity PAT mode groups exact repositories by owner-scoped secret", () => {
   const plan = activityCollectionPlan({
     allowed_repositories: ["acme/service", "octo/library"],

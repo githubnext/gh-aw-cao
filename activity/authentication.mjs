@@ -224,9 +224,10 @@ export function activityCollectionPlan(controlSettings, {
   if (!repositoryCoordinate(controlRepository)) {
     throw new Error("GITHUB_REPOSITORY must use OWNER/REPOSITORY form");
   }
-  if (!["app", "pat"].includes(authMode)) {
+  const mode = authMode || "workflow-token";
+  if (!["app", "pat", "workflow-token"].includes(mode)) {
     throw new Error(
-      "GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat for CAO Activity; "
+      "GH_AW_GITHUB_AUTH_MODE must select app, pat, or workflow-token for CAO Activity; "
       + `run ./cao.sh setup-auth github-app --repo ${controlRepository} or `
       + `./cao.sh setup-auth token --repo ${controlRepository}`,
     );
@@ -244,7 +245,25 @@ export function activityCollectionPlan(controlSettings, {
     throw new Error("Activity repository scope must contain exact OWNER/REPOSITORY values");
   }
 
-  if (authMode === "pat") {
+  if (mode === "workflow-token") {
+    if (repositories.some((repository) => repository.toLowerCase() !== controlRepository.toLowerCase())
+      || (configuredRepositories.length === 0 && configuredOwners.length > 0)) {
+      throw new Error(
+        "GITHUB_TOKEN can collect CAO Activity only for the control repository; "
+        + `set allowed-repositories to ["${controlRepository}"] or configure `
+        + "GH_AW_GITHUB_AUTH_MODE=app or pat for cross-repository or owner-wide collection",
+      );
+    }
+    const [owner] = controlRepository.split("/");
+    return [{
+      owner,
+      repositories: [controlRepository],
+      credentialRepository: controlRepository,
+      artifact: owner.toLowerCase(),
+    }];
+  }
+
+  if (mode === "pat") {
     if (configuredRepositories.length === 0) {
       throw new Error("PAT-mode CAO Activity requires an exact allowed-repositories scope");
     }

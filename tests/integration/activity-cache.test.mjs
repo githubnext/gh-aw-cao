@@ -183,6 +183,98 @@ test("activity cache consumers use the producer cache version paths", async () =
 });
 
 const execute = promisify(execFile);
+
+test("fresh repository Activity planning and credentials work without configured authentication", async (t) => {
+  const runnerTemp = await mkdtemp(path.join(os.tmpdir(), "cao-activity-auth-"));
+  t.after(() => rm(runnerTemp, { recursive: true, force: true }));
+  const workflow = parse(await readFile(".github/workflows/cao-activity.yml", "utf8"));
+  const plan = workflow.jobs.plan.steps.find(({ id }) => id === "plan");
+  const credential = workflow.jobs.collect.steps.find(({ id }) => id === "activity-credential");
+  const controlPolicy = JSON.parse(await readFile(".github/workflows/cao.json", "utf8"));
+  const policy = path.join(runnerTemp, "cao.json");
+  const settings = path.join(runnerTemp, "control-settings.json");
+  const output = path.join(runnerTemp, "plan-output");
+  const env = {
+    ...process.env,
+    GITHUB_REPOSITORY: "acme/control",
+    REPORT_CONTROL_SETTINGS: settings,
+    GITHUB_OUTPUT: output,
+    ACTIVITY_AUTH_MODE: "",
+    ACTIVITY_PAT_REPOSITORIES: "",
+  };
+  await writeFile(policy, JSON.stringify({
+    version: 1,
+    "gh-aw-version": controlPolicy["gh-aw-version"],
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  }));
+  await execute(process.execPath, [
+    "activity/control-settings.mjs", ".github/workflows/shared/control.mjs", policy, settings,
+  ], { env });
+  assert.equal(JSON.parse(await readFile(settings, "utf8")).policy_resolution.status, "available");
+  await execute("bash", ["-e", "-c", plan.run], { env });
+  const matrix = JSON.parse((await readFile(output, "utf8")).trim().slice("matrix=".length));
+  assert.deepEqual(matrix.include, [{
+    owner: "acme",
+    repositories: ["acme/control"],
+    credentialRepository: "acme/control",
+    artifact: "acme",
+  }]);
+  for (const step of [plan, credential]) {
+    assert.equal(step.env.ACTIVITY_AUTH_MODE, "${{ vars.GH_AW_GITHUB_AUTH_MODE || 'workflow-token' }}");
+  }
+  assert.equal(credential.env.ACTIVITY_WORKFLOW_TOKEN, "${{ github.token }}");
+  await execute("bash", ["-e", "-c", credential.run], {
+    env: {
+      ...env,
+      ACTIVITY_AUTH_MODE: "workflow-token",
+      ACTIVITY_OWNER: matrix.include[0].owner,
+      ACTIVITY_APP_TOKEN: "",
+      ACTIVITY_PAT_TOKEN: "",
+      ACTIVITY_WORKFLOW_TOKEN: "test-workflow-token",
+      GITHUB_OUTPUT: path.join(runnerTemp, "credential-output"),
+      GITHUB_ENV: path.join(runnerTemp, "credential-env"),
+    },
+  });
+  assert.equal(await readFile(path.join(runnerTemp, "credential-output"), "utf8"), "token=test-workflow-token\n");
+  assert.equal(await readFile(path.join(runnerTemp, "credential-env"), "utf8"), "GH_TOKEN=test-workflow-token\n");
+});
+
+test("Activity never borrows a different credential when an explicit mode is unavailable", async (t) => {
+  const runnerTemp = await mkdtemp(path.join(os.tmpdir(), "cao-activity-credential-"));
+  t.after(() => rm(runnerTemp, { recursive: true, force: true }));
+  const workflow = parse(await readFile(".github/workflows/cao-activity.yml", "utf8"));
+  const credential = workflow.jobs.collect.steps.find(({ id }) => id === "activity-credential");
+  for (const mode of ["app", "pat", "workflow-token", "invalid"]) {
+    const output = path.join(runnerTemp, `${mode}-output`);
+    const environment = path.join(runnerTemp, `${mode}-env`);
+    await writeFile(output, "");
+    await writeFile(environment, "");
+    await assert.rejects(execute("bash", ["-e", "-c", credential.run], {
+      env: {
+        ...process.env,
+        ACTIVITY_AUTH_MODE: mode,
+        ACTIVITY_OWNER: "acme",
+        ACTIVITY_APP_TOKEN: mode === "app" ? "" : "test-app-token",
+        ACTIVITY_PAT_TOKEN: mode === "pat" ? "" : "test-pat-token",
+        ACTIVITY_WORKFLOW_TOKEN: mode === "workflow-token" ? "" : "test-workflow-token",
+        GITHUB_OUTPUT: output,
+        GITHUB_ENV: environment,
+      },
+    }), (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, mode === "invalid"
+        ? /must select app, pat, or workflow-token/
+        : new RegExp(`The selected ${mode} credential is unavailable for acme`));
+      return true;
+    });
+    assert.equal(await readFile(output, "utf8"), "");
+    assert.equal(await readFile(environment, "utf8"), "");
+  }
+});
+
 const rateLimitRecord = `${JSON.stringify({
   schema_version: 2,
   kind: "github_api_rate_limit",

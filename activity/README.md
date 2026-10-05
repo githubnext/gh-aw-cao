@@ -26,6 +26,16 @@ keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
 would strand consumers on a cache miss.
 
+For a fresh installation whose exact `allowed-repositories` scope contains
+only the control repository, Activity uses the job's `GITHUB_TOKEN` without
+any additional secrets or variables. An unset `GH_AW_GITHUB_AUTH_MODE` or an
+explicit `workflow-token` selects this repository-local path. It reserves
+100 core API requests for both log and operational-value collection, fitting
+the standard workflow-token quota. A repository with no agentic runs still
+publishes an explicit empty snapshot. Broader repository or owner-wide scopes
+require explicit `app` or `pat` authentication; missing credentials in those
+modes fail closed rather than falling back to the workflow token.
+
 Each `gh aw logs` invocation uses `--cached-jsonl` with a repository-specific
 trailing wildcard shard prefix instead of a single growing file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`

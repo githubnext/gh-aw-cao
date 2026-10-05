@@ -492,7 +492,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /REPORT_DEFER_ISSUE_STATUS/);
   assert.match(workflow, /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Enrich owner-scoped issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit -2000/);
+  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
   assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?--history-campaign optimization/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);

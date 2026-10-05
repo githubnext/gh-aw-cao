@@ -64,7 +64,7 @@ jobs:
       - name: Resolve activity collection plan
         id: plan
         env:
-          ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE || 'workflow-token' }}
           ACTIVITY_PAT_REPOSITORIES: ${{ vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
         run: |
@@ -150,16 +150,18 @@ jobs:
       - name: Select independent activity credential
         id: activity-credential
         env:
-          ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE || 'workflow-token' }}
           ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}
           ACTIVITY_OWNER: ${{ matrix.owner }}
           ACTIVITY_PAT_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[matrix.credentialRepository]] || '' }} # zizmor: ignore[overprovisioned-secrets] - the validated repository map selects exactly one owner-scoped secret for this matrix group.
+          ACTIVITY_WORKFLOW_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           case "$ACTIVITY_AUTH_MODE" in
             app) token="$ACTIVITY_APP_TOKEN" ;;
             pat) token="$ACTIVITY_PAT_TOKEN" ;;
-            *) echo "GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat" >&2; exit 1 ;;
+            workflow-token) token="$ACTIVITY_WORKFLOW_TOKEN" ;;
+            *) echo "GH_AW_GITHUB_AUTH_MODE must select app, pat, or workflow-token" >&2; exit 1 ;;
           esac
           if [[ -z "$token" ]]; then
             echo "The selected $ACTIVITY_AUTH_MODE credential is unavailable for $ACTIVITY_OWNER" >&2
@@ -242,7 +244,7 @@ jobs:
           REPORT_TARGET_REPOSITORIES_JSON: ${{ toJSON(matrix.repositories) }}
           REPORT_DEFER_ISSUE_STATUS: "1"
           REPORT_LOG_TIMEOUT: "15"
-          REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
+          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-4000' }}
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
@@ -271,6 +273,7 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           ACTIVITY_OWNER: ${{ matrix.owner }}
           CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-credential.outputs.token }}
+          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
         run: |
@@ -293,7 +296,7 @@ jobs:
               --retention-days 30 \
               "${repository_args[@]}" \
               "${history_args[@]}" \
-              --max-github-api-rate-limit -2000; then
+              --max-github-api-rate-limit "$REPORT_MAX_GITHUB_API_RATE_LIMIT"; then
             echo "::warning::Operational value collection failed for $ACTIVITY_OWNER; continuing activity indexing."
           fi
 
