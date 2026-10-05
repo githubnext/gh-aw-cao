@@ -79,7 +79,7 @@ jobs:
       - name: Run contract tests
         run: |
           node --test tests/unit/cao-agent-catalog.test.mjs tests/unit/cao-mcp-server.test.mjs
-          go -C server test ./internal/server ./cmd/cao-dashboard
+          env -u REDIS_URL -u CAO_POSTGRES_URL go -C server test ./internal/server ./cmd/cao-dashboard
       - name: Build Go server
         run: |
           mkdir -p .tmp
