@@ -1,4 +1,9 @@
 import { tidy } from '../../data-operations.js';
+import {
+  dashboardQueryDefects,
+  dashboardQueryIndex,
+  executeDashboardQueries
+} from './declarative.js';
 
 const MIN_GPU_ROWS = 4096;
 const WORKGROUP_SIZE = 64;
@@ -18,7 +23,7 @@ const BUFFER_STORAGE = 128;
  * @param {AbortSignal | undefined} signal
  * @returns {Promise<Record<string, unknown>[] | null>}
  */
-export async function gpuFilter(rows, operator, signal) {
+export async function gpuFilter(rows, operator, signal = undefined) {
   if (operator.op !== 'filter' || rows.length < MIN_GPU_ROWS || operator.search?.query
       || operator.predicates?.length !== 1) return null;
   const predicate = operator.predicates[0];
@@ -43,6 +48,7 @@ export async function gpuFilter(rows, operator, signal) {
   if (signal?.aborted) return null;
   /** @type {any} */
   let device;
+  let mapped = false;
   try {
     const adapter = await gpu.requestAdapter();
     if (!adapter || signal?.aborted) return null;
@@ -91,12 +97,13 @@ export async function gpuFilter(rows, operator, signal) {
       encoder.copyBufferToBuffer(output, 0, readback, 0, size);
       device.queue.submit([encoder.finish()]);
       await readback.mapAsync(BUFFER_MAP_READ);
+      mapped = true;
       if (signal?.aborted) return null;
       const mask = new Uint32Array(readback.getMappedRange());
       const selected = rows.filter((_, index) => mask[index] === 1);
-      readback.unmap();
       return selected;
     } finally {
+      if (mapped) readback.unmap();
       input.destroy();
       output.destroy();
       readback.destroy();
@@ -118,7 +125,8 @@ export async function gpuFilter(rows, operator, signal) {
  */
 export function tidyVectorized(rows, operators, signal = undefined) {
   if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
-  if (rows.length < MIN_GPU_ROWS || !globalThis.navigator?.gpu) return tidy(rows, operators);
+  if (rows.length < MIN_GPU_ROWS
+      || !/** @type {{ gpu?: unknown }} */ (globalThis.navigator ?? {}).gpu) return tidy(rows, operators);
   return (async () => {
     let current = [...rows];
     for (const operator of operators) {
@@ -129,4 +137,43 @@ export function tidyVectorized(rows, operators, signal = undefined) {
     if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
     return current;
   })();
+}
+
+/**
+ * Accelerate a standalone declarative query's filter before its remaining
+ * operators. Queries with joins, unions, dependencies, or pagination retain
+ * the regular lazy engine so their budgets and source graphs stay unchanged.
+ * @param {unknown} definitions
+ * @param {Record<string, import('../../presenter.js').LogicalSourceInput>} sources
+ * @param {Iterable<string> | undefined} requested
+ * @param {Parameters<typeof executeDashboardQueries>[3]} options
+ */
+export async function executeVectorizedDashboardQueries(definitions, sources, requested, options = {}) {
+  if (!Array.isArray(definitions)) {
+    return executeDashboardQueries(definitions, sources, requested, options);
+  }
+  const index = dashboardQueryIndex(definitions);
+  const names = requested === undefined ? [...index.keys()] : [...requested];
+  const definition = names.length === 1 ? index.get(names[0]) : undefined;
+  const input = definition && sources[definition.from];
+  if (!definition?.filter || definition.joins?.length || definition.union?.length
+      || index.has(definition.from) || dashboardQueryDefects(definitions).has(definition.name)
+      || input?.metadata?.availability === 'unavailable'
+      || options.pagination?.[definition.name]
+      || options.budget || options.maxOperations !== undefined || options.timeout !== undefined
+      || !Array.isArray(input?.rows) || input.rows.length > 200000) {
+    return executeDashboardQueries(definitions, sources, requested, options);
+  }
+  const rows = await gpuFilter(input.rows, { op: 'filter', ...definition.filter });
+  if (rows === null || options.signal?.aborted) {
+    return executeDashboardQueries(definitions, sources, requested, options);
+  }
+  const query = { ...definition };
+  delete query.filter;
+  return executeDashboardQueries(
+    definitions.map((candidate) => candidate === definition ? query : candidate),
+    { ...sources, [definition.from]: { ...input, rows } },
+    requested,
+    options
+  );
 }

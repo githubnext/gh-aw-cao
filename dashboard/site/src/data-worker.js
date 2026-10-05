@@ -1,7 +1,7 @@
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
-import { tidyVectorized } from './data/queries/vectorized-filter.js';
+import { executeVectorizedDashboardQueries, tidyVectorized } from './data/queries/vectorized-filter.js';
 import {
   finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
@@ -485,7 +485,7 @@ async function queryLiveDashboard(
     const querySources = {
       ...databasePayload,
       ...nativeSources,
-      ...executeDashboardQueries(
+      ...await executeVectorizedDashboardQueries(
         executionQueries,
         { ...databasePayload, ...nativeSources },
         directRequests,

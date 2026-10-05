@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tidy } from '../../src/data-operations.js';
-import { tidyVectorized } from '../../src/data/queries/vectorized-filter.js';
+import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { executeVectorizedDashboardQueries, tidyVectorized } from '../../src/data/queries/vectorized-filter.js';
 
 /** @type {import('../../src/data-operations.js').FilterOperator} */
 const filter = { op: 'filter', predicates: [{ field: 'score', equals: 3 }] };
@@ -70,6 +71,25 @@ describe('worker vectorized filters', () => {
     expect(readback.unmap).toHaveBeenCalledOnce();
     expect(destroy).toHaveBeenCalledTimes(3);
     expect(device.destroy).toHaveBeenCalledOnce();
+
+    buffers.push({ destroy }, { destroy }, readback);
+    const definitions = [{ name: 'matching-scores', from: 'scores', filter: { predicates: filter.predicates } }];
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */
+    const sources = {
+      scores: {
+        source: 'scores', rows,
+        metadata: {
+          'source-id': 'scores', 'source-kind': 'canonical',
+          'as-of': '2026-09-01T00:00:00Z', 'retrieved-at': '2026-09-01T00:00:00Z',
+          availability: 'available', completeness: 'complete', freshness: 'fresh'
+        }
+      }
+    };
+    const accelerated = await executeVectorizedDashboardQueries(definitions, sources, ['matching-scores']);
+    const expected = executeDashboardQueries(definitions, sources, ['matching-scores']);
+    expect(accelerated['matching-scores'].rows).toEqual(expected['matching-scores'].rows);
+    expect(accelerated['matching-scores'].metadata).toEqual(expected['matching-scores'].metadata);
+    expect(requestDevice).toHaveBeenCalledTimes(2);
   });
 
   it('falls back on device errors and on columns requiring string coercion', async () => {
@@ -84,6 +104,6 @@ describe('worker vectorized filters', () => {
   it('does not select a GPU result after cancellation', async () => {
     const controller = new AbortController();
     controller.abort();
-    await expect(tidyVectorized(rows, [filter], controller.signal)).rejects.toThrow();
+    expect(() => tidyVectorized(rows, [filter], controller.signal)).toThrow();
   });
 });
