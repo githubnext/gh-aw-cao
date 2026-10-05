@@ -3,6 +3,7 @@ import { createDebug } from '../debug.js';
 import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { effect, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
 import { enableDetailsMenuDismissal, syncToggleButtonState } from './ui-primitives.js';
@@ -20,6 +21,16 @@ const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
  * @param {Array<{ label?: string, pages?: string[], experimental?: boolean, placement?: string }> | undefined} navigation
  */
 export function renderDashboardNavigation(pages, title, navigation) {
+  const scope = createFactoryScope();
+  const offline = state(!navigator.onLine);
+  const mobileStatus = h('span', { className: 'dashboard-offline-status', role: 'status', hidden: true, title: 'Offline', 'aria-label': 'Offline' }, octicon('cloud-offline'));
+  const desktopStatus = h('span', { className: 'dashboard-offline-status', role: 'status', hidden: true, title: 'Offline', 'aria-label': 'Offline' }, octicon('cloud-offline'), h('span', null, 'Offline'));
+  effect(() => {
+    mobileStatus.hidden = !offline.get();
+    desktopStatus.hidden = !offline.get();
+  }, { signal: scope.signal });
+  window.addEventListener('online', () => offline.set(false), { signal: scope.signal });
+  window.addEventListener('offline', () => offline.set(true), { signal: scope.signal });
   const pagesById = new Map(pages.map((page) => [page.id, page]));
   const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
@@ -51,7 +62,7 @@ export function renderDashboardNavigation(pages, title, navigation) {
   );
   let navigationPageIndex = 0;
 
-  return h(
+  const root = h(
     'aside',
     { className: 'org-sidebar', 'aria-label': 'Central Agentic Ops navigation', dataset: { defaultPageId: firstPageId ?? '' } },
     h(
@@ -93,6 +104,7 @@ export function renderDashboardNavigation(pages, title, navigation) {
           'summary',
           { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
           octicon('three-bars'),
+          mobileStatus,
           h('span', { className: 'nav-indicator mobile-nav-menu-indicator', hidden: true, 'aria-hidden': 'true', 'data-mobile-nav-menu-indicator': '' })
         ),
         h(
@@ -146,8 +158,11 @@ export function renderDashboardNavigation(pages, title, navigation) {
             )]
           : items;
       })
-    )
+    ),
+    desktopStatus
   );
+  scope.bind(root);
+  return root;
 }
 
 /**

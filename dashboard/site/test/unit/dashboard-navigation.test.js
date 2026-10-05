@@ -23,6 +23,18 @@ afterEach(() => {
 });
 
 describe('dashboard sidebar collapse reactive state', () => {
+  it('shows the offline Octicon in the navigation menu and updates on connection changes', async () => {
+    const { renderDashboardNavigation } = await import('../../src/components/dashboard-navigation.js');
+    const root = renderDashboardNavigation([{ id: 'overview', title: 'Overview' }], 'Dashboard');
+    document.body.append(root);
+    const statuses = root.querySelectorAll('.dashboard-offline-status');
+    expect([...statuses].every((status) => status.hasAttribute('hidden'))).toBe(true);
+    window.dispatchEvent(new Event('offline'));
+    expect([...statuses].every((status) => !status.hasAttribute('hidden'))).toBe(true);
+    expect(root.querySelector('.mobile-nav-menu .octicon-cloud-offline')).not.toBeNull();
+    window.dispatchEvent(new Event('online'));
+    expect([...statuses].every((status) => status.hasAttribute('hidden'))).toBe(true);
+  });
   it('applies the initial collapsed state from storage and syncs the toggle button', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.sidebar-collapsed', 'true');
     const { enableDashboardNavigation } = await import('../../src/components/dashboard-navigation.js');

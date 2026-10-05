@@ -10,6 +10,7 @@ const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
 const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/[^/]+\.jsonl$/i;
 const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/[^/]+\.jsonl$/i;
+const APP_ASSETS = [];
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -96,6 +97,12 @@ function isOnlineUrl(value) {
   } catch {
     return false;
   }
+}
+
+function lowDataConnection() {
+  const connection = self.navigator?.connection;
+  return connection?.saveData || connection?.metered || connection?.type === 'cellular'
+    || ['slow-2g', '2g'].includes(connection?.effectiveType);
 }
 
 async function onlineRequest(event) {
@@ -228,6 +235,16 @@ async function cacheAppAssets(urls) {
   }));
 }
 
+async function cachedAppResponse(request) {
+  const cache = await caches.open(APP_CACHE);
+  const url = new URL(request.url);
+  url.searchParams.delete('online');
+  const cached = await cache.match(url.href) ?? await cache.match(request);
+  if (cached) return cached;
+  if (request.mode === 'navigate') return cache.match(new URL('./', self.registration.scope).href);
+  return undefined;
+}
+
 async function readDataConfig(cache) {
   const response = await cache.match(CONFIG_URL);
   if (!response) return null;
@@ -242,8 +259,7 @@ async function readDataConfig(cache) {
 }
 
 async function downloadConfiguredData(force = false, fallbackUrls = [], debug = undefined, online = false) {
-  const connection = self.navigator?.connection;
-  if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return;
+  if (lowDataConnection()) return;
   // Periodic Background Sync itself is deferred by the browser when power conditions are unsuitable.
   const cache = await caches.open(CONFIG_CACHE);
   const previous = await readDataConfig(cache);
@@ -263,8 +279,17 @@ async function downloadConfiguredData(force = false, fallbackUrls = [], debug = 
   return config.lastSuccess;
 }
 
-self.addEventListener('install', () => {
+self.addEventListener('install', (event) => {
   // Updated workers wait until the page canaries them before activation.
+  if (APP_ASSETS.length) event.waitUntil((async () => {
+    const cache = await caches.open(APP_CACHE);
+    await Promise.all(APP_ASSETS.map(async (path) => {
+      const url = new URL(path, self.registration.scope).href;
+      const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) throw new Error('Unable to cache dashboard application.');
+      await cache.put(url, response);
+    }));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -287,7 +312,10 @@ self.addEventListener('fetch', (event) => {
     if (!isAppAssetUrl(event.request.url)) return;
     event.respondWith((async () => {
       const online = await onlineRequest(event);
-      if (event.request.cache === 'no-store') return fetch(event.request);
+      if (!online && lowDataConnection()) {
+        const cached = await cachedAppResponse(event.request);
+        if (cached) return cached;
+      }
       try {
         const response = await fetch(online
           ? new Request(event.request, { cache: 'no-store' })
@@ -299,12 +327,8 @@ self.addEventListener('fetch', (event) => {
         return response;
       } catch (error) {
         if (online) throw error;
-        const cached = await caches.match(event.request);
+        const cached = await cachedAppResponse(event.request);
         if (cached) return cached;
-        if (event.request.mode === 'navigate') {
-          const fallback = await caches.match(new URL('./', self.registration.scope).href);
-          if (fallback) return fallback;
-        }
         throw error;
       }
     })());
@@ -318,7 +342,11 @@ self.addEventListener('fetch', (event) => {
     const request = online ? new Request(event.request, { cache: 'no-store' }) : event.request;
     return { online, request };
   });
-  const networkResponse = responseRequest.then(({ request }) => fetch(request));
+  const networkResponse = responseRequest.then(({ request, online }) => {
+    if (!online && lowDataConnection()) return caches.open(DATA_CACHE).then((cache) => cache.match(request))
+      .then((cached) => cached ?? fetch(request));
+    return fetch(request);
+  });
   event.waitUntil(networkResponse.then(async (response) => {
     if (!response.ok) return;
     const copy = response.clone();

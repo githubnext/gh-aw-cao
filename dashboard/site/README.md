@@ -35,6 +35,8 @@ The built-in dashboard keeps its shared query foundations and its controls, repo
 
 Add `?online=1` to the dashboard URL to require fresh network responses for the page, its assets, and dashboard data instead of falling back to the service worker's offline cache. The worker bypasses the browser HTTP cache for these requests and redownloads unchanged activity shards during automatic data updates; if the network is unavailable, requests fail rather than showing cached files. Removing the parameter restores offline fallback.
 
+Once the service worker has installed successfully, the static dashboard shell and page chunks are available without a network connection. Existing dashboard data remains available from local storage; data that has never been downloaded cannot be viewed offline. On data-saving or slow connections, cached files are preferred and automatic background downloads are deferred. Use `?clear-app=1` to remove the cached website, cached data, indexed dashboard data, and browser settings before reopening the app (a network connection is required afterward). The same action is available as **Clear app** in Settings.
+
 The [Overview component model](../../docs/dashboard-overview-components.md) documents that page's UI ownership boundaries, state coverage, and fixture-based visual testing convention. The [dashboard view catalog](../../docs/dashboard-view-catalog.md) indexes every standardized product view, built-in page, mark, chart, and named element.
 
 ## WebMCP adapter

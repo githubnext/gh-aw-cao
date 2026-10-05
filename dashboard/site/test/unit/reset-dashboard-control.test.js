@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderResetDashboardControl, resetLocalDashboardData } from '../../src/components/reset-dashboard-control.js';
+import { clearDashboardAppCaches, renderResetDashboardControl, resetLocalDashboardData } from '../../src/components/reset-dashboard-control.js';
 import { DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 
 const NON_APP_DATABASE_NAME = 'third-party-dashboard-data';
@@ -46,6 +46,37 @@ beforeEach(async () => {
 });
 
 describe('dashboard local-data reset', () => {
+  it('clears only owned app caches', async () => {
+    /** @type {string[]} */
+    const removed = [];
+    const cacheStorage = {
+      keys: async () => ['central-agentic-ops-dashboard-app-v1', 'central-agentic-ops-dashboard-data-v1',
+        'central-agentic-ops-dashboard-config', 'unrelated-cache'],
+      delete: async (/** @type {string} */ key) => { removed.push(key); return true; }
+    };
+    await clearDashboardAppCaches(/** @type {CacheStorage} */ (/** @type {unknown} */ (cacheStorage)));
+    expect(removed).toEqual([
+      'central-agentic-ops-dashboard-app-v1',
+      'central-agentic-ops-dashboard-data-v1',
+      'central-agentic-ops-dashboard-config'
+    ]);
+  });
+
+  it('clears the cached website from Settings after confirmation', async () => {
+    const reload = vi.fn();
+    const cacheStorage = { keys: vi.fn().mockResolvedValue(['central-agentic-ops-dashboard-app-v1']), delete: vi.fn().mockResolvedValue(true) };
+    const control = renderResetDashboardControl({
+      storage: localStorage, indexedDB,
+      cacheStorage: /** @type {CacheStorage} */ (/** @type {unknown} */ (cacheStorage)),
+      reload, clearApp: true
+    });
+    document.body.append(control);
+    expect(control.textContent).toContain('Clear app');
+    /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
+    /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-confirm')).click();
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    expect(cacheStorage.delete).toHaveBeenCalledWith('central-agentic-ops-dashboard-app-v1');
+  });
   it('deletes the scoped database and clears only dashboard localStorage entries', async () => {
     const database = await openCanonicalDatabase(indexedDB);
     database.close();

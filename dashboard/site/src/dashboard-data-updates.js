@@ -22,7 +22,7 @@ export function requestDashboardRefresh(eventTarget = window) {
   eventTarget.dispatchEvent(new Event(DASHBOARD_REFRESH_REQUEST_EVENT));
 }
 
-/** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
+/** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, effectiveType?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
 
 class NonRetryableBackgroundSyncError extends Error {}
@@ -140,7 +140,8 @@ export function setAutomaticDashboardDataUpdatesEnabled(enabled, storage = local
  * @param {BatteryState | undefined} battery
  */
 export function dashboardDataUpdateBlockedReason(connection, battery) {
-  if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return 'metered connection';
+  if (connection?.saveData || connection?.metered || connection?.type === 'cellular'
+    || connection?.effectiveType === 'slow-2g' || connection?.effectiveType === '2g') return 'metered connection';
   if (battery && !battery.charging && battery.level <= LOW_BATTERY_LEVEL) return 'low battery';
   return null;
 }

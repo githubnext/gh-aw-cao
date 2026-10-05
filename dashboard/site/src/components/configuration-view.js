@@ -467,7 +467,8 @@ function renderDebuggingSettings() {
 
 function renderLocalDataActions() {
   return h('div', { className: 'configuration-local-data-actions' },
-    renderResetDashboardControl()
+    renderResetDashboardControl(),
+    renderResetDashboardControl({ clearApp: true })
   );
 }
 

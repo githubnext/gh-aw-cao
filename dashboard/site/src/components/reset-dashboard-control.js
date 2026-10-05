@@ -55,14 +55,31 @@ export async function resetBrowserDashboardData(options = {}) {
   await resetLocalDashboardData(storage, indexedDB, options);
 }
 
+/** Removes only caches owned by this dashboard deployment. */
+export async function clearDashboardAppCaches(cacheStorage = globalThis.caches) {
+  if (!cacheStorage) throw new Error('Browser cache storage is unavailable.');
+  const keys = await cacheStorage.keys();
+  await Promise.all(keys.filter((key) => key === 'central-agentic-ops-dashboard-config'
+    || key.startsWith('central-agentic-ops-dashboard-app-')
+    || key.startsWith('central-agentic-ops-dashboard-data-'))
+    .map((key) => cacheStorage.delete(key)));
+}
+
+/** @param {{ onBlocked?: () => void }} [options] */
+export async function clearBrowserDashboardApp(options = {}) {
+  await resetBrowserDashboardData(options);
+  await clearDashboardAppCaches();
+}
+
 /**
- * @param {{ storage?: Storage, indexedDB?: IDBFactory, reload?: () => void }} [options]
+ * @param {{ storage?: Storage, indexedDB?: IDBFactory, cacheStorage?: CacheStorage, reload?: () => void, clearApp?: boolean }} [options]
  * @returns {HTMLElement}
  */
 export function renderResetDashboardControl(options = {}) {
   const storage = options.storage ?? browserStorage();
   const indexedDB = options.indexedDB ?? globalThis.window?.indexedDB;
   const reload = options.reload ?? (() => globalThis.window?.location.reload());
+  const clearApp = options.clearApp === true;
   const scope = createFactoryScope();
   /** @type {HTMLButtonElement} */
   let trigger;
@@ -99,11 +116,12 @@ export function renderResetDashboardControl(options = {}) {
             statusMessage.set('Waiting for other open dashboard tabs to close…');
           }
         });
+        if (clearApp) await clearDashboardAppCaches(options.cacheStorage);
         reload();
       } catch (error) {
         statusMessage.set(error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
           ? 'Reset timed out because another open dashboard tab is still using local data. Close other tabs and try again.'
-          : 'Could not reset local dashboard data.');
+          : clearApp ? 'Could not clear the app.' : 'Could not reset local dashboard data.');
         busy.set(false);
       }
     }
@@ -118,10 +136,10 @@ export function renderResetDashboardControl(options = {}) {
     type: 'button',
     className: 'reset-dashboard-trigger',
     onClick: open
-  }, octicon('trash'), h('span', null, 'Reset local data')));
+  }, octicon('trash'), h('span', null, clearApp ? 'Clear app' : 'Reset local data')));
   dialog.append(
     h('header', { className: 'reset-dashboard-dialog-header' },
-      h('h2', null, 'Reset local data?'),
+      h('h2', null, clearApp ? 'Clear app?' : 'Reset local data?'),
       renderCloseButton({
         className: 'reset-dashboard-dialog-close',
         label: 'Close reset confirmation',
@@ -129,7 +147,9 @@ export function renderResetDashboardControl(options = {}) {
       })
     ),
     h('div', { className: 'reset-dashboard-dialog-body' },
-      h('p', null, 'This permanently deletes the indexed dashboard data and all local settings stored in this browser.'),
+      h('p', null, clearApp
+        ? 'This deletes the cached website, offline data, indexed dashboard data, and local settings in this browser. Reopening the app requires a network connection.'
+        : 'This permanently deletes the indexed dashboard data and all local settings stored in this browser.'),
       h('strong', null, 'This action cannot be undone.')
     ),
     h('footer', { className: 'reset-dashboard-dialog-footer' }, status, cancel, confirm)

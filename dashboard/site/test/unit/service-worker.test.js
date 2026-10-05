@@ -38,7 +38,7 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     },
     registration: { scope: 'https://example.test/dashboard/' },
     navigator: {
-      connection: { type: 'wifi', saveData: false }
+      connection: { type: 'wifi', saveData: false, effectiveType: '4g' }
     },
     clients: {
       claim: vi.fn().mockResolvedValue(undefined),
@@ -92,6 +92,25 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
+  it('prefers cached assets and data on slow connections without network requests', async () => {
+    const { listeners, worker, fetch, entries } = serviceWorkerHarness();
+    worker.navigator.connection.effectiveType = '2g';
+    const asset = new Request('https://example.test/dashboard/dashboard.json', { cache: 'no-store' });
+    const data = new Request('https://example.test/dashboard/payload-hashes.json');
+    entries.set(asset.url, new Response('cached dashboard'));
+    entries.set(String(data), new Response('cached data'));
+    for (const request of [asset, data]) {
+      /** @type {Promise<Response> | undefined} */
+      let response;
+      listeners.fetch({
+        request,
+        respondWith: (/** @type {Promise<Response>} */ value) => { response = value; },
+        waitUntil: () => {}
+      });
+      await expect((await response)?.text()).resolves.toBe(request === asset ? 'cached dashboard' : 'cached data');
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('leaves the server-side data API outside application caches', () => {
     expect(source).toContain("!url.pathname.startsWith('/api/')");
   });

@@ -225,6 +225,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .skip-link:focus { top: 8px; }
 .app-shell { height: 100vh; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); overflow: hidden; transition: grid-template-columns 120ms ease; }
 .org-sidebar { min-width: 0; height: 100vh; display: flex; flex-direction: column; gap: 8px; overflow: visible; padding: 24px 16px 16px; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
+.dashboard-offline-status:not([hidden]) { display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px; color: var(--muted); font-size: .75rem; }
+.mobile-nav-menu .dashboard-offline-status { display: none; }
 .sidebar-header { min-width: 0; display: flex; align-items: center; gap: 8px; margin: 0 0 10px 8px; }
 .sidebar-brand { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .sidebar-brand-mark { width: 24px; height: 24px; flex: 0 0 24px; overflow: visible; }
@@ -2272,6 +2274,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .primary-nav a[aria-current="page"]::before { content: none; }
   .mobile-nav-menu { display: block; position: relative; margin-left: 0; }
   .mobile-nav-menu > summary { width: 44px; height: 44px; display: grid; place-items: center; position: relative; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; list-style: none; }
+  .mobile-nav-menu > summary .dashboard-offline-status:not([hidden]) { display: inline-flex; position: absolute; right: -5px; bottom: -5px; padding: 2px; border-radius: 50%; background: var(--canvas); color: var(--muted); }
+  .org-sidebar > .dashboard-offline-status { display: none; }
   .mobile-nav-menu > summary::-webkit-details-marker { display: none; }
   .mobile-nav-menu > summary:hover, .mobile-nav-menu[open] > summary { background: var(--neutral-muted); }
   .mobile-nav-menu-list { width: min(280px, calc(100vw - 24px)); max-height: min(520px, calc(100vh - 140px)); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
