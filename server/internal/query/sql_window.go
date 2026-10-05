@@ -118,7 +118,7 @@ func windowInstant(column SQLColumn) string {
 }
 
 func (c *sqlCompiler) windowTextSortKeys(input SQLRelation, entry WindowField, name string) (SQLRelation, map[int]string) {
-	partition := []string{}
+	partition := make([]string, 0, 2*len(entry.GroupBy))
 	for _, field := range entry.GroupBy {
 		column := sqlField(input, field)
 		partition = append(partition, column.Presence, column.Expression)

@@ -95,6 +95,7 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		return tx.Commit()
 	case schemaOutcomeNonEmptySchema:
 		return errors.New("native storage requires an empty schema in a fresh database")
+	case schemaOutcomeFreshSchema:
 	}
 	for _, statement := range strings.Split(nativeSchemaSQL, ";") {
 		if strings.TrimSpace(statement) == "" {
