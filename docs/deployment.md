@@ -17,20 +17,35 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## Comparing the options
 
-You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities and queries, plus Redis for operational caches and security state. Redis may come from the platform or a compatible external provider such as Upstash.
+Choose between two dashboard architectures based on the size of the data you
+expect to inspect and the experience your viewers need. GitHub Pages is the
+starter option: it has no extra server or database to operate. The server-backed
+option moves storage and query work to PostgreSQL for larger datasets or when
+browser-side loading and querying no longer meet your needs. Server-backed
+deployments also require Redis for operational state; Redis may come from the
+platform or a compatible external provider such as Upstash.
 
-| Option | Dashboard host | Where queries run | Who can sign in | Infrastructure you operate |
-| --- | --- | --- | --- | --- |
-| [GitHub Actions only with GitHub Apps](deployment-actions-github-app.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two private GitHub Apps |
-| [GitHub Actions only with a fine-grained PAT](deployment-actions-pat.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two fine-grained personal access tokens (PATs) owned by one user |
-| [Azure](deployment-azure.md) | Azure Functions | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Function App, PostgreSQL, Key Vault, Azure Managed Redis, storage account, and Application Insights |
-| [Coolify](deployment-coolify.md) | A container on your Coolify server | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Coolify server, PostgreSQL, Redis or [Upstash Redis](deployment-upstash.md), container image, and a deployment adapter |
+| Architecture | Choose it when | Where queries run | Hosting options |
+| --- | --- | --- | --- |
+| **GitHub Actions only (starter)** | You are getting started, your published dataset is manageable for viewers' browsers, and Pages access is sufficient. | In each viewer's browser. Every viewer downloads and indexes the snapshot locally. | [GitHub Pages with GitHub Apps](deployment-actions-github-app.md) or [a fine-grained PAT](deployment-actions-pat.md). No dashboard server, database, or cloud account to operate. |
+| **Server-backed (scale-oriented)** | The dataset is too large or slow for comfortable browser loading and queries, or you need per-user sign-in or webhook-driven refresh. | On the server, over PostgreSQL. Viewers use the same API; they do not each query a local copy of the full dataset. | [Azure](deployment-azure.md) or [Coolify](deployment-coolify.md), with PostgreSQL and Redis. You operate or provision the server and its supporting services. |
+
+### How to choose
+
+Start with GitHub Pages unless you already know you need the server-backed
+capabilities. In the Pages model, each viewer's browser downloads, stores, and
+queries its own copy, so per-viewer performance depends on dataset size and the
+viewer's device. Move to a server-backed deployment when real or representative
+data makes that browser work too slow, memory-heavy, or unreliable for your
+intended users. PostgreSQL centralizes data and query work, but you must
+provision and monitor its capacity (and Redis for operational state); server-
+backed hosting is not automatic or unlimited scale.
 
 ## Choosing an option
 
-1. **Start with GitHub Actions only.** It needs no infrastructure beyond your control repository, and it is what `gh aw add githubnext/gh-aw-cao` installs by default. If you don't have a control repository yet, follow [Set Up CAO](setup-quickstarts.md) first.
+1. **Start with GitHub Actions only** if the browser-based workload fits your expected dataset and viewers. It needs no dashboard infrastructure beyond your control repository, and it is what `gh aw add githubnext/gh-aw-cao` installs by default. If you don't have a control repository yet, follow [Set Up CAO](setup-quickstarts.md) first.
 1. **Choose a credential profile.** To try CAO with the least setup, use a fine-grained PAT. For production, use GitHub Apps. For more information, see [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
-1. **Move to a server-backed option only when you need to.** Choose Azure or Coolify when your data is too large to query in a browser, when you need per-user sign-in instead of Pages visibility, or when you need webhook-driven refresh.
+1. **Choose Azure or Coolify when the browser is the constraint** or when you need server-backed capabilities such as per-user sign-in or webhook-driven refresh. Base the scale decision on representative data and actual viewer devices; CAO does not prescribe a dataset-size threshold.
 
 Azure and Coolify run the same Go service from the `server/` directory, with the same authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. They differ in platform, secret management, ingress, and delivery.
 
