@@ -270,7 +270,7 @@ describe("dashboard data startup", () => {
     notifyUpgrade();
     const dialog = document.querySelector('dialog');
     expect(dialog?.open).toBe(true);
-    expect(dialog?.textContent).toContain('This version needs to rebuild the local database');
+    expect(dialog?.textContent).toContain('We are refreshing your browser copy for this version');
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
     expect(calls).not.toContain("settle");
     /** @type {HTMLButtonElement | null} */ (dialog?.querySelector('button.first-load-browse'))?.click();

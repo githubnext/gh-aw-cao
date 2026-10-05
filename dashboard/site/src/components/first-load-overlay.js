@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
+import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad } from '../browser-first-load.js';
 import { createDebug } from '../debug.js';
@@ -43,7 +43,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     type: 'button',
     className: 'first-load-browse',
     onClick: dismiss
-  }, 'Explore data');
+  }, 'Explore data', octicon('arrow-right'));
   const retryButton = h('button', {
     type: 'button',
     className: 'first-load-browse',
@@ -55,7 +55,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const title = h('h2');
   const eyebrow = h('p', { className: 'first-load-eyebrow' });
   const description = h('p', { className: 'first-load-description' });
-  const durationNote = h('p', { className: 'first-load-note first-load-wide-copy' });
+  const durationNote = h('p', { className: 'first-load-note first-load-duration' });
   const message = h('p', { className: 'first-load-message', 'aria-live': 'off' });
   const nextMessage = createFirstLoadMessagePicker();
   const currentMessage = state(nextMessage());
@@ -66,52 +66,68 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const status = h('p', { className: 'first-load-status', role: 'status' });
   const progress = h('div', { className: 'first-load-progress' });
   const continuationNote = h('p', { className: 'first-load-note' }, responsiveCopy(
-    'Dismissing this screen does not cancel the import.',
-    'Dismiss anytime. The import will continue.'
+    'No need to wait here. The import continues as you explore.',
+    'Explore now. The import keeps going.'
   ));
   dialog.append(
     h('div', { className: 'first-load-background', 'aria-hidden': 'true' }),
+    h('header', { className: 'first-load-header' },
+      h('div', { className: 'first-load-brand' }, agenticWorkflowMark(), h('span', null, 'Central Agentic Ops'))
+    ),
     h('section', { className: 'first-load-card' },
-    h('div', { className: 'first-load-symbol', 'aria-hidden': 'true' }, octicon('download')),
     eyebrow,
     title,
     description,
     progress,
-    message,
     status,
-    h('ol', { className: 'first-load-steps' },
-      h('li', null, h('strong', null, 'Download'), h('span', null, 'Collect the latest published snapshot')),
-      h('li', null, h('strong', null, 'Prepare'), h('span', null, 'Process and cache data in this browser')),
-      h('li', null, h('strong', null, 'Explore'), h('span', null, 'Views update as evidence becomes available'))
-    ),
+    message,
     durationNote,
-    h('p', { className: 'first-load-note first-load-server-option' },
-      'For larger datasets, deploy a CAO backend server to run queries server-side and avoid this browser import. See ',
-      h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment/', target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'deployment options (opens in a new tab)' }, 'deployment options'),
-      '.'
-    ),
     dismissButton,
     retryButton,
-    continuationNote
+    continuationNote,
+    h('details', { className: 'first-load-about' },
+      h('summary', null, 'About this preparation'),
+      h('p', { className: 'first-load-note' }, 'We download the latest published activity snapshot and build a local database in this browser. Views update as evidence becomes available.'),
+      h('ol', { className: 'first-load-steps' },
+        h('li', null, h('strong', null, 'Download'), h('span', null, 'Collect the latest published snapshot')),
+        h('li', null, h('strong', null, 'Prepare'), h('span', null, 'Cache data for this visit and the next')),
+        h('li', null, h('strong', null, 'Explore'), h('span', null, 'Follow the evidence as it arrives'))
+      ),
+      h('p', { className: 'first-load-note first-load-server-option' },
+        'For larger datasets, deploy a CAO backend server to run queries server-side and avoid this browser import. See ',
+        h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment/', target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'deployment options (opens in a new tab)' }, 'deployment options'),
+        '.'
+      )
+    )
   ));
   dialog.addEventListener('cancel', (event) => {
     event.preventDefault();
     dismiss();
   }, { signal });
   document.body.append(dialog);
-  render(eyebrow, () => browserFirstLoad.get().reason === 'upgrade' ? 'Dashboard update' : 'A fresh start', { signal });
-  render(description, () => browserFirstLoad.get().reason === 'upgrade'
+  render(eyebrow, () => browserFirstLoad.get().reason === 'upgrade' ? 'Dashboard update' : 'Welcome to CAO', { signal });
+  render(description, () => {
+    const current = browserFirstLoad.get();
+    if (current.status === 'failed') return 'Your browser copy is not ready yet. You can retry without changing any campaign data.';
+    return current.reason === 'upgrade'
+      ? responsiveCopy(
+        'We are refreshing your browser copy for this version. Your campaign activity will be ready to explore again soon.',
+        'Refreshing your browser copy for this version.'
+      )
+      : responsiveCopy(
+        'We are bringing your campaign activity together, so you can see the big picture and follow the details.',
+        'Bringing your campaign activity together for a first look.'
+      );
+  }, { signal });
+  render(durationNote, () => browserFirstLoad.get().reason === 'upgrade'
     ? responsiveCopy(
-      'This version needs to rebuild the local database from published activity data. Updating your browser copy can take several minutes.',
-      'Updating the local database for this version can take a few minutes.'
+      'This update can take several minutes. Future visits reuse cached data.',
+      'Updates can take a few minutes. Future visits use cached data.'
     )
     : responsiveCopy(
-      'This browser does not have a dashboard snapshot yet. We are downloading the published activity data and building a local database so you can explore your campaigns.',
-      'Preparing a local copy of activity data. First visits can take a few minutes.'
+      'The first import can take several minutes. Future visits reuse cached data.',
+      'First visits take a few minutes. Next time is quicker.'
     ), { signal });
-  render(durationNote, () => browserFirstLoad.get().reason === 'upgrade'
-    ? 'This update can take several minutes. Future visits reuse cached data.'
-    : 'The first import can take several minutes. Future visits reuse cached data.', { signal });
   render(title, () => {
     const current = browserFirstLoad.get();
     if (current.status === 'failed') return responsiveCopy(
@@ -119,7 +135,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       'Import incomplete.'
     );
     return responsiveCopy(
-      current.reason === 'upgrade' ? 'Updating your dashboard.' : 'Making room for your campaigns.',
+      current.reason === 'upgrade' ? 'Updating your dashboard.' : 'Your dashboard is taking shape.',
       'Preparing your dashboard.'
     );
   }, { signal });
@@ -136,12 +152,12 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       'Campaign status is not available yet. Retry the import to finish preparing your dashboard.',
       'Try again to finish preparing your dashboard.'
     );
-    if (current.stage === 'maintenance') return 'Applying retention limits to the local database...';
-    if (current.stage === 'inventory') return 'Preparing inventory and dashboard metadata...';
+    if (current.stage === 'maintenance') return 'Applying retention limits...';
+    if (current.stage === 'inventory') return 'Preparing inventory...';
     if (current.stage === 'queries') return 'Refreshing dashboard queries...';
-    if (current.reason === 'upgrade' && !current.stage) return 'Updating the local database for this version...';
+    if (current.reason === 'upgrade' && !current.stage) return 'Updating the local database...';
     return current.total
-      ? 'Importing activity files and preparing the local database...'
+      ? 'Importing activity files...'
       : 'Preparing the latest activity snapshot...';
   }, { signal });
   render(progress, () => {
@@ -162,6 +178,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     dismissButton.hidden = current.status === 'failed';
     retryButton.hidden = current.status !== 'failed';
     continuationNote.hidden = current.status === 'failed';
+    durationNote.hidden = current.status === 'failed';
     if (visible && !dialog.open) {
       restoreDashboardTheme(dialog);
       open();

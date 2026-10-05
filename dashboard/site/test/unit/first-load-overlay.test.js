@@ -97,9 +97,18 @@ describe('browser first-load presentation', () => {
     const dialog = document.querySelector('dialog');
     expect(dialog?.open).toBe(true);
     expect(dialog?.getAttribute('aria-label')).toBe('Preparing your dashboard');
-    expect(dialog?.textContent).toContain('building a local database');
+    expect(dialog?.querySelector('header')?.textContent).toBe('Central Agentic Ops');
+    expect(dialog?.querySelector('.first-load-brand svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(dialog?.querySelector('.first-load-eyebrow')?.textContent).toBe('Welcome to CAO');
+    expect(dialog?.querySelector('h2')?.textContent).toContain('Your dashboard is taking shape.');
+    expect(dialog?.textContent).toContain('build a local database');
     expect(dialog?.querySelector('.first-load-description .first-load-compact-copy')?.textContent)
-      .toBe('Preparing a local copy of activity data. First visits can take a few minutes.');
+      .toBe('Bringing your campaign activity together for a first look.');
+    const about = dialog?.querySelector('details');
+    expect(about?.open).toBe(false);
+    expect(about?.querySelector('summary')?.textContent).toBe('About this preparation');
+    expect(about?.textContent).toContain('build a local database');
+    expect(about?.querySelector('.first-load-steps')).not.toBeNull();
     const serverOption = dialog?.querySelector('.first-load-server-option');
     expect(serverOption?.textContent).toContain('deploy a CAO backend server');
     expect(serverOption?.textContent).toContain('avoid this browser import');
@@ -129,6 +138,8 @@ describe('browser first-load presentation', () => {
     if (!(browse instanceof HTMLButtonElement)) throw new Error('Browse button is missing.');
     expect(browse.textContent).toBe('Explore data');
     expect(dialog?.querySelector('.first-load-close')).toBeNull();
+    expect(dialog?.querySelectorAll('button')).toHaveLength(2);
+    expect(dialog?.textContent).toContain('The import continues as you explore.');
     browse.click();
     expect(dialog?.open).toBe(false);
     expect(browserFirstLoad.get().status).toBe('loading');
@@ -136,6 +147,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.open).toBe(false);
     showBrowserFirstLoad();
     expect(dialog?.open).toBe(true);
+    expect(dialog?.querySelector('header')?.textContent).toBe('Central Agentic Ops');
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Refreshing dashboard queries');
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
     expect(dialog?.open).toBe(false);
@@ -151,7 +163,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.open).toBe(true);
     expect(dialog?.querySelector('.first-load-eyebrow')?.textContent).toBe('Dashboard update');
     expect(dialog?.querySelector('h2')?.textContent).toContain('Updating your dashboard');
-    expect(dialog?.querySelector('.first-load-description')?.textContent).toContain('rebuild the local database');
+    expect(dialog?.querySelector('.first-load-description')?.textContent).toContain('refreshing your browser copy');
     expect(dialog?.textContent).not.toContain('The first import can take');
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
     browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade', stage: 'files', completed: 1, total: 5 });
@@ -171,11 +183,16 @@ describe('browser first-load presentation', () => {
     browserFirstLoad.set({ status: 'failed', dismissed: false });
     expect(dialog?.open).toBe(true);
     expect(dialog?.textContent).toContain('first import could not finish');
+    expect(dialog?.querySelector('.first-load-description')?.textContent).toContain('Your browser copy is not ready yet.');
+    expect(dialog?.querySelector('.first-load-message')?.hasAttribute('hidden')).toBe(true);
+    expect(dialog?.querySelector('.first-load-duration')?.hasAttribute('hidden')).toBe(true);
     expect(dialog?.querySelector('.first-load-server-option')?.textContent).toContain('deploy a CAO backend server');
     expect(dialog?.querySelector('progress')).toBeNull();
     const button = [...dialog?.querySelectorAll('button') ?? []].find((candidate) => candidate.textContent === 'Retry import');
     button?.click();
     expect(retry).toHaveBeenCalledOnce();
+    browserFirstLoad.set({ status: 'loading', dismissed: false });
+    expect(dialog?.querySelector('.first-load-duration')?.hasAttribute('hidden')).toBe(false);
   });
 
   it('restores the selected theme when opening and reopening the body-owned overlay', () => {

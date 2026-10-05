@@ -52,8 +52,12 @@ first-import experience. While the import screen is visible, 100 friendly notes
 rotate randomly every six seconds without repeating within a cycle. These notes
 are separate from factual import progress and pause when the screen is dismissed
 or the import is no longer running.
-Small screens use shorter copy and omit the explanatory step list so the main
-action stays in view. The backdrop shares the exact grid styling used on
+The welcome screen keeps the Central Agentic Ops name visible in its header and
+uses **Explore data** as its only dismissal button; Escape also works.
+**About this preparation** reveals the browser-local import details and
+backend deployment alternative without crowding the first impression.
+Small screens use shorter copy and omit the explanatory step list so the brand
+and main action stay in view. The backdrop shares the exact grid styling used on
 Overview, with a slow opacity animation disabled when the browser requests
 reduced motion. The grid is decorative, not campaign telemetry.
 

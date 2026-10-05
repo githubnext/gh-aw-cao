@@ -32,11 +32,13 @@ describe('styles debug logging', () => {
     const { primerStylesheet } = await loadStylesWithDebug('');
     const css = primerStylesheet();
 
-    expect(css).toContain('.first-load-overlay[open]{display:grid;align-items:center}');
+    expect(css).toContain('.first-load-overlay[open]{display:grid;grid-template-rows:auto 1fr;gap:24px;align-items:center}');
+    expect(css).toContain('.first-load-overlay [hidden]{display:none}');
+    expect(css).toContain('.first-load-brand{display:flex;align-items:center');
     expect(css).toContain('.first-load-browse:focus-visible, .first-load-details:focus-visible{outline:2px solid var(--focus);outline-offset:3px}');
     expect(css).not.toContain('.first-load-close');
     expect(css).toContain('@media (max-width:700px){.first-load-overlay{padding:12px}');
-    expect(css).toContain('.first-load-wide-copy, .first-load-steps, .first-load-eyebrow{display:none}');
+    expect(css).toContain('.first-load-wide-copy, .first-load-steps{display:none}');
     expect(css).toContain('.first-load-background::before{animation:none;opacity:.75}');
     expect(css).toContain('.factory-floor::before, .first-load-background::before{content:""');
     const overlayIndex = css.indexOf('.first-load-overlay{');
