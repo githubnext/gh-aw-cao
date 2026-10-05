@@ -9,11 +9,38 @@ const MIN_GPU_ROWS = 4096;
 const WORKGROUP_SIZE = 64;
 const MIN_INT = -2147483648;
 const MAX_INT = 2147483647;
+const GPU_WAIT_MS = 2000;
 // WebGPU's stable buffer-usage and map-mode bit values.
 const BUFFER_MAP_READ = 1;
 const BUFFER_COPY_SRC = 4;
 const BUFFER_COPY_DST = 8;
 const BUFFER_STORAGE = 128;
+
+/** @template T @param {Promise<T>} operation @param {{ aborted?: boolean } | undefined} signal */
+function waitForGpu(operation, signal) {
+  const abortSignal = signal && 'addEventListener' in signal
+    ? /** @type {AbortSignal} */ (/** @type {unknown} */ (signal)) : undefined;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => finish(() => reject(new Error('WebGPU timed out'))), GPU_WAIT_MS);
+    const abort = () => finish(() => reject(new Error('WebGPU cancelled')));
+    const finish = (/** @type {() => void} */ settle) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      abortSignal?.removeEventListener('abort', abort);
+      settle();
+    };
+    abortSignal?.addEventListener('abort', abort, { once: true });
+    operation.then(
+      (result) => finish(() => resolve(result)),
+      (error) => finish(() => reject(error))
+    );
+    if (signal?.aborted) {
+      abort();
+    }
+  });
+}
 
 /**
  * Run a numeric equality filter on the GPU when the worker has WebGPU.
@@ -50,9 +77,15 @@ export async function gpuFilter(rows, operator, signal = undefined) {
   let device;
   let mapped = false;
   try {
-    const adapter = await gpu.requestAdapter();
+    const adapter = await waitForGpu(gpu.requestAdapter(), signal);
     if (!adapter || signal?.aborted) return null;
-    device = await adapter.requestDevice();
+    const requestedDevice = adapter.requestDevice();
+    try {
+      device = await waitForGpu(requestedDevice, signal);
+    } catch (error) {
+      void requestedDevice.then((/** @type {{ destroy: () => void }} */ lateDevice) => lateDevice.destroy(), () => {});
+      throw error;
+    }
     if (signal?.aborted) return null;
     const size = Math.ceil(rows.length / WORKGROUP_SIZE) * WORKGROUP_SIZE * 4;
     const input = device.createBuffer({
@@ -96,7 +129,7 @@ export async function gpuFilter(rows, operator, signal = undefined) {
       pass.end();
       encoder.copyBufferToBuffer(output, 0, readback, 0, size);
       device.queue.submit([encoder.finish()]);
-      await readback.mapAsync(BUFFER_MAP_READ);
+      await waitForGpu(readback.mapAsync(BUFFER_MAP_READ), signal);
       mapped = true;
       if (signal?.aborted) return null;
       const mask = new Uint32Array(readback.getMappedRange());

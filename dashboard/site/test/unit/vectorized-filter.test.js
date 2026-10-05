@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tidy } from '../../src/data-operations.js';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
-import { executeVectorizedDashboardQueries, tidyVectorized } from '../../src/data/queries/vectorized-filter.js';
+import { executeVectorizedDashboardQueries, gpuFilter, tidyVectorized } from '../../src/data/queries/vectorized-filter.js';
 
 /** @type {import('../../src/data-operations.js').FilterOperator} */
 const filter = { op: 'filter', predicates: [{ field: 'score', equals: 3 }] };
@@ -105,5 +105,39 @@ describe('worker vectorized filters', () => {
     const controller = new AbortController();
     controller.abort();
     expect(() => tidyVectorized(rows, [filter], controller.signal)).toThrow();
+  });
+
+  it('stops waiting for a pending adapter when cancelled', async () => {
+    vi.stubGlobal('navigator', { gpu: { requestAdapter: () => new Promise(() => {}) } });
+    const controller = new AbortController();
+    const result = gpuFilter(rows, filter, controller.signal);
+    controller.abort();
+    expect(await result).toBeNull();
+  });
+
+  it('destroys a device that arrives after cancellation', async () => {
+    /** @type {(device: { destroy: () => void }) => void} */
+    let resolveDevice = () => {};
+    const requestedDevice = new Promise((resolve) => { resolveDevice = resolve; });
+    /** @type {() => void} */
+    let notifyStarted = () => {};
+    const started = new Promise((resolve) => { notifyStarted = () => resolve(undefined); });
+    vi.stubGlobal('navigator', {
+      gpu: { requestAdapter: async () => ({
+        requestDevice: () => {
+          notifyStarted();
+          return requestedDevice;
+        }
+      }) }
+    });
+    const controller = new AbortController();
+    const result = gpuFilter(rows, filter, controller.signal);
+    await started;
+    controller.abort();
+    expect(await result).toBeNull();
+    const destroy = vi.fn();
+    resolveDevice({ destroy });
+    await Promise.resolve();
+    expect(destroy).toHaveBeenCalledOnce();
   });
 });
