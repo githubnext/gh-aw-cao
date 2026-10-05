@@ -90,7 +90,9 @@ func Validate(definitions []Definition) error {
 			return fmt.Errorf("query %q uses prediction, which is not supported by the dashboard server", definition.Name)
 		}
 		if definition.Window != nil {
-			return fmt.Errorf("query %q uses observation windows, which are not supported by the dashboard server", definition.Name)
+			if err := validateWindows(definition.Window); err != nil {
+				return fmt.Errorf("query %q: %w", definition.Name, err)
+			}
 		}
 		if definition.Limit != nil && (*definition.Limit <= 0 || *definition.Limit > MaxOutputRows) {
 			return fmt.Errorf("query %q has invalid limit", definition.Name)

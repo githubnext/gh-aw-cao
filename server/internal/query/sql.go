@@ -271,6 +271,13 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 			return SQLRelation{}, err
 		}
 	}
+	for _, entry := range definition.Window {
+		var err error
+		relation, err = c.window(relation, entry, definition.Name)
+		if err != nil {
+			return SQLRelation{}, err
+		}
+	}
 	if len(definition.Select) != 0 {
 		c.steps = append(c.steps, SQLStep{Query: definition.Name, Relation: strings.Trim(relation.SQL, `"`), Operation: "select", Weight: 1})
 		columns := make(map[string]SQLColumn, len(definition.Select))

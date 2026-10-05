@@ -1,0 +1,68 @@
+{
+  "rows": [
+    {"id": "r4", "workflow": "a", "value": 9, "observed-at": "2026-01-01T00:00:04Z"},
+    {"id": "r1", "workflow": "a", "value": 0, "observed-at": "2026-01-01T00:00:00Z"},
+    {"id": "r2", "workflow": "b", "value": 8, "observed-at": "2026-01-01T00:00:01Z"},
+    {"id": "r3", "workflow": "a", "value": 3, "observed-at": "2026-01-01T00:00:02Z"},
+    {"id": "r5", "workflow": "a", "value": null, "observed-at": "2026-01-01T00:00:05Z"},
+    {"id": "r6", "workflow": "a", "value": 12, "observed-at": "2026-01-01T00:00:06Z"},
+    {"id": "r7", "workflow": "b", "value": 4, "observed-at": "2026-01-01T00:00:01Z"}
+  ],
+  "cases": [
+    {
+      "name": "rolling reducers and centered boundaries",
+      "window": [
+        {"operation": "rolling", "field": "value", "as": "mean", "frame": 3, "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "rolling", "field": "value", "as": "sum", "frame": 3, "reducer": "sum", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "rolling", "field": "value", "as": "min", "frame": 3, "reducer": "min", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "rolling", "field": "value", "as": "max", "frame": 3, "reducer": "max", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "rolling", "field": "value", "as": "center", "frame": 3, "alignment": "centered", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]}
+      ],
+      "fields": ["mean", "sum", "min", "max", "center"],
+      "expected": [
+        [4, 12, 0, 9, 6],
+        [0, 0, 0, 0, null],
+        [8, 8, 8, 8, null],
+        [1.5, 3, 0, 3, 4],
+        [6, 12, 3, 9, 10.5],
+        [10.5, 21, 9, 12, null],
+        [6, 12, 4, 8, null]
+      ]
+    },
+    {
+      "name": "absolute percentage and elapsed-time change",
+      "window": [
+        {"operation": "change", "field": "value", "as": "delta", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "change", "field": "value", "as": "percent", "mode": "percentage", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "change", "field": "value", "as": "rate", "mode": "rate", "time-field": "observed-at", "unit": "second", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]}
+      ],
+      "fields": ["delta", "percent", "rate"],
+      "expected": [
+        [6, 200, 3],
+        [null, null, null],
+        [null, null, null],
+        [3, null, 1.5],
+        [null, null, null],
+        [null, null, null],
+        [-4, -50, null]
+      ]
+    },
+    {
+      "name": "rolling then derivative by partition",
+      "window": [
+        {"operation": "rolling", "field": "value", "as": "moving", "frame": 3, "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]},
+        {"operation": "change", "field": "moving", "as": "growth", "mode": "rate", "time-field": "observed-at", "unit": "second", "groupby": ["workflow"], "order-by": [{"field": "observed-at"}, {"field": "id"}]}
+      ],
+      "fields": ["moving", "growth"],
+      "expected": [
+        [4, 1.25],
+        [0, null],
+        [8, null],
+        [1.5, 0.75],
+        [6, 2],
+        [10.5, 4.5],
+        [6, null]
+      ]
+    }
+  ]
+}

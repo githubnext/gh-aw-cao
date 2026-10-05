@@ -1060,7 +1060,11 @@ parameters, enforces resource limits, and serializes bounded results; Redis is
 not a query backend.
 
 The engine rejects unsupported prediction queries and enforces limits on query
-definitions, joins, predicates, input rows, output rows, and total operations.
+definitions, joins, predicates, observation-window frames, input rows, output
+rows, and total operations. Rolling and change windows execute as partitioned,
+ordered PostgreSQL window expressions after aggregation and before projection;
+the same fixture under `internal/query/testdata/window-parity.json` is checked
+against browser-worker results and hosted SQL.
 It does not silently truncate or return partial success for invalid queries.
 
 ## HTTP(S) and browser transport

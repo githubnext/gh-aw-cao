@@ -119,3 +119,72 @@ func TestSQLBindsNULStringsAsNonMatchingText(t *testing.T) {
 		t.Fatalf("bound value = %q", got)
 	}
 }
+
+func TestSQLWindowsMaterializeAndChargeEachEntry(t *testing.T) {
+	frame := 3
+	definition := Definition{Name: "trend", From: "facts",
+		Window: []WindowField{
+			{Operation: "rolling", Field: "value", As: "average", Frame: &frame, Alignment: "centered",
+				OrderBy: []OrderField{{Field: "id"}}, GroupBy: []string{"owner"}},
+			{Operation: "change", Field: "average", As: "delta", Mode: "percentage",
+				OrderBy: []OrderField{{Field: "id"}}},
+		},
+		Select: []SelectedField{{Field: "delta"}}}
+	plan, err := CompileSQL([]Definition{definition}, []string{"trend"}, sqlTestResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var weights []int
+	for _, step := range plan.Steps {
+		if step.Operation == "window" {
+			weights = append(weights, step.Weight)
+		}
+	}
+	if len(weights) != 2 || weights[0] != 35 || weights[1] != 33 ||
+		!strings.Contains(plan.CTEs, "PRECEDING AND 1 FOLLOWING") ||
+		!strings.Contains(plan.CTEs, "lag(") ||
+		plan.Outputs["trend"].Columns["delta"].Kind != SQLNumber {
+		t.Fatalf("window materialization/charge: weights=%v plan=%+v", weights, plan)
+	}
+}
+
+func TestSQLWindowRejectsStructuredFields(t *testing.T) {
+	frame := 2
+	resolver := func(string) (SQLRelation, error) {
+		return SQLRelation{SQL: "(VALUES (1, '{}'::jsonb)) AS facts(ordinal, payload)", Order: "ordinal",
+			Columns: map[string]SQLColumn{"payload": {Expression: "payload", Presence: "TRUE", Kind: SQLStructured}}}, nil
+	}
+
+	for _, field := range []string{"value", "group", "order"} {
+		entry := WindowField{Operation: "rolling", Field: "missing", As: "result", Frame: &frame,
+			OrderBy: []OrderField{{Field: "missing"}}}
+		switch field {
+		case "value":
+			entry.Field = "payload"
+		case "group":
+			entry.GroupBy = []string{"payload"}
+		case "order":
+			entry.OrderBy[0].Field = "payload"
+		}
+		if _, err := CompileSQL([]Definition{{Name: "trend", From: "facts", Window: []WindowField{entry}}},
+			[]string{"trend"}, resolver); err == nil {
+			t.Fatalf("structured window %s was accepted", field)
+		}
+	}
+}
+
+func TestSQLWindowMissingFieldsCannotInjectSQL(t *testing.T) {
+	hostile := `value"); DROP TABLE facts; --`
+	frame := 1
+	definition := Definition{Name: "window", From: "facts", Window: []WindowField{
+		{Operation: "rolling", Field: hostile, As: hostile, Frame: &frame,
+			OrderBy: []OrderField{{Field: hostile}}, GroupBy: []string{hostile}},
+	}}
+	plan, err := CompileSQL([]Definition{definition}, []string{"window"}, sqlTestResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(plan.CTEs, "DROP TABLE") || plan.Outputs["window"].Columns[hostile].Kind != SQLNumber {
+		t.Fatalf("window field escaped the declared schema: %+v", plan)
+	}
+}

@@ -54,6 +54,7 @@ type NormalizedQuery struct {
 	Filter          *Filter             `json:"filter,omitempty"`
 	Computes        []ComputedField     `json:"computes,omitempty"`
 	Aggregate       *Aggregate          `json:"aggregate,omitempty"`
+	Window          []WindowField       `json:"window,omitempty"`
 	TemporalSeries  *TemporalSeries     `json:"temporal-series,omitempty"`
 	Order           []OrderField        `json:"order,omitempty"`
 	Limit           *int                `json:"limit,omitempty"`
@@ -95,7 +96,7 @@ func filterFields(filter *Filter) map[string]bool {
 func Normalize(definition Definition) NormalizedQuery {
 	plan := NormalizedQuery{
 		Source: definition.From, Filter: definition.Filter, Computes: definition.Compute,
-		Aggregate: definition.Aggregate, TemporalSeries: definition.TemporalSeries,
+		Aggregate: definition.Aggregate, TemporalSeries: definition.TemporalSeries, Window: definition.Window,
 		Order: definition.OrderBy, Limit: definition.Limit,
 		ResultShape: ResultShape{Mode: PreserveInput}, Stages: []StageFields{},
 	}
@@ -201,6 +202,25 @@ func Normalize(definition Definition) NormalizedQuery {
 			plan.ResultShape.Added = append(plan.ResultShape.Added, ResultField{Field: fields.As, As: fields.As})
 		}
 		stages = append(stages, stage{name: "predict", requires: map[string]bool{}, produces: map[string]bool{fields.As: true}})
+	}
+	for _, entry := range definition.Window {
+		required := map[string]bool{entry.Field: true}
+		for _, order := range entry.OrderBy {
+			required[order.Field] = true
+		}
+		for _, field := range entry.GroupBy {
+			required[field] = true
+		}
+		if entry.TimeField != "" {
+			required[entry.TimeField] = true
+		}
+		result := ResultField{Field: entry.As, As: entry.As}
+		if plan.ResultShape.Mode == ClosedShape {
+			plan.ResultShape.Fields = append(plan.ResultShape.Fields, result)
+		} else {
+			plan.ResultShape.Added = append(plan.ResultShape.Added, result)
+		}
+		stages = append(stages, stage{name: "window", requires: required, produces: map[string]bool{entry.As: true}})
 	}
 	if len(definition.Select) > 0 {
 		required, produced := map[string]bool{}, map[string]bool{}

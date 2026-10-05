@@ -81,6 +81,27 @@ func TestResultShapeModeLabel(t *testing.T) {
 	}
 }
 
+func TestNormalizeWindowDependenciesAndShape(t *testing.T) {
+	frame := 2
+	definition := Definition{From: "runs", Window: []WindowField{
+		{Operation: "rolling", Field: "amount", As: "recent", Frame: &frame,
+			GroupBy: []string{"owner"}, OrderBy: []OrderField{{Field: "day"}}},
+		{Operation: "change", Field: "recent", As: "rate", Mode: "rate", TimeField: "day", Unit: "day",
+			OrderBy: []OrderField{{Field: "day"}}},
+	}}
+	plan := Normalize(definition)
+	if !reflect.DeepEqual(plan.SourceFields, FieldSet{"amount", "day", "owner"}) ||
+		!reflect.DeepEqual(plan.ResultShape.Added, []ResultField{{Field: "recent", As: "recent"}, {Field: "rate", As: "rate"}}) ||
+		plan.Stages[1].Operator != "window" || plan.Stages[2].Operator != "window" {
+		t.Fatalf("window liveness: %+v", plan)
+	}
+	definition.Aggregate = &Aggregate{By: []string{"owner", "day"}, Values: []AggregateValue{{Field: "amount", As: "amount", Reducer: "sum"}}}
+	plan = Normalize(definition)
+	if plan.ResultShape.Mode != ClosedShape || len(plan.ResultShape.Fields) != 5 {
+		t.Fatalf("window output after aggregate: %+v", plan.ResultShape)
+	}
+}
+
 func TestNormalizeTemporalShape(t *testing.T) {
 	for _, tt := range []struct {
 		shape string

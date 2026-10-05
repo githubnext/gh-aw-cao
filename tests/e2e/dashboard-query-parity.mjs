@@ -719,6 +719,9 @@ async function main() {
   const sqlitePath = join(temporaryDirectory, "dashboard.sqlite");
   const sources = representativeSources();
   const queries = dashboardQueries();
+  if (!queries.some((query) => query.window?.length)) {
+    throw new Error("Dashboard query parity requires an observation-window query.");
+  }
   const names = queries.map(({ name }) => name);
   const report = {
     generatedAt: new Date().toISOString(),

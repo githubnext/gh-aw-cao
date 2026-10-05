@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 const (
@@ -32,7 +33,7 @@ type Definition struct {
 	Aggregate      *Aggregate          `json:"aggregate,omitempty"`
 	TemporalSeries *TemporalSeries     `json:"temporal-series,omitempty"`
 	Predict        []json.RawMessage   `json:"predict,omitempty"`
-	Window         json.RawMessage     `json:"window,omitempty"`
+	Window         []WindowField       `json:"window,omitempty"`
 	Select         []SelectedField     `json:"select,omitempty"`
 	OrderBy        []OrderField        `json:"order-by,omitempty"`
 	Limit          *int                `json:"limit,omitempty"`
@@ -172,6 +173,37 @@ type SelectedField struct {
 type OrderField struct {
 	Field     string `json:"field"`
 	Direction string `json:"direction,omitempty"`
+}
+
+type WindowField struct {
+	Operation string       `json:"operation"`
+	Field     string       `json:"field"`
+	As        string       `json:"as"`
+	OrderBy   []OrderField `json:"order-by"`
+	GroupBy   []string     `json:"groupby,omitempty"`
+	Frame     *int         `json:"frame,omitempty"`
+	Reducer   string       `json:"reducer,omitempty"`
+	Alignment string       `json:"alignment,omitempty"`
+	Mode      string       `json:"mode,omitempty"`
+	TimeField string       `json:"time-field,omitempty"`
+	Unit      string       `json:"unit,omitempty"`
+}
+
+func (d *Definition) UnmarshalJSON(data []byte) error {
+	type definition Definition
+	var decoded definition
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if window, exists := raw["window"]; exists && strings.TrimSpace(string(window)) == "null" {
+		return fmt.Errorf("window must contain between 1 and 8 entries")
+	}
+	*d = Definition(decoded)
+	return nil
 }
 
 type TemporalSeries struct {

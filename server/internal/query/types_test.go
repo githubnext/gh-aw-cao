@@ -2,7 +2,6 @@ package query
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 )
 
@@ -11,13 +10,29 @@ func TestParseDefinitionsRejectsUnsupportedObservationWindows(t *testing.T) {
 		`[{"operation":"rolling","field":"count","as":"recent","frame":7}]`,
 		`[]`,
 		`null`,
+		`[{"operation":"rolling","field":"count","as":"recent","frame":2,"alignment":"centered","order-by":[{"field":"day"}]}]`,
+		`[{"operation":"change","field":"count","as":"recent","order-by":[{"field":"day"}],"mode":"rate","unit":"hour"}]`,
+		`[{"operation":"rolling","field":"count","as":"recent","frame":1001,"order-by":[{"field":"day"}]}]`,
+		`[{"operation":"rolling","field":"count","as":"recent","frame":2,"order-by":[{"field":"day"}],"mode":"rate"}]`,
+		`[{"operation":"change","field":"count","as":"recent","order-by":[{"field":"day"}],"frame":null}]`,
+		`[{"operation":"rolling","field":"count","as":"recent","frame":2,"order-by":[{"field":"day"}],"sql":"unsafe"}]`,
 	} {
 		t.Run(window, func(t *testing.T) {
 			_, err := ParseDefinitions([]byte(`[{"name":"trend","from":"runs","window":` + window + `}]`))
-			if err == nil || !strings.Contains(err.Error(), "observation windows") {
-				t.Fatalf("expected unsupported observation window error, got %v", err)
+			if err == nil {
+				t.Fatalf("expected invalid observation window error, got %v", err)
 			}
 		})
+	}
+}
+
+func TestParseDefinitionsAcceptsTypedWindows(t *testing.T) {
+	definitions, err := ParseDefinitions([]byte(`[{"name":"trend","from":"runs","window":[
+		{"operation":"rolling","field":"count","as":"recent","frame":3,"alignment":"centered","order-by":[{"field":"day"}]},
+		{"operation":"change","field":"recent","as":"speed","mode":"rate","time-field":"day","unit":"day","groupby":["owner"],"order-by":[{"field":"day","direction":"desc"}]}
+	]}]`))
+	if err != nil || len(definitions) != 1 || len(definitions[0].Window) != 2 {
+		t.Fatalf("typed window = %+v, error = %v", definitions, err)
 	}
 }
 

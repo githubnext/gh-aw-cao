@@ -605,10 +605,6 @@
           "objective": "Identify changes in recent failure activity for investigation.",
           "acceptance": "Missing conclusions remain unknown and observed changes are checked against underlying runs.",
           "description": "Change in the failure count across the most recent seven runs; the first change is undefined.",
-          "requires": {
-            "backend": "static",
-            "message": "Observation-window charts currently require the browser data worker."
-          },
           "data": {
             "source": "workflow-failure-trend",
             "route-field": "workflow-route"
