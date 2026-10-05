@@ -1,6 +1,6 @@
 {
   "source_sha": "e0fa4d66249599f57d2251d34c2439254a646024",
-  "next_category": 5,
+  "next_category": 1,
   "evaluations": [
     {
       "evaluated_at": "2026-10-04T22:28:12.862208Z",
@@ -151,6 +151,14 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [37296965989, 37296069010, 37294240038, 37292481487, 37289798040, 37289700998, 37287882538, 37286886675, 37283940935, 37283429611, 37281174539, 37280698695, 37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37295654966, 37289327301, 37287481480, 37283081396, 37280780127, 37276002403, 37271555289, 37270089878],
       "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days still show enough evidence and the existing recommendation remains unchanged. Comparable sample: 20 successful or skipped docs runs, including 12 build-bearing successes and 8 schedule freshness skips. Median/p90 queue time stayed 0s/0s; full workflow 65.5s/76.7s; build 43.5s/48.8s; deploy 10s/12s; schedule-freshness 8s/9s. Trusted step metadata again showed 100% node_modules restore success and 100% dashboard cache restore success across all 12 build-bearing runs, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped every time. The duplicate workflow_run rebuild pattern persists on SHA b570db22b5a08dd1ca0ba5bfc1f015518cc2604a after successful CAO Dashboard runs 37271555289, 37276002403, 37280780127, 37283081396, 37287481480, 37289327301, and 37295654966 triggered docs builds 37271878331, 37276372723, 37281174539, 37283429611, 37287882538, 37289700998, and 37296069010 while adjacent scheduled runs 37274196048, 37283940935, 37286886675, 37289798040, 37292481487, and 37294240038 skipped as already fresh. Producer evidence from the latest 15 successful cao-dashboard.yml runs still shows the upstream dashboard build dominates absolute time, with median/p90 build 202s/213.2s and Upgrade fallback activity data 150s/155.6s. Because open issue #16054 already captures the only threshold-meeting docs-side improvement and the evidence has not materially changed, no new actionable non-duplicate recommendation is warranted.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T11:29:00Z",
+      "worker_run_id": "37302702709",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37302772628, 37300319657, 37298660935, 37296965989, 37296563551, 37296069010, 37294240038, 37292481487, 37289798040, 37289700998, 37287882538, 37286886675, 37283940935, 37283429611, 37281174539, 37280698695, 37295654966, 37289327301, 37287481480, 37283081396, 37280780127, 37276002403],
+      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days again provide sufficient evidence, but the only threshold-meeting improvement remains the already-open duplicate workflow_run rebuild recommendation in issue #16054. Comparable sample: 16 successful docs runs, including 8 build-bearing successes and 8 freshness skips. Median/p90 queue time stayed 0s/0s; full workflow 59.5s/93.9s; build 46s/59.6s; deploy 10s/72.5s; schedule-freshness 7s/9s. Trusted step metadata again showed 100% node_modules restore success and 100% dashboard cache restore success across all 8 build-bearing runs, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped every time. The duplicate workflow_run rebuild pattern persisted on SHA b570db22b5a08dd1ca0ba5bfc1f015518cc2604a: dashboard runs 37280780127, 37283081396, 37287481480, 37289327301, and 37295654966 were followed by docs workflow_run builds 37281174539, 37283429611, 37287882538, 37289700998, and 37296069010, while adjacent scheduled runs 37283940935, 37286886675, 37289798040, and 37294240038 skipped as already fresh. Producer comparison from the latest 6 successful cao-dashboard.yml runs still shows the heavier cost is upstream dashboard generation, with median build 207s and Upgrade fallback activity data 148s median / 161.6s p90. No new non-duplicate scheduling, concurrency, or rebuild-avoidance improvement meets the >=60s or >=15% threshold beyond open issue #16054.",
       "suggestion_fingerprint": null
     }
   ]
