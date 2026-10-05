@@ -638,7 +638,9 @@ current or previous value, or a non-finite result likewise yields null. Null
 is not equivalent to a plotted zero. A renderer using Vega-Lite can compile
 these declarative operations to partitioned, sorted window and calculate
 transforms; a renderer without that runtime executes the same semantics in
-its data-processing worker, not in view-specific JavaScript.
+its data-processing worker, not in view-specific JavaScript. A backend that
+does not implement observation windows must reject such queries rather than
+silently return the untransformed observations.
 
 #### 5.5.5 Normative Query Requirements
 

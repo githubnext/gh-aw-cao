@@ -2,8 +2,24 @@ package query
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
+
+func TestParseDefinitionsRejectsUnsupportedObservationWindows(t *testing.T) {
+	for _, window := range []string{
+		`[{"operation":"rolling","field":"count","as":"recent","frame":7}]`,
+		`[]`,
+		`null`,
+	} {
+		t.Run(window, func(t *testing.T) {
+			_, err := ParseDefinitions([]byte(`[{"name":"trend","from":"runs","window":` + window + `}]`))
+			if err == nil || !strings.Contains(err.Error(), "observation windows") {
+				t.Fatalf("expected unsupported observation window error, got %v", err)
+			}
+		})
+	}
+}
 
 func TestClassifyArgumentKind(t *testing.T) {
 	tests := []struct {

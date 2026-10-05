@@ -73,7 +73,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  * @typedef {{
  *   key: string,
  *   x: string,
- *   y: number,
+ *   y: number | null,
  *   category?: string,
  *   color: string | null,
  *   highlighted?: boolean | null,
@@ -1340,13 +1340,13 @@ function renderChartView(context) {
   };
 
   const clustering = chartType === 'scatter' && points.length > MAX_RENDERED_SCATTER_POINTS
-    ? processScatterPoints(points.map(({ key, x: pointX, y: pointY, color: pointColor, link }) => ({
+    ? processScatterPoints(points.flatMap(({ key, x: pointX, y: pointY, color: pointColor, link }) => pointY == null ? [] : [{
         key,
         x: pointX,
         y: pointY,
         color: pointColor,
         link
-      })), MAX_RENDERED_SCATTER_POINTS)
+      }]), MAX_RENDERED_SCATTER_POINTS)
     : points;
   const pending = clustering instanceof Promise;
   const initial = pending ? null : renderVisualization(clustering);

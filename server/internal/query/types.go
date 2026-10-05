@@ -32,6 +32,7 @@ type Definition struct {
 	Aggregate      *Aggregate          `json:"aggregate,omitempty"`
 	TemporalSeries *TemporalSeries     `json:"temporal-series,omitempty"`
 	Predict        []json.RawMessage   `json:"predict,omitempty"`
+	Window         json.RawMessage     `json:"window,omitempty"`
 	Select         []SelectedField     `json:"select,omitempty"`
 	OrderBy        []OrderField        `json:"order-by,omitempty"`
 	Limit          *int                `json:"limit,omitempty"`

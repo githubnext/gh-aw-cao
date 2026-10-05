@@ -1,8 +1,27 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieChartLayout, renderPieLegend } from '../../src/components/chart-elements.js';
+import { buildChartPoints } from '../../src/components/view-data.js';
 
 describe('chart element helpers', () => {
+  it('retains missing window results as gaps and plots negative changes below zero', () => {
+    const rows = [
+      { 'observed-at': '2026-08-01T00:00:00Z', delta: 1 },
+      { 'observed-at': '2026-08-02T00:00:00Z', delta: null },
+      { 'observed-at': '2026-08-03T00:00:00Z', delta: -2 },
+      { 'observed-at': '2026-08-04T00:00:00Z', delta: 0 }
+    ];
+    const points = buildChartPoints('usage', 'Change', rows,
+      { field: 'observed-at' }, { field: 'delta' }, null, null);
+    expect(points.map((point) => point.y)).toEqual([1, null, -2, 0]);
+    const chart = renderChartWidget('line', points, listChartSeries(points));
+    const path = chart.querySelector('path.line-chart-series');
+    expect(path?.getAttribute('d')?.match(/M /g)).toHaveLength(2);
+    expect(chart.querySelectorAll('.line-chart-point')).toHaveLength(3);
+    expect([...chart.querySelectorAll('.line-chart-y-labels span')].map((tick) => tick.textContent))
+      .toEqual(['1', '-0.50', '-2']);
+  });
+
   it('DLS-SAFE-009 groups chart series deterministically and lists reusable class names', () => {
     const points = [
       { x: '2026-08-29', y: 3, color: 'fail' },

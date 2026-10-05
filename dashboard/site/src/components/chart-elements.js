@@ -120,7 +120,7 @@ const SEMANTIC_SERIES_PHRASES = {
 /**
  * @typedef {{
  *   x: string,
- *   y: number,
+ *   y: number | null,
  *   weight?: number,
  *   color: string | null,
  *   highlighted?: boolean | null,
@@ -745,6 +745,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     /** @type {Map<string, Array<{ x: number, lower: number, upper: number }>>} */
     const areaCoordinates = new Map();
     let maximum = 1;
+    let minimum = 0;
     if (isAreaChart) {
       const cumulativeByX = new Map(xValues.map((value) => [value, 0]));
       for (const [seriesName, seriesPoints] of groupedSeries) {
@@ -767,8 +768,12 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       }
     } else {
       for (const point of points) {
+        if (point.y == null) continue;
         const value = toNumber(point.y);
-        if (Number.isFinite(value)) maximum = Math.max(maximum, value);
+        if (Number.isFinite(value)) {
+          maximum = Math.max(maximum, value);
+          minimum = Math.min(minimum, value);
+        }
       }
     }
     const referenceLines = isDotChart && referenceField
@@ -780,7 +785,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     for (const { value } of referenceLines) maximum = Math.max(maximum, value);
     const pointSize = lineChartPointSize(points.length);
     const dotPointRadius = dotChartPointRadius(points.length);
-    const yTicks = [maximum, maximum / 2, 0];
+    const yTicks = [maximum, (maximum + minimum) / 2, minimum];
     const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
     const lineChartLeft = Math.min(
       LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH,
@@ -803,7 +808,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       for (const coordinate of coordinates) coordinate.x = lineChartLeft + (coordinate.x * plotWidth);
     }
     const gridLines = yTicks.map((value) => {
-      const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
+      const y = LINE_CHART_BOTTOM - (((value - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT);
       return h('line', {
         className: 'line-chart-grid',
         x1: lineChartLeft,
@@ -891,9 +896,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         ...referenceLines.map(({ seriesName, value }) => h('line', {
           className: `dot-chart-reference ${seriesClassNames.get(seriesName) ?? 'chart-series-1'}`,
           x1: lineChartLeft,
-          y1: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
+          y1: LINE_CHART_BOTTOM - ((Math.max(minimum, value) - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT,
           x2: LINE_CHART_RIGHT,
-          y2: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
+          y2: LINE_CHART_BOTTOM - ((Math.max(minimum, value) - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT,
           'data-chart-reference': seriesName,
           'data-chart-reference-value': String(value),
           'aria-hidden': 'true'
@@ -901,7 +906,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         ...groupedSeries.flatMap(([seriesName, seriesPoints], seriesIndex) => {
           const seriesClassName = seriesClassNames.get(seriesName) ?? 'chart-series-1';
           const stackedCoordinates = areaCoordinates.get(seriesName) ?? [];
-          const coordinates = seriesPoints.map((point) => {
+          const coordinates = seriesPoints.map((point, index) => {
             const xIndex = xIndexes.get(point.x) ?? 0;
             const pointTime = Date.parse(point.x);
             const x = isScatterChart && maximumTime > minimumTime && Number.isFinite(pointTime)
@@ -909,12 +914,23 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               : xValues.length < 2
                 ? lineChartLeft + (plotWidth / 2)
                 : lineChartLeft + ((xIndex / (xValues.length - 1)) * plotWidth);
-            const y = LINE_CHART_BOTTOM - (Math.max(0, toNumber(point.y)) / maximum) * LINE_CHART_HEIGHT;
-            return { point, x, y };
+            const valid = point.y != null && Number.isFinite(point.y);
+            const y = valid
+              ? LINE_CHART_BOTTOM - ((/** @type {number} */ (point.y) - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT
+              : LINE_CHART_BOTTOM;
+            return { point, x, y, valid, index };
           });
-          const renderedCoordinates = sampleLineCoordinates(coordinates, renderedPointLimit);
+          const validCoordinates = coordinates.filter(({ valid }) => valid);
+          const hasGaps = validCoordinates.length !== coordinates.length;
+          const renderedCoordinates = sampleLineCoordinates(validCoordinates, renderedPointLimit);
+          const gapPrefix = [];
+          let gaps = 0;
+          for (const coordinate of coordinates) {
+            if (!coordinate.valid) gaps += 1;
+            gapPrefix.push(gaps);
+          }
           const highlightedCoordinates = hasWindowHighlight
-            ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
+            ? sampleLineCoordinates(validCoordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
             : [];
           return [
             ...(isAreaChart ? [h('path', {
@@ -927,6 +943,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               ].join(' '),
               'data-chart-series': seriesName,
               'aria-hidden': 'true'
+            })] : !isPointChart && hasGaps ? [h('path', {
+              className: `line-chart-series ${seriesClassName}${hasWindowHighlight ? ' line-chart-context' : ''}`,
+              style: `--chart-entry-index: ${seriesIndex}`,
+              pathLength: 1,
+              d: lineSegmentPath(renderedCoordinates, gapPrefix),
+              fill: 'none',
+              'data-chart-series': seriesName
             })] : !isPointChart ? [h('polyline', {
               className: `line-chart-series ${seriesClassName}${hasWindowHighlight ? ' line-chart-context' : ''}`,
               style: `--chart-entry-index: ${seriesIndex}`,
@@ -936,11 +959,12 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               'data-chart-series': seriesName
             })] : []),
             ...(!isAreaChart && !isPointChart && highlightedCoordinates.length > 1
-              ? [h('polyline', {
+              ? [h(hasGaps ? 'path' : 'polyline', {
                 className: `line-chart-series line-chart-current ${seriesClassName}`,
                 style: `--chart-entry-index: ${seriesIndex}`,
                 pathLength: 1,
-                points: highlightedCoordinates.map(({ x, y }) => `${x},${y}`).join(' '),
+                ...(hasGaps ? { d: lineSegmentPath(highlightedCoordinates, gapPrefix) }
+                  : { points: highlightedCoordinates.map(({ x, y }) => `${x},${y}`).join(' ') }),
                 fill: 'none',
                 'data-chart-window': 'current'
               })]
@@ -954,7 +978,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
                 'aria-hidden': 'true'
               }))
               : []),
-            ...(showInteractivePoints ? coordinates.map(({ point, x, y }, pointIndex) => {
+            ...(showInteractivePoints ? validCoordinates.map(({ point, x, y }, pointIndex) => {
               const stacked = isAreaChart
                 ? stackedCoordinates.find((coordinate) => coordinate.x === x)
                 : null;
@@ -1092,6 +1116,14 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       )
     )
   );
+}
+
+/** @param {Array<{ x: number, y: number, index: number }>} coordinates @param {number[]} gapPrefix */
+function lineSegmentPath(coordinates, gapPrefix) {
+  return coordinates.map(({ x, y, index: rowIndex }, index) => {
+    const previous = coordinates[index - 1];
+    return `${!previous || gapPrefix[rowIndex] > gapPrefix[previous.index] ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
 }
 
 /**
@@ -1657,11 +1689,11 @@ function formatTimelineTick(value) {
 }
 
 /**
- * @param {{ x: string, y: number, color: string | null, source?: Record<string, unknown> }} point
+ * @param {{ x: string, y: number | null, color: string | null, source?: Record<string, unknown> }} point
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
  * @returns {string}
  */
 function chartPointLabel(point, unit = null) {
   const clusterCount = Number(point.source?.['cluster-count']);
-  return `${point.x}: ${formatNumber(point.y, unit)}${point.color ? `, ${point.color}` : ''}${clusterCount > 1 ? `, cluster of ${formatNumber(clusterCount, null)} observations` : ''}`;
+  return `${point.x}: ${point.y == null ? 'Unavailable' : formatNumber(point.y, unit)}${point.color ? `, ${point.color}` : ''}${clusterCount > 1 ? `, cluster of ${formatNumber(clusterCount, null)} observations` : ''}`;
 }

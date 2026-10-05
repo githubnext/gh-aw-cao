@@ -30,6 +30,35 @@ function documentWith(queryDefinition) {
 }
 
 describe('declarative worker window queries', () => {
+  it('applies rolling after query aggregation rather than chart-side aggregation', () => {
+    const definition = {
+      name: 'volume', from: 'usage',
+      aggregate: {
+        by: ['workflow', 'observed-at'],
+        values: [{ field: 'run', as: 'run-count', reducer: 'count' }]
+      },
+      window: [{
+        field: 'run-count', as: 'two-observation-volume', operation: 'rolling',
+        frame: 2, reducer: 'sum', groupby: ['workflow'],
+        'order-by': [{ field: 'observed-at' }]
+      }]
+    };
+    const rows = [
+      { workflow: 'a', run: '1', 'observed-at': '2026-01-02T00:00:00Z' },
+      { workflow: 'a', run: '2', 'observed-at': '2026-01-01T00:00:00Z' },
+      { workflow: 'a', run: '3', 'observed-at': '2026-01-01T00:00:00Z' },
+      { workflow: 'b', run: '4', 'observed-at': '2026-01-01T00:00:00Z' }
+    ];
+    const output = executeDashboardQueries([definition], {
+      usage: { source: 'usage', rows, metadata: {
+        'source-id': 'usage', 'source-kind': 'published', 'as-of': '2026-01-02T00:00:00Z',
+        'retrieved-at': '2026-01-02T00:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available'
+      } }
+    }).volume.rows;
+    expect(output.map(({ workflow, 'run-count': count, 'two-observation-volume': rolling }) => [workflow, count, rolling]))
+      .toEqual([['a', 1, 3], ['a', 2, 2], ['b', 1, 1]]);
+  });
+
   it('computes partitioned rolling and three changes without reordering source rows', () => {
     const rows = [
       { run: '4', workflow: 'a', aic: 9, 'observed-at': '2026-01-01T00:00:04Z' },
@@ -103,7 +132,10 @@ describe('declarative worker window queries', () => {
     }));
     const definition = { name: 'centered', from: 'usage', window: [
       { field: 'x', as: 'center', operation: 'rolling', frame: 3, alignment: 'centered', 'order-by': [{ field: 't' }] },
-      { field: 'x', as: 'per-minute', operation: 'change', mode: 'rate', 'time-field': 't', unit: 'minute', 'order-by': [{ field: 't' }] }
+      ...['second', 'minute', 'hour', 'day'].map((unit) => ({
+        field: 'x', as: `per-${unit}`, operation: 'change', mode: 'rate',
+        'time-field': 't', unit, 'order-by': [{ field: 't' }]
+      }))
     ] };
     const output = executeDashboardQueries([definition], {
       usage: { source: 'usage', rows, metadata: {
@@ -113,6 +145,9 @@ describe('declarative worker window queries', () => {
     }).centered.rows;
     expect(output.map((row) => row.center)).toEqual([null, 2, 3, null]);
     expect(output.map((row) => row['per-minute'])).toEqual([null, 1, 1, 1]);
+    expect(output.map((row) => row['per-second'])).toEqual([null, 1 / 60, 1 / 60, 1 / 60]);
+    expect(output.map((row) => row['per-hour'])).toEqual([null, 60, 60, 60]);
+    expect(output.map((row) => row['per-day'])).toEqual([null, 1440, 1440, 1440]);
   });
 
   it('validates window schema, field types and bounded shape, including bypassed validators', () => {

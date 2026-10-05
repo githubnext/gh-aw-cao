@@ -10,7 +10,7 @@ import { createDebug } from '../debug.js';
 const debugViewData = createDebug('view-data');
 
 /** @typedef {{ field: string, aggregate?: string, as?: string, direction?: string } & Record<string, unknown>} TableField */
-/** @typedef {{ key: string, x: string, y: number, weight?: number, category?: string, color: string | null, section?: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
+/** @typedef {{ key: string, x: string, y: number | null, weight?: number, category?: string, color: string | null, section?: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
 
 /** @param {unknown} value */
 export function toViewText(value) {
@@ -115,7 +115,7 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
     return rows.map((row, rowIndex) => ({
       key: `${pageId}-${title}-${rowIndex}`,
       x: x ? formatString(row[x.field], x.format) : 'unknown',
-      y: y ? toNumber(row[y.field]) : 0,
+      y: y ? row[y.field] == null ? null : toNumber(row[y.field]) : 0,
       weight: weight ? toNumber(row[weight.field]) : 1,
       category: y ? formatString(row[y.field], y.format) : 'unknown',
       color: color ? formatString(row[color.field], color.format) : null,
