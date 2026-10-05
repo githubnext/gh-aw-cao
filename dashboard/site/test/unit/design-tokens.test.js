@@ -79,6 +79,20 @@ describe('Agentic Workflows docs design tokens', () => {
     expect(css).toContain('font-weight:400;letter-spacing:var(--tracking-tight)');
   });
 
+  it('uses one full-width grid layer behind the heading, rhythm, and health rows', () => {
+    const css = primerStylesheet();
+    const selector = '.custom-view-grid:has(> .factory-intro:first-child + .factory-floor)::before';
+    const start = css.indexOf(`${selector}{`);
+    const rule = css.slice(start, css.indexOf('}', start));
+    expect(start).toBeGreaterThan(-1);
+    expect(rule).toContain('grid-row:1 / 3');
+    expect(rule).toContain('grid-column:1 / -1');
+    expect(rule).toContain('inset:0');
+    expect(rule).toContain('pointer-events:none');
+    expect(rule).not.toContain('round(');
+    expect(css).toContain('> .factory-floor::before{content:none}');
+  });
+
   it('ships licensed, locally served normal and italic variable fonts', () => {
     for (const filename of ['CAOSansVF.woff2', 'CAOSansVF-Italic.woff2']) {
       const font = readFileSync(resolve('src/fonts', filename));

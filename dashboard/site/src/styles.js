@@ -1504,7 +1504,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
 main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding: 0; scrollbar-gutter: auto; }
 .dashboard-overview-page { margin: 0; }
-.dashboard-overview-page > .custom-view-grid { display: grid; gap: 24px; padding: 32px; background: transparent; }
+.dashboard-overview-page > .custom-view-grid { display: grid; gap: 0; padding: 0; background: transparent; }
 .dashboard-overview-page .custom-view { margin: 0; }
 .dashboard-overview-page > .custom-view-grid > .custom-view { overflow: hidden; border: 0; border-radius: 0; background: transparent; }
 .dashboard-overview-page .factory-floor { border: 0; }
@@ -1584,7 +1584,6 @@ ${overviewGridStyles}
   .factory-rhythm { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 @media (max-width: 700px) {
-  .dashboard-overview-page > .custom-view-grid { gap: 20px; padding: 20px 16px; }
   .factory-intro { min-height: 0; gap: 20px; padding: 8px 0; }
   .factory-intro h2 { font-size: 2rem; }
   .factory-floor { min-height: 0; padding: 16px; }

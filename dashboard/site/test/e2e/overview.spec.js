@@ -208,20 +208,48 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-radius', '12px');
     await expect(factory.locator('.factory-station').first()).toHaveCSS('border-radius', '12px');
     await expect(factory.locator('.factory-station strong').first()).toHaveCSS('font-weight', '400');
-    const grid = await factory.locator('.factory-floor').evaluate((floor) => {
-      const style = getComputedStyle(floor, '::before');
-      return { image: style.backgroundImage, size: style.backgroundSize };
+    const grid = await factory.evaluate((container) => {
+      const style = getComputedStyle(container, '::before');
+      const bounds = container.getBoundingClientRect();
+      return {
+        image: style.backgroundImage,
+        size: style.backgroundSize,
+        left: parseFloat(style.left),
+        right: parseFloat(style.right),
+        width: parseFloat(style.width),
+        height: parseFloat(style.height),
+        rows: style.gridRow,
+        x: bounds.x,
+        y: bounds.y
+      };
     });
     expect(grid.image).toContain('linear-gradient');
-    expect(grid.size.split(', ').every((size) => size === '32px 32px')).toBe(true);
+    expect(grid.size).toBe('32px 32px, 32px 32px, 100% 100%');
+    expect(grid.rows).toBe('1 / 3');
+    expect(grid.left).toBe(0);
+    expect(grid.right).toBe(0);
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
     const introBounds = await factory.locator(':scope > .factory-intro').boundingBox();
-    if (!pageBounds || !mainBounds) throw new Error('Overview and main bounds must be available');
+    const floorBounds = await factory.locator(':scope > .factory-floor').boundingBox();
+    const campaignBounds = await campaigns.boundingBox();
+    if (!pageBounds || !mainBounds || !introBounds || !floorBounds || !campaignBounds) {
+      throw new Error('Overview summary, campaign, and main bounds must be available');
+    }
     expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
     expect(pageBounds.width).toBeCloseTo(mainBounds.width, 0);
     expect(pageBounds.y).toBeCloseTo(mainBounds.y, 0);
-    expect(introBounds?.y).toBeCloseTo(mainBounds.y + (viewport.width > 700 ? 32 : 20), 0);
+    expect(introBounds.y).toBeCloseTo(mainBounds.y, 0);
+    expect(introBounds.x).toBeCloseTo(mainBounds.x, 0);
+    expect(floorBounds.x).toBeCloseTo(mainBounds.x, 0);
+    expect(grid.x).toBeCloseTo(mainBounds.x, 0);
+    expect(grid.width).toBeCloseTo(mainBounds.width, 0);
+    expect(introBounds.y + introBounds.height).toBeCloseTo(floorBounds.y, 0);
+    expect(grid.y + grid.height).toBeCloseTo(floorBounds.y + floorBounds.height, 0);
+    expect(campaignBounds.y).toBeCloseTo(grid.y + grid.height, 0);
+    if (viewport.width < 700) {
+      expect(grid.width).toBe(viewport.width);
+    }
     if (viewport.width > 700) {
       await expect(page.locator('.app-main > .top-nav')).toBeVisible();
     } else {
