@@ -71,17 +71,17 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "status": "needs-work",
   "evaluation": {
-    "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
-    "true_positive_count": 0,
-    "false_positive_count": 1,
-    "false_negative_count": 0,
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "3469b7581ee9e7016a6e5bb477c3a8c3aabfb142",
+    "true_positive_count": 2,
+    "false_positive_count": 4,
+    "false_negative_count": 1,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 10b42295: sole recursive-chmod call (cao-mcp-container.mjs:89) remains a false positive on an mkdtemp'd scratch directory holding only a public SQLite fixture. No new occurrences.",
-    "txn_id": "refiner-37118181288-3"
+    "reason": "Re-confirmed unchanged on HEAD 3469b75: same 2 true positives (auditDir chmods), 4 false positives (sessionState/squid-logs/diagnostics dirs), 1 false negative (shell-string chmod in artifact-permissions.ts). No drift.",
+    "txn_id": "refiner-37313851090-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37313851090",
+  "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-actions",
@@ -114,6 +114,6 @@
       "txn_id": "refiner-37156057344-1"
     }
   ],
-  "last_seen_at": "2026-10-03T11:03:07Z",
-  "last_updated": "2026-10-03T22:08:51Z"
+  "last_seen_at": "2026-10-05T13:10:11Z",
+  "last_updated": "2026-10-05T13:10:11Z"
 }
