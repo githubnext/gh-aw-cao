@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import {
   compileAndCompare,
   doctorFindings,
@@ -255,6 +257,72 @@ test("doctor failures are warnings", () => {
     ? { status: 0, stdout: "https://github.com/acme/control.git\n", stderr: "" }
     : { status: 1, stdout: "", stderr: "not authenticated" };
   assert.equal(doctorFindings(".", execute)[0].severity, "warning");
+});
+
+test("CI validation does not dirty a fresh checkout with its own report", async (t) => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "cao-validation-workflow-"));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+  const root = path.join(temporaryRoot, "checkout");
+  const runnerTemp = path.join(temporaryRoot, "runner temp");
+  await mkdir(root);
+  await mkdir(runnerTemp);
+  const workflow = parse(await readFile(".github/workflows/cao-validate.yml", "utf8"));
+  const validation = workflow.jobs.validate.steps.find(({ id }) => id === "validation");
+  const upload = workflow.jobs.validate.steps.find(({ name }) => name === "Upload validation report");
+  const moduleUrl = new URL("../../activity/validation.mjs", import.meta.url).href;
+  await writeFile(path.join(root, "validate.mjs"), `
+import { spawnSync } from "node:child_process";
+import { doctorFindings } from ${JSON.stringify(moduleUrl)};
+const findings = doctorFindings(process.cwd(), (command, args, options) => {
+  if (command === "gh" && args[0] === "aw" && args[1] === "doctor") {
+    const status = spawnSync("git", ["status", "--porcelain"], options);
+    if (status.status !== 0) return status;
+    return status.stdout
+      ? { status: 1, stdout: "", stderr: "working directory has uncommitted changes, please commit or stash them first" }
+      : { status: 0, stdout: "{}", stderr: "" };
+  }
+  return spawnSync(command, args, options);
+});
+console.log(JSON.stringify({
+  validatorVersion: "1",
+  findings,
+  summary: { errors: 0, warnings: findings.length, notes: 0 },
+}));
+`);
+  await writeFile(path.join(root, "cao.sh"), '#!/usr/bin/env bash\nexec node validate.mjs "$@"\n', { mode: 0o755 });
+  const execute = (command, args, extra = {}) => {
+    const result = spawnSync(command, args, { cwd: root, encoding: "utf8", ...extra });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    return result.stdout;
+  };
+  execute("git", ["init", "--quiet"]);
+  execute("git", ["remote", "add", "origin", "https://github.com/acme/control.git"]);
+  execute("git", ["add", "--all"]);
+  execute("git", [
+    "-c", "user.name=CAO Test", "-c", "user.email=cao-test@localhost",
+    "commit", "--quiet", "--no-gpg-sign", "-m", "Clean validation fixture",
+  ]);
+  assert.equal(execute("git", ["status", "--porcelain"]), "");
+  const output = path.join(runnerTemp, "output");
+  execute("bash", ["-e", "-c", validation.run], {
+    env: { ...process.env, RUNNER_TEMP: runnerTemp, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: "acme/control" },
+  });
+  const reportPath = path.resolve(root, upload.with.path.replace("${{ runner.temp }}", runnerTemp));
+  const report = JSON.parse(await readFile(reportPath, "utf8"));
+  assert.deepEqual(report.summary, { errors: 0, warnings: 0, notes: 0 });
+  assert.deepEqual(report.findings, []);
+  assert.equal(await readFile(output, "utf8"), "exit-code=0\n");
+  assert.equal(execute("git", ["status", "--porcelain"]), "");
+  assert.equal(reportPath, path.join(runnerTemp, "cao-validation.json"));
+
+  await writeFile(path.join(root, "uncommitted.txt"), "A real checkout change\n");
+  execute("bash", ["-e", "-c", validation.run], {
+    env: { ...process.env, RUNNER_TEMP: runnerTemp, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: "acme/control" },
+  });
+  const changedReport = JSON.parse(await readFile(reportPath, "utf8"));
+  assert.equal(changedReport.summary.warnings, 1);
+  assert.equal(changedReport.findings[0].id, "doctor-check-failed");
+  assert.match(changedReport.findings[0].observed, /working directory has uncommitted changes/);
 });
 
 function cleanExecutor() {

@@ -90,7 +90,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set +e
-          ./cao.sh validate --json > cao-validation.json
+          ./cao.sh validate --json > "$RUNNER_TEMP/cao-validation.json"
           status=$?
           echo "exit-code=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
@@ -99,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-validation
-          path: cao-validation.json
+          path: ${{ runner.temp }}/cao-validation.json
           if-no-files-found: error
           retention-days: 14
       - name: Preserve validation result

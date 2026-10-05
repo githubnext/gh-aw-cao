@@ -106,6 +106,12 @@ Strict compilation runs against a committed temporary snapshot of the current
 workflow files. Normal uncommitted local edits are still validated, but they do
 not produce an unrelated dirty-working-tree warning from `gh aw`.
 
+CI writes its JSON report under `RUNNER_TEMP`, outside the checkout, before
+uploading the `cao-validation` artifact. This keeps report creation from
+triggering a false `gh aw doctor` warning and validation issue on a fresh
+installation. When redirecting local JSON output, likewise use a path outside
+the checkout so the report does not make the repository appear modified.
+
 Exit code `0` means no validation errors, `1` means validation findings failed the requested threshold, and `2` means the validator itself could not complete. Validation never rewrites workflow artifacts; run `npm run compile:locks` to regenerate stale locks.
 
 ## Run and Watch a Campaign
