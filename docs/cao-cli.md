@@ -87,6 +87,7 @@ These commands accept multiple campaign slugs:
 ```
 
 `mode live` does not widen repository scope, grant target consent, or create credential access. Complete the [live rollout gates](rollout-and-routing.md) separately.
+It also checks whether the control repository has a selected GitHub App or PAT with write credentials configured. If CI can confirm they are missing, it suggests `./cao.sh setup`; lack of permission to inspect Actions settings does not block the mode change. This check does not verify installation access or token permissions.
 
 `disable` prevents new starts for the campaign's installed workflows. It does not cancel an active run or replace the [control-plane emergency stop](operations.md#emergency-stop).
 

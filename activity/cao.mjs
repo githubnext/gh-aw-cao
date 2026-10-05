@@ -41,6 +41,7 @@ import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
   confirmExistingPatSecret,
+  checkLiveWriteAuthentication,
   configureEnterpriseApps,
   FINE_GRAINED_PAT_PROFILES,
   fineGrainedPatSetupResult,
@@ -907,7 +908,8 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
 }
 
 export async function setCaoCampaignMode(mode, campaignNames, {
-  policyPath = DEFAULT_POLICY_PATH
+  policyPath = DEFAULT_POLICY_PATH,
+  checkAuthentication = checkLiveWriteAuthentication
 } = {}) {
   if (mode !== 'live' && mode !== 'preview') {
     throw new UsageError('cao mode requires live or preview');
@@ -934,6 +936,7 @@ export async function setCaoCampaignMode(mode, campaignNames, {
     }
   }
 
+  if (mode === 'live') checkAuthentication();
   const policyMode = mode === 'preview' ? 'review' : 'live';
   for (const campaignName of new Set(campaignNames)) {
     campaigns[campaignName] = { ...campaigns[campaignName], mode: policyMode };

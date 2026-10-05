@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readSync } from 'node:fs';
+import { APP_PROFILES, repositoryState, repositoryVariableValue } from '../.github/workflows/shared/setup-github-apps.mjs';
 
 export const FINE_GRAINED_PAT_PROFILES = [
   {
@@ -32,6 +33,45 @@ export const FINE_GRAINED_PAT_PROFILES = [
 ];
 
 export const GITHUB_AUTH_MODE_VARIABLE = 'GH_AW_GITHUB_AUTH_MODE';
+
+export function checkLiveWriteAuthentication({
+  execute = spawnSync,
+  environment = process.env,
+  writeWarning = (message) => console.error(message),
+} = {}) {
+  const runGh = (arguments_) => {
+    const result = execute('gh', arguments_, { encoding: 'utf8' });
+    if (result.error || result.status !== 0) throw new Error('GitHub credential inspection unavailable');
+    return result.stdout.trim();
+  };
+  try {
+    const repo = runGh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']);
+    if (!/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo)) return;
+    const state = repositoryState(repo, runGh);
+    const mode = state.variables.has(GITHUB_AUTH_MODE_VARIABLE)
+      ? repositoryVariableValue(repo, GITHUB_AUTH_MODE_VARIABLE, runGh)
+      : '';
+    let configured = false;
+    if (mode === 'app') {
+      const writeApp = APP_PROFILES.find((profile) => profile.role === 'write');
+      configured = state.variables.has(writeApp.variable) && state.secrets.has(writeApp.secret)
+        && Boolean(repositoryVariableValue(repo, writeApp.variable, runGh));
+    } else if (mode === 'pat') {
+      const writePat = FINE_GRAINED_PAT_PROFILES.find((profile) => profile.role === 'write');
+      if (state.variables.has(writePat.repositoryMapVariable)) {
+        const map = JSON.parse(repositoryVariableValue(repo, writePat.repositoryMapVariable, runGh));
+        configured = map !== null && typeof map === 'object' && !Array.isArray(map)
+          && Object.values(map).some((secret) => typeof secret === 'string'
+            && secret.startsWith(`${writePat.secret}_`) && state.secrets.has(secret));
+      }
+    }
+    if (!configured && environment.CI === 'true') {
+      writeWarning(`Live write authentication is not configured for ${repo}; run ./cao.sh setup to configure a GitHub App or PAT before posting live items.`);
+    }
+  } catch {
+    // Credential inspection is best-effort when the caller cannot read Actions settings.
+  }
+}
 
 export function fineGrainedPatSetupResult(repo, setups) {
   const repositories = Object.fromEntries(FINE_GRAINED_PAT_PROFILES.map((profile) => [

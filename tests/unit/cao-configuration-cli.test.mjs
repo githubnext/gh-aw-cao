@@ -17,7 +17,7 @@ import {
   updateCaoCampaigns,
   upgradeGhAw,
 } from "../../activity/cao.mjs";
-import { confirmExistingPatSecret } from "../../activity/authentication.mjs";
+import { checkLiveWriteAuthentication, confirmExistingPatSecret } from "../../activity/authentication.mjs";
 import { configureDashboardPages } from "../../activity/setup.mjs";
 
 // gh-aw writes `gh aw version` output to stderr.
@@ -925,20 +925,77 @@ test("cao mode changes configured campaigns between live and preview atomically"
       },
     }, null, 2)}\n`);
 
-    const live = await setCaoCampaignMode("live", ["dependabot", "repo-assist"], { policyPath });
+    let checks = 0;
+    const live = await setCaoCampaignMode("live", ["dependabot", "repo-assist"], {
+      policyPath, checkAuthentication: () => { checks++; },
+    });
     let policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.equal(policy["control-plane"].campaigns.dependabot.mode, "live");
     assert.equal(policy["control-plane"].campaigns.dependabot.icon, "dependabot");
     assert.equal(policy["control-plane"].campaigns["repo-assist"].mode, "live");
     assert.deepEqual(live.campaigns, ["dependabot", "repo-assist"]);
 
-    const preview = await setCaoCampaignMode("preview", ["dependabot"], { policyPath });
+    assert.equal(checks, 1);
+    const preview = await setCaoCampaignMode("preview", ["dependabot"], {
+      policyPath, checkAuthentication: () => { checks++; },
+    });
     policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.equal(policy["control-plane"].campaigns.dependabot.mode, "review");
     assert.equal(policy["control-plane"].campaigns["repo-assist"].mode, "live");
     assert.equal(preview.mode, "preview");
+    assert.equal(checks, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live mode checks setup credentials and suggests setup only in CI when incomplete", () => {
+  const warnings = [];
+  const calls = [];
+  const execute = (_, arguments_) => {
+    calls.push(arguments_);
+    if (arguments_[0] === "repo") return { status: 0, stdout: "acme/control\n" };
+    if (arguments_.includes(".variables[].name")) {
+      return { status: 0, stdout: "GH_AW_GITHUB_AUTH_MODE\nGH_AW_GITHUB_WRITE_APP_ID\n" };
+    }
+    if (arguments_.includes(".secrets[].name")) return { status: 0, stdout: "" };
+    if (arguments_.at(-1) === ".value") return { status: 0, stdout: "app\n" };
+    assert.fail(`unexpected gh call: ${arguments_.join(" ")}`);
+  };
+  const options = { execute, environment: { CI: "true" }, writeWarning: (message) => warnings.push(message) };
+  checkLiveWriteAuthentication(options);
+  assert.match(warnings[0], /run \.\/cao\.sh setup/);
+  assert.equal(calls.filter((args) => args.includes("--paginate")).length, 2);
+
+  warnings.length = 0;
+  checkLiveWriteAuthentication({ ...options, environment: {} });
+  assert.deepEqual(warnings, []);
+  checkLiveWriteAuthentication({
+    ...options,
+    execute: () => ({ status: 1, stderr: "HTTP 403" }),
+  });
+  assert.deepEqual(warnings, []);
+});
+
+test("live mode accepts configured App and PAT write credentials", () => {
+  for (const [mode, variables, secrets, values] of [
+    ["app", ["GH_AW_GITHUB_AUTH_MODE", "GH_AW_GITHUB_WRITE_APP_ID"],
+      ["GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY"], { GH_AW_GITHUB_WRITE_APP_ID: "Iv1.app" }],
+    ["pat", ["GH_AW_GITHUB_AUTH_MODE", "GH_AW_GITHUB_WRITE_PAT_REPOSITORIES"],
+      ["GH_AW_GITHUB_WRITE_PAT_ACME"],
+      { GH_AW_GITHUB_WRITE_PAT_REPOSITORIES: '{"acme/control":"GH_AW_GITHUB_WRITE_PAT_ACME"}' }],
+  ]) {
+    const warnings = [];
+    const execute = (_, arguments_) => {
+      if (arguments_[0] === "repo") return { status: 0, stdout: "acme/control\n" };
+      if (arguments_.includes(".variables[].name")) return { status: 0, stdout: variables.join("\n") };
+      if (arguments_.includes(".secrets[].name")) return { status: 0, stdout: secrets.join("\n") };
+      return { status: 0, stdout: values[arguments_[2].split("/").at(-1)] ?? mode };
+    };
+    checkLiveWriteAuthentication({
+      execute, environment: { CI: "true" }, writeWarning: (message) => warnings.push(message),
+    });
+    assert.deepEqual(warnings, [], `${mode} credentials should be recognized`);
   }
 });
 

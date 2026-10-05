@@ -232,15 +232,15 @@ function runGh(args, options = {}) {
   return result.stdout.trim();
 }
 
-function repositoryState(repo) {
-  const variables = new Set(runGh([
+export function repositoryState(repo, runner = runGh) {
+  const variables = new Set(runner([
     "api",
     `/repos/${repo}/actions/variables?per_page=100`,
     "--paginate",
     "--jq",
     ".variables[].name",
   ]).split("\n").filter(Boolean));
-  const secrets = new Set(runGh([
+  const secrets = new Set(runner([
     "api",
     `/repos/${repo}/actions/secrets?per_page=100`,
     "--paginate",
@@ -250,8 +250,8 @@ function repositoryState(repo) {
   return { variables, secrets };
 }
 
-function repositoryVariableValue(repo, name) {
-  return runGh([
+export function repositoryVariableValue(repo, name, runner = runGh) {
+  return runner([
     "api",
     `/repos/${repo}/actions/variables/${name}`,
     "--jq",
