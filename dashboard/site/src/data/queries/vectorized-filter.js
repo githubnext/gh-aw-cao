@@ -1,4 +1,5 @@
 import { tidy } from '../../data-operations.js';
+import { createDebug } from '../../debug.js';
 import {
   dashboardQueryDefects,
   dashboardQueryIndex,
@@ -18,6 +19,7 @@ const BUFFER_MAP_READ = 1;
 const BUFFER_COPY_SRC = 4;
 const BUFFER_COPY_DST = 8;
 const BUFFER_STORAGE = 128;
+const debugGpu = createDebug('data:query');
 
 /** @template T @param {Promise<T>} operation @param {{ aborted?: boolean } | undefined} signal */
 function waitForGpu(operation, signal) {
@@ -60,6 +62,7 @@ export async function gpuFilter(rows, operator, signal = undefined) {
   const target = predicate.equals;
   const gpu = /** @type {{ gpu?: { requestAdapter: () => Promise<any> } }} */ (globalThis.navigator ?? {}).gpu;
   if (!gpu || typeof gpu.requestAdapter !== 'function') return null;
+  const startedAt = globalThis.performance?.now() ?? Date.now();
 
   const values = new Int32Array(rows.length);
   for (let i = 0; i < rows.length; i += 1) {
@@ -132,6 +135,12 @@ export async function gpuFilter(rows, operator, signal = undefined) {
       if (signal?.aborted) return null;
       const mask = new Uint32Array(readback.getMappedRange());
       const selected = rows.filter((_, index) => mask[index] === 1);
+      debugGpu('webgpu-filter', {
+        backend: 'webgpu',
+        inputRows: rows.length,
+        outputRows: selected.length,
+        durationMs: Math.round(((globalThis.performance?.now() ?? Date.now()) - startedAt) * 100) / 100
+      });
       return selected;
     } finally {
       if (mapped) readback.unmap();

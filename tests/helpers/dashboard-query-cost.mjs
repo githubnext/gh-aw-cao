@@ -35,6 +35,7 @@ import {
   DATABASE_VERSION,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+import { MIN_GPU_ROWS } from "../../dashboard/site/src/data/queries/webgpu-eligibility.js";
 
 const CAO_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
 
@@ -187,6 +188,7 @@ export function selectCostlyQueries(document, limit = DEFAULT_QUERY_COST_CANDIDA
       "static-total-row-read-units": query["total-row-read-units"],
       "static-direct-row-read-units": query["direct-row-read-units"],
       "static-dependency-row-read-units": query["dependency-row-read-units"],
+      "webgpu-filter": analysis.inventory.find((item) => item.name === query.name)?.["webgpu-filter"],
     })),
   };
 }
@@ -332,10 +334,22 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
     }
     const measurements = candidates
       .filter((candidate) => index.has(candidate.name))
-      .map((candidate) => ({
-        ...candidate,
-        ...measureDashboardQueryCost(index.get(candidate.name), sources, defects.get(candidate.name)),
-      }));
+      .map((candidate) => {
+        const definition = index.get(candidate.name);
+        const result = measureDashboardQueryCost(definition, sources, defects.get(candidate.name));
+        const inputRows = result["input-rows"][definition.from];
+        return {
+          ...candidate,
+          ...result,
+          "webgpu-filter": {
+            ...candidate["webgpu-filter"],
+            "input-rows": inputRows,
+            ...(inputRows !== undefined ? {
+              "input-cardinality": inputRows >= MIN_GPU_ROWS ? "large" : "below-threshold",
+            } : {}),
+          },
+        };
+      });
     const projected = Object.entries(databaseSources).filter(([name]) => !index.has(name));
     const sourceRecords = Object.fromEntries(projected.map(([name, source]) => [
       name,
@@ -472,6 +486,15 @@ export function dashboardQueryCostMarkdown(report) {
       ]),
     "",
     "### Computational cost",
+    "",
+    "WebGPU eligibility is structural only; CPU timings below are not GPU speedup measurements. Large-table candidates require a browser WebGPU/CPU comparison with identical rows, query and device conditions.",
+    "",
+    "| Query | Source table | Query input size | Filter | Filter row-read units |",
+    "| --- | --- | --- | --- | ---: |",
+    ...report.measurements.map((measurement) => {
+      const gpu = measurement["webgpu-filter"];
+      return `| ${markdownCode(measurement.query)} | ${gpu?.table ? `${markdownCode(gpu.table)} (${gpu["table-cardinality"] ?? "unknown"})` : "—"} | ${gpu?.["input-cardinality"] ?? "unknown"}${gpu?.["input-rows"] != null ? ` (${formatCount(gpu["input-rows"])} rows)` : ""} | ${gpu?.status === "candidate" ? markdownCode(gpu.field) : gpu?.status ?? "unknown"} | ${Object.values(gpu?.["filter-row-read-units"] ?? {}).reduce((sum, value) => sum + value, 0)} |`;
+    }),
     "",
     "| Rank | Query | Static rank | Input rows | Output rows | Operations | Time (ms) |",
     "| ---: | --- | ---: | ---: | ---: | ---: | ---: |",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
-import { estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
+import { dashboardQueryCostMarkdown, estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
 import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
 import { postgresQueryCostMarkdown } from "../helpers/dashboard-query-cost-report.mjs";
 
@@ -21,12 +21,48 @@ test("static query cost evaluator picks the highest ranked queries to investigat
   );
   for (const candidate of candidates) {
     assert.ok(candidate["static-total-row-read-units"] >= candidate["static-direct-row-read-units"]);
+    assert.ok(candidate["webgpu-filter"]?.status);
   }
 });
 
 test("candidate limit must be a positive integer", () => {
   assert.throws(() => selectCostlyQueries(dashboardDocument, 0), TypeError);
   assert.throws(() => selectCostlyQueries(dashboardDocument, 1.5), TypeError);
+});
+
+test("cost report identifies WebGPU potential without claiming a measured speedup", () => {
+  const { candidates } = selectCostlyQueries({
+    dashboard: { queries: [
+      { name: "attempts", from: "runs", filter: { predicates: [{ field: "run-attempt", equals: 1 }] } },
+    ] },
+  }, 1);
+  const report = {
+    dashboard: "example",
+    queries: 1, candidates: 1,
+    database: {
+      path: "snapshot", sources: 1, "records-read": 4100,
+      "duration-ms": 1, "source-records": { runs: 4100 },
+      "empty-sources": [], "version-compatible": true,
+    },
+    "static-model": "normalized-upper-bound",
+    "static-materialize-all-row-read-units": 2,
+    measurements: [{
+      ...candidates[0], query: "attempts", rows: 1000, status: "available",
+      "input-row-total": 4100, operations: 4100, "duration-ms": 5,
+      "result-bytes": 100, "bytes-per-row": 1,
+      "retained-heap-bytes": 100, "execution-heap-bytes": 100, "heap-measured": true,
+    }],
+    "most-costly-by-time": ["attempts"], "most-costly-by-memory": ["attempts"],
+  };
+  const markdown = dashboardQueryCostMarkdown(report);
+  assert.match(markdown, /\| `attempts` \| `runs` \(potentially-large\) \| unknown \| `run-attempt` \| 1 \|/);
+  assert.match(markdown, /CPU timings below are not GPU speedup measurements/);
+  report.measurements[0]["webgpu-filter"] = {
+    ...candidates[0]["webgpu-filter"],
+    "input-rows": 2000,
+    "input-cardinality": "below-threshold",
+  };
+  assert.match(dashboardQueryCostMarkdown(report), /\| `runs` \(potentially-large\) \| below-threshold \(2,000 rows\) \|/);
 });
 
 test("retained byte estimate counts shared rows once", () => {

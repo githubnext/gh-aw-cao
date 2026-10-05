@@ -47,15 +47,12 @@ export function analyzeDashboardComplexity(document, { tableCounts } = {}) {
       table: source ?? null,
       'table-cardinality': cardinality,
       'table-rows': count ?? null,
-      'filter-row-read-units': filter.status === 'candidate'
-        ? estimates.queries.get(query.name)?.['stage-row-reads']?.filter ?? {}
-        : {}
+      'filter-row-read-units': estimates.queries.get(query.name)?.['stage-row-reads']?.filter ?? {}
     }];
   }));
   const gpuRanking = ranking.map((query) => ({ ...query, 'webgpu-filter': gpu.get(query.name) }));
   return {
     queries: definitions.length,
-    summary: estimates.summary,
     ranking: gpuRanking,
     summary: {
       ...estimates.summary,
@@ -97,10 +94,8 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     query['total-materialized-field-units'] ?? 'unknown',
     query['webgpu-filter']?.status === 'candidate'
       ? `${query['webgpu-filter'].field} (${query['webgpu-filter']['table-cardinality']})`
-      : query['webgpu-filter']?.status ?? 'unknown',
-    query['webgpu-filter']?.status === 'candidate'
-      ? Object.values(query['webgpu-filter']['filter-row-read-units']).reduce((sum, value) => sum + value, 0)
-      : 0,
+      : `${query['webgpu-filter']?.status ?? 'unknown'} (${query['webgpu-filter']?.['table-cardinality'] ?? 'unknown'})`,
+    Object.values(query['webgpu-filter']?.['filter-row-read-units'] ?? {}).reduce((sum, value) => sum + value, 0),
     query.warnings.length > 0 ? query.warnings.join('<br>') : '—',
     query.class === 'linear-row-reads-with-n-log-n-sort' ? 'linear + sort' : 'linear'
   ].join(' | '));
