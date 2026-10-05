@@ -26,6 +26,9 @@
       <p><a href="./llms.txt">Agent access guide</a></p>
     </noscript>
     <div id="root"></div>
+    <!-- Keep recovery inline in the cached HTML: a broken service worker or dashboard module may prevent external scripts from loading.
+         While online, open this dashboard with ?force-update=1 to check the worker script, unregister this site's worker,
+         clear cached app files (not downloaded data), and reload with ?online=1. Normal startup loads main.js only otherwise. -->
     <script>
       if (new URL(location.href).searchParams.get('force-update') === '1') {
         (async () => {
