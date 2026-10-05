@@ -192,7 +192,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns).toBeVisible();
-    await expect(campaigns.locator(':scope > header')).toHaveCSS('clip-path', 'inset(50%)');
+    await expect(campaigns.locator(':scope > header')).toHaveCSS('clip-path', 'none');
+    await expect(campaigns.getByRole('heading', { name: 'Campaigns', exact: true })).toBeVisible();
     await expect(campaigns.locator(':scope > header > h2')).toHaveText('Campaigns');
     await expect(campaigns.locator(':scope > header > p')).toHaveCount(0);
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
@@ -203,7 +204,16 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       await expect(view).toHaveCSS('border-left-width', '0px');
     }
     await expect(factory.locator('.factory-floor')).toHaveCSS('border-bottom-width', '0px');
-    await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
+    await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '1px');
+    await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-radius', '12px');
+    await expect(factory.locator('.factory-station').first()).toHaveCSS('border-radius', '12px');
+    await expect(factory.locator('.factory-station strong').first()).toHaveCSS('font-weight', '400');
+    const grid = await factory.locator('.factory-floor').evaluate((floor) => {
+      const style = getComputedStyle(floor, '::before');
+      return { image: style.backgroundImage, size: style.backgroundSize };
+    });
+    expect(grid.image).toContain('linear-gradient');
+    expect(grid.size.split(', ').every((size) => size === '32px 32px')).toBe(true);
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
     const introBounds = await factory.locator(':scope > .factory-intro').boundingBox();
@@ -211,7 +221,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(pageBounds.x).toBeCloseTo(mainBounds.x, 0);
     expect(pageBounds.width).toBeCloseTo(mainBounds.width, 0);
     expect(pageBounds.y).toBeCloseTo(mainBounds.y, 0);
-    expect(introBounds?.y).toBeCloseTo(mainBounds.y, 0);
+    expect(introBounds?.y).toBeCloseTo(mainBounds.y + (viewport.width > 700 ? 32 : 20), 0);
     if (viewport.width > 700) {
       await expect(page.locator('.app-main > .top-nav')).toBeVisible();
     } else {

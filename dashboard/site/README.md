@@ -89,6 +89,8 @@ Nothing registers when the flag is off; `document.modelContext` is simply `undef
 
 Dashboard Language does not define themes or typography, so these presentation-only tokens live in the shared stylesheet layer; page definitions and worker queries are unchanged. Muted and amber text use deeper shades on light surfaces to maintain small-text contrast.
 
+The shared dashboard components use the same raised-surface treatment: rounded cards with hairline borders and restrained shadows, quieter navigation with a purple active state, ink-on-paper primary actions, and more space between sections. Overview uses a responsive card-based health summary over the retained grid background and a visible campaign-list heading. Full-view tables keep their bounded scrolling behavior; compact controls retain six-pixel radii.
+
 The locally served normal and italic fonts under `src/fonts/` are Latin subsets of Mona Sans v2.0.27 from the upstream docs, renamed **CAO Sans** in accordance with the OFL reserved name. They preserve the weight and optical-size axes at the default width, Latin Extended characters, punctuation, currency signs, and arrows; other scripts use the system fallback. Hinting, unused stylistic alternates, and the unused width axis are removed to stay within the repository's asset-size budget. Standard kerning, ligatures, and contextual shaping remain available. The original OFL license is included. Fonts are copied and cached with the app for subpath deployments and offline use; the normal font is preloaded with `font-display: swap`, without contacting a third-party font service.
 
 ## Quality gates

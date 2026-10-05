@@ -171,12 +171,12 @@ describe('DLS-CONF-004 scaffold gates', () => {
         rules.find((rule) => /** @type {CSSStyleRule} */ (rule).selectorText === '.document-list-header .cli-action-trigger > .octicon')
       );
 
-      expect(triggerRule?.style.getPropertyValue('border')).toBe('1px solid var(--accent)');
-      expect(triggerRule?.style.getPropertyValue('background')).toBe('var(--accent)');
-      expect(triggerRule?.style.getPropertyValue('color')).toBe('var(--canvas)');
-      expect(hoverRule?.style.getPropertyValue('border-color')).toBe('var(--accent)');
-      expect(hoverRule?.style.getPropertyValue('background')).toBe('color-mix(in srgb, var(--accent) 88%, var(--fg))');
-      expect(hoverRule?.style.getPropertyValue('color')).toBe('var(--canvas)');
+      expect(triggerRule?.style.getPropertyValue('border')).toBe('1px solid var(--button-bg)');
+      expect(triggerRule?.style.getPropertyValue('background')).toBe('var(--button-bg)');
+      expect(triggerRule?.style.getPropertyValue('color')).toBe('var(--button-fg)');
+      expect(hoverRule?.style.getPropertyValue('border-color')).toBe('var(--button-hover)');
+      expect(hoverRule?.style.getPropertyValue('background')).toBe('var(--button-hover)');
+      expect(hoverRule?.style.getPropertyValue('color')).toBe('var(--button-fg)');
       expect(iconRule?.style.getPropertyValue('color')).toBe('inherit');
     } finally {
       style.remove();

@@ -7,7 +7,7 @@ export const firstLoadStyles = `
 .first-load-background { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
 .first-load-background::before { animation: first-load-grid-breathe 24s ease-in-out infinite; }
 @keyframes first-load-grid-breathe { 0%, 100% { opacity: .65; } 50% { opacity: .85; } }
-.first-load-card { position: relative; z-index: 1; box-sizing: border-box; width: min(100%, 640px); margin: auto; padding: 40px; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 30%, transparent); }
+.first-load-card { position: relative; z-index: 1; box-sizing: border-box; width: min(100%, 640px); margin: auto; padding: 40px; border: 1px solid var(--border-muted); border-radius: var(--radius-panel); background: var(--surface); box-shadow: var(--shadow-soft); }
 .first-load-compact-copy { display: none; }
 .first-load-symbol { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 16px; background: var(--accent-muted); color: var(--accent); }
 .first-load-symbol .octicon { width: 28px; height: 28px; }

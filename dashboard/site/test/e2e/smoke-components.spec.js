@@ -109,22 +109,22 @@ test('campaign problem detail renders a responsive full view without a table', a
   await expect(fixButton).toBeVisible();
   const buttonColors = await fixButton.evaluate((button) => {
     const tokenProbe = document.createElement('span');
-    tokenProbe.style.backgroundColor = 'var(--accent)';
-    tokenProbe.style.color = 'var(--canvas)';
-    document.body.append(tokenProbe);
+    tokenProbe.style.backgroundColor = 'var(--button-bg)';
+    tokenProbe.style.color = 'var(--button-fg)';
+    button.append(tokenProbe);
     const tokenStyles = getComputedStyle(tokenProbe);
     const buttonStyles = getComputedStyle(button);
     const colors = {
       background: buttonStyles.backgroundColor,
-      accent: tokenStyles.backgroundColor,
+      buttonBackground: tokenStyles.backgroundColor,
       foreground: buttonStyles.color,
-      canvas: tokenStyles.color
+      buttonForeground: tokenStyles.color
     };
     tokenProbe.remove();
     return colors;
   });
-  expect(buttonColors.background).toBe(buttonColors.accent);
-  expect(buttonColors.foreground).toBe(buttonColors.canvas);
+  expect(buttonColors.background).toBe(buttonColors.buttonBackground);
+  expect(buttonColors.foreground).toBe(buttonColors.buttonForeground);
   const runLink = problemDetail.getByRole('link', { name: 'https://github.com/github/gh-aw/actions/runs/1' });
   await expect(runLink).toHaveAttribute('href', 'https://github.com/github/gh-aw/actions/runs/1');
   await expect(runLink).toHaveAttribute('rel', 'noopener noreferrer');

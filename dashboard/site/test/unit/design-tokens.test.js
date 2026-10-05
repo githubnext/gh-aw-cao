@@ -28,7 +28,7 @@ describe('Agentic Workflows docs design tokens', () => {
 
   it('keeps small text, links, and semantic status colors readable on both canvases', () => {
     for (const theme of [tokens.light, tokens.dark]) {
-      for (const background of [theme.canvas, theme['canvas-subtle']]) {
+      for (const background of [theme.canvas, theme['canvas-subtle'], theme.surface]) {
         for (const name of /** @type {const} */ (['fg', 'muted', 'accent', 'success', 'danger', 'attention', 'coral', 'cancelled'])) {
           const foregroundLuminance = luminance(theme[name]);
           const backgroundLuminance = luminance(background);
@@ -38,6 +38,32 @@ describe('Agentic Workflows docs design tokens', () => {
         }
       }
     }
+  });
+
+  it('gives ink-on-paper actions readable text in both themes', () => {
+    for (const theme of [tokens.light, tokens.dark]) {
+      const text = luminance(theme['button-fg']);
+      for (const background of [theme['button-bg'], theme['button-hover']]) {
+        const fill = luminance(background);
+        expect((Math.max(text, fill) + 0.05) / (Math.min(text, fill) + 0.05)).toBeGreaterThanOrEqual(7);
+      }
+    }
+  });
+
+  it('applies the shared card shape to dashboard metrics, lists, tables, and chart surfaces', () => {
+    const css = primerStylesheet();
+    for (const selector of [
+      '.factory-station', '.metric-card-widget', '.table-region', '.layout-section', '.pie-chart-card', '.chart-horizontal-card'
+    ]) {
+      const start = css.indexOf(`}${selector}{`) + 1;
+      expect(start, selector).toBeGreaterThan(0);
+      const rule = css.slice(start, css.indexOf('}', start));
+      expect(rule, selector).toContain('border-radius:var(--radius-card)');
+      expect(rule, selector).toContain('background:var(--surface)');
+    }
+    expect(css).toContain('--radius-card:12px');
+    expect(css).toContain('--radius-control:6px');
+    expect(css).toContain('.primary-nav a[aria-current="page"]{background:var(--accent-muted);color:var(--accent)');
   });
 
   it('uses one token source for system, explicit, and first-load themes', () => {
