@@ -988,7 +988,16 @@
           "title": "Campaign workflows",
           "data": {
             "sources": [
-              "workflows"
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
             ]
           },
           "mark": "element",
@@ -1312,7 +1321,16 @@
           "title": "Campaign repositories",
           "data": {
             "sources": [
-              "workflows"
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
             ]
           },
           "mark": "element",
@@ -1449,7 +1467,16 @@
           "title": "Campaign reports",
           "data": {
             "sources": [
-              "workflows"
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
             ]
           },
           "mark": "element",

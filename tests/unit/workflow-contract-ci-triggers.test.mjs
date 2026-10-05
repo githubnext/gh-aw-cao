@@ -61,6 +61,17 @@ test("slow integration workflows run on relevant main pushes, not pull requests"
   }
 });
 
+test("MCP parity keeps service-backed Go integration tests out of its contract step", () => {
+  const job = parse(workflow("mcp-parity.yml")).jobs.parity;
+  const steps = job.steps;
+  const contract = steps.find((step) => step.name === "Run contract tests");
+  const parity = steps.find((step) => step.name === "Compare MCP contracts and behavior");
+  assert.match(contract.run, /env -u REDIS_URL -u CAO_POSTGRES_URL go -C server test \.\/internal\/server \.\/cmd\/cao-dashboard/);
+  assert.equal(parity.run, "npm run test:e2e:dashboard-query-parity");
+  assert.ok(job.env.REDIS_URL);
+  assert.ok(job.env.CAO_POSTGRES_URL);
+});
+
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {
   const cases = [
     ["dashboard/site/src/dashboard-app.js", ["cid.yml"]],

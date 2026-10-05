@@ -57,12 +57,16 @@ const rows = [
 describe('Friction dashboard view', () => {
   it('starts with a friction-cost summary and follows with run evidence', () => {
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'friction');
+    const dataSection = dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Data'
+    );
     const experimentalSection = dashboard.navigation.find(
       (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
     );
 
-    expect(experimentalSection.pages).toContain('friction');
-    expect(page.experimental).toBe(true);
+    expect(dataSection.pages).toContain('friction');
+    expect(experimentalSection.pages).not.toContain('friction');
+    expect(page.experimental).not.toBe(true);
     expect(page.views).toMatchObject([
       {
         id: 'friction-by-workflow',

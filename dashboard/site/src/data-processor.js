@@ -61,6 +61,8 @@ const cancelledWorkerNotificationIds = new Set();
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
+/** @type {Set<() => void>} */
+const databaseUpgradeListeners = new Set();
 
 /**
  * Adds supported main-thread behavior to a serializable worker notification.
@@ -149,6 +151,12 @@ export function subscribeWorkerLoadingProgress(listener) {
   }
   workerLoadingProgressListeners.add(listener);
   return () => workerLoadingProgressListeners.delete(listener);
+}
+
+/** @param {() => void} listener */
+export function subscribeDatabaseUpgrade(listener) {
+  databaseUpgradeListeners.add(listener);
+  return () => databaseUpgradeListeners.delete(listener);
 }
 
 /**
@@ -791,6 +799,10 @@ function getWorker() {
   const processor = worker;
   debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
+    if (event.data?.type === 'database-upgrade') {
+      for (const listener of databaseUpgradeListeners) listener();
+      return;
+    }
     if (event.data?.type === 'loading-progress') {
       const state = event.data.state;
       if (typeof state?.id === 'string' && ['start', 'update', 'complete'].includes(state.phase)) {

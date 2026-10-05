@@ -15,6 +15,7 @@ import {
   readTransactions,
   recordTransaction,
   replaceCanonicalBatch,
+  subscribeCanonicalDatabaseUpgrade,
   upsertCanonicalBatch,
   withCanonicalIngestionLock
 } from '../../src/data/storage/indexeddb.js';
@@ -271,6 +272,51 @@ describe('canonical IndexedDB', () => {
     expect(database.objectStoreNames.contains('runs')).toBe(true);
     database.close();
 
+  });
+
+  it('reports existing-version upgrades before dropping stores, but not fresh or current opens', async () => {
+    const upgrading = vi.fn();
+    const stop = subscribeCanonicalDatabaseUpgrade(upgrading);
+    const fresh = await openCanonicalDatabase(indexedDB);
+    fresh.close();
+    expect(upgrading).not.toHaveBeenCalled();
+    await deleteCanonicalDatabase(indexedDB);
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('legacy');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+    const drop = vi.spyOn(IDBDatabase.prototype, 'deleteObjectStore');
+    upgrading.mockImplementation(() => {
+      expect(drop).not.toHaveBeenCalled();
+    });
+    const updated = await openCanonicalDatabase(indexedDB);
+    expect(upgrading).toHaveBeenCalledOnce();
+    expect(updated.objectStoreNames.contains('legacy')).toBe(false);
+    updated.close();
+    const current = await openCanonicalDatabase(indexedDB);
+    current.close();
+    expect(upgrading).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it('does not post worker upgrade events when the worker module is imported on the main thread', async () => {
+    vi.resetModules();
+    const { openCanonicalDatabase: open } = await import('../../src/data/storage/indexeddb.js');
+    await import('../../src/data-worker.js');
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('legacy');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+    const postMessage = vi.spyOn(window, 'postMessage');
+    const database = await open(indexedDB);
+    expect(postMessage).not.toHaveBeenCalled();
+    database.close();
   });
 
   it('counts multiple collections without materializing their records', async () => {

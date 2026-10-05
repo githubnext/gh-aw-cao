@@ -3,7 +3,7 @@ import { octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad } from '../browser-first-load.js';
 import { createDebug } from '../debug.js';
-import { createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createModalDialog } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
 import { createFirstLoadMessagePicker, FIRST_LOAD_MESSAGE_INTERVAL_MS } from './first-load-messages.js';
 
@@ -43,7 +43,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     type: 'button',
     className: 'first-load-browse',
     onClick: dismiss
-  }, 'Explore while data loads');
+  }, 'Explore data');
   const retryButton = h('button', {
     type: 'button',
     className: 'first-load-browse',
@@ -53,6 +53,9 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     }
   }, 'Retry import');
   const title = h('h2');
+  const eyebrow = h('p', { className: 'first-load-eyebrow' });
+  const description = h('p', { className: 'first-load-description' });
+  const durationNote = h('p', { className: 'first-load-note first-load-wide-copy' });
   const message = h('p', { className: 'first-load-message', 'aria-live': 'off' });
   const nextMessage = createFirstLoadMessagePicker();
   const currentMessage = state(nextMessage());
@@ -66,23 +69,13 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     'Dismissing this screen does not cancel the import.',
     'Dismiss anytime. The import will continue.'
   ));
-  const dismissControl = renderCloseButton({
-    className: 'first-load-close',
-    label: 'Dismiss import screen',
-    onClick: dismiss
-  });
   dialog.append(
     h('div', { className: 'first-load-background', 'aria-hidden': 'true' }),
     h('section', { className: 'first-load-card' },
-    dismissControl,
     h('div', { className: 'first-load-symbol', 'aria-hidden': 'true' }, octicon('download')),
-    h('p', { className: 'first-load-eyebrow' }, 'A fresh start'),
+    eyebrow,
     title,
-    h('p', { className: 'first-load-description' },
-      responsiveCopy(
-        'This browser does not have a dashboard snapshot yet. We are downloading the published activity data and building a local database so you can explore your campaigns.',
-        'Preparing a local copy of activity data. First visits can take a few minutes.'
-      )),
+    description,
     progress,
     message,
     status,
@@ -91,7 +84,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       h('li', null, h('strong', null, 'Prepare'), h('span', null, 'Process and cache data in this browser')),
       h('li', null, h('strong', null, 'Explore'), h('span', null, 'Views update as evidence becomes available'))
     ),
-    h('p', { className: 'first-load-note first-load-wide-copy' }, 'The first import can take several minutes. Future visits reuse cached data.'),
+    durationNote,
     h('p', { className: 'first-load-note first-load-server-option' },
       'For larger datasets, deploy a CAO backend server to run queries server-side and avoid this browser import. See ',
       h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment/', target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'deployment options (opens in a new tab)' }, 'deployment options'),
@@ -106,9 +99,30 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     dismiss();
   }, { signal });
   document.body.append(dialog);
-  render(title, () => browserFirstLoad.get().status === 'failed'
-    ? responsiveCopy('The first import could not finish.', 'Import incomplete.')
-    : responsiveCopy('Making room for your campaigns.', 'Preparing your dashboard.'), { signal });
+  render(eyebrow, () => browserFirstLoad.get().reason === 'upgrade' ? 'Dashboard update' : 'A fresh start', { signal });
+  render(description, () => browserFirstLoad.get().reason === 'upgrade'
+    ? responsiveCopy(
+      'This version needs to rebuild the local database from published activity data. Updating your browser copy can take several minutes.',
+      'Updating the local database for this version can take a few minutes.'
+    )
+    : responsiveCopy(
+      'This browser does not have a dashboard snapshot yet. We are downloading the published activity data and building a local database so you can explore your campaigns.',
+      'Preparing a local copy of activity data. First visits can take a few minutes.'
+    ), { signal });
+  render(durationNote, () => browserFirstLoad.get().reason === 'upgrade'
+    ? 'This update can take several minutes. Future visits reuse cached data.'
+    : 'The first import can take several minutes. Future visits reuse cached data.', { signal });
+  render(title, () => {
+    const current = browserFirstLoad.get();
+    if (current.status === 'failed') return responsiveCopy(
+      current.reason === 'upgrade' ? 'The dashboard update could not finish.' : 'The first import could not finish.',
+      'Import incomplete.'
+    );
+    return responsiveCopy(
+      current.reason === 'upgrade' ? 'Updating your dashboard.' : 'Making room for your campaigns.',
+      'Preparing your dashboard.'
+    );
+  }, { signal });
   render(message, () => currentMessage.get(), { signal });
   effect(() => {
     message.hidden = !rotating.get();
@@ -125,6 +139,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     if (current.stage === 'maintenance') return 'Applying retention limits to the local database...';
     if (current.stage === 'inventory') return 'Preparing inventory and dashboard metadata...';
     if (current.stage === 'queries') return 'Refreshing dashboard queries...';
+    if (current.reason === 'upgrade' && !current.stage) return 'Updating the local database for this version...';
     return current.total
       ? 'Importing activity files and preparing the local database...'
       : 'Preparing the latest activity snapshot...';

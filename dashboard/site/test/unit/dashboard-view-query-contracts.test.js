@@ -4,6 +4,7 @@ import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/q
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { SERVER_SOURCE_VALUES, TABLE_FIELDS } from '../../src/specification.js';
+import campaignNavigationContract from '../fixtures/campaign-navigation-contract.json' with { type: 'json' };
 
 import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
@@ -177,7 +178,6 @@ describe('dashboard view query contracts', () => {
       experimental: true,
       pages: [
         'operational-value',
-        'friction',
         'skills',
         'steering',
         'simulators'
@@ -452,6 +452,49 @@ describe('dashboard view query contracts', () => {
     }
 
     expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-dispatches')).toBe(false);
+  });
+
+  it.each(campaignNavigationContract.pages)('binds $id tab counts to the selected campaign through the worker', ({ id, view: viewId }) => {
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === id);
+    const view = viewsOf(page).find((candidate) => candidate.id === viewId);
+    expect(view).toMatchObject({
+      data: {
+        sources: campaignNavigationContract.sources,
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      }
+    });
+    const options = { queries, viewId, sourceNames: campaignNavigationContract.sources };
+    const selected = compileDashboardViewPayloadQueries(page, id, {
+      ...options, routeParameters: { campaign: 'ambient-context' }
+    });
+    expect(selected.aliases).toHaveLength(campaignNavigationContract.sources.length);
+    const sources = {
+      ...databaseTables,
+      workflows: {
+        source: 'workflows',
+        rows: [
+          { campaign: 'other', 'workflow-role': 'orchestrator' },
+          { campaign: 'ambient-context', 'workflow-role': 'orchestrator' }
+        ],
+        metadata: { ...metadata, availability: 'available' }
+      }
+    };
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: [...queries, ...selected.queries],
+      sourceNames: selected.aliases,
+      sources
+    }));
+    expect(Object.keys(result)).toEqual(selected.aliases);
+    expect(result[selected.aliases[0]].rows.map((row) => row.campaign)).toEqual(['ambient-context']);
+    const absent = compileDashboardViewPayloadQueries(page, id, options);
+    const missing = /** @type {typeof result} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: [...queries, ...absent.queries],
+      sourceNames: absent.aliases,
+      sources
+    }));
+    for (const alias of absent.aliases) expect(missing[alias].rows).toEqual([]);
   });
 
   it('keeps stable campaign route IDs with an Operational Value label across every entry path', () => {

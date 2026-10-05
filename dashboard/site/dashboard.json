@@ -1001,6 +1001,7 @@
           "runs",
           "issues",
           "cost",
+          "friction",
           "engines-models",
           "firewall",
           "mcps"
@@ -1011,7 +1012,6 @@
         "experimental": true,
         "pages": [
           "operational-value",
-          "friction",
           "skills",
           "steering",
           "simulators"

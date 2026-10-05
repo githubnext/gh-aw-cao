@@ -281,6 +281,37 @@ describe('campaign detail route', () => {
     rendered.remove();
   });
 
+  it('loads tab counts that are not declared by the workflows navigation view', async () => {
+    /** @type {string[]} */
+    const requested = [];
+    configureSourceLoader(async (name) => {
+      requested.push(name);
+      return {
+        source: name,
+        metadata,
+        rows: name === 'campaign-insight-tab-counts'
+          ? [{ campaign: 'other', items: 9 }, { campaign: 'ambient-context', items: 3 }] : []
+      };
+    });
+    const rendered = renderCampaignRouteView({
+      ...context(),
+      pageId: 'campaign-workflows',
+      sourceNames: ['workflows'],
+      elementConfig: { body: 'workflows' },
+      sourcesSubscribed: true
+    });
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs .count-badge')?.textContent).toBe('3'));
+    expect(requested).toEqual([
+      'campaign-insight-tab-counts', 'campaign-problem-tab-counts', 'campaign-issue-tab-counts'
+    ]);
+    rendered.remove();
+  });
+
   it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
     const page = document.createElement('section');
     page.className = 'dashboard-page';

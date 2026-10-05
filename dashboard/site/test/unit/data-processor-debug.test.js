@@ -36,6 +36,22 @@ afterEach(() => {
 });
 
 describe('dashboard data processor debug logging', () => {
+  it('forwards database upgrades to active subscribers without changing worker requests', async () => {
+    vi.stubGlobal('Worker', DebugTestWorker);
+    vi.resetModules();
+    const { loadCanonicalDashboardPage, subscribeDatabaseUpgrade } = await import('../../src/data-processor.js');
+    const notify = vi.fn();
+    const stop = subscribeDatabaseUpgrade(notify);
+    const pending = loadCanonicalDashboardPage([], { pages: [], queries: [] }).catch(() => {});
+    DebugTestWorker.current?.listeners.get('message')?.({ data: { type: 'database-upgrade' } });
+    expect(notify).toHaveBeenCalledOnce();
+    stop();
+    DebugTestWorker.current?.listeners.get('message')?.({ data: { type: 'database-upgrade' } });
+    expect(notify).toHaveBeenCalledOnce();
+    DebugTestWorker.current?.emitError('Worker stopped');
+    await pending;
+  });
+
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {

@@ -1,0 +1,13 @@
+{
+  "pages": [
+    { "id": "campaign-workflows", "view": "campaign-workflow-navigation" },
+    { "id": "campaign-repositories", "view": "campaign-repository-navigation" },
+    { "id": "campaign-reports", "view": "campaign-report-navigation" }
+  ],
+  "sources": [
+    "workflows",
+    "campaign-insight-tab-counts",
+    "campaign-problem-tab-counts",
+    "campaign-issue-tab-counts"
+  ]
+}

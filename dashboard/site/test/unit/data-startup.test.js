@@ -7,6 +7,7 @@ const dataProcessor = vi.hoisted(() => ({
   loadCanonicalDashboardPage: vi.fn(),
   loadCanonicalDashboardSources: vi.fn(),
   refreshCanonicalDashboardSources: vi.fn(),
+  subscribeDatabaseUpgrade: vi.fn(),
   subscribeCanonicalDashboardView: vi.fn(),
   subscribeWorkerLoadingProgress: vi.fn(),
 }));
@@ -63,6 +64,7 @@ describe("dashboard data startup", () => {
     calls.length = 0;
     vi.clearAllMocks();
     browserFirstLoad.set({ status: "inactive", dismissed: false });
+    dataProcessor.subscribeDatabaseUpgrade.mockReturnValue(() => {});
     dataProcessor.subscribeWorkerLoadingProgress.mockReturnValue(() => {});
     document.head.replaceChildren();
     document.body.replaceChildren();
@@ -247,6 +249,59 @@ describe("dashboard data startup", () => {
     stop();
     expect(stopProgress).toHaveBeenCalledOnce();
     expect(document.querySelector("dialog")).toBeNull();
+    expect(browserFirstLoad.get().status).toBe("inactive");
+  });
+
+  it("opens the import dialog immediately on a database upgrade, before the upgrade or UI settles", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    let finishUpgrade = () => {};
+    dataProcessor.loadCanonicalDashboardPage.mockImplementationOnce(() => new Promise((resolve) => {
+      finishUpgrade = () => resolve({});
+    }));
+    let notifyUpgrade = () => {};
+    const stopUpgrade = vi.fn();
+    dataProcessor.subscribeDatabaseUpgrade.mockImplementation((notify) => {
+      notifyUpgrade = notify;
+      return stopUpgrade;
+    });
+    const startup = startDashboardData(options());
+    expect(document.querySelector('dialog')).toBeNull();
+    notifyUpgrade();
+    notifyUpgrade();
+    const dialog = document.querySelector('dialog');
+    expect(dialog?.open).toBe(true);
+    expect(dialog?.textContent).toContain('This version needs to rebuild the local database');
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
+    expect(calls).not.toContain("settle");
+    /** @type {HTMLButtonElement | null} */ (dialog?.querySelector('button.first-load-browse'))?.click();
+    expect(dialog?.open).toBe(false);
+    finishUpgrade();
+    const stop = await startup;
+    expect(stopUpgrade).toHaveBeenCalledOnce();
+    expect(browserFirstLoad.get()).toMatchObject({ status: "loading", dismissed: true, reason: "upgrade" });
+    expect(document.querySelectorAll('dialog')).toHaveLength(1);
+    stop();
+    expect(document.querySelector('dialog')).toBeNull();
+  });
+
+  it("closes the early dialog if an upgrade retains a complete snapshot", async () => {
+    dataProcessor.loadCanonicalDashboardPage.mockImplementationOnce(async () => {
+      dataProcessor.subscribeDatabaseUpgrade.mock.calls[0][0]();
+      return {};
+    });
+    await startDashboardData(options());
+    expect(document.querySelector('dialog')).toBeNull();
+    expect(browserFirstLoad.get().status).toBe("inactive");
+    expect(dataProcessor.subscribeWorkerLoadingProgress).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the early dialog if opening the upgraded database fails", async () => {
+    dataProcessor.loadCanonicalDashboardPage.mockImplementationOnce(async () => {
+      dataProcessor.subscribeDatabaseUpgrade.mock.calls[0][0]();
+      throw new Error("Open failed");
+    });
+    await expect(startDashboardData(options())).rejects.toThrow("Open failed");
+    expect(document.querySelector('dialog')).toBeNull();
     expect(browserFirstLoad.get().status).toBe("inactive");
   });
 

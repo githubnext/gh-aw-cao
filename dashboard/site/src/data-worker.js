@@ -22,7 +22,8 @@ import {
   readCollections,
   readTransaction,
   readTransactions,
-  recordTransaction
+  recordTransaction,
+  subscribeCanonicalDatabaseUpgrade
 } from './data/storage/indexeddb.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -64,6 +65,9 @@ const eagerIngest = debugEagerIngest();
 if (eagerIngest) debugIngestion('eager ingestion requested', { eagerIngest });
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
+if (typeof document === 'undefined' && workerScope) {
+  subscribeCanonicalDatabaseUpgrade(() => workerScope.postMessage({ type: 'database-upgrade' }));
+}
 
 /** Returns one self-contained database diagnostics payload to the main thread. */
 async function collectCanonicalDatabaseDiagnostics() {
@@ -110,7 +114,7 @@ let hasCompleteDashboardSnapshot = false;
  */
 let publicationPhase = 'complete';
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -1299,7 +1303,7 @@ function routeParameters(value) {
 /** @param {unknown} value @returns {DashboardSubscription['queryContext']} */
 function queryContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown, viewMode?: unknown }} */ (value);
+  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown, viewMode?: unknown, formValues?: unknown }} */ (value);
   const filters = context.filters && typeof context.filters === 'object' && !Array.isArray(context.filters)
     ? Object.fromEntries(Object.entries(context.filters)
       .map(([field, candidates]) => [field, Array.isArray(candidates)
@@ -1338,11 +1342,17 @@ function queryContext(value) {
   const viewMode = context.viewMode === 'chart' || context.viewMode === 'table' || context.viewMode === 'card'
     ? context.viewMode
     : undefined;
+  const formValues = context.formValues && typeof context.formValues === 'object' && !Array.isArray(context.formValues)
+    ? Object.fromEntries(Object.entries(context.formValues)
+      .filter(([, entry]) => typeof entry === 'string' || typeof entry === 'boolean'
+        || (typeof entry === 'number' && Number.isFinite(entry))))
+    : undefined;
   return {
     ...(filters ? { filters } : {}),
     ...(search ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
-    ...(viewMode ? { viewMode } : {})
+    ...(viewMode ? { viewMode } : {}),
+    ...(formValues ? { formValues } : {})
   };
 }

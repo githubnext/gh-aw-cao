@@ -26,43 +26,31 @@ test('Simulators binds slider values to a recomputed 30-day table', async ({ pag
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
-      import { compileDashboardViewPayloadQueries } from '/src/data/queries/view-payload-compiler.js';
-      import { processDataRequest } from '/src/data-worker.js';
+      import { loadCanonicalDashboardPage } from '/src/data-processor.js';
       const documentModel = ${JSON.stringify(authoritativeDashboard)};
-      const pageDefinition = documentModel.dashboard.pages.find((entry) => entry.id === 'simulators');
-      window.simulatorQueries = [];
       window.location.hash = '#page-simulators';
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources: {},
-        loadPageSources: async (pageId, options) => {
-          if (pageId !== 'simulators') return {};
-          const payload = compileDashboardViewPayloadQueries(pageDefinition, pageId, {
-            queries: documentModel.dashboard.queries,
-            queryContext: options.queryContext
-          });
-          window.simulatorQueries.push({
-            repositories: options.queryContext?.formValues?.repositories ?? pageDefinition.form.fields[0].default,
-            parameter: payload.queries.find((query) => query.name.endsWith(':simulator-database-inputs'))?.compute[0].args[0].value
-          });
-          const results = processDataRequest({
-            operation: 'execute-dashboard-queries', sources: {},
-            queries: payload.queries, sourceNames: payload.aliases
-          });
-          return { ...results, [pageDefinition.views[0].data.source]: results[payload.aliases[0]] };
-        }
+        loadPageSources: (pageId, options) => pageId === 'simulators'
+          ? loadCanonicalDashboardPage(
+              ['simulator-database-summary'],
+              documentModel.dashboard,
+              undefined,
+              { pageId, queryContext: options.queryContext }
+            )
+          : Promise.resolve({})
       }));
     </script>
   `);
   const simulator = page.locator('[data-page-id="simulators"]');
   const table = simulator.getByRole('table');
   await expect(table.getByRole('row', { name: 'Total 890880000' })).toBeVisible();
-  const slider = simulator.getByRole('slider', { name: 'Repositories' });
-  await slider.fill('2000');
+  await simulator.getByRole('slider', { name: 'Repositories' }).fill('2000');
   await expect(table.getByRole('row', { name: 'Total 1781760000' })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => /** @type {Window & { simulatorQueries: unknown[] }} */ (
-    /** @type {unknown} */ (window)
-  ).simulatorQueries.at(-1))).toEqual({ repositories: 2000, parameter: 2000 });
+  await simulator.getByRole('slider', { name: 'Skipped runs (%)' }).fill('50');
+  await expect(table.getByRole('row', { name: 'Total 1228800000' })).toBeVisible();
+  await expect(table.getByRole('row', { name: 'Run summaries 307200000' })).toBeVisible();
 });
 
 test('mobile shell keeps Overview navigation in the hamburger menu', async ({ page }) => {
@@ -1100,7 +1088,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Friction', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link', { name: 'Friction', exact: true })).toHaveCount(1);
   await expect(evolutionSection.locator('summary')).toHaveText('Evolution');
   await evolutionSection.locator('summary').click();
   await expect(evolutionSection.getByRole('link')).toHaveText(['Experiments', 'Evals', 'Graders']);
@@ -1151,7 +1140,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await experimentalSection.locator('summary').click();
   await expect(experimentalSection.getByRole('link')).toHaveText([
     'Operational Value',
-    'Friction',
     'Skills',
     'Steering',
     'Simulators'

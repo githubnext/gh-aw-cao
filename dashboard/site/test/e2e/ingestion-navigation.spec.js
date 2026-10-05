@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizedRunShard } from './normalized-shard.js';
 import { authoritativeDashboard as dashboard } from '../authoritative-dashboard.js';
+import { DATABASE_VERSION } from '../../src/data/storage/indexeddb.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-navigation.dashboard.test';
@@ -86,8 +87,9 @@ async function selectTable(page, mobile) {
 /**
  * @param {{ context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page }} fixture
  * @param {boolean} mobile
+ * @param {boolean} [upgrade]
  */
-async function exerciseFirstImport({ context, page }, mobile) {
+async function exerciseFirstImport({ context, page }, mobile, upgrade = false) {
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   const shardCount = 12;
   const runsPerShard = 10;
@@ -99,6 +101,10 @@ async function exerciseFirstImport({ context, page }, mobile) {
   });
   await context.route(`${origin}/**`, async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname === '/seed') {
+      await route.fulfill({ contentType: 'text/html', body: '<title>Database seed</title>' });
+      return;
+    }
     if (url.pathname === '/') {
       await route.fulfill({
         contentType: 'text/html',
@@ -170,18 +176,36 @@ async function exerciseFirstImport({ context, page }, mobile) {
     await route.fulfill({ status: 404, body: 'Not found' });
   });
 
+  if (upgrade) {
+    await page.goto(`${origin}/seed`);
+    await page.evaluate((version) => new Promise((resolve, reject) => {
+      const request = indexedDB.open('gh-aw-cao-dashboard-data', version - 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('legacy');
+      request.onsuccess = () => {
+        request.result.close();
+        resolve(undefined);
+      };
+      request.onerror = () => reject(request.error);
+    }), DATABASE_VERSION);
+  }
   await page.goto(`${origin}/`);
   const importScreen = page.getByRole('dialog', { name: 'Preparing your dashboard' });
   await expect(importScreen).toBeVisible();
-  await expect(importScreen).toContainText('The first import can take several minutes');
+  await expect(importScreen).toContainText(upgrade
+    ? 'This update can take several minutes'
+    : 'The first import can take several minutes');
+  if (upgrade) {
+    await expect(importScreen).toContainText('rebuild the local database');
+    await expect(importScreen.locator('.first-load-eyebrow')).toHaveText('Dashboard update');
+  }
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   if (mobile) {
     for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }]) {
       await page.setViewportSize(viewport);
       await expect(importScreen.getByRole('heading', { name: 'Preparing your dashboard.' })).toBeVisible();
       await expect(importScreen.locator('.first-load-steps')).not.toBeVisible();
-      await expect(importScreen.getByRole('button', { name: 'Explore while data loads' })).toBeInViewport({ ratio: 1 });
-      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Explore data' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toHaveCount(0);
       await expect.poll(() => importScreen.evaluate((element) => ({
         horizontal: element.scrollWidth > element.clientWidth,
         vertical: element.scrollHeight > element.clientHeight
@@ -207,7 +231,7 @@ async function exerciseFirstImport({ context, page }, mobile) {
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
   await page.getByRole('button', { name: 'Show import progress' }).click();
   await expect(importScreen).toBeVisible();
-  await page.getByRole('button', { name: 'Explore while data loads' }).click();
+  await page.getByRole('button', { name: 'Explore data' }).click();
   await expect(importScreen).not.toBeVisible();
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
@@ -252,3 +276,7 @@ for (const mobile of [false, true]) {
     await exerciseFirstImport({ context, page }, mobile);
   });
 }
+
+test('An existing database upgrade immediately reuses the import dialog', async ({ context, page }) => {
+  await exerciseFirstImport({ context, page }, false, true);
+});
