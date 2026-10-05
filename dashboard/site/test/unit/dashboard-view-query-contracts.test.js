@@ -177,7 +177,6 @@ describe('dashboard view query contracts', () => {
       experimental: true,
       pages: [
         'operational-value',
-        'friction',
         'skills',
         'steering',
         'simulators'
