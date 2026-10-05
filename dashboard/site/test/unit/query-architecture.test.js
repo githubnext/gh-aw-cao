@@ -34,7 +34,8 @@ describe('dashboard query architecture', () => {
     const dashboard = authoritativeDashboard.dashboard;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
-    expect(worker).toMatch(/executeDashboardQueries\(\s*executionQueries,\s*\{ \.\.\.databasePayload, \.\.\.nativeSources \},\s*directRequests/);
+    expect(worker).toMatch(/executeVectorizedDashboardQueries\(\s*executionQueries,\s*\{ \.\.\.databasePayload, \.\.\.nativeSources \},\s*directRequests/);
+    expect(read('src/data/queries/vectorized-filter.js')).toContain('return executeDashboardQueries(definitions, sources, requested, options)');
     expect(worker.indexOf('compileDashboardViewPayloadQueries(page, pageId'))
       .toBeLessThan(worker.indexOf('const nativeSources = await queryIndexedDatabaseSources'));
     expect(worker.indexOf('const nativeSources = await queryIndexedDatabaseSources'))
@@ -153,8 +154,8 @@ describe('dashboard query architecture', () => {
 
   it('runs tidy row pipelines only inside the data worker', async () => {
     const workerSideModules = new Set([
-      'src/data-worker.js',
       'src/data/queries/declarative.js',
+      'src/data/queries/vectorized-filter.js',
       'src/data/storage/indexeddb.js'
     ]);
     const importers = globSync('src/**/*.js')

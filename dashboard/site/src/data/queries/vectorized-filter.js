@@ -20,7 +20,7 @@ const BUFFER_STORAGE = 128;
  * Unsupported values and unavailable devices retain the ordinary row semantics.
  * @param {Record<string, unknown>[]} rows
  * @param {import('../../data-operations.js').DataOperator} operator
- * @param {AbortSignal | undefined} signal
+ * @param {{ aborted?: boolean } | undefined} signal
  * @returns {Promise<Record<string, unknown>[] | null>}
  */
 export async function gpuFilter(rows, operator, signal = undefined) {
@@ -30,7 +30,7 @@ export async function gpuFilter(rows, operator, signal = undefined) {
   const target = predicate.equals;
   if (predicate.field === '@time' || predicate.optional || typeof target !== 'number'
       || !Number.isInteger(target)
-      || target < MIN_INT || target > MAX_INT
+      || target <= MIN_INT || target > MAX_INT
       || predicate.in !== undefined || predicate.includes !== undefined
       || predicate.gte !== undefined || predicate.lt !== undefined) return null;
   const gpu = /** @type {{ gpu?: { requestAdapter: () => Promise<any> } }} */ (globalThis.navigator ?? {}).gpu;
@@ -164,7 +164,7 @@ export async function executeVectorizedDashboardQueries(definitions, sources, re
       || !Array.isArray(input?.rows) || input.rows.length > 200000) {
     return executeDashboardQueries(definitions, sources, requested, options);
   }
-  const rows = await gpuFilter(input.rows, { op: 'filter', ...definition.filter });
+  const rows = await gpuFilter(input.rows, { op: 'filter', ...definition.filter }, options.signal);
   if (rows === null || options.signal?.aborted) {
     return executeDashboardQueries(definitions, sources, requested, options);
   }
