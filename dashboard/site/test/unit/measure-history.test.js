@@ -226,7 +226,7 @@ describe('Measure history', () => {
       contextDetails: [],
       headingTag: 'h3'
     });
-    expect(rendered.querySelector('[data-temporal-metric^="optimization-token-optimizer.recommendation-acceptance-share"]'))
+    expect(rendered.querySelector('.temporal-plot-point[aria-label^="gh-aw:"]'))
       .not.toBeNull();
     expect(rendered.textContent).toContain('Recommendation acceptance share');
   });
@@ -286,9 +286,10 @@ describe('Measure history', () => {
 
     expect(rendered.querySelector('[data-operational-value-state="interim-evidence"]')).not.toBeNull();
     expect(rendered.textContent).toContain('261 interim observations');
-    expect(rendered.textContent).toContain('Dashed amber lines are not mature evidence');
+    expect(rendered.textContent).toContain('Amber points are not mature evidence');
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
-    expect(rendered.querySelector('.temporal-plot-metric')).not.toBeNull();
+    expect(rendered.querySelector('.temporal-plot-metric')).toBeNull();
+    expect(rendered.querySelector('.temporal-plot-point')).not.toBeNull();
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
   });
 
@@ -327,8 +328,10 @@ describe('Measure history', () => {
     expect(rendered.querySelector('[aria-label="Operational value repository scope"]')).toBeNull();
     expect(rendered.querySelector('[data-operational-value-scope="campaign-rollup"]')).toBeNull();
     expect(rendered.querySelectorAll('.temporal-metric-plot')).toHaveLength(1);
-    expect(rendered.querySelectorAll('.temporal-plot-metric')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-metric')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(2);
     expect(rendered.querySelector('.chart-legend')?.textContent).toContain('github/gh-aw');
+    expect(rendered.querySelector('.chart-legend-dot')).not.toBeNull();
     expect(rendered.querySelector('.chart-legend')?.textContent).toContain('githubnext/gh-aw-cao');
     expect(rendered.textContent).toContain('2repositories');
     expect(rendered.textContent).toContain('campaign rollups are omitted');

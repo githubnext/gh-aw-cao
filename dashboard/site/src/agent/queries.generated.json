@@ -5522,6 +5522,86 @@
   ]
  },
  {
+  "name": "workflow-failure-trend",
+  "subject": "Show recent failure counts and their change for each workflow.",
+  "objective": "Spot a change in observed workflow failure activity without treating unknown conclusions as failures.",
+  "acceptance": "Each observed failure counts once within its own workflow; the first change is undefined and the seven-observation window is not a seven-day calendar interval.",
+  "from": "workflow-runs",
+  "compute": [
+   {
+    "as": "is-failure",
+    "function": "equals-any",
+    "args": [
+     {
+      "field": "run-conclusion"
+     },
+     {
+      "value": "failure"
+     },
+     {
+      "value": "timed_out"
+     }
+    ]
+   },
+   {
+    "as": "failure-count",
+    "function": "if",
+    "args": [
+     {
+      "field": "is-failure"
+     },
+     {
+      "value": 1
+     },
+     {
+      "value": 0
+     }
+    ]
+   }
+  ],
+  "window": [
+   {
+    "operation": "rolling",
+    "field": "failure-count",
+    "as": "recent-failure-count",
+    "frame": 7,
+    "reducer": "sum",
+    "order-by": [
+     {
+      "field": "started-at",
+      "direction": "asc"
+     },
+     {
+      "field": "run",
+      "direction": "asc"
+     }
+    ],
+    "groupby": [
+     "workflow-route"
+    ]
+   },
+   {
+    "operation": "change",
+    "field": "recent-failure-count",
+    "as": "failure-count-change",
+    "mode": "absolute",
+    "order-by": [
+     {
+      "field": "started-at",
+      "direction": "asc"
+     },
+     {
+      "field": "run",
+      "direction": "asc"
+     }
+    ],
+    "groupby": [
+     "workflow-route"
+    ]
+   }
+  ]
+ },
+ {
   "name": "workflow-reports",
   "subject": "Project retained outcomes into route-addressable workflow reports.",
   "objective": "Review retained workflow outcome reports separately from execution status before interpreting operational results.",
@@ -7234,15 +7314,169 @@
   }
  },
  {
-  "name": "campaign-operational-value-primary-series",
-  "subject": "Project numeric repository-level campaign operational-value observations into temporal series with native units and direction.",
-  "objective": "Choose a repository and native operational-value measure whose observed trend needs evidence review.",
-  "acceptance": "Each point has time, repository, definition, native unit and direction; null and nonnumeric values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
-  "description": "Repository operational-value numeric series; point-level maturity and missing values require source observation review.",
+  "name": "campaign-operational-value-daily-change",
+  "subject": "Measure elapsed-day changes in each repository's operational value.",
+  "objective": "Compare rates of change across irregularly spaced observations.",
+  "acceptance": "The first observation and observations without a valid prior value or elapsed time have no rate; repositories and definitions never share a previous observation.",
   "from": "operational-values",
+  "window": [
+   {
+    "operation": "change",
+    "field": "operational-value",
+    "as": "change-per-day",
+    "mode": "rate",
+    "time-field": "observed-at",
+    "unit": "day",
+    "order-by": [
+     {
+      "field": "observed-at"
+     }
+    ],
+    "groupby": [
+     "campaign",
+     "organization",
+     "repository",
+     "operational-value-definition"
+    ]
+   }
+  ]
+ },
+ {
+  "name": "campaign-operational-value-horizon-maxima",
+  "subject": "Find the maximum native value for each campaign measure in the selected horizon.",
+  "objective": "Give repository change rates a shared, measure-specific scale.",
+  "acceptance": "The maximum is computed across repositories for one campaign and definition; non-positive or missing maxima cannot normalize rates.",
+  "from": "operational-values",
+  "aggregate": {
+   "by": [
+    "campaign",
+    "operational-value-definition"
+   ],
+   "values": [
+    {
+     "field": "operational-value",
+     "as": "horizon-maximum",
+     "reducer": "max"
+    }
+   ]
+  }
+ },
+ {
+  "name": "campaign-operational-value-normalized-change",
+  "subject": "Express daily operational-value changes in percentage points of the horizon maximum.",
+  "objective": "Compare repository rates without plotting incompatible native magnitudes.",
+  "acceptance": "A rate of one percent of the campaign measure's positive horizon maximum per day is shown as 1; missing rates or non-positive maxima remain missing.",
+  "from": "campaign-operational-value-daily-change",
+  "joins": [
+   {
+    "source": "campaign-operational-value-horizon-maxima",
+    "type": "left",
+    "on": [
+     {
+      "left": "campaign",
+      "right": "campaign"
+     },
+     {
+      "left": "operational-value-definition",
+      "right": "operational-value-definition"
+     }
+    ],
+    "fields": [
+     {
+      "field": "horizon-maximum",
+      "as": "horizon-maximum"
+     }
+    ]
+   }
+  ],
+  "compute": [
+   {
+    "as": "positive-horizon-maximum",
+    "function": "greater-than",
+    "args": [
+     {
+      "field": "horizon-maximum"
+     },
+     {
+      "value": 0
+     }
+    ]
+   },
+   {
+    "as": "normalization-denominator",
+    "function": "if",
+    "args": [
+     {
+      "field": "positive-horizon-maximum"
+     },
+     {
+      "field": "horizon-maximum"
+     },
+     {
+      "value": 0
+     }
+    ]
+   },
+   {
+    "as": "fraction-of-horizon-maximum-per-day",
+    "function": "quotient",
+    "args": [
+     {
+      "field": "change-per-day"
+     },
+     {
+      "field": "normalization-denominator"
+     }
+    ]
+   },
+   {
+    "as": "percent-of-horizon-maximum-per-day",
+    "function": "product",
+    "args": [
+     {
+      "field": "fraction-of-horizon-maximum-per-day"
+     },
+     {
+      "value": 100
+     }
+    ]
+   },
+   {
+    "as": "normalized-operational-value-unit",
+    "function": "literal",
+    "args": [
+     {
+      "value": "% of horizon maximum / day"
+     }
+    ]
+   },
+   {
+    "as": "series-repository",
+    "function": "concat",
+    "args": [
+     {
+      "field": "organization"
+     },
+     {
+      "value": "/"
+     },
+     {
+      "field": "repository"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "campaign-operational-value-primary-series",
+  "subject": "Project normalized daily operational-value changes into repository temporal series.",
+  "objective": "Choose a repository and measure whose normalized daily change needs evidence review.",
+  "acceptance": "Each plotted point is a valid elapsed-day change scaled by the positive campaign measure maximum in the horizon; the first, missing and unnormalizable points are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
+  "description": "Repository daily rates in percent of the horizon maximum; point-level maturity and missing values require source observation review.",
+  "from": "campaign-operational-value-normalized-change",
   "temporal-series": {
    "time": "observed-at",
-   "series": "repository",
+   "series": "series-repository",
    "shape": "groups",
    "carry": [
     "campaign",
@@ -7250,6 +7484,7 @@
     "operational-value-role",
     "operational-value-name",
     "operational-value-unit",
+    "normalized-operational-value-unit",
     "operational-value-direction",
     "adoption-at",
     "evaluation-mode",
@@ -7258,7 +7493,7 @@
    ],
    "measures": [
     {
-     "field": "operational-value",
+     "field": "percent-of-horizon-maximum-per-day",
      "key": "operational-value-definition",
      "kind": "primary"
     }
@@ -7340,10 +7575,10 @@
  },
  {
   "name": "campaign-operational-value-plot-inventory",
-  "subject": "Describe each repository operational-value plot rendered on campaign Insights.",
+  "subject": "Describe each repository operational-value daily-change plot rendered on campaign Insights.",
   "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-  "acceptance": "Every plot entry derives from a primary-series group with its repository, native measure definition, unit, and direction; neither null-only observations nor point-level maturity are represented, so requery operational-values before treating an empty inventory as zero value or a plot as matured evidence.",
-  "description": "Plot inventory derived from numeric repository operational-value series; maturity must be checked separately.",
+  "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, normalized unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+  "description": "Plot inventory derived from normalized repository daily-change series; maturity must be checked separately.",
   "from": "campaign-operational-value-primary-series"
  },
  {

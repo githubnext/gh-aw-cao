@@ -46,6 +46,7 @@ const MAX_TICKS = 5;
  *   outcomes?: OutcomeContext[],
  *   trend?: TemporalTrend,
  *   provisional?: boolean
+ *   connectPoints?: boolean
  * }} options
  * @returns {HTMLElement}
  */
@@ -209,7 +210,7 @@ export function renderTemporalMetricPlot(options) {
   ...metrics.flatMap((metric, index) => {
     const className = `chart-series-${(index % 12) + 1}`;
     return [
-      h('polyline', {
+      options.connectPoints === false ? null : h('polyline', {
         className: `temporal-plot-metric ${className}`,
         points: metric.points.map((point) => `${x(point.x)},${y(point.y)}`).join(' '),
         fill: 'none',

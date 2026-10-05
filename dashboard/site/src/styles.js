@@ -803,6 +803,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; }
 .chart-legend-scatter i.chart-grid-key { border-color: var(--border); border-top-style: dashed; }
+.chart-legend-dot i { width: 10px; height: 10px; border: 0; border-radius: 50%; background: currentColor; }
 .chart-legend-bar i, .chart-legend-horizontal-bar i, .chart-legend-pie i { height: 10px; border-top-width: 0; border-radius: 999px; background: currentColor; }
 .chart-legend-pie strong { color: var(--fg); font-variant-numeric: tabular-nums; }
 .chart-legend-pie small { color: var(--muted); }

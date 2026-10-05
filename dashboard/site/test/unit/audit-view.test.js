@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import hostedQueries from '../../src/agent/queries.generated.json' with { type: 'json' };
 
 const dashboard = authoritativeDashboard.dashboard;
 const metadata = {
@@ -15,6 +16,15 @@ const metadata = {
 };
 
 describe('Audit dashboard view', () => {
+  it('keeps the hosted operational value query graph in sync with the dashboard', () => {
+    const names = ['campaign-operational-value-daily-change', 'campaign-operational-value-horizon-maxima',
+      'campaign-operational-value-normalized-change', 'campaign-operational-value-primary-series'];
+    for (const name of names) {
+      expect(hostedQueries.find((query) => query.name === name))
+        .toEqual(dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === name));
+    }
+  });
+
   it('reuses campaign-filtered Audit views for the campaign Insights facet', () => {
     const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-insights');
     const issues = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-issues');
