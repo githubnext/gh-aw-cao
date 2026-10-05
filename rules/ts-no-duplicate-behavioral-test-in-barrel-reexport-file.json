@@ -35,9 +35,19 @@
       "files": [
         "src/docker-manager.test.ts"
       ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9460,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated 'test: improve docker-manager barrel coverage' commit (5bf17cf2) re-added parseDifcProxyHost and filterComposeCapDrop behavioral assertions to src/docker-manager.test.ts (the barrel re-export smoke-test file). Maintainer commit 'test: remove duplicate docker-manager coverage' (lpcox) reverted both additions before merge, a fourth repetition of the same pattern.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
     }
   ],
-  "occurrence_count": 3,
+  "occurrence_count": 4,
   "affected_paths": [
     "src/docker-manager.test.ts"
   ],
@@ -49,9 +59,9 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-03T20:35:19Z",
-  "last_updated": "2026-10-03T20:35:19Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37151586837",
+  "last_seen_at": "2026-10-05T19:01:37Z",
+  "last_updated": "2026-10-05T19:01:37Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37358881259",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
