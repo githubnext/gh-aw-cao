@@ -2,10 +2,16 @@ import { DatabaseSync } from 'node:sqlite';
 import databaseQueries from '../dashboard/site/src/data/queries/database.json' with { type: 'json' };
 import { dashboardQueryOutputFields } from '../dashboard/site/src/data/queries/declarative.js';
 import { canonicalDatabaseName } from '../dashboard/site/src/data/storage/indexeddb.js';
+import { MIN_GPU_ROWS, webGpuFilterEligibility } from '../dashboard/site/src/data/queries/webgpu-eligibility.js';
 
 const DATABASE_SOURCE_TABLES = databaseSourceTables(databaseQueries);
 const DATABASE_SOURCE_FIELDS = databaseSourceFields(databaseQueries);
 const LARGE_MATERIALIZED_OUTPUT_FIELD_UNITS = 256;
+// Includes run records and canonical entities with a runId foreign key.
+const HIGH_CARDINALITY_TABLES = new Set([
+  'runs', 'domains', 'tools', 'skills', 'friction', 'audits', 'issues',
+  'experimentAssignments', 'graderObservations', 'evalObservations'
+]);
 
 /**
  * Analyze the static row-read complexity of every Dashboard Language query.
@@ -28,15 +34,41 @@ export function analyzeDashboardComplexity(document, { tableCounts } = {}) {
     ...query,
     'used-by': consumers.get(query.name) ?? []
   }));
+  const queryNames = new Set(definitions.map((query) => query.name));
+  const gpu = new Map(definitions.map((query) => {
+    const source = DATABASE_SOURCE_TABLES.get(query.from) ?? (query.from === 'run-records' ? 'runs' : undefined);
+    const count = source === undefined ? undefined : tableCounts?.[source];
+    const filter = webGpuFilterEligibility(query, queryNames);
+    const cardinality = source === undefined ? 'unknown'
+      : count === undefined ? (HIGH_CARDINALITY_TABLES.has(source) ? 'potentially-large' : 'unknown')
+        : count >= MIN_GPU_ROWS ? 'large' : 'below-threshold';
+    return [query.name, {
+      ...filter,
+      table: source ?? null,
+      'table-cardinality': cardinality,
+      'table-rows': count ?? null,
+      'filter-row-read-units': filter.status === 'candidate'
+        ? estimates.queries.get(query.name)?.['stage-row-reads']?.filter ?? {}
+        : {}
+    }];
+  }));
+  const gpuRanking = ranking.map((query) => ({ ...query, 'webgpu-filter': gpu.get(query.name) }));
   return {
     queries: definitions.length,
     summary: estimates.summary,
-    ranking,
+    ranking: gpuRanking,
+    summary: {
+      ...estimates.summary,
+      'webgpu-filter-candidates': [...gpu.values()].filter(({ status }) => status === 'candidate').length,
+      'webgpu-large-filter-candidates': [...gpu.values()]
+        .filter(({ status, 'table-cardinality': cardinality }) => status === 'candidate' && ['large', 'potentially-large'].includes(cardinality)).length
+    },
     inventory: definitions.map((query) => ({
       name: query.name,
       rank: estimates.ranks.get(query.name),
       'used-by': consumers.get(query.name) ?? [],
-      ...estimates.queries.get(query.name)
+      ...estimates.queries.get(query.name),
+      'webgpu-filter': gpu.get(query.name)
     }))
   };
 }
@@ -63,6 +95,12 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     query['dependency-row-read-units'],
     query['output-field-count'] ?? 'unknown',
     query['total-materialized-field-units'] ?? 'unknown',
+    query['webgpu-filter']?.status === 'candidate'
+      ? `${query['webgpu-filter'].field} (${query['webgpu-filter']['table-cardinality']})`
+      : query['webgpu-filter']?.status ?? 'unknown',
+    query['webgpu-filter']?.status === 'candidate'
+      ? Object.values(query['webgpu-filter']['filter-row-read-units']).reduce((sum, value) => sum + value, 0)
+      : 0,
     query.warnings.length > 0 ? query.warnings.join('<br>') : '—',
     query.class === 'linear-row-reads-with-n-log-n-sort' ? 'linear + sort' : 'linear'
   ].join(' | '));
@@ -78,6 +116,7 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     '',
     `Estimated **${analysis.summary['materialize-all-row-read-units']} normalized row-read units** to materialize all ${analysis.queries} queries once with shared dependencies reused.`,
     `Estimated **${analysis.summary['materialize-all-field-units']} normalized materialized field-units** across the same graph; this relative estimate uses output row counts and inferred field counts, not field-value byte sizes.`,
+    `WebGPU filter candidates: **${analysis.summary['webgpu-filter-candidates']}** structurally eligible; **${analysis.summary['webgpu-large-filter-candidates']}** reference large or potentially large tables. This is potential filter work, not a measured speedup; runtime eligibility depends on request shape, row values, GPU availability and at least ${MIN_GPU_ROWS.toLocaleString('en-US')} input rows.`,
     ...(queryId === undefined ? [] : ['', `Selected query: ${markdownCode(queryId)}.`]),
     '',
     `Database table coefficients: ${sources}.`,
@@ -90,8 +129,8 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
           )).join(', ')}.`
         ]),
     '',
-    '| Rank | Query | Used by | Total | Direct | Dependencies | Output fields | Materialized field units | Warnings | Complexity |',
-    '| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+    '| Rank | Query | Used by | Total | Direct | Dependencies | Output fields | Materialized field units | WebGPU filter / table size | Filter row-read units | Warnings | Complexity |',
+    '| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | --- | --- |',
     ...rows.map((row) => `| ${row} |`),
     ...(queryId === undefined && ranking.length < analysis.ranking.length
       ? ['', `_Showing ${ranking.length} of ${analysis.ranking.length} queries._`]

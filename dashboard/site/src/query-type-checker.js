@@ -13,6 +13,7 @@ import {
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
 import { createDebug } from './debug.js';
+import { webGpuFilterEligibility } from './data/queries/webgpu-eligibility.js';
 
 /**
  * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
@@ -34,7 +35,8 @@ const debugCompile = createDebug('query-type-checker');
  * @returns {{
  *   errors: ValidationError[],
  *   queryFields: Map<string, string[] | undefined>,
- *   queryTables: Map<string, Set<string>>
+ *   queryTables: Map<string, Set<string>>,
+ *   queryWebGpu: Map<string, ReturnType<typeof webGpuFilterEligibility>>
  * }}
  */
 export function compileDashboardQueryTypes(definitions) {
@@ -154,6 +156,9 @@ export function compileDashboardQueryTypes(definitions) {
     queryTables: new Map([...symbols.keys()].map((name) => [
       name,
       new Set(compiled.get(name)?.tables ?? [])
+    ])),
+    queryWebGpu: new Map([...symbols].map(([name, { query }]) => [
+      name, webGpuFilterEligibility(query, new Set(symbols.keys()))
     ])),
     errors
   };

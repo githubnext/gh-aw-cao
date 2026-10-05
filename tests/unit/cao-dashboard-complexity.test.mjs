@@ -85,6 +85,13 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
       from: { runs: 1 },
       filter: { runs: 1 },
       select: { runs: 1 }
+    },
+    'webgpu-filter': {
+      status: 'unsupported-filter',
+      table: 'runs',
+      'table-cardinality': 'potentially-large',
+      'table-rows': null,
+      'filter-row-read-units': {}
     }
   });
   assert.equal(byName.summary['total-row-read-units'], 5);
@@ -111,10 +118,36 @@ test('formats a bounded markdown complexity ranking', () => {
   assert.match(markdown, /^### Dashboard query complexity/m);
   assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
   assert.match(markdown, /Database table coefficients: `runs` 8, `repositories` 1/);
-  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| 2 \| 4 \| — \| linear \|/);
-  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| 1 \| 3 \| — \| linear \|/);
+  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| 2 \| 4 \| no-filter \| 0 \| — \| linear \|/);
+  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| 1 \| 3 \| no-filter \| 0 \| — \| linear \|/);
   assert.doesNotMatch(markdown, /\| 3 \| `base`/);
   assert.match(markdown, /Showing 2 of 3 queries/);
+});
+
+test('cross-references WebGPU-compatible filters with large run and child tables', () => {
+  const document = { dashboard: { queries: [
+    { name: 'attempts', from: 'runs', filter: { predicates: [{ field: 'run-attempt', equals: 1 }] } },
+    { name: 'tools-attempt', from: 'tools', filter: { predicates: [{ field: 'run-attempt', equals: 1 }] } },
+    { name: 'dependent', from: 'attempts', filter: { predicates: [{ field: 'run-attempt', equals: 1 }] } },
+    { name: 'repo-count', from: 'repositories', filter: { predicates: [{ field: 'safe-items-count', equals: 2 }] } }
+  ] } };
+  const analysis = analyzeDashboardComplexity(document, {
+    tableCounts: { runs: 12000, tools: 8000, repositories: 120 }
+  });
+  const byName = Object.fromEntries(analysis.inventory.map((query) => [query.name, query['webgpu-filter']]));
+  assert.deepEqual(byName.attempts, {
+    status: 'candidate', field: 'run-attempt', table: 'runs',
+    'table-cardinality': 'large', 'table-rows': 12000,
+    'filter-row-read-units': { runs: 1 }
+  });
+  assert.equal(byName['tools-attempt']['table-cardinality'], 'large');
+  assert.equal(byName.dependent.status, 'complex-input');
+  assert.equal(byName['repo-count']['table-cardinality'], 'below-threshold');
+  assert.equal(analysis.summary['webgpu-filter-candidates'], 3);
+  assert.equal(analysis.summary['webgpu-large-filter-candidates'], 2);
+  assert.match(formatDashboardComplexityMarkdown(analysis), /run-attempt \(large\)/);
+  const potential = analyzeDashboardComplexity(document);
+  assert.equal(potential.inventory.find((query) => query.name === 'tools-attempt')['webgpu-filter']['table-cardinality'], 'potentially-large');
 });
 
 test('warns when a wide raw union materializes more field-units than aggregated sources', () => {

@@ -7,6 +7,17 @@ import { TABLE_FIELDS } from '../../src/specification.js';
 const query = (value) => ({ subject: 'Exercise static query reference checking.', ...value });
 
 describe('dashboard query type checker', () => {
+  it('reports WebGPU filter structure without treating potential acceleration as validation', () => {
+    const result = compileDashboardQueryTypes([
+      query({ name: 'first-attempt', from: 'runs', filter: { predicates: [{ field: 'run-attempt', equals: 1 }] } }),
+      query({ name: 'derived', from: 'first-attempt', filter: { predicates: [{ field: 'run-attempt', equals: 1 }] } }),
+      query({ name: 'text', from: 'runs', filter: { predicates: [{ field: 'run-conclusion', equals: 'success' }] } })
+    ]);
+    expect(result.errors).toEqual([]);
+    expect(result.queryWebGpu.get('first-attempt')).toEqual({ status: 'candidate', field: 'run-attempt' });
+    expect(result.queryWebGpu.get('derived')).toEqual({ status: 'complex-input' });
+    expect(result.queryWebGpu.get('text')).toEqual({ status: 'unsupported-filter' });
+  });
   it('compiles transitive table and query schemas through every field-producing clause', () => {
     const result = compileDashboardQueryTypes([
       query({

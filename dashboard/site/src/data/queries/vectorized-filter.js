@@ -4,11 +4,14 @@ import {
   dashboardQueryIndex,
   executeDashboardQueries
 } from './declarative.js';
+import {
+  MAX_GPU_INT,
+  MIN_GPU_INT,
+  MIN_GPU_ROWS,
+  webGpuFilterEligibility
+} from './webgpu-eligibility.js';
 
-const MIN_GPU_ROWS = 4096;
 const WORKGROUP_SIZE = 64;
-const MIN_INT = -2147483648;
-const MAX_INT = 2147483647;
 const GPU_WAIT_MS = 2000;
 // WebGPU's stable buffer-usage and map-mode bit values.
 const BUFFER_MAP_READ = 1;
@@ -51,15 +54,10 @@ function waitForGpu(operation, signal) {
  * @returns {Promise<Record<string, unknown>[] | null>}
  */
 export async function gpuFilter(rows, operator, signal = undefined) {
-  if (operator.op !== 'filter' || rows.length < MIN_GPU_ROWS || operator.search?.query
-      || operator.predicates?.length !== 1) return null;
-  const predicate = operator.predicates[0];
+  if (operator.op !== 'filter' || rows.length < MIN_GPU_ROWS
+      || webGpuFilterEligibility({ filter: operator }, new Set()).status !== 'candidate') return null;
+  const predicate = /** @type {NonNullable<typeof operator.predicates>} */ (operator.predicates)[0];
   const target = predicate.equals;
-  if (predicate.field === '@time' || predicate.optional || typeof target !== 'number'
-      || !Number.isInteger(target)
-      || target <= MIN_INT || target > MAX_INT
-      || predicate.in !== undefined || predicate.includes !== undefined
-      || predicate.gte !== undefined || predicate.lt !== undefined) return null;
   const gpu = /** @type {{ gpu?: { requestAdapter: () => Promise<any> } }} */ (globalThis.navigator ?? {}).gpu;
   if (!gpu || typeof gpu.requestAdapter !== 'function') return null;
 
@@ -69,7 +67,7 @@ export async function gpuFilter(rows, operator, signal = undefined) {
     // `tidy` compares stringified values; only numeric integer columns are
     // eligible, so no coercion, null handling or precision may change.
     if (typeof value !== 'number' || !Number.isInteger(value)
-        || value < MIN_INT || value > MAX_INT) return null;
+        || value < MIN_GPU_INT || value > MAX_GPU_INT) return null;
     values[i] = /** @type {number} */ (value);
   }
   if (signal?.aborted) return null;
@@ -189,8 +187,8 @@ export async function executeVectorizedDashboardQueries(definitions, sources, re
   const names = requested === undefined ? [...index.keys()] : [...requested];
   const definition = names.length === 1 ? index.get(names[0]) : undefined;
   const input = definition && sources[definition.from];
-  if (!definition?.filter || definition.joins?.length || definition.union?.length
-      || index.has(definition.from) || dashboardQueryDefects(definitions).has(definition.name)
+  if (!definition || webGpuFilterEligibility(definition, new Set(index.keys())).status !== 'candidate'
+      || dashboardQueryDefects(definitions).has(definition.name)
       || input?.metadata?.availability === 'unavailable'
       || options.pagination?.[definition.name]
       || options.budget || options.maxOperations !== undefined || options.timeout !== undefined
