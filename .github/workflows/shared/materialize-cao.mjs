@@ -12,6 +12,7 @@ const rootResources = [
   'skills',
   'cao.sh',
   '.github/actions/setup-cao-runtime',
+  '.github/actions/setup-gh-aw',
   '.github/cao/instructions.md',
   '.github/workflows/shared/activity-cache.md',
   '.github/workflows/shared/control.md',

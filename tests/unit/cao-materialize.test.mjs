@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
+import { parse } from "yaml";
 import {
   extractCaoArchive,
   materializeCaoFromSource,
@@ -104,6 +105,7 @@ test("CAO materialization preserves canonical source paths", () => {
       readFileSync(path.join(sourceRoot, "dependabot", "intelligence.json"), "utf8"),
     );
     assert.ok(existsSync(path.join(destination, ".github", "actions", "setup-cao-runtime", "action.yml")));
+    assert.ok(existsSync(path.join(destination, ".github", "actions", "setup-gh-aw", "action.yml")));
     assert.ok(existsSync(path.join(destination, ".github", "cao", "instructions.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "activity-cache.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "control.md")));
@@ -182,6 +184,7 @@ test("root materialization preserves exact focused package revisions", () => {
           "skills",
           "cao.sh",
           ".github/actions/setup-cao-runtime",
+          ".github/actions/setup-gh-aw",
           ".github/cao/instructions.md",
           ".github/workflows/shared/activity-cache.md",
           ".github/workflows/shared/control.md",
@@ -195,6 +198,38 @@ test("root materialization preserves exact focused package revisions", () => {
       },
     ],
   );
+});
+
+test("root installation provides every local action used by its installed workflows", () => {
+  const installed = new Set();
+  const workflows = [];
+  const visit = (manifestPath) => {
+    const manifest = parse(readFileSync(path.join(sourceRoot, manifestPath), "utf8"));
+    for (const { destination } of manifest.resources ?? []) installed.add(destination);
+    for (const include of manifest.includes ?? []) {
+      if (path.posix.basename(include) === "aw.yml") visit(include);
+      else workflows.push(include);
+    }
+  };
+  visit("aw.yml");
+  const [{ resources }] = planCaoMaterialization([{
+    name: "githubnext/gh-aw-cao",
+    record: { resolvedCommit: "1".repeat(40) },
+  }], "root");
+  const provided = (file) =>
+    installed.has(file) || resources.some((resource) => file === resource || file.startsWith(`${resource}/`));
+
+  assert.ok(workflows.length > 0);
+  for (const workflow of workflows) {
+    const source = readFileSync(path.join(sourceRoot, workflow), "utf8");
+    for (const [, action] of source.matchAll(/^\s*(?:-\s+)?uses:\s*\.\/([^\s#]+)/gm)) {
+      const directory = action.replace(/\/+$/, "");
+      assert.ok(
+        provided(`${directory}/action.yml`) || provided(`${directory}/action.yaml`),
+        `${workflow} uses ./${directory}, which root installation does not provide`,
+      );
+    }
+  }
 });
 
 test("CAO materialization requires immutable resolved commit provenance", () => {
