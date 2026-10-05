@@ -15,37 +15,40 @@ Central Agentic Ops (CAO) has two parts that you deploy separately:
 
 Choosing a deployment option never changes campaign policy, rollout mode, credentials, or target authority. Those settings stay in the reviewed `.github/workflows/cao.json` file in your control repository. For more information, see [Control policy](configuration.md#control-policy) and [Roll out a campaign](rollout-and-routing.md).
 
-## Comparing the options
+## How to scale your dashboard
 
-Choose between two dashboard architectures based on the size of the data you
-expect to inspect and the experience your viewers need. GitHub Pages is the
-starter option: it has no extra server or database to operate. The server-backed
-option moves storage and query work to PostgreSQL for larger datasets or when
-browser-side loading and querying no longer meet your needs. Server-backed
-deployments also require Redis for operational state; Redis may come from the
-platform or a compatible external provider such as Upstash.
+### Start with GitHub Pages
 
-| Architecture | Choose it when | Where queries run | Hosting options |
-| --- | --- | --- | --- |
-| **GitHub Actions only (starter)** | You are getting started, your published dataset is manageable for viewers' browsers, and Pages access is sufficient. | In each viewer's browser. Every viewer downloads and indexes the snapshot locally. | [GitHub Pages with GitHub Apps](deployment-actions-github-app.md) or [a fine-grained PAT](deployment-actions-pat.md). No dashboard server, database, or cloud account to operate. |
-| **Server-backed (scale-oriented)** | The dataset is too large or slow for comfortable browser loading and queries, or you need per-user sign-in or webhook-driven refresh. | On the server, over PostgreSQL. Viewers use the same API; they do not each query a local copy of the full dataset. | [Azure](deployment-azure.md) or [Coolify](deployment-coolify.md), with PostgreSQL and Redis. You operate or provision the server and its supporting services. |
+GitHub Pages is the default starter deployment. It needs no dashboard server,
+database, or cloud account beyond your control repository and Pages site. Each
+viewer's browser downloads the published snapshot, stores it locally, and runs
+the queries. This works well while the dataset loads quickly and the dashboard
+stays responsive on the devices your viewers actually use.
 
-### How to choose
+### Move query work to a server when browser limits become real
 
-Start with GitHub Pages unless you already know you need the server-backed
-capabilities. In the Pages model, each viewer's browser downloads, stores, and
-queries its own copy, so per-viewer performance depends on dataset size and the
-viewer's device. Move to a server-backed deployment when real or representative
-data makes that browser work too slow, memory-heavy, or unreliable for your
-intended users. PostgreSQL centralizes data and query work, but you must
-provision and monitor its capacity (and Redis for operational state); server-
-backed hosting is not automatic or unlimited scale.
+As the published dataset grows, every viewer still has to download, store, and
+query a full local copy. Check the experience with representative data on your
+viewers' actual devices. Consider a server-backed deployment when loading takes
+too long, queries feel slow, browser memory becomes a problem, or the dashboard
+is unreliable for your intended users. CAO does not define a single dataset-size
+cutoff: the practical limit depends on the data, views, and devices.
 
-## Choosing an option
+With a server-backed deployment, the Go service verifies the snapshot, stores
+dashboard data in PostgreSQL, and runs queries centrally; browsers use its API
+instead of each querying a local database. This changes where the workload runs,
+not whether capacity needs managing: you must provision and monitor the server,
+PostgreSQL, and Redis operational state for your data and expected traffic. It
+is also the right architecture if you need per-user sign-in or webhook-driven
+refresh.
 
-1. **Start with GitHub Actions only** if the browser-based workload fits your expected dataset and viewers. It needs no dashboard infrastructure beyond your control repository, and it is what `gh aw add githubnext/gh-aw-cao` installs by default. If you don't have a control repository yet, follow [Set Up CAO](setup-quickstarts.md) first.
-1. **Choose a credential profile.** To try CAO with the least setup, use a fine-grained PAT. For production, use GitHub Apps. For more information, see [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
-1. **Choose Azure or Coolify when the browser is the constraint** or when you need server-backed capabilities such as per-user sign-in or webhook-driven refresh. Base the scale decision on representative data and actual viewer devices; CAO does not prescribe a dataset-size threshold.
+Choose [Azure](deployment-azure.md) or [Coolify](deployment-coolify.md) to host
+the same Go service. They differ in platform and operations, not in the basic
+dashboard data/query architecture. For GitHub Pages, choose a credential profile
+separately from the scaling decision: use [GitHub Apps](deployment-actions-github-app.md)
+or a [fine-grained PAT](deployment-actions-pat.md). GitHub Actions only is what
+`gh aw add githubnext/gh-aw-cao` installs by default; if you do not have a
+control repository yet, follow [Set Up CAO](setup-quickstarts.md) first.
 
 Azure and Coolify run the same Go service from the `server/` directory, with the same authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. They differ in platform, secret management, ingress, and delivery.
 
