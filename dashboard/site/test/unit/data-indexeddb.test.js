@@ -302,6 +302,23 @@ describe('canonical IndexedDB', () => {
     stop();
   });
 
+  it('does not post worker upgrade events when the worker module is imported on the main thread', async () => {
+    vi.resetModules();
+    const { openCanonicalDatabase: open } = await import('../../src/data/storage/indexeddb.js');
+    await import('../../src/data-worker.js');
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('legacy');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+    const postMessage = vi.spyOn(window, 'postMessage');
+    const database = await open(indexedDB);
+    expect(postMessage).not.toHaveBeenCalled();
+    database.close();
+  });
+
   it('counts multiple collections without materializing their records', async () => {
     await writeRecords('repositories', [
       { id: 'repository:1' },
