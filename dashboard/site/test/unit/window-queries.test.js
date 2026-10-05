@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { executeDashboardQueries, dashboardQueryDefects, dashboardQueryOutputFields } from '../../src/data/queries/declarative.js';
+import {
+  DashboardQueryCancelledError, createDashboardQueryBudget,
+  executeDashboardQueries, executeDashboardQuery, dashboardQueryDefects, dashboardQueryOutputFields
+} from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -31,6 +34,22 @@ function documentWith(queryDefinition, chartField = 'moving') {
 }
 
 describe('declarative worker window queries', () => {
+  it('charges rolling frame work before scanning an oversized window', () => {
+    const rows = Array.from({ length: 1000 }, (_, index) => ({ run: index, aic: index }));
+    /** @type {import('../../src/data/queries/declarative.js').DashboardQuery} */
+    const definition = { name: 'large-window', from: 'usage', window: [{
+      field: 'aic', as: 'moving', operation: 'rolling', frame: 1000,
+      'order-by': [{ field: 'run' }]
+    }] };
+    const result = executeDashboardQuery(definition, {
+      usage: { source: 'usage', rows, metadata: {
+        'source-id': 'usage', 'source-kind': 'published', 'as-of': '2026-01-01T00:00:00Z',
+        'retrieved-at': '2026-01-01T00:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available'
+      } }
+    }, undefined, createDashboardQueryBudget({ maxOperations: 5000 }));
+    expect(() => result.rows).toThrow(DashboardQueryCancelledError);
+  });
+
   it('accepts date-day UTC buckets as temporal rate inputs after aggregation', () => {
     const daily = {
       name: 'daily', subject: 'UTC daily counts', from: 'usage',
