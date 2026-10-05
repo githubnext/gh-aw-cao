@@ -100,18 +100,6 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-05T07:31:28Z",
-  "last_updated": "2026-10-03T11:03:07Z",
-  "additional_target_evaluations": [
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "3469b7581ee9e7016a6e5bb477c3a8c3aabfb142",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "github/gh-aw-firewall is a server-side Node.js CLI/Docker-sandboxing tool with no frontend UI, no reactive state()/effect() framework, and no browser DOM code; the unsafe pattern (async event handler writing reactive state without an abort-signal guard after unmount) requires a component/reactive-UI architecture absent from this repository.",
-      "txn_id": "refiner-37277763568-3"
-    }
-  ]
+  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_updated": "2026-10-03T11:03:07Z"
 }
