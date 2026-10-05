@@ -10,7 +10,7 @@ const links = [
 ];
 ---
 
-<nav class="cao-primary-nav" aria-label="Primary">
+<nav class="cao-primary-nav" aria-label="Global links">
   {
     links.map(({ label, href }) => (
       <a href={href} aria-current={href.startsWith("/") && path.startsWith(href) ? "page" : undefined}>
@@ -22,11 +22,11 @@ const links = [
 {
   !hasSidebar && (
     <details class="cao-mobile-nav">
-      <summary aria-label="Open primary navigation menu">
+      <summary aria-label="Open global links menu">
         <span class="menu-icon open-menu" aria-hidden="true"><Icon name="bars" /></span>
         <span class="menu-icon close-menu" aria-hidden="true"><Icon name="close" /></span>
       </summary>
-      <nav aria-label="Primary navigation menu">
+      <nav aria-label="Global links menu">
         {links.map(({ label, href }) => (
           <a href={href} aria-current={href.startsWith("/") && path.startsWith(href) ? "page" : undefined}>
             {label}
