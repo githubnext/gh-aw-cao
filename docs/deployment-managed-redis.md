@@ -201,14 +201,19 @@ applications. Sessions, queues, quota state, revocation retries, and other
 namespaces are never evicted. Redis `maxmemory` and eviction policy are never
 changed. If these protected allocations alone exceed the budget, startup fails
 explicitly, running maintenance reports memory pressure, and further cache
-admissions are declined. Scale Redis or reduce operational state in that case;
-cache eviction cannot safely guarantee a whole-node cap against non-cache
-growth. `INFO memory` is node/database scoped, so this is not a cluster-wide cap.
-Use the same budget across replicas sharing a Redis node and retain the
-provider's `noeviction` policy to protect operational state. Scaling the instance
+admissions are declined. `INFO memory` is node-wide and does not identify which
+protected key families or other Redis users account for excess usage; an
+eviction count covers only disposable caches reclaimed by CAO. Before changing
+capacity, inspect provider-side memory and namespace/key-family usage. Do not
+flush keys or reduce sessions, queues, quota state, or other protected state
+blindly. Then scale Redis as needed and set `CAO_REDIS_MAX_BYTES` consistently
+for the dashboard, collector, and backfill. Keep the effective budget within
+80% of reported Redis `maxmemory`, use the same budget across replicas sharing a
+Redis node, and retain the provider's `noeviction` policy. Scaling the instance
 does not automatically raise `CAO_REDIS_MAX_BYTES`; change both when required.
-The read-only `doctor` memory check resolves the same configuration and reports
-configured/effective budgets alongside provider utilization.
+The read-only `cao-dashboard doctor` memory check resolves the same configuration
+and reports node-wide used memory, provider limit, configured and effective
+budgets, utilization, and policy.
 
 ## Bounded query-result caching
 

@@ -166,6 +166,60 @@ func TestRedisMaintenanceFailuresAreExplicitAndSanitized(t *testing.T) {
 	}
 }
 
+func TestRedisMemoryPressureLogExplainsNodeWideScopeAndSafeRemediation(t *testing.T) {
+	var output bytes.Buffer
+	app := maintenanceApp(redisPressureMaintenanceClient{}, &output)
+	err := app.maintainRedisCaches(t.Context())
+	if !errors.Is(err, redisx.ErrMemoryPressure) {
+		t.Fatalf("maintenance error = %v, want memory pressure", err)
+	}
+	message := output.String()
+	for _, expected := range []string{
+		"Redis node-wide memory pressure",
+		"used_bytes=510554256",
+		"budget_bytes=200000000",
+		"disposable_cache_entries_evicted=0",
+		"inspect_provider_memory_and_namespace_key_families",
+		"synchronize_CAO_REDIS_MAX_BYTES",
+	} {
+		if !strings.Contains(message, expected) {
+			t.Fatalf("pressure log %q does not contain %q", message, expected)
+		}
+	}
+	if strings.Contains(err.Error(), "reduce operational state") ||
+		!strings.Contains(err.Error(), "preserve noeviction") ||
+		!strings.Contains(err.Error(), "do not delete protected state") {
+		t.Fatalf("pressure error does not preserve protected state: %v", err)
+	}
+}
+
+type redisPressureMaintenanceClient struct{}
+
+func (redisPressureMaintenanceClient) Do(_ context.Context, command ...string) (any, error) {
+	switch command[0] {
+	case "INFO":
+		return "# Memory\r\nused_memory:510554256\r\nmaxmemory:0\r\n", nil
+	case "EVAL":
+		if strings.Contains(command[1], `return {probe("INFO"`) {
+			return []any{
+				[]any{int64(0), "ERR command is not allowed in scripts"},
+				[]any{int64(1), nil},
+			}, nil
+		}
+		return nil, errors.New("unexpected maintenance script")
+	case "DEL":
+		return int64(0), nil
+	case "SCAN":
+		return []any{"0", []any{}}, nil
+	default:
+		return nil, errors.New("unexpected Redis command")
+	}
+}
+
+func (redisPressureMaintenanceClient) DoMany(context.Context, [][]string) ([]any, error) {
+	return nil, errors.New("unexpected maintenance pipeline")
+}
+
 func TestAzureRedisMaintenanceStopsOnDrain(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	handler := &azureFunctionsHandler{app: &App{}, stopMaintenance: cancel}

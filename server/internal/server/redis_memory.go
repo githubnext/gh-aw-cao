@@ -35,7 +35,7 @@ func (a *App) maintainRedisCaches(ctx context.Context) error {
 	defer cancel()
 	stats, err := a.store.MaintainCaches(ctx, a.config.QueryCache.MaxBytes)
 	if errors.Is(err, redisx.ErrMemoryPressure) {
-		a.config.Logger.Printf("Redis memory pressure used_bytes=%d budget_bytes=%d evicted=%d",
+		a.config.Logger.Printf("Redis node-wide memory pressure used_bytes=%d budget_bytes=%d disposable_cache_entries_evicted=%d action=inspect_provider_memory_and_namespace_key_families_then_scale_redis_and_synchronize_CAO_REDIS_MAX_BYTES",
 			stats.UsedBytes, stats.BudgetBytes, stats.Evicted)
 	}
 	if err != nil {

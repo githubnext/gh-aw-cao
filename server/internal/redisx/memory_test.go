@@ -225,6 +225,11 @@ func TestRedisMemoryBudgetReportsUnreclaimablePressure(t *testing.T) {
 	if !errors.Is(err, ErrMemoryPressure) || stats.UsedBytes <= stats.BudgetBytes || stats.Evicted < 4 {
 		t.Fatalf("unreclaimable pressure: stats=%+v err=%v", stats, err)
 	}
+	if !strings.Contains(err.Error(), "inspect provider memory and namespace/key-family usage") ||
+		!strings.Contains(err.Error(), "preserve noeviction") ||
+		!strings.Contains(err.Error(), "do not delete protected state") {
+		t.Fatalf("pressure guidance is missing safe remediation: %v", err)
+	}
 	if err := store.CacheRepositoryMemoryFile(t.Context(), "campaign", "commit", "file", []byte("not admitted"), time.Minute); err != nil {
 		t.Fatal(err)
 	}
