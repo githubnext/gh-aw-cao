@@ -401,6 +401,6 @@ Before promotion, verify:
 - a review output in the intended control repository without credential material;
 - authentication-profile review whenever target scope, campaign API requirements, mode, or review destination changes.
 
-# Offline dashboard access
+## Offline dashboard access
 
 GitHub Apps have no `offline_access` repository permission or OAuth scope to request. The hosted dashboard uses GitHub's expiring user access tokens and server-side refresh tokens for authenticated requests while connected; these credentials are not copied to the browser cache. The static dashboard can display previously downloaded data offline, but authentication and server-backed operations require a connection.
