@@ -91,7 +91,9 @@ export function renderTemporalMetricPlot(options) {
   ));
   const ticks = selectTicks(observationTimes, MAX_TICKS);
   const sameDay = firstObservation.slice(0, 10) === lastObservation.slice(0, 10);
-  const unit = metrics.length === 1 ? (metrics[0]?.unit ?? 'value') : 'native value';
+  const unit = metrics.every((metric) => metric.unit === metrics[0]?.unit)
+    ? (metrics[0]?.unit ?? 'value')
+    : 'native value';
   const direction = metrics.length === 1 ? metrics[0]?.direction : undefined;
   const directionLabel = direction === 'decrease'
     ? 'Lower is better'
@@ -168,7 +170,7 @@ export function renderTemporalMetricPlot(options) {
     'aria-label': `${options.title} workflow ${modeLabel} timeline${options.provisional ? ', not yet mature' : ''}`
   },
   h('title', null, `${options.title} workflow ${modeLabel} timeline`),
-  h('desc', null, `Native repository outcome metric with nearby daily run outcomes shown as a green success and red failure rail below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
+  h('desc', null, `Repository outcome metric (${displayUnit(unit)}) with nearby daily run outcomes shown as a green success and red failure rail below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
   options.mode === 'baseline-comparable' && showAdoption
     ? h('rect', {
       className: 'temporal-plot-baseline',

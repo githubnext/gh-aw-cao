@@ -53,7 +53,7 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('projects repository operational value into metric series', () => {
+  it('projects elapsed-day changes scaled by one percent of the measure horizon maximum', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -70,11 +70,31 @@ describe('Audit dashboard view', () => {
             'operational-value-name': 'Verified opportunity share',
             'maturity-status': 'interim',
             'adoption-at': '2026-09-15T23:30:36Z',
+            'observed-at': '2026-09-22T20:56:21Z'
+          }, {
+            campaign: 'optimization',
+            repository: 'gh-aw',
+            'operational-value': 1,
+            'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
+            'operational-value-role': 'primary',
+            'operational-value-name': 'Verified opportunity share',
+            'maturity-status': 'interim',
+            'adoption-at': '2026-09-15T23:30:36Z',
             'observed-at': '2026-09-24T20:56:21Z'
           }, {
             campaign: 'optimization',
             repository: 'gh-aw',
             'operational-value': 1,
+            'operational-value-definition': 'optimization-token-optimizer.recommendation-acceptance-share',
+            'operational-value-role': 'diagnostic',
+            'operational-value-name': 'Recommendation acceptance share',
+            'maturity-status': 'interim',
+            'adoption-at': '2026-09-15T23:30:36Z',
+            'observed-at': '2026-09-22T20:56:21Z'
+          }, {
+            campaign: 'optimization',
+            repository: 'gh-aw',
+            'operational-value': 0.5,
             'operational-value-definition': 'optimization-token-optimizer.recommendation-acceptance-share',
             'operational-value-role': 'diagnostic',
             'operational-value-name': 'Recommendation acceptance share',
@@ -92,13 +112,48 @@ describe('Audit dashboard view', () => {
         campaign: 'optimization',
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
-        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0.5, color: 'gh-aw' })]
+        'normalized-operational-value-unit': '% of horizon maximum / day',
+        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 25, color: 'gh-aw' })]
       }),
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
-        points: [expect.objectContaining({ y: 1 })]
+        points: [expect.objectContaining({ y: -25 })]
       })
     ]);
+  });
+
+  it('keeps irregular rates partitioned and leaves undefined or zero-maximum rates missing', () => {
+    const observations = [
+      ['first', 'a', 'm', 10, '2026-01-01T00:00:00Z'],
+      ['other-first', 'b', 'm', 5, '2026-01-01T00:00:00Z'],
+      ['other-change', 'b', 'm', 15, '2026-01-02T00:00:00Z'],
+      ['gap', 'a', 'm', 20, '2026-01-03T00:00:00Z'],
+      ['latest', 'a', 'm', 30, '2026-01-04T00:00:00Z'],
+      ['same-time', 'a', 'm', 35, '2026-01-04T00:00:00Z'],
+      ['zero-first', 'a', 'zero', -2, '2026-01-01T00:00:00Z'],
+      ['zero-last', 'a', 'zero', 0, '2026-01-02T00:00:00Z']
+    ].map(([id, repository, definition, value, at]) => ({
+      id, campaign: 'sample', repository,
+      'operational-value-definition': definition,
+      'operational-value': value,
+      'observed-at': at
+    }));
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-operational-value-normalized-change'],
+      sources: { 'operational-values': { source: 'operational-values', rows: observations, metadata } }
+    }));
+    const rows = Object.fromEntries(result['campaign-operational-value-normalized-change'].rows
+      .map((row) => [row.id, row['percent-of-horizon-maximum-per-day']]));
+    expect(rows.first).toBeNull();
+    expect(rows['other-first']).toBeNull();
+    expect(rows['other-change']).toBeCloseTo(1000 / 35);
+    expect(rows.gap).toBeCloseTo(500 / 35);
+    expect(rows.latest).toBeCloseTo(1000 / 35);
+    expect(rows['same-time']).toBeNull();
+    expect(rows['zero-first']).toBeNull();
+    expect(rows['zero-last']).toBeNull();
   });
 
   it('classifies interim observations independently of their native value', () => {
@@ -298,6 +353,14 @@ describe('Audit dashboard view', () => {
             'operational-value-role': 'primary',
             'maturity-status': 'matured',
             'observed-at': '2026-09-16T10:00:00Z'
+          }, {
+            campaign: 'combined',
+            repository: 'gh-aw-cao',
+            'operational-value': 1,
+            'operational-value-definition': 'combined.value',
+            'operational-value-role': 'primary',
+            'maturity-status': 'matured',
+            'observed-at': '2026-09-17T10:00:00Z'
           }],
           metadata
         }
