@@ -80,8 +80,8 @@
     "reason": "Re-confirmed unchanged on HEAD 10b42295: sole recursive-chmod call (cao-mcp-container.mjs:89) remains a false positive on an mkdtemp'd scratch directory holding only a public SQLite fixture. No new occurrences.",
     "txn_id": "refiner-37118181288-3"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37293660437",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-actions",
@@ -112,18 +112,8 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged at current HEAD (140c4fa): the auditDir/audit-tmpdir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
       "txn_id": "refiner-37156057344-1"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "3469b7581ee9e7016a6e5bb477c3a8c3aabfb142",
-      "true_positive_count": 2,
-      "false_positive_count": 4,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on current HEAD (3469b75): auditDir and default-audit-fallback recursive chmods remain true positives; sessionStateDir, diagnostics, and destinationDir recursive chmods remain false positives on scratch/no-restricted-file directories; artifact-permissions.ts's shell string 'chmod -R a+rwX /fix' remains an unflagged false negative. No drift.",
-      "txn_id": "refiner-37293660437-2"
     }
   ],
-  "last_seen_at": "2026-10-05T10:05:41Z",
-  "last_updated": "2026-10-05T10:05:41Z"
+  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_updated": "2026-10-03T22:08:51Z"
 }
