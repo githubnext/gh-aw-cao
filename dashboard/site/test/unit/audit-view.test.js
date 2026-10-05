@@ -17,8 +17,7 @@ const metadata = {
 
 describe('Audit dashboard view', () => {
   it('keeps the hosted operational value query graph in sync with the dashboard', () => {
-    const names = ['campaign-operational-value-daily-change', 'campaign-operational-value-horizon-maxima',
-      'campaign-operational-value-normalized-change', 'campaign-operational-value-primary-series'];
+    const names = ['campaign-operational-value-daily-change', 'campaign-operational-value-primary-series'];
     for (const name of names) {
       expect(hostedQueries.find((query) => query.name === name))
         .toEqual(dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === name));
@@ -63,7 +62,7 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('projects elapsed-day changes scaled by one percent of the measure horizon maximum', () => {
+  it('projects elapsed-day changes in native measure units', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -126,17 +125,16 @@ describe('Audit dashboard view', () => {
         campaign: 'optimization',
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
-        'normalized-operational-value-unit': '% of horizon maximum / day',
-        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 25, color: 'githubnext/gh-aw' })]
+        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0.25, color: 'githubnext/gh-aw' })]
       }),
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
-        points: [expect.objectContaining({ y: -25 })]
+        points: [expect.objectContaining({ y: -0.25 })]
       })
     ]);
   });
 
-  it('keeps irregular rates partitioned and leaves undefined or zero-maximum rates missing', () => {
+  it('keeps irregular rates partitioned and leaves undefined rates missing without requiring positive maxima', () => {
     const observations = [
       ['first', 'a', 'm', 10, '2026-01-01T00:00:00Z'],
       ['other-first', 'b', 'm', 5, '2026-01-01T00:00:00Z'],
@@ -155,19 +153,19 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-normalized-change'],
+      sourceNames: ['campaign-operational-value-daily-change'],
       sources: { 'operational-values': { source: 'operational-values', rows: observations, metadata } }
     }));
-    const rows = Object.fromEntries(result['campaign-operational-value-normalized-change'].rows
-      .map((row) => [row.id, row['percent-of-horizon-maximum-per-day']]));
+    const rows = Object.fromEntries(result['campaign-operational-value-daily-change'].rows
+      .map((row) => [row.id, row['change-per-day']]));
     expect(rows.first).toBeNull();
     expect(rows['other-first']).toBeNull();
-    expect(rows['other-change']).toBeCloseTo(1000 / 35);
-    expect(rows.gap).toBeCloseTo(500 / 35);
-    expect(rows.latest).toBeCloseTo(1000 / 35);
+    expect(rows['other-change']).toBe(10);
+    expect(rows.gap).toBe(5);
+    expect(rows.latest).toBe(10);
     expect(rows['same-time']).toBeNull();
     expect(rows['zero-first']).toBeNull();
-    expect(rows['zero-last']).toBeNull();
+    expect(rows['zero-last']).toBe(2);
   });
 
   it('does not join same-named repositories from different organizations into one rate series', () => {
@@ -193,7 +191,7 @@ describe('Audit dashboard view', () => {
     );
     expect(points).toHaveLength(2);
     expect(points.map((point) => point.color).toSorted()).toEqual(['one/service', 'two/service']);
-    expect(points.map((point) => point.y)).toEqual([expect.closeTo(1000 / 110), expect.closeTo(1000 / 110)]);
+    expect(points.map((point) => point.y)).toEqual([10, 10]);
   });
 
   it('classifies interim observations independently of their native value', () => {

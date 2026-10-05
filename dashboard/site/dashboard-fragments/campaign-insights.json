@@ -20,75 +20,19 @@
       ]
     },
     {
-      "name": "campaign-operational-value-horizon-maxima",
-      "subject": "Find the maximum native value for each campaign measure in the selected horizon.",
-      "objective": "Give repository change rates a shared, measure-specific scale.",
-      "acceptance": "The maximum is computed across repositories for one campaign and definition; non-positive or missing maxima cannot normalize rates.",
-      "from": "operational-values",
-      "aggregate": {
-        "by": ["campaign", "operational-value-definition"],
-        "values": [
-          { "field": "operational-value", "as": "horizon-maximum", "reducer": "max" }
-        ]
-      }
-    },
-    {
-      "name": "campaign-operational-value-normalized-change",
-      "subject": "Express daily operational-value changes in percentage points of the horizon maximum.",
-      "objective": "Compare repository rates without plotting incompatible native magnitudes.",
-      "acceptance": "A rate of one percent of the campaign measure's positive horizon maximum per day is shown as 1; missing rates or non-positive maxima remain missing.",
+      "name": "campaign-operational-value-primary-series",
+      "subject": "Project native-unit daily operational-value changes into repository temporal series.",
+      "objective": "Choose a repository and measure whose daily change needs evidence review.",
+      "acceptance": "Each plotted point is a valid elapsed-day change in the measure's native units; the first and missing changes are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
+      "description": "Repository daily rates in native units; point-level maturity and missing values require source observation review.",
       "from": "campaign-operational-value-daily-change",
-      "joins": [
-        {
-          "source": "campaign-operational-value-horizon-maxima",
-          "type": "left",
-          "on": [
-            { "left": "campaign", "right": "campaign" },
-            { "left": "operational-value-definition", "right": "operational-value-definition" }
-          ],
-          "fields": [{ "field": "horizon-maximum", "as": "horizon-maximum" }]
-        }
-      ],
       "compute": [
-        {
-          "as": "positive-horizon-maximum",
-          "function": "greater-than",
-          "args": [{ "field": "horizon-maximum" }, { "value": 0 }]
-        },
-        {
-          "as": "normalization-denominator",
-          "function": "if",
-          "args": [{ "field": "positive-horizon-maximum" }, { "field": "horizon-maximum" }, { "value": 0 }]
-        },
-        {
-          "as": "fraction-of-horizon-maximum-per-day",
-          "function": "quotient",
-          "args": [{ "field": "change-per-day" }, { "field": "normalization-denominator" }]
-        },
-        {
-          "as": "percent-of-horizon-maximum-per-day",
-          "function": "product",
-          "args": [{ "field": "fraction-of-horizon-maximum-per-day" }, { "value": 100 }]
-        },
-        {
-          "as": "normalized-operational-value-unit",
-          "function": "literal",
-          "args": [{ "value": "% of horizon maximum / day" }]
-        },
         {
           "as": "series-repository",
           "function": "concat",
           "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
         }
-      ]
-    },
-    {
-      "name": "campaign-operational-value-primary-series",
-      "subject": "Project normalized daily operational-value changes into repository temporal series.",
-      "objective": "Choose a repository and measure whose normalized daily change needs evidence review.",
-      "acceptance": "Each plotted point is a valid elapsed-day change scaled by the positive campaign measure maximum in the horizon; the first, missing and unnormalizable points are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
-      "description": "Repository daily rates in percent of the horizon maximum; point-level maturity and missing values require source observation review.",
-      "from": "campaign-operational-value-normalized-change",
+      ],
       "temporal-series": {
         "time": "observed-at",
         "series": "series-repository",
@@ -99,7 +43,6 @@
           "operational-value-role",
           "operational-value-name",
           "operational-value-unit",
-          "normalized-operational-value-unit",
           "operational-value-direction",
           "adoption-at",
           "evaluation-mode",
@@ -108,7 +51,7 @@
         ],
         "measures": [
           {
-            "field": "percent-of-horizon-maximum-per-day",
+            "field": "change-per-day",
             "key": "operational-value-definition",
             "kind": "primary"
           }

@@ -343,6 +343,8 @@ function formatDelta(value, unit) {
 function displayUnit(unit) {
   if (unit === 'percent') return '';
   if (unit === 'aic-per-run') return 'AIC/run';
+  if (unit === 'percent/day') return 'pp/day';
+  if (unit === 'aic-per-run/day') return 'AIC/run/day';
   return unit;
 }
 

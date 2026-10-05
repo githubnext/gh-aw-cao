@@ -379,8 +379,8 @@ describe('Measure history', () => {
     expect(rendered.querySelectorAll('.temporal-metric-plot')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(4);
     expect(rendered.textContent).toContain('Lower is better');
-    expect(rendered.textContent).toContain('14.75AIC/run');
-    expect(rendered.textContent).toContain('3.5%');
+    expect(rendered.textContent).toContain('14.75AIC/run/day');
+    expect(rendered.textContent).toContain('3.5pp/day');
   });
 
   it('toggles an operational-grader chart point selection and its readout on repeated activation', () => {
