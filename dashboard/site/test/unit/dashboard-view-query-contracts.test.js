@@ -617,12 +617,44 @@ describe('dashboard view query contracts', () => {
         routeParameters: { campaign: 'optimization' },
         queries
       });
+
       expect(payload.aliases).toHaveLength(1);
       expect(payload.queries.at(-1)).toMatchObject({
         name: payload.aliases[0],
         filter: { predicates: [{ field: 'campaign', equals: 'optimization' }] }
       });
     }
+  });
+
+  it('normalizes operational-value rates against only the selected horizon', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
+    );
+    const payload = compileDashboardViewPayloadQueries(page, 'campaign-insights', {
+      viewId: 'campaign-operational-value-history',
+      sourceNames: ['campaign-operational-value-primary-series'],
+      routeParameters: { campaign: 'sample' },
+      queryContext: {
+        timeWindow: { start: '2026-01-02T00:00:00Z', end: '2026-01-05T00:00:00Z' }
+      },
+      queries
+    });
+    const result = executeDashboardQueries(payload.queries, {
+      'operational-values': {
+        source: 'operational-values',
+        metadata: { ...metadata, availability: 'available' },
+        rows: [
+          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-definition': 'm', 'operational-value': 1000, 'observed-at': '2026-01-01T00:00:00Z' },
+          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-definition': 'm', 'operational-value': 10, 'observed-at': '2026-01-02T00:00:00Z' },
+          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-definition': 'm', 'operational-value': 20, 'observed-at': '2026-01-03T00:00:00Z' },
+          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-definition': 'm', 'operational-value': 30, 'observed-at': '2026-01-04T00:00:00Z' }
+        ]
+      }
+    });
+    const series = result[payload.aliases[0]]?.rows ?? [];
+    expect(series).toHaveLength(1);
+    const points = /** @type {Array<{ y: number }>} */ (series[0].points);
+    expect(points.map((point) => point.y)).toEqual([expect.closeTo(100 / 3), expect.closeTo(100 / 3)]);
   });
 
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {
