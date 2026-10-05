@@ -1,6 +1,6 @@
 {
   "source_sha": "5b9b73047ea6f1e9b28eea964c0154295c5af98e",
-  "next_category": 1,
+  "next_category": 2,
   "evaluations": [
     {
       "evaluated_at": "2026-10-03T17:05:00Z",
@@ -700,6 +700,33 @@
         37240519882
       ],
       "outcome": "no_actionable_improvement: trusted docs.yml evidence across 16 recent successful completed runs from 2026-10-04T22:08Z to 2026-10-05T01:07Z shows the same-SHA workflow_run duplicate pattern persists, but open issue #16054 already tracks the actionable fix under suggestion fingerprint docs-workflow-run-freshness-gate-same-sha. Queue median/p90 was 3s/10s; full-workflow median/p90 68.5s/86.5s; build-job median/p90 42.5s/52s; schedule-freshness median/p90 7s/8s; and among the 10 build-bearing runs, Restore node_modules succeeded in all 10 while Install dependencies and Save node_modules were skipped in all 10, and Restore cached CAO Dashboard succeeded in all 10 while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 10, confirming both caches hit from execution evidence. Same-SHA workflow_run duplicates still followed successful schedule runs on 5b9b73047ea6f1e9b28eea964c0154295c5af98e and 805a12693e9aa047f74262a51e17f80e66be9694, costing 61s, 71s, 70s, and 113s total in the clearest comparable cases. Cross-checking the latest 5 successful cao-dashboard.yml producer runs showed producer workflow median/p90 218s/241.8s and build median/p90 201s/222.4s, with Upgrade fallback activity data still dominating at 145s median/149.6s p90 while Install dashboard build dependencies was 7s median, Assemble Dashboard Language site 3s median, and Upload dashboard artifact 9s median. Bounded trusted logs for run 37245372275 confirmed the producer still copies gh-aw-logs.sqlite at 546.5 MiB plus 369 activity shards totaling 325.3 MiB before upload. Because the only recommendation above threshold in this category is already represented by open issue #16054 and the current source/evidence do not materially change that recommendation, no new non-duplicate issue is actionable in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T02:05:00Z",
+      "worker_run_id": "37253457308",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37252821053,
+        37251020887,
+        37250131886,
+        37246049920,
+        37245583143,
+        37244955642,
+        37244880391,
+        37244189053,
+        37244182070,
+        37243537307,
+        37242227449,
+        37241512448,
+        37253405809,
+        37250797483,
+        37245372275,
+        37244626913,
+        37244018397,
+        37241294004
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 12 recent successful completed runs from 2026-10-04T22:50Z to 2026-10-05T01:47Z shows dependency installation and caching are already effective. Queue median/p90 was 0s/0s; full workflow median/p90 65.5s/85s; build-job median/p90 44s/53s across the 6 runs that actually built; deploy-job median/p90 9.5s/13s on the 6 deploys; and schedule-freshness median/p90 7s/8s on all 12 runs. Trusted step metadata showed Restore node_modules succeeded in all 6 build-bearing runs with 5s median/8s p90, while Install dependencies and Save node_modules were skipped in all 6, confirming node_modules cache hits from execution rather than syntax. Restore cached CAO Dashboard also succeeded in all 6 build-bearing runs with 2s median/3s p90, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 6, confirming dashboard cache hits as well. Cross-checking the latest 6 successful cao-dashboard.yml producer runs showed producer build median/p90 194s/236s, with Install dashboard build dependencies only 7s median/8s p90 while Upgrade fallback activity data dominated at 145.5s median/150s p90. Bounded trusted logs for producer run 37253405809 confirmed the producer still copies a 549.4 MiB gh-aw-logs.sqlite plus 372 activity shards totaling 326.9 MiB before uploading a 48,657,816-byte dashboard artifact, but that bottleneck belongs to reusable dashboard generation rather than dependency caching. Open issue #16054 already tracks the only current docs-build-time improvement above threshold (same-SHA workflow_run freshness gating), so nothing new in dependency installation and caching is actionable from this source state.",
       "suggestion_fingerprint": null
     }
   ]
