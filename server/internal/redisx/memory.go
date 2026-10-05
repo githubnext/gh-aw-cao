@@ -10,7 +10,7 @@ import (
 
 const DefaultMaxMemoryBytes int64 = 200_000_000
 
-var ErrMemoryPressure = errors.New("Redis node-wide memory remains above the CAO budget after disposable-cache reclamation; inspect provider memory and namespace/key-family usage, then scale Redis and synchronize CAO_REDIS_MAX_BYTES across dashboard, collector, and backfill; preserve noeviction and do not delete protected state")
+var ErrMemoryPressure = errors.New("redis node-wide memory remains above the CAO budget after disposable-cache reclamation; inspect provider memory and namespace/key-family usage, then scale Redis and synchronize CAO_REDIS_MAX_BYTES across dashboard, collector, and backfill; preserve noeviction and do not delete protected state")
 
 const cacheCapabilityScript = `
 local function probe(...)
