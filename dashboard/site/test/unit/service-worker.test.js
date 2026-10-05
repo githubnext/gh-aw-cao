@@ -6,7 +6,7 @@ import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-/** @param {string[]} [cacheKeys] @param {{ search?: string, clientUrl?: string }} [options] */
+/** @param {string[]} [cacheKeys] @param {{ search?: string, clientUrl?: string, appAssets?: string[] }} [options] */
 function serviceWorkerHarness(cacheKeys = [], options = {}) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
@@ -70,7 +70,8 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     JSON,
     console: debugConsole
   };
-  vm.runInNewContext(source, sandbox);
+  vm.runInNewContext(source.replace('const APP_ASSETS = [];',
+    `const APP_ASSETS = ${JSON.stringify(options.appAssets ?? [])};`), sandbox);
   return {
     listeners,
     worker,
@@ -92,6 +93,30 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
+  it('prepares the shell and lazy page chunks before installation completes', async () => {
+    const { listeners, entries, fetch } = serviceWorkerHarness([], {
+      appAssets: ['./', 'dashboard.json', 'dashboard-pages/overview.json']
+    });
+    await dispatchExtendedEvent(listeners.install, {});
+    expect(entries.has('https://example.test/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/dashboard.json')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/dashboard-pages/overview.json')).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses the precached script when its versioned URL cannot be fetched offline', async () => {
+    const { listeners, entries, fetch } = serviceWorkerHarness();
+    const script = new Request('https://example.test/dashboard/src/main.js?sha=abc');
+    entries.set('https://example.test/dashboard/src/main.js', new Response('cached script'));
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request: script,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect((await response)?.text()).resolves.toBe('cached script');
+  });
   it('prefers cached assets and data on slow connections without network requests', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     worker.navigator.connection.effectiveType = '2g';

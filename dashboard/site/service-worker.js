@@ -239,6 +239,7 @@ async function cachedAppResponse(request) {
   const cache = await caches.open(APP_CACHE);
   const url = new URL(request.url);
   url.searchParams.delete('online');
+  url.searchParams.delete('sha');
   const cached = await cache.match(url.href) ?? await cache.match(request);
   if (cached) return cached;
   if (request.mode === 'navigate') return cache.match(new URL('./', self.registration.scope).href);

@@ -25,7 +25,7 @@ afterEach(() => {
 describe('dashboard sidebar collapse reactive state', () => {
   it('shows the offline Octicon in the navigation menu and updates on connection changes', async () => {
     const { renderDashboardNavigation } = await import('../../src/components/dashboard-navigation.js');
-    const root = renderDashboardNavigation([{ id: 'overview', title: 'Overview' }], 'Dashboard');
+    const root = renderDashboardNavigation([{ id: 'overview', title: 'Overview' }], 'Dashboard', undefined);
     document.body.append(root);
     const statuses = root.querySelectorAll('.dashboard-offline-status');
     expect([...statuses].every((status) => status.hasAttribute('hidden'))).toBe(true);
