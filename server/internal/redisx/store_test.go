@@ -14,8 +14,17 @@ type marketplaceStoreCommandClient struct {
 
 func (client *marketplaceStoreCommandClient) Do(_ context.Context, command ...string) (any, error) {
 	client.command = append([]string{}, command...)
-	if command[0] == "GET" {
-		return client.getValue, nil
+	if command[0] == "INFO" {
+		return testMemoryInfo, nil
+	}
+	if command[0] == "EVAL" {
+		if command[1] == cacheCapabilityScript {
+			return testCacheCapabilityReply(), nil
+		}
+		if command[1] == cachedValueScript {
+			return client.getValue, nil
+		}
+		return int64(1), nil
 	}
 	return "OK", nil
 }
@@ -49,17 +58,17 @@ func TestCacheMarketplaceRegistrySetsNamespacedKeyAndMillisecondTTL(t *testing.T
 	if err := store.CacheMarketplaceRegistry(t.Context(), "official", "generation-1", []byte(`{"packages":[]}`), 90*time.Second); err != nil {
 		t.Fatal(err)
 	}
-	if len(client.command) != 5 || client.command[0] != "SET" {
+	if len(client.command) != 7 || client.command[0] != "EVAL" {
 		t.Fatalf("unexpected Redis command: %#v", client.command)
 	}
-	if client.command[1] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
-		t.Fatalf("unexpected cache key: %s", client.command[1])
+	if client.command[3] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
+		t.Fatalf("unexpected cache key: %s", client.command[3])
 	}
-	if client.command[2] != `{"packages":[]}` {
-		t.Fatalf("unexpected cached payload: %s", client.command[2])
+	if client.command[4] != `{"packages":[]}` {
+		t.Fatalf("unexpected cached payload: %s", client.command[4])
 	}
-	if client.command[3] != "PX" || client.command[4] != "90000" {
-		t.Fatalf("unexpected TTL arguments: %#v", client.command[3:])
+	if client.command[5] != "90000" || client.command[6] != "200000000" {
+		t.Fatalf("unexpected TTL and budget arguments: %#v", client.command[5:])
 	}
 }
 
@@ -99,11 +108,11 @@ func TestCacheRepositoryMemoryUsesNamespacedKeysAndTTL(t *testing.T) {
 
 func assertRepositoryMemoryCacheCommand(t *testing.T, command []string, key string, ttl time.Duration) {
 	t.Helper()
-	if len(command) != 5 || command[0] != "SET" || command[1] != key {
+	if len(command) != 7 || command[0] != "EVAL" || command[3] != key {
 		t.Fatalf("unexpected Redis cache command: %#v", command)
 	}
-	if command[3] != "PX" || command[4] != strconv.FormatInt(ttl.Milliseconds(), 10) {
-		t.Fatalf("unexpected Redis cache TTL arguments: %#v", command[3:])
+	if command[5] != strconv.FormatInt(ttl.Milliseconds(), 10) || command[6] != "200000000" {
+		t.Fatalf("unexpected Redis cache TTL and budget arguments: %#v", command[5:])
 	}
 }
 
@@ -131,8 +140,8 @@ func TestCachedMarketplaceRegistryReturnsStoredPayloadOnHit(t *testing.T) {
 	if string(data) != client.getValue {
 		t.Fatalf("unexpected cached payload: %s", data)
 	}
-	if client.command[1] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
-		t.Fatalf("unexpected GET key: %s", client.command[1])
+	if client.command[0] != "EVAL" || client.command[3] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
+		t.Fatalf("unexpected bounded read: %v", client.command)
 	}
 }
 

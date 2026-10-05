@@ -332,17 +332,27 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		_ = database.Close()
 		return nil, err
 	}
+	if err := app.initializeRedisMaintenance(ctx); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	maintenanceCtx, stopMaintenance := context.WithCancel(context.WithoutCancel(ctx))
+	app.startTask(func() { app.runRedisMaintenance(maintenanceCtx, redisMaintenanceInterval) })
 	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
-	return &azureFunctionsHandler{Handler: app.AzureFunctionsHandler(), app: app}, nil
+	return &azureFunctionsHandler{Handler: app.AzureFunctionsHandler(), app: app, stopMaintenance: stopMaintenance}, nil
 }
 
 type azureFunctionsHandler struct {
 	http.Handler
-	app *App
+	app             *App
+	stopMaintenance context.CancelFunc
 }
 
 func (h *azureFunctionsHandler) Drain() {
 	h.app.Drain()
+	if h.stopMaintenance != nil {
+		h.stopMaintenance()
+	}
 }
 
 func azureLocalSimulationFromEnv() (bool, error) {

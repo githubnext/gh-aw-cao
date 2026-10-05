@@ -153,6 +153,7 @@ The template creates the following app settings.
 | `CAO_POSTGRES_URL` | Operator-provided secret app setting | PostgreSQL connection URL for dashboard entities and queries. |
 | `CAO_REDIS_URL` | Key Vault secret `cao-redis-url` | Redis connection string. Must use `rediss://`. Azure always rejects plaintext connections. |
 | `CAO_REDIS_NAMESPACE` | Fixed value `azure-dashboard` | Prefix for Redis keys. |
+| `CAO_REDIS_MAX_BYTES` | `redisMaxBytes` parameter, default `200000000` | Shared memory-pressure budget for the dashboard and collection roles. |
 | `CAO_GITHUB_CLIENT_ID` | `githubClientId` parameter | Client ID of the OAuth app. |
 | `CAO_GITHUB_CLIENT_SECRET` | Key Vault secret `github-oauth-client-secret` | Client secret of the OAuth app. |
 | `CAO_GITHUB_REDIRECT_URL` | Derived from `functionAppName` | `https://FUNCTION-APP-NAME.azurewebsites.net/auth/callback` |
@@ -162,6 +163,25 @@ The template creates the following app settings.
 | `CAO_SESSION_SECRET_PREVIOUS` | Key Vault, only when `previousSessionSecret` is set | Previous session key, used during rotation. |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Application Insights | Where the Functions host sends telemetry. |
 | `AzureWebJobsStorage` | Key Vault secret `azure-webjobs-storage` | Storage for the Functions runtime. |
+
+The `redisMaxBytes` template parameter controls the whole-node Redis memory
+budget; it defaults to **200,000,000 bytes** and populates `CAO_REDIS_MAX_BYTES`
+for the Function App and optional collection workers. Update the shared template
+parameter instead of changing only one role's app settings. The server automatically reclaims
+only disposable caches and preserves sessions, queued work, and other required
+state. Azure has no permanent free Redis tier; the default leaves headroom on
+the smallest Azure Cache for Redis tier (250 MB). See
+[Redis memory budget](deployment-managed-redis.md#redis-memory-budget) for
+admission, maintenance, and protected-state pressure behavior.
+Azure Managed Redis prohibits `INFO` inside Lua. The server therefore reports
+degraded disposable caching and bypasses those caches, rather than failing
+otherwise usable protected storage or allowing unsafe concurrent admission.
+Fresh dashboard/source evaluation and scoped cache-pressure reclamation remain
+available.
+Azure Managed Redis also omits `maxmemory` from protocol statistics. The
+configured finite budget remains in force; `doctor` reports the provider quota
+as unknown rather than unlimited. Use Azure Monitor and the provisioned SKU to
+verify physical capacity and headroom.
 
 The `cao-functions` handler also reads these optional settings.
 

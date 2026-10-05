@@ -40,6 +40,10 @@ param redisPort int = 10000
 @description('Redis key namespace shared with the server.')
 param redisNamespace string
 
+@minValue(1)
+@description('Shared Redis memory-pressure budget in bytes, matching the dashboard.')
+param redisMaxBytes int = 200000000
+
 @description('Control repository used for logical source discovery.')
 param controlRepository string
 
@@ -219,6 +223,10 @@ var collectionEnvironment = [
   {
     name: 'CAO_REDIS_NAMESPACE'
     value: redisNamespace
+  }
+  {
+    name: 'CAO_REDIS_MAX_BYTES'
+    value: string(redisMaxBytes)
   }
   {
     name: 'CAO_COLLECT_APP_ID'

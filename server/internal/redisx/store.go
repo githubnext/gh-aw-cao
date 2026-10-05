@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -40,6 +42,9 @@ type Store struct {
 	Client          CommandClient
 	namespace       string
 	processIsolated bool
+	maxMemoryBytes  atomic.Int64
+	cacheInitMu     sync.Mutex
+	cacheCapability atomic.Uint32
 }
 
 type CommandClient interface {
@@ -380,51 +385,29 @@ func repositoryMemoryCacheKey(parts ...string) string {
 }
 
 func (s *Store) CachedRepositoryMemoryCampaign(ctx context.Context, campaign string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key(
+	return s.cachedValue(ctx, s.Key(
 		"repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
 }
 
 func (s *Store) CacheRepositoryMemoryCampaign(
 	ctx context.Context, campaign string, content []byte, ttl time.Duration,
 ) error {
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
+		content, ttl.Milliseconds())
 }
 
 func (s *Store) CachedRepositoryMemoryFile(
 	ctx context.Context, campaign, commit, path string,
 ) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key(
+	return s.cachedValue(ctx, s.Key(
 		"repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
 }
 
 func (s *Store) CacheRepositoryMemoryFile(
 	ctx context.Context, campaign, commit, path string, content []byte, ttl time.Duration,
 ) error {
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
+		content, ttl.Milliseconds())
 }
 
 func marketplaceCacheKey(registryID, generation string) string {
@@ -435,11 +418,7 @@ func marketplaceCacheKey(registryID, generation string) string {
 // package list for the given data revision, or nil if no entry is cached.
 // The cache key isolates both registry identity and revision.
 func (s *Store) CachedMarketplaceRegistry(ctx context.Context, registryID, generation string) ([]byte, error) {
-	value, err := s.Client.Do(ctx, "GET", s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
-	if err != nil || value == nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprint(value)), nil
+	return s.cachedValue(ctx, s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
 }
 
 // CacheMarketplaceRegistry stores one registry's normalized package list for
@@ -451,15 +430,8 @@ func (s *Store) CacheMarketplaceRegistry(
 	if ttl <= 0 {
 		return nil
 	}
-	_, err := s.Client.Do(
-		ctx,
-		"SET",
-		s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)),
-		string(content),
-		"PX",
-		strconv.FormatInt(ttl.Milliseconds(), 10),
-	)
-	return err
+	return s.cacheValue(ctx, s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)),
+		content, ttl.Milliseconds())
 }
 
 func (s *Store) Key(suffix string) string {

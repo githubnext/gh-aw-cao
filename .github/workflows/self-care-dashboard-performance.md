@@ -199,10 +199,28 @@ Collect after-change evidence into `${{ github.workspace }}/self-care-dashboard-
 
 Require the selected metric or audit to improve, the performance budget suite to pass, and no persona's Lighthouse performance score to regress by more than 0.02 absolute score points. Then run, from `dashboard/site`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Review the final diff and scan changed files for secrets.
 
-Call `upload_artifact` once with name `self-care-dashboard-performance-${{ github.run_id }}` and path `${{ github.workspace }}/self-care-dashboard-performance-evidence` before the final result whenever evidence files exist.
+Call `upload_artifact` once with path `${{ github.workspace }}/self-care-dashboard-performance-evidence` before the final result whenever evidence files exist. Do not pass `name`; the tool schema does not accept it.
 
 If the selected source-level fix is focused, before/after evidence proves improvement, and every validation passes, call `create_pull_request` exactly once. Provide only the unprefixed subject; the configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Begin the body directly with a concise executive summary, then state `**Action:** Review and merge this draft after confirming the named metric and all three persona budgets in CI.` Keep critical evidence visible, put verbose Lighthouse and trace detail in `<details>`, and include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Call `noop` exactly once after updating memory when no actionable non-duplicate candidate exists, the change boundary cannot contain the fix, improvement is not measurable, a persona regresses, or validation fails. Never finish with only a textual response.
+
+### Safe-output delivery
+
+This pi engine submits safe outputs through the `safeoutputs` CLI in bash. Writing `Result: noop` in the final response does not submit a safe output. Do not invoke `noop`, `upload_artifact`, or `create_pull_request` as bare shell commands.
+
+When evidence files exist, submit the evidence before the terminal decision:
+
+```bash
+safeoutputs upload_artifact '{"path":"${{ github.workspace }}/self-care-dashboard-performance-evidence"}'
+```
+
+For a no-op, replace the message with the exact evidence-backed reason and execute:
+
+```bash
+safeoutputs noop '{"message":"No measurable improvement was demonstrated; no pull request was created."}'
+```
+
+For a validated improvement, pipe the final JSON object containing `title` and `body` to `safeoutputs create_pull_request .` instead. Submit exactly one terminal decision: `create_pull_request` or `noop`. Confirm that the CLI accepted the submission before writing the final response; an evidence upload alone is not a terminal decision.
 
 {{#runtime-import? .github/cao/self-care.md}}

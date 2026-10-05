@@ -37,6 +37,10 @@ param redisSkuName string = 'Balanced_B0'
 @description('Redis capacity. Increase when operational state needs more memory or throughput.')
 param redisCapacity int = 1
 
+@minValue(1)
+@description('Shared Redis memory-pressure budget in bytes. Increase this together with provisioned capacity when operational state requires it.')
+param redisMaxBytes int = 200000000
+
 @description('Public host names that Azure Front Door/App Service is allowed to forward to the Go dashboard handler.')
 param allowedHosts array
 
@@ -328,6 +332,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: 'azure-dashboard'
         }
         {
+          name: 'CAO_REDIS_MAX_BYTES'
+          value: string(redisMaxBytes)
+        }
+        {
           name: 'CAO_REDIS_URL'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-redis-url)'
         }
@@ -421,6 +429,7 @@ module collection 'collector.bicep' = if (collectionEnabled) {
     keyVaultName: keyVault.name
     redisHost: redisEnterprise.properties.hostName
     redisNamespace: 'azure-dashboard'
+    redisMaxBytes: redisMaxBytes
     controlRepository: collectorControlRepository
     githubAppId: collectorGithubAppId
     maximumWorkers: collectorMaximumWorkers

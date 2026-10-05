@@ -962,6 +962,8 @@ func fakeRedis(t *testing.T) (string, func()) {
 						_, _ = fmt.Fprint(connection, "+OK\r\n")
 					case "PING":
 						_, _ = fmt.Fprint(connection, "+PONG\r\n")
+					case "INFO":
+						_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(cacheTestMemoryInfo), cacheTestMemoryInfo)
 					case "SET":
 						mu.Lock()
 						_, exists := values[command[1]]
@@ -1021,8 +1023,24 @@ func fakeRedis(t *testing.T) (string, func()) {
 					case "XADD":
 						_, _ = fmt.Fprint(connection, "$3\r\n1-0\r\n")
 					case "EVAL":
+						if strings.Contains(command[1], `return {probe("INFO"`) {
+							_, _ = fmt.Fprintf(connection, "*2\r\n*2\r\n:1\r\n$%d\r\n%s\r\n*2\r\n:1\r\n$-1\r\n",
+								len(cacheTestMemoryInfo), cacheTestMemoryInfo)
+							continue
+						}
+						if strings.Contains(command[1], `redis.call("STRLEN", KEYS[1])`) {
+							mu.Lock()
+							value, ok := values[command[3]]
+							mu.Unlock()
+							if !ok {
+								_, _ = fmt.Fprint(connection, "$-1\r\n")
+							} else {
+								_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(value), value)
+							}
+							continue
+						}
 						// Cache semantics are covered against real Redis; this fixture always misses.
-						if len(command) == 12 && strings.HasSuffix(command[3], "{query-cache:v1}:entries") {
+						if len(command) == 13 && strings.HasSuffix(command[3], "{query-cache:v1}:entries") {
 							result := "$-1\r\n"
 							if command[5] == "put" {
 								result = ":1\r\n"

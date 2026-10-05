@@ -47,6 +47,28 @@ domain records. The benchmark reports
 and p50/p95; it asserts zero canonical scalar copies in generic value storage.
 These synthetic measurements do not establish production traffic coverage.
 
+### Redis memory budget
+
+Every server profile has a whole-node Redis cache-pressure budget of
+**200,000,000 bytes** by default. Override it with `CAO_REDIS_MAX_BYTES` (a
+positive byte count), or `server.Config.RedisMaxBytes` when embedding. Startup
+and 30-second maintenance reclaim only disposable caches. Supported providers
+atomically constrain admission and cached-response allocation. Providers
+prohibiting scripted memory introspection explicitly disable disposable-cache
+admission and serving, while retaining protected operations and pressure
+reclamation. Operational state and other namespaces are
+protected, and unreclaimable pressure is reported rather than silently deleting
+sessions or queued work. The effective budget never exceeds 80% of a reported
+Redis `maxmemory`. See the
+[managed Redis deployment guide](../docs/deployment-managed-redis.md#redis-memory-budget).
+The read-only `doctor` command resolves the same budget override and reports
+configured/effective limits, not only provider utilization.
+
+Memory-pressure integration tests require an isolated, disposable Redis node.
+When `REDIS_URL` is set, serialize package execution with `go test -p 1 ./...`;
+namespaces do not isolate whole-node memory measurements.
+`npm run dashboard:server:test` applies this automatically.
+
 ### Debug logging
 
 The server includes the namespace logger helpers from `github/gh-aw`. Debug

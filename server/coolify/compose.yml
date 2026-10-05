@@ -12,6 +12,7 @@ x-collector-environment: &collector-environment
   CAO_POSTGRES_URL: ${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}
   REDIS_URL: ${REDIS_URL:-}
   REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
+  CAO_REDIS_MAX_BYTES: ${CAO_REDIS_MAX_BYTES:-200000000}
   CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json
   CAO_COLLECT_APP_ID: ${CAO_COLLECT_APP_ID:?Configure the numeric GitHub App ID}
   CAO_COLLECT_PRIVATE_KEY_BASE64: ${CAO_COLLECT_PRIVATE_KEY_BASE64_ROTATED:?Configure the base64-encoded GitHub App private key as a Coolify secret}
@@ -72,6 +73,7 @@ services:
       CAO_POSTGRES_URL: ${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
+      CAO_REDIS_MAX_BYTES: ${CAO_REDIS_MAX_BYTES:-200000000}
       CAO_POLICY_PATH: /app/.github/workflows/cao.coolify.json
       CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
       CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
