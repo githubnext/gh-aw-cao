@@ -1,3 +1,7 @@
+import { createDebug } from '../../debug.js';
+
+const debugIds = createDebug('ids');
+
 /**
  * @param {string} kind
  * @param {string | number} value
@@ -91,12 +95,16 @@ export function issueCoordinates(value) {
   try {
     url = new URL(value);
   } catch {
+    debugIds({ event: 'issue-coordinates-rejected', reason: 'unparseable-url' });
     throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
   }
   const match = url.hostname.toLowerCase() === 'github.com'
     ? url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:\/|$)/)
     : null;
-  if (!match) throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
+  if (!match) {
+    debugIds({ event: 'issue-coordinates-rejected', reason: 'unmatched-path', host: url.hostname.toLowerCase() });
+    throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
+  }
   return {
     owner: match[1],
     repository: match[2],
@@ -116,6 +124,7 @@ export function sourceId(kind, source, coordinate) {
   const normalizedSource = source.trim();
   const normalizedCoordinate = String(coordinate).trim();
   if (!normalizedSource || !normalizedCoordinate) {
+    debugIds({ event: 'source-id-rejected', kind });
     throw new TypeError(`${kind} source and coordinate are required`);
   }
   return `${kind}:${encodeURIComponent(normalizedSource)}:${encodeURIComponent(normalizedCoordinate)}`;
