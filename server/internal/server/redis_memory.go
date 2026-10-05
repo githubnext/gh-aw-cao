@@ -7,26 +7,59 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 const redisMaintenanceInterval = 30 * time.Second
 const redisMaintenanceTimeout = 10 * time.Second
 
+var redisMemoryLog = logger.New("cao:server:redis-memory")
+
+// redisMaxBytesSource identifies which input determined the resolved Redis
+// memory budget. It is useful for diagnosing a misconfigured deployment
+// without logging the budget value itself.
+type redisMaxBytesSource string
+
+const (
+	redisMaxBytesSourceExplicit redisMaxBytesSource = "explicit"
+	redisMaxBytesSourceEnv      redisMaxBytesSource = "env"
+	redisMaxBytesSourceDefault  redisMaxBytesSource = "default"
+)
+
+// parseRedisMaxBytesEnv parses CAO_REDIS_MAX_BYTES' raw string value into a
+// positive byte count. It is a pure function extracted from
+// RedisMaxBytesFromEnv so a malformed or non-positive environment value is
+// independently testable without touching the process environment.
+func parseRedisMaxBytesEnv(value string) (int64, error) {
+	maximum, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || maximum <= 0 {
+		return 0, errors.New("CAO_REDIS_MAX_BYTES must be a positive byte count")
+	}
+	return maximum, nil
+}
+
+// RedisMaxBytesFromEnv applies the standard priority for the Redis memory
+// budget: an explicit positive value, then the CAO_REDIS_MAX_BYTES
+// environment variable, then redisx.DefaultMaxMemoryBytes. It logs which
+// input supplied the resolved budget, never the budget value itself.
 func RedisMaxBytesFromEnv(explicit int64) (int64, error) {
 	if explicit < 0 {
 		return 0, errors.New("redis memory budget must be a positive byte count")
 	}
 	if explicit > 0 {
+		redisMemoryLog.Printf("redis max bytes resolved source=%s", redisMaxBytesSourceExplicit)
 		return explicit, nil
 	}
 	if value, present := os.LookupEnv("CAO_REDIS_MAX_BYTES"); present {
-		maximum, err := strconv.ParseInt(value, 10, 64)
-		if err != nil || maximum <= 0 {
-			return 0, errors.New("CAO_REDIS_MAX_BYTES must be a positive byte count")
+		maximum, err := parseRedisMaxBytesEnv(value)
+		if err != nil {
+			return 0, err
 		}
+		redisMemoryLog.Printf("redis max bytes resolved source=%s", redisMaxBytesSourceEnv)
 		return maximum, nil
 	}
+	redisMemoryLog.Printf("redis max bytes resolved source=%s", redisMaxBytesSourceDefault)
 	return redisx.DefaultMaxMemoryBytes, nil
 }
 

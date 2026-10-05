@@ -15,6 +15,36 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
+func TestParseRedisMaxBytesEnv(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value string
+		want  int64
+		valid bool
+	}{
+		{"valid positive", "200000000", 200_000_000, true},
+		{"smallest positive", "1", 1, true},
+		{"empty", "", 0, false},
+		{"zero", "0", 0, false},
+		{"negative", "-1", 0, false},
+		{"non-numeric", "200MB", 0, false},
+		{"overflow", "9223372036854775808", 0, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := parseRedisMaxBytesEnv(test.value)
+			if test.valid {
+				if err != nil || got != test.want {
+					t.Fatalf("parseRedisMaxBytesEnv(%q) = %d, %v; want %d, nil", test.value, got, err, test.want)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("parseRedisMaxBytesEnv(%q) accepted invalid input, got %d", test.value, got)
+			}
+		})
+	}
+}
+
 func TestRedisMaxBytesConfiguration(t *testing.T) {
 	t.Setenv("CAO_REDIS_MAX_BYTES", "")
 	if err := os.Unsetenv("CAO_REDIS_MAX_BYTES"); err != nil {
