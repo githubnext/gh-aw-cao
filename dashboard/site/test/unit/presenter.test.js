@@ -11,6 +11,7 @@ import { applyDashboardQueries } from '../workflow-inventory-query.js';
 import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
 import { DashboardServerError } from '../../src/remote-data-backend.js';
+import { resetSourceStore } from '../../src/source-store.js';
 
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
@@ -832,6 +833,82 @@ describe('dashboard DOM provenance', () => {
     callbacks.get('second')({ 'second-data': source('second-data', 'stale') });
     expect(rendered.textContent).not.toContain('stale');
     rendered.remove();
+  });
+
+  it('keeps the campaign shell live when an independent tab count times out', async () => {
+    resetSourceStore();
+    window.history.replaceState({}, '', '#page-campaign-insights?campaign=ambient-context');
+    const sourceNames = [
+      'workflows', 'campaign-insight-tab-counts', 'campaign-problem-tab-counts', 'campaign-issue-tab-counts'
+    ];
+    const requests = new Map();
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (vi.fn(() => {
+      throw new Error('The campaign shell must not start a page-wide query.');
+    }));
+    loadPageSources.subscribeViewSources = vi.fn((_pageId, viewId, names, options) => new Promise((resolve, reject) => {
+      requests.set(names[0], { viewId, names, options, resolve, reject });
+    }));
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'campaign-navigation', title: 'Campaign navigation',
+          pages: [{
+            id: 'campaign-insights', kind: 'custom', title: 'Campaign',
+            route: { 'hash-query-parameter': 'campaign' },
+            views: [{
+              id: 'campaign-insights-navigation', title: 'Campaign insights',
+              mark: 'element', element: 'campaign-route', config: { body: 'insights' },
+              data: { sources: sourceNames, arguments: [{ name: 'campaign', field: 'campaign' }] }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+    document.body.append(rendered);
+    const metadata = /** @type {const} */ ({
+      availability: 'available', completeness: 'complete', freshness: 'fresh'
+    });
+    /** @param {string} name @param {Array<Record<string, unknown>>} rows */
+    const deliver = (name, rows) => {
+      const request = requests.get(name);
+      const alias = `view:campaign-insights:campaign-insights-navigation:${name}${sourceNames.indexOf(name) ? `-${sourceNames.indexOf(name) + 1}` : ''}`;
+      request.resolve({ [alias]: { source: name, rows, metadata } });
+      return request;
+    };
+    try {
+      await vi.waitFor(() => expect(requests.size).toBe(4));
+      expect([...requests.values()].map(({ viewId, names }) => [viewId, names])).toEqual(
+        sourceNames.map((name) => ['campaign-insights-navigation', [name]])
+      );
+      const workflows = deliver('workflows', [{
+        campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'workflow-role': 'orchestrator'
+      }]);
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value'));
+      const shell = rendered.querySelector('[data-view-id="campaign-insights-navigation"]');
+      expect(shell?.textContent).not.toContain('This view cannot be shown');
+      requests.get('campaign-problem-tab-counts').reject(new Error('dashboard queries exceeded the max-duration-ms limit of 60000'));
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs')).not.toBeNull());
+      deliver('campaign-insight-tab-counts', [{ campaign: 'ambient-context', items: 2 }]);
+      deliver('campaign-issue-tab-counts', [{ campaign: 'ambient-context', items: 1 }]);
+      await vi.waitFor(() => expect([...rendered.querySelectorAll('.campaign-tabs .count-badge')]
+        .map((badge) => badge.textContent)).toEqual(['2', '1']));
+      expect(rendered.querySelector('[data-view-id="campaign-insights-navigation"]')).toBe(shell);
+      workflows.options.onUpdate({
+        'view:campaign-insights:campaign-insights-navigation:workflows': {
+          source: 'workflows', metadata, rows: [{ campaign: 'ambient-context', 'campaign-name': 'Updated Campaign' }]
+        }
+      });
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs')?.getAttribute('aria-label')).toContain('Updated Campaign'));
+      expect(shell?.textContent).not.toContain('This view cannot be shown');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      resetSourceStore();
+      window.history.replaceState({}, '', '/');
+    }
   });
 
   it('updates nested section views from separate queries without replacing sibling UX', async () => {
