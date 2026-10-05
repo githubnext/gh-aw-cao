@@ -2,6 +2,7 @@ import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
+import { tidyVectorized } from './data/queries/vectorized-filter.js';
 import {
   finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
@@ -1155,7 +1156,7 @@ export function processDataRequest(request, signal) {
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
     throw new TypeError('Data worker requests require data and operators arrays.');
   }
-  return tidy(request.data, request.operators);
+  return tidyVectorized(request.data, request.operators, signal);
 }
 
 /** @type {Map<number, AbortController>} */
