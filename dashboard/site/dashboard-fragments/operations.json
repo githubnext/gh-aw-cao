@@ -2032,7 +2032,6 @@
       "title": "Friction",
       "navigation-label": "Friction",
       "icon": "pulse",
-      "experimental": true,
       "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
       "views": [
         {

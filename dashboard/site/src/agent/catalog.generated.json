@@ -656,7 +656,7 @@
       "id": "friction",
       "title": "Friction",
       "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "friction-by-workflow",
