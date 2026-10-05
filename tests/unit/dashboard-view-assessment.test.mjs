@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import dashboardViewsConfig from "../playwright/configs/dashboard-views.config.mjs";
 import {
+  captureDashboardQueryResponse,
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentPageHash,
   dashboardAssessmentCleanupBudgetMs,
@@ -19,6 +20,41 @@ import {
   visibleViewSelector,
   withoutIgnoredDashboardPageIds,
 } from "../e2e/dashboard-view-assessment.mjs";
+
+test("captures query response bodies before navigating away", async () => {
+  let navigated = false;
+  const payload = { sources: { runs: { rows: [] } } };
+  const response = {
+    ok: () => true,
+    json: () => {
+      assert.equal(navigated, false);
+      return Promise.resolve(payload);
+    },
+  };
+  const captured = captureDashboardQueryResponse(response);
+  navigated = true;
+  assert.equal(captured.response, response);
+  assert.deepEqual(await captured.body, { payload });
+});
+
+test("retains response-body failures for the page assessment", async () => {
+  const error = new Error("response body is unavailable");
+  const captured = captureDashboardQueryResponse({
+    ok: () => true,
+    json: () => Promise.reject(error),
+  });
+  assert.deepEqual(await captured.body, { error });
+});
+
+test("keeps unsuccessful query responses without parsing their error bodies", async () => {
+  const response = {
+    ok: () => false,
+    json: () => assert.fail("HTTP errors are assessed by their status"),
+  };
+  const captured = captureDashboardQueryResponse(response);
+  assert.equal(captured.response, response);
+  assert.deepEqual(await captured.body, {});
+});
 
 test("assesses only the views a reader can see", () => {
   assert.equal(visibleViewSelector, "[data-view-id]:visible");

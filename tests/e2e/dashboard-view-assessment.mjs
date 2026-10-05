@@ -53,6 +53,17 @@ export function dashboardAssessmentPageHash(pageDefinition, dashboard) {
   return `#page-${encodeURIComponent(pageId)}${parameters.size ? `?${parameters}` : ""}`;
 }
 
+// Chromium may discard response bodies after a route navigation.
+export function captureDashboardQueryResponse(response) {
+  const body = response.ok()
+    ? response.json().then(
+      (payload) => ({ payload }),
+      (error) => ({ error }),
+    )
+    : Promise.resolve({});
+  return { response, body };
+}
+
 export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
   const resolved = resolveDashboardDocument(dashboard, pageChunks);
   return renderDashboardQueryUsageGraph(resolved.dashboard);
