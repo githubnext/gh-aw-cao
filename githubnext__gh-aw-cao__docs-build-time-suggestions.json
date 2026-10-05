@@ -1,6 +1,6 @@
 {
   "source_sha": "310b77faa7d1b100c11fbf268ad0d2a3388216f2",
-  "next_category": "Astro documentation generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-10-05T14:08:00Z",
@@ -32,6 +32,14 @@
       "category": "reusable dashboard generation",
       "evidence_run_ids": [37348062285, 37345336006, 37343385434, 37341211968, 37337620014, 37336211753, 37334897381, 37332989570],
       "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days yielded 8 comparable successful runs, all recent schedule-triggered successes on the same source SHA. This was sufficient for bounded timing review, but not to establish a new non-duplicate threshold-meeting recommendation in the next rotation category. Existing open issue #16054 already captures the previously actionable docs-side optimization, and the current bounded window did not show a fresh reusable-dashboard-generation change with trusted evidence for >=60s or >=15% median savings beyond already implemented cache reuse. Cache syntax alone was not used as evidence; no new trusted hit/miss or artifact-transfer pattern justified another issue.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T17:39:00Z",
+      "worker_run_id": 37349721076,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete_due_to_rate_limit: GitHub Actions API rate limiting blocked trusted collection of the latest 20 completed docs.yml runs and related job/step metadata before a fresh comparable sample of at least five successful runs could be verified. Current docs.yml source shows docs build work is already narrowly scoped to `npm run docs:build`, but cache-hit and timing conclusions for this category could not be revalidated from trusted run metadata in this run. Existing open issue #16054 already covers the prior threshold-meeting docs-side optimization; no new actionable non-duplicate recommendation was safe to emit without refreshed evidence.",
       "suggestion_fingerprint": null
     }
   ]
