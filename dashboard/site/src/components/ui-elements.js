@@ -38,6 +38,7 @@ const debugUiElements = createDebug('ui-elements');
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
+ *   sourcesSubscribed?: boolean,
  *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
@@ -65,7 +66,7 @@ const ELEMENT_RENDERERS = new Map([
 const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list', 'measure-history']);
 
 /** Elements that retain their DOM while the active page publishes subscribed results. */
-const PAGE_BOUND_ELEMENTS = new Set(['problem-detail']);
+const PAGE_BOUND_ELEMENTS = new Set(['problem-detail', 'campaign-route']);
 
 /** @param {string} name */
 export function elementBindsPageSources(name) {

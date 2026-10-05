@@ -45,11 +45,13 @@ const debugCampaignRouteShell = createDebug('campaign-route-shell');
  * @returns {HTMLElement}
  */
 export function renderCampaignRouteShell(context, config) {
-  const workflowBindings = bindFactorySources(context.sources, ['workflows'], context);
+  const bindingOptions = context.sourcesSubscribed ? { requestMissingSources: false } : undefined;
+  const workflowBindings = bindFactorySources(context.sources, ['workflows'], context, bindingOptions);
   const countBindings = bindFactorySources(
     context.sources,
     Object.values(CAMPAIGN_TAB_COUNT_SOURCES),
-    context
+    context,
+    bindingOptions
   );
   const bindings = { ...workflowBindings, ...countBindings };
   const scope = createFactoryScope();

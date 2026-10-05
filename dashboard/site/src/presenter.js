@@ -339,17 +339,23 @@ export function renderDashboard(input) {
               if (!isPlainObject(view) || !viewBackendAvailable(view, dashboardDataBackend())
                 || (typeof view.element === 'string' && elementLoadsSourcesAsync(view.element))) return [];
               const names = getViewSources(view);
-              return names.length ? [{
-                id: typeof view.id === 'string' ? view.id : `view-${index + 1}`,
-                names,
-                aliases: names.map((name, sourceIndex) => [dashboardViewAliasName(pageId, view, index, name, sourceIndex), name])
-              }] : [];
+              if (!names.length) return [];
+              const viewId = typeof view.id === 'string' ? view.id : `view-${index + 1}`;
+              const aliases = names.map((name, sourceIndex) => [dashboardViewAliasName(pageId, view, index, name, sourceIndex), name]);
+              return typeof view.element === 'string' && elementBindsPageSources(view.element)
+                ? names.map((name, sourceIndex) => ({
+                    id: `${viewId}:${sourceIndex}`,
+                    viewId,
+                    names: [name],
+                    aliases: [aliases[sourceIndex]]
+                  }))
+                : [{ id: viewId, viewId, names, aliases }];
             });
             const remaining = collectDashboardPageSourceNames(document, pageId, effectiveQueryContext?.viewMode)
               .filter((name) => !bindings.some((binding) => binding.names.includes(name)));
-            if (remaining.length) bindings.push({ id: 'page-chrome', names: remaining, aliases: [] });
+            if (remaining.length) bindings.push({ id: 'page-chrome', viewId: 'page-chrome', names: remaining, aliases: [] });
             const subscribeViewSources = input.loadPageSources.subscribeViewSources;
-            const subscriptions = bindings.map(({ id, names, aliases }) => {
+            const subscriptions = bindings.map(({ id, viewId = id, names, aliases }) => {
               /** @param {Record<string, LogicalSourceInput>} next */
               const update = (next) => {
                 if (options.signal.aborted) return;
@@ -362,12 +368,20 @@ export function renderDashboard(input) {
                   publish(next, false, aliases);
                 });
               };
-              return subscribeViewSources(pageId, id, names, { ...options, onUpdate: update })
+              return subscribeViewSources(pageId, viewId, names, { ...options, onUpdate: update })
                 .then(update).catch((error) => {
-                  if (!options.signal.aborted) failures.set((current) => ({
-                    ...current,
-                    [id]: error instanceof Error ? error.message : String(error)
-                  }));
+                  if (!options.signal.aborted) {
+                    if (id !== viewId) {
+                      for (const [alias] of aliases) {
+                        sourceState(alias).set({ status: 'failed', origin: 'view', source: null });
+                      }
+                    } else {
+                      failures.set((current) => ({
+                        ...current,
+                        [id]: error instanceof Error ? error.message : String(error)
+                      }));
+                    }
+                  }
                   throw error;
                 });
             });
@@ -2489,6 +2503,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
     viewIndex,
+    sourcesSubscribed: elementBindsPageSources(elementName),
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });
