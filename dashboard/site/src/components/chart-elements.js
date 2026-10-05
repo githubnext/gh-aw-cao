@@ -742,7 +742,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const timelineTicks = isScatterChart
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
-    /** @type {Map<string, Array<{ x: number, lower: number, upper: number }>>} */
+    /** @type {Map<string, Array<{ x: number, lower: number, upper: number, valid: boolean }>>} */
     const areaCoordinates = new Map();
     let maximum = 1;
     let minimum = 0;
@@ -751,6 +751,10 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       for (const [seriesName, seriesPoints] of groupedSeries) {
         const valuesByX = new Map();
         for (const point of seriesPoints) {
+          if (point.y == null) {
+            if (!valuesByX.has(point.x)) valuesByX.set(point.x, null);
+            continue;
+          }
           const value = toNumber(point.y);
           valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? Math.max(0, value) : 0));
         }
@@ -758,11 +762,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const lower = cumulativeByX.get(xValue) ?? 0;
           const upper = lower + (valuesByX.get(xValue) ?? 0);
           cumulativeByX.set(xValue, upper);
-          maximum = Math.max(maximum, upper);
+          const valid = valuesByX.get(xValue) !== null;
+          if (valid) maximum = Math.max(maximum, upper);
           return {
             x: xValues.length < 2 ? 0.5 : xIndex / (xValues.length - 1),
             lower,
-            upper
+            upper,
+            valid
           };
         }));
       }
@@ -936,11 +942,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             ...(isAreaChart ? [h('path', {
               className: `area-chart-area ${seriesClassName}`,
               style: `--chart-entry-index: ${seriesIndex}`,
-              d: [
-                ...stackedCoordinates.map(({ x, upper }, index) => `${index === 0 ? 'M' : 'L'} ${x} ${scaledAreaY(upper)}`),
-                ...[...stackedCoordinates].reverse().map(({ x, lower }) => `L ${x} ${scaledAreaY(lower)}`),
-                'Z'
-              ].join(' '),
+              d: stackedAreaPath(stackedCoordinates, scaledAreaY),
               'data-chart-series': seriesName,
               'aria-hidden': 'true'
             })] : !isPointChart && hasGaps ? [h('path', {
@@ -980,7 +982,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               : []),
             ...(showInteractivePoints ? validCoordinates.map(({ point, x, y }, pointIndex) => {
               const stacked = isAreaChart
-                ? stackedCoordinates.find((coordinate) => coordinate.x === x)
+                ? stackedCoordinates.find((coordinate) => coordinate.x === x && coordinate.valid)
                 : null;
               const markY = stacked ? scaledAreaY(stacked.upper) : y;
               return h('g', {
@@ -1124,6 +1126,34 @@ function lineSegmentPath(coordinates, gapPrefix) {
     const previous = coordinates[index - 1];
     return `${!previous || gapPrefix[rowIndex] > gapPrefix[previous.index] ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
+}
+
+/**
+ * Builds separate closed areas around missing observations; one SVG path
+ * retains a bounded DOM shape even when a long series has many gaps.
+ * @param {Array<{ x: number, lower: number, upper: number, valid: boolean }>} coordinates
+ * @param {(value: number) => number} scaleY
+ */
+function stackedAreaPath(coordinates, scaleY) {
+  /** @type {string[]} */
+  const paths = [];
+  /** @type {typeof coordinates} */
+  let segment = [];
+  const flush = () => {
+    if (!segment.length) return;
+    paths.push([
+      ...segment.map(({ x, upper }, index) => `${index === 0 ? 'M' : 'L'} ${x} ${scaleY(upper)}`),
+      ...[...segment].reverse().map(({ x, lower }) => `L ${x} ${scaleY(lower)}`),
+      'Z'
+    ].join(' '));
+    segment = [];
+  };
+  for (const coordinate of coordinates) {
+    if (coordinate.valid) segment.push(coordinate);
+    else flush();
+  }
+  flush();
+  return paths.join(' ');
 }
 
 /**

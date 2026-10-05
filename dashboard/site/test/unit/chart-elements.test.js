@@ -22,6 +22,24 @@ describe('chart element helpers', () => {
       .toEqual(['1', '-0.50', '-2']);
   });
 
+  it('does not stack missing area observations as zero or bridge their gaps', () => {
+    const points = [
+      { x: '2026-08-01', y: 2, color: 'first' },
+      { x: '2026-08-02', y: null, color: 'first' },
+      { x: '2026-08-03', y: 0, color: 'first' },
+      { x: '2026-08-01', y: 3, color: 'second' },
+      { x: '2026-08-02', y: 4, color: 'second' },
+      { x: '2026-08-03', y: 5, color: 'second' }
+    ];
+    const chart = renderChartWidget('area', points, listChartSeries(points));
+    const first = chart.querySelector('path[data-chart-series="first"]');
+    const second = chart.querySelector('path[data-chart-series="second"]');
+    expect(first?.getAttribute('d')?.match(/M /g)).toHaveLength(2);
+    expect(second?.getAttribute('d')?.match(/M /g)).toHaveLength(1);
+    expect(chart.querySelectorAll('[data-chart-point-series="first"]')).toHaveLength(2);
+    expect(chart.querySelectorAll('[data-chart-point-series="second"]')).toHaveLength(3);
+  });
+
   it('DLS-SAFE-009 groups chart series deterministically and lists reusable class names', () => {
     const points = [
       { x: '2026-08-29', y: 3, color: 'fail' },
