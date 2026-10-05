@@ -66,6 +66,10 @@ env:
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
+  - uses: shared/review-inbox.md
+    with:
+      campaign: dependabot
+      finding_limits: '{"create_issue":13,"add_comment":1,"update_issue":13,"close_issue":12}'
   - uses: shared/control.md
     with:
       campaign: dependabot
@@ -129,7 +133,7 @@ network:
 run-name: "Dependabot update planner · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
-  group: "${{ github.workflow }}-${{ inputs.target_repo }}"
+  group: "${{ github.workflow }}-${{ inputs.target_repo }}${{ inputs.safe_output_mode != 'live' && format('-review-{0}', github.run_id) || '' }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 

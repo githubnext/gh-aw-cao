@@ -86,6 +86,42 @@ Never add an App key, PAT, installation token, or other secret to this envelope.
 
 ## Failure Posture
 
+### Campaign review inboxes
+
+Issue-capable workers publish review findings to one `[CAO review] <campaign>`
+issue per review destination, owned by this control repository. The bounded,
+bot-owned body summarizes at most 40 entries; append-only bot comments retain
+each finding's detail, revisions, state, and links to original run artifacts and
+review bundles. Identity is the target repository, worker, and stable actionable
+key: an explicit `<!-- cao-finding-key: KEY -->` body marker, target item number,
+or canonical issue title. Duplicate reruns do not create new issues or comments.
+
+Write a separate human comment `/cao-review FINDING_ID STATUS` to record
+`pending`, `accepted`, `rejected`, `resolved`, or `superseded`. The publisher
+verifies repository write permission before recording the decision, on the next
+review publication. Human comments are never edited. Acceptance does not grant
+live authority or execute a proposal; promotion still requires reviewed policy.
+Untrusted evidence is rendered inert, including mentions and target cross-links.
+
+Publication is serialized across workers and targets by a native job with
+destination/campaign concurrency, `cancel-in-progress: false`, and `queue: max`.
+Review worker runs use distinct workflow-level concurrency groups so they cannot
+cancel queued publishers. Live concurrency and built-in handlers are unchanged.
+The shared pre-handler step suppresses individual review issue/comment/update/
+close mutations only after validating the exact-SHA authorization handoff. The
+publisher restores the original output artifact and verifies its digest and
+staged flag; staged publications preview without writing. Dispatchers and
+bundle-only workers do not acquire an inbox publisher or new write capabilities.
+
+Missing artifacts, inaccessible pages, corrupt state, deleted checkpointed
+records, multiple inboxes, or human edits to the generated body fail publication
+closed. Inspect the failed run and retained original output rather than assuming
+findings were published. Restore the bot-owned surface through human review
+before retrying. Legacy bot issues migrate only with explicit campaign and worker
+labels, workflow provenance, and a matching target declaration. Originals and all
+human discussion remain untouched and linked; no issue is automatically closed
+or deleted. Recognized, writer-authorized legacy decision commands are preserved.
+
 The system should stop or reduce scope when it cannot establish a required fact:
 
 ```text

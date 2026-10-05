@@ -16,6 +16,9 @@ const rootResources = [
   '.github/workflows/shared/activity-cache.md',
   '.github/workflows/shared/control.md',
   '.github/workflows/shared/review-bundle.md',
+  '.github/workflows/shared/review-inbox.md',
+  '.github/workflows/shared/review-inbox.mjs',
+  '.github/workflows/shared/review-inbox-runtime.mjs',
 ];
 function validateCampaign(campaign) {
   if (!/^(?:root|activity|dashboard|[a-z0-9-]+)$/.test(campaign)) {

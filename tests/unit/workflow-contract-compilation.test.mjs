@@ -158,6 +158,71 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /SAFE_OUTPUT_REPO:.*safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*inputs\.target_repo/);
       assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
+      const config = parse(generated);
+      const source = workflowConfig(lockName.replace(".lock.yml", ".md"), generatedDirectory);
+      const inboxImport = source.imports.find((entry) => entry.uses === "shared/review-inbox.md");
+      const publisher = config.jobs.cao_review_inbox;
+      if (!inboxImport) {
+        assert.equal(publisher, undefined, `${lockName}: bundle-only workers must not acquire issue writes`);
+        continue;
+      }
+      assert.ok(source["safe-outputs"]["create-issue"], `${lockName}: publisher requires existing issue authority`);
+      assert.deepEqual(new Set(publisher.needs), new Set(["agent", "activation", "pre_activation", "safe_outputs"]));
+      assert.match(publisher.if, /cao_authorized == 'true'/);
+      assert.match(publisher.if, /safe_outputs.result == 'success'/);
+      assert.match(publisher.if, /safe_output_mode.*== 'review'/);
+      assert.deepEqual(publisher.permissions, { contents: "read", actions: "read", issues: "write" });
+      assert.equal(publisher.concurrency.group, `cao-review-inbox-\${{ inputs.safe_output_repo || github.repository }}-${campaignName}`);
+      assert.equal(publisher.concurrency["cancel-in-progress"], false);
+      assert.equal(publisher.concurrency.queue, "max");
+      assert.match(config.concurrency.group, /safe_output_mode != 'live'.*github.run_id/);
+      assert.equal(config.concurrency["cancel-in-progress"], true, "live cancellation is unchanged");
+      const interceptIndex = config.jobs.safe_outputs.steps.findIndex((step) => step.id === "cao_review_intercept");
+      const handlerIndex = config.jobs.safe_outputs.steps.findIndex((step) => step.id === "process_safe_outputs");
+      assert.ok(interceptIndex >= 0 && interceptIndex < handlerIndex, "interception must precede the builtin loop");
+      const intercept = config.jobs.safe_outputs.steps[interceptIndex];
+      assert.match(intercept.if, /CAO_REVIEW_INBOX.*true.*CAO_ROLE.*worker.*safe_output_mode.*review/);
+      assert.equal(intercept.env.GH_AW_AGENT_OUTPUT, "${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}");
+      const outputSetup = config.jobs.safe_outputs.steps.find((step) => step.id === "setup-agent-output-env");
+      assert.match(outputSetup.run, /echo "GH_AW_AGENT_OUTPUT=\/tmp\/gh-aw\/agent_output.json" >> "\$GITHUB_OUTPUT"/);
+      assert.equal(publisher.env.GH_AW_AGENT_OUTPUT, "/tmp/gh-aw/agent_output.json");
+      for (const [key, value] of Object.entries({
+        CAO_CAMPAIGN: campaignName, CAO_ROLE: "worker", CAO_WORKER: workerName,
+        CAO_REVIEW_FINDING_LIMITS: config.env.CAO_REVIEW_FINDING_LIMITS,
+      })) {
+        assert.equal({ ...config.env, ...publisher.env }[key], value, `${lockName}: native publisher must inherit ${key}`);
+      }
+      const checkout = publisher.steps.find((step) => step.name === "Checkout review publisher at the workflow SHA");
+      assert.equal(checkout.with.ref, "${{ github.workflow_sha }}");
+      assert.equal(checkout.with["persist-credentials"], false);
+      const original = publisher.steps.find((step) => step.name === "Restore original agent output");
+      assert.equal(original.with.pattern, "{agent,agent-output-fallback}");
+      assert.equal(original.with.path, "/tmp/gh-aw");
+      assert.equal(original.with["merge-multiple"], true);
+      assert.equal(original["continue-on-error"], undefined);
+      for (const artifact of ["agent", "agent-output-fallback"]) {
+        const upload = config.jobs.agent.steps.find((step) => step.with?.name === artifact);
+        assert.ok(upload.with.path.split("\n").includes("/tmp/gh-aw/agent_output.json"),
+          `${lockName}: ${artifact} must contain the immutable raw output at its gh-aw-relative path`);
+      }
+      const readyUpload = config.jobs.safe_outputs.steps.find((step) => step.with?.name === "cao-review-inbox-ready");
+      assert.equal(readyUpload.with.path, "/tmp/gh-aw/review-inbox-ready.json");
+      const readyDownload = publisher.steps.find((step) => step.with?.name === "cao-review-inbox-ready");
+      assert.equal(readyDownload.with.path, "/tmp/gh-aw");
+      const token = publisher.steps.find((step) => step.id === "cao_review_app_token");
+      assert.equal(token.with.owner, "${{ steps.cao_review_scope.outputs.owner }}");
+      assert.equal(token.with.repositories, "${{ steps.cao_review_scope.outputs.repository }}");
+      assert.equal(token.with["permission-issues"], "write");
+      assert.equal(token.with["permission-contents"], undefined);
+      const publish = publisher.steps.at(-1);
+      assert.match(publish.with["github-token"], /GH_AW_GITHUB_WRITE_PAT_REPOSITORIES/);
+      assert.doesNotMatch(publish.with["github-token"], /READ_PAT|READ_APP|inputs.target_repo/);
+      const expectedLimits = Object.fromEntries(["create-issue", "add-comment", "update-issue", "close-issue"]
+        .flatMap((kind) => source["safe-outputs"][kind] ? [[kind.replaceAll("-", "_"), source["safe-outputs"][kind].max ?? 1]] : []));
+      assert.deepEqual(JSON.parse(config.env.CAO_REVIEW_FINDING_LIMITS), expectedLimits);
+    }
+    for (const { lockName } of controlContracts.filter(({ role }) => role === "orchestrator")) {
+      assert.equal(parse(workflow(lockName, generatedDirectory)).jobs.cao_review_inbox, undefined, "dispatch workers/actions remain untouched");
     }
 
     const generatedDependabotPlan = workflow("dependabot-update-planner.lock.yml", generatedDirectory);
@@ -202,6 +267,17 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     const docsDiagramGenerator = workflow("docs-explanatory-diagrams.lock.yml", generatedDirectory);
     assert.match(docsDiagramGenerator, /name: "Docs Diagrams"/);
     assert.match(docsDiagramGenerator, /create_pull_request/);
+
+    const stagedSourcePath = join(generatedDirectory, "repo-assist-issue-triage.md");
+    writeFileSync(stagedSourcePath, readFileSync(stagedSourcePath, "utf8").replace("safe-outputs:\n", "safe-outputs:\n  staged: true\n"));
+    execFileSync("gh", ["aw", "compile", "repo-assist-issue-triage", "--strict", "--no-check-update",
+      "--schedule-seed", "githubnext/gh-aw-cao"], { cwd: temporaryRoot, stdio: "pipe" });
+    const stagedConfig = parse(workflow("repo-assist-issue-triage.lock.yml", generatedDirectory));
+    assert.equal(stagedConfig.jobs.safe_outputs.env.GH_AW_SAFE_OUTPUTS_STAGED, "true");
+    assert.ok(stagedConfig.jobs.safe_outputs.steps.find((step) => step.id === "cao_review_intercept"),
+      "the pre-handler sees the compiler's staged job environment");
+    assert.ok(stagedConfig.jobs.cao_review_inbox.steps.some((step) => step.with?.name === "cao-review-inbox-ready"),
+      "the native publisher must restore the recorded staged flag rather than assuming an unstaged run");
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }

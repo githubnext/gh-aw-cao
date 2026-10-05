@@ -11,6 +11,10 @@ resources:
     destination: .github/workflows/shared/control.mjs
   - source: .github/workflows/shared/policy.mjs
     destination: .github/workflows/shared/policy.mjs
+  - source: .github/workflows/shared/review-inbox.mjs
+    destination: .github/workflows/shared/review-inbox.mjs
+  - source: .github/workflows/shared/review-inbox-runtime.mjs
+    destination: .github/workflows/shared/review-inbox-runtime.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/workflows/shared/setup-github-apps.mjs
   - source: .github/workflows/shared/materialize-cao.mjs

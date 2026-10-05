@@ -52,6 +52,9 @@ await executeFile("tar", [
     ".github/workflows/shared/activity-cache.md",
     ".github/workflows/shared/control.md",
     ".github/workflows/shared/review-bundle.md",
+    ".github/workflows/shared/review-inbox.md",
+    ".github/workflows/shared/review-inbox.mjs",
+    ".github/workflows/shared/review-inbox-runtime.mjs",
   ]
     .map((member) => `${path.basename(catalog)}/${member}`),
 ], { cwd: fixtureRoot });

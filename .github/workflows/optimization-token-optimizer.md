@@ -57,6 +57,10 @@ jobs:
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
+  - uses: shared/review-inbox.md
+    with:
+      campaign: optimization
+      finding_limits: '{"create_issue":1,"update_issue":1}'
   - uses: shared/control.md
     with:
       campaign: optimization
@@ -86,7 +90,7 @@ network:
 run-name: "AW token optimizer · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
-  group: "${{ github.workflow }}-${{ inputs.target_repo }}"
+  group: "${{ github.workflow }}-${{ inputs.target_repo }}${{ inputs.safe_output_mode != 'live' && format('-review-{0}', github.run_id) || '' }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 

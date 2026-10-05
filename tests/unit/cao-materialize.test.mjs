@@ -108,6 +108,9 @@ test("CAO materialization preserves canonical source paths", () => {
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "activity-cache.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "control.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "review-bundle.md")));
+    for (const resource of ["review-inbox.md", "review-inbox.mjs", "review-inbox-runtime.mjs"]) {
+      assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", resource)));
+    }
     assert.match(readFileSync(path.join(destination, "cao.sh"), "utf8"), /activity\/cao\.mjs/);
     const trackedDashboardFiles = spawnSync(
       "git",
@@ -186,6 +189,9 @@ test("root materialization preserves exact focused package revisions", () => {
           ".github/workflows/shared/activity-cache.md",
           ".github/workflows/shared/control.md",
           ".github/workflows/shared/review-bundle.md",
+          ".github/workflows/shared/review-inbox.md",
+          ".github/workflows/shared/review-inbox.mjs",
+          ".github/workflows/shared/review-inbox-runtime.mjs",
         ],
       },
       {

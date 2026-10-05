@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["control.mjs", "policy.mjs"]
+  "include": ["control.mjs", "policy.mjs", "review-inbox.mjs", "review-inbox-runtime.mjs"]
 }

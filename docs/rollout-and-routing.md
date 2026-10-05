@@ -81,6 +81,12 @@ Review mode is the installation default. It resolves its destination from the ma
 
 In review mode, the review repository is not treated as a clone of the target. When a target-bound mutation cannot be represented natively against the review repository, the worker should publish an artifact-backed review bundle describing the target, intended output primitive, base branch, and supporting evidence.
 
+Issue-capable workers consolidate findings into a durable campaign review inbox,
+with bot-owned detail/state comments and a bounded summary. Record decisions on
+separate human comments using `/cao-review FINDING_ID STATUS`; acceptance never
+promotes policy to live. See [campaign review inboxes](execution-and-safety.md#campaign-review-inboxes)
+for serialization, migration, staged previews, and recovery behavior.
+
 ## Pages Report Routing
 
 Pages report routing follows the control-plane modes. Deployment is still conventional deterministic GitHub Actions automation, but the effective mode selects an access-controlled review site update or a production site update.

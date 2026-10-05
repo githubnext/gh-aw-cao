@@ -52,6 +52,10 @@ jobs:
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
+  - uses: shared/review-inbox.md
+    with:
+      campaign: self-care
+      finding_limits: '{"create_issue":1,"update_issue":1,"close_issue":1}'
   - uses: shared/control.md
     with:
       campaign: self-care
@@ -78,7 +82,7 @@ tracker-id: self-care-documentation-discoverability
 run-name: "SelfCare documentation discoverability · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
-  group: "${{ github.workflow }}-${{ inputs.target_repo }}"
+  group: "${{ github.workflow }}-${{ inputs.target_repo }}${{ inputs.safe_output_mode != 'live' && format('-review-{0}', github.run_id) || '' }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 

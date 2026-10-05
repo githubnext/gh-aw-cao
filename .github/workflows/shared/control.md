@@ -77,6 +77,44 @@ safe-outputs:
     report-as-issue: false
   messages:
     footer-install: "<!-- -->"
+  steps:
+    - name: Checkout review inbox runtime at the workflow SHA
+      if: ${{ env.CAO_REVIEW_INBOX == 'true' && env.CAO_ROLE == 'worker' && (inputs.safe_output_mode || 'review') == 'review' }}
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.workflow_sha }}
+        path: .cao-review
+        sparse-checkout: .github/workflows/shared
+        persist-credentials: false
+        token: ${{ github.token }}
+    - name: Restore review inbox authorization handoff
+      if: ${{ env.CAO_REVIEW_INBOX == 'true' && env.CAO_ROLE == 'worker' && (inputs.safe_output_mode || 'review') == 'review' }}
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: cao-control-precompute
+        path: /tmp/gh-aw/agent
+    - name: Intercept review findings before built-in safe-output handlers
+      id: cao_review_intercept
+      if: ${{ env.CAO_REVIEW_INBOX == 'true' && env.CAO_ROLE == 'worker' && (inputs.safe_output_mode || 'review') == 'review' }}
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        CAO_MODE: ${{ inputs.safe_output_mode || 'review' }}
+        CAO_TARGET_REPOSITORY: ${{ inputs.target_repo }}
+        CAO_SAFE_OUTPUT_REPOSITORY: ${{ inputs.safe_output_repo || github.repository }}
+        GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
+      with:
+        script: |
+          const runtime = await import(`${process.env.GITHUB_WORKSPACE}/.cao-review/.github/workflows/shared/review-inbox-runtime.mjs`);
+          await runtime.runInbox({ github, core }, "intercept");
+    - name: Persist review inbox publisher prerequisites
+      if: ${{ env.CAO_REVIEW_INBOX == 'true' && env.CAO_ROLE == 'worker' && (inputs.safe_output_mode || 'review') == 'review' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: cao-review-inbox-ready
+        path: /tmp/gh-aw/review-inbox-ready.json
+        if-no-files-found: error
+        overwrite: true
 
 env:
   CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
@@ -610,6 +648,8 @@ Minimize GitHub API traffic when collecting evidence. Reuse data already fetched
 If a worker encounters an API rate limit, exhausted AI Credit budget, or another resource limit after the agent starts, stop additional API and model work. Do not loop, wait for replenishment, or redispatch itself. Preserve any correlation data already available and report the run as incomplete with the limiting resource and unresolved work. If the runtime rejects the run before the agent starts, the failed GitHub Actions run is the audit record. A later schedule or authorized manual run is a new attempt; this workflow has no durable internal queue.
 
 In `review` mode, built-in safe outputs operate against `SAFE_OUTPUT_REPO`. Never pass an issue, pull request, discussion, comment, or other item identifier from `target_repo` to an item-based safe output scoped to `SAFE_OUTPUT_REPO`; use an item-based output only after verifying that the item exists in `SAFE_OUTPUT_REPO`. Report findings about an item in `target_repo` by creating an issue in `SAFE_OUTPUT_REPO` that contains the review guidance and identifies the target repository and item without creating a cross-reference in the target item's timeline. Render the target reference as inline code or plain text that GitHub will not autolink; do not use a Markdown link or autolink. Represent target-bound git mutations through the existing artifact-backed review-bundle mechanism. These review-mode routing rules do not change `live` mode behavior.
+
+Review worker issue/comment findings are collected into one campaign inbox in `SAFE_OUTPUT_REPO`. Use a stable actionable title, or include `<!-- cao-finding-key: STABLE_KEY -->` in the finding body (letters, digits, `.`, `_`, `:`, `/`, `-`, at most 160 characters). Reuse that key for updates or resolution. Identity includes the dispatched target and worker, never the run ID. Put large supporting files in the existing review bundle and identify the bundle in the finding; do not duplicate unbounded evidence in issue bodies. Human decisions live in separate human comments and never authorize live work.
 
 If `control_role` is `orchestrator`, filter and prioritize target repositories, then dispatch the configured worker workflows.
 

@@ -13,6 +13,7 @@ export const unitTestAreas = {
     /^workflow-contract-/, /^control-/, /^campaign-/, /^contoso-/,
     /^setup-github-apps\./, /^gh-aw-version-/, /^release-workflow\./,
     /^add-operational-value-skill\./, /^token-intervention-lifecycle\./,
+    /^review-inbox\./,
   ],
   tooling: [
     /^cao-/, /^ops-publish/, /^optimization-/, /^dependabot-/,

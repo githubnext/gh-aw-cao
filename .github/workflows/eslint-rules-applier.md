@@ -63,6 +63,9 @@ jobs:
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
+  - uses: shared/review-inbox.md
+    with:
+      campaign: eslint-rules
   - uses: shared/control.md
     with:
       campaign: eslint-rules
@@ -95,7 +98,7 @@ network:
 run-name: "ESLint applier · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
-  group: "${{ github.workflow }}-${{ inputs.target_repo }}"
+  group: "${{ github.workflow }}-${{ inputs.target_repo }}${{ inputs.safe_output_mode != 'live' && format('-review-{0}', github.run_id) || '' }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 

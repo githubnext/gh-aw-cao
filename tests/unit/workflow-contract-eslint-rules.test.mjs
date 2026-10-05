@@ -78,7 +78,10 @@ test("ESLint Factory workers are single-target and cannot discover or dispatch",
     assert.match(source, /target_repo:\n\s+required: true\n\s+type: string/, name);
     assert.match(source, /safe_output_repo:\n\s+required: true\n\s+type: string/, name);
     assert.match(source, /bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/, name);
-    assert.match(source, /concurrency:\n\s+group: "\$\{\{ github\.workflow \}\}-\$\{\{ inputs\.target_repo \}\}"/, name);
+    assert.match(source, /concurrency:\n\s+group: "\$\{\{ github\.workflow \}\}-\$\{\{ inputs\.target_repo \}\}/, name);
+    if (name === "eslint-rules-applier.md") {
+      assert.match(source, /safe_output_mode != 'live' && format\('-review-\{0\}', github\.run_id\)/, name);
+    }
     assert.match(source, /max-daily-ai-credits: -1/, name);
     assert.match(
       source,
