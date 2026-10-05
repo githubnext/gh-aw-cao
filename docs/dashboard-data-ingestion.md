@@ -30,15 +30,24 @@ See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, i
 ## Before the first Activity snapshot
 
 The CAO Dashboard workflow restores the Activity cache or downloads the snapshot
-from the latest successful CAO Activity run on the default branch. On a new
-deployment, neither may exist yet. In that case, the workflow succeeds with a
-notice and job summary explaining that it is waiting for its first snapshot.
-It skips the build, artifact upload, dashboard cache publication, and Pages
-deployment, leaving any existing dashboard unchanged.
+from the latest successful CAO Activity collection run on the default branch,
+ignoring runs that skipped snapshot indexing. On a new
+deployment, neither may exist yet. In that case, the workflow builds and publishes
+the dashboard using installed campaigns, workflows, and configuration from its
+trusted checkout, together with an empty activity set. Pages publication still
+follows the configured deployment policy.
 
-Run **CAO Activity** manually to collect the first snapshot, or wait for its
-scheduled run. A successful default-branch Activity run automatically triggers
-the dashboard build. API errors, missing artifacts from an existing successful
+This bootstrap does not discover remote repositories, collect logs, or run
+activity computations. It marks inventory coverage as partial, leaves live
+workflow state unknown, and omits uncollected marketplace sources rather than
+inventing evidence. The normal pipeline creates valid empty activity shards and
+a SQLite projection; it does not publish the bootstrap as an Activity cache.
+
+Configure [Activity authentication](activity.md), then run **CAO Activity**
+manually to collect the first snapshot, or wait for its scheduled run.
+A successful default-branch Activity run automatically triggers
+the dashboard build with collected evidence. API errors, invalid policy,
+missing artifacts from an existing successful
 run, and invalid restored snapshots still fail rather than being treated as
 normal startup.
 

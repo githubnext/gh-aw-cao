@@ -7,9 +7,8 @@ import { workflow } from "./workflow-contract.helpers.mjs";
 const { jobs } = parse(workflow("cao-dashboard.yml"));
 const step = (name) => jobs.build.steps.find((candidate) => candidate.name === name);
 const resolver = step("Resolve fallback activity run");
-const activityCondition = "steps.activity-cache.outputs.cache-matched-key != '' || steps.activity-artifact-run.outputs.run-id != ''";
 
-async function resolveActivity({ runs = [], error } = {}) {
+async function resolveActivity({ runs = [], jobSets = {}, error, jobError } = {}) {
   const outputs = {};
   const notices = [];
   const summaries = [];
@@ -25,12 +24,17 @@ async function resolveActivity({ runs = [], error } = {}) {
       payload: { repository: { default_branch: "production" } },
     },
     github: {
+      async paginate(_method, { run_id }) {
+        if (jobError) throw jobError;
+        return jobSets[run_id] ?? [];
+      },
       rest: {
         actions: {
+          listJobsForWorkflowRun() {},
           async listWorkflowRuns(request) {
             requests.push(request);
             if (error) throw error;
-            return { data: { workflow_runs: runs } };
+            return { data: { workflow_runs: runs.slice((request.page - 1) * 100, request.page * 100) } };
           },
         },
       },
@@ -45,12 +49,13 @@ async function resolveActivity({ runs = [], error } = {}) {
   return { outputs, notices, summaries, requests };
 }
 
-test("dashboard waits successfully when no Activity snapshot has been collected", async () => {
+test("dashboard reports inventory-only bootstrap when no Activity snapshot has been collected", async () => {
   const { outputs, notices, summaries, requests } = await resolveActivity();
   assert.equal(outputs["run-id"], undefined);
   assert.equal(notices.length, 1);
-  assert.match(notices[0], /No successful CAO Activity workflow run/);
-  assert.match(summaries.join("\n"), /waiting for.*Activity/i);
+  assert.match(notices[0], /No successful CAO Activity collection run/);
+  assert.match(summaries.join("\n"), /installed campaigns and configuration with an empty activity set/);
+  assert.match(summaries.join("\n"), /no activity computations/);
   assert.match(summaries.join("\n"), /automatically/);
   assert.match(summaries.join("\n"), /CAO Activity.*manually/);
   assert.equal(requests[0].owner, "acme");
@@ -58,7 +63,7 @@ test("dashboard waits successfully when no Activity snapshot has been collected"
   assert.equal(requests[0].workflow_id, "cao-activity.yml");
   assert.equal(requests[0].branch, "production");
   assert.equal(requests[0].status, "success");
-  assert.equal(requests[0].per_page, 1);
+  assert.equal(requests[0].per_page, 100);
 });
 
 test("dashboard still resolves a successful Activity run after a cache miss", async () => {
@@ -68,19 +73,49 @@ test("dashboard still resolves a successful Activity run after a cache miss", as
   assert.deepEqual(summaries, []);
 });
 
+const skippedJobs = [
+  { name: "plan", conclusion: "skipped" },
+  { name: "index", conclusion: "skipped" },
+];
+
+test("dashboard bootstraps when successful Activity runs skipped snapshot indexing", async () => {
+  const { outputs, notices } = await resolveActivity({
+    runs: [{ id: 10 }],
+    jobSets: { 10: skippedJobs },
+  });
+  assert.equal(outputs["run-id"], undefined);
+  assert.equal(notices.length, 1);
+});
+
+test("dashboard finds collected evidence beyond a page of skipped Activity runs", async () => {
+  const skippedRuns = Array.from({ length: 100 }, (_, id) => ({ id }));
+  const { outputs, requests } = await resolveActivity({
+    runs: [...skippedRuns, { id: 12345 }],
+    jobSets: Object.fromEntries(skippedRuns.map(({ id }) => [id, skippedJobs])),
+  });
+  assert.equal(outputs["run-id"], "12345");
+  assert.deepEqual(requests.map(({ page }) => page), [1, 2]);
+});
+
 test("dashboard does not disguise Activity lookup errors as an empty deployment", async () => {
   for (const status of [403, 404, 429, 500]) {
     const error = Object.assign(new Error(`GitHub request failed: ${status}`), { status });
     await assert.rejects(resolveActivity({ error }), (actual) => actual === error);
+    await assert.rejects(resolveActivity({ runs: [{ id: 12345 }], jobError: error }), (actual) => actual === error);
   }
 });
 
-test("dashboard skips every snapshot consumer only when neither cache nor run is available", () => {
+test("dashboard bootstraps only when neither cache nor run is available and always builds", () => {
   assert.equal(resolver.if, "steps.activity-cache.outputs.cache-matched-key == ''");
   const download = step("Download fallback activity data");
   assert.equal(download.if, "steps.activity-cache.outputs.cache-matched-key == '' && steps.activity-artifact-run.outputs.run-id != ''");
   assert.equal(download.with["run-id"], "${{ steps.activity-artifact-run.outputs.run-id }}");
   assert.equal(download["continue-on-error"], undefined);
+  const bootstrap = step("Bootstrap empty activity data");
+  assert.equal(bootstrap.if, "steps.activity-cache.outputs.cache-matched-key == '' && steps.activity-artifact-run.outputs.run-id == ''");
+  assert.match(bootstrap.with.script, /dashboard\/bootstrap-activity\.mjs/);
+  assert.match(bootstrap.with.script, /root: process\.env\.GITHUB_WORKSPACE/);
+  assert.equal(bootstrap["continue-on-error"], undefined);
 
   const consumerNames = [
     "Install dashboard build dependencies",
@@ -91,42 +126,33 @@ test("dashboard skips every snapshot consumer only when neither cache nor run is
     "Upload dashboard artifact",
   ];
   for (const name of consumerNames) {
-    assert.equal(step(name).if, activityCondition, name);
+    assert.equal(step(name).if, undefined, name);
     assert.equal(step(name)["continue-on-error"], undefined, name);
   }
   assert.ok(jobs.build.steps.indexOf(download) < jobs.build.steps.indexOf(step(consumerNames[0])));
+  assert.ok(jobs.build.steps.indexOf(bootstrap) < jobs.build.steps.indexOf(step(consumerNames[0])));
 
   for (const [cacheKey, runId, expected] of [
-    ["", "", false],
-    ["cao-activity-v5-123", "", true],
-    ["", "12345", true],
+    ["", "", true],
+    ["cao-activity-v5-123", "", false],
+    ["", "12345", false],
   ]) {
     const evaluate = (condition) => runInNewContext(condition
       .replaceAll("steps.activity-cache.outputs.cache-matched-key", "cacheKey")
       .replaceAll("steps.activity-artifact-run.outputs.run-id", "runId"), { cacheKey, runId });
     assert.equal(evaluate(resolver.if), cacheKey === "");
     assert.equal(evaluate(download.if), cacheKey === "" && runId !== "");
-    assert.equal(evaluate(activityCondition), expected);
+    assert.equal(evaluate(bootstrap.if), expected);
   }
 });
 
-test("dashboard requires an uploaded artifact before caching or deploying", () => {
+test("dashboard caches successful builds and preserves the Pages deployment policy", () => {
   const upload = step("Upload dashboard artifact");
-  assert.equal(jobs.build.outputs["artifact-id"], `\${{ steps.${upload.id}.outputs.artifact-id }}`);
   assert.equal(upload.with["if-no-files-found"], "error");
-  assert.equal(jobs.cache.if, "needs.build.outputs.artifact-id != ''");
-  assert.equal(jobs.deploy.if, "needs.build.outputs.deploy == 'true' && needs.build.outputs.artifact-id != ''");
-  for (const [artifactId, deploy, shouldCache, shouldDeploy] of [
-    ["", "true", false, false],
-    ["12345", "true", true, true],
-    ["12345", "false", true, false],
-  ]) {
-    const evaluate = (condition) => runInNewContext(condition
-      .replaceAll("needs.build.outputs.artifact-id", "artifactId")
-      .replaceAll("needs.build.outputs.deploy", "deploy"), { artifactId, deploy });
-    assert.equal(evaluate(jobs.cache.if), shouldCache);
-    assert.equal(evaluate(jobs.deploy.if), shouldDeploy);
-  }
+  assert.equal(jobs.cache.needs, "build");
+  assert.equal(jobs.cache.if, undefined);
+  assert.equal(jobs.deploy.needs, "build");
+  assert.equal(jobs.deploy.if, "needs.build.outputs.deploy == 'true'");
   assert.equal(jobs["notify-failure"].if,
     "${{ always() && (needs.build.result == 'failure' || needs.cache.result == 'failure' || needs.deploy.result == 'failure') }}");
 });
