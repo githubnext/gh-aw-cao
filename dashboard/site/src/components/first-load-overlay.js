@@ -92,6 +92,15 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       h('li', null, h('strong', null, 'Explore'), h('span', null, 'Views update as evidence becomes available'))
     ),
     h('p', { className: 'first-load-note first-load-wide-copy' }, 'The first import can take several minutes. Future visits reuse cached data.'),
+    h('p', { className: 'first-load-note first-load-server-option' },
+      'For larger datasets, deploy a CAO backend server to run queries server-side and avoid this browser import. See ',
+      h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment/' }, 'deployment options'),
+      ', including ',
+      h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment-azure/' }, 'Azure'),
+      ' and ',
+      h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment-coolify/' }, 'Coolify'),
+      '.'
+    ),
     dismissButton,
     retryButton,
     continuationNote

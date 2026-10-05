@@ -22,6 +22,7 @@ export const firstLoadStyles = `
 .first-load-steps strong, .first-load-steps span { display: block; font-size: .8125rem; line-height: 1.5; }
 .first-load-steps span { margin-top: 6px; color: var(--muted); }
 .first-load-note { margin: 12px 0; color: var(--muted); font-size: .75rem; line-height: 1.6; }
+.first-load-server-option a { text-decoration: underline; }
 .first-load-browse, .first-load-details { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
 .first-load-browse { margin-top: 12px; }
 .first-load-close:hover, .first-load-browse:hover, .first-load-details:hover { background: var(--accent-muted); }
