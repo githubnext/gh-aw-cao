@@ -17,6 +17,9 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## How to scale your dashboard
 
+You have two choices for setting up your dashboard: start with GitHub Pages, or
+run it on a server when your data or viewer needs call for it.
+
 ### Start with GitHub Pages
 
 GitHub Pages is the default starter deployment. It needs no dashboard server,
