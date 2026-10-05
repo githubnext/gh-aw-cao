@@ -1,31 +1,7 @@
 {
   "source_sha": "5b9b73047ea6f1e9b28eea964c0154295c5af98e",
-  "next_category": 5,
+  "next_category": 1,
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-03T17:05:00Z",
-      "worker_run_id": "37138179676",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37137604414,
-        37135272102,
-        37132501580,
-        37129888383,
-        37129387073,
-        37129048798,
-        37128749948,
-        37128563374,
-        37125982860,
-        37138088972,
-        37135076926,
-        37129734458,
-        37129199488,
-        37128372342,
-        37125726324
-      ],
-      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 9 successful completed runs in the 2026-10-03T13:23Z-16:40Z window shows dependency installation and caching are already effective. Queue median/p90 stayed 0s/0s; workflow median/p90 was 50s/89.4s; build-job median/p90 44s/52.6s; deploy-job median/p90 18s/18.8s on the 3 runs that deployed; and schedule-freshness median/p90 7s/8.6s on the 3 scheduled runs. Trusted step conclusions showed Restore node_modules succeeded in all 9 build jobs with 5s median/p90 7s, while Install dependencies and Save node_modules were skipped in all 9, confirming node_modules cache hits from execution rather than syntax. Restore cached CAO Dashboard also succeeded in all 9 builds with 2s median/p90 3s, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 9, confirming the dashboard cache also hit every time. Cross-checking 6 recent successful cao-dashboard.yml producer runs (37138088972, 37135076926, 37129734458, 37129199488, 37128372342, 37125726324) showed producer build median/p90 175s/214s, with Install dashboard build dependencies only 7s median/p90 9s while Upgrade fallback activity data dominated at 127.5s median/p90 156s. Bounded trusted logs for run 37138088972 confirmed the producer still recopies a 490.2 MiB gh-aw-logs.sqlite plus 338 activity shards totaling 292.7 MiB before uploading a 43,620,525-byte artifact, but that bottleneck falls under reusable dashboard generation rather than dependency caching and overlaps prior recorded upstream work. Repository issue search still cannot verify open duplicates because GitHub Issues are disabled in githubnext/gh-aw-cao, so no new cache-focused recommendation is actionable from this evidence window.",
-      "suggestion_fingerprint": null
-    },
     {
       "evaluated_at": "2026-10-03T18:24:40Z",
       "worker_run_id": "37143755610",
@@ -806,6 +782,45 @@
       ],
       "outcome": "no_action_duplicate_open_issue",
       "suggestion_fingerprint": "skip-duplicate-workflow_run-rebuilds-on-current-deploy"
+    },
+    {
+      "evaluated_at": "2026-10-05T04:23:00Z",
+      "worker_run_id": "37264096956",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37262736409,
+        37261801764,
+        37260919532,
+        37260179172,
+        37258138585,
+        37258134885,
+        37256850978,
+        37255351377,
+        37254541963,
+        37253641811,
+        37252821053,
+        37251020887,
+        37250131886,
+        37246049920,
+        37245583143,
+        37244955642,
+        37244880391,
+        37244189053,
+        37244182070,
+        37243537307,
+        37262417190,
+        37260682948,
+        37257874849,
+        37255101997,
+        37253405809,
+        37250797483,
+        37245372275,
+        37244626913,
+        37244018397,
+        37241294004
+      ],
+      "outcome": "no_actionable_improvement: trusted docs.yml evidence across 20 recent completed runs from 2026-10-04T22:46Z to 2026-10-05T04:17Z shows the same-SHA workflow_run duplicate pattern remains, but it is already tracked and the evidence has not materially changed. Queue median/p90 was 13s/14s on the 9 build-bearing runs; full-workflow median/p90 65.5s/81s across all 20 runs; build-job median/p90 45s/53s; deploy-job median/p90 10s/13s on the 9 runs that deployed; and schedule-freshness median/p90 7s/8s on all 20 runs. Trusted step metadata showed Restore node_modules succeeded in all 9 build-bearing docs runs with a 283 MB cache hit every time, Install dependencies and Save node_modules were skipped in all 9, Restore cached CAO Dashboard succeeded in all 9 with a ~40 MB cache hit every time, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped in all 9, confirming the docs consumer is already fully cached. The same SHA 5b9b73047ea6f1e9b28eea964c0154295c5af98e still triggered 7 successful workflow_run rebuilds after 2 successful scheduled deploy-bearing docs runs in this window: workflow_run docs 37245583143, 37251020887, 37255351377, and 37260919532 followed successful CAO Dashboard workflow_run producer runs 37245372275, 37250797483, 37255101997, and 37260682948 on the identical SHA, costing 61s, 78s, 73s, and 81s respectively (293s total, 73.25s average); two additional workflow_run docs runs on the same SHA, 37253641811 and 37262736409, also rebuilt for 70s and 78s when the latest deployed docs already covered that SHA. Successful scheduled skips 37261801764, 37260179172, 37256850978, 37254541963, 37252821053, 37250131886, 37246049920, and 37244955642 completed in 10-12s on the same SHA, confirming the freshness gate already suppresses redundant schedule work but not workflow_run rebuilds. Cross-checking recent successful cao-dashboard.yml runs in the same window showed producer workflow durations of 208-264s, so docs is still paying repeat fan-out cost even after the expensive producer succeeds. Open issues already represent suggestion fingerprint docs-workflow-run-freshness-gate-same-sha, so no new non-duplicate scheduling recommendation is actionable from this source state.",
+      "suggestion_fingerprint": null
     }
   ]
 }
