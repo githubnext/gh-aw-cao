@@ -26,20 +26,19 @@ test('Simulators binds slider values to a recomputed 30-day table', async ({ pag
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
-      import { processDataRequest } from '/src/data-worker.js';
+      import { loadCanonicalDashboardPage } from '/src/data-processor.js';
       const documentModel = ${JSON.stringify(authoritativeDashboard)};
       window.location.hash = '#page-simulators';
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources: {},
         loadPageSources: (pageId, options) => pageId === 'simulators'
-          ? processDataRequest({
-              operation: 'query-canonical-dashboard',
-              sourceNames: ['simulator-database-summary'],
-              context: documentModel.dashboard,
-              pageId,
-              queryContext: options.queryContext
-            })
+          ? loadCanonicalDashboardPage(
+              ['simulator-database-summary'],
+              documentModel.dashboard,
+              undefined,
+              { pageId, queryContext: options.queryContext }
+            )
           : Promise.resolve({})
       }));
     </script>
