@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -10,7 +11,8 @@ import (
 
 func TestPostgresBackfillLargeQueriesPreserveResourceGuards(t *testing.T) {
 	backfillServices(t)
-	ctx := t.Context()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
 	backfillDebugTelemetry(t, ctx)
 	scenario := simulator.Scenario{
 		Name: "large-query-guard", Repositories: 30_000,

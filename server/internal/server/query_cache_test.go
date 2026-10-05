@@ -423,9 +423,12 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 			"$repositories": {Source: "$repositories", Rows: []model.Row{{
 				"id": "repository", "owner": "githubnext", "name": "gh-aw-cao",
 			}}},
+			"$campaigns": {Source: "$campaigns", Rows: []model.Row{{
+				"id": "campaign", "slug": "cache-fixture",
+			}}},
 			"$workflows": {Source: "$workflows", Rows: []model.Row{{
 				"id": "workflow", "repositoryId": "repository", "path": ".github/workflows/cache-fixture.yml",
-				"name": "Cache fixture", "campaign": "cache-fixture",
+				"name": "Cache fixture", "campaignId": "campaign",
 			}}},
 			"$runs": {
 				Source: "$runs", Rows: []model.Row{{

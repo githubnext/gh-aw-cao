@@ -2,7 +2,6 @@ package collect
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,12 +15,7 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 	data := integrationPostgres(t, ctx)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeValidCollectionCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh", "exit 0")
 	node := writeFakeBinary(t, workspace, "node", "exit 0")
 
@@ -55,7 +49,6 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 		},
 		Projector: Projector{
 			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
-			CatalogRoot: catalogRoot, NodeBinary: node,
 			DatabaseQueriesPath: databaseQueries,
 			MinInterval:         50 * time.Millisecond,
 		},
@@ -79,6 +72,8 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 		if revision == 0 {
 			t.Fatal("expected a non-zero activated revision")
 		}
+	case err := <-done:
+		t.Fatalf("worker stopped before projecting collected evidence: %v", err)
 	case <-runCtx.Done():
 		t.Fatal("the worker did not project collected evidence")
 	}
@@ -114,12 +109,7 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	store, ctx := integrationStore(t)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeValidCollectionCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh", `echo "rate limited" >&2; exit 1`)
 	node := writeFakeBinary(t, workspace, "node", "exit 0")
 	lake := Lake{Directory: filepath.Join(workspace, "lake")}
@@ -153,6 +143,11 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	deadline := time.Now().Add(8 * time.Second)
 	var dead int64
 	for time.Now().Before(deadline) {
+		select {
+		case err := <-done:
+			t.Fatalf("worker stopped before retaining the exhausted task: %v", err)
+		default:
+		}
 		var err error
 		if dead, err = queue.DeadLetters(ctx); err != nil {
 			t.Fatal(err)

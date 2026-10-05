@@ -1000,6 +1000,10 @@ alongside their metadata, canonical diagnostics, and one revision/evaluation
 state. An ingestion replaces these atomically: failed transactions leave the
 previous committed state untouched. There are no Postgres generations,
 projections, or snapshots.
+Before validating cross-entity relationships, publication refreshes PostgreSQL
+planner statistics for the replacement rows, including partitioned parents.
+This avoids cold-start integrity joins using stale empty-table estimates;
+autovacuum cannot analyze those uncommitted rows or their partitioned parents.
 The editable representation is `spec/storage.tsp`; its emitter produces the
 standalone `internal/postgresx/schema.sql` and matching Go bindings.
 Eighteen entity tables retain query-consumed fields and identity/storage keys

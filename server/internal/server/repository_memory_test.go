@@ -189,6 +189,12 @@ type repositoryMemoryClient struct {
 }
 
 func (c *repositoryMemoryClient) Do(_ context.Context, arguments ...string) (any, error) {
+	if arguments[0] == "INFO" {
+		return cacheTestMemoryInfo, nil
+	}
+	if arguments[0] == "EVAL" && strings.Contains(arguments[1], "local function probe") {
+		return cacheTestCapabilityReply(), nil
+	}
 	return nil, nil
 }
 

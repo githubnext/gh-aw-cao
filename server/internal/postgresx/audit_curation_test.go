@@ -98,6 +98,22 @@ func TestAuditCurationNumericalParsingIsBounded(t *testing.T) {
 	}
 }
 
+var auditFixtureDay = time.Now().UTC().Truncate(24 * time.Hour).Add(-24 * time.Hour)
+
+// Keep relative audit/run clocks intact without aging fixtures out of run partitions.
+func retimeAuditFixture(row model.Row, origin time.Time) {
+	for _, field := range []string{"createdAt", "startedAt", "completedAt", "timestamp", "observedAt"} {
+		value, ok := row[field].(string)
+		if !ok {
+			continue
+		}
+		instant, err := time.Parse(time.RFC3339Nano, value)
+		if err == nil {
+			row[field] = auditFixtureDay.Add(instant.Sub(origin)).Format(time.RFC3339Nano)
+		}
+	}
+}
+
 func auditCurationParents(t *testing.T, writer *Writer) {
 	t.Helper()
 	for _, record := range []struct {
@@ -115,6 +131,7 @@ func auditCurationParents(t *testing.T, writer *Writer) {
 			"conclusion": "failure", "classification": "", "failureKind": "", "createdAt": "2026-01-01T00:00:00Z", "completedAt": "2026-01-01T00:02:00Z"}},
 		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
 	} {
+		retimeAuditFixture(record.row, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
 			t.Fatal(err)
 		}
@@ -126,6 +143,7 @@ func auditRow(id, source, kind, status, summary string, extra model.Row) model.R
 	for field, value := range extra {
 		row[field] = value
 	}
+	retimeAuditFixture(row, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	return row
 }
 
@@ -214,7 +232,7 @@ func TestAuditCurationPublish(t *testing.T) {
 	if state.Counts["$audits"] != len(retained) {
 		t.Fatalf("retained count=%d, expected %d", state.Counts["$audits"], len(retained))
 	}
-	if !state.EvaluatedAt.Equal(time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)) {
+	if !state.EvaluatedAt.Equal(auditFixtureDay.Add(24 * time.Hour)) {
 		t.Fatalf("curation lost the transported evidence clock: %v", state.EvaluatedAt)
 	}
 	var actual []string
@@ -524,6 +542,13 @@ func (fixture auditCurationFixture) records(t *testing.T, test auditCurationFixt
 	for field, value := range test.Audit {
 		audit[field] = value
 	}
+	origin, err := time.Parse(time.RFC3339Nano, fixture.Run["createdAt"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin = origin.Truncate(24 * time.Hour)
+	retimeAuditFixture(run, origin)
+	retimeAuditFixture(audit, origin)
 	return run, audit
 }
 
