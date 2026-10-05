@@ -4,7 +4,7 @@ import test from "node:test";
 const publishedSummaryUrl = process.env.DASHBOARD_PUBLISHED_SUMMARY_URL
   ?? "https://githubnext.github.io/gh-aw-cao/cao/agent-summary.json";
 const hostedHealthUrl = process.env.DASHBOARD_HOSTED_HEALTH_URL
-  ?? "https://cao.githubnext.com/api/v1/health";
+  ?? "https://cao.githubnext.com/api/health";
 const maximumLagMinutes = Number(process.env.HOSTED_BACKFILL_MAX_LAG_MINUTES ?? 30);
 const maximumLagMs = maximumLagMinutes * 60_000;
 const transientStatuses = new Set([408, 409, 425, 429, 500, 502, 503, 504]);

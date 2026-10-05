@@ -631,7 +631,9 @@ test("deployed integration rejects a stale hosted dashboard backfill", () => {
 
   assert.match(workflow, /Test hosted dashboard backfill freshness[\s\S]*?node --test tests\/integration\/dashboard-hosted-backfill\.test\.mjs/);
   assert.match(workflow, /steps\.backfill\.outcome == 'failure' \|\| steps\.test\.outcome == 'failure'/);
-  assert.match(backfillTest, /https:\/\/cao\.githubnext\.com\/api\/v1\/health/);
+  assert.match(backfillTest, /https:\/\/cao\.githubnext\.com\/api\/health/);
+  const server = readFileSync(join(root, "server", "internal", "server", "server.go"), "utf8");
+  assert.match(server, /register\("GET \/api\/health", a\.health\)/);
   assert.match(backfillTest, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/agent-summary\.json/);
   assert.match(backfillTest, /HOSTED_BACKFILL_MAX_LAG_MINUTES/);
   assert.match(backfillTest, /hostedEvaluatedAt/);

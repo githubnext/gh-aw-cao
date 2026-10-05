@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   activateTableViewMode,
   configureDeployedStorageQuota,
+  DEPLOYED_REFRESH_TIMEOUT_MS,
   deployedDashboardUrl as dashboardUrl,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
@@ -58,7 +59,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     await page.waitForFunction(() =>
       window.__dashboardTestEvents?.some(({ type, detail }) =>
         type === "dashboard-data" && detail?.status === "completed"
-      ), null, { timeout: 120_000 });
+      ), null, { timeout: DEPLOYED_REFRESH_TIMEOUT_MS });
     reloading = true;
     try {
       await page.reload({ waitUntil: "domcontentloaded" });
@@ -71,7 +72,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
         type === "dashboard-data"
         && detail?.kind === "refresh"
         && detail?.status === "completed"
-      ), null, { timeout: 120_000 });
+      ), null, { timeout: DEPLOYED_REFRESH_TIMEOUT_MS });
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 

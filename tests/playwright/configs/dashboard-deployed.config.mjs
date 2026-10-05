@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
+import { DEPLOYED_REFRESH_TIMEOUT_MS } from "../../e2e/dashboard-deployed-refresh-helpers.mjs";
 
 const chromiumExecutable = existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined;
 
@@ -7,7 +8,7 @@ export default defineConfig({
   testDir: "../../e2e",
   testMatch: ["**/dashboard-deployed-refresh.spec.mjs"],
   outputDir: "../../../test-results/dashboard-deployed/playwright",
-  timeout: 600_000,
+  timeout: 3 * DEPLOYED_REFRESH_TIMEOUT_MS,
   workers: 1,
   preserveOutput: "always",
   use: {
