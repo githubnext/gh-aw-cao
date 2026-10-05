@@ -1,4 +1,7 @@
+import { createDebug } from '../../debug.js';
 import { sourceId } from './ids.js';
+
+const debugFields = createDebug('fields');
 
 /** Raw payloads remain upstream; query-reconstructible values are not stored. */
 export const PRUNED_CANONICAL_FIELDS = /** @type {Readonly<Record<string, readonly string[]>>} */ (Object.freeze({
@@ -33,7 +36,10 @@ function retainFact(record, field, copy, timestamp = false) {
   const duplicate = record[copy];
   const agrees = fact === duplicate || (timestamp && typeof fact === 'string' && typeof duplicate === 'string'
     && Number.isFinite(Date.parse(fact)) && Date.parse(fact) === Date.parse(duplicate));
-  if (!agrees) throw new TypeError(`${field} conflicts with recomputable ${copy}`);
+  if (!agrees) {
+    debugFields({ event: 'retain-fact-rejected', field, copy });
+    throw new TypeError(`${field} conflicts with recomputable ${copy}`);
+  }
   return record;
 }
 
@@ -43,7 +49,10 @@ function retainCoordinates(record, copy, owner, repository) {
   if (value === undefined || value === null) return record;
   if (typeof value !== 'string') throw new TypeError(`${copy} must be an owner/repository coordinate`);
   const coordinate = value.match(/^([A-Za-z0-9][A-Za-z0-9-]*)\/([A-Za-z0-9._-]+)$/);
-  if (!coordinate) throw new TypeError(`${copy} must be an owner/repository coordinate`);
+  if (!coordinate) {
+    debugFields({ event: 'retain-coordinates-rejected', copy, reason: 'unmatched-coordinate' });
+    throw new TypeError(`${copy} must be an owner/repository coordinate`);
+  }
   for (const [field, value] of [[owner, coordinate[1]], [repository, coordinate[2]]]) {
     if (record[field] !== undefined && record[field] !== value) {
       throw new TypeError(`${field} conflicts with recomputable ${copy}`);
@@ -67,6 +76,7 @@ export function pruneCanonicalRecord(collection, record) {
   if (collection === 'runs') record = retainCoordinates(record, 'repositoryFullName', 'owner', 'repository');
   if (collection === 'workflows' && record.campaignId == null && record.campaign != null && record.campaign !== '') {
     if (typeof record.campaign !== 'string' || !record.campaign.trim()) {
+      debugFields({ event: 'campaign-slug-rejected' });
       throw new TypeError('workflow.campaign must be a nonempty slug');
     }
     record = { ...record, campaignId: sourceId('campaign', 'dashboard-sources', record.campaign.trim()) };
