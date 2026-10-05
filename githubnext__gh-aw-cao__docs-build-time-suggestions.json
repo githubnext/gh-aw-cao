@@ -1,15 +1,7 @@
 {
-  "source_sha": "131fd6f02845f764260d1f3ae53f4c4b87f4372b",
-  "next_category": "Astro documentation generation",
+  "source_sha": "fc91a70807b9a20aa5d7eb48a1a067f71f8e02b8",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-05T14:08:00Z",
-      "worker_run_id": 37320857198,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [37320374780, 37317829360, 37315396199, 37313643352, 37312746008, 37311023171, 37306843116, 37305354586, 37303943885, 37302772628, 37300319657, 37298660935, 37314906458, 37312296433, 37295654966, 37289327301, 37287481480, 37283081396, 37280780127, 37276002403, 37271555289, 37270089878],
-      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days yielded 12 comparable successful runs and 12 build-bearing or deploy-bearing successes. Trusted step metadata showed cache effectiveness rather than a docs-side bottleneck: Restore node_modules succeeded in all 12 sampled runs, while Install dependencies and Save node_modules were skipped every time. The latest stable docs.yml source already skips stale workflow_run rebuilds, and the current 20-run window includes recent workflow_run skips 37320198675, 37318592172, 37307544275, 37305512812, 37303820914, 37300174741, 37299073085, and 37298156977 plus only two earlier successful workflow_run builds (37315396199 and 37312746008) from before those skips landed. Median/p90 timings across the 12 successful docs runs were queue 3s/4s, full workflow 72s/86s, build 41s/56s, deploy 9.5s/12s, schedule-freshness 8s/9s, Restore node_modules 5s/9s, Build documentation 13s/14s, and Upload Pages artifact 10s/12s. Trusted producer comparison from the latest 10 successful cao-dashboard.yml runs still shows the dominant repeated cost is upstream dashboard generation, with build 211s median / 214s p90 and Upgrade fallback activity data 153.5s median / 158s p90, but the next category in rotation was dependency installation and caching. Because open issue #16054 already represents the threshold-meeting rebuild-avoidance recommendation and current dependency/cache evidence shows no new >=60s or >=15% docs-side savings, no new actionable non-duplicate improvement is warranted.",
-      "suggestion_fingerprint": null
-    },
     {
       "evaluated_at": "2026-10-05T14:33:00Z",
       "worker_run_id": 37325257489,
@@ -64,6 +56,14 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [37377547214, 37377521128, 37377521045, 37377520298, 37377520279, 37377520032, 37377519678, 37377519377, 37377518949, 37377518554, 37377517722, 37377087903, 37376904232, 37376805851, 37376078161, 37375818787, 37375568697, 37375394690, 37374496109, 37373328255],
       "outcome": "incomplete_insufficient_successful_runs: latest 20 completed docs.yml runs in the last 14 days contained only 3 successful runs (37376805851, 37375568697, 37373328255), below the required minimum of 5 comparable successful runs. Trusted step metadata for those 3 successes still showed Restore node_modules succeeded every time with Install dependencies and Save node_modules skipped every time, Restore cached CAO Dashboard succeeded every time with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped every time, Build documentation median 14s, Upload Pages artifact median 10s, build job median 49s, deploy job median 18s, full workflow median 81s, and queue median 0s. However, the current sample is dominated by non-comparable action_required/cancelled/skipped workflow_run events immediately after the docs.yml source changed, so no new threshold-meeting recommendation can be validated safely. Open issue #16054 already covers the prior actionable duplicate-rebuild optimization, and current docs.yml now contains that freshness logic.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T21:59:00Z",
+      "worker_run_id": 37378926118,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [37378351433, 37377523180, 37376805851, 37375568697, 37373328255, 37356703467, 37352936883, 37352687504, 37351273809, 37350395830, 37349524863, 37343385434, 37341211968, 37336211753],
+      "outcome": "no_actionable_improvement: evaluated the next rotation category with 14 comparable successful docs.yml runs from the last 14 days, including 12 schedule or workflow_run deployments and 2 push-only builds on matching source revisions. Trusted Actions metadata showed queue median/p90 0s/0s, full workflow median/p90 89.5s/763.2s with two clear deployment outliers, build median/p90 50.5s/62.6s, deploy median/p90 11s/28.8s, schedule-freshness median/p90 8s/10s, Build documentation median/p90 13s/14s, Upload Pages artifact median/p90 10.5s/12s, Restore node_modules median/p90 5s/7s, and Restore cached CAO Dashboard median/p90 2s/3.7s. Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every sampled build because trusted cache metadata showed hits. The Astro documentation generation step itself is consistently small at about 13s and accounts for about 26% of the median build job, so even eliminating it entirely would save well under the required 60s threshold and only borderline 15% of median end-to-end execution while adding complexity or staleness risk. Existing open issue #16054 still covers the only threshold-meeting docs-side optimization in this workflow, and the latest 20 cao-dashboard.yml runs did not provide five successful producer runs for a fresh reusable-dashboard-generation recommendation.",
       "suggestion_fingerprint": null
     }
   ]
