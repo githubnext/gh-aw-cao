@@ -2189,7 +2189,7 @@
             "mark": "chart",
             "chart": "line",
             "layout": "full",
-            "empty-message": "At least two numeric observations per repository and value ID are needed to show a change rate.",
+            "empty-message": "At least three numeric observations per repository and value ID are needed to draw a change-rate line.",
             "encoding": {
               "x": {
                 "field": "time",

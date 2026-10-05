@@ -5418,6 +5418,15 @@ describe('declarative query validation', () => {
     };
 
     expect(validateDashboardDocument(queryDocument([query])).ok).toBe(true);
+    const derivativeQuery = { ...query, 'temporal-series': { ...query['temporal-series'], derivative: true } };
+    expect(validateDashboardDocument(queryDocument([derivativeQuery])).ok).toBe(true);
+    const groupedDerivative = validateDashboardDocument(queryDocument([{
+      ...derivativeQuery, 'temporal-series': { ...derivativeQuery['temporal-series'], shape: 'groups' }
+    }]));
+    expect(groupedDerivative.ok).toBe(false);
+    if (!groupedDerivative.ok) expect(groupedDerivative.errors).toContainEqual(expect.objectContaining({
+      path: '$.dashboard.queries[0].temporal-series.derivative'
+    }));
     query['temporal-series'].time = 'missing-time';
     const invalid = validateDashboardDocument(queryDocument([query]));
     expect(invalid.ok).toBe(false);

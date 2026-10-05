@@ -3993,6 +3993,9 @@
           "shape": {
             "type": "string"
           },
+          "derivative": {
+            "type": "boolean"
+          },
           "carry": {
             "type": "array",
             "items": {

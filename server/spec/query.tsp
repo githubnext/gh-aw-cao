@@ -40,6 +40,7 @@ model TemporalSeries {
   time: string;
   series: string;
   shape?: string;
+  derivative?: boolean;
   carry?: string[];
   measures?: { field: string; key?: string; kind: string }[];
   maps?: { field: string; definitions?: string; group?: string; kind: string }[];

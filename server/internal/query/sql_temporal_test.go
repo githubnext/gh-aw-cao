@@ -328,9 +328,9 @@ func TestTemporalSQLPostgresDerivative(t *testing.T) {
 		(13,'2026-01-04T00:00:00Z','repo-a',1e309::numeric,'prod',true,'x','label',NULL,false),
 		(14,'2026-01-04T00:00:00Z','repo-a',45,'prod',false,'x','label',NULL,false),
 		(15,'2026-01-04T00:00:00Z','repo-a',45,'prod',true,'x','label',NULL,false),
-		(16,'2026-01-05T00:00:00Z','repo-a',1e308::numeric,'prod',true,'x','label',NULL,false),
-		(17,'2026-01-06T00:00:00Z','repo-a',-1e308::numeric,'prod',true,'x','label',NULL,false),
-		(18,'2026-01-07T00:00:00Z','repo-a',10,'prod',true,'x','label',NULL,false)`)
+		(16,'2026-01-04T00:00:00.001Z','repo-a',1e308::numeric,'prod',true,'x','label',NULL,false),
+		(17,'2026-01-04T00:00:00.002Z','repo-a',-1e308::numeric,'prod',true,'x','label',NULL,false),
+		(18,'2026-01-04T00:00:00.003Z','repo-a',10,'prod',true,'x','label',NULL,false)`)
 	definition := TemporalSeries{Time: "observed-at", Series: "repository", Shape: "tidy",
 		Derivative: true, Carry: []string{"direction"},
 		Measures: []TemporalMeasure{{Field: "value", Key: "identity", Kind: "primary"}}}
@@ -475,10 +475,14 @@ func TestTemporalSQLPostgresProjectionBounds(t *testing.T) {
 			"series": {Expression: "'repo'::text", Presence: "TRUE", Kind: SQLText},
 			"value":  {Expression: "1::numeric", Presence: "TRUE", Kind: SQLNumber},
 		}}
-	for _, shape := range []string{"tidy", "groups"} {
-		definition := TemporalSeries{Time: "at", Series: "series", Shape: shape, Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}}
+	for _, test := range []struct {
+		shape      string
+		derivative bool
+	}{{"tidy", false}, {"groups", false}, {"tidy", true}} {
+		definition := TemporalSeries{Time: "at", Series: "series", Shape: test.shape,
+			Derivative: test.derivative, Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}}
 		if _, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition)); err == nil {
-			t.Fatalf("%s must fail before emitting more than 100k points", shape)
+			t.Fatalf("%s derivative=%t must fail before emitting more than 100k points", test.shape, test.derivative)
 		}
 	}
 	input.SQL = "generate_series(1,100000) AS ordinal"

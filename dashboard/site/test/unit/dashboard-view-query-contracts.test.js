@@ -125,36 +125,37 @@ describe('dashboard view query contracts', () => {
         data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
       });
 
-      it('derives the operational-value chart rates through the worker while retaining raw table observations', () => {
-        const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value');
-        const chart = viewsOf(page)[0];
-        const table = viewsOf(page)[1];
-        expect(sourceNamesOf(table)).toEqual(['operational-values']);
-        const rows = [
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-03T00:00:00Z', 'operational-value': 13 },
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-01T00:00:00Z', 'operational-value': 5 },
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-04T00:00:00Z', 'operational-value': 10 },
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'other', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 100 },
-          { organization: 'b', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 200 },
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-04T00:00:00Z', 'operational-value': 40 },
-          { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-05T00:00:00Z', 'operational-value': null }
-        ];
-        const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-          operation: 'execute-dashboard-queries',
-          queries,
-          sourceNames: sourceNamesOf(chart),
-          sources: { 'operational-values': { source: 'operational-values', rows, metadata: { ...metadata, availability: 'available' } } }
-        }));
-        expect(results['operational-value-daily-change'].metadata.availability).toBe('available');
-        expect(results['operational-value-daily-change'].rows.map((row) => ({
-          time: row.time, value: row.value, metric: row.metric
-        }))).toEqual([
-          { time: '2026-09-03T00:00:00Z', value: 4, metric: 'speed' },
-          { time: '2026-09-04T00:00:00Z', value: -3, metric: 'speed' }
-        ]);
-      });
       expect(page.description).toContain('TODO:');
     }
+  });
+
+  it('derives the operational-value chart rates through the worker while retaining raw table observations', () => {
+    const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value');
+    const chart = viewsOf(page)[0];
+    const table = viewsOf(page)[1];
+    expect(sourceNamesOf(table)).toEqual(['operational-values']);
+    const rows = [
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-03T00:00:00Z', 'operational-value': 13 },
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-01T00:00:00Z', 'operational-value': 5 },
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-04T00:00:00Z', 'operational-value': 10 },
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'other', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 100 },
+      { organization: 'b', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 200 },
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-04T00:00:00Z', 'operational-value': 40 },
+      { organization: 'a', repository: 'shared', campaign: 'c', 'operational-value-definition': 'speed', 'observed-at': '2026-09-05T00:00:00Z', 'operational-value': null }
+    ];
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames: sourceNamesOf(chart),
+      sources: { 'operational-values': { source: 'operational-values', rows, metadata: { ...metadata, availability: 'available' } } }
+    }));
+    expect(results['operational-value-daily-change'].metadata.availability).toBe('available');
+    expect(results['operational-value-daily-change'].rows.map((row) => ({
+      time: row.time, value: row.value, metric: row.metric
+    }))).toEqual([
+      { time: '2026-09-03T00:00:00Z', value: 4, metric: 'speed' },
+      { time: '2026-09-04T00:00:00Z', value: -3, metric: 'speed' }
+    ]);
   });
 
   it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
