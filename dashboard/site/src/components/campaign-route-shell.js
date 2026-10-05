@@ -77,7 +77,9 @@ export function renderCampaignRouteShell(context, config) {
       routeValue,
       title,
       description,
-      campaignTabCounts(bindings)
+      campaignTabCounts(bindings, routeValue),
+      Object.fromEntries(Object.entries(CAMPAIGN_TAB_COUNT_SOURCES)
+        .map(([tabId, sourceName]) => [tabId, bindings[sourceName].unavailable()]))
     ),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
@@ -207,10 +209,11 @@ function campaignFolderHref(repositoryHref, readmePath) {
 
 /**
  * @param {Record<string, { rows: () => Array<Record<string, unknown>> }>} bindings
+ * @param {string} campaignId
  */
-function campaignTabCounts(bindings) {
+function campaignTabCounts(bindings, campaignId) {
   return Object.fromEntries(Object.entries(CAMPAIGN_TAB_COUNT_SOURCES).map(([tabId, sourceName]) => {
-    const row = bindings[sourceName].rows()[0];
+    const row = bindings[sourceName].rows().find((candidate) => candidate.campaign === campaignId);
     const count = Number(row?.items);
     return [tabId, Number.isFinite(count) && count > 0 ? count : 0];
   }));
@@ -221,12 +224,13 @@ function campaignTabCounts(bindings) {
  * @param {string} campaignName
  * @param {string} campaignDescription
  * @param {Record<string, number>} counts
+ * @param {Record<string, boolean>} unavailableCounts
  */
-function campaignTabs(campaignId, campaignName, campaignDescription, counts) {
+function campaignTabs(campaignId, campaignName, campaignDescription, counts, unavailableCounts) {
   const campaignQuery = `?campaign=${encodeURIComponent(campaignId)}`;
   return CAMPAIGN_ROUTE_TABS.map((tab) => ({
     id: tab.id,
-    label: tab.label,
+    label: unavailableCounts[tab.id] ? `${tab.label} (count unavailable)` : tab.label,
     icon: tab.icon,
     href: `#page-${tab.page}${campaignQuery}`,
     count: (counts[tab.id] ?? 0) > 0 ? counts[tab.id] : undefined,

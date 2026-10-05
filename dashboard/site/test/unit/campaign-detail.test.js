@@ -290,7 +290,7 @@ describe('campaign detail route', () => {
         source: name,
         metadata,
         rows: name === 'campaign-insight-tab-counts'
-          ? [{ campaign: 'ambient-context', items: 3 }] : []
+          ? [{ campaign: 'other', items: 9 }, { campaign: 'ambient-context', items: 3 }] : []
       };
     });
     const rendered = renderCampaignRouteView({

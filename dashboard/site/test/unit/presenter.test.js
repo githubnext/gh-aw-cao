@@ -890,7 +890,8 @@ describe('dashboard DOM provenance', () => {
       const shell = rendered.querySelector('[data-view-id="campaign-insights-navigation"]');
       expect(shell?.textContent).not.toContain('This view cannot be shown');
       requests.get('campaign-problem-tab-counts').reject(new Error('dashboard queries exceeded the max-duration-ms limit of 60000'));
-      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs')).not.toBeNull());
+      await vi.waitFor(() => expect([...rendered.querySelectorAll('.campaign-tabs a')]
+        .some((link) => link.textContent?.includes('Failures (count unavailable)'))).toBe(true));
       deliver('campaign-insight-tab-counts', [{ campaign: 'ambient-context', items: 2 }]);
       deliver('campaign-issue-tab-counts', [{ campaign: 'ambient-context', items: 1 }]);
       await vi.waitFor(() => expect([...rendered.querySelectorAll('.campaign-tabs .count-badge')]
