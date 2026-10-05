@@ -7,21 +7,74 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
+
+var postgresxLog = logger.New("cao:postgresx:repository_lifecycle")
+
+// repositoryLifecycleRejectionStage identifies which precondition of
+// UpdateRepositoryLifecycle failed, so a rejected update is diagnosable
+// without logging the repository coordinate or GitHub identifier.
+type repositoryLifecycleRejectionStage string
+
+const (
+	repositoryLifecycleRejectionStageID         repositoryLifecycleRejectionStage = "github-id"
+	repositoryLifecycleRejectionStageLifecycle  repositoryLifecycleRejectionStage = "lifecycle"
+	repositoryLifecycleRejectionStageTimestamp  repositoryLifecycleRejectionStage = "timestamp"
+	repositoryLifecycleRejectionStageCoordinate repositoryLifecycleRejectionStage = "coordinate"
+)
+
+// validRepositoryLifecycle reports whether lifecycle is one of the three
+// values the storage schema accepts.
+func validRepositoryLifecycle(lifecycle string) bool {
+	return lifecycle == "active" || lifecycle == "archived" || lifecycle == "deleted"
+}
+
+// parseRepositoryCoordinate splits repository into its owner and name,
+// rejecting coordinates that are empty, missing the separator, or carry a
+// second slash in the name segment. It is a pure function extracted from
+// UpdateRepositoryLifecycle and RepositoryActive so the coordinate format is
+// independently testable without a database connection.
+func parseRepositoryCoordinate(repository string) (owner, name string, ok bool) {
+	owner, name, ok = strings.Cut(repository, "/")
+	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", false
+	}
+	return owner, name, true
+}
+
+// classifyRepositoryLifecycleUpdate validates UpdateRepositoryLifecycle's
+// preconditions in a fixed order and reports which one failed. It is a pure
+// function extracted from UpdateRepositoryLifecycle so each precondition is
+// independently testable, and so the diagnostic log can report a rejection
+// stage without logging the repository coordinate or GitHub identifier.
+func classifyRepositoryLifecycleUpdate(
+	githubID int64, repository, lifecycle string, admittedAt time.Time,
+) (owner, name string, stage repositoryLifecycleRejectionStage, err error) {
+	if githubID <= 0 {
+		return "", "", repositoryLifecycleRejectionStageID, errors.New("invalid repository lifecycle update")
+	}
+	if !validRepositoryLifecycle(lifecycle) {
+		return "", "", repositoryLifecycleRejectionStageLifecycle, errors.New("invalid repository lifecycle update")
+	}
+	if admittedAt.IsZero() {
+		return "", "", repositoryLifecycleRejectionStageTimestamp, errors.New("repository lifecycle admission timestamp is required")
+	}
+	owner, name, ok := parseRepositoryCoordinate(repository)
+	if !ok {
+		return "", "", repositoryLifecycleRejectionStageCoordinate, errors.New("invalid repository coordinate")
+	}
+	return owner, name, "", nil
+}
 
 // UpdateRepositoryLifecycle records a verified, enrolled repository delivery.
 // The collector state is independent of the replaceable canonical projection.
 func (s *Store) UpdateRepositoryLifecycle(ctx context.Context, githubID int64, repository, lifecycle string, admittedAt time.Time) error {
-	if githubID <= 0 || (lifecycle != "active" && lifecycle != "archived" && lifecycle != "deleted") {
-		return errors.New("invalid repository lifecycle update")
-	}
-	if admittedAt.IsZero() {
-		return errors.New("repository lifecycle admission timestamp is required")
-	}
-	owner, name, ok := strings.Cut(repository, "/")
-	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
-		return errors.New("invalid repository coordinate")
+	owner, name, stage, err := classifyRepositoryLifecycleUpdate(githubID, repository, lifecycle, admittedAt)
+	if err != nil {
+		postgresxLog.Printf("repository lifecycle update rejected stage=%s", stage)
+		return err
 	}
 	id := "github:repository:" + strconv.FormatInt(githubID, 10)
 	tx, err := s.db.BeginTx(ctx, nil)

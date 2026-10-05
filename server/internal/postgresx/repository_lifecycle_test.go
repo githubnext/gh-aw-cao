@@ -73,3 +73,75 @@ func TestRepositoryLifecyclePresence(t *testing.T) {
 		t.Fatalf("invalid repository presence mask %q", mask)
 	}
 }
+
+func TestParseRepositoryCoordinate(t *testing.T) {
+	tests := []struct {
+		repository string
+		owner      string
+		name       string
+		ok         bool
+	}{
+		{repository: "octo/api", owner: "octo", name: "api", ok: true},
+		{repository: "octo/api/extra", owner: "", name: "", ok: false},
+		{repository: "octo", owner: "", name: "", ok: false},
+		{repository: "/api", owner: "", name: "", ok: false},
+		{repository: "octo/", owner: "", name: "", ok: false},
+		{repository: "", owner: "", name: "", ok: false},
+	}
+	for _, test := range tests {
+		owner, name, ok := parseRepositoryCoordinate(test.repository)
+		if owner != test.owner || name != test.name || ok != test.ok {
+			t.Fatalf("parseRepositoryCoordinate(%q) = (%q, %q, %t), want (%q, %q, %t)",
+				test.repository, owner, name, ok, test.owner, test.name, test.ok)
+		}
+	}
+}
+
+func TestValidRepositoryLifecycle(t *testing.T) {
+	for _, lifecycle := range []string{"active", "archived", "deleted"} {
+		if !validRepositoryLifecycle(lifecycle) {
+			t.Errorf("validRepositoryLifecycle(%q) = false, want true", lifecycle)
+		}
+	}
+	for _, lifecycle := range []string{"", "ACTIVE", "pending", "active "} {
+		if validRepositoryLifecycle(lifecycle) {
+			t.Errorf("validRepositoryLifecycle(%q) = true, want false", lifecycle)
+		}
+	}
+}
+
+func TestClassifyRepositoryLifecycleUpdateRejectsEachPreconditionInOrder(t *testing.T) {
+	validTime := time.Now()
+	tests := []struct {
+		name       string
+		githubID   int64
+		repository string
+		lifecycle  string
+		admittedAt time.Time
+		wantStage  repositoryLifecycleRejectionStage
+	}{
+		{name: "non-positive github id", githubID: 0, repository: "octo/api", lifecycle: "active", admittedAt: validTime, wantStage: repositoryLifecycleRejectionStageID},
+		{name: "negative github id", githubID: -1, repository: "octo/api", lifecycle: "active", admittedAt: validTime, wantStage: repositoryLifecycleRejectionStageID},
+		{name: "unknown lifecycle value", githubID: 1, repository: "octo/api", lifecycle: "pending", admittedAt: validTime, wantStage: repositoryLifecycleRejectionStageLifecycle},
+		{name: "zero admission timestamp", githubID: 1, repository: "octo/api", lifecycle: "active", admittedAt: time.Time{}, wantStage: repositoryLifecycleRejectionStageTimestamp},
+		{name: "invalid coordinate", githubID: 1, repository: "octo", lifecycle: "active", admittedAt: validTime, wantStage: repositoryLifecycleRejectionStageCoordinate},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			owner, name, stage, err := classifyRepositoryLifecycleUpdate(test.githubID, test.repository, test.lifecycle, test.admittedAt)
+			if err == nil || stage != test.wantStage || owner != "" || name != "" {
+				t.Fatalf("classifyRepositoryLifecycleUpdate() = (%q, %q, %s, %v), want stage %s with an error",
+					owner, name, stage, err, test.wantStage)
+			}
+		})
+	}
+}
+
+func TestClassifyRepositoryLifecycleUpdateAcceptsValidInput(t *testing.T) {
+	admittedAt := time.Now()
+	owner, name, stage, err := classifyRepositoryLifecycleUpdate(42, "octo/api", "archived", admittedAt)
+	if err != nil || stage != "" || owner != "octo" || name != "api" {
+		t.Fatalf("classifyRepositoryLifecycleUpdate() = (%q, %q, %s, %v), want (octo, api, \"\", nil)",
+			owner, name, stage, err)
+	}
+}
