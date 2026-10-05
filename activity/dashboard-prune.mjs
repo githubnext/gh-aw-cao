@@ -10,11 +10,12 @@ const QUERY_STAGE_WEIGHTS = {
   'temporal-series': 5,
   aggregate: 10,
   predict: 5,
+  window: 15,
   select: 10,
   'order-by': 5,
   limit: 5
 };
-const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as']);
+const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as', 'groupby', 'time-field']);
 
 /**
  * Prunes unreachable dashboard pages and reusable views, consolidates compatible

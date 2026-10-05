@@ -36,11 +36,12 @@ const SIMILARITY_STAGE_KEYS = [
   'temporal-series',
   'aggregate',
   'predict',
+  'window',
   'select',
   'order-by',
   'limit'
 ];
-const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as']);
+const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as', 'groupby', 'time-field']);
 
 function seededRandom(seed) {
   let state = seed >>> 0;
@@ -145,6 +146,7 @@ test('consolidates compatible query projections and rewrites every query referen
       'temporal-series': 0,
       aggregate: 0,
       predict: 0,
+      window: 0,
       select: 2,
       'order-by': 0,
       limit: 0
@@ -196,6 +198,30 @@ test('does not consolidate projections with conflicting output aliases', () => {
 
   assert.equal(document.dashboard.queries.length, 2);
   assert.deepEqual(report.queries.consolidated, []);
+});
+
+test('includes window operations and their field mappings in query similarity', () => {
+  const query = {
+    name: 'daily-change',
+    from: 'operational-values',
+    window: [{
+      operation: 'change', field: 'value', as: 'daily-change', mode: 'rate',
+      'time-field': 'observed-at', unit: 'day', groupby: ['repository'],
+      'order-by': [{ field: 'observed-at' }]
+    }]
+  };
+  const mapping = new Map();
+  const clone = remapFields(query, mapping);
+  const comparison = scoreDashboardQuerySimilarity(query, clone);
+  assert.equal(comparison.relation, 'same-shape-with-field-mapping');
+  assert.deepEqual(comparison['mapped-stages'], ['window']);
+  assert.deepEqual(comparison['field-mapping'], Object.fromEntries(mapping));
+  for (const changed of [{ unit: 'hour' }, { mode: 'absolute' }, { operation: 'rolling', frame: 7 }]) {
+    const different = { ...query, window: [{ ...query.window[0], ...changed }] };
+    assert.notEqual(scoreDashboardQuerySimilarity(query, different).relation, 'duplicate');
+    assert.ok(scoreDashboardQuerySimilarity(query, different).score < 1);
+  }
+  assert.notEqual(scoreDashboardQuerySimilarity(query, { from: query.from }).relation, 'duplicate');
 });
 
 test('scores compute-equivalent queries modulo field mappings', () => {
