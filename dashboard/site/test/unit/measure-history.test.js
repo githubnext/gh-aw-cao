@@ -290,6 +290,7 @@ describe('Measure history', () => {
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
     expect(rendered.querySelector('.temporal-plot-metric')).toBeNull();
     expect(rendered.querySelector('.temporal-plot-point')).not.toBeNull();
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toContain('repository daily change timeline');
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
   });
 
