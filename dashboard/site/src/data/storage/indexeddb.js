@@ -15,6 +15,14 @@ const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
 export const DATABASE_VERSION = 37;
+/** @type {Set<() => void>} */
+const upgradeListeners = new Set();
+
+/** @param {() => void} listener */
+export function subscribeCanonicalDatabaseUpgrade(listener) {
+  upgradeListeners.add(listener);
+  return () => upgradeListeners.delete(listener);
+}
 
 export const CANONICAL_QUERY_INDEX_FIELDS = /** @type {Record<string, string[]>} */ ({
   byQuerySummary: ['summary'],
@@ -492,6 +500,9 @@ export function openCanonicalDatabase(indexedDB) {
         // Canonical data is a derived cache. Rebuild incompatible identities and
         // schemas from authoritative dashboard inputs instead of migrating them.
         debug('upgrading database schema', name, { from: event.oldVersion, to: DATABASE_VERSION });
+        if (event.oldVersion > 0) {
+          for (const listener of upgradeListeners) listener();
+        }
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
       }

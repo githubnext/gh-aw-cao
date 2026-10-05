@@ -2,6 +2,7 @@ import {
   loadDashboardSnapshotMetadata,
   loadCanonicalDashboardPage,
   refreshCanonicalDashboardSources,
+  subscribeDatabaseUpgrade,
   subscribeCanonicalDashboardView,
   subscribeWorkerLoadingProgress,
 } from "../data-processor.js";
@@ -352,15 +353,40 @@ export async function startDashboardData(options) {
       throw error;
     }
   };
-  await bootstrapStep("open-canonical-database", () => loadCanonicalDashboardPage([], dashboardContext));
-  let snapshot = await bootstrapStep("read-snapshot-metadata", () => loadDashboardSnapshotMetadata());
+  const remoteDataBackend = usesRemoteDataBackend(document);
+  let upgradeStarted = false;
+  let overlayMounted = false;
+  const showFirstLoadOverlay = () => {
+    if (overlayMounted || cleanup.signal.aborted) return;
+    overlayMounted = true;
+    mountFirstLoadOverlay({ document, signal: cleanup.signal, retry: () => refreshSources() });
+  };
+  const stopUpgrade = remoteDataBackend ? () => {} : subscribeDatabaseUpgrade(() => {
+    if (upgradeStarted || cleanup.signal.aborted) return;
+    upgradeStarted = true;
+    browserFirstLoad.set({ status: "loading", dismissed: false, reason: "upgrade" });
+    showFirstLoadOverlay();
+  });
+  /** @type {{ createdAt: string } | null} */
+  let snapshot;
+  try {
+    await bootstrapStep("open-canonical-database", () => loadCanonicalDashboardPage([], dashboardContext));
+    snapshot = await bootstrapStep("read-snapshot-metadata", () => loadDashboardSnapshotMetadata());
+  } catch (error) {
+    if (upgradeStarted) {
+      cleanup.abort();
+      browserFirstLoad.set({ status: "inactive", dismissed: false });
+    }
+    throw error;
+  } finally {
+    stopUpgrade();
+  }
   debugStartup({
     op: "bootstrap",
     status: "ready",
     snapshot: snapshot === null ? "absent" : "present",
     durationMs: Math.round(performance.now() - bootstrapStartedAt),
   });
-  const remoteDataBackend = usesRemoteDataBackend(document);
   let hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
   const firstBrowserLoad = !hasCompleteSnapshot;
   let stopFirstLoadProgress = () => {};
@@ -370,7 +396,11 @@ export async function startDashboardData(options) {
     browserFirstLoad.set({ status: "inactive", dismissed: false });
   };
   if (firstBrowserLoad) {
-    browserFirstLoad.set({ status: "loading", dismissed: false });
+    browserFirstLoad.set({
+      status: "loading",
+      dismissed: upgradeStarted && browserFirstLoad.get().dismissed,
+      ...(upgradeStarted ? { reason: "upgrade" } : {})
+    });
     stopFirstLoadProgress = subscribeWorkerLoadingProgress((progress) => {
       if (browserFirstLoad.get().status !== "loading" || progress.phase !== "update") return;
       browserFirstLoad.set((current) => ({
@@ -381,6 +411,8 @@ export async function startDashboardData(options) {
       }));
     });
     cleanup.signal.addEventListener("abort", finishFirstLoad, { once: true });
+  } else if (upgradeStarted) {
+    browserFirstLoad.set({ status: "inactive", dismissed: false });
   }
   render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
@@ -456,7 +488,7 @@ export async function startDashboardData(options) {
 
   await settleUi();
   if (firstBrowserLoad && !cleanup.signal.aborted) {
-    mountFirstLoadOverlay({ document, signal: cleanup.signal, retry: () => refreshSources() });
+    showFirstLoadOverlay();
   }
   // The active page is subscribed and painted before lower-priority work begins.
   startBackgroundWork();

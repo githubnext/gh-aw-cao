@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const dataProcessor = vi.hoisted(() => ({
   loadDashboardSnapshotMetadata: vi.fn(),
   loadCanonicalDashboardPage: vi.fn(),
+  subscribeDatabaseUpgrade: vi.fn(),
   loadCanonicalDashboardSources: vi.fn(),
   refreshCanonicalDashboardSources: vi.fn(),
   subscribeCanonicalDashboardView: vi.fn(),
@@ -98,6 +99,7 @@ describe("dashboard data startup debug logging", () => {
     dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue({
       createdAt: "2026-09-28T12:00:00.000Z",
     });
+    dataProcessor.subscribeDatabaseUpgrade.mockReturnValue(() => {});
     dataProcessor.refreshCanonicalDashboardSources.mockImplementation(() => new Promise(() => {}));
     updates.startAutomaticDashboardDataUpdates.mockImplementation(() => () => {});
 

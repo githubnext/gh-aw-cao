@@ -22,7 +22,8 @@ import {
   readCollections,
   readTransaction,
   readTransactions,
-  recordTransaction
+  recordTransaction,
+  subscribeCanonicalDatabaseUpgrade
 } from './data/storage/indexeddb.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -64,6 +65,7 @@ const eagerIngest = debugEagerIngest();
 if (eagerIngest) debugIngestion('eager ingestion requested', { eagerIngest });
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
+if (workerScope) subscribeCanonicalDatabaseUpgrade(() => workerScope.postMessage({ type: 'database-upgrade' }));
 
 /** Returns one self-contained database diagnostics payload to the main thread. */
 async function collectCanonicalDatabaseDiagnostics() {

@@ -142,6 +142,22 @@ describe('browser first-load presentation', () => {
     expect(document.querySelector('dialog')).toBeNull();
   });
 
+  it('explains a database upgrade without claiming this is a first visit', () => {
+    browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade' });
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    const dialog = document.querySelector('dialog');
+    expect(dialog?.open).toBe(true);
+    expect(dialog?.querySelector('.first-load-eyebrow')?.textContent).toBe('Dashboard update');
+    expect(dialog?.querySelector('h2')?.textContent).toContain('Updating your dashboard');
+    expect(dialog?.querySelector('.first-load-description')?.textContent).toContain('rebuild the local database');
+    expect(dialog?.textContent).not.toContain('The first import can take');
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
+    browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade', stage: 'files', completed: 1, total: 5 });
+    expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Importing activity files');
+    browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade' });
+    expect(dialog?.querySelector('h2')?.textContent).toContain('dashboard update could not finish');
+  });
+
   it('supports Escape dismissal, honest failure output and retry', () => {
     const retry = vi.fn();
     mountFirstLoadOverlay({ document, signal: owner.signal, retry });
