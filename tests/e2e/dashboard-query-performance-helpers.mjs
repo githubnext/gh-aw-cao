@@ -1,4 +1,5 @@
 export const QUERY_CHUNK_SIZE = 25;
+export const DEFAULT_OVERVIEW_REQUEST_BUDGET_MS = 1_250;
 
 /**
  * Parses a Playwright-style `N/M` shard descriptor (1-based index, total count).

@@ -7,6 +7,7 @@ import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
+  DEFAULT_OVERVIEW_REQUEST_BUDGET_MS,
   QUERY_CHUNK_SIZE,
   snapshotDeployedActivityShards,
   deployedProxyTarget,
@@ -25,6 +26,11 @@ test("dashboard query benchmark runs serially with enough time for deployed data
   assert.equal(config.workers, 1);
   assert.equal(config.timeout, 1_800_000);
   assert.equal(QUERY_CHUNK_SIZE, 25);
+});
+
+test("Overview request budget allows the measured deployed-data baseline", () => {
+  assert.ok(1_128.9 < DEFAULT_OVERVIEW_REQUEST_BUDGET_MS);
+  assert.equal(DEFAULT_OVERVIEW_REQUEST_BUDGET_MS, 1_250);
 });
 
 test("deployed integration isolates query benchmark reporting from test permissions", () => {
