@@ -45,7 +45,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
     expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">');
     expect(preview).toContain('<meta name="application-name" content="Central Agentic Ops Dashboard">');
-    expect(preview).toContain('<meta name="theme-color" content="#0d1117">');
+    expect(preview).toContain('<meta name="theme-color" content="#0c0a09">');
     expect(preview).toContain('<meta name="mobile-web-app-capable" content="yes">');
     expect(preview).toContain('<meta name="apple-mobile-web-app-capable" content="yes">');
     expect(preview).toContain('<meta name="apple-mobile-web-app-title" content="Agentic Ops">');
@@ -57,8 +57,8 @@ describe('DLS-CONF-004 scaffold gates', () => {
       scope: './',
       display: 'standalone',
       display_override: ['minimal-ui', 'standalone'],
-      background_color: '#0d1117',
-      theme_color: '#0d1117'
+      background_color: '#0c0a09',
+      theme_color: '#0c0a09'
     });
     expect(manifest.icons).toEqual(expect.arrayContaining([
       expect.objectContaining({ src: './icon-192.png', sizes: '192x192', purpose: 'any' }),

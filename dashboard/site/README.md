@@ -83,6 +83,14 @@ WebMCP is experimental and only reachable from a secure context (`https:` or `lo
 
 Nothing registers when the flag is off; `document.modelContext` is simply `undefined` and the dashboard renders normally.
 
+## Shared visual style
+
+`src/design-tokens.json` maps the [GitHub Agentic Workflows docs design system](https://github.com/github/gh-aw/blob/main/docs/src/styles/tokens.css) to the dashboard's existing semantic CSS properties: warm stone neutrals, purple links and focus rings, coral accents, and Mona Sans variable typography. `src/styles.js` applies those tokens consistently to system, light, and dark themes, including the first-load overlay. Compact controls retain their existing sizing and status colors retain their meaning.
+
+Dashboard Language does not define themes or typography, so these presentation-only tokens live in the shared stylesheet layer; page definitions and worker queries are unchanged. Muted and amber text use deeper shades on light surfaces to maintain small-text contrast.
+
+The locally served normal and italic fonts under `src/fonts/` are Latin subsets of Mona Sans v2.0.27 from the upstream docs, renamed **CAO Sans** in accordance with the OFL reserved name. They preserve the weight and optical-size axes at the default width, Latin Extended characters, punctuation, currency signs, and arrows; other scripts use the system fallback. Hinting, unused stylistic alternates, and the unused width axis are removed to stay within the repository's asset-size budget. Standard kerning, ligatures, and contextual shaping remain available. The original OFL license is included. Fonts are copied and cached with the app for subpath deployments and offline use; the normal font is preloaded with `font-display: swap`, without contacting a third-party font service.
+
 ## Quality gates
 
 ```bash

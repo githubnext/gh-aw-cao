@@ -355,11 +355,11 @@ test('marketplace page renders canonical package cards after ingestion', async (
   const add = detail.locator('.entity-card-list-actions .cli-action-trigger');
   await expect(add).toBeVisible();
   await expect(add).toHaveAccessibleName('Add');
-  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(252, 252, 251)');
   const dashboardRoot = page.locator('.dashboard-root');
   await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'dark'));
-  await expect(add).toHaveCSS('color', 'rgb(13, 17, 23)');
-  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(13, 17, 23)');
+  await expect(add).toHaveCSS('color', 'rgb(12, 10, 9)');
+  await expect(add.locator(':scope > .octicon')).toHaveCSS('color', 'rgb(12, 10, 9)');
   await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'light'));
   await add.click();
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(

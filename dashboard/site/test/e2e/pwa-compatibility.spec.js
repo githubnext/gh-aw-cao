@@ -35,7 +35,7 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', './apple-touch-icon.png');
   await expect(page.locator('meta[name="application-name"]'))
     .toHaveAttribute('content', 'Central Agentic Ops Dashboard');
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d1117');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0c0a09');
   await expect(page.locator('meta[name="mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
   await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Agentic Ops');

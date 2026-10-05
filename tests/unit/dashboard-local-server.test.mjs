@@ -99,6 +99,8 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   await writeFile(path.join(siteRoot, "index.html"), `<!doctype html><body>preview ${syntheticToken}</body>`);
   await writeFile(path.join(siteRoot, "guide.md"), `# Guide\n\n${syntheticToken}\n`);
   await writeFile(path.join(siteRoot, "image.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const font = await readFile(new URL("../../dashboard/site/src/fonts/CAOSansVF.woff2", import.meta.url));
+  await writeFile(path.join(siteRoot, "font.woff2"), font);
   await writeFile(path.join(siteRoot, "private.txt"), "must not be served");
   await writeFile(path.join(siteRoot, "private"), "must not be served");
   const builtInDashboard = JSON.parse(dashboard("built-in"));
@@ -157,6 +159,10 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.equal(imageResponse.status, 200);
     assert.equal(imageResponse.headers.get("content-type"), "image/png");
     assert.deepEqual(Buffer.from(await imageResponse.arrayBuffer()), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    const fontResponse = await fetch(`${preview.url}/font.woff2`);
+    assert.equal(fontResponse.status, 200);
+    assert.equal(fontResponse.headers.get("content-type"), "font/woff2");
+    assert.deepEqual(Buffer.from(await fontResponse.arrayBuffer()), font);
     assert.equal((await fetch(`${preview.url}/private.txt`)).status, 404);
     assert.equal((await fetch(`${preview.url}/private`)).status, 404);
     assert.ok(requestLogs.some((message) => /^GET \/ 302 \d+ms$/.test(message)));

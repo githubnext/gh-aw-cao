@@ -12,7 +12,7 @@ export const firstLoadStyles = `
 .first-load-symbol { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 16px; background: var(--accent-muted); color: var(--accent); }
 .first-load-symbol .octicon { width: 28px; height: 28px; }
 .first-load-eyebrow { margin: 24px 0 8px; color: var(--accent); font-size: .8125rem; font-weight: 600; }
-.first-load-card h2 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.5rem); line-height: 1.15; font-weight: 600; }
+.first-load-card h2 { margin: 0; font-size: var(--text-display); line-height: var(--leading-tight); font-weight: 400; letter-spacing: var(--tracking-tight); }
 .first-load-description { margin: 16px 0 24px; color: var(--muted); line-height: 1.6; }
 .first-load-progress progress { display: block; width: 100%; height: 8px; accent-color: var(--accent); }
 .first-load-message { min-height: 3em; margin: 16px 0 0; color: var(--accent); font-size: .875rem; line-height: 1.5; }
