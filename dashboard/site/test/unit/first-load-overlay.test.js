@@ -127,6 +127,8 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Refreshing dashboard queries');
     const browse = dialog?.querySelector('.first-load-browse');
     if (!(browse instanceof HTMLButtonElement)) throw new Error('Browse button is missing.');
+    expect(browse.textContent).toBe('Explore data');
+    expect(dialog?.querySelector('.first-load-close')).toBeNull();
     browse.click();
     expect(dialog?.open).toBe(false);
     expect(browserFirstLoad.get().status).toBe('loading');

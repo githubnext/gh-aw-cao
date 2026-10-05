@@ -204,8 +204,8 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false) {
       await page.setViewportSize(viewport);
       await expect(importScreen.getByRole('heading', { name: 'Preparing your dashboard.' })).toBeVisible();
       await expect(importScreen.locator('.first-load-steps')).not.toBeVisible();
-      await expect(importScreen.getByRole('button', { name: 'Explore while data loads' })).toBeInViewport({ ratio: 1 });
-      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Explore data' })).toBeInViewport({ ratio: 1 });
+      await expect(importScreen.getByRole('button', { name: 'Dismiss import screen' })).toHaveCount(0);
       await expect.poll(() => importScreen.evaluate((element) => ({
         horizontal: element.scrollWidth > element.clientWidth,
         vertical: element.scrollHeight > element.clientHeight
@@ -231,7 +231,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false) {
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
   await page.getByRole('button', { name: 'Show import progress' }).click();
   await expect(importScreen).toBeVisible();
-  await page.getByRole('button', { name: 'Explore while data loads' }).click();
+  await page.getByRole('button', { name: 'Explore data' }).click();
   await expect(importScreen).not.toBeVisible();
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);

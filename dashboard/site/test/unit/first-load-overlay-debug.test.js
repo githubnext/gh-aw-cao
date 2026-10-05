@@ -58,7 +58,7 @@ describe('first-load overlay debug logging', () => {
     expect(debugFn).toHaveBeenCalledWith('[cao:first-load-overlay]', { event: 'mounted', status: 'loading' });
   });
 
-  it('logs a dismissed event when the explore-while-loading button is clicked', async () => {
+  it('logs a dismissed event when the Explore data button is clicked', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=first-load-overlay');
     const { mountFirstLoadOverlay } = await import('../../src/components/first-load-overlay.js');
@@ -103,7 +103,7 @@ describe('first-load overlay debug logging', () => {
     const owner = new AbortController();
     const retry = vi.fn();
     mountFirstLoadOverlay({ document, signal: owner.signal, retry });
-    document.querySelector('.first-load-close')?.dispatchEvent(new MouseEvent('click'));
+    document.querySelector('.first-load-browse')?.dispatchEvent(new MouseEvent('click'));
     const retryButton = [...document.querySelectorAll('.first-load-browse')]
       .find((candidate) => candidate.textContent === 'Retry import');
     /** @type {HTMLButtonElement | null} */ (retryButton)?.click();

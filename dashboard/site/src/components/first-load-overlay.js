@@ -3,7 +3,7 @@ import { octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad } from '../browser-first-load.js';
 import { createDebug } from '../debug.js';
-import { createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createModalDialog } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
 import { createFirstLoadMessagePicker, FIRST_LOAD_MESSAGE_INTERVAL_MS } from './first-load-messages.js';
 
@@ -43,7 +43,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     type: 'button',
     className: 'first-load-browse',
     onClick: dismiss
-  }, 'Explore while data loads');
+  }, 'Explore data');
   const retryButton = h('button', {
     type: 'button',
     className: 'first-load-browse',
@@ -69,15 +69,9 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     'Dismissing this screen does not cancel the import.',
     'Dismiss anytime. The import will continue.'
   ));
-  const dismissControl = renderCloseButton({
-    className: 'first-load-close',
-    label: 'Dismiss import screen',
-    onClick: dismiss
-  });
   dialog.append(
     h('div', { className: 'first-load-background', 'aria-hidden': 'true' }),
     h('section', { className: 'first-load-card' },
-    dismissControl,
     h('div', { className: 'first-load-symbol', 'aria-hidden': 'true' }, octicon('download')),
     eyebrow,
     title,

@@ -9,7 +9,6 @@ export const firstLoadStyles = `
 @keyframes first-load-grid-breathe { 0%, 100% { opacity: .65; } 50% { opacity: .85; } }
 .first-load-card { position: relative; z-index: 1; box-sizing: border-box; width: min(100%, 640px); margin: auto; padding: 40px; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 30%, transparent); }
 .first-load-compact-copy { display: none; }
-.first-load-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .first-load-symbol { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 16px; background: var(--accent-muted); color: var(--accent); }
 .first-load-symbol .octicon { width: 28px; height: 28px; }
 .first-load-eyebrow { margin: 24px 0 8px; color: var(--accent); font-size: .8125rem; font-weight: 600; }
@@ -25,8 +24,8 @@ export const firstLoadStyles = `
 .first-load-server-option a { text-decoration: underline; }
 .first-load-browse, .first-load-details { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
 .first-load-browse { margin-top: 12px; }
-.first-load-close:hover, .first-load-browse:hover, .first-load-details:hover { background: var(--accent-muted); }
-.first-load-close:focus-visible, .first-load-browse:focus-visible, .first-load-details:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.first-load-browse:hover, .first-load-details:hover { background: var(--accent-muted); }
+.first-load-browse:focus-visible, .first-load-details:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 @media (max-width: 700px) {
   .first-load-overlay { padding: 12px; }
   .first-load-card { padding: 20px; }
