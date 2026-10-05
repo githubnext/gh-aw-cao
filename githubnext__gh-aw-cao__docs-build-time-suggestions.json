@@ -1,6 +1,6 @@
 {
-  "source_sha": "b570db22b5a08dd1ca0ba5bfc1f015518cc2604a",
-  "next_category": 1,
+  "source_sha": "e0fa4d66249599f57d2251d34c2439254a646024",
+  "next_category": 5,
   "evaluations": [
     {
       "evaluated_at": "2026-10-04T22:28:12.862208Z",
@@ -143,6 +143,14 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [37294240038, 37292481487, 37289798040, 37289700998, 37287882538, 37286886675, 37283940935, 37283429611, 37281174539, 37280698695, 37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37270151320, 37268912249, 37268346810, 37289327301, 37287481480, 37283081396, 37280780127, 37276002403, 37271555289, 37270089878, 37264812254, 37262417190, 37260682948],
       "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days provided 18 comparable successful runs and 10 build-bearing successes, so evidence was sufficient. Queue time remained 0s median/p90. Across the 10 build-bearing docs runs, median/p90 full workflow duration was 73s/89s, build 44s/49s, deploy 10s/16.5s, schedule-freshness 8s/9s, Restore node_modules 5s/6s, Build documentation 11.5s/13s, Restore cached CAO Dashboard 2s/3s, and Upload Pages artifact 9.5s/10.9s. Trusted step metadata again showed 100% node_modules cache hits and 100% dashboard cache hits on all build-bearing docs runs; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every sampled build. The heaviest repeated cost relevant to docs freshness remains duplicate workflow_run rebuilds on the same deployed SHA, but that recommendation is already tracked by open issue #16054 and the new evidence is not materially different. Supporting producer evidence from the latest 10 completed cao-dashboard.yml runs showed median build time about 207s with Upgrade fallback activity data at 150.5s median and 155.6s p90, confirming the dominant upstream cost lies in dashboard generation rather than docs-side dependency caching or packaging. No new non-duplicate improvement in scheduling, concurrency, or avoidable rebuilds meets the >=60s or >=15% threshold beyond the existing open issue.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T10:32:30Z",
+      "worker_run_id": "37296939034",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37296965989, 37296069010, 37294240038, 37292481487, 37289798040, 37289700998, 37287882538, 37286886675, 37283940935, 37283429611, 37281174539, 37280698695, 37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37295654966, 37289327301, 37287481480, 37283081396, 37280780127, 37276002403, 37271555289, 37270089878],
+      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days still show enough evidence and the existing recommendation remains unchanged. Comparable sample: 20 successful or skipped docs runs, including 12 build-bearing successes and 8 schedule freshness skips. Median/p90 queue time stayed 0s/0s; full workflow 65.5s/76.7s; build 43.5s/48.8s; deploy 10s/12s; schedule-freshness 8s/9s. Trusted step metadata again showed 100% node_modules restore success and 100% dashboard cache restore success across all 12 build-bearing runs, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped every time. The duplicate workflow_run rebuild pattern persists on SHA b570db22b5a08dd1ca0ba5bfc1f015518cc2604a after successful CAO Dashboard runs 37271555289, 37276002403, 37280780127, 37283081396, 37287481480, 37289327301, and 37295654966 triggered docs builds 37271878331, 37276372723, 37281174539, 37283429611, 37287882538, 37289700998, and 37296069010 while adjacent scheduled runs 37274196048, 37283940935, 37286886675, 37289798040, 37292481487, and 37294240038 skipped as already fresh. Producer evidence from the latest 15 successful cao-dashboard.yml runs still shows the upstream dashboard build dominates absolute time, with median/p90 build 202s/213.2s and Upgrade fallback activity data 150s/155.6s. Because open issue #16054 already captures the only threshold-meeting docs-side improvement and the evidence has not materially changed, no new actionable non-duplicate recommendation is warranted.",
       "suggestion_fingerprint": null
     }
   ]
