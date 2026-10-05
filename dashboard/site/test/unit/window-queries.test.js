@@ -14,22 +14,61 @@ const values = [
 ];
 const query = { name: 'usage-window', subject: 'Usage trends', from: 'usage', window: values };
 
-/** @param {Record<string, unknown>} queryDefinition */
-function documentWith(queryDefinition) {
+/** @param {Record<string, unknown> | Array<Record<string, unknown>>} queryDefinition @param {string} [chartField] */
+function documentWith(queryDefinition, chartField = 'moving') {
   return JSON.stringify({
     'language-version': '0.1.0',
     dashboard: {
-      id: 'window-dashboard', title: 'Window dashboard', queries: [queryDefinition],
+      id: 'window-dashboard', title: 'Window dashboard',
+      queries: Array.isArray(queryDefinition) ? queryDefinition : [queryDefinition],
       pages: [{ id: 'usage', kind: 'custom', title: 'Usage', views: [{
         id: 'window-view', mark: 'table', title: 'Window',
         data: { source: 'usage-window' },
-        encoding: { columns: [{ field: 'moving', type: 'quantitative' }] }
+        encoding: { columns: [{ field: chartField, type: 'quantitative' }] }
       }] }]
     }
   });
 }
 
 describe('declarative worker window queries', () => {
+  it('accepts date-day UTC buckets as temporal rate inputs after aggregation', () => {
+    const daily = {
+      name: 'daily', subject: 'UTC daily counts', from: 'usage',
+      compute: [{ as: 'day', function: 'date-day', args: [{ field: 'observed-at' }] }],
+      aggregate: { by: ['workflow', 'day'], values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+    };
+    const trend = {
+      name: 'usage-window', subject: 'Daily change rate', from: 'daily',
+      window: [
+        { field: 'runs', as: 'moving', operation: 'rolling', frame: 2,
+          groupby: ['workflow'], 'order-by': [{ field: 'day' }] },
+        { field: 'moving', as: 'per-day', operation: 'change', mode: 'rate',
+          'time-field': 'day', unit: 'day', groupby: ['workflow'], 'order-by': [{ field: 'day' }] }
+      ]
+    };
+    expect(validateDashboardDocument(documentWith([daily, trend], 'per-day')).ok).toBe(true);
+    const rows = [
+      { workflow: 'a', run: '1', 'observed-at': '2026-01-01T13:00:00Z' },
+      { workflow: 'a', run: '2', 'observed-at': '2026-01-01T23:00:00Z' },
+      { workflow: 'a', run: '3', 'observed-at': '2026-01-02T01:00:00Z' },
+      { workflow: 'a', run: '4', 'observed-at': '2026-01-03T01:00:00Z' },
+      { workflow: 'a', run: '5', 'observed-at': '2026-01-03T02:00:00Z' }
+    ];
+    const output = executeDashboardQueries([daily, trend], {
+      usage: { source: 'usage', rows, metadata: {
+        'source-id': 'usage', 'source-kind': 'published', 'as-of': '2026-01-03T02:00:00Z',
+        'retrieved-at': '2026-01-03T02:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available'
+      } }
+    })['usage-window'].rows;
+    expect(output.map(({ day, moving, 'per-day': rate }) => [day, moving, rate]))
+      .toEqual([['2026-01-01', 2, null], ['2026-01-02', 1.5, -0.5], ['2026-01-03', 1.5, 0]]);
+    const textDay = { ...daily, compute: [{ as: 'day', function: 'concat',
+      args: [{ field: 'observed-at' }, { value: '' }] }] };
+    const invalid = validateDashboardDocument(documentWith([textDay, trend], 'per-day'));
+    expect(invalid.ok).toBe(false);
+    expect(invalid.errors.some((error) => error.path.endsWith('.window[1].time-field'))).toBe(true);
+  });
+
   it('applies rolling after query aggregation rather than chart-side aggregation', () => {
     const definition = {
       name: 'volume', from: 'usage',

@@ -197,7 +197,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
   }
   const rowInputTables = new Set(rowTables);
 
-  /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} [usage] */
+  /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'|'temporal'} [usage] */
   const requireField = (field, fieldPath, usage = 'read') => {
     if (typeof field !== 'string') return;
     const type = fields?.get(field);
@@ -374,7 +374,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
       if (Array.isArray(entry.groupby)) entry.groupby.forEach((field, groupIndex) => {
         requireField(field, `${entryPath}.groupby[${groupIndex}]`, 'scalar');
       });
-      if (entry.mode === 'rate') requireField(entry['time-field'], `${entryPath}.time-field`, 'scalar');
+      if (entry.mode === 'rate') requireField(entry['time-field'], `${entryPath}.time-field`, 'temporal');
       declareField(entry.as, 'numeric', `${entryPath}.as`);
     }
   }
@@ -437,7 +437,7 @@ function resolveInput(input, symbols, compiled) {
  * @param {Map<string, FieldType> | undefined} fields
  * @param {unknown} field
  * @param {string} path
- * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} usage
+ * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'|'temporal'} usage
  * @param {ValidationError[]} errors
  * @param {string} [inputLabel]
  * @returns {FieldType}
@@ -461,7 +461,7 @@ function requireInputField(fields, field, path, usage, errors, inputLabel = 'the
 /**
  * @param {string} field
  * @param {FieldType} type
- * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} usage
+ * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'|'temporal'} usage
  * @param {string} path
  * @param {ValidationError[]} errors
  */
@@ -476,6 +476,12 @@ function validateUsage(field, type, usage, path, errors) {
     errors.push(error(
       ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
       `query operators require a scalar field; "${field}" is a structured link field.`,
+      path
+    ));
+  } else if (usage === 'temporal' && type !== 'temporal') {
+    errors.push(error(
+      ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+      `rate time-field "${field}" must be temporal, not ${type}.`,
       path
     ));
   } else if (
@@ -563,6 +569,7 @@ function inferComputeType(computed, fields, parameters = new Map()) {
   const functionName = computed.function;
   if (functionName === 'dashboard-link') return 'link';
   if (functionName === 'link') return 'link';
+  if (functionName === 'date-day') return 'temporal';
   if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
   if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
   if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';

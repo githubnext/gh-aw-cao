@@ -4842,9 +4842,6 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
             if (!['second', 'minute', 'hour', 'day'].includes(String(entry.unit))) {
               errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'rate unit must be second, minute, hour, or day.', `${entryPath}.unit`));
             }
-            if (typeof entry['time-field'] === 'string' && !TEMPORAL_FIELD_NAMES.includes(entry['time-field'])) {
-              errors.push(createError(ERROR_CODES.invalidEntityRelationshipOrSourceGrain, 'rate time-field must be a timestamp field.', `${entryPath}.time-field`));
-            }
           } else if (entry['time-field'] !== undefined || entry.unit !== undefined) {
             errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'time-field and unit require rate mode.', entry['time-field'] !== undefined ? `${entryPath}.time-field` : `${entryPath}.unit`));
           }

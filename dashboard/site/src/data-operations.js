@@ -171,8 +171,8 @@ function windowRows(rows, operator) {
             if (definition.mode === 'percentage') {
               value = previous === 0 ? null : 100 * difference / previous;
             } else if (definition.mode === 'rate') {
-              const start = Date.parse(String(previousRow[/** @type {string} */ (definition['time-field'])]));
-              const end = Date.parse(String(result[index][/** @type {string} */ (definition['time-field'])]));
+              const start = parseWindowInstant(previousRow[/** @type {string} */ (definition['time-field'])]);
+              const end = parseWindowInstant(result[index][/** @type {string} */ (definition['time-field'])]);
               const millisecondsPerUnit = { second: 1000, minute: 60000, hour: 3600000, day: 86400000 }[/** @type {'second'|'minute'|'hour'|'day'} */ (definition.unit)];
               value = Number.isFinite(start) && Number.isFinite(end) && end > start
                 ? difference / ((end - start) / millisecondsPerUnit) : null;
@@ -186,6 +186,19 @@ function windowRows(rows, operator) {
     }
   }
   return result;
+}
+
+/** Date-only values produced by date-day are UTC midnight, not local time. @param {unknown} value */
+function parseWindowInstant(value) {
+  if (typeof value !== 'string'
+      || !/^\d{4}-\d{2}-\d{2}(?:$|T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$)/.test(value)) {
+    return NaN;
+  }
+  const day = value.slice(0, 10);
+  const calendarDate = new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10))));
+  if (!Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== day) return NaN;
+  const instant = Date.parse(value);
+  return Number.isFinite(instant) ? instant : NaN;
 }
 
 /**
