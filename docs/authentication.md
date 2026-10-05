@@ -44,7 +44,9 @@ The supported control-plane credentials are:
 | 3 | Legacy fine-grained PAT fallback | Repository secret `GH_AW_GITHUB_TOKEN` |
 | 4 | Runtime fallback | Repository-provided `GITHUB_TOKEN` for control-repository operations it can authorize |
 
-`GH_AW_GITHUB_AUTH_MODE` explicitly selects `app` or `pat`. GitHub App setup
+`GH_AW_GITHUB_AUTH_MODE` explicitly selects `app`, `pat`, or the repository-local
+`workflow-token` mode. With no mode configured, Activity uses `GITHUB_TOKEN`
+when the exact collection scope contains only the control repository. GitHub App setup
 writes `app` as soon as the read App credentials and selected-repository
 installations are verified, so Activity can run while write-App setup is still
 in progress. PAT setup writes `pat` only after the complete selected profile is
@@ -62,6 +64,18 @@ The committed root `aw.yml` intentionally has no `config` block so normal instal
 ### Repository-provided token fallback
 
 The repository-provided `GITHUB_TOKEN` is not offered by setup as an authentication profile. It remains available for bounded control-repository operations and compatibility when no explicit mode has been configured. Public visibility alone does not make it a reliable credential for another repository's Actions logs, security data, issues, pull requests, or write APIs.
+
+For a fresh repository-local installation, keep
+`control-plane.scope.allowed-repositories` set to the control repository.
+Activity needs no App, PAT, secret, or authentication variable: an unset
+`GH_AW_GITHUB_AUTH_MODE` uses the job's `GITHUB_TOKEN`. You may explicitly set
+`workflow-token` for the same behavior. This supports an initial collection
+with no agentic runs and publishes an explicit empty snapshot for the dashboard.
+Collection and operational-value reads reserve 100 core API requests rather
+than the larger App/PAT reserves, so they fit the standard 1,000-request
+workflow-token quota. Owner-wide or cross-repository Activity scopes require
+`app` or `pat`; Activity rejects those scopes rather than silently collecting
+only the control repository.
 
 ### Automated App setup
 
@@ -171,8 +185,10 @@ exact `allowed-repositories` scope, validates every
 `GH_AW_GITHUB_READ_PAT_<OWNER>` name, and exposes only that owner's token to its
 collection job. Logs, inventory, issue status, and operational-value evidence
 are collected in owner-scoped fragments and merged before the unchanged
-snapshot and cache publication stages. `GITHUB_TOKEN` is used only for trusted
-control-repository checkout and notification operations.
+snapshot and cache publication stages. Repository-local workflow-token mode
+uses `GITHUB_TOKEN` for collection as well as trusted control-repository
+checkout and notification operations. Explicit App/PAT modes never fall back
+to it when the selected collection credential is missing.
 
 ## API Capacity Admission
 

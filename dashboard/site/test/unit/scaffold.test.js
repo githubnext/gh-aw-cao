@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { primerStylesheet } from '../../src/styles.js';
+import { primerStyles } from '../../src/styles-primer.js';
 
 describe('DLS-CONF-004 scaffold gates', () => {
   it('DLS-CONF-004 initializes the presenter workspace tooling', () => {
@@ -122,7 +123,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('parity motion audit keeps report-style transitions and reduced-motion overrides', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     expect(styles).toContain('.lede { color: var(--muted); }');
     expect(styles).toContain('.pie-chart-total-value { fill: var(--fg); font-size: 5px;');
@@ -147,7 +148,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('keeps declared font sizes on mobile Safari', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     expect(styles).toContain('-webkit-text-size-adjust: 100%;');
     expect(styles).toContain('text-size-adjust: 100%;');
@@ -211,7 +212,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
     const styleLines = styles.split('\n');
     /** @param {string} selector */
     const declarationMap = (selector) => {
@@ -248,7 +249,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
       'src/components/dashboard-header.js',
       'src/components/dashboard-navigation.js'
     ].map((path) => readFileSync(resolve(path), 'utf8')).join('\n');
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     for (const shellClass of [
       'app-shell',
@@ -280,7 +281,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('hides mobile primary navigation and keeps Overview content full-width', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     expect(styles).toContain('.primary-nav { display: none; }');
     expect(styles).toContain('.dashboard-overview-page { margin: 0; }');
@@ -288,7 +289,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
     /** @param {string} rule */
     const zIndex = (rule) => {
       const block = styles.match(new RegExp(`${rule} \\{([^}]*)\\}`))?.[1];
@@ -304,13 +305,13 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('spaces the filter count badge from the eye icon and control boundary', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     expect(styles).toContain('.filter-control > .count-badge { margin: 0 9px 0 3px; }');
   });
 
   it('systematically ellipsizes output evidence at every viewport size', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styles = primerStyles;
 
     expect(styles).toContain('.table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }');
   });

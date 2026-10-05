@@ -27,6 +27,30 @@ bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
+## Before the first Activity snapshot
+
+The CAO Dashboard workflow restores the Activity cache or downloads the snapshot
+from the latest successful CAO Activity collection run on the default branch,
+ignoring runs that skipped snapshot indexing. On a new
+deployment, neither may exist yet. In that case, the workflow builds and publishes
+the dashboard using installed campaigns, workflows, and configuration from its
+trusted checkout, together with an empty activity set. Pages publication still
+follows the configured deployment policy.
+
+This bootstrap does not discover remote repositories, collect logs, or run
+activity computations. It marks inventory coverage as partial, leaves live
+workflow state unknown, and omits uncollected marketplace sources rather than
+inventing evidence. The normal pipeline creates valid empty activity shards and
+a SQLite projection; it does not publish the bootstrap as an Activity cache.
+
+Configure [Activity authentication](activity.md), then run **CAO Activity**
+manually to collect the first snapshot, or wait for its scheduled run.
+A successful default-branch Activity run automatically triggers
+the dashboard build with collected evidence. API errors, invalid policy,
+missing artifacts from an existing successful
+run, and invalid restored snapshots still fail rather than being treated as
+normal startup.
+
 ## Hosted server data pipeline
 
 Server-backed deployments keep the browser isolated from both databases. The
