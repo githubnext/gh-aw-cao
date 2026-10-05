@@ -1,1 +1,141 @@
-{"source_sha":"b570db22b5a08dd1ca0ba5bfc1f015518cc2604a","next_category":1,"evaluations":[{"evaluated_at":"2026-10-04T22:28:12.862208Z","worker_run_id":"37239801565","category":2,"evidence_run_ids":[37239807702,37238818353,37238026039,37237642995,37236481075,37234976953,37231909674,37238567316,37237793599,37235760647,37232264150,37231639266],"outcome":"no_actionable_change_below_threshold"},{"evaluated_at":"2026-10-04T22:40:00Z","worker_run_id":"37240678866","category":"reusable dashboard generation","evidence_run_ids":[37239807702,37239189684,37238888545,37238818353,37238026039,37237642995,37237127064,37236481075,37236003921,37234976953,37232494686,37231909674,37231870988,37231771195,37238567316,37237793599,37235760647,37232264150],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-04T23:59:00Z","worker_run_id":"37244261071","category":"artifact transfer and Pages packaging","evidence_run_ids":[37244189053,37244182070,37243537307,37242227449,37241512448,37241284012,37240754303,37240479693,37239807702,37239189684,37238888545,37238818353,37238407212,37238026039,37237642995,37237127064,37244018397,37241294004,37240519882,37238567316],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-04T23:59:00Z","worker_run_id":"37245285399","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[37244955642,37244880391,37244189053,37244182070,37243537307,37242227449,37241512448,37241284012,37240754303,37240479693,37239807702,37239189684,37238888545,37238818353,37238407212,37238026039,37244626913,37244018397,37241294004,37240519882,37237793599],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T01:10:28Z","worker_run_id":"37250097901","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307,37242227449,37241512448,37241284012,37240754303,37240479693,37239807702,37239189684,37238888545,37245372275,37244626913,37244018397,37241294004,37240519882],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T02:05:00Z","worker_run_id":"37253457308","category":"dependency installation and caching","evidence_run_ids":[37252821053,37251020887,37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307,37242227449,37241512448,37253405809,37250797483,37245372275,37244626913,37244018397,37241294004],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T02:46:51.348998Z","worker_run_id":"37256484515","category":"Astro documentation generation","evidence_run_ids":[37255351377,37254541963,37253641811,37252821053,37251020887,37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307,37242227449,37241512448,37241284012],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T03:11:07Z","worker_run_id":"37258098872","category":"reusable dashboard generation","evidence_run_ids":[37258138585,37258134885,37256850978,37255351377,37254541963,37253641811,37252821053,37251020887,37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307,37242227449,37257874849,37255101997,37253405809,37250797483,37245372275,37244626913],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T03:54:05Z","worker_run_id":"37261071015","category":"artifact transfer and Pages packaging","evidence_run_ids":[37260919532,37260179172,37258138585,37258134885,37256850978,37255351377,37254541963,37253641811,37252821053,37251020887,37250131886,37246049920],"outcome":"no_action_duplicate_open_issue","suggestion_fingerprint":"skip-duplicate-workflow_run-rebuilds-on-current-deploy"},{"evaluated_at":"2026-10-05T04:23:00Z","worker_run_id":"37264096956","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[37262736409,37261801764,37260919532,37260179172,37258138585,37258134885,37256850978,37255351377,37254541963,37253641811,37252821053,37251020887,37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307,37262417190,37260682948,37257874849,37255101997,37253405809,37250797483,37245372275,37244626913,37244018397,37241294004],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T05:20:30Z","worker_run_id":"37267180740","category":"dependency installation and caching","evidence_run_ids":[37262736409,37261801764,37260919532,37260179172,37258138585,37258134885,37256850978,37255351377,37254541963,37253641811,37252821053,37251020887,37250131886,37246049920,37245583143,37244955642,37244880391,37244189053,37244182070,37243537307],"outcome":"incomplete_due_to_rate_limit","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T05:49:00Z","worker_run_id":"37269542426","category":"dependency installation and caching","evidence_run_ids":[37268912249,37268346810,37267783580,37266899608,37265750624,37265061951,37264403757,37262736409,37261801764,37260919532,37260179172,37258138585,37258134885,37256850978,37255351377],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T06:59:31Z","worker_run_id":"37274926119","category":"Astro documentation generation","evidence_run_ids":[37274196048,37271878331,37270379647,37270151320,37268912249,37268346810,37267783580,37266899608,37265750624,37265061951,37264403757,37262736409,37271555289,37270089878,37268072955,37264812254,37262417190,37260682948],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T07:35:00Z","worker_run_id":"37279915193","category":"reusable dashboard generation","evidence_run_ids":[37277417890,37276372723,37274196048,37271878331,37270379647,37270151320,37268912249,37268346810,37267783580,37266899608,37265750624,37265061951,37264403757,37262736409,37276002403,37271555289,37270089878,37268072955,37264812254,37262417190],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T08:36:00Z","worker_run_id":"37285245559","category":"artifact transfer and Pages packaging","evidence_run_ids":[37283940935,37283429611,37281174539,37280698695,37277417890,37276372723,37274196048,37271878331,37270379647,37270151320,37268912249,37268346810,37267783580,37266899608,37283081396,37280780127,37276002403,37271555289,37270089878,37268072955],"outcome":"no_actionable_improvement","suggestion_fingerprint":null},{"evaluated_at":"2026-10-05T09:16:00Z","worker_run_id":"37287807541","category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[37287882538,37286886675,37283940935,37283429611,37281174539,37280698695,37277417890,37276372723,37274196048,37271878331,37270379647,37270151320,37268912249,37268346810,37267783580,37287481480,37283081396,37280780127,37276002403,37271555289],"outcome":"no_actionable_improvement_duplicate_open_issue: trusted docs.yml evidence across the latest 15 successful completed runs from 2026-10-05T05:26Z to 2026-10-05T09:08Z shows duplicate workflow_run rebuilds still dominate any threshold-meeting savings, but the recommendation is already represented by open issue #16054 and the evidence has not materially changed. Comparable build-bearing docs runs: 9 successful runs with median/p90 queue 0s/0s, full workflow 73s/96.4s, build job 42s/47.4s, deploy job 10s/13s, Restore node_modules 5s/6s, Build documentation 11s/13s, Restore cached CAO Dashboard 2s/3s, and Upload Pages artifact 9s/10.2s. Trusted step metadata shows 100% node_modules cache hits and 100% dashboard cache hits across all 9 build-bearing runs; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped every time. The latest CAO Dashboard producer run 37287481480 still spent about 152s in Upgrade fallback activity data, while docs consumer runs continued to rebuild after successful workflow_run triggers on the same SHA b570db22b5a08dd1ca0ba5bfc1f015518cc2604a (for example 37270379647, 37271878331, 37276372723, 37281174539, 37283429611, 37287882538), but this is the same avoidable-rebuild class already tracked by issue #16054 rather than a new category-specific opportunity. No new non-duplicate improvement in scheduling, concurrency, or avoidable rebuilds meets the >=60s or >=15% threshold beyond that open issue.","suggestion_fingerprint":null}]}
+{
+  "source_sha": "b570db22b5a08dd1ca0ba5bfc1f015518cc2604a",
+  "next_category": 5,
+  "evaluations": [
+    {
+      "evaluated_at": "2026-10-04T22:28:12.862208Z",
+      "worker_run_id": "37239801565",
+      "category": 2,
+      "evidence_run_ids": [37239807702, 37238818353, 37238026039, 37237642995, 37236481075, 37234976953, 37231909674, 37238567316, 37237793599, 37235760647, 37232264150, 37231639266],
+      "outcome": "no_actionable_change_below_threshold"
+    },
+    {
+      "evaluated_at": "2026-10-04T22:40:00Z",
+      "worker_run_id": "37240678866",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [37239807702, 37239189684, 37238888545, 37238818353, 37238026039, 37237642995, 37237127064, 37236481075, 37236003921, 37234976953, 37232494686, 37231909674, 37231870988, 37231771195, 37238567316, 37237793599, 37235760647, 37232264150],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T23:59:00Z",
+      "worker_run_id": "37244261071",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [37244189053, 37244182070, 37243537307, 37242227449, 37241512448, 37241284012, 37240754303, 37240479693, 37239807702, 37239189684, 37238888545, 37238818353, 37238407212, 37238026039, 37237642995, 37237127064, 37244018397, 37241294004, 37240519882, 37238567316],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-04T23:59:00Z",
+      "worker_run_id": "37245285399",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37242227449, 37241512448, 37241284012, 37240754303, 37240479693, 37239807702, 37239189684, 37238888545, 37238818353, 37238407212, 37238026039, 37244626913, 37244018397, 37241294004, 37240519882, 37237793599],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T01:10:28Z",
+      "worker_run_id": "37250097901",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37242227449, 37241512448, 37241284012, 37240754303, 37240479693, 37239807702, 37239189684, 37238888545, 37245372275, 37244626913, 37244018397, 37241294004, 37240519882],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T02:05:00Z",
+      "worker_run_id": "37253457308",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [37252821053, 37251020887, 37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37242227449, 37241512448, 37253405809, 37250797483, 37245372275, 37244626913, 37244018397, 37241294004],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T02:46:51.348998Z",
+      "worker_run_id": "37256484515",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [37255351377, 37254541963, 37253641811, 37252821053, 37251020887, 37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37242227449, 37241512448, 37241284012],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T03:11:07Z",
+      "worker_run_id": "37258098872",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [37258138585, 37258134885, 37256850978, 37255351377, 37254541963, 37253641811, 37252821053, 37251020887, 37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37242227449, 37257874849, 37255101997, 37253405809, 37250797483, 37245372275, 37244626913],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T03:54:05Z",
+      "worker_run_id": "37261071015",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [37260919532, 37260179172, 37258138585, 37258134885, 37256850978, 37255351377, 37254541963, 37253641811, 37252821053, 37251020887, 37250131886, 37246049920],
+      "outcome": "no_action_duplicate_open_issue",
+      "suggestion_fingerprint": "skip-duplicate-workflow_run-rebuilds-on-current-deploy"
+    },
+    {
+      "evaluated_at": "2026-10-05T04:23:00Z",
+      "worker_run_id": "37264096956",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37262736409, 37261801764, 37260919532, 37260179172, 37258138585, 37258134885, 37256850978, 37255351377, 37254541963, 37253641811, 37252821053, 37251020887, 37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307, 37262417190, 37260682948, 37257874849, 37255101997, 37253405809, 37250797483, 37245372275, 37244626913, 37244018397, 37241294004],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T05:20:30Z",
+      "worker_run_id": "37267180740",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [37262736409, 37261801764, 37260919532, 37260179172, 37258138585, 37258134885, 37256850978, 37255351377, 37254541963, 37253641811, 37252821053, 37251020887, 37250131886, 37246049920, 37245583143, 37244955642, 37244880391, 37244189053, 37244182070, 37243537307],
+      "outcome": "incomplete_due_to_rate_limit",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T05:49:00Z",
+      "worker_run_id": "37269542426",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [37268912249, 37268346810, 37267783580, 37266899608, 37265750624, 37265061951, 37264403757, 37262736409, 37261801764, 37260919532, 37260179172, 37258138585, 37258134885, 37256850978, 37255351377],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T06:59:31Z",
+      "worker_run_id": "37274926119",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [37274196048, 37271878331, 37270379647, 37270151320, 37268912249, 37268346810, 37267783580, 37266899608, 37265750624, 37265061951, 37264403757, 37262736409, 37271555289, 37270089878, 37268072955, 37264812254, 37262417190, 37260682948],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T07:35:00Z",
+      "worker_run_id": "37279915193",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37270151320, 37268912249, 37268346810, 37267783580, 37266899608, 37265750624, 37265061951, 37264403757, 37262736409, 37276002403, 37271555289, 37270089878, 37268072955, 37264812254, 37262417190],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T08:36:00Z",
+      "worker_run_id": "37285245559",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [37283940935, 37283429611, 37281174539, 37280698695, 37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37270151320, 37268912249, 37268346810, 37267783580, 37266899608, 37283081396, 37280780127, 37276002403, 37271555289, 37270089878, 37268072955],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T09:16:00Z",
+      "worker_run_id": "37287807541",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [37287882538, 37286886675, 37283940935, 37283429611, 37281174539, 37280698695, 37277417890, 37276372723, 37274196048, 37271878331, 37270379647, 37270151320, 37268912249, 37268346810, 37267783580, 37287481480, 37283081396, 37280780127, 37276002403, 37271555289],
+      "outcome": "no_actionable_improvement_duplicate_open_issue: trusted docs.yml evidence across the latest 15 successful completed runs from 2026-10-05T05:26Z to 2026-10-05T09:08Z shows duplicate workflow_run rebuilds still dominate any threshold-meeting savings, but the recommendation is already represented by open issue #16054 and the evidence has not materially changed. Comparable build-bearing docs runs: 9 successful runs with median/p90 queue 0s/0s, full workflow 73s/96.4s, build job 42s/47.4s, deploy job 10s/13s, Restore node_modules 5s/6s, Build documentation 11s/13s, Restore cached CAO Dashboard 2s/3s, and Upload Pages artifact 9s/10.2s. Trusted step metadata shows 100% node_modules cache hits and 100% dashboard cache hits across all 9 build-bearing runs; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped every time. The latest CAO Dashboard producer run 37287481480 still spent about 152s in Upgrade fallback activity data, while docs consumer runs continued to rebuild after successful workflow_run triggers on the same SHA b570db22b5a08dd1ca0ba5bfc1f015518cc2604a (for example 37270379647, 37271878331, 37276372723, 37281174539, 37283429611, 37287882538), but this is the same avoidable-rebuild class already tracked by issue #16054 rather than a new category-specific opportunity. No new non-duplicate improvement in scheduling, concurrency, or avoidable rebuilds meets the >=60s or >=15% threshold beyond that open issue.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T09:46:30Z",
+      "worker_run_id": "37291965637",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [],
+      "outcome": "incomplete_due_to_rate_limit_collecting_docs_and_dashboard_run_evidence",
+      "suggestion_fingerprint": null
+    }
+  ]
+}
