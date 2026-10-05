@@ -1,6 +1,6 @@
 {
   "source_sha": "310b77faa7d1b100c11fbf268ad0d2a3388216f2",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-05T14:08:00Z",
@@ -24,6 +24,14 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [37323116688, 37321614017, 37320374780, 37320198675, 37318592172, 37317829360, 37315396199, 37313643352, 37312746008, 37311023171, 37307544275, 37306843116, 37305512812, 37305354586, 37303943885, 37303820914, 37302772628, 37300319657, 37300174741, 37314906458, 37312296433],
       "outcome": "incomplete_due_to_rate_limit: attempted to refresh docs.yml and cao-dashboard.yml run evidence from GitHub Actions, but GitHub API rate limiting blocked additional trusted metadata collection before step-level verification could complete. Reused existing memory evidence and open-issue scan only; no new actionable, non-duplicate recommendation could be validated safely in this run.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-05T17:24:00Z",
+      "worker_run_id": 37348059728,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [37348062285, 37345336006, 37343385434, 37341211968, 37337620014, 37336211753, 37334897381, 37332989570],
+      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days yielded 8 comparable successful runs, all recent schedule-triggered successes on the same source SHA. This was sufficient for bounded timing review, but not to establish a new non-duplicate threshold-meeting recommendation in the next rotation category. Existing open issue #16054 already captures the previously actionable docs-side optimization, and the current bounded window did not show a fresh reusable-dashboard-generation change with trusted evidence for >=60s or >=15% median savings beyond already implemented cache reuse. Cache syntax alone was not used as evidence; no new trusted hit/miss or artifact-transfer pattern justified another issue.",
       "suggestion_fingerprint": null
     }
   ]
