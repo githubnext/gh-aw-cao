@@ -293,6 +293,12 @@ per installation.
   authority or present partial evidence as complete.
 - A misconfigured collector MUST fail startup or degrade to the Actions profile.
   It MUST NOT degrade to a partial collector.
+- Before collection begins, the collector MUST enumerate the complete App
+  installation scope and validate repository visibility: when the control
+  repository is public, it MUST fail startup if the credential's scope
+  includes any non-public repository, rather than collect from it. A
+  visibility failure MUST report only the count of rejected repositories and
+  MUST NOT include non-public repository names or other identifying details.
 
 ## 11b. Retention and erasure
 

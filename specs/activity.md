@@ -60,6 +60,16 @@ The control policy remains the authority for rollout and repository scope.
 Activity MAY record resolved policy and inventory as evidence, but that record
 does not grant authority.
 
+A public control repository MUST NOT collect evidence from a non-public
+repository. Before collection begins, Activity MUST validate repository
+visibility: it MUST resolve the control repository's own visibility, then
+either validate each explicitly allowed repository or enumerate the complete
+organization or user installation scope reachable by its credentials. When the
+control repository is public and any resolved repository is not public,
+Activity MUST fail closed rather than collect. A visibility failure report
+MUST report only the count of rejected repositories and MUST NOT include
+non-public repository names or other identifying details.
+
 ## 3. Collection boundary
 
 An Activity refresh MUST create a coherent snapshot from the inputs available
