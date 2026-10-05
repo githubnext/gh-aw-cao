@@ -4,6 +4,11 @@ const MIN_GPU_ROWS = 4096;
 const WORKGROUP_SIZE = 64;
 const MIN_INT = -2147483648;
 const MAX_INT = 2147483647;
+// WebGPU's stable buffer-usage and map-mode bit values.
+const BUFFER_MAP_READ = 1;
+const BUFFER_COPY_SRC = 4;
+const BUFFER_COPY_DST = 8;
+const BUFFER_STORAGE = 128;
 
 /**
  * Run a numeric equality filter on the GPU when the worker has WebGPU.
@@ -18,11 +23,12 @@ export async function gpuFilter(rows, operator, signal) {
       || operator.predicates?.length !== 1) return null;
   const predicate = operator.predicates[0];
   const target = predicate.equals;
-  if (predicate.field === '@time' || predicate.optional || !Number.isInteger(target)
+  if (predicate.field === '@time' || predicate.optional || typeof target !== 'number'
+      || !Number.isInteger(target)
       || target < MIN_INT || target > MAX_INT
       || predicate.in !== undefined || predicate.includes !== undefined
       || predicate.gte !== undefined || predicate.lt !== undefined) return null;
-  const gpu = globalThis.navigator?.gpu;
+  const gpu = /** @type {{ gpu?: { requestAdapter: () => Promise<any> } }} */ (globalThis.navigator ?? {}).gpu;
   if (!gpu || typeof gpu.requestAdapter !== 'function') return null;
 
   const values = new Int32Array(rows.length);
@@ -30,11 +36,12 @@ export async function gpuFilter(rows, operator, signal) {
     const value = rows[i][predicate.field];
     // `tidy` compares stringified values; only numeric integer columns are
     // eligible, so no coercion, null handling or precision may change.
-    if (!Number.isInteger(value) || value < MIN_INT || value > MAX_INT) return null;
+    if (typeof value !== 'number' || !Number.isInteger(value)
+        || value < MIN_INT || value > MAX_INT) return null;
     values[i] = /** @type {number} */ (value);
   }
   if (signal?.aborted) return null;
-  /** @type {GPUDevice | undefined} */
+  /** @type {any} */
   let device;
   try {
     const adapter = await gpu.requestAdapter();
@@ -43,13 +50,13 @@ export async function gpuFilter(rows, operator, signal) {
     if (signal?.aborted) return null;
     const size = Math.ceil(rows.length / WORKGROUP_SIZE) * WORKGROUP_SIZE * 4;
     const input = device.createBuffer({
-      size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+      size, usage: BUFFER_STORAGE | BUFFER_COPY_DST
     });
     const output = device.createBuffer({
-      size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
+      size, usage: BUFFER_STORAGE | BUFFER_COPY_SRC
     });
     const readback = device.createBuffer({
-      size, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+      size, usage: BUFFER_COPY_DST | BUFFER_MAP_READ
     });
     try {
       device.queue.writeBuffer(input, 0, values);
@@ -83,7 +90,7 @@ export async function gpuFilter(rows, operator, signal) {
       pass.end();
       encoder.copyBufferToBuffer(output, 0, readback, 0, size);
       device.queue.submit([encoder.finish()]);
-      await readback.mapAsync(GPUMapMode.READ);
+      await readback.mapAsync(BUFFER_MAP_READ);
       if (signal?.aborted) return null;
       const mask = new Uint32Array(readback.getMappedRange());
       const selected = rows.filter((_, index) => mask[index] === 1);
@@ -109,13 +116,17 @@ export async function gpuFilter(rows, operator, signal) {
  * @param {import('../../data-operations.js').DataOperator[]} operators
  * @param {AbortSignal | undefined} signal
  */
-export async function tidyVectorized(rows, operators, signal) {
-  let current = [...rows];
-  for (const operator of operators) {
-    if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
-    const filtered = await gpuFilter(current, operator, signal);
-    current = filtered ?? tidy(current, [operator]);
-  }
+export function tidyVectorized(rows, operators, signal = undefined) {
   if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
-  return current;
+  if (rows.length < MIN_GPU_ROWS || !globalThis.navigator?.gpu) return tidy(rows, operators);
+  return (async () => {
+    let current = [...rows];
+    for (const operator of operators) {
+      if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
+      const filtered = await gpuFilter(current, operator, signal);
+      current = filtered ?? tidy(current, [operator]);
+    }
+    if (signal?.aborted) throw signal.reason ?? new Error('Query cancelled');
+    return current;
+  })();
 }

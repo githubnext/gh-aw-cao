@@ -1,4 +1,3 @@
-import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
