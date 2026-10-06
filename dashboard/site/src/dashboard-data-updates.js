@@ -1,5 +1,6 @@
 import { scopedStorageKey } from './storage-scope.js';
 import { createDebug, debugParameter } from './debug.js';
+import { publishNotification } from './notification-service.js';
 
 const debugServiceWorker = createDebug('data:ingestion:sw-client');
 
@@ -149,8 +150,8 @@ export function dashboardDataUpdateBlockedReason(connection, battery) {
 /**
  * Returns the stable service worker script URL. It deliberately omits page
  * query parameters such as `?debug=`: registering a different script URL for
- * the same scope is a service worker update, and activating that update fires
- * `controllerchange`, which reloads every already-controlled dashboard page.
+ * the same scope is a service worker update, and activating that update prompts
+ * every already-controlled dashboard page to reload.
  */
 export function dashboardServiceWorkerUrl() {
   return new URL('../service-worker.js', import.meta.url);
@@ -371,12 +372,13 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
 }
 
 /**
- * Keeps the application worker current, activates verified updates, and reloads
- * an already-controlled page after the replacement worker takes control.
+ * Keeps the application worker current, activates verified updates, and offers
+ * an already-controlled page the choice to reload after the replacement takes control.
  * @param {{
  *   serviceWorkers?: ServiceWorkerContainer,
  *   scriptUrl?: URL,
  *   reload?: () => void,
+ *   notify?: typeof publishNotification,
  *   setTimer?: typeof window.setTimeout,
  *   clearTimer?: typeof window.clearTimeout
  * }} [dependencies]
@@ -386,24 +388,47 @@ export function startDashboardAppUpdates(dependencies = {}) {
   if (!serviceWorkers) return () => {};
   const scriptUrl = dependencies.scriptUrl ?? dashboardServiceWorkerUrl();
   const reload = dependencies.reload ?? window.location.reload.bind(window.location);
+  const notify = dependencies.notify ?? publishNotification;
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
   let controlled = Boolean(serviceWorkers.controller);
-  let reloading = false;
+  let firstInstall = !controlled;
+  let notified = false;
   let stopped = false;
   let checking = false;
   /** @type {number | undefined} */
   let timer;
 
+  const offerUpdate = () => {
+    if (stopped || notified || !controlled) return;
+    notified = true;
+    /** @type {import('./notification-service.js').NotificationHandle} */
+    let notification;
+    notification = notify({
+      message: 'An update to the dashboard has been downloaded. Update now?',
+      duration: 0,
+      actions: [
+        { label: 'Update now', run: () => { notification.dismiss(); reload(); } },
+        { label: 'Dismiss', run: () => notification.dismiss() }
+      ]
+    });
+  };
   const onControllerChange = () => {
-    if (controlled && !reloading) {
-      reloading = true;
-      reload();
-      return;
+    if (controlled) {
+      firstInstall = false;
+      offerUpdate();
     }
     controlled = true;
   };
+  /** @param {MessageEvent} event */
+  const onWorkerMessage = (event) => {
+    if (!firstInstall && event.data?.type === 'APP_UPDATE_DOWNLOADED'
+        && event.source === serviceWorkers.controller) {
+      offerUpdate();
+    }
+  };
   serviceWorkers.addEventListener?.('controllerchange', onControllerChange);
+  serviceWorkers.addEventListener?.('message', onWorkerMessage);
 
   /** @param {number} delay */
   const schedule = (delay) => {
@@ -440,6 +465,7 @@ export function startDashboardAppUpdates(dependencies = {}) {
     stopped = true;
     if (timer !== undefined) clearTimer(timer);
     serviceWorkers.removeEventListener?.('controllerchange', onControllerChange);
+    serviceWorkers.removeEventListener?.('message', onWorkerMessage);
     window.removeEventListener(DASHBOARD_REFRESH_REQUEST_EVENT, onRefreshRequest);
   };
 }

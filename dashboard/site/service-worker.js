@@ -309,6 +309,8 @@ self.addEventListener('activate', (event) => {
       ))
       .map((key) => caches.delete(key)));
     await self.clients.claim();
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) client.postMessage({ type: 'APP_UPDATE_DOWNLOADED', version: VERSION });
   })());
 });
 
