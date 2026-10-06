@@ -97,13 +97,9 @@ export function renderMeasureHistory(context) {
 function renderOperationalValueHistory(context, rows) {
   const campaignOutcomeSource = context.sourceNames[1] ?? '';
   const evidenceStateSource = context.sourceNames[2] ?? '';
-  const campaignOutcomes = (context.sources[campaignOutcomeSource]?.rows ?? []).map((row) => ({
-    date: String(row['run-day']),
-    successfulRuns: Number(row['successful-runs']),
-    failedRuns: Number(row['failed-runs']),
-    successRate: Number(row['success-rate-percent']),
-    concludedRuns: Number(row['concluded-runs'])
-  }));
+  const campaignOutcomes = /** @type {import('./temporal-metric-plot.js').OutcomeContext[]} */ (
+    context.sources[campaignOutcomeSource]?.rows ?? []
+  );
   const evidenceState = context.sources[evidenceStateSource]?.rows[0];
   const state = String(evidenceState?.['evidence-state'] || 'unavailable');
   const observationCount = Number(evidenceState?.['observation-count']);

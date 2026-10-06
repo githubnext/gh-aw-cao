@@ -28,7 +28,7 @@ let tooltipId = 0;
  *   direction?: 'increase'|'decrease'|'maintain'|'target',
  *   points: Array<{ x: string, y: number, key?: string, link?: import('./link-content.js').SafeLink|null }>
  * }} TemporalMetric
- * @typedef {{ date: string, successfulRuns: number, failedRuns: number, successRate: number, concludedRuns: number }} OutcomeContext
+ * @typedef {{ 'run-day': string, 'successful-runs': number, 'failed-runs': number, 'concluded-runs': number }} OutcomeContext
  * @typedef {{
  *   startValue: number,
  *   endValue: number,
@@ -119,13 +119,12 @@ export function renderTemporalMetricPlot(options) {
   const firstDay = firstObservation.slice(0, 10);
   const lastDay = lastObservation.slice(0, 10);
   const outcomes = (options.outcomes ?? []).filter((outcome) => (
-    outcome.date >= firstDay
-    && outcome.date <= lastDay
-    && Number.isFinite(outcome.successfulRuns)
-    && Number.isFinite(outcome.failedRuns)
-    && Number.isFinite(outcome.successRate)
-    && Number.isFinite(outcome.concludedRuns)
-  )).toSorted((left, right) => Date.parse(left.date) - Date.parse(right.date));
+    outcome['run-day'] >= firstDay
+    && outcome['run-day'] <= lastDay
+    && Number.isFinite(outcome['successful-runs'])
+    && Number.isFinite(outcome['failed-runs'])
+    && Number.isFinite(outcome['concluded-runs'])
+  ));
   debugTemporalMetricPlot({
     event: 'outcomes-filtered',
     providedCount: options.outcomes?.length ?? 0,
@@ -241,39 +240,39 @@ export function renderTemporalMetricPlot(options) {
       y2: SUCCESS_Y
     }),
     ...outcomes.map((outcome) => {
-      const markerX = outcomeX(outcome.date);
+      const markerX = outcomeX(outcome['run-day']);
       const trackStart = Math.max(LEFT, markerX - outcomeHalfWidth);
       const trackEnd = Math.min(RIGHT, markerX + outcomeHalfWidth);
-      const successEnd = trackStart + ((outcome.successfulRuns / outcome.concludedRuns) * (trackEnd - trackStart));
-      const failureEnd = successEnd + ((outcome.failedRuns / outcome.concludedRuns) * (trackEnd - trackStart));
+      const successEnd = trackStart + ((outcome['successful-runs'] / outcome['concluded-runs']) * (trackEnd - trackStart));
+      const failureEnd = successEnd + ((outcome['failed-runs'] / outcome['concluded-runs']) * (trackEnd - trackStart));
       return h('g', {
         className: 'temporal-plot-run-outcome',
         tabIndex: 0,
         role: 'img',
-        'aria-label': `${formatValue(outcome.successfulRuns)} successful and ${formatValue(outcome.failedRuns)} failed runs out of ${formatValue(outcome.concludedRuns)} concluded runs on ${outcome.date}`
+        'aria-label': `${formatValue(outcome['successful-runs'])} successful and ${formatValue(outcome['failed-runs'])} failed runs out of ${formatValue(outcome['concluded-runs'])} concluded runs on ${outcome['run-day']}`
       },
-      outcome.successfulRuns > 0 ? h('line', {
+      outcome['successful-runs'] > 0 ? h('line', {
         className: 'temporal-plot-run-outcome-success',
         x1: trackStart,
         y1: SUCCESS_Y,
         x2: successEnd,
         y2: SUCCESS_Y
       }) : null,
-      outcome.failedRuns > 0 ? h('line', {
+      outcome['failed-runs'] > 0 ? h('line', {
         className: 'temporal-plot-run-outcome-failure',
         x1: successEnd,
         y1: SUCCESS_Y,
         x2: failureEnd,
         y2: SUCCESS_Y
       }) : null,
-      outcome.failedRuns > 0 ? h('line', {
+      outcome['failed-runs'] > 0 ? h('line', {
         className: 'temporal-plot-run-outcome-failure-inset',
         x1: successEnd,
         y1: SUCCESS_Y,
         x2: failureEnd,
         y2: SUCCESS_Y
       }) : null,
-      h('title', null, `${outcome.date}: ${formatValue(outcome.successfulRuns)} successful, ${formatValue(outcome.failedRuns)} failed (${formatValue(outcome.concludedRuns)} concluded)`));
+      h('title', null, `${outcome['run-day']}: ${formatValue(outcome['successful-runs'])} successful, ${formatValue(outcome['failed-runs'])} failed (${formatValue(outcome['concluded-runs'])} concluded)`));
     }),
     h('g', { className: 'temporal-plot-run-outcome-legend' },
       h('text', { x: RIGHT - 300, y: TOP + 18, className: 'temporal-plot-run-outcome-legend-label' }, 'Runs:'),
