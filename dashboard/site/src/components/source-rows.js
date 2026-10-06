@@ -4,11 +4,24 @@
  * named source's rows without assuming the source or its `rows` array exist.
  */
 
+import { createDebug } from '../debug.js';
+
+const debugSourceRows = createDebug('source-rows');
+
 /**
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string} name
  * @returns {Array<Record<string, unknown>>}
  */
 export function rowsFor(sources, name) {
-  return Array.isArray(sources[name]?.rows) ? sources[name].rows : [];
+  const entry = sources[name];
+  if (entry === undefined) {
+    debugSourceRows({ event: 'source-missing', name });
+    return [];
+  }
+  if (!Array.isArray(entry.rows)) {
+    debugSourceRows({ event: 'rows-malformed', name });
+    return [];
+  }
+  return entry.rows;
 }
