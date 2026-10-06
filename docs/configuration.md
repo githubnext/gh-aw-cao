@@ -17,7 +17,7 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 {
   "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
-  "gh-aw-version": "v0.91.0",
+  "gh-aw-version": "v0.91.1",
   "control-plane": {
     "scope": {
       "allowed-owners": ["acme"]

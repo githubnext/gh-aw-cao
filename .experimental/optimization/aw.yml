@@ -1,6 +1,6 @@
 name: AW Optimization
 description: Organization-wide workflows for optimizing GitHub Agentic Workflow AI credit usage, cost, and ambient context.
-min-version: v0.91.0
+min-version: v0.91.1
 experimental: true
 includes:
   - ../aw.yml

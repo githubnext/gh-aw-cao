@@ -179,10 +179,11 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
   };
 
   for (const viewport of [
-    { width: 1440, height: 900, introColumns: 2 },
-    { width: 390, height: 844, introColumns: 1 }
+    { width: 1440, height: 900, introColumns: 2, colorScheme: 'dark', itemBackground: 'rgb(21, 27, 35)' },
+    { width: 390, height: 844, introColumns: 1, colorScheme: 'light', itemBackground: 'rgb(246, 248, 250)' }
   ]) {
     await page.setViewportSize(viewport);
+    await page.emulateMedia({ colorScheme: /** @type {'dark'|'light'} */ (viewport.colorScheme) });
     const factory = await render(overviewPage);
 
     await expect(factory).toBeVisible();
@@ -197,6 +198,10 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator(':scope > header > p')).toHaveCount(0);
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
+    const campaignLink = campaigns.locator('.link-button-list-item > a').first();
+    await expect(campaignLink).toHaveCSS('background-color', viewport.itemBackground);
+    await campaignLink.hover();
+    await expect(campaignLink).toHaveCSS('background-color', /^color\(srgb [\d.]+ [\d.]+ [\d.]+\)$/);
     await expect(campaigns).toHaveCSS('row-gap', '12px');
     for (const view of await factory.locator(':scope > .custom-view').all()) {
       await expect(view).toHaveCSS('border-top-width', '0px');
