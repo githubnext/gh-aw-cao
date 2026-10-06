@@ -1,6 +1,6 @@
 name: CAO Evolution
 description: Control-plane and agentic-workflow health, security maintenance, and evidence-backed operation discovery.
-min-version: v0.91.0
+min-version: v0.91.1
 experimental: true
 includes:
   - ../aw.yml
