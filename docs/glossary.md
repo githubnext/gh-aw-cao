@@ -114,6 +114,10 @@ A campaign-defined, timestamped numeric metric for one repository and campaign. 
 
 The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with campaign-defined repository operational value.
 
+## Public control repository
+
+A control repository whose own visibility is public, so its policy, workflow runs, operational metadata, dashboard data, and review outputs are also public. Activity and Server Ingestion both fail closed and refuse to collect evidence when a public control repository's credentials can reach any non-public repository, reporting only a rejected-repository count. See [Control Repository Visibility](authentication.md#control-repository-visibility).
+
 ## Repo memory
 
 The canonical gh-aw capability that persists files with unlimited retention in a dedicated `memory/<campaign-slug>` Git branch, distinct from the 7-day `cache-memory`. CAO campaigns configure it with `repo-memory.branch-name` so a coordinator can read and update bounded, advisory cross-run state through `$GH_AW_MEMORY_DIR` before dispatch selection; workers share the branch only when their work benefits from that shared history. Repo memory is never policy, target authority, credential storage, or a substitute for current repository evidence. See the canonical gh-aw definition of [Repo Memory](https://github.github.com/gh-aw/reference/glossary/#repo-memory).
