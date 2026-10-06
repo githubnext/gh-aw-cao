@@ -79,6 +79,7 @@ import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from
 import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../dashboard/site/src/data/model/audit-curation.js';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
+import { parseUpdateArguments, resolveUpdateCommit } from './commands/update.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
 import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
 
@@ -856,8 +857,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  const includePrereleases = ghAwOptions.includes('--pre-releases');
-  const updateOptions = ghAwOptions.filter((option) => option !== '--pre-releases');
+  const { ref, includePrereleases, updateOptions } = parseUpdateArguments(ghAwOptions, UsageError);
   const policy = await readCaoPolicy(policyPath);
   const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
   const campaigns = await installedCampaignRecords();
@@ -870,21 +870,38 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     }
   }
 
+  const resolvedCommit = resolveUpdateCommit(ref, execute, commandFailureMessage);
   const updatedCampaigns = [];
   const mergedDeclarations = [];
   const releaseTags = new Map();
   for (const record of campaigns) {
-    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute, {
+    const preparedSource = resolvedCommit ? undefined : await prepareInstalledPackageReleaseSource(record, releaseTags, execute, {
       includePrereleases,
       allowMajor: updateOptions.includes('--major')
     });
-    const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...updateOptions], {
+    // gh-aw update advances SHA sources to the default branch, so exact refs
+    // must be reapplied through add, which also writes the ownership record.
+    // Match install.sh: root resources contain an intentional App setup form
+    // that gh-aw's Markdown scanner rejects.
+    const addOptions = record.campaign === 'githubnext/gh-aw-cao' && !updateOptions.includes('--no-security-scanner')
+      ? ['--no-security-scanner', ...updateOptions]
+      : updateOptions;
+    const updateArguments = resolvedCommit
+      ? ['aw', 'add', `${record.campaign}@${resolvedCommit}`, '--force', ...addOptions]
+      : ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...updateOptions];
+    const update = execute('gh', updateArguments, {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
     if (update.error || update.status !== 0) {
       await restorePreparedPackageSource(record, preparedSource);
-      throw new Error(`gh aw update failed for ${record.campaign}: ${commandFailureMessage(update, 'unknown error')}`);
+      throw new Error(`gh aw ${updateArguments[1]} failed for ${record.campaign}: ${commandFailureMessage(update, 'unknown error')}`);
+    }
+    if (resolvedCommit) {
+      const installed = (await installedCampaignRecords()).find((candidate) => candidate.campaign === record.campaign);
+      if (installed?.resolvedCommit.toLowerCase() !== resolvedCommit) {
+        throw new Error(`CAO package ${record.campaign} did not record requested commit ${resolvedCommit}; refusing to materialize`);
+      }
     }
     const campaign = record.campaign === 'githubnext/gh-aw-cao'
       ? 'root'
@@ -902,6 +919,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     command: 'update',
     policy: policyPath,
     'gh-aw': ghAw,
+    ...(resolvedCommit ? { ref, resolvedCommit } : {}),
     campaigns: updatedCampaigns,
     declarations: mergedDeclarations
   };

@@ -316,9 +316,22 @@ From the control repository:
 ./cao.sh update --major --cool-down 0
 ```
 
-The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO campaign to its latest compatible release, and refreshes CAO campaign worker declarations in policy without widening operator-owned rollout settings. Commit the resulting campaign-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not point updates at `main`, fetch control files separately, or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records by hand.
+The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO campaign to its latest compatible release, and refreshes CAO campaign worker declarations in policy without widening operator-owned rollout settings. Commit the resulting campaign-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not fetch control files separately or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records by hand.
 
 Stable releases are used by default. Pass `--pre-releases` to include published prereleases when selecting the latest compatible release.
+
+To explicitly select the current `main` HEAD or a particular commit instead of a release:
+
+```bash
+./cao.sh update main
+./cao.sh update 0123456789abcdef0123456789abcdef01234567
+```
+
+The positional ref accepts `main` or a 7-40 character hexadecimal commit SHA. CAO resolves it once through the catalog repository to a full SHA and reapplies every installed CAO package at that same immutable revision, then verifies the recorded revision before materializing its runtime. This is a replacement, not a three-way merge: campaign-owned files and local edits to them are overwritten. Operator-owned rollout policy is preserved, apart from refreshing campaign worker declarations. Review unreleased code before enabling it.
+
+Ref updates accept gh-aw add options such as `--no-security-scanner`, `--engine`, and `--dir`; `--force` is implicit. Release-update options such as `--major`, `--cool-down`, and `--pre-releases` are rejected with an explicit ref. Omitting the ref retains the existing release-selection behavior.
+
+As in the root installer, ref updates skip gh-aw's Markdown security scanner for the root package because its GitHub App setup resource embeds an intentional HTML form. Other campaigns retain normal scanning unless `--no-security-scanner` is explicitly passed.
 
 Existing control repositories whose campaign records predate the campaign-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those canonical source-path resources are missing.
 

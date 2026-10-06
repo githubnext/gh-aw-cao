@@ -140,6 +140,13 @@ root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging
 declarations.
 
+`cao update` without a ref MUST retain release-based selection. An explicit
+`main` or commit SHA MUST resolve once to a full catalog commit SHA before any
+package is reapplied. Every selected installed CAO package MUST be reapplied
+at that same SHA through gh-aw, and its recorded `resolvedCommit` MUST match
+before materialization. Explicit-ref updates replace campaign-owned files;
+they MUST NOT widen operator-owned rollout settings.
+
 gh-aw campaign installation by itself cannot run this post-install lifecycle.
 Therefore an implementation MUST NOT represent direct Activity or Dashboard
 component installation as a complete CAO installation.
