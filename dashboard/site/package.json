@@ -15,6 +15,9 @@
     "analyze:query-graphs": "node ./scripts/validate-dashboards.mjs --render-query-graphs",
     "dev": "cd .. && node local-server.mjs"
   },
+  "overrides": {
+    "source-map-js": "$source-map-js"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
@@ -25,6 +28,7 @@
     "globals": "^16.5.0",
     "jsdom": "^26.1.0",
     "lighthouse": "^13.4.1",
+    "source-map-js": "file:packages/source-map-compat",
     "typescript": "^5.9.2",
     "vitest": "^5.0.0",
     "yaml": "^2.9.0"

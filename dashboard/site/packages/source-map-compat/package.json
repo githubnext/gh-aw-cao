@@ -1,0 +1,17 @@
+{
+  "name": "@central-agentic-ops/source-map-compat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build-time source-map APIs used by PostCSS and CSS-tree, without source-map-js.",
+  "main": "index.cjs",
+  "exports": {
+    ".": "./index.cjs",
+    "./lib/source-map-generator.js": "./index.cjs",
+    "./lib/source-map-consumer.js": "./index.cjs",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@jridgewell/gen-mapping": "0.3.13",
+    "@jridgewell/trace-mapping": "0.3.31"
+  }
+}

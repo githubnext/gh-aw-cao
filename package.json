@@ -75,6 +75,7 @@
     "astro": "7.3.2",
     "astro-mermaid": "2.1.0",
     "mermaid": "11.17.2",
+    "source-map-js": "file:dashboard/site/packages/source-map-compat",
     "starlight-blog": "0.30.0",
     "starlight-github-alerts": "0.4.0",
     "starlight-llms-txt": "0.12.0",
@@ -93,6 +94,7 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
+    "source-map-js": "$source-map-js",
     "undici": "^6.28.1"
   }
 }
