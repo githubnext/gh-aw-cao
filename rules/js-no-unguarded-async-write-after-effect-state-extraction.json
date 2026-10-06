@@ -90,16 +90,16 @@
   "status": "ready",
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "c0f58551f1032018ad9a923223d75675048e39df",
+    "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
     "true_positive_count": 7,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "readiness_for_target": "ready",
-    "reason": "Re-confirmed unchanged on HEAD c0f58551: same 7 unguarded true positives across account-menu.js, cli-actions.js, configuration-view.js, reset-dashboard-control.js, data-view.js; zero false positives.",
-    "txn_id": "refiner-37390379787-2"
+    "reason": "Re-confirmed unchanged on HEAD 10b42295: same 7 unguarded true positives across account-menu.js, cli-actions.js, configuration-view.js, reset-dashboard-control.js, data-view.js; zero false positives. No new occurrences.",
+    "txn_id": "refiner-37118181288-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37390379787",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-05T23:51:44Z",
-  "last_updated": "2026-10-05T23:51:44Z"
+  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_updated": "2026-10-03T11:03:07Z"
 }
