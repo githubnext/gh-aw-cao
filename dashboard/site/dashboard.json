@@ -995,7 +995,6 @@
         "label": "Data",
         "pages": [
           "campaigns",
-          "memory",
           "repositories",
           "workflows",
           "runs",
@@ -1004,7 +1003,8 @@
           "friction",
           "engines-models",
           "firewall",
-          "mcps"
+          "mcps",
+          "memory"
         ]
       },
       {

@@ -8,6 +8,8 @@ export const overviewStyles = `main.dashboard-prototype:has(.dashboard-overview-
 .dashboard-overview-page > .custom-view-grid > .custom-view { overflow: hidden; border: 0; border-radius: 0; background: transparent; }
 .dashboard-overview-page .link-button-list-view > header { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .dashboard-overview-page :is(.link-button-list, .link-button-list-skeleton, .link-button-list-empty) { border: 0; border-radius: 0; background: transparent; }
+.dashboard-overview-page .link-button-list-item > a { background: var(--canvas-subtle); }
+.dashboard-overview-page .link-button-list-item > a:is(:hover, :active) { background: color-mix(in srgb, var(--fg) 12%, var(--canvas-subtle)); }
 .dashboard-overview-page .factory-floor { border: 0; }
 .factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background-color: var(--canvas); background-image: var(--overview-page-glows); }
 .factory-intro h2 { max-width: 680px; margin: 0; font-size: clamp(2rem, 3.5vw, 3.25rem); font-weight: 600; letter-spacing: 0; line-height: 1.05; }
