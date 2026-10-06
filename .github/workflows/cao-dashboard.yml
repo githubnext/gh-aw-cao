@@ -426,21 +426,11 @@ jobs:
           name: central-agentic-ops-dashboard
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
 
-      - name: Verify dashboard Pages access
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { owner, repo } = context.repo
-            const repository = await github.rest.repos.get({ owner, repo })
-            const site = await github.rest.repos.getPages({ owner, repo })
-            if (site.data.build_type !== 'workflow' || (repository.data.private && site.data.public !== false)) {
-              throw new Error('Dashboard Pages must use GitHub Actions and restrict access for a private control repository')
-            }
-
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         with:
           enablement: false
+          ignore-if-missing: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

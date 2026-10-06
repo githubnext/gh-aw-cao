@@ -33,6 +33,8 @@ The dashboard build and deploy jobs don't need any additional secrets. The build
 > [!NOTE]
 > Don't create a `REPORT_PAGES_TOKEN` secret. The current dashboard doesn't use it.
 
+The deploy job relies on the standard Pages actions to report configuration and deployment errors; it does not separately verify Pages visibility with the Actions token. The Configure Pages step sets `ignore-if-missing: true`, but the pinned action does not currently support that input, so it can still fail when Pages settings are unavailable. Confirm the publishing source and intended access boundary in **Settings > Pages** before deployment.
+
 ## Choosing a credential profile
 
 The Activity collector, orchestrators, and workers call the GitHub API with a credential that you configure in the control repository. That credential determines which evidence the dashboard can show and which repositories campaigns can reach. Choose one profile before the first run.

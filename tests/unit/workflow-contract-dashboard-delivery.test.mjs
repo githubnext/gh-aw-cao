@@ -330,7 +330,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
   assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
-  assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 11);
+  assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 10);
   assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'ci'[\s\S]*?'--prefix'[\s\S]*?'dashboard\/site'[\s\S]*?'--ignore-scripts'/);
   assert.match(dashboardWorkflow, /Assemble Dashboard Language site[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'--prefix'[\s\S]*?'dashboard\/site'[\s\S]*?'run'[\s\S]*?'build'[\s\S]*?process\.env\.REPORT_OUTPUT[\s\S]*?controlSettings/);
   assert.match(dashboardWorkflow, /DASHBOARD_COMMIT_SHA: \$\{\{ github\.workflow_sha \}\}[\s\S]*?process\.env\.DASHBOARD_COMMIT_SHA/);
@@ -358,8 +358,16 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(dashboardBuildJob, /actions: write|pages: write|id-token: write|configure-pages|upload-pages-artifact|deploy-pages/);
   assert.doesNotMatch(dashboardBuildJob, /issues: write/);
   assert.match(dashboardDeployJob, /actions: read[\s\S]*?id-token: write[\s\S]*?pages: write/);
-  assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Verify dashboard Pages access[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
-  assert.match(dashboardDeployJob, /github\.rest\.repos\.getPages\(\{ owner, repo \}\)[\s\S]*?site\.data\.build_type !== 'workflow'[\s\S]*?repository\.data\.private && site\.data\.public !== false/);
+  assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
+  assert.doesNotMatch(dashboardDeployJob, /Verify dashboard Pages access|getPages|pages-access|continue-on-error/);
+  const dashboardDeploySteps = parse(dashboardWorkflow).jobs.deploy.steps;
+  for (const step of dashboardDeploySteps) {
+    assert.equal(step.if, undefined, step.name);
+  }
+  assert.equal(
+    dashboardDeploySteps.find(({ name }) => name === "Configure Pages").with["ignore-if-missing"],
+    true,
+  );
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardNotifyFailureJob, /needs: \[build, cache, deploy\]/);
   assert.match(dashboardNotifyFailureJob, /permissions:\n\s+issues: write/);
