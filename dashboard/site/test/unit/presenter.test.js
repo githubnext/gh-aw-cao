@@ -2302,9 +2302,11 @@ describe('presenter built-in and custom pages', () => {
       }
     };
 
-    const rendered = renderDashboard({ document, sources: {}, commitSha });
+    const rendered = renderDashboard({ document, sources: {}, commitSha, caoVersion: '1.2.3', ghAwVersion: 'v0.91.1' });
 
-    expect(rendered.querySelector('.report-footer-version')?.textContent).toBe('Version 0123456');
+    expect(rendered.querySelector('.report-footer-cao-version')?.textContent).toBe('CAO 1.2.3');
+    expect(rendered.querySelector('.report-footer-gh-aw-version')?.textContent).toBe('gh-aw v0.91.1');
+    expect(rendered.querySelector('.report-footer-version')?.textContent).toBe('Dashboard 0123456');
     expect(rendered.querySelector('.report-footer-version')?.getAttribute('title')).toBe(commitSha);
     expect(rendered.querySelector('.report-footer-version a')?.getAttribute('href')).toBe(
       `https://github.example.com/octo-org/agentic-operations/commit/${commitSha}`

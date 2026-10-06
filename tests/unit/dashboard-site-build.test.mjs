@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import {
   buildDashboardSite,
   embedDashboardVersion,
+  embedDashboardVersions,
   filterExperimentalDashboardViews,
   loadDashboardControlSettings,
 } from "../../dashboard/site/scripts/build.mjs";
@@ -59,6 +60,19 @@ test("dashboard site embeds a validated commit SHA", () => {
   );
 });
 
+test("dashboard site embeds validated CAO and control-policy gh-aw versions", () => {
+  const html = '<meta name="cao-version" content=""><meta name="gh-aw-version" content="">';
+  assert.equal(
+    embedDashboardVersions(html, { caoVersion: "1.2.3", ghAwVersion: "v0.91.1" }),
+    '<meta name="cao-version" content="1.2.3"><meta name="gh-aw-version" content="v0.91.1">',
+  );
+  assert.equal(embedDashboardVersions(html, {}), html);
+  assert.throws(
+    () => embedDashboardVersions(html, { ghAwVersion: '"><script>alert(1)</script>' }),
+    /gh-aw-version must be a semantic version/,
+  );
+});
+
 test("dashboard build uses GitHub Actions repository and server URL for the chrome and version links", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-actions-links-"));
   try {
@@ -71,6 +85,11 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
     const dashboard = JSON.parse(await readFile(path.join(root, "output", "dashboard.json"), "utf8"));
     assert.equal(dashboard.dashboard.repository, "octo-org/operations");
     assert.equal(dashboard.dashboard["github-url-base"], "https://github.example.com");
+    const index = await readFile(path.join(root, "output", "index.html"), "utf8");
+    const packageMetadata = JSON.parse(await readFile(path.resolve("package.json"), "utf8"));
+    const controlPolicy = JSON.parse(await readFile(path.resolve(".github/workflows/cao.json"), "utf8"));
+    assert.ok(index.includes(`<meta name="cao-version" content="${packageMetadata.version}">`));
+    assert.ok(index.includes(`<meta name="gh-aw-version" content="${controlPolicy["gh-aw-version"]}">`));
     const { document } = await loadDashboardSource(path.resolve("dashboard/site/dashboard.json"));
     const queries = JSON.parse(await readFile(path.join(root, "output", "src/agent/queries.generated.json"), "utf8"));
     const catalog = JSON.parse(await readFile(path.join(root, "output", "src/agent/catalog.generated.json"), "utf8"));
