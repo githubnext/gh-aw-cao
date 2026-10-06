@@ -155,6 +155,7 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
   );
   const tooltipContent = /** @type {HTMLElement} */ (tooltip.lastElementChild);
   if (viewportAnchored) tooltipContent.classList.add('tooltip-content-viewport');
+  const scope = createFactoryScope(signal);
   let pointerInside = false;
   let focusInside = false;
   let trackingViewport = false;
@@ -180,10 +181,10 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     tooltipContent.style.top = `${viewportAnchored ? top : top - rootRect.top}px`;
   };
   const startViewportTracking = () => {
-    if (trackingViewport || signal?.aborted) return;
+    if (trackingViewport || scope.signal.aborted) return;
     trackingViewport = true;
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition, { signal: scope.signal });
+    window.addEventListener('scroll', updatePosition, { capture: true, signal: scope.signal });
   };
   const stopViewportTracking = () => {
     if (!trackingViewport || pointerInside || focusInside) return;
@@ -195,25 +196,26 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     pointerInside = true;
     startViewportTracking();
     updatePosition();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('pointerleave', () => {
     pointerInside = false;
     stopViewportTracking();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('focusin', () => {
     focusInside = true;
     startViewportTracking();
     updatePosition();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('focusout', (event) => {
     focusInside = event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget);
     stopViewportTracking();
-  });
-  signal?.addEventListener('abort', () => {
+  }, { signal: scope.signal });
+  scope.signal.addEventListener('abort', () => {
     pointerInside = false;
     focusInside = false;
     stopViewportTracking();
   }, { once: true });
+  scope.bind(tooltip);
   return tooltip;
 }
 

@@ -122,9 +122,15 @@ export function renderFactoryElement(context, defaultSources, selectSourceNames,
 
 /**
  * Creates an abort-scoped lifetime for one independently loaded element.
+ * @param {AbortSignal} [signal]
  */
-export function createFactoryScope() {
+export function createFactoryScope(signal) {
   const lifetime = new AbortController();
+  if (signal?.aborted) {
+    lifetime.abort();
+  } else {
+    signal?.addEventListener('abort', () => lifetime.abort(), { once: true, signal: lifetime.signal });
+  }
   return {
     signal: lifetime.signal,
     /** @param {HTMLElement} element */
