@@ -196,7 +196,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.doesNotMatch(source, /^\s+(create-issue|add-comment|create-discussion|push-to-pull-request-branch):/m);
   assert.match(compiled, /docs\/styles\/\*\.css/);
   assert.match(compiled, /docs\/components\/\*\.astro/);
-  assert.match(compiled, /"tools":\["create_pull_request","missing_data","missing_tool","noop"\]/);
+  assert.match(compiled, /"tools":\["create_pull_request","missing_data","missing_tool","noop","report_incomplete"\]/);
 });
 
 test("docs diagram generator creates one validated theme-aware SVG pair", () => {

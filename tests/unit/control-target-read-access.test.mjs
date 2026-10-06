@@ -62,12 +62,8 @@ test("shared control exposes target security metadata as declarable read inputs"
   for (const input of readInputs) {
     assert.equal(control["import-schema"][input].default, "", `${input} must default to no access`);
     assert.ok(
-      controlSource.includes(`echo "permission_${permissionName(input)}=\${{ github.aw.import-inputs.${input} }}" >> "$GITHUB_OUTPUT"`),
-      `shared control must resolve ${input} into the target read scope`,
-    );
-    assert.ok(
-      controlSource.includes(`${actionPermission(input)}: \${{ steps.cao_target_read_scope.outputs.permission_${permissionName(input)} }}`),
-      `shared control must request ${input} on the target-scoped read App token`,
+      controlSource.includes(`${actionPermission(input)}: "\${{ github.aw.import-inputs.${input} }}"`),
+      `shared control must resolve ${input} at compile time on the target-scoped read App token`,
     );
   }
 });
@@ -112,14 +108,10 @@ test("every worker mints its read credential for the dispatched target with its 
     assert.equal(scope.env.CAO_READ_REPOSITORY, "${{ inputs.target_repo }}", `${name} read scope must be the target`);
     for (const input of readInputs) {
       const declared = controlImport.with[input] === "read" ? "read" : "";
-      assert.ok(
-        scope.run.includes(`echo "permission_${permissionName(input)}=${declared}" >> "$GITHUB_OUTPUT"`),
-        `${name} must resolve ${input} to "${declared}"`,
-      );
       assert.equal(
         appToken.with[actionPermission(input)],
-        `\${{ steps.cao_target_read_scope.outputs.permission_${permissionName(input)} }}`,
-        `${name} must forward ${input} to the read App token`,
+        declared,
+        `${name} must compile ${input} to "${declared}" on the read App token`,
       );
     }
 

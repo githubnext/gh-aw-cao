@@ -246,8 +246,7 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?GH_AW_GITHUB_AUTH_MODE == '' && secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
   assert.match(control, /name: Resolve CAO GitHub read scope[\s\S]*?CAO_READ_REPOSITORY: \$\{\{ github\.aw\.import-inputs\.read_repository \}\}/);
   assert.match(control, /name: Generate CAO target-scoped read App token[\s\S]*?owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
-  assert.match(control, /echo "permission_vulnerability_alerts=\$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}"/);
-  assert.match(control, /permission-vulnerability-alerts: \$\{\{ steps\.cao_target_read_scope\.outputs\.permission_vulnerability_alerts \}\}/);
+  assert.match(control, /permission-vulnerability-alerts: "\$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}"/);
   assert.match(control, /name: Resolve CAO target read credential[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?cao_target_read_scope\.outputs\.full_name/);
   assert.match(control, /tools:\n\s+github:[\s\S]*?github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
   assert.match(authentication, /runtime availability precedence, not permission to choose a PAT silently/);
@@ -494,8 +493,7 @@ test("Dependabot planner scopes its read token to the dispatched target", () => 
   assert.match(source, /read_vulnerability_alerts: read/);
   assert.match(appTokenStep, /owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
   assert.match(appTokenStep, /repositories: \$\{\{ steps\.cao_target_read_scope\.outputs\.repository \}\}/);
-  assert.match(scopeStep, /echo "permission_vulnerability_alerts=read"/);
-  assert.match(appTokenStep, /permission-vulnerability-alerts: \$\{\{ steps\.cao_target_read_scope\.outputs\.permission_vulnerability_alerts \}\}/);
+  assert.match(appTokenStep, /permission-vulnerability-alerts: "?read"?/);
   assert.doesNotMatch(appTokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
   assert.match(
     credentialStep,

@@ -123,7 +123,7 @@ test("SelfCare Primer brand checker audits the dashboard against retrieved guida
   assert.match(source, /no improvement is needed for any other reason, call `noop` once with a concise plain-text reason/);
   assert.match(source, /Never finish with only a textual response/);
   assert.equal(source.split(liveGuard).length - 1, 3);
-  assert.match(compiled, /\\"noop\\":\{\\"max\\":1,\\"report-as-issue\\":\\"false\\"\}/);
+  assert.match(compiled, /\\"noop\\":\{\\"max\\":2,\\"report-as-issue\\":\\"false\\"\}/);
 });
 
 test("SelfCare reactive UI expert applies the local reactive framework skill", () => {

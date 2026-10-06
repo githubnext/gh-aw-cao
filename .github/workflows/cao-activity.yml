@@ -198,7 +198,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install gh-aw CLI
-        uses: github/gh-aw-actions/setup-cli@2fbab69bfca02bebd76cd0fc43f2d12acfed994f # v0.89.22
+        uses: github/gh-aw-actions/setup-cli@aeaf7fe417d183340479027223c9a1c16464bdbc # v0.91.0
         with:
           version: ${{ steps.gh-aw-compiler.outputs.version }}
 
