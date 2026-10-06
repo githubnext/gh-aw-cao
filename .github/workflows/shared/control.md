@@ -172,10 +172,10 @@ jobs:
               core.setOutput('reason', reason);
               core.setOutput('monthly_credit_budget', '0');
               await core.summary
-                .addRaw(`<details>
-            <summary><h3>Central Agentic Ops admission</h3></summary>
+                .addRaw(`Skipped: ${reason}
 
-            Skipped: ${reason}
+            <details>
+            <summary><h3>Central Agentic Ops admission checks</h3></summary>
 
             - ❌ Runtime revision — The control and policy modules could not be read or executed from the exact \`github.workflow_sha\` commit.
             - Policy and authorization checks — The remaining admission checks could not run because the authoritative control modules were unavailable.

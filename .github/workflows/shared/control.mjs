@@ -260,7 +260,7 @@ function writeAdmissionSummary({ authorized, campaignName, role, reason, apiCapa
   )).join("\n");
   writeFileSync(
     summaryPath,
-    `<details>\n<summary><h3>Central Agentic Ops admission</h3></summary>\n\n${status}\n${capacityGuidance(apiCapacity)}\n${checks}\n\n</details>\n`,
+    `${status}\n${capacityGuidance(apiCapacity)}\n<details>\n<summary><h3>Central Agentic Ops admission checks</h3></summary>\n\n${checks}\n\n</details>\n`,
     { flag: "a" },
   );
 }

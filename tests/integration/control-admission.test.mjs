@@ -108,7 +108,7 @@ test("CAO admission authorizes a declared campaign before activation", () => {
     "",
   ].join("\n"));
   assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
-  assert.match(summary, /<details>\n<summary><h3>Central Agentic Ops admission<\/h3><\/summary>\n\nAuthorized campaign `dependabot` as `orchestrator`/);
+  assert.match(summary, /^Authorized campaign `dependabot` as `orchestrator`\.\n\n<details>\n<summary><h3>Central Agentic Ops admission checks<\/h3><\/summary>/);
   assert.match(summary, /- ✅ Runtime revision — The control and policy modules/);
   assert.match(summary, /- ✅ Run limits — Any supplied `max_repos`/);
   assert.equal((summary.match(/<details>/g) ?? []).length, 1);
