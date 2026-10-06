@@ -3,20 +3,25 @@ import test from "node:test";
 
 import { generatedJobs, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
-test("tag and draft release exist before the agent job starts", () => {
+test("tag and version-named prerelease exist before the agent job starts", () => {
   const source = workflow("release.md");
-  const prepareRelease = stepBlock(source, "Generate draft release notes without assets");
+  const prepareRelease = stepBlock(source, "Generate prerelease notes without assets");
   const jobs = generatedJobs(workflow("release.lock.yml"));
 
   assert.match(prepareRelease, /github\.rest\.git\.createRef/);
   assert.match(prepareRelease, /ref: `refs\/tags\/\$\{releaseTag\}`/);
   assert.match(prepareRelease, /sha: context\.sha/);
   assert.match(prepareRelease, /github\.rest\.repos\.createRelease/);
-  assert.match(prepareRelease, /draft: true/);
-  assert.match(prepareRelease, /core\.setOutput\('release_tag', release\.tag_name\)/);
+  assert.match(prepareRelease, /tag_name: releaseTag/);
+  assert.match(prepareRelease, /name: releaseTag/);
+  assert.match(prepareRelease, /draft: false/);
+  assert.match(prepareRelease, /prerelease: true/);
+  assert.match(prepareRelease, /make_latest: 'false'/);
+  assert.match(prepareRelease, /if \(release\.tag_name !== releaseTag\)/);
+  assert.match(prepareRelease, /core\.setOutput\('release_tag', releaseTag\)/);
   assert.ok(
     prepareRelease.indexOf("github.rest.git.createRef") < prepareRelease.indexOf("github.rest.repos.createRelease"),
-    "git tag must be created before the draft release",
+    "git tag must be created before the prerelease",
   );
   assert.ok(jobs.get("agent")?.needs.includes("prepare-release"));
 });
@@ -46,7 +51,7 @@ test("release context fetches tags before local git inspection", () => {
   assert.ok(fetchReleaseTag < verifyReleaseTag, "release tag must be fetched before verification");
 });
 
-test("agent consumes release tag from draft release job output", () => {
+test("agent consumes release tag from prerelease job output", () => {
   const source = workflow("release.md");
   const fetchReleaseContext = stepBlock(source, "Fetch release context");
 
