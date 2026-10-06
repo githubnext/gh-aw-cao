@@ -571,27 +571,24 @@ describe('dashboard view query contracts', () => {
       config: { 'measure-source': 'operational-value' }
     });
 
-    expect(viewsOf(insights).slice(2, 6)).toEqual([
-      ['campaign-baseline-concluded-runs', 'concluded-runs', undefined],
-      ['campaign-baseline-run-success', 'success-rate-percent', 'percent'],
-      ['campaign-baseline-produced-outputs', 'produced-outputs', undefined],
-      ['campaign-baseline-aic-per-success', 'aic-per-successful-run', 'aic-per-run']
-    ].map(([id, field, unit]) => expect.objectContaining({
-      id,
-      data: { source: 'campaign-performance-baseline', 'route-field': 'campaign' },
-      mark: 'metric',
-      layout: 'half',
-      encoding: { value: { field, type: 'quantitative', ...(unit ? { unit } : {}) } }
-    })));
+    expect(viewsOf(insights)[2]).toMatchObject({
+      id: 'campaign-baseline-outcomes',
+      data: { source: 'campaign-baseline-outcome-distribution', 'route-field': 'campaign' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'outcome', type: 'nominal' },
+        y: { field: 'runs', type: 'quantitative' }
+      }
+    });
 
-    expect(viewsOf(insights)[6]).toMatchObject({
+    expect(viewsOf(insights)[3]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',
         'route-field': 'campaign'
       },
       mark: 'table',
-      disclosure: 'supplemental',
       controls: 'static',
       encoding: {
         columns: [
@@ -603,6 +600,10 @@ describe('dashboard view query contracts', () => {
           { field: 'aic-per-successful-run', title: 'Average AIC / successful run', unit: 'aic-per-run' }
         ]
       }
+    });
+    expect(viewsOf(insights)[4]).toMatchObject({
+      id: 'campaign-audit-event-table',
+      disclosure: 'supplemental'
     });
 
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
@@ -796,6 +797,32 @@ describe('dashboard view query contracts', () => {
       'production-signal': 'Outputs produced; acceptance unverified',
       'aic-per-successful-run': 5
     }]);
+  });
+
+  it('projects the baseline into honest successful and other concluded run slices', () => {
+    const outcomeQueries = dashboard.queries.filter(
+      (/** @type {{ name?: string }} */ candidate) => [
+        'campaign-baseline-successful-runs',
+        'campaign-baseline-other-runs',
+        'campaign-baseline-outcome-distribution'
+      ].includes(candidate.name ?? '')
+    );
+    const results = executeDashboardQueries(outcomeQueries, {
+      'campaign-performance-baseline-totals': {
+        source: 'campaign-performance-baseline-totals',
+        metadata,
+        rows: [
+          { campaign: 'optimization', 'concluded-runs': 3, 'successful-runs': 2 },
+          { campaign: 'all-success', 'concluded-runs': 1, 'successful-runs': 1 }
+        ]
+      }
+    });
+    expect(results['campaign-baseline-outcome-distribution'].rows).toEqual([
+      { campaign: 'optimization', outcome: 'Successful runs', runs: 2 },
+      { campaign: 'all-success', outcome: 'Successful runs', runs: 1 },
+      { campaign: 'optimization', outcome: 'Other concluded runs', runs: 1 },
+      { campaign: 'all-success', outcome: 'Other concluded runs', runs: 0 }
+    ]);
   });
 
   it('renders one campaign problem as a dedicated full detail view', () => {

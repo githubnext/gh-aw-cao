@@ -31,6 +31,7 @@ describe('Audit dashboard view', () => {
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
       'campaign-operational-value-history',
+      'campaign-baseline-outcomes',
       'campaign-performance-baseline',
       'campaign-audit-event-table'
     ]);
