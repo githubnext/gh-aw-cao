@@ -54,7 +54,7 @@ describe('Audit dashboard view', () => {
       });
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark))
-      .toEqual(['table', 'list']);
+      .toEqual(['chart', 'table', 'list']);
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
       .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
