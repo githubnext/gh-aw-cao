@@ -155,7 +155,7 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
   );
   const tooltipContent = /** @type {HTMLElement} */ (tooltip.lastElementChild);
   if (viewportAnchored) tooltipContent.classList.add('tooltip-content-viewport');
-  const scope = createFactoryScope(signal);
+  const scope = createFactoryScope({ signal });
   let pointerInside = false;
   let focusInside = false;
   let trackingViewport = false;
