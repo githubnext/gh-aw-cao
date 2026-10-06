@@ -409,6 +409,8 @@ Policy and workflow source MUST be protected on the control repository's default
 
 Implementations MUST use least-privilege credentials, MUST NOT expose secrets in effective records or logs, and MUST NOT execute fetched policy as code. JSON MUST be parsed with a structured parser; `eval` or equivalent interpretation is prohibited.
 
+A job-local GitHub App installation token MUST be minted with its `repositories` scope bound to the single admitted repository for its purpose: the dispatched `target_repo` for a read credential, and `safe_output_repo` (falling back to the control repository only when no admitted destination is resolved) for a write credential used by safe outputs. An implementation MUST NOT default App token scope to the control repository when a different repository is admitted, and MUST NOT request installation-wide (`repositories: ["*"]`) access as a substitute for correct scoping.
+
 Review mode SHOULD be the default. Live execution requires the cumulative intersection of CAO live authorization, worker live capability, sufficient credentials, and declared gh-aw safe outputs.
 
 The effective record SHOULD contain only identifiers and provenance required for authorization and audit. It MUST NOT contain prompt content, repository source, credentials, or unrelated personal data. Access and retention SHOULD follow the operator's security and data-retention policies.
@@ -494,4 +496,5 @@ Invalid JSON, schema violations, unknown static identities, widening requests, u
 - Assigned rollout and target authority to CAO.
 - Assigned engine limits, generated job topology, authentication, and safe-output execution to gh-aw.
 - Defined the central orchestrator and worker execution contract, credential reach, runtime records, deprecated monthly budget compatibility, revalidation timing, and protected environment boundary.
+- Required job-local GitHub App installation tokens to be scoped to the single admitted target or review repository rather than defaulting to the control repository or an installation-wide wildcard.
 - Added conformance classes, compliance levels, tests, examples, and security and privacy considerations.
