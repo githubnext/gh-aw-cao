@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderTemporalMetricPlot } from '../../src/components/temporal-metric-plot.js';
+import { chartStyles } from '../../src/styles-charts.js';
 
 describe('Temporal metric plot', () => {
   it('matches the deterministic timeline SVG structure', () => {
@@ -188,19 +189,31 @@ describe('Temporal metric plot', () => {
 
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome-track')).toHaveLength(1);
-    expect(rendered.querySelectorAll('.temporal-plot-run-outcome-success')).toHaveLength(2);
-    expect(rendered.querySelectorAll('.temporal-plot-run-outcome-failure')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-success')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-failure')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-failure-inset')).toHaveLength(2);
     expect(rendered.querySelector('.temporal-plot-success-context polyline')).toBeNull();
     expect([...rendered.querySelectorAll('.temporal-plot-axis')]
       .some((element) => element.textContent === '-0')).toBe(false);
     expect(rendered.querySelector('.temporal-plot-success-axis')).toBeNull();
     expect(rendered.querySelector('.temporal-plot-run-outcome-legend')?.textContent)
-      .toBe('Runs: success · failed');
+      .toBe('Runs:successfailed');
+    expect(rendered.querySelector('.temporal-plot-run-outcome-legend .temporal-plot-run-outcome-success')).not.toBeNull();
+    expect(rendered.querySelector('.temporal-plot-run-outcome-legend .temporal-plot-run-outcome-failure-inset')).not.toBeNull();
+    expect(rendered.querySelector('svg desc')?.textContent)
+      .toContain('solid success and hollow failure segments');
     expect(rendered.querySelector('.temporal-plot-run-outcome title')?.textContent)
       .toBe('2025-11-15: 8 successful, 2 failed (10 concluded)');
-    const success = rendered.querySelector('.temporal-plot-run-outcome-success');
-    const failure = rendered.querySelector('.temporal-plot-run-outcome-failure');
+    const success = rendered.querySelector('.temporal-plot-run-outcome .temporal-plot-run-outcome-success');
+    const failure = rendered.querySelector('.temporal-plot-run-outcome .temporal-plot-run-outcome-failure');
+    const failureInset = rendered.querySelector('.temporal-plot-run-outcome .temporal-plot-run-outcome-failure-inset');
     expect(Number(success?.getAttribute('x2')) - Number(success?.getAttribute('x1')))
       .toBeGreaterThan(Number(failure?.getAttribute('x2')) - Number(failure?.getAttribute('x1')));
+    expect([failureInset?.getAttribute('x1'), failureInset?.getAttribute('x2')])
+      .toEqual([failure?.getAttribute('x1'), failure?.getAttribute('x2')]);
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-success { stroke: var(--accent); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-failure { stroke: var(--fg); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-failure-inset { stroke: var(--canvas); stroke-width: 4; }');
+    expect(chartStyles).toContain('stroke-width: 10; stroke-linecap: butt; vector-effect: non-scaling-stroke;');
   });
 });

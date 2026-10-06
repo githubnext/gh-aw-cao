@@ -191,8 +191,8 @@ describe('Measure history', () => {
       .toBe('Higher is better');
     expect(rendered.querySelector('[data-chart-temporal-marker="2026-09-15T23:30:36Z"]')).not.toBeNull();
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(2);
-    expect(rendered.querySelectorAll('.temporal-plot-run-outcome-success')).toHaveLength(2);
-    expect(rendered.querySelectorAll('.temporal-plot-run-outcome-failure')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-success')).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-failure')).toHaveLength(2);
     expect(rendered.textContent).toContain('Runs');
   });
 
