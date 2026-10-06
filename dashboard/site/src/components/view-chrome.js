@@ -37,8 +37,8 @@ export function renderPageSection(pageId, title, content, headingTag = 'h3', des
       'aria-labelledby': headingId
     },
     h(headingTag, { id: headingId }, title),
-    ...content,
-    ...(tooltip ? [tooltip] : [])
+    ...(tooltip ? [tooltip] : []),
+    ...content
   );
 }
 

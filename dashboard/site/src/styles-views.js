@@ -31,7 +31,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .chart-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .chart-prompt-action .table-intent-button span { display: none; }
 .semantic-prompt-view:has([aria-busy]:not([aria-busy="false"])) :is(.semantic-prompt-action, .chart-prompt-action) { display: none; }
-.view-description-tooltip { position: absolute; top: 4px; right: 0; }
+.view-description-tooltip { width: fit-content; margin: 0 0 8px auto; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .custom-view { min-width: 0; grid-column: span 12; }
 .metric-card-widget { min-width: 0; min-height: 172px; display: grid; grid-template-rows: 2.5rem 2.7em 32px; align-content: center; justify-items: center; gap: 8px; padding: 24px 20px; background: var(--canvas-subtle); color: var(--fg); text-align: center; text-decoration: none; }
