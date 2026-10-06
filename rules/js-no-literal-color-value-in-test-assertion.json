@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-03T11:03:07Z",
+  "last_updated": "2026-10-06T14:05:29Z",
   "status": "deprecated",
   "affected_languages": [
     "javascript"
@@ -13,10 +13,10 @@
   "likely_false_positives": "Asserting a literal color value is legitimate when the test is specifically about a fixed brand constant that is never expected to change (e.g. a GitHub/Primer base token that is not part of an actively-tuned theme), or when the assertion is paired with a computed contrast-ratio check rather than being the sole guard. The rule should flag literal hex/color-mix matches against files under active visual-design iteration (docs/components/*.astro, src/styles.js) rather than every color literal in the codebase.",
   "autofix_safe": false,
   "existing_plugin_coverage": "No published ESLint rule covers this: it requires recognizing brittle golden-value regex assertions tied to a specific pair of source/test files under active design churn, not a generic no-magic-numbers or regex-literal rule that existing plugins (eslint-plugin-jest, eslint-plugin-regexp) target.",
-  "occurrence_count": 7,
+  "occurrence_count": 8,
   "repositories": {
     "githubnext/gh-aw-cao": {
-      "occurrence_count": 7,
+      "occurrence_count": 8,
       "evidence": [
         {
           "type": "merged_pull_request",
@@ -93,11 +93,26 @@
           "files": [
             "tests/unit/docs-accessibility.test.mjs"
           ]
+        },
+        {
+          "type": "merged_pull_request",
+          "repo": "githubnext/gh-aw-cao",
+          "number": 16562,
+          "title": "Prevent dashboard startup flash with system-theme CSS",
+          "detail": "Added a new themed-literal test assertion in dashboard/site/test/unit/scaffold.test.js (hoverRule background) asserting the exact string 'color-mix(in srgb, var(--accent) 88%, var(--fg))' copied from dashboard/site/src/styles-shell.js line 192, instead of asserting only structural properties. Same window also added literal '#0d1117'/'#ffffff' theme-color assertions into the same test file and into test/e2e/pwa-compatibility.spec.js, mirroring new UI additions rather than source churn.",
+          "files": [
+            "dashboard/site/test/unit/scaffold.test.js",
+            "dashboard/site/index.html",
+            "dashboard/site/test/e2e/pwa-compatibility.spec.js"
+          ]
         }
       ],
       "affected_paths": [
         "tests/unit/docs-accessibility.test.mjs",
-        "tests/unit/landing-page-diagram.test.mjs"
+        "tests/unit/landing-page-diagram.test.mjs",
+        "dashboard/site/test/unit/scaffold.test.js",
+        "dashboard/site/index.html",
+        "dashboard/site/test/e2e/pwa-compatibility.spec.js"
       ]
     }
   },
@@ -111,9 +126,9 @@
     "reason": "Re-confirmed unchanged on HEAD 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since intervening merges (collector workflow fix, account-menu docs) which did not touch evidence files.",
     "txn_id": "refiner-37118181288-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37473271989",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_seen_at": "2026-10-06T14:05:29Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-firewall",
