@@ -132,6 +132,8 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
 test("CAO server image supports downstream Compose role selection", async () => {
   const dockerfile = await text("server/Dockerfile");
 
+  assert.match(dockerfile, /FROM alpine:3\.22@[^\n]+ AS dashboard-runtime[\s\S]*?RUN apk upgrade --no-cache \\\n    && apk add --no-cache ca-certificates/);
+  assert.match(dockerfile, /FROM node:24-alpine@[^\n]+ AS collector-runtime[\s\S]*?RUN apk upgrade --no-cache \\\n    && apk add --no-cache ca-certificates github-cli/);
   assert.match(dockerfile, /ENTRYPOINT \["\/app\/cao-dashboard"\]/);
   assert.match(dockerfile, /CMD \["serve-hosted"/);
   assert.match(dockerfile, /VOLUME \["\/app\/source"\]/);

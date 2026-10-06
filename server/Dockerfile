@@ -51,9 +51,10 @@ LABEL org.opencontainers.image.title="Central Agentic Ops dashboard server" \
       org.opencontainers.image.created="${CREATED}" \
       org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
 
-# Keep CA roots current on rebuilds instead of pinning a package version.
+# Keep Alpine packages and CA roots current on rebuilds.
 # hadolint ignore=DL3018
-RUN apk add --no-cache ca-certificates \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates \
     && addgroup -S -g 65532 cao \
     && adduser -S -D -H -u 65532 -G cao cao \
     && mkdir -p /app/site /app/source /app/queries /app/agent \
@@ -95,9 +96,10 @@ LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
       org.opencontainers.image.created="${CREATED}" \
       org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
 
-# Keep CA roots and the GitHub CLI current on rebuilds instead of pinning package versions.
+# Keep Alpine packages, CA roots, and the GitHub CLI current on rebuilds.
 # hadolint ignore=DL3018
-RUN apk add --no-cache ca-certificates github-cli \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates github-cli \
     && addgroup -S -g 65532 cao \
     && adduser -S -D -H -u 65532 -G cao cao \
     && mkdir -p /app/catalog /app/evidence /app/.local/share/gh/extensions/gh-aw \
