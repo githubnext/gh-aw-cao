@@ -35,6 +35,9 @@ func (client logCounterClient) Do(_ context.Context, command ...string) (any, er
 	case "ZCARD":
 		return int64(1), nil
 	case "XPENDING":
+		if len(command) > 3 {
+			return []any{[]any{"1-0", "collector", int64(0), int64(1)}}, nil
+		}
 		return []any{int64(4)}, nil
 	case "XLEN":
 		return int64(5), nil

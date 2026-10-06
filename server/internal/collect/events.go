@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var eventsLog = logger.New("cao:collect:events")
@@ -42,7 +42,7 @@ type Intent struct {
 	Repositories   []string
 	InstallationID int64
 	Reason         string
-	Issue          redisx.IssueUpdate
+	Issue          operational.IssueUpdate
 	RepositoryID   int64
 	Lifecycle      string
 }
@@ -170,7 +170,7 @@ func parseIssueEvent(envelope webhookEnvelope) Intent {
 		((envelope.Action == "opened" || envelope.Action == "reopened") && state != "OPEN") {
 		return Intent{Kind: IntentIgnore}
 	}
-	update := redisx.IssueUpdate{
+	update := operational.IssueUpdate{
 		Repository: repository, InstallationID: envelope.Installation.ID,
 		ID:    fmt.Sprintf("github:issue:%s:%d", repository, issue.Number),
 		State: state, ObservedAt: observed.UTC().Format("2006-01-02T15:04:05.000000000Z"),
@@ -336,10 +336,10 @@ func (a Admitter) AdmitDelivery(
 		}
 
 		switch reservation {
-		case redisx.DeliveryAlreadyCommitted:
+		case operational.DeliveryAlreadyCommitted:
 			return Admission{Kind: intent.Kind, Duplicate: true}, nil
-		case redisx.DeliveryReserved:
-		case redisx.DeliveryInProgress:
+		case operational.DeliveryReserved:
+		case operational.DeliveryInProgress:
 			return Admission{}, ErrDeliveryInProgress
 		}
 		defer func() {

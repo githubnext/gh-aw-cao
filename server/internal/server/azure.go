@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
@@ -28,7 +29,7 @@ type ProxyPolicy struct {
 	TrustedProxyPrefixes []netip.Prefix
 }
 
-func validateHostedMode(store *redisx.Store, config *Config) error {
+func validateHostedMode(store operational.Store, config *Config) error {
 	profile := config.HostProfile
 	if profile.Authentication != HostAuthenticationOAuth {
 		if profile.Listener == HostListenerProcess {
@@ -45,7 +46,7 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 		return errors.New("hosted mode does not support local bearer capabilities")
 	}
 	if store == nil {
-		return errors.New("hosted mode requires Redis")
+		return errors.New("hosted mode requires operational storage")
 	}
 	if len(config.Proxy.AllowedHosts) == 0 {
 		return errors.New("hosted mode requires an explicit trusted proxy host policy")

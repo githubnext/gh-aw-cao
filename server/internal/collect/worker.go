@@ -116,7 +116,16 @@ func (w Worker) Run(ctx context.Context) error {
 	consumer := w.consumer()
 	workerLog.Printf("worker started projection_role=%t", w.Project)
 	if w.Project {
-		go w.projectionLoop(ctx)
+		projectionCtx, cancelProjection := context.WithCancel(ctx)
+		projectionDone := make(chan struct{})
+		go func() {
+			defer close(projectionDone)
+			w.projectionLoop(projectionCtx)
+		}()
+		defer func() {
+			cancelProjection()
+			<-projectionDone
+		}()
 	}
 	for ctx.Err() == nil {
 		reclaimed, err := w.Queue.Reclaim(ctx, consumer, w.reclaimAfter(), w.batchSize())

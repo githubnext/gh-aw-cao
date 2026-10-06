@@ -252,12 +252,73 @@
     "modularHost": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["target", "redis"],
+      "required": ["target"],
+      "oneOf": [
+        { "required": ["redis"], "not": { "required": ["operational-store"] } },
+        { "required": ["operational-store"], "not": { "required": ["redis"] } }
+      ],
       "properties": {
         "target": { "$ref": "#/$defs/hostTarget" },
         "redis": { "$ref": "#/$defs/redisModule" },
+        "operational-store": { "$ref": "#/$defs/operationalStore" },
         "cors": { "$ref": "#/$defs/hostCORS" }
-      }
+      },
+      "allOf": [{
+        "if": {
+          "required": ["operational-store"],
+          "properties": {
+            "operational-store": { "properties": { "backend": { "const": "memory" } } }
+          }
+        },
+        "then": {
+          "properties": {
+            "target": {
+              "required": ["replicas"],
+              "properties": { "replicas": { "const": 1 } },
+              "oneOf": [
+                { "properties": { "module": { "const": "container" } } },
+                {
+                  "required": ["listener", "supports-single-replica"],
+                  "properties": {
+                    "module": { "const": "generic" },
+                    "listener": { "const": "process" },
+                    "supports-single-replica": { "const": true }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }]
+    },
+    "operationalStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend"],
+      "properties": {
+        "backend": { "enum": ["redis", "memory"] },
+        "single-process": { "type": "boolean" },
+        "allow-volatile": { "type": "boolean" },
+        "namespace-env": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "redis": { "$ref": "#/$defs/redisModule" }
+      },
+      "allOf": [{
+        "if": { "properties": { "backend": { "const": "memory" } } },
+        "then": {
+          "required": ["single-process", "allow-volatile"],
+          "properties": {
+            "single-process": { "const": true },
+            "allow-volatile": { "const": true }
+          },
+          "not": { "required": ["redis"] }
+        },
+        "else": {
+          "properties": {
+            "single-process": { "const": false },
+            "allow-volatile": { "const": false }
+          }
+        }
+      }]
     },
     "hostCORS": {
       "type": "object",

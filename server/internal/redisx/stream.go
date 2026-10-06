@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -21,7 +23,7 @@ type StreamMessage struct {
 	Fields map[string]string
 }
 
-var ErrStreamCapacity = errors.New("stream capacity reached")
+var ErrStreamCapacity = operational.ErrCapacity
 
 // StreamAdd appends an entry to a stream. Task streams must not use MAXLEN:
 // Redis may trim pending entries, making consumer-group recovery impossible.
@@ -127,12 +129,12 @@ func (s *Store) StreamEnqueueUnique(
 
 // DeliveryAdmission reports the durable outcome of an idempotent webhook
 // admission.
-type DeliveryAdmission int
+type DeliveryAdmission = operational.DeliveryAdmission
 
 const (
-	DeliveryDuplicate DeliveryAdmission = iota
-	DeliveryCoalesced
-	DeliveryEnqueued
+	DeliveryDuplicate = operational.DeliveryDuplicate
+	DeliveryCoalesced = operational.DeliveryCoalesced
+	DeliveryEnqueued  = operational.DeliveryEnqueued
 )
 
 // StreamEnqueueDelivery atomically deduplicates a GitHub delivery, applies

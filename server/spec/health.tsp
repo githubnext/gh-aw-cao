@@ -10,6 +10,26 @@ model DataState {
   evaluatedAt?: utcDateTime;
 }
 model RedisState { connected: boolean; }
+model OperationalCapability {
+  scope: "unsupported" | "process" | "deployment";
+  persistence: "volatile" | "restart";
+}
+model OperationalCapabilities {
+  cache: OperationalCapability;
+  requestLimits: OperationalCapability;
+  sessions: OperationalCapability;
+  revocations: OperationalCapability;
+  githubQuota: OperationalCapability;
+  collection: OperationalCapability;
+  coordination: OperationalCapability;
+  diagnostics: OperationalCapability;
+}
+model OperationalState {
+  connected: boolean;
+  /** False until a volatile collector has reconstructed authoritative GitHub scope. */
+  recoveryReady: boolean;
+  capabilities: OperationalCapabilities;
+}
 @example(#{
   status: "healthy",
   redis: #{connected: true},
@@ -21,7 +41,9 @@ model RedisState { connected: boolean; }
 })
 model HealthResponse {
   status: "healthy" | "unhealthy";
+  /** Deprecated compatibility alias for the selected operational dependency, not a claim that Redis is installed. */
   redis: RedisState;
+  operational?: OperationalState;
   data: DataState;
   /** Details are present only for an authorized caller. */
   revision?: int64;
@@ -32,6 +54,7 @@ model HealthResponse {
 model ReadinessResponse {
   ready: boolean;
   redis: RedisState;
+  operational?: OperationalState;
   data: DataState;
 }
 model UnhealthyHealth {
@@ -54,7 +77,7 @@ namespace Health {
   @route("/api/v1/health")
   @get op healthV1(): HealthResponse | UnhealthyHealth | TooManyRequests | Unavailable;
 
-  /** Public readiness; Redis must be connected and Postgres must contain dashboard data. Hosted requests are limited per client address. */
+  /** Public readiness; the selected operational store must be connected, volatile scope recovery must be complete, and Postgres must contain dashboard data. Hosted requests are limited per client address. */
   @route("/api/readiness")
   @get op readiness(): ReadinessResponse | NotReady | TooManyRequests | Unavailable;
 }

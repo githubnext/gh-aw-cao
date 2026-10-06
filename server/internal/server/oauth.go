@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -110,12 +110,13 @@ type GitHubOAuthConfig struct {
 	RevokeURL             string
 	HTTPClient            *http.Client
 	RevocationKeyPrefix   string
+	loginStateSecret      string
 }
 
 type githubOAuth struct {
 	config GitHubOAuthConfig
 	client *http.Client
-	store  *redisx.Store
+	store  operational.OAuthStore
 	key    []byte
 	keys   map[string][]byte
 	log    func(string)
@@ -188,7 +189,7 @@ func (config *GitHubOAuthConfig) validate() error {
 	return nil
 }
 
-func newGitHubOAuth(config GitHubOAuthConfig, store *redisx.Store) *githubOAuth {
+func newGitHubOAuth(config GitHubOAuthConfig, store operational.OAuthStore) *githubOAuth {
 	client := config.HTTPClient
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
@@ -840,34 +841,16 @@ func (oauth *githubOAuth) stageRevocation(ctx context.Context, sessionID string)
 	return oauth.stageRevocationIfUnchanged(ctx, sessionID, "")
 }
 
-var errSessionSuperseded = errors.New("session was superseded")
+var errSessionSuperseded = operational.ErrConflict
 
 func (oauth *githubOAuth) stageRevocationIfUnchanged(ctx context.Context, sessionID, expected string) (oauthSession, string, error) {
-	const script = `
-local value = redis.call("GET", KEYS[1])
-if not value then return false end
-if ARGV[1] ~= "" and value ~= ARGV[1] then return "superseded" end
-redis.call("SET", KEYS[2], value)
-redis.call("SADD", KEYS[3], KEYS[2])
-redis.call("DEL", KEYS[1])
-return value`
-	value, err := oauth.configStore(
-		ctx, "EVAL", script, "3",
-		oauth.sessionKey(sessionID),
-		oauth.revocationKey(sessionID),
-		oauth.revocationIndexKey(),
-		expected,
-	)
+	sealed, err := oauth.store.InvalidateSession(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
 	if err != nil {
 		return oauthSession{}, "", err
 	}
-	if value == nil || fmt.Sprint(value) == "0" {
+	if sealed == "" {
 		return oauthSession{}, "", nil
 	}
-	if fmt.Sprint(value) == "superseded" {
-		return oauthSession{}, "", errSessionSuperseded
-	}
-	sealed := fmt.Sprint(value)
 	plain, err := oauth.open(sealed)
 	if err != nil {
 		return oauthSession{}, "", err
@@ -893,58 +876,26 @@ func (oauth *githubOAuth) queueRevocation(ctx context.Context, session oauthSess
 	if err != nil {
 		return err
 	}
-	const script = `
-redis.call("SET", KEYS[1], ARGV[1])
-return redis.call("SADD", KEYS[2], KEYS[1])`
-	_, err = oauth.configStore(
-		ctx, "EVAL", script, "2",
-		oauth.revocationKey(session.ID),
-		oauth.revocationIndexKey(),
-		sealed,
-	)
-	return err
+	return oauth.store.QueueRevocation(ctx, session.ID, sealed, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) completeRevocation(ctx context.Context, sessionID, expected string) error {
-	const script = `
-if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end
-redis.call("DEL", KEYS[1])
-return redis.call("SREM", KEYS[2], KEYS[1])`
-	_, err := oauth.configStore(
-		ctx, "EVAL", script, "2",
-		oauth.revocationKey(sessionID),
-		oauth.revocationIndexKey(),
-		expected,
-	)
-	return err
+	return oauth.store.CompleteRevocation(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) retryPendingRevocations(ctx context.Context, limit int) {
 	for range limit {
-		value, err := oauth.configStore(ctx, "SRANDMEMBER", oauth.revocationIndexKey())
-		if err != nil {
-			oauth.logBranch("revocation_retry.index_read_failed")
-			return
-		}
-		if value == nil {
-			oauth.logBranch("revocation_retry.queue_empty")
-			return
-		}
-		key := fmt.Sprint(value)
-		sealed, err := oauth.configStore(ctx, "GET", key)
+		record, err := oauth.store.PendingRevocation(ctx, oauth.config.RevocationKeyPrefix)
 		if err != nil {
 			oauth.logBranch("revocation_retry.record_read_failed")
 			return
 		}
-		if sealed == nil {
-			if _, err := oauth.configStore(ctx, "SREM", oauth.revocationIndexKey(), key); err != nil {
-				oauth.logBranch("revocation_retry.stale_index_removal_failed")
-				continue
-			}
-			oauth.logBranch("revocation_retry.stale_index_removed")
-			continue
+		if record.Value == "" {
+			oauth.logBranch("revocation_retry.queue_empty")
+			return
 		}
-		plain, err := oauth.open(fmt.Sprint(sealed))
+		sealed := record.Value
+		plain, err := oauth.open(sealed)
 		if err != nil {
 			oauth.logBranch("revocation_retry.decrypt_failed")
 			return
@@ -955,7 +906,7 @@ func (oauth *githubOAuth) retryPendingRevocations(ctx context.Context, limit int
 			return
 		}
 		if credentialsExpired(session) {
-			if oauth.completeRevocation(ctx, session.ID, fmt.Sprint(sealed)) != nil {
+			if oauth.completeRevocation(ctx, session.ID, sealed) != nil {
 				oauth.logBranch("revocation_retry.expired_removal_failed")
 				continue
 			}
@@ -966,7 +917,7 @@ func (oauth *githubOAuth) retryPendingRevocations(ctx context.Context, limit int
 			oauth.logBranch("revocation_retry.request_failed")
 			return
 		}
-		if oauth.completeRevocation(ctx, session.ID, fmt.Sprint(sealed)) != nil {
+		if oauth.completeRevocation(ctx, session.ID, sealed) != nil {
 			oauth.logBranch("revocation_retry.completion_failed")
 			continue
 		}
@@ -1053,11 +1004,13 @@ func (oauth *githubOAuth) loadSession(ctx context.Context, sessionID string) (oa
 }
 
 func (oauth *githubOAuth) loadSessionRecord(ctx context.Context, sessionID string) (oauthSession, string, error) {
-	value, err := oauth.configStore(ctx, "GET", oauth.sessionKey(sessionID))
-	if err != nil || value == nil {
+	sealed, err := oauth.store.SessionRecord(ctx, sessionID)
+	if err != nil {
+		return oauthSession{}, "", fmt.Errorf("load session: %w", err)
+	}
+	if sealed == "" {
 		return oauthSession{}, "", errors.New("session is unavailable")
 	}
-	sealed := fmt.Sprint(value)
 	plain, err := oauth.open(sealed)
 	if err != nil {
 		return oauthSession{}, "", err
@@ -1078,8 +1031,7 @@ func (oauth *githubOAuth) saveSession(ctx context.Context, session oauthSession)
 	if err != nil {
 		return err
 	}
-	_, err = oauth.configStore(ctx, "SET", oauth.sessionKey(session.ID), sealed, "EX", fmt.Sprint(int(sessionTTL.Seconds())))
-	return err
+	return oauth.store.PutSession(ctx, session.ID, sealed, sessionTTL)
 }
 
 func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oauthSession, expected string) (bool, error) {
@@ -1091,48 +1043,11 @@ func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oa
 	if err != nil {
 		return false, err
 	}
-	const script = `
-if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end
-redis.call("SET", KEYS[1], ARGV[2], "EX", ARGV[3])
-return 1`
-	result, err := oauth.configStore(
-		ctx, "EVAL", script, "1", oauth.sessionKey(session.ID),
-		expected, sealed, fmt.Sprint(int(sessionTTL.Seconds())),
-	)
-	return fmt.Sprint(result) == "1", err
+	return oauth.store.CompareSession(ctx, session.ID, expected, sealed, sessionTTL)
 }
 
 func (oauth *githubOAuth) deleteSession(ctx context.Context, sessionID string) error {
-	_, err := oauth.configStore(ctx, "DEL", oauth.sessionKey(sessionID))
-	return err
-}
-
-func (oauth *githubOAuth) configStore(ctx context.Context, args ...string) (any, error) {
-	if oauth.store == nil {
-		return nil, errors.New("session store is unavailable")
-	}
-	return oauth.store.Client.Do(ctx, args...)
-}
-
-func (oauth *githubOAuth) sessionKey(sessionID string) string {
-	sum := sha256.Sum256([]byte(sessionID))
-	return oauth.store.Key("session:" + base64.RawURLEncoding.EncodeToString(sum[:]))
-}
-
-func (oauth *githubOAuth) revocationKey(sessionID string) string {
-	sum := sha256.Sum256([]byte(sessionID))
-	return oauth.revocationPrefix() + "oauth-revocation:" + base64.RawURLEncoding.EncodeToString(sum[:])
-}
-
-func (oauth *githubOAuth) revocationIndexKey() string {
-	return oauth.revocationPrefix() + "oauth-revocations"
-}
-
-func (oauth *githubOAuth) revocationPrefix() string {
-	if oauth.config.RevocationKeyPrefix != "" {
-		return oauth.config.RevocationKeyPrefix
-	}
-	return oauth.store.Key("")
+	return oauth.store.DeleteSession(ctx, sessionID)
 }
 
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {
@@ -1152,7 +1067,11 @@ func (oauth *githubOAuth) clearStateCookie(response http.ResponseWriter) {
 }
 
 func (oauth *githubOAuth) sign(value string) string {
-	mac := hmac.New(sha256.New, oauth.key)
+	key := oauth.key
+	if oauth.config.loginStateSecret != "" {
+		key = []byte(oauth.config.loginStateSecret)
+	}
+	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write([]byte(value))
 	return value + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }

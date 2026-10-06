@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -17,12 +19,7 @@ const (
 	QueryCacheMaxEntries = 1024
 )
 
-type QueryCacheStats struct {
-	MemoryBytes int64
-	Entries     int64
-	Expired     int64
-	Evicted     int64
-}
+type QueryCacheStats = operational.QueryCacheStats
 
 // The hash and expiration index form a portable per-entry TTL cache. All
 // bookkeeping and oldest-first eviction share one atomic operation.

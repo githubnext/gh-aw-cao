@@ -19,7 +19,7 @@ func newMemoryBudgetStore() *memoryBudgetStore {
 	return &memoryBudgetStore{values: map[string]string{}}
 }
 
-func (s *memoryBudgetStore) HashGet(_ context.Context, key, field string) (string, error) {
+func (s *memoryBudgetStore) ReadAttribute(_ context.Context, key, field string) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return s.values[key+"/"+field], nil

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 const (
@@ -20,13 +22,7 @@ const (
 // usage slot. Used is Limit minus the lowest observed remaining quota of the
 // reset window with the highest usage ratio in the slot; Reserved is the
 // highest reserved capacity recorded with an observation in the slot.
-type GitHubQuotaUsageSample struct {
-	Bucket   string
-	Slot     time.Time
-	Limit    int64
-	Used     int64
-	Reserved int64
-}
+type GitHubQuotaUsageSample = operational.GitHubQuotaUsageSample
 
 // gitHubQuotaUsageScript merges one observation into a usage slot hash,
 // keeping the peak usage ratio. KEYS[1] is the slot hash; ARGV is the slot

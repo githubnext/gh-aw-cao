@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -14,12 +16,7 @@ var rateLimitLog = logger.New("cao:redis:ratelimit")
 
 // RateLimitResult describes the state of a token bucket after one attempted
 // token consumption.
-type RateLimitResult struct {
-	Allowed    bool
-	Remaining  int64
-	RetryAfter time.Duration
-	ResetAfter time.Duration
-}
+type RateLimitResult = operational.RateLimitResult
 
 // TakeRateLimitToken atomically consumes one token from a Redis-backed token
 // bucket. Redis TIME is used so every server replica observes the same clock.

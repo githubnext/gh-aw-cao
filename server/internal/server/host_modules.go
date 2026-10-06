@@ -124,7 +124,6 @@ func resolveTargetModule(policy targetPolicy) (HostProfile, bool, error) {
 		Listener:            module.listener,
 		RequiresHTTPS:       module.requireHTTPS,
 		TrustsPlatformProxy: module.trustPlatformProxy,
-		RequiresRedis:       true,
 	}, module.supportsSingleReplica, nil
 }
 

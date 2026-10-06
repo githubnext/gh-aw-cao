@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 type HostAuthentication string
@@ -42,6 +42,7 @@ type HostProfile struct {
 	RedisSession            HostRedisSession
 	IsolateProcessNamespace bool
 	SingleReplica           bool
+	SingleProcess           bool
 	SupportsCollection      bool
 }
 
@@ -88,12 +89,6 @@ func (profile HostProfile) validate() error {
 		profile.Listener != HostListenerExternal {
 		return fmt.Errorf("host profile %q has unsupported listener %q", profile.Name, profile.Listener)
 	}
-	if profile.RedisSession != HostRedisPooled && profile.RedisSession != HostRedisSerialized {
-		return fmt.Errorf("host profile %q has unsupported Redis session %q", profile.Name, profile.RedisSession)
-	}
-	if !profile.RequiresRedis {
-		return fmt.Errorf("host profile %q cannot disable the server Redis dependency", profile.Name)
-	}
 	if profile.Listener != HostListenerProcess && profile.Authentication != HostAuthenticationOAuth {
 		return fmt.Errorf("host profile %q cannot use bearer authentication with an externally owned listener", profile.Name)
 	}
@@ -101,17 +96,13 @@ func (profile HostProfile) validate() error {
 		profile.Listener != HostListenerPlatform && !profile.RequiresHTTPS {
 		return fmt.Errorf("host profile %q requires HTTPS for hosted authentication", profile.Name)
 	}
-	if profile.IsolateProcessNamespace && profile.RedisSession != HostRedisSerialized {
-		return fmt.Errorf("host profile %q requires namespace isolation without a serialized Redis session", profile.Name)
-	}
-	if profile.IsolateProcessNamespace && !profile.SingleReplica {
-		return fmt.Errorf("host profile %q requires namespace isolation without one replica", profile.Name)
-	}
-	if profile.SingleReplica && profile.RedisSession != HostRedisSerialized {
-		return fmt.Errorf("host profile %q requires one replica without a serialized Redis session", profile.Name)
-	}
 	if profile.TrustsPlatformProxy && profile.Listener != HostListenerPlatform {
 		return fmt.Errorf("host profile %q trusts a platform proxy without a platform listener", profile.Name)
+	}
+	if profile.SingleProcess && (!profile.SingleReplica ||
+		profile.Authentication != HostAuthenticationOAuth || !profile.RequiresHTTPS ||
+		profile.Listener != HostListenerProcess) {
+		return fmt.Errorf("host profile %q requires OAuth HTTPS and one owning process listener", profile.Name)
 	}
 	return nil
 }
@@ -125,52 +116,23 @@ type hostProfileRejectionReason string
 const (
 	hostProfileRejectionReasonNone                 hostProfileRejectionReason = "none"
 	hostProfileRejectionReasonInvalidProfile       hostProfileRejectionReason = "invalid-profile"
-	hostProfileRejectionReasonMissingRedis         hostProfileRejectionReason = "missing-redis"
-	hostProfileRejectionReasonRedisSessionMismatch hostProfileRejectionReason = "redis-session-mismatch"
-	hostProfileRejectionReasonNamespaceMismatch    hostProfileRejectionReason = "namespace-isolation-mismatch"
+	hostProfileRejectionReasonMissingStore         hostProfileRejectionReason = "missing-operational-store"
 	hostProfileRejectionReasonUnsupportedCollector hostProfileRejectionReason = "unsupported-collection"
 	hostProfileRejectionReasonUnconfirmedReplica   hostProfileRejectionReason = "unconfirmed-single-replica"
 	hostProfileRejectionReasonUnsupportedOAuth     hostProfileRejectionReason = "unsupported-oauth"
 	hostProfileRejectionReasonDelegatedListener    hostProfileRejectionReason = "delegated-listener-conflict"
 )
 
-// classifyRedisSessionMismatch reports whether the store's reported session
-// kind is incompatible with the profile's required HostRedisSession. It is a
-// pure function extracted from validateHostProfile so the session-kind
-// comparison is testable directly, without constructing a *redisx.Store for
-// every case.
-func classifyRedisSessionMismatch(required HostRedisSession, reportsSession, singleSession bool) bool {
-	switch required {
-	case HostRedisSerialized:
-		return !reportsSession || !singleSession
-	case HostRedisPooled:
-		return reportsSession && singleSession
-	default:
-		return false
-	}
-}
-
-// classifyHostProfileRejection reports which precondition, if any,
-// validateHostProfile's checks reject for profile given config and the
-// resolved Redis store capabilities. It is a pure function extracted from
-// validateHostProfile so every rejection reason is independently testable
-// without constructing a *redisx.Store or a network listener.
+// classifyHostProfileRejection checks authentication, listener and topology
+// requirements independently of provider connection details.
 func classifyHostProfileRejection(
-	profile HostProfile, config Config, storeConfigured bool, reportsSession, singleSession, processIsolated bool,
+	profile HostProfile, config Config, storeConfigured bool,
 ) hostProfileRejectionReason {
 	if err := profile.validate(); err != nil {
 		return hostProfileRejectionReasonInvalidProfile
 	}
-	if profile.RequiresRedis && !storeConfigured {
-		return hostProfileRejectionReasonMissingRedis
-	}
-	if storeConfigured {
-		if classifyRedisSessionMismatch(profile.RedisSession, reportsSession, singleSession) {
-			return hostProfileRejectionReasonRedisSessionMismatch
-		}
-		if profile.IsolateProcessNamespace != processIsolated {
-			return hostProfileRejectionReasonNamespaceMismatch
-		}
+	if !storeConfigured {
+		return hostProfileRejectionReasonMissingStore
 	}
 	if !profile.SupportsCollection && config.Collector != nil {
 		return hostProfileRejectionReasonUnsupportedCollector
@@ -188,41 +150,23 @@ func classifyHostProfileRejection(
 	return hostProfileRejectionReasonNone
 }
 
-func validateHostProfile(store *redisx.Store, config *Config) error {
+func validateHostProfile(store operational.Store, config *Config) error {
 	profile := config.HostProfile
 	if profile == (HostProfile{}) {
 		profile = localHostProfile()
 		config.HostProfile = profile
 	}
-	reportsSession, singleSession := false, false
-	processIsolated := false
-	if store != nil {
-		client, reports := store.Client.(interface{ SingleSession() bool })
-		reportsSession = reports
-		if reports {
-			singleSession = client.SingleSession()
-		}
-		processIsolated = store.ProcessIsolated()
-	}
-	reason := classifyHostProfileRejection(profile, *config, store != nil, reportsSession, singleSession, processIsolated)
+	// Provider session/isolation checks belong to adapter composition, not
+	// host authentication and listener validation.
+	reason := classifyHostProfileRejection(profile, *config, store != nil)
 	serverLog.Printf("host profile validated profile=%s reason=%s", profile.Name, reason)
 	switch reason {
 	case hostProfileRejectionReasonNone:
 		// fall through to apply the profile's implied configuration below.
 	case hostProfileRejectionReasonInvalidProfile:
 		return profile.validate()
-	case hostProfileRejectionReasonMissingRedis:
-		return fmt.Errorf("host profile %q requires Redis", profile.Name)
-	case hostProfileRejectionReasonRedisSessionMismatch:
-		if profile.RedisSession == HostRedisSerialized {
-			return fmt.Errorf("host profile %q requires a serialized Redis client", profile.Name)
-		}
-		return fmt.Errorf("host profile %q requires a pooled Redis client", profile.Name)
-	case hostProfileRejectionReasonNamespaceMismatch:
-		return fmt.Errorf(
-			"host profile %q process namespace isolation does not match the Redis store",
-			profile.Name,
-		)
+	case hostProfileRejectionReasonMissingStore:
+		return fmt.Errorf("host profile %q requires operational storage", profile.Name)
 	case hostProfileRejectionReasonUnsupportedCollector:
 		return fmt.Errorf("host profile %q does not support server-side collection", profile.Name)
 	case hostProfileRejectionReasonUnconfirmedReplica:
@@ -234,6 +178,24 @@ func validateHostProfile(store *redisx.Store, config *Config) error {
 	}
 	if profile.TrustsPlatformProxy {
 		config.Proxy.TrustForwarded = true
+	}
+	capabilities := store.Capabilities()
+	if capabilities.Collection.Scope == operational.ScopeProcess &&
+		capabilities.Collection.Persistence == operational.PersistenceVolatile &&
+		!profile.SingleProcess {
+		return errors.New("process-local volatile state requires an explicit single-process host profile, not only replica confirmation")
+	}
+	if profile.SingleProcess {
+		if profile.Authentication != HostAuthenticationOAuth || config.GitHubOAuth == nil ||
+			!profile.RequiresHTTPS || !config.Proxy.RequireHTTPS || profile.Listener != HostListenerProcess {
+			return errors.New("single-process volatile hosting requires GitHub OAuth and HTTPS")
+		}
+		if !config.AllowVolatile {
+			return errors.New("single-process volatile hosting requires allow-volatile acknowledgement")
+		}
+		if config.Collector != nil && config.Collector.AdmitOnly {
+			return errors.New("single-process volatile hosting cannot use admission-only collection")
+		}
 	}
 	return nil
 }

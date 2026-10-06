@@ -9,7 +9,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var marketplaceLog = logger.New("cao:marketplace")
@@ -31,11 +31,11 @@ func marketplacePolicyPath() string {
 	return defaultMarketplacePolicyPath
 }
 
-// storeMarketplaceCache adapts *redisx.Store to marketplace.Cache so resolved
+// storeMarketplaceCache adapts operational.Cache to marketplace.Cache so resolved
 // registries are cached in Redis, isolated by registry id and by the active
 // dashboard data revision (generation).
 type storeMarketplaceCache struct {
-	store *redisx.Store
+	store operational.Cache
 }
 
 func (c storeMarketplaceCache) Get(ctx context.Context, registryID, generation string) ([]byte, bool, error) {
@@ -55,7 +55,7 @@ func (c storeMarketplaceCache) Set(ctx context.Context, registryID, generation s
 // missing or invalid policy degrades to an empty, "unavailable" source rather
 // than failing the whole query, matching how every other source responds to
 // missing data.
-func marketplaceSource(ctx context.Context, store *redisx.Store, generation string) model.Source {
+func marketplaceSource(ctx context.Context, store operational.Cache, generation string) model.Source {
 	config, err := marketplace.LoadConfigFile(marketplacePolicyPath())
 	if err != nil {
 		marketplaceLog.Printf("marketplace policy unavailable")

@@ -211,6 +211,65 @@ test("control policy validates provider-neutral host and Redis configuration", (
   assert.match(insecure.stderr, /require-https/);
 });
 
+test("control policy selects a volatile OAuth single-process operational backend", () => {
+  const policy = JSON.parse(minimalPolicy);
+  const memory = {
+    backend: "memory",
+    "single-process": true,
+    "allow-volatile": true,
+    "namespace-env": "CAO_OPERATIONAL_NAMESPACE",
+  };
+  policy["control-plane"].web = {
+    host: { target: { module: "container", replicas: 1 }, "operational-store": memory },
+  };
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.deepEqual(controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").web.host["operational-store"], memory);
+  for (const operational of [
+    { ...memory, backend: "postgres" },
+    { ...memory, "single-process": false },
+    { ...memory, "allow-volatile": false },
+    { ...memory, redis: { module: "generic" } },
+    { ...memory, unknown: true },
+  ]) {
+    policy["control-plane"].web.host["operational-store"] = operational;
+    assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  }
+  policy["control-plane"].web.host["operational-store"] = memory;
+  for (const target of [
+    { module: "container" },
+    { module: "container", replicas: 2 },
+    { module: "azure-functions", replicas: 1 },
+    { module: "generic", authentication: "github-oauth", listener: "platform", "supports-single-replica": true, replicas: 1 },
+  ]) {
+    policy["control-plane"].web.host.target = target;
+    assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  }
+  policy["control-plane"].web.host.target = {
+    module: "generic", authentication: "github-oauth", listener: "external", "supports-single-replica": true, replicas: 1,
+  };
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host.target.listener = "process";
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host.redis = { module: "generic" };
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+});
+
+test("control policy preserves Redis selection and provider restrictions", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: { target: { module: "container" }, "operational-store": { backend: "redis" } },
+  };
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host["operational-store"].redis = null;
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host["operational-store"].redis = { module: "upstash" };
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host.target.replicas = 1;
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  policy["control-plane"].web.host.redis = { module: "generic" };
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+});
+
 test("control policy validates host CORS configuration", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {

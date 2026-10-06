@@ -9,7 +9,8 @@ const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "pub
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
-const HOST_KEYS = ["target", "redis", "cors"];
+const HOST_KEYS = ["target", "redis", "operational-store", "cors"];
+const OPERATIONAL_STORE_KEYS = ["backend", "single-process", "allow-volatile", "namespace-env", "redis"];
 const CORS_KEYS = ["allowed-origins", "max-age"];
 const CORS_ORIGIN_PATTERN =
   /^(?:https:\/\/(?:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
@@ -358,26 +359,58 @@ function validateWeb(web) {
 function validateHost(host, path) {
   assertMapping(host, path);
   assertKeys(host, HOST_KEYS, path);
-  for (const key of ["target", "redis"]) {
-    if (!(key in host)) throw new PolicyError(`${path}.${key} is required`);
-  }
+  if (!("target" in host)) throw new PolicyError(`${path}.target is required`);
   validateTarget(host.target, `${path}.target`);
-  validateRedis(host.redis, `${path}.redis`);
   if ("cors" in host) validateCORS(host.cors, `${path}.cors`);
-  if (host.redis.module === "generic" &&
-      host.redis["single-replica"] === true && host.redis.session !== "serialized") {
-    throw new PolicyError(`${path}.redis.single-replica requires a serialized Redis session`);
-  }
-  if (host.redis.module === "generic" &&
-      host.redis["isolate-process-namespace"] === true && host.redis.session !== "serialized") {
-    throw new PolicyError(`${path}.redis.isolate-process-namespace requires a serialized session`);
-  }
   const targetSupportsSingleReplica =
     host.target.module === "container" ||
     (host.target.module === "generic" && host.target["supports-single-replica"] === true);
+  let redis = host.redis;
+  if ("operational-store" in host) {
+    const operational = host["operational-store"];
+    const operationalPath = `${path}.operational-store`;
+    assertMapping(operational, operationalPath);
+    assertKeys(operational, OPERATIONAL_STORE_KEYS, operationalPath);
+    assertOneOf(operational.backend, `${operationalPath}.backend`, ["redis", "memory"]);
+    if ("redis" in host) {
+      throw new PolicyError(`${path}.redis and operational-store cannot both select an operational backend`);
+    }
+    for (const key of ["single-process", "allow-volatile"]) {
+      if (key in operational) assertBoolean(operational[key], `${operationalPath}.${key}`);
+    }
+    if ("namespace-env" in operational) {
+      assertString(operational["namespace-env"], `${operationalPath}.namespace-env`, SECRET_REFERENCE_PATTERN);
+    }
+    if (operational.backend === "memory") {
+      if ("redis" in operational) throw new PolicyError(`${operationalPath} memory cannot configure Redis`);
+      if (operational["single-process"] !== true || operational["allow-volatile"] !== true) {
+        throw new PolicyError(`${operationalPath} memory requires single-process and allow-volatile acknowledgements`);
+      }
+      if (!targetSupportsSingleReplica || host.target.replicas !== 1 ||
+          host.target.module === "azure-functions" ||
+          (host.target.module === "generic" && host.target.listener !== "process")) {
+        throw new PolicyError(`${operationalPath} memory requires a single-process, single-replica process-listener target`);
+      }
+      return;
+    }
+    if (operational["single-process"] === true || operational["allow-volatile"] === true) {
+      throw new PolicyError(`${operationalPath} redis does not accept memory topology or volatile-state options`);
+    }
+    redis = "redis" in operational ? operational.redis : { module: "generic" };
+  }
+  if (!redis) throw new PolicyError(`${path}.redis is required when operational-store is absent`);
+  validateRedis(redis, `${path}.redis`);
+  if (redis.module === "generic" &&
+      redis["single-replica"] === true && redis.session !== "serialized") {
+    throw new PolicyError(`${path}.redis.single-replica requires a serialized Redis session`);
+  }
+  if (redis.module === "generic" &&
+      redis["isolate-process-namespace"] === true && redis.session !== "serialized") {
+    throw new PolicyError(`${path}.redis.isolate-process-namespace requires a serialized session`);
+  }
   const redisRequiresSingleReplica =
-    host.redis.module === "upstash" ||
-    (host.redis.module === "generic" && host.redis["single-replica"] === true);
+    redis.module === "upstash" ||
+    (redis.module === "generic" && redis["single-replica"] === true);
   if (redisRequiresSingleReplica && !targetSupportsSingleReplica) {
     throw new PolicyError(`${path} target cannot guarantee the Redis module's single-replica requirement`);
   }

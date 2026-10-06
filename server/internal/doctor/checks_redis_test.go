@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 func TestRedisMemoryReportsConfiguredCachePressureBudget(t *testing.T) {
@@ -28,7 +30,7 @@ func TestRedisMemoryReportsConfiguredCachePressureBudget(t *testing.T) {
 				}
 				return nil, fmt.Errorf("unexpected command %v", arguments)
 			}})
-			if err := doctor.Store.SetMaxMemoryBytes(test.budget); err != nil {
+			if err := doctor.Store.(*redisx.Store).SetMaxMemoryBytes(test.budget); err != nil {
 				t.Fatal(err)
 			}
 			check := doctor.checkRedisMemory(context.Background())
@@ -371,7 +373,7 @@ func TestClassifyRedisClients(t *testing.T) {
 	}
 }
 
-func TestForeignNamespacesOf(t *testing.T) {
+func TestRedisProviderDiagnosticsReportForeignNamespaces(t *testing.T) {
 	cases := []struct {
 		name      string
 		namespace string
@@ -399,12 +401,25 @@ func TestForeignNamespacesOf(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			got := foreignNamespacesOf(testCase.namespace, testCase.keys)
+			doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+				if arguments[0] != "SCAN" {
+					return nil, fmt.Errorf("unexpected command %v", arguments)
+				}
+				keys := make([]any, len(testCase.keys))
+				for i, key := range testCase.keys {
+					keys[i] = key
+				}
+				return []any{"0", keys}, nil
+			}})
+			_, _, got, err := doctor.RedisStore.NamespaceStats(t.Context(), testCase.namespace, 20000)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if len(got) == 0 && len(testCase.want) == 0 {
 				return
 			}
 			if !reflect.DeepEqual(got, testCase.want) {
-				t.Fatalf("foreignNamespacesOf() = %v, want %v", got, testCase.want)
+				t.Fatalf("NamespaceStats() = %v, want %v", got, testCase.want)
 			}
 		})
 	}

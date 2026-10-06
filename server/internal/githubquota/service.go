@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var quotaLog = logger.New("cao:githubquota")
@@ -124,17 +124,17 @@ type BucketState struct {
 	CheckedAt time.Time `json:"checkedAt"`
 }
 
-// Store is the atomic persistence the service needs. *redisx.Store
+// Store is the atomic persistence the service needs. *operational.Store
 // implements it; tests may substitute an in-memory implementation.
 type Store interface {
-	GitHubQuotaSnapshot(ctx context.Context, bucket string) (redisx.GitHubQuotaState, error)
-	ObserveGitHubQuota(ctx context.Context, bucket string, observation redisx.GitHubQuotaObservation, releaseID string) (redisx.GitHubQuotaObserveOutcome, bool, redisx.GitHubQuotaState, error)
-	ReserveGitHubQuota(ctx context.Context, bucket, id string, cost, minimumRemain int64, ttl time.Duration) (redisx.GitHubQuotaAdmission, time.Time, redisx.GitHubQuotaState, error)
-	ReleaseGitHubQuota(ctx context.Context, bucket, id string) (bool, redisx.GitHubQuotaState, error)
-	ParkGitHubQuota(ctx context.Context, bucket string, until time.Time, reason string) (bool, redisx.GitHubQuotaState, error)
-	UnparkGitHubQuota(ctx context.Context, bucket string) (redisx.GitHubQuotaState, error)
+	GitHubQuotaSnapshot(ctx context.Context, bucket string) (operational.GitHubQuotaState, error)
+	ObserveGitHubQuota(ctx context.Context, bucket string, observation operational.GitHubQuotaObservation, releaseID string) (operational.GitHubQuotaObserveOutcome, bool, operational.GitHubQuotaState, error)
+	ReserveGitHubQuota(ctx context.Context, bucket, id string, cost, minimumRemain int64, ttl time.Duration) (operational.GitHubQuotaAdmission, time.Time, operational.GitHubQuotaState, error)
+	ReleaseGitHubQuota(ctx context.Context, bucket, id string) (bool, operational.GitHubQuotaState, error)
+	ParkGitHubQuota(ctx context.Context, bucket string, until time.Time, reason string) (bool, operational.GitHubQuotaState, error)
+	UnparkGitHubQuota(ctx context.Context, bucket string) (operational.GitHubQuotaState, error)
 	RecordGitHubQuotaUsage(ctx context.Context, bucket string, at time.Time, limit, used, reserved int64) (bool, error)
-	GitHubQuotaUsage(ctx context.Context) ([]redisx.GitHubQuotaUsageSample, time.Time, error)
+	GitHubQuotaUsage(ctx context.Context) ([]operational.GitHubQuotaUsageSample, time.Time, error)
 }
 
 // Options configures a Service.
@@ -218,7 +218,7 @@ func (s *Service) observe(
 		op.outcome = outcomeInvalid
 		return false, errors.New("github quota observation requires a reset time")
 	}
-	outcome, released, state, err := s.store.ObserveGitHubQuota(ctx, bucket.storageKey(), redisx.GitHubQuotaObservation{
+	outcome, released, state, err := s.store.ObserveGitHubQuota(ctx, bucket.storageKey(), operational.GitHubQuotaObservation{
 		Limit:      int64(observation.Limit),
 		Remaining:  int64(observation.Remaining),
 		ResetAt:    observation.ResetAt,
@@ -230,14 +230,14 @@ func (s *Service) observe(
 	}
 	described := s.describe(bucket, state)
 	recordBucketState(ctx, described)
-	if outcome != redisx.GitHubQuotaObservationStale {
+	if outcome != operational.GitHubQuotaObservationStale {
 		s.recordUsage(ctx, bucket, state)
 	}
 	switch outcome {
-	case redisx.GitHubQuotaObservationStale:
+	case operational.GitHubQuotaObservationStale:
 		op.outcome = outcomeStale
 		quotaLog.Printf("ignored stale observation bucket=%s", bucket)
-	case redisx.GitHubQuotaObservationReplaced:
+	case operational.GitHubQuotaObservationReplaced:
 		op.outcome = outcomeReplaced
 		quotaLog.Printf("observation started reset window bucket=%s remaining=%d limit=%d reset=%s",
 			bucket, described.Remaining, described.Limit, described.ResetAt.Format(time.RFC3339))
@@ -285,16 +285,16 @@ func (s *Service) Reserve(ctx context.Context, bucket BucketID, request Reservat
 	}
 	recordBucketState(ctx, s.describe(bucket, state))
 	switch admission {
-	case redisx.GitHubQuotaAdmitted:
+	case operational.GitHubQuotaAdmitted:
 		op.outcome = outcomeAdmitted
 		quotaLog.Printf("reservation admitted bucket=%s cost=%d floor=%d remaining=%d reserved=%d expires=%s",
 			bucket, request.EstimatedCost, floor, state.Remaining, state.Reserved, expires.Format(time.RFC3339))
 		return Reservation{ID: id, Bucket: bucket, Amount: request.EstimatedCost, ExpiresAt: expires}, nil
-	case redisx.GitHubQuotaParked:
+	case operational.GitHubQuotaParked:
 		return Reservation{}, s.unavailable(bucket, StatusParked, state)
-	case redisx.GitHubQuotaExhausted:
+	case operational.GitHubQuotaExhausted:
 		return Reservation{}, s.unavailable(bucket, StatusExhausted, state)
-	case redisx.GitHubQuotaUnknown:
+	case operational.GitHubQuotaUnknown:
 		return Reservation{}, s.unavailable(bucket, StatusUnknown, state)
 	default:
 		return Reservation{}, errors.New("github quota reservation ID collided")
@@ -506,7 +506,7 @@ func (s *Service) floor(minimumRemain int) int {
 	return max(minimumRemain, s.safetyReserve)
 }
 
-func (s *Service) describe(bucket BucketID, state redisx.GitHubQuotaState) BucketState {
+func (s *Service) describe(bucket BucketID, state operational.GitHubQuotaState) BucketState {
 	available := max(state.Remaining-state.Reserved, 0)
 	described := BucketState{
 		Bucket:      bucket,
@@ -533,7 +533,7 @@ func (s *Service) describe(bucket BucketID, state redisx.GitHubQuotaState) Bucke
 	return described
 }
 
-func (s *Service) unavailable(bucket BucketID, status Status, state redisx.GitHubQuotaState) error {
+func (s *Service) unavailable(bucket BucketID, status Status, state operational.GitHubQuotaState) error {
 	described := s.describe(bucket, state)
 	err := s.unavailableFromState(described, status)
 	quotaLog.Printf("reservation denied bucket=%s status=%s", bucket, status)

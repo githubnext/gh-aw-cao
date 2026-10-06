@@ -58,6 +58,13 @@ Go server profile SHALL transactionally replace current dashboard sources in
 Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
 hold only operational caches, queues, and sessions, not dashboard entities.
 
+Redis is the default operational adapter, not a mandatory dashboard data store.
+The typed operational interface MAY use bounded volatile memory under the
+explicit single-process exception in
+[`server-operational-storage.md`](server-operational-storage.md). PostgreSQL
+MUST NOT gain operational tables. Dashboard storage, SQL execution, query-cache
+identity, fixed expiry, and canonical ingestion remain unchanged.
+
 The Go query boundary MAY cache expensive queries with compact output in Redis
 using cache-aside lookup by a query ETag (SHA-256 of the query contract, parameters,
 pagination, schema version, and current authorization class). It MUST NOT key

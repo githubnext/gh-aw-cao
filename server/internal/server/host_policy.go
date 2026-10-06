@@ -66,6 +66,9 @@ func resolveRedisTLSMode(policyMode, providerMode redisTLSMode, providerModule s
 type resolvedHostPolicy struct {
 	Profile                HostProfile
 	SingleReplicaConfirmed bool
+	OperationalBackend     string
+	OperationalNamespace   string
+	AllowVolatile          bool
 	RedisURL               string
 	RedisNamespace         string
 	RedisOptions           redisx.Options
@@ -81,9 +84,18 @@ type hostPolicyDocument struct {
 }
 
 type hostPolicy struct {
-	Target targetPolicy       `json:"target"`
-	Redis  redisPolicy        `json:"redis"`
-	CORS   corsPolicyDocument `json:"cors"`
+	Target      targetPolicy       `json:"target"`
+	Redis       redisPolicy        `json:"redis"`
+	Operational *operationalPolicy `json:"operational-store"`
+	CORS        corsPolicyDocument `json:"cors"`
+}
+
+type operationalPolicy struct {
+	Backend       string       `json:"backend"`
+	SingleProcess bool         `json:"single-process"`
+	AllowVolatile bool         `json:"allow-volatile"`
+	NamespaceEnv  string       `json:"namespace-env"`
+	Redis         *redisPolicy `json:"redis"`
 }
 
 type targetPolicy struct {
@@ -152,6 +164,25 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 		return nil, errors.New("cao.json requires control-plane.web.host")
 	}
 	var policy hostPolicy
+	var hostFields map[string]json.RawMessage
+	if err := json.Unmarshal(policyDocument.ControlPlane.Web.Host, &hostFields); err != nil {
+		return nil, errors.New("parse CAO host policy")
+	}
+	if selector, selected := hostFields["operational-store"]; selected {
+		if string(selector) == "null" {
+			return nil, errors.New("operational-store must be an object")
+		}
+		if _, legacy := hostFields["redis"]; legacy {
+			return nil, errors.New("host.redis and host.operational-store cannot both select an operational backend")
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(selector, &fields); err != nil {
+			return nil, errors.New("operational-store must be an object")
+		}
+		if nestedRedis, exists := fields["redis"]; exists && string(nestedRedis) == "null" {
+			return nil, errors.New("operational-store.redis must be an object")
+		}
+	}
 	hostDecoder := json.NewDecoder(strings.NewReader(string(policyDocument.ControlPlane.Web.Host)))
 	hostDecoder.DisallowUnknownFields()
 	if err := hostDecoder.Decode(&policy); err != nil {
@@ -366,6 +397,64 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if err != nil {
 		return nil, err
 	}
+	backend := "redis"
+	if policy.Operational != nil {
+		if policy.Redis != (redisPolicy{}) {
+			return nil, errors.New("host.redis and host.operational-store cannot both select an operational backend")
+		}
+		backend = policy.Operational.Backend
+		switch backend {
+		case "redis":
+			if policy.Operational.SingleProcess || policy.Operational.AllowVolatile {
+				return nil, errors.New("redis operational-store does not accept memory topology or volatile-state options")
+			}
+			policy.Redis = redisPolicy{Module: "generic"}
+			if policy.Operational.Redis != nil {
+				policy.Redis = *policy.Operational.Redis
+			}
+		case "memory":
+			if policy.Operational.Redis != nil {
+				return nil, errors.New("memory operational-store cannot configure Redis")
+			}
+			if !policy.Operational.SingleProcess || !policy.Operational.AllowVolatile {
+				return nil, errors.New("memory operational-store requires single-process and allow-volatile acknowledgements")
+			}
+			if !supportsSingleReplica || policy.Target.Replicas != 1 || profile.Listener != HostListenerProcess {
+				return nil, errors.New("memory operational-store requires an explicit single-process, single-replica process-listener target")
+			}
+			profile.SingleProcess = true
+			profile.SingleReplica = true
+			profile.SupportsCollection = true
+		default:
+			return nil, fmt.Errorf("unsupported operational-store backend %q", backend)
+		}
+	}
+	// The legacy namespace is also the canonical Postgres dataset identity.
+	// A neutral operational namespace must not silently move that dataset.
+	namespace := envValue(lookup, firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE"))
+	if namespace == "" {
+		namespace = "hosted-dashboard"
+	}
+	operationalNamespace := namespace
+	if policy.Operational != nil {
+		if value := envValue(lookup, firstNonempty(policy.Operational.NamespaceEnv, "CAO_OPERATIONAL_NAMESPACE")); value != "" {
+			operationalNamespace = value
+		}
+	}
+	cors, err := policy.CORS.resolve()
+	if err != nil {
+		return nil, err
+	}
+	if backend == "memory" {
+		if err := profile.validate(); err != nil {
+			return nil, err
+		}
+		return &resolvedHostPolicy{
+			Profile: profile, SingleReplicaConfirmed: true,
+			OperationalBackend: backend, OperationalNamespace: operationalNamespace,
+			AllowVolatile: true, RedisNamespace: namespace, CORS: cors,
+		}, nil
+	}
 	provider, err := resolveRedisProviderModule(policy.Redis)
 	if err != nil {
 		return nil, err
@@ -374,6 +463,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	profile.IsolateProcessNamespace = provider.isolateProcessNamespace
 	profile.SingleReplica = provider.singleReplica
 	profile.SupportsCollection = provider.supportsCollection
+	profile.RequiresRedis = true
 	if profile.SingleReplica && !supportsSingleReplica {
 		return nil, fmt.Errorf(
 			"host target module %q cannot guarantee the Redis provider's single-replica requirement",
@@ -386,8 +476,7 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if err := profile.validate(); err != nil {
 		return nil, err
 	}
-	cors, err := policy.CORS.resolve()
-	if err != nil {
+	if err := validateRedisProfile(profile); err != nil {
 		return nil, err
 	}
 	urlEnv := firstNonempty(policy.Redis.URLEnv, provider.urlEnv)
@@ -412,14 +501,11 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if policy.Redis.Module == "upstash" && !isUpstashRedisURL(redisURL) {
 		return nil, errors.New("upstash Redis provider module requires an upstash.io endpoint")
 	}
-	namespaceEnv := firstNonempty(policy.Redis.NamespaceEnv, "REDIS_NAMESPACE")
-	namespace := envValue(lookup, namespaceEnv)
-	if namespace == "" {
-		namespace = "hosted-dashboard"
-	}
 	return &resolvedHostPolicy{
 		Profile:                profile,
 		SingleReplicaConfirmed: !profile.SingleReplica || policy.Target.Replicas == 1,
+		OperationalBackend:     backend,
+		OperationalNamespace:   operationalNamespace,
 		RedisURL:               redisURL,
 		RedisNamespace:         namespace,
 		CORS:                   cors,

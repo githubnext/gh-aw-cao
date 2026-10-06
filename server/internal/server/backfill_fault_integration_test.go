@@ -107,7 +107,7 @@ func TestPostgresBackfillGitHubFaults(t *testing.T) {
 			if !backfillCursor(t, ctx, resumed).Complete {
 				t.Fatal("recovered enumeration checkpoint is not complete")
 			}
-			depth, err := resumed.Store.StreamLength(ctx, "collect:run-tasks")
+			depth, err := taskQueueLength(ctx, resumed.Store, "collect:run-tasks")
 			if err != nil || depth != 105 {
 				t.Fatalf("recovery lost or duplicated historical runs: %d, %v", depth, err)
 			}
@@ -125,7 +125,7 @@ type backfillCheckpoint struct {
 
 func backfillCursor(t *testing.T, ctx context.Context, backfill collect.Backfill) backfillCheckpoint {
 	t.Helper()
-	raw, err := backfill.Store.HashGet(ctx, "collect:run-backfill-cursors", "1:simulator/repo-00001")
+	raw, err := backfill.Store.ReadAttribute(ctx, "collect:run-backfill-cursors", "1:simulator/repo-00001")
 	if err != nil {
 		t.Fatal(err)
 	}

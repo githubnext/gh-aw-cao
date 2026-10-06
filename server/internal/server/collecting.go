@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
@@ -14,8 +15,8 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 // defaultQueueMaxLength bounds admitted outstanding work. Completed entries
@@ -35,6 +36,7 @@ type CollectorConfig struct {
 	PrivateKeyPEM []byte
 	BaseURL       string
 	UploadURL     string
+	Transport     http.RoundTripper
 
 	// LakeDirectory holds collected evidence in the published snapshot layout.
 	LakeDirectory string
@@ -133,18 +135,22 @@ func (config *CollectorConfig) Validate() error {
 // satisfies EventAdmitter, so deliveries are queued instead of projected
 // inline.
 type Collector struct {
-	config     CollectorConfig
-	client     *githubapp.Client
-	quota      *githubquota.Service
-	enrollment collect.Enrollment
-	queue      collect.Queue
-	lake       collect.Lake
-	runner     collect.Runner
-	projector  collect.Projector
-	admitter   collect.Admitter
-	backfill   collect.Backfill
-	reporter   collect.Reporter
-	replayer   collect.DeliveryReplayer
+	volatile      bool
+	bootstrapDone chan struct{}
+	bootstrapOnce sync.Once
+	backfillMu    sync.Mutex
+	config        CollectorConfig
+	client        *githubapp.Client
+	quota         *githubquota.Service
+	enrollment    collect.Enrollment
+	queue         collect.Queue
+	lake          collect.Lake
+	runner        collect.Runner
+	projector     collect.Projector
+	admitter      collect.Admitter
+	backfill      collect.Backfill
+	reporter      collect.Reporter
+	replayer      collect.DeliveryReplayer
 }
 
 var _ Reconciler = (*Collector)(nil)
@@ -154,13 +160,28 @@ const collectionHealthSourceName = "collection-health"
 
 // NewCollector assembles the collection profile from configuration.
 func NewCollector(
-	ctx context.Context, ops *redisx.Store, data *postgresx.Store, config CollectorConfig, databaseQueriesPath string,
+	ctx context.Context, store operational.Store, data *postgresx.Store, config CollectorConfig, databaseQueriesPath string,
 ) (*Collector, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-	if ops == nil {
-		return nil, errors.New("collection requires Redis")
+	if err := operational.CheckStore(store); err != nil {
+		return nil, err
+	}
+	if store.Capabilities().Collection.Scope == operational.ScopeUnsupported {
+		return nil, errors.New("collection requires operational collection capability")
+	}
+	services := store.Services()
+	ops := services.Collection
+	if ops == nil || services.GitHubQuota == nil {
+		return nil, errors.New("collection services are unavailable")
+	}
+	volatile := store.Capabilities().Collection.Persistence == operational.PersistenceVolatile
+	if volatile && config.AdmitOnly {
+		return nil, errors.New("volatile collection requires co-resident workers and backfill")
+	}
+	if volatile && config.Workers <= 0 {
+		return nil, errors.New("volatile collection requires at least one co-resident worker")
 	}
 	if data == nil {
 		return nil, errors.New("collection requires Postgres")
@@ -169,7 +190,7 @@ func NewCollector(
 	if quotaFloor <= 0 {
 		quotaFloor = 1000
 	}
-	quota, err := githubquota.New(ops, githubquota.Options{SafetyReserve: quotaFloor})
+	quota, err := githubquota.New(services.GitHubQuota, githubquota.Options{SafetyReserve: quotaFloor})
 	if err != nil {
 		return nil, fmt.Errorf("configure github quota: %w", err)
 	}
@@ -182,7 +203,8 @@ func NewCollector(
 		backfill := collect.Backfill{
 			Store: ops, Quota: quota, QuotaApp: quotaApp,
 		}
-		return &Collector{
+		collector := &Collector{
+			volatile:   volatile,
 			config:     config,
 			quota:      quota,
 			enrollment: enrollment,
@@ -192,13 +214,15 @@ func NewCollector(
 			reporter: collect.Reporter{
 				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: ops, Data: data,
 			},
-		}, nil
+		}
+		return collector, nil
 	}
 	client, err := githubapp.New(githubapp.Config{
 		AppID:         config.AppID,
 		PrivateKeyPEM: config.PrivateKeyPEM,
 		BaseURL:       config.BaseURL,
 		UploadURL:     config.UploadURL,
+		Transport:     config.Transport,
 	})
 	if err != nil {
 		return nil, err
@@ -210,7 +234,7 @@ func NewCollector(
 	if err := lake.Prepare(); err != nil {
 		return nil, err
 	}
-	budget := &githubapp.Budget{Store: ops, Floor: config.RateLimitFloor}
+	budget := &githubapp.Budget{Store: services.GitHubQuota, Floor: config.RateLimitFloor}
 	runner := collect.Runner{
 		Lake:                  lake,
 		CatalogRoot:           config.CatalogRoot,
@@ -253,7 +277,8 @@ func NewCollector(
 		Quota: quota, QuotaApp: quotaApp,
 		WindowDays: config.WindowDays,
 	}
-	return &Collector{
+	collector := &Collector{
+		volatile:   volatile,
 		config:     config,
 		client:     client,
 		quota:      quota,
@@ -274,7 +299,23 @@ func NewCollector(
 		replayer: collect.DeliveryReplayer{
 			Store: ops, Client: client, Enabled: config.RecoverDeliveries,
 		},
-	}, nil
+	}
+	if volatile {
+		collector.bootstrapDone = make(chan struct{})
+		collector.backfill.ReconstructScope = true
+		collector.backfill.ScopeLimit = config.InventoryLimit
+		if collector.backfill.ScopeLimit <= 0 {
+			collector.backfill.ScopeLimit = 100_000
+		}
+		collector.backfill.ScopeReady = func(ctx context.Context) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			collector.bootstrapOnce.Do(func() { close(collector.bootstrapDone) })
+			return nil
+		}
+	}
+	return collector, nil
 }
 
 // Rebuild reprojects the evidence lake. Cold start and recovery both reuse the
@@ -282,6 +323,10 @@ func NewCollector(
 func (c *Collector) Rebuild(ctx context.Context) (ingest.Result, error) {
 	if c.config.AdmitOnly {
 		return ingest.Result{}, ErrAdmitOnly
+	}
+	if c.volatile {
+		state, err := c.runBackfill(ctx)
+		return ingest.Result{Revision: state.Revision}, err
 	}
 	populated, err := c.lake.Populated()
 	if err != nil {
@@ -301,6 +346,9 @@ func (c *Collector) Rebuild(ctx context.Context) (ingest.Result, error) {
 // never needs it because Admit is preferred, but implementing it keeps the
 // Reconciler contract total.
 func (c *Collector) Reconcile(ctx context.Context, event GitHubWebhook) (ingest.Result, error) {
+	if !c.RecoveryReady() {
+		return ingest.Result{}, ErrCollectionBootstrapping
+	}
 	if _, err := c.admitter.Admit(ctx, event.Event, event.Payload); err != nil {
 		if errors.Is(err, collect.ErrNotEnrolled) {
 			return ingest.Result{}, nil
@@ -317,6 +365,9 @@ func (c *Collector) Reconcile(ctx context.Context, event GitHubWebhook) (ingest.
 // Admit queues collection for one verified delivery without taking the global
 // projection lease, so concurrent deliveries never contend.
 func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]any, error) {
+	if !c.RecoveryReady() {
+		return nil, ErrCollectionBootstrapping
+	}
 	admission, err := c.admitter.AdmitDelivery(ctx, event.Event, event.Payload, event.Delivery, deliveryTTL)
 	if err != nil {
 		if errors.Is(err, collect.ErrNotEnrolled) {
@@ -350,8 +401,22 @@ func (c *Collector) start(startupCtx, ctx context.Context, onProjection func(rev
 		return nil
 	}
 	launch(func() {
-		if _, err := c.backfill.Run(ctx); err != nil && ctx.Err() == nil {
+		for {
+			_, err := c.runBackfill(ctx)
+			if err == nil || ctx.Err() != nil {
+				return
+			}
 			serverLog.Printf("cold start failed")
+			if !c.volatile || c.RecoveryReady() {
+				return
+			}
+			timer := time.NewTimer(30 * time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
 		}
 	})
 	for index := 0; index < c.config.Workers; index++ {
@@ -365,15 +430,54 @@ func (c *Collector) start(startupCtx, ctx context.Context, onProjection func(rev
 			OnProjection: onProjection,
 		}
 		launch(func() {
+			if c.volatile {
+				select {
+				case <-ctx.Done():
+					return
+				case <-c.bootstrapDone:
+				}
+			}
 			if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
 				serverLog.Printf("collection worker stopped")
 			}
 		})
 	}
 	if c.config.RecoverDeliveries {
-		launch(func() { c.recoverDeliveries(ctx) })
+		launch(func() {
+			if c.volatile {
+				select {
+				case <-ctx.Done():
+					return
+				case <-c.bootstrapDone:
+				}
+			}
+			c.recoverDeliveries(ctx)
+		})
 	}
+
 	return nil
+}
+
+var ErrCollectionBootstrapping = errors.New("collection scope is being reconstructed; retry delivery")
+
+func (c *Collector) RecoveryReady() bool {
+	if !c.volatile {
+		return true
+	}
+	select {
+	case <-c.bootstrapDone:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Collector) runBackfill(ctx context.Context) (collect.BackfillState, error) {
+	if !c.backfillMu.TryLock() {
+		return collect.BackfillState{}, errors.New("collection backfill is already running")
+	}
+	defer c.backfillMu.Unlock()
+	return c.backfill.Run(ctx)
 }
 
 func (c *Collector) consumer() string {

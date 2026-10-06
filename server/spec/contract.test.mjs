@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.2.0')
+  assert.equal(openapi.info.version, '2.3.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -91,6 +91,11 @@ test('the generated contract describes the implemented security and wire formats
     assert.equal(openapi.components.schemas.QueryMetrics.properties[field], undefined)
   }
   assert.equal(openapi.components.schemas.HealthResponse.properties.generation, undefined)
+  for (const name of ['HealthResponse', 'ReadinessResponse']) {
+    assert.equal(openapi.components.schemas[name].properties.operational.$ref, '#/components/schemas/OperationalState')
+  }
+  assert.deepEqual(openapi.components.schemas.OperationalCapability.properties.scope.enum, ['unsupported', 'process', 'deployment'])
+  assert.deepEqual(openapi.components.schemas.OperationalCapability.properties.persistence.enum, ['volatile', 'restart'])
   assert.equal(openapi.components.schemas.RebuildStatus.properties.generation, undefined)
   assert.deepEqual(
     {

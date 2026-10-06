@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -18,51 +20,36 @@ var gitHubQuotaLog = logger.New("cao:redis:githubquota")
 // the last authoritative GitHub observation; Reserved is the sum of the
 // unexpired reservations that have not yet been committed or released. Now is
 // the Redis server clock so every replica classifies the state identically.
-type GitHubQuotaState struct {
-	Known       bool
-	Limit       int64
-	Remaining   int64
-	Reserved    int64
-	ResetAt     time.Time
-	ObservedAt  time.Time
-	ParkedUntil time.Time
-	ParkReason  string
-	Now         time.Time
-}
+type GitHubQuotaState = operational.GitHubQuotaState
 
 // GitHubQuotaObservation is one authoritative rate-limit observation taken
 // from GitHub response metadata.
-type GitHubQuotaObservation struct {
-	Limit      int64
-	Remaining  int64
-	ResetAt    time.Time
-	ObservedAt time.Time
-}
+type GitHubQuotaObservation = operational.GitHubQuotaObservation
 
 // GitHubQuotaObserveOutcome reports how an observation was reconciled.
-type GitHubQuotaObserveOutcome int
+type GitHubQuotaObserveOutcome = operational.GitHubQuotaObserveOutcome
 
 const (
 	// GitHubQuotaObservationStale means the observation belongs to an older
 	// reset window and was ignored.
-	GitHubQuotaObservationStale GitHubQuotaObserveOutcome = iota
+	GitHubQuotaObservationStale = operational.GitHubQuotaObservationStale
 	// GitHubQuotaObservationReplaced means the observation started a new reset
 	// window (or the first known window) and replaced the recorded state.
-	GitHubQuotaObservationReplaced
+	GitHubQuotaObservationReplaced = operational.GitHubQuotaObservationReplaced
 	// GitHubQuotaObservationReconciled means the observation belongs to the
 	// recorded window and was merged without increasing remaining quota.
-	GitHubQuotaObservationReconciled
+	GitHubQuotaObservationReconciled = operational.GitHubQuotaObservationReconciled
 )
 
 // GitHubQuotaAdmission is the result of an atomic reservation attempt.
-type GitHubQuotaAdmission int
+type GitHubQuotaAdmission = operational.GitHubQuotaAdmission
 
 const (
-	GitHubQuotaAdmitted GitHubQuotaAdmission = iota
-	GitHubQuotaParked
-	GitHubQuotaExhausted
-	GitHubQuotaUnknown
-	GitHubQuotaDuplicateReservation
+	GitHubQuotaAdmitted             = operational.GitHubQuotaAdmitted
+	GitHubQuotaParked               = operational.GitHubQuotaParked
+	GitHubQuotaExhausted            = operational.GitHubQuotaExhausted
+	GitHubQuotaUnknown              = operational.GitHubQuotaUnknown
+	GitHubQuotaDuplicateReservation = operational.GitHubQuotaDuplicateReservation
 )
 
 var gitHubQuotaIdentifier = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,256}$`)

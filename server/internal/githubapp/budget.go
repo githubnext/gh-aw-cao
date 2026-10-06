@@ -29,7 +29,7 @@ type Budget struct {
 // BudgetStore is the subset of the Redis store the governor needs. It exists
 // so tests can substitute an in-memory implementation without a Redis server.
 type BudgetStore interface {
-	HashGet(ctx context.Context, key, field string) (string, error)
+	ReadAttribute(ctx context.Context, key, field string) (string, error)
 	ReserveRateLimit(ctx context.Context, key, field string, floor, cost int, now int64) (int, error)
 	ObserveRateLimit(ctx context.Context, key, field string, remaining int, reset int64) error
 	ParkRateLimit(ctx context.Context, key, field string, parkedTo int64) error
@@ -136,7 +136,7 @@ func (b Budget) read(ctx context.Context, installationID int64) (budgetState, er
 	if b.Store == nil {
 		return budgetState{}, errors.New("rate-limit governor requires a store")
 	}
-	value, err := b.Store.HashGet(ctx, budgetKey, strconv.FormatInt(installationID, 10))
+	value, err := b.Store.ReadAttribute(ctx, budgetKey, strconv.FormatInt(installationID, 10))
 	if err != nil || value == "" {
 		return budgetState{}, err
 	}

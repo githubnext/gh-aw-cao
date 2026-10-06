@@ -269,7 +269,7 @@ func assertBackfillQueueDepth(t *testing.T, ctx context.Context, queue collect.Q
 	if err != nil || depth != 1 {
 		t.Fatalf("durable repository task depth = %d, err=%v", depth, err)
 	}
-	runDepth, err := queue.Store.StreamLength(ctx, "collect:run-tasks")
+	runDepth, err := taskQueueLength(ctx, queue.Store, "collect:run-tasks")
 	if err != nil || runDepth != 1 {
 		t.Fatalf("durable historical run task depth = %d, err=%v", runDepth, err)
 	}

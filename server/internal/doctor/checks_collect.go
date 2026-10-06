@@ -258,11 +258,11 @@ func resolvePrivateKeySource(
 }
 
 func (d Doctor) collectEnrollment() collect.Enrollment {
-	return collect.Enrollment{Store: d.Store}
+	return collect.Enrollment{Store: d.Store.Services().Collection}
 }
 
 func (d Doctor) collectQueue() collect.Queue {
-	return collect.Queue{Store: d.Store, MaxLength: int64(d.queueMaxLength())}
+	return collect.Queue{Store: d.Store.Services().Collection, MaxLength: int64(d.queueMaxLength())}
 }
 
 func (d Doctor) queueMaxLength() int {
@@ -461,7 +461,7 @@ func (d Doctor) checkBackfill(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
-	state, err := collect.Backfill{Store: d.Store}.State(ctx)
+	state, err := collect.Backfill{Store: d.Store.Services().Collection}.State(ctx)
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}
@@ -506,9 +506,9 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 	reporter := collect.Reporter{
 		Enrollment: d.collectEnrollment(),
 		Queue:      d.collectQueue(),
-		Backfill:   collect.Backfill{Store: d.Store},
-		Budget:     &githubapp.Budget{Store: d.Store, Floor: floor},
-		Store:      d.Store,
+		Backfill:   collect.Backfill{Store: d.Store.Services().Collection},
+		Budget:     &githubapp.Budget{Store: d.Store.Services().GitHubQuota, Floor: floor},
+		Store:      d.Store.Services().Collection,
 		Data:       d.Postgres,
 	}
 	status, err := reporter.Snapshot(ctx)
@@ -707,7 +707,7 @@ func (d Doctor) checkProjectionLock(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
-	held, err := d.Store.LockHeld(ctx, "projection")
+	held, err := d.Store.Services().Coordination.LockHeld(ctx, "projection")
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}

@@ -77,7 +77,7 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusInternalServerError, "rebuild could not start")
 		return
 	}
-	acquired, err := a.store.TryLock(request.Context(), "projection", token, projectionLockTTL)
+	acquired, err := a.store.TryLock(request.Context(), a.rebuildLockName(), token, projectionLockTTL)
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "rebuild coordination is unavailable")
 		return
@@ -93,14 +93,14 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		StartedAt: started.Format(time.RFC3339Nano),
 	}
 	if err := a.writeRebuildStatus(request.Context(), status); err != nil {
-		a.releaseProjectionLock(request.Context(), token)
+		a.releaseRebuildLock(request.Context(), token)
 		writeError(response, http.StatusServiceUnavailable, "rebuild status is unavailable")
 		return
 	}
 	ctx, cancel := a.operationContext(request.Context())
 	if !a.launchTask(func() { a.performRebuild(ctx, cancel, token, status) }) {
 		cancel()
-		a.releaseProjectionLock(request.Context(), token)
+		a.releaseRebuildLock(request.Context(), token)
 		writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
 		return
 	}
@@ -109,7 +109,7 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 
 func (a *App) performRebuild(ctx context.Context, cancel context.CancelFunc, token string, status rebuildStatus) {
 	defer cancel()
-	defer a.releaseProjectionLock(ctx, token)
+	defer a.releaseRebuildLock(ctx, token)
 	result, err := a.reconciler.Rebuild(ctx)
 	if err != nil {
 		status.State = "failed"
@@ -136,9 +136,25 @@ func (a *App) persistRebuildStatus(parent context.Context, status rebuildStatus)
 }
 
 func (a *App) releaseProjectionLock(parent context.Context, token string) {
+	a.releaseLock(parent, "projection", token)
+}
+
+func (a *App) rebuildLockName() string {
+	if a.Collector() != nil {
+		// The collector's projector takes its own projection lease.
+		return "collect:admin-rebuild"
+	}
+	return "projection"
+}
+
+func (a *App) releaseRebuildLock(parent context.Context, token string) {
+	a.releaseLock(parent, a.rebuildLockName(), token)
+}
+
+func (a *App) releaseLock(parent context.Context, name, token string) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
 	defer cancel()
-	_ = a.store.Unlock(ctx, "projection", token)
+	_ = a.store.Unlock(ctx, name, token)
 }
 
 func (a *App) rebuildStatus(response http.ResponseWriter, request *http.Request) {
@@ -358,7 +374,7 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 			return rebuildStatus{}, err
 		}
 		if status.State == "running" {
-			held, err := a.store.LockHeld(ctx, "projection")
+			held, err := a.store.LockHeld(ctx, a.rebuildLockName())
 			if err != nil {
 				return rebuildStatus{}, err
 			}

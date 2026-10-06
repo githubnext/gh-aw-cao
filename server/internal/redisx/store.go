@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
@@ -39,12 +41,13 @@ var ingestionLoadNames = map[string]string{
 }
 
 type Store struct {
-	Client          CommandClient
-	namespace       string
-	processIsolated bool
-	maxMemoryBytes  atomic.Int64
-	cacheInitMu     sync.Mutex
-	cacheCapability atomic.Uint32
+	Client                CommandClient
+	namespace             string
+	processIsolated       bool
+	maxMemoryBytes        atomic.Int64
+	queryMaintenanceBytes atomic.Int64
+	cacheInitMu           sync.Mutex
+	cacheCapability       atomic.Uint32
 }
 
 type CommandClient interface {
@@ -221,12 +224,12 @@ func (s *Store) ForgetDelivery(ctx context.Context, delivery string) error {
 	return err
 }
 
-type DeliveryReservation int
+type DeliveryReservation = operational.DeliveryReservation
 
 const (
-	DeliveryAlreadyCommitted DeliveryReservation = iota
-	DeliveryReserved
-	DeliveryInProgress
+	DeliveryAlreadyCommitted = operational.DeliveryAlreadyCommitted
+	DeliveryReserved         = operational.DeliveryReserved
+	DeliveryInProgress       = operational.DeliveryInProgress
 )
 
 // ReserveDelivery serializes non-queue admission without consuming the

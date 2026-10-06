@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var queryCacheLog = logger.New("cao:server:query-cache")
@@ -76,7 +76,7 @@ func newQueryCacheTelemetry() (*queryCacheTelemetry, error) {
 // Never add query identities, fields, parameters, result values, or Redis errors.
 func (instruments *queryCacheTelemetry) observe(
 	ctx context.Context, span trace.Span, operation, outcome string,
-	started time.Time, payloadBytes int, stats *redisx.QueryCacheStats,
+	started time.Time, payloadBytes int, stats *operational.QueryCacheStats,
 ) {
 	duration := time.Since(started)
 	attributes := []attribute.KeyValue{

@@ -35,9 +35,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
@@ -52,6 +52,7 @@ type Config struct {
 	AccessToken            string
 	HostProfile            HostProfile
 	SingleReplicaConfirmed bool
+	AllowVolatile          bool
 	Proxy                  ProxyPolicy
 	// CORS is the reviewed cross-origin policy; the zero value is
 	// same-origin only.
@@ -86,39 +87,44 @@ type Config struct {
 }
 
 type App struct {
-	store           *redisx.Store
-	database        *postgresx.Store
-	ownedDatabase   *postgresx.Store
-	closeDatabase   sync.Once
-	closeError      error
-	databaseQueries []query.Definition
-	config          Config
-	accessToken     string
-	oauth           *githubOAuth
-	hub             *eventHub
-	canonical       canonicalService
-	reconciler      Reconciler
-	memory          *repositorymemory.RemoteResolver
-	webhookSecret   []byte
-	mcp             http.Handler
-	actionsToken    string
-	actionsActor    string
-	quota           *githubquota.Service
-	logs            *logger.Buffer
-	startMu         sync.Mutex
-	startContext    context.Context
-	stop            context.CancelFunc
-	draining        bool
-	drain           chan struct{}
-	taskMu          sync.Mutex
-	taskCount       int
-	tasksDone       chan struct{}
-	cacheOnce       sync.Once
-	cacheMetrics    *queryCacheTelemetry
-	cacheError      error
+	store            appStore
+	operationalStore operational.Store
+	ownedOperational operational.Store
+	database         *postgresx.Store
+	ownedDatabase    *postgresx.Store
+	closeDatabase    sync.Once
+	closeError       error
+	databaseQueries  []query.Definition
+	config           Config
+	accessToken      string
+	oauth            *githubOAuth
+	hub              *eventHub
+	canonical        canonicalService
+	reconciler       Reconciler
+	memory           *repositorymemory.RemoteResolver
+	webhookSecret    []byte
+	mcp              http.Handler
+	actionsToken     string
+	actionsActor     string
+	quota            *githubquota.Service
+	logs             *logger.Buffer
+	startMu          sync.Mutex
+	startContext     context.Context
+	stop             context.CancelFunc
+	draining         bool
+	drain            chan struct{}
+	taskMu           sync.Mutex
+	taskCount        int
+	tasksDone        chan struct{}
+	cacheOnce        sync.Once
+	cacheMetrics     *queryCacheTelemetry
+	cacheError       error
 }
 
-func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) {
+func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
+	if err := operational.CheckStore(store); err != nil {
+		return nil, fmt.Errorf("operational storage is required: %w", err)
+	}
 	if config.Database == nil {
 		return nil, errors.New("dashboard Postgres database is required")
 	}
@@ -141,6 +147,27 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
 	}
+	services := store.Services()
+	capabilities := store.Capabilities()
+	if err := operational.Validate(capabilities, services, operational.Requirements{
+		SingleProcess: (config.HostProfile.SingleProcess && config.SingleReplicaConfirmed) || config.HostProfile.IsolateProcessNamespace,
+		AllowVolatile: config.AllowVolatile || config.HostProfile.IsolateProcessNamespace,
+		OAuth:         config.HostProfile.Authentication == HostAuthenticationOAuth,
+		Collection:    config.Collector != nil,
+	}); err != nil {
+		return nil, fmt.Errorf("operational guarantees: %w", err)
+	}
+	if capabilities.Collection.Persistence == operational.PersistenceVolatile &&
+		capabilities.Collection.Scope != operational.ScopeUnsupported {
+		if !config.AllowVolatile || !config.SingleReplicaConfirmed ||
+			config.HostProfile.Listener != HostListenerProcess ||
+			config.HostProfile.Authentication != HostAuthenticationOAuth {
+			return nil, errors.New("volatile collection requires OAuth, one process listener, a confirmed single replica, and explicit restart-loss acknowledgement")
+		}
+		if config.Collector != nil && config.Collector.AdmitOnly {
+			return nil, errors.New("volatile collection cannot use an admission-only process")
+		}
+	}
 	if err := config.RateLimits.validate(); err != nil {
 		return nil, err
 	}
@@ -149,21 +176,14 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		return nil, err
 	}
 	config.QueryCache = cache
-	maxRedisBytes, err := RedisMaxBytesFromEnv(config.RedisMaxBytes)
-	if err != nil {
+	if err := configureOperationalStore(ctx, store, &config); err != nil {
 		return nil, err
 	}
-	config.RedisMaxBytes = maxRedisBytes
 	serverLog.Printf("configured redis_max_bytes=%d maintenance_interval_ms=%d",
-		maxRedisBytes, redisMaintenanceInterval.Milliseconds())
-	if store != nil {
-		if err := store.SetMaxMemoryBytes(maxRedisBytes); err != nil {
-			return nil, err
-		}
-	}
+		config.RedisMaxBytes, redisMaintenanceInterval.Milliseconds())
 	queryCacheLog.Printf("configured enabled=%t ttl_ms=%d min_duration_ms=%d max_result_bytes=%d max_bytes=%d max_entries=%d",
-		!cache.Disabled, redisx.QueryCacheTTL.Milliseconds(), cache.MinDuration.Milliseconds(),
-		cache.MaxResultBytes, cache.MaxBytes, redisx.QueryCacheMaxEntries)
+		!cache.Disabled, operational.QueryCacheTTL.Milliseconds(), cache.MinDuration.Milliseconds(),
+		cache.MaxResultBytes, cache.MaxBytes, operational.QueryCacheMaxEntries)
 	cors, err := config.CORS.normalize()
 	if err != nil {
 		return nil, err
@@ -184,7 +204,14 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 	var oauth *githubOAuth
 	var accessToken string
 	if profile.Authentication == HostAuthenticationOAuth {
-		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
+		oauthConfig := *config.GitHubOAuth
+		if capabilities.Sessions.Persistence == operational.PersistenceVolatile {
+			oauthConfig.loginStateSecret, err = randomToken(32)
+			if err != nil {
+				return nil, fmt.Errorf("initialize process login state: %w", err)
+			}
+		}
+		oauth = newGitHubOAuth(oauthConfig, services.OAuth)
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
 		if accessToken == "" {
@@ -212,11 +239,11 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		reconciler = collector
 		if !config.Collector.AdmitOnly {
 			memoryResolver = &repositorymemory.RemoteResolver{
-				Cache:         store,
+				Cache:         repositoryMemoryServices{Cache: services.Cache, Coordination: services.Coordination},
 				Installations: collector.enrollment,
 				Source:        collector.client,
 				Governor: &githubapp.Budget{
-					Store: store, Floor: config.Collector.RateLimitFloor, Cost: 1,
+					Store: services.GitHubQuota, Floor: config.Collector.RateLimitFloor, Cost: 1,
 				},
 				ControlRepository: config.Collector.ControlRepository,
 			}
@@ -244,14 +271,18 @@ func New(ctx context.Context, store *redisx.Store, config Config) (*App, error) 
 		}
 	}
 	if store != nil && quota == nil {
-		quota, err = githubquota.New(store, githubquota.Options{})
+		quota, err = githubquota.New(services.GitHubQuota, githubquota.Options{})
 		if err != nil {
 			return nil, fmt.Errorf("configure github quota: %w", err)
 		}
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		store: store, database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		store: appServices{
+			Store: store, Cache: services.Cache, RequestLimiter: services.RequestLimits,
+			Coordination: services.Coordination, Diagnostics: services.Diagnostics,
+		}, operationalStore: store,
+		database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
@@ -456,8 +487,15 @@ func (a *App) Stop(ctx context.Context) error {
 			return err
 		}
 	}
-	if a.ownedDatabase != nil {
-		a.closeDatabase.Do(func() { a.closeError = a.ownedDatabase.Close() })
+	if a.ownedDatabase != nil || a.ownedOperational != nil {
+		a.closeDatabase.Do(func() {
+			if a.ownedDatabase != nil {
+				a.closeError = a.ownedDatabase.Close()
+			}
+			if a.ownedOperational != nil {
+				a.closeError = errors.Join(a.closeError, a.ownedOperational.Close())
+			}
+		})
 		return a.closeError
 	}
 	return nil
@@ -1007,9 +1045,10 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	payload := map[string]any{
-		"status": "healthy",
-		"redis":  map[string]any{"connected": redisHealthy},
-		"data":   data,
+		"status":      "healthy",
+		"redis":       map[string]any{"connected": redisHealthy},
+		"operational": a.operationalHealth(redisHealthy),
+		"data":        data,
 	}
 	if status != http.StatusOK {
 		payload["status"] = "unhealthy"
@@ -1039,6 +1078,9 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	active, activeErr := a.database.State(ctx)
 	redisHealthy := a.store.Ping(ctx) == nil
 	ready := redisHealthy && activeErr == nil && active.Ready
+	if collector := a.Collector(); collector != nil {
+		ready = ready && collector.RecoveryReady()
+	}
 	status := http.StatusOK
 	if !ready {
 		status = http.StatusServiceUnavailable
@@ -1051,9 +1093,10 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 		data["evaluatedAt"] = active.EvaluatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	writeJSON(response, status, map[string]any{
-		"ready": ready,
-		"redis": map[string]any{"connected": redisHealthy},
-		"data":  data,
+		"ready":       ready,
+		"redis":       map[string]any{"connected": redisHealthy},
+		"operational": a.operationalHealth(redisHealthy),
+		"data":        data,
 	})
 }
 
@@ -1405,7 +1448,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 type databaseLoader struct {
 	ctx                   context.Context
 	database              postgresx.NativeReader
-	operational           *redisx.Store
+	operational           operational.Cache
 	dataRevision          string
 	app                   *App
 	allowCollectionHealth bool

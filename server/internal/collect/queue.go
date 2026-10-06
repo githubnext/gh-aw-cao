@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
-	"sort"
 	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var queueLog = logger.New("cao:collect:queue")
@@ -66,7 +65,7 @@ type Lease struct {
 // scheduled work, while consumer-group claims recover work from a stopped
 // worker.
 type Queue struct {
-	Store *redisx.Store
+	Store operational.CollectionStore
 	// Group is the consumer group name; empty selects the default.
 	Group string
 	// Debounce collapses repeated events for one repository into one task.
@@ -101,7 +100,7 @@ func (q Queue) maxAttempts() int {
 
 // Ensure creates the consumer group, tolerating an existing one.
 func (q Queue) Ensure(ctx context.Context) error {
-	return q.Store.StreamEnsureGroup(ctx, taskStream, q.group())
+	return q.Store.EnsureQueue(ctx, taskStream, q.group())
 }
 
 // Enqueue appends a task unless one is already pending for the repository.
@@ -130,9 +129,9 @@ func (q Queue) EnqueueRun(ctx context.Context, task RunTask) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return q.Store.StreamEnqueueUnique(
+	return q.Store.EnqueueUniqueTask(
 		ctx, runTaskStream, task.Key, q.MaxLength,
-		map[string]string{"key": task.Key, "repository": repository, "task": string(payload)},
+		operational.TaskFields{Key: task.Key, Repository: repository, Task: string(payload)},
 	)
 }
 
@@ -151,21 +150,24 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 	if task.Lifecycle != "" {
 		debounce = ""
 	}
-	result, err := q.Store.StreamEnqueueDelivery(
-		ctx, delivery, deliveryTTL, taskStream, delayedTaskSet, debounce,
-		q.debounce(), q.MaxLength, taskFields(repository, payload),
-	)
+	result, err := q.Store.AdmitDelivery(ctx, operational.DeliveryRequest{
+		Delivery: delivery, DeliveryTTL: deliveryTTL,
+		EnqueueRequest: operational.EnqueueRequest{
+			Queue: taskStream, Delayed: delayedTaskSet, Debounce: debounce,
+			DebounceTTL: q.debounce(), Capacity: q.MaxLength, Fields: taskFields(repository, payload),
+		},
+	})
 	if err != nil {
 		return false, false, err
 	}
 	switch result {
-	case redisx.DeliveryDuplicate:
-	case redisx.DeliveryEnqueued:
+	case operational.DeliveryDuplicate:
+	case operational.DeliveryEnqueued:
 		_ = q.Store.IncrementIngestionCounter(ctx, "taskQueued")
-	case redisx.DeliveryCoalesced:
+	case operational.DeliveryCoalesced:
 		_ = q.Store.IncrementIngestionCounter(ctx, "taskCoalesced")
 	}
-	return result == redisx.DeliveryEnqueued, result == redisx.DeliveryDuplicate, nil
+	return result == operational.DeliveryEnqueued, result == operational.DeliveryDuplicate, nil
 }
 
 func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
@@ -177,10 +179,10 @@ func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 	if task.Attempt == 0 && !task.Erase && task.Lifecycle == "" {
 		debounce = debounceKey(repository)
 	}
-	enqueued, err := q.Store.StreamEnqueue(
-		ctx, taskStream, delayedTaskSet, debounce, q.debounce(), q.MaxLength,
-		taskFields(repository, payload),
-	)
+	enqueued, err := q.Store.EnqueueTask(ctx, operational.EnqueueRequest{
+		Queue: taskStream, Delayed: delayedTaskSet, Debounce: debounce,
+		DebounceTTL: q.debounce(), Capacity: q.MaxLength, Fields: taskFields(repository, payload),
+	})
 	if err != nil {
 		return false, err
 	}
@@ -210,8 +212,8 @@ func (q Queue) prepareTask(task Task) (string, []byte, error) {
 	return repository, payload, nil
 }
 
-func taskFields(repository string, payload []byte) map[string]string {
-	return map[string]string{"repository": repository, "task": string(payload)}
+func taskFields(repository string, payload []byte) operational.TaskFields {
+	return operational.TaskFields{Repository: repository, Task: string(payload)}
 }
 
 // Lease reads undelivered tasks for one consumer.
@@ -219,7 +221,9 @@ func (q Queue) Lease(ctx context.Context, consumer string, count int, block time
 	if _, err := q.promoteDue(ctx, time.Now().UTC(), count); err != nil {
 		return nil, err
 	}
-	messages, err := q.Store.StreamRead(ctx, taskStream, q.group(), consumer, count, block)
+	messages, err := q.Store.ReadTasks(ctx, operational.QueueRead{
+		Queue: taskStream, Group: q.group(), Consumer: consumer, Count: count, Block: block,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +233,9 @@ func (q Queue) Lease(ctx context.Context, consumer string, count int, block time
 // Reclaim takes over tasks abandoned by a consumer that stopped, so a worker
 // crash does not strand a repository.
 func (q Queue) Reclaim(ctx context.Context, consumer string, minIdle time.Duration, count int) ([]Lease, error) {
-	messages, _, err := q.Store.StreamClaim(ctx, taskStream, q.group(), consumer, minIdle, "0-0", count)
+	messages, err := q.Store.ClaimTasks(ctx, operational.QueueRead{
+		Queue: taskStream, Group: q.group(), Consumer: consumer, Count: count,
+	}, minIdle)
 	if err != nil {
 		return nil, err
 	}
@@ -240,12 +246,12 @@ func (q Queue) Reclaim(ctx context.Context, consumer string, minIdle time.Durati
 	return leases, err
 }
 
-func (q Queue) leases(ctx context.Context, messages []redisx.StreamMessage) ([]Lease, error) {
+func (q Queue) leases(ctx context.Context, messages []operational.TaskMessage) ([]Lease, error) {
 	leases := make([]Lease, 0, len(messages))
 	for _, message := range messages {
 		var task Task
-		if err := json.Unmarshal([]byte(message.Fields["task"]), &task); err != nil {
-			if err := q.deadLetterLease(ctx, message.ID, Task{Repository: message.Fields["repository"]}, "unparseable task entry"); err != nil {
+		if err := json.Unmarshal([]byte(message.Fields.Task), &task); err != nil {
+			if err := q.deadLetterLease(ctx, message.ID, Task{Repository: message.Fields.Repository}, "unparseable task entry"); err != nil {
 				return leases, err
 			}
 			continue
@@ -271,7 +277,7 @@ func (q Queue) Defer(ctx context.Context, lease Lease) error {
 
 // Complete acknowledges a finished task.
 func (q Queue) Complete(ctx context.Context, lease Lease) error {
-	if err := q.Store.StreamAckAndDelete(ctx, taskStream, q.group(), lease.MessageID); err != nil {
+	if err := q.Store.CompleteTask(ctx, taskStream, q.group(), lease.MessageID); err != nil {
 		return err
 	}
 	_ = q.Store.IncrementIngestionCounter(ctx, "collectionSucceeded")
@@ -345,48 +351,18 @@ func (q Queue) replace(ctx context.Context, messageID string, task Task) error {
 	if err != nil {
 		return err
 	}
+	replacement := operational.Replacement{
+		Source: taskStream, Group: q.group(), ID: messageID,
+		Destination: taskStream, Delayed: delayedTaskSet, Fields: taskFields(task.Repository, payload),
+	}
 	if task.NotBefore.After(time.Now().UTC()) {
-		fields := taskFields(task.Repository, payload)
-		member, err := scheduledTaskMember(messageID, fields)
-		if err != nil {
-			return err
-		}
-		return q.Store.StreamScheduleAndAck(
-			ctx, taskStream, q.group(), messageID, delayedTaskSet, dueAtMillis(task.NotBefore), member,
-		)
+		replacement.Due = task.NotBefore
 	}
-	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, taskStream, 0, taskFields(task.Repository, payload))
-}
-
-type scheduledTask struct {
-	ID     string   `json:"id"`
-	Fields []string `json:"fields"`
-}
-
-func scheduledTaskMember(id string, fields map[string]string) (string, error) {
-	names := make([]string, 0, len(fields))
-	for name := range fields {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	orderedFields := make([]string, 0, len(fields))
-	for _, name := range names {
-		orderedFields = append(orderedFields, name, fields[name])
-	}
-	payload, err := json.Marshal(scheduledTask{ID: id, Fields: orderedFields})
-	return string(payload), err
+	return q.Store.ReplaceTask(ctx, replacement)
 }
 
 func (q Queue) promoteDue(ctx context.Context, now time.Time, count int) (int64, error) {
-	return q.Store.StreamPromoteDue(ctx, delayedTaskSet, taskStream, now.UnixMilli(), count)
-}
-
-func dueAtMillis(value time.Time) int64 {
-	millis := value.UnixMilli()
-	if value.Nanosecond()%int(time.Millisecond) != 0 {
-		millis++
-	}
-	return millis
+	return q.Store.PromoteTasks(ctx, delayedTaskSet, taskStream, now, count)
 }
 
 func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task, reason string) error {
@@ -394,39 +370,44 @@ func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task,
 	if err != nil {
 		return err
 	}
-	return q.Store.StreamReplaceAndAck(ctx, taskStream, q.group(), messageID, deadLetterStream, q.MaxLength, map[string]string{
-		"repository": task.Repository,
-		"task":       string(payload),
-		"reason":     reason,
-		"recordedAt": time.Now().UTC().Format(time.RFC3339Nano),
+	return q.Store.ReplaceTask(ctx, operational.Replacement{
+		Source: taskStream, Group: q.group(), ID: messageID,
+		Destination: deadLetterStream, Capacity: q.MaxLength,
+		Fields: operational.TaskFields{
+			Repository: task.Repository, Task: string(payload),
+			Reason: reason, RecordedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
 	})
 }
 
 // Depth reports ready and scheduled work, excluding already leased tasks.
 func (q Queue) Depth(ctx context.Context) (int64, error) {
-	backlog, err := q.Store.StreamBacklog(ctx, taskStream, q.group())
+	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
 	if err != nil {
 		return 0, err
 	}
-	delayed, err := q.Store.SortedSetLength(ctx, delayedTaskSet)
+	delayed, err := q.Store.DelayedDepth(ctx, delayedTaskSet)
 	if err != nil {
 		return 0, err
 	}
-	return backlog + delayed, nil
+	return stats.Backlog + delayed, nil
 }
 
 // Pending reports delivered but unacknowledged tasks, which is processing lag.
 func (q Queue) Pending(ctx context.Context) (int64, error) {
-	return q.Store.StreamPending(ctx, taskStream, q.group())
+	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
+	return stats.Pending, err
 }
 
 func (q Queue) OldestPendingAge(ctx context.Context) (time.Duration, error) {
-	return q.Store.StreamOldestPendingAge(ctx, taskStream, q.group())
+	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
+	return stats.OldestPendingAge, err
 }
 
 // DeadLetters reports how many tasks exhausted their retries.
 func (q Queue) DeadLetters(ctx context.Context) (int64, error) {
-	return q.Store.StreamLength(ctx, deadLetterStream)
+	stats, err := q.Store.QueueStats(ctx, deadLetterStream, "")
+	return stats.Length, err
 }
 
 // ErrRepositoryBusy reports that another worker holds a repository's lease.

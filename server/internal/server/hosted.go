@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -14,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var hostedLog = logger.New("cao:server:hosted")
@@ -69,30 +67,6 @@ func newHostedAppWithPolicy(
 	mcpEnabled bool,
 	agentCatalogPath, mcpContractPath string,
 ) (*App, error) {
-	if err := validateHostedRedisURL(
-		host.RedisURL,
-		host.RedisOptions.AllowPrivatePlaintext,
-		host.RedisOptions.ForceTLS,
-	); err != nil {
-		return nil, err
-	}
-	revocationKeyPrefix, err := durableRevocationKeyPrefix(
-		host.Profile.IsolateProcessNamespace,
-		host.RedisNamespace,
-	)
-	if err != nil {
-		return nil, err
-	}
-	client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
-	if err != nil {
-		return nil, err
-	}
-	store, err := storeFromClient(
-		ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
-	)
-	if err != nil {
-		return nil, err
-	}
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
 		return nil, err
@@ -105,6 +79,19 @@ func newHostedAppWithPolicy(
 	if collector == nil && sourceDirectory == "" {
 		return nil, errors.New("CAO_SOURCE_DIRECTORY is required")
 	}
+	if host.Profile.SingleProcess && collector != nil && collector.AdmitOnly {
+		return nil, errors.New("memory operational-store requires co-resident collection, not admission-only mode")
+	}
+	store, revocationKeyPrefix, err := newOperationalStore(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	initialized := false
+	defer func() {
+		if !initialized {
+			_ = store.Close()
+		}
+	}()
 	webhookSecret := os.Getenv("CAO_GITHUB_WEBHOOK_SECRET")
 	if len(webhookSecret) < 32 {
 		return nil, errors.New("CAO_GITHUB_WEBHOOK_SECRET must contain at least 32 characters")
@@ -137,6 +124,7 @@ func newHostedAppWithPolicy(
 		Database:               database,
 		HostProfile:            host.Profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
+		AllowVolatile:          host.AllowVolatile,
 		Listen:                 listen,
 		CertFile:               certFile,
 		KeyFile:                keyFile,
@@ -175,6 +163,8 @@ func newHostedAppWithPolicy(
 		_ = database.Close()
 	} else {
 		app.ownedDatabase = database
+		app.ownedOperational = store
+		initialized = true
 	}
 	return app, err
 }
@@ -286,80 +276,16 @@ func loopbackProxyPrefixes() []netip.Prefix {
 	}
 }
 
-// StoreFromEnv opens the hosted Redis store described by the environment. The
-// collection roles reuse it so there is one definition of the hosted Redis
-// contract.
-func StoreFromEnv(ctx context.Context) (*redisx.Store, error) {
-	maxBytes, err := RedisMaxBytesFromEnv(0)
-	if err != nil {
-		return nil, err
-	}
+// StoreFromEnv opens a shared operational backend for standalone collection
+// roles. Process-local stores cannot share admission authority across roles.
+func StoreFromEnv(ctx context.Context) (operational.Store, error) {
 	host, err := loadHostPolicyFromEnv()
 	if err != nil {
 		return nil, err
 	}
-	if !host.Profile.SupportsCollection || host.Profile.RedisSession == HostRedisSerialized {
-		return nil, fmt.Errorf(
-			"host profile %q is not supported by standalone collection roles",
-			host.Profile.Name,
-		)
-	}
-	client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
-	if err != nil {
+	if err := validateStandaloneOperational(host); err != nil {
 		return nil, err
 	}
-	store, err := storeFromClient(ctx, client, host.RedisNamespace, false)
-	if err != nil {
-		return nil, err
-	}
-	if err := store.SetMaxMemoryBytes(maxBytes); err != nil {
-		return nil, err
-	}
-	return store, nil
-}
-
-func storeFromClient(
-	ctx context.Context,
-	client *redisx.Client,
-	namespaceValue string,
-	isolateSession bool,
-) (*redisx.Store, error) {
-	namespaceValue = strings.TrimSpace(namespaceValue)
-	if namespaceValue == "" {
-		namespaceValue = "hosted-dashboard"
-	}
-	namespace, err := redisx.NormalizeNamespace(namespaceValue)
-	if err != nil {
-		return nil, err
-	}
-	var store *redisx.Store
-	if isolateSession {
-		store, err = redisx.NewProcessIsolatedStore(client, namespace)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		store = redisx.NewStore(client, namespace)
-	}
-	if err := store.Ping(ctx); err != nil {
-		return nil, errors.New("redis is unavailable")
-	}
-	return store, nil
-}
-
-func durableRevocationKeyPrefix(isolateProcess bool, namespace string) (string, error) {
-	if !isolateProcess {
-		return "", nil
-	}
-	if strings.TrimSpace(namespace) == "" {
-		namespace = "hosted-dashboard"
-	}
-	normalized, err := redisx.NormalizeNamespace(namespace)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256([]byte(normalized))
-	// Preserve the original prefix so queued revocations survive migration from
-	// the provider-specific Upstash mode to a generic serialized host profile.
-	return "upstash-" + hex.EncodeToString(sum[:12]) + "-durable:", nil
+	store, _, err := newOperationalStore(ctx, host)
+	return store, err
 }

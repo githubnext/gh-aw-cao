@@ -112,6 +112,9 @@ func (client redisMaintenanceClient) Do(ctx context.Context, command ...string) 
 	if client.err != nil {
 		return nil, client.err
 	}
+	if command[0] == "PING" {
+		return "PONG", nil
+	}
 	if command[0] == "INFO" {
 		return cacheTestMemoryInfo, nil
 	}
@@ -188,7 +191,7 @@ func TestRedisMaintenanceFailuresAreExplicitAndSanitized(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 	app.runRedisMaintenance(ctx, time.Millisecond)
-	if !strings.Contains(output.String(), "Redis cache maintenance failed") || strings.Contains(output.String(), "private") {
+	if !strings.Contains(output.String(), "Operational cache maintenance failed") || strings.Contains(output.String(), "private") {
 		t.Fatalf("periodic error was hidden or exposed backend details: %q", output.String())
 	}
 	if app.startContext != nil {
@@ -205,12 +208,12 @@ func TestRedisMemoryPressureLogExplainsNodeWideScopeAndSafeRemediation(t *testin
 	}
 	message := output.String()
 	for _, expected := range []string{
-		"Redis node-wide memory pressure",
+		"Operational cache maintenance pressure",
 		"used_bytes=510554256",
 		"budget_bytes=200000000",
 		"disposable_cache_entries_evicted=0",
-		"inspect_provider_memory_and_namespace_key_families",
-		"synchronize_CAO_REDIS_MAX_BYTES",
+		"inspect_operational_backend_capacity",
+		"preserve_protected_state",
 	} {
 		if !strings.Contains(message, expected) {
 			t.Fatalf("pressure log %q does not contain %q", message, expected)
@@ -263,6 +266,8 @@ type managedRedisMaintenanceClient struct{}
 
 func (managedRedisMaintenanceClient) Do(_ context.Context, command ...string) (any, error) {
 	switch command[0] {
+	case "PING":
+		return "PONG", nil
 	case "INFO":
 		return "used_memory:1024\r\n", nil
 	case "EVAL":
@@ -293,7 +298,8 @@ func TestRedisMaintenanceReportsUnsupportedCachingWithoutBlockingStartup(t *test
 	if err := app.Stop(stopCtx); err != nil {
 		t.Fatal(err)
 	}
-	if app.store.DisposableCachesEnabled() {
+	health, err := app.store.Health(t.Context())
+	if err != nil || !health.CacheDisabled {
 		t.Fatal("unsupported managed-provider caches remained enabled")
 	}
 	if !strings.Contains(output.String(), "disposable caching disabled") || !strings.Contains(output.String(), "protected storage remains enabled") {

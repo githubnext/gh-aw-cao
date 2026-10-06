@@ -10,8 +10,8 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var recoveryLog = logger.New("cao:collect:recovery")
@@ -27,7 +27,7 @@ const deliveryProgressKey = "collect:delivery-progress"
 // events already recorded in a delivery list costs orders of magnitude more
 // requests.
 type DeliveryReplayer struct {
-	Store   *redisx.Store
+	Store   operational.CollectionStore
 	Client  DeliveryClient
 	Enabled bool
 	// Limit bounds how many deliveries one recovery pass inspects.
@@ -193,7 +193,7 @@ type Reporter struct {
 	Queue      Queue
 	Backfill   Backfill
 	Budget     *githubapp.Budget
-	Store      *redisx.Store
+	Store      operational.CollectionStore
 	Data       *postgresx.Store
 }
 

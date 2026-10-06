@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/metric"
@@ -25,6 +26,8 @@ var redisLog = logger.New("cao:redis")
 const maxIdleConnectionAge = 5 * time.Minute
 
 type Client struct {
+	lifecycleMu   sync.RWMutex
+	closed        bool
 	address       string
 	username      string
 	password      string
@@ -60,6 +63,25 @@ type Options struct {
 
 func (c *Client) SingleSession() bool {
 	return c.singleSession
+}
+
+func (c *Client) Close() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
+	if c.closed {
+		return nil
+	}
+	c.closed = true
+	var err error
+	for {
+		select {
+		case connection := <-c.pool:
+			err = errors.Join(err, connection.connection.Close())
+		default:
+			c.password = ""
+			return err
+		}
+	}
 }
 
 func (err redisResponseError) Error() string {
@@ -182,6 +204,14 @@ func isLoopbackHost(hostname string) bool {
 func (c *Client) Do(ctx context.Context, args ...string) (result any, err error) {
 	ctx, operation := c.startOperation(ctx, redisCommandName(args), -1)
 	defer func() { operation.finish(ctx, err) }()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	c.lifecycleMu.RLock()
+	defer c.lifecycleMu.RUnlock()
+	if c.closed {
+		return nil, errors.New("redis client is closed")
+	}
 	if len(args) > 0 {
 		redisLog.Printf("executing command=%s arguments=%d", args[0], len(args)-1)
 	}
@@ -195,26 +225,14 @@ func (c *Client) Do(ctx context.Context, args ...string) (result any, err error)
 		if err != nil {
 			return nil, err
 		}
-		if err := c.setDeadline(ctx, connection.connection); err != nil {
-			c.release(connection, false)
-			lastErr = err
-			continue
-		}
-		if err := writeCommand(connection.writer, args...); err != nil {
-			c.release(connection, false)
-			lastErr = err
-			continue
-		}
-		if err := connection.writer.Flush(); err != nil {
-			c.release(connection, false)
-			lastErr = err
-			continue
-		}
-		value, err := readRESP(connection.reader)
+		value, err := c.runCommand(ctx, connection, args)
 		var responseErr redisResponseError
 		isResponseErr := errors.As(err, &responseErr)
 		reusable := err == nil || (c.singleSession && isResponseErr)
 		c.release(connection, reusable)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		if err == nil {
 			return value, nil
 		}
@@ -229,10 +247,47 @@ func (c *Client) Do(ctx context.Context, args ...string) (result any, err error)
 	return nil, lastErr
 }
 
+func (c *Client) runCommand(ctx context.Context, connection *redisConnection, args []string) (any, error) {
+	if err := c.setDeadline(ctx, connection.connection); err != nil {
+		return nil, err
+	}
+	stop := interruptConnection(ctx, connection.connection)
+	defer stop()
+	if err := writeCommand(connection.writer, args...); err != nil {
+		return nil, err
+	}
+	if err := connection.writer.Flush(); err != nil {
+		return nil, err
+	}
+	return readRESP(connection.reader)
+}
+
+func interruptConnection(ctx context.Context, connection net.Conn) func() {
+	done := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(done)
+		_ = connection.SetDeadline(time.Now())
+	})
+	return func() {
+		// Finish cancellation before returning the connection to another caller.
+		if !stop() {
+			<-done
+		}
+	}
+}
+
 func (c *Client) DoMany(ctx context.Context, commands [][]string) (values []any, err error) {
 	command, batchSize := redisPipelineName(commands)
 	ctx, operation := c.startOperation(ctx, command, batchSize)
 	defer func() { operation.finish(ctx, err) }()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	c.lifecycleMu.RLock()
+	defer c.lifecycleMu.RUnlock()
+	if c.closed {
+		return nil, errors.New("redis client is closed")
+	}
 	redisLog.Printf("executing command batch size=%d", len(commands))
 	connection, _, err := c.acquire(ctx)
 	if err != nil {
@@ -245,6 +300,14 @@ func (c *Client) DoMany(ctx context.Context, commands [][]string) (values []any,
 	if err := c.setDeadline(ctx, connection.connection); err != nil {
 		return nil, err
 	}
+	stop := interruptConnection(ctx, connection.connection)
+	defer func() {
+		stop()
+		if ctx.Err() != nil {
+			err = ctx.Err()
+			reusable = false
+		}
+	}()
 	for _, command := range commands {
 		if err := writeCommand(connection.writer, command...); err != nil {
 			return nil, err

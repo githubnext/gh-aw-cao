@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -237,7 +237,7 @@
     "/api/admin/rebuild": {
       "post": {
         "operationId": "Operations_rebuild",
-        "description": "Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained.",
+        "description": "Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained.",
         "parameters": [
           {
             "name": "X-CSRF-Token",
@@ -666,7 +666,7 @@
     "/api/readiness": {
       "get": {
         "operationId": "Health_readiness",
-        "description": "Public readiness; Redis must be connected and Postgres must contain dashboard data. Hosted requests are limited per client address.",
+        "description": "Public readiness; the selected operational store must be connected, volatile scope recovery must be complete, and Postgres must contain dashboard data. Hosted requests are limited per client address.",
         "parameters": [],
         "responses": {
           "200": {
@@ -3029,7 +3029,11 @@
             ]
           },
           "redis": {
-            "$ref": "#/components/schemas/RedisState"
+            "$ref": "#/components/schemas/RedisState",
+            "description": "Deprecated compatibility alias for the selected operational dependency, not a claim that Redis is installed."
+          },
+          "operational": {
+            "$ref": "#/components/schemas/OperationalState"
           },
           "data": {
             "$ref": "#/components/schemas/DataState"
@@ -3206,6 +3210,89 @@
           "unsupportedType": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "OperationalCapabilities": {
+        "type": "object",
+        "required": [
+          "cache",
+          "requestLimits",
+          "sessions",
+          "revocations",
+          "githubQuota",
+          "collection",
+          "coordination",
+          "diagnostics"
+        ],
+        "properties": {
+          "cache": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "requestLimits": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "revocations": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "githubQuota": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "collection": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "coordination": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/OperationalCapability"
+          }
+        }
+      },
+      "OperationalCapability": {
+        "type": "object",
+        "required": [
+          "scope",
+          "persistence"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "unsupported",
+              "process",
+              "deployment"
+            ]
+          },
+          "persistence": {
+            "type": "string",
+            "enum": [
+              "volatile",
+              "restart"
+            ]
+          }
+        }
+      },
+      "OperationalState": {
+        "type": "object",
+        "required": [
+          "connected",
+          "recoveryReady",
+          "capabilities"
+        ],
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "recoveryReady": {
+            "type": "boolean",
+            "description": "False until a volatile collector has reconstructed authoritative GitHub scope."
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/OperationalCapabilities"
           }
         }
       },
@@ -3802,6 +3889,9 @@
           },
           "redis": {
             "$ref": "#/components/schemas/RedisState"
+          },
+          "operational": {
+            "$ref": "#/components/schemas/OperationalState"
           },
           "data": {
             "$ref": "#/components/schemas/DataState"

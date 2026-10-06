@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var enrollmentLog = logger.New("cao:collect:enrollment")
@@ -36,7 +36,7 @@ var ErrEnrollmentMutationBusy = errors.New("enrollment mutation is already in pr
 // covers. In this profile enrollment is ingestion scope; it is never authority
 // to act on a repository, and it is never derived from cao.json.
 type Enrollment struct {
-	Store *redisx.Store
+	Store operational.CollectionStore
 }
 
 // Coverage summarizes enrollment for status reporting.
@@ -172,14 +172,7 @@ func (e Enrollment) withMutationLock(
 }
 
 func (e Enrollment) renewMutationLock(ctx context.Context, token string) (bool, error) {
-	script := `if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end; return redis.call("PEXPIRE", KEYS[1], ARGV[2])`
-	value, err := e.Store.Client.Do(ctx, "EVAL", script, "1",
-		e.Store.Key("lock:"+enrollmentMutationLock), token,
-		strconv.FormatInt(enrollmentLockTTL.Milliseconds(), 10))
-	if err != nil {
-		return false, err
-	}
-	return fmt.Sprint(value) == "1", nil
+	return e.Store.RenewLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
 }
 
 // AddRepositories records repositories covered by one installation.
@@ -204,52 +197,24 @@ func (e Enrollment) addRepositories(ctx context.Context, installationID int64, r
 		}
 		normalized = append(normalized, name)
 	}
-	if _, err := e.Store.SetAdd(ctx, installationsKey, strconv.FormatInt(installationID, 10)); err != nil {
+	if _, err := e.Store.AddMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10)); err != nil {
 		return err
 	}
-	if _, err := e.Store.SetAdd(ctx, repositoriesKey, normalized...); err != nil {
+	if _, err := e.Store.AddMembers(ctx, repositoriesKey, normalized...); err != nil {
 		return err
 	}
-	if _, err := e.Store.SetAdd(ctx, installationRepositoriesKey(installationID), normalized...); err != nil {
+	if _, err := e.Store.AddMembers(ctx, installationRepositoriesKey(installationID), normalized...); err != nil {
 		return err
 	}
 	transferred := 0
 	for start := 0; start < len(normalized); start += 256 {
 		batch := normalized[start:min(start+256, len(normalized))]
-		reads := make([][]string, 0, len(batch))
-		for _, repository := range batch {
-			reads = append(reads, []string{"HGET", e.Store.Key(repositoryInstallations), repository})
-		}
-		previous, err := e.Store.Client.DoMany(ctx, reads)
+		count, err := e.Store.TransferOwners(ctx, repositoryInstallations,
+			"collect:installation:", ":repositories", installationID, batch)
 		if err != nil {
 			return err
 		}
-		if len(previous) != len(batch) {
-			return errors.New("incomplete enrollment ownership response")
-		}
-		// A repository that moved between installations must not stay in the
-		// previous installation's set: a later removal or deletion event for
-		// that installation would otherwise erase evidence the current
-		// installation still covers.
-		writes := make([][]string, 0, len(batch)*2)
-		for index, repository := range batch {
-			owner := ""
-			if previous[index] != nil {
-				value, ok := previous[index].(string)
-				if !ok {
-					return errors.New("invalid enrollment ownership response")
-				}
-				owner = value
-			}
-			if previousInstallation, ok := repositoryTransfer(owner, installationID); ok {
-				writes = append(writes, []string{"SREM", e.Store.Key(installationRepositoriesKey(previousInstallation)), repository})
-				transferred++
-			}
-			writes = append(writes, []string{"HSET", e.Store.Key(repositoryInstallations), repository, strconv.FormatInt(installationID, 10)})
-		}
-		if _, err := e.Store.Client.DoMany(ctx, writes); err != nil {
-			return err
-		}
+		transferred += count
 	}
 	enrollmentLog.Printf("enrolled repositories installation=%d count=%d transferred=%d",
 		installationID, len(normalized), transferred)
@@ -323,11 +288,11 @@ func (e Enrollment) removeRepositories(
 	for _, repository := range repositories {
 		name := repository
 		if installationID > 0 {
-			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(installationID), name); err != nil {
+			if err := e.Store.RemoveMembers(ctx, installationRepositoriesKey(installationID), name); err != nil {
 				return removed, err
 			}
 		}
-		owner, err := e.Store.HashGet(ctx, repositoryInstallations, name)
+		owner, err := e.Store.ReadAttribute(ctx, repositoryInstallations, name)
 		if err != nil {
 			return removed, err
 		}
@@ -335,10 +300,10 @@ func (e Enrollment) removeRepositories(
 			stale++
 			continue
 		}
-		if err := e.Store.SetRemove(ctx, repositoriesKey, name); err != nil {
+		if err := e.Store.RemoveMembers(ctx, repositoriesKey, name); err != nil {
 			return removed, err
 		}
-		if err := e.Store.HashDelete(ctx, repositoryInstallations, name); err != nil {
+		if err := e.Store.DeleteAttribute(ctx, repositoryInstallations, name); err != nil {
 			return removed, err
 		}
 		removed = append(removed, name)
@@ -391,7 +356,7 @@ func (e Enrollment) RemoveInstallationBefore(
 			return err
 		}
 		enrollmentLog.Printf("removed installation=%d repositories=%d", installationID, len(removed))
-		return e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
+		return e.Store.RemoveMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10))
 	})
 	return removed, err
 }
@@ -402,7 +367,7 @@ func (e Enrollment) RepositoriesForInstallation(ctx context.Context, installatio
 	var names []string
 	cursor := ""
 	for {
-		repositories, next, err := e.Store.SetScan(ctx, installationRepositoriesKey(installationID), cursor, 500)
+		repositories, next, err := e.Store.ScanMembers(ctx, installationRepositoriesKey(installationID), cursor, 500)
 		if err != nil {
 			return nil, err
 		}
@@ -423,7 +388,7 @@ func (e Enrollment) Enrolled(ctx context.Context, repository string) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	return e.Store.SetContains(ctx, repositoriesKey, name)
+	return e.Store.HasMember(ctx, repositoriesKey, name)
 }
 
 // InstallationFor reports which installation covers a repository.
@@ -432,7 +397,7 @@ func (e Enrollment) InstallationFor(ctx context.Context, repository string) (int
 	if err != nil {
 		return 0, err
 	}
-	value, err := e.Store.HashGet(ctx, repositoryInstallations, name)
+	value, err := e.Store.ReadAttribute(ctx, repositoryInstallations, name)
 	if err != nil || value == "" {
 		return 0, err
 	}
@@ -442,11 +407,11 @@ func (e Enrollment) InstallationFor(ctx context.Context, repository string) (int
 // Coverage reports enrollment size, published as source metadata so partial
 // coverage is visible rather than rendered as a complete zero.
 func (e Enrollment) Coverage(ctx context.Context) (Coverage, error) {
-	installations, err := e.Store.SetCount(ctx, installationsKey)
+	installations, err := e.Store.MemberCount(ctx, installationsKey)
 	if err != nil {
 		return Coverage{}, err
 	}
-	repositories, err := e.Store.SetCount(ctx, repositoriesKey)
+	repositories, err := e.Store.MemberCount(ctx, repositoriesKey)
 	if err != nil {
 		return Coverage{}, err
 	}
@@ -458,7 +423,7 @@ func (e Enrollment) Installations(ctx context.Context) ([]int64, error) {
 	cursor := ""
 	var identifiers []int64
 	for {
-		members, next, err := e.Store.SetScan(ctx, installationsKey, cursor, 500)
+		members, next, err := e.Store.ScanMembers(ctx, installationsKey, cursor, 500)
 		if err != nil {
 			return nil, err
 		}
@@ -479,7 +444,7 @@ func (e Enrollment) Installations(ctx context.Context) ([]int64, error) {
 // ScanRepositories walks enrolled repositories by cursor so cold start over a
 // very large enrollment set is resumable and never blocks Redis.
 func (e Enrollment) ScanRepositories(ctx context.Context, cursor string, count int) ([]string, string, error) {
-	return e.Store.SetScan(ctx, repositoriesKey, cursor, count)
+	return e.Store.ScanMembers(ctx, repositoriesKey, cursor, count)
 }
 
 func installationRepositoriesKey(installationID int64) string {

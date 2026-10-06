@@ -18,7 +18,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var backfillLog = logger.New("cao:collect:backfill")
@@ -74,7 +74,7 @@ type RunQuotaService interface {
 // empty canonical database with zero GitHub requests. GitHub enumeration then
 // repairs enrollment and admits durable repository and historical-run tasks.
 type Backfill struct {
-	Store         *redisx.Store
+	Store         operational.CollectionStore
 	Enrollment    Enrollment
 	Queue         Queue
 	Projector     Projector
@@ -84,9 +84,12 @@ type Backfill struct {
 	Quota         RunQuotaService
 	QuotaApp      string
 	// WindowDays is opt-in; zero preserves unbounded historical enumeration.
-	WindowDays int
-	runAfter   time.Time
-	runBefore  time.Time
+	WindowDays       int
+	ReconstructScope bool
+	ScopeLimit       int
+	ScopeReady       func(context.Context) error
+	runAfter         time.Time
+	runBefore        time.Time
 }
 
 // BackfillState is the resumable checkpoint, published for status reporting.
@@ -125,7 +128,7 @@ func (b Backfill) Run(ctx context.Context) (result BackfillState, err error) {
 	if err != nil {
 		return b.fail(ctx, state, err)
 	}
-	if populated {
+	if populated && !b.ReconstructScope {
 		result, err := b.replay(ctx)
 		if err != nil {
 			return b.fail(ctx, state, err)
@@ -138,9 +141,31 @@ func (b Backfill) Run(ctx context.Context) (result BackfillState, err error) {
 	if err := b.publish(ctx, state); err != nil {
 		return b.fail(ctx, state, err)
 	}
-	repositories, installations, enumerationFailures, err := b.enumerate(ctx)
+	var repositories []enrolledRepository
+	var installations, enumerationFailures int
+	if b.ReconstructScope {
+		if b.Enumerator == nil {
+			return b.fail(ctx, state, errors.New("scope reconstruction requires GitHub App enumeration"))
+		}
+		repositories, installations, enumerationFailures, err = b.reconstructScope(ctx)
+	} else {
+		repositories, installations, enumerationFailures, err = b.enumerate(ctx)
+	}
 	if err != nil {
 		return b.fail(ctx, state, err)
+	}
+	if populated && b.ReconstructScope {
+		result, replayErr := b.replay(ctx)
+		if replayErr != nil {
+			return b.fail(ctx, state, replayErr)
+		}
+		state.LakeReplayed = true
+		state.Revision = result.Revision
+	}
+	if b.ScopeReady != nil {
+		if err := b.ScopeReady(ctx); err != nil {
+			return b.fail(ctx, state, err)
+		}
 	}
 	state.Installations = installations
 	state.Repositories = len(repositories)
@@ -354,7 +379,7 @@ func (b Backfill) enqueueHistoricalRuns(
 			if err := ctx.Err(); err != nil {
 				return queued, failures, err
 			}
-			cursorValue, err := b.Store.HashGet(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
+			cursorValue, err := b.Store.ReadAttribute(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
 			if err != nil {
 				return queued, failures, err
 			}
@@ -472,7 +497,7 @@ func (b Backfill) enqueueHistoricalRuns(
 			if err != nil {
 				return queued, failures, err
 			}
-			if err := b.Store.HashSet(
+			if err := b.Store.WriteAttribute(
 				ctx, runBackfillCursorKey, runBackfillCursorField(page.repository), string(payload),
 			); err != nil {
 				return queued, failures, err

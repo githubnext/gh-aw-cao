@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 const DefaultMaxMemoryBytes int64 = 200_000_000
@@ -64,11 +66,7 @@ if used + outgoing_reserve(length) > budget then return false end
 return redis.call("GET", KEYS[1])
 `
 
-type MemoryStats struct {
-	UsedBytes   int64
-	BudgetBytes int64
-	Evicted     int64
-}
+type MemoryStats = operational.MemoryStats
 
 func (s *Store) SetMaxMemoryBytes(maxBytes int64) error {
 	if maxBytes <= 0 {

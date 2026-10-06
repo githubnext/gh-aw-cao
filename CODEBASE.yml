@@ -111,7 +111,7 @@ components:
     responsibility: resolve registry refs and gh-aw package manifests during Activity precomputation into safe normalized marketplace package records
   marketplace_hosted_resolver:
     path: server/
-    responsibility: resolve the same registry contract at runtime and cache safe normalized results in Redis
+    responsibility: resolve the same registry contract at runtime and cache safe normalized results through the operational cache contract
   marketplace_ui:
     path: dashboard/site/dashboard-fragments/operations.json
     responsibility: render declarative package list and detail views with copy-only canonical CAO add commands
@@ -145,12 +145,18 @@ components:
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution
+  operational_contracts:
+    path: server/internal/operational/
+    responsibility: define typed narrow cache, OAuth, limiter, quota, collection, coordination and diagnostic services with immutable per-feature scope and restart-persistence capabilities, mandatory atomicity and CAS, central fail-closed requirement validation, and application-owned maintenance lifecycle
+  memory_operational_store:
+    path: server/internal/operational/memory/
+    responsibility: implement bounded process-scoped volatile operational services shared by OAuth, HTTP admission, quota, collection, projection and backfill in one owning process, with restart-invalidated sessions and login state and explicit incomplete recovery
   dashboard_query_result_cache:
     path: server/internal/redisx/query_cache.go and server/internal/server/query_cache.go
-    responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes, with atomic expiry, allocator-reported memory limits and oldest-first eviction
+    responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes through the operational contract, with atomic expiry, Redis allocator or memory accounting limits and bounded eviction
   dashboard_https_server:
     path: server/
-    responsibility: independently resolve compiled app-target and declarative Redis-provider modules from non-secret cao.json, ingest deployed artifacts into Postgres, use Redis for operational state and bounded result caches, execute hosted Dashboard Language plans through the PostgreSQL SQL engine with registered runtime sources, and serve bounded query results
+    responsibility: independently resolve compiled app-target and operational-backend modules from non-secret cao.json, retain Redis as the default provider-resolved adapter or explicitly select bounded single-process volatile memory, ingest deployed artifacts into Postgres, execute hosted Dashboard Language plans through the PostgreSQL SQL engine with registered runtime sources, and serve bounded query results
   dashboard_http_contract:
     path: server/spec/
     responsibility: specify public HTTP/SSE and fresh Postgres storage contracts in TypeSpec; generate checked OpenAPI, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; enforce query-field coverage and column minimization
@@ -243,9 +249,11 @@ dependencies:
   - dashboard_publisher -> dashboard_https_server
   - dashboard_https_server -> postgres_entity_store
   - postgres_entity_store -> dashboard_https_server
-  - dashboard_https_server -> redis_operational_store
+  - dashboard_https_server -> operational_contracts
+  - redis_operational_store -> operational_contracts
+  - memory_operational_store -> operational_contracts
   - dashboard_https_server -> dashboard_query_result_cache
-  - dashboard_query_result_cache -> redis_operational_store
+  - dashboard_query_result_cache -> operational_contracts
   - dashboard_https_server -> dashboard_language_queries
   - dashboard_https_server -> dashboard_canonical_api
   - dashboard_https_server -> dashboard_http_contract
@@ -258,7 +266,7 @@ dependencies:
   - dashboard_github_auth -> dashboard_https_server
   - dashboard_webhook_reconciliation -> dashboard_rebuild_control
   - dashboard_rebuild_control -> postgres_entity_store
-  - dashboard_rebuild_control -> redis_operational_store
+  - dashboard_rebuild_control -> operational_contracts
   - sqlite_projection -> computations
   - indexeddb_projection -> computations
   - computations -> computation_reference_runtime
@@ -325,6 +333,14 @@ boundaries:
     must_not_depend_on:
       - dashboard_entity_storage
       - dashboard_query_execution
+  - subject: memory_operational_store
+    may_depend_on:
+      - operational_contracts
+      - operational_state_storage
+    must_not_depend_on:
+      - dashboard_entity_storage
+      - dashboard_query_execution
+      - postgres_entity_store
 
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
@@ -349,8 +365,12 @@ invariants:
   - "Redis is operational-only: it stores sessions, rate limits, queues, deduplication, coordination, quota state, revocation retries, and bounded caches; it MUST NOT store dashboard entity rows, canonical source documents, query indexes, persistent query projections, or execute dashboard data queries."
   - "The hosted server MUST NOT fall back from Postgres to Redis for dashboard data; Postgres unavailability makes dashboard data unavailable even when Redis is healthy."
   - "Hosted Redis stores operational caches, queues, and sessions; it MUST NOT store or query dashboard entity sources."
-  - "Hosted query-result cache identities MUST include definitions, parameters, pagination, schema and current authorization class, not ingestion revisions; entries retain their original evidence revision and evaluation time for a fixed five-minute lifetime without ingestion invalidation or renewal on data egress, and atomic expiry and oldest-first eviction MUST bound result/index memory and entry count without changing global Redis eviction policy."
-  - "All server profiles MUST apply a configurable Redis cache-pressure budget (default 200,000,000 bytes, capped at 80% of provider-reported maxmemory). Scripted memory introspection gates atomic admission and outgoing-allocation reservations; unsupported providers MUST explicitly disable disposable-cache admission and serving while retaining protected storage. Provider-compatible startup/30-second maintenance MUST use one namespace cursor pass, fresh final pressure evidence, and only current-namespace disposable-cache reclamation. Preserve sessions, queues, quota state, revocation retries and other namespaces; report unattainable protected-state pressure; never change Redis configuration or imply a cluster-wide, process-RSS or persistence-disk cap."
+  - "Hosted query-result cache identities MUST include definitions, parameters, pagination, schema and current authorization class, not ingestion revisions; entries retain their original evidence revision and evaluation time for a fixed five-minute lifetime without ingestion invalidation or renewal on data egress, and atomic expiry and oldest-first eviction MUST bound result/index memory and entry count; the Redis adapter MUST NOT change global Redis eviction policy."
+  - "All Redis server profiles MUST apply a configurable Redis cache-pressure budget (default 200,000,000 bytes, capped at 80% of provider-reported maxmemory). Scripted memory introspection gates atomic admission and outgoing-allocation reservations; unsupported providers MUST explicitly disable disposable-cache admission and serving while retaining protected storage. Provider-compatible startup/30-second maintenance MUST use one namespace cursor pass, fresh final pressure evidence, and only current-namespace disposable-cache reclamation. Preserve sessions, queues, quota state, revocation retries and other namespaces; report unattainable protected-state pressure; never change Redis configuration or imply a cluster-wide, process-RSS or persistence-disk cap."
+  - "Operational consumers MUST receive narrow typed service contracts, never raw commands, physical keys, scripts, concrete adapter assertions, or backend-name branches. Capability snapshots describe per-feature process/deployment scope and volatile/restart persistence; atomicity, CAS, ownership and isolation are mandatory. Composition MUST reject missing or typed-nil enabled services and stop owned work before closing storage."
+  - "Redis remains the default operational adapter. Memory MUST require OAuth, HTTPS, explicit single-process and volatile-state acknowledgements, and one instance shared by HTTP, quota, workers, projector and backfill; it MUST reject platform listeners, admission-only topology, separate worker/backfill processes and multiple replicas. PostgreSQL MUST NOT become an operational adapter; there is no disk operational journal, automatic failover or dual write."
+  - "Memory budgets MUST bound protected accounting bytes/entries separately from disposable caches without claiming RSS equivalence. Cache pressure MUST NOT evict accepted work; active limiter buckets MUST NOT be evicted to reset limits, and session admission MUST preserve capacity for atomic revocation staging."
+  - "Memory restart MUST invalidate CAO sessions and pending login state but does not expire or revoke GitHub tokens; pending revocations and acknowledged unfinished work may be lost by explicit acceptance. Complete fresh GitHub scope enumeration MUST gate admission/workers and serialize with withdrawals; partial scope MUST NOT justify erasure or ignored out-of-scope responses. Recovery reuses retained evidence and existing projection/backfill, requires fresh quota observations, and reports incomplete history/capacity rather than successful truncation. The protected rebuild action reruns backfill even with a populated lake."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
@@ -364,11 +384,11 @@ invariants:
   - "Coolify production delivery MUST use a repository-scoped Coolify GitHub App and automatic deployments from protected main; build server/Dockerfile through server/coolify/compose.yml from the selected source commit; embed SOURCE_COMMIT; bake the base and Coolify policy profiles into the image; package a deterministic control-plane inventory from that exact source plus only the shared runtime policy resolver; run the public dashboard in admission-only mode without the collection private key; run unexposed collector and idempotent backfill roles with a checksum-verified policy-pinned gh-aw toolchain and shared persistent evidence volume; resolve reviewed deployment policy, overlay exact Redis enrollment, and use a short-lived control-repository installation token for live inventory enrichment; fail the first canonical ingestion without valid campaign inventory and retain only a previously valid inventory on later transient refresh failure; leave CAO_SOURCE_DIRECTORY unset in the collection profile; retain one authoritative activity artifact as an external read-only recovery volume for snapshot-profile rollback; require no GitHub deployment workflow, Coolify API token, public Coolify API endpoint, runner tailnet access, registry credentials, or mutable registry tag; and treat package-workflow scans, hardening checks, SBOMs, and attestations as guarantees for published packages rather than admission evidence for the source-built production image."
   - "Hosted server telemetry MUST use standard OTEL runtime configuration; exporter endpoints and headers MUST remain deployment secrets and MUST NOT enter policy, browser state, or logs. When tracing is active, API error bodies, response headers, browser request IDs, and bounded server error logs MUST carry matching W3C trace identifiers without exposing internal exceptions, query payloads, source rows, or storage credentials."
   - "Observability backends are diagnostic infrastructure only and MUST NOT become dashboard data stores, policy authorities, rollout authorities, or sources of operational evidence."
-  - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
+  - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials in the selected operational pending-revocation queue for bounded maintenance retries through credential expiry; Redis retries survive restart, while the explicitly acknowledged memory exception is process-lifetime only."
   - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
-  - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or durably queue its newly issued credentials and MUST NOT restore session authority."
-  - "GitHub webhook deliveries MUST be signature-verified and deduplicated before reconciliation; collection delivery deduplication and durable task admission MUST commit atomically. Verified issue lifecycle deliveries for enrolled repositories enqueue collection rather than directly mutating stored issue entities."
-  - "Server collection MUST remain at-least-once: retry, deferral, blocked requeue, malformed-entry, and dead-letter transitions MUST append durable replacement state before ACK in one Redis operation; worker crashes and ambiguous ACK failures MAY repeat safe collection."
+  - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or stage its newly issued credentials under the selected persistence guarantee and MUST NOT restore session authority."
+  - "GitHub webhook deliveries MUST be signature-verified and deduplicated before reconciliation; collection delivery deduplication and task admission MUST commit atomically under the selected persistence guarantee. Verified issue lifecycle deliveries for enrolled repositories enqueue collection rather than directly mutating stored issue entities."
+  - "Redis server collection MUST remain at-least-once across restart; memory applies only within one process lifetime: retry, deferral, blocked requeue, malformed-entry, and dead-letter transitions MUST append durable replacement state before ACK in one operational transition; worker crashes and ambiguous ACK failures MAY repeat safe collection."
   - "Delivery recovery MUST persist pagination progress separately from its processed-delivery boundary, resume bounded scans before advancing that boundary, and MUST NOT advance past a failed redelivery request."
   - "Scope withdrawal MUST serialize with enrollment changes and durably enqueue erasure for the exact membership snapshot before removing enrollment; workers MUST serialize erasure with collection under repository leases and recheck current ownership before collecting or erasing."
   - "Workers MUST persist future retries outside the ready stream, promote them only when due, count scheduled work toward queue capacity/depth, preserve leased work on shutdown, and never block ready work while waiting."
@@ -378,7 +398,7 @@ invariants:
   - "Server collection scope MUST derive from GitHub App installations; a delivery for an unenrolled repository MUST be dropped rather than collected, and GitHub budget MUST be reserved per installation before each collection."
   - "The local ingestion simulator MUST use the production webhook admission and collection subprocess path, strict seeded JSON scenarios, synthetic repositories, bounded event/repository/concurrency limits, and MUST NOT be treated as a complete GitHub API emulator or production-capacity guarantee. Enrolled repository lifecycle events MUST queue independently and retain archived/deleted evidence until retention or explicit scope withdrawal."
   - "Server diagnostics MUST be read-only, use stable check identifiers, produce equivalent human-readable and versioned structured reports, redact secrets, bound each dependency check, and require explicit deep mode before reading every active source."
-  - "Hosted rebuilds MUST use a distributed lock, validate input, and atomically replace current Postgres sources and state; a failed replacement MUST leave the previously committed data intact."
+  - "Hosted rebuilds MUST use an owner-checked lock in the selected coordination scope, validate input, and atomically replace current Postgres sources and state; a failed replacement MUST leave the previously committed data intact."
   - "An empty Postgres store is not ready and MUST report that ingestion is required."
   - "Browsers and external clients MUST NOT receive Redis or Postgres endpoints, credentials, keys, or storage-specific representations."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
@@ -401,8 +421,8 @@ invariants:
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
   - "Policy and workflow changes MUST be committed together."
   - "Upstash mode MUST run exactly one application replica, serialize every Redis operation through one TCP session, fail closed after transport loss, isolate every process start in a fresh namespace except for its stable encrypted pending-revocation queue, and use artifact ingestion rather than server-side collection."
-  - "Every server host integration MUST select a validated provider-agnostic capability profile covering authentication, listener ownership, HTTPS and proxy trust, Redis session semantics, namespace isolation, replica constraints, and collection support; startup MUST reject a configuration or Redis client that violates the selected profile."
-  - "control-plane.web.host MUST compose one app server target module with one declarative Redis provider module; it MAY name environment variables for generic Redis and TLS inputs but MUST NOT contain secrets or add provider-specific request handling."
+  - "Every server host integration MUST select a validated provider-agnostic capability profile covering authentication, listener ownership, HTTPS and proxy trust, operational scope and persistence, namespace isolation, replica constraints, and collection support; startup MUST reject incompatible services. Redis session/client details remain construction-time provider constraints."
+  - "control-plane.web.host MUST compose one app server target with a selected operational backend (Redis by default); Redis selection MUST resolve one declarative provider module; it MAY name environment variables for generic Redis and TLS inputs but MUST NOT contain secrets or add provider-specific request handling."
   - "Marketplace registry order defines precedence; the official registry is removable configuration rather than hard-coded resolver behavior."
   - "Marketplace registry authentication MUST reference secrets, remain registry-scoped in trusted Activity or hosted resolvers, and MUST NOT enter manifests, canonical package records, IndexedDB, query payloads, or UI state."
   - "Static and hosted marketplace resolvers MUST produce the same normalized package contract; failure of one registry MUST NOT make other registries unavailable."

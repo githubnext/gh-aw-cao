@@ -9,6 +9,17 @@ The Go dashboard server has three security profiles:
 - the host-neutral `serve-hosted` profile, with the same GitHub identity boundary
   behind an explicitly trusted HTTPS proxy and any compatible managed Redis.
 
+The hosted single-process memory alternative retains every OAuth, HTTPS,
+organization/team, administrator, CSRF, proxy, signature, and quota boundary.
+It requires explicit single-process and volatile-state acknowledgements and
+cannot run as an admission-only, platform-scaled, or multi-process deployment.
+Its sessions and pending OAuth login state become invalid on restart. This
+does **not** expire or revoke GitHub-issued tokens. Pending encrypted revocation
+retries and acknowledged unfinished webhook work may be lost; complete fresh
+GitHub scope reconstruction gates collection admission after restart. Memory
+limits fail closed and do not evict active limiter buckets or protected work.
+The normative exception is [server operational storage](../specs/server-operational-storage.md).
+
 ## Supported security boundary
 
 The supported deployment is:
@@ -110,8 +121,9 @@ may be loaded without the capability.
   are host-scoped rather than port-scoped and could leak to another local HTTPS
   service.
 - Token comparisons use constant-time comparison.
-- The unauthenticated health response contains only Redis connectivity and
-  whether PostgreSQL has ready dashboard data. Counts and revision details
+- The unauthenticated health response contains only operational connectivity,
+  per-feature guarantees, recovery readiness, and whether PostgreSQL has ready dashboard data.
+  Counts and revision details
   require the capability cookie.
 
 Treat the capability URL and browser session as credentials. Do not paste the URL into
@@ -311,7 +323,8 @@ revokes and deletes the current server session before redirecting to GitHub's
 account chooser; CAO never combines authority or tokens from multiple accounts
 in one browser session. If GitHub revocation is unavailable, logout and account
 switching atomically remove the active session, clear its cookies, and retain
-the encrypted credentials only in a Redis-backed pending-revocation queue.
+the encrypted credentials only in the selected operational pending-revocation
+queue. Redis retries survive restart; opted-in memory retries do not.
 Subsequent OAuth entry retries queued revocation without restoring session
 authority.
 
@@ -354,7 +367,8 @@ connectivity before serving. Request cancellation is propagated through
 `request.Context()` to Redis calls.
 
 Health checks remain at `GET /api/v1/health`. Unauthenticated health responses
-only report Redis connectivity and data availability. Authenticated sessions
+report operational connectivity and capabilities, recovery readiness, and data availability.
+Authenticated sessions
 also receive revision and count metadata.
 
 Server-Sent Events at `GET /api/v1/events` are best-effort in Azure Functions.

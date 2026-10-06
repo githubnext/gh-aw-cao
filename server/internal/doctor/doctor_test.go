@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
 
 type fakeClient struct {
@@ -41,11 +42,13 @@ var credentialedRedisURL = "rediss://operator:" + "super-secret" + "@redis.examp
 var expectedRedactedRedisURL = "rediss://operator:" + "***" + "@redis.example:6380/0"
 
 func testDoctor(client fakeClient) Doctor {
+	store := redisx.NewStore(client, "cao:test")
 	return Doctor{
-		Store:     redisx.NewStore(client, "cao:test"),
-		RedisURL:  credentialedRedisURL,
-		Namespace: "cao:test",
-		Version:   "test",
+		Store:      store,
+		RedisStore: server.NewRedisProviderDiagnostics(store),
+		RedisURL:   credentialedRedisURL,
+		Namespace:  "cao:test",
+		Version:    "test",
 		Now: func() time.Time {
 			return time.Date(2026, time.September, 25, 16, 0, 0, 0, time.UTC)
 		},
@@ -105,6 +108,19 @@ func TestRedisMemoryWarnsWhenEvictionCanDiscardOperationalState(t *testing.T) {
 	}
 	if !strings.Contains(check.Summary, "discarded") {
 		t.Fatalf("summary does not explain the data-loss risk: %s", check.Summary)
+	}
+}
+
+func TestRedisProviderDiagnosticsRejectUnsupportedProbes(t *testing.T) {
+	d := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+		t.Fatalf("unsupported diagnostic issued raw commands: %v", arguments)
+		return nil, nil
+	}})
+	if _, err := d.RedisStore.Info(t.Context(), "all"); err == nil {
+		t.Fatal("unbounded provider info section accepted")
+	}
+	if _, _, _, err := d.RedisStore.NamespaceStats(t.Context(), "cao:test", 0); err == nil {
+		t.Fatal("unbounded provider namespace scan accepted")
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
@@ -66,6 +67,7 @@ func syntheticGitHub(t *testing.T, scenario simulator.Scenario) (*githubapp.Clie
 }
 
 type syntheticBackfill struct {
+	ops      operational.Store
 	backfill collect.Backfill
 	data     *postgresx.Store
 	api      *simulator.API
@@ -97,6 +99,7 @@ func newSyntheticBackfill(t *testing.T, ctx context.Context, scenario simulator.
 	}
 	enrollment := collect.Enrollment{Store: store}
 	return syntheticBackfill{
+		ops: store,
 		backfill: collect.Backfill{
 			Store: store,
 			Lake:  lake, Enrollment: enrollment, Queue: collect.Queue{Store: store, MaxLength: 5_000_000},
@@ -107,4 +110,9 @@ func newSyntheticBackfill(t *testing.T, ctx context.Context, scenario simulator.
 		},
 		data: data, api: api, proxy: proxy, restart: restart, quota: quota,
 	}
+}
+
+func taskQueueLength(ctx context.Context, store operational.CollectionStore, queue string) (int64, error) {
+	stats, err := store.QueueStats(ctx, queue, "")
+	return stats.Length, err
 }

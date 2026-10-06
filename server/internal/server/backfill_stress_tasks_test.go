@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 )
 
@@ -15,12 +16,12 @@ func validateSyntheticRunTasks(t *testing.T, ctx context.Context, backfill colle
 	expected := scenario.Repositories * horizon * scenario.History.RunsPerDay
 	seen := make([]byte, (expected+7)/8)
 	const stream, group = "collect:run-tasks", "stress-audit"
-	if err := backfill.Store.StreamEnsureGroup(ctx, stream, group); err != nil {
+	if err := backfill.Store.EnsureQueue(ctx, stream, group); err != nil {
 		t.Fatal(err)
 	}
 	total := 0
 	for {
-		messages, err := backfill.Store.StreamRead(ctx, stream, group, "audit", 1000, 0)
+		messages, err := backfill.Store.ReadTasks(ctx, operational.QueueRead{Queue: stream, Group: group, Consumer: "audit", Count: 1000})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +30,7 @@ func validateSyntheticRunTasks(t *testing.T, ctx context.Context, backfill colle
 		}
 		for _, message := range messages {
 			var task collect.RunTask
-			if err := json.Unmarshal([]byte(message.Fields["task"]), &task); err != nil {
+			if err := json.Unmarshal([]byte(message.Fields.Task), &task); err != nil {
 				t.Fatal(err)
 			}
 			if task.RunID < 1 {

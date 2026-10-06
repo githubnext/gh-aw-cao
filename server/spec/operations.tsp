@@ -103,7 +103,7 @@ namespace Operations {
   ): { @statusCode code: 202; @body body: WebhookAcknowledgement } |
     BadRequest | Unauthorized | Conflict | Unavailable;
 
-  /** Start a distributed, asynchronous rebuild; local bearer or hosted admin session and CSRF on hosted mutations. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained. */
+  /** Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained. */
   @useAuth(DashboardAuth)
   @route("/api/admin/rebuild")
   @post op rebuild(@header("X-CSRF-Token") csrfToken?: string):

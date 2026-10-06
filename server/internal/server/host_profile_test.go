@@ -90,27 +90,6 @@ func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 		}(),
 		func() HostProfile {
 			value := base
-			value.RequiresRedis = false
-			return value
-		}(),
-		func() HostProfile {
-			value := base
-			value.IsolateProcessNamespace = true
-			return value
-		}(),
-		func() HostProfile {
-			value := base
-			value.SingleReplica = true
-			return value
-		}(),
-		func() HostProfile {
-			value := base
-			value.RedisSession = HostRedisSerialized
-			value.IsolateProcessNamespace = true
-			return value
-		}(),
-		func() HostProfile {
-			value := base
 			value.Authentication = HostAuthenticationBearer
 			value.Listener = HostListenerPlatform
 			return value
@@ -145,8 +124,8 @@ func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 func TestHostProfileDefaultsOnlyWhenCompletelyUnset(t *testing.T) {
 	config := Config{}
 	if err := validateHostProfile(nil, &config); err == nil ||
-		!strings.Contains(err.Error(), "requires Redis") {
-		t.Fatalf("default local profile did not require Redis: %v", err)
+		!strings.Contains(err.Error(), "requires operational storage") {
+		t.Fatalf("default local profile did not require operational storage: %v", err)
 	}
 
 	config.HostProfile = HostProfile{Authentication: HostAuthenticationBearer}
@@ -191,9 +170,6 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 		profile         HostProfile
 		config          Config
 		storeConfigured bool
-		reportsSession  bool
-		singleSession   bool
-		processIsolated bool
 		want            hostProfileRejectionReason
 	}{
 		{
@@ -202,20 +178,18 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 			want:    hostProfileRejectionReasonInvalidProfile,
 		},
 		{
-			name:    "missing redis when required",
+			name:    "missing operational storage",
 			profile: valid,
-			want:    hostProfileRejectionReasonMissingRedis,
+			want:    hostProfileRejectionReasonMissingStore,
 		},
 		{
-			name:            "redis session mismatch",
+			name:            "Redis session checks remain in composition",
 			profile:         valid,
 			storeConfigured: true,
-			reportsSession:  true,
-			singleSession:   true,
-			want:            hostProfileRejectionReasonRedisSessionMismatch,
+			want:            hostProfileRejectionReasonNone,
 		},
 		{
-			name: "namespace isolation mismatch",
+			name: "Redis namespace checks remain in composition",
 			profile: func() HostProfile {
 				p := valid
 				p.RedisSession = HostRedisSerialized
@@ -224,25 +198,20 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 				return p
 			}(),
 			storeConfigured: true,
-			reportsSession:  true,
-			singleSession:   true,
-			processIsolated: false,
-			want:            hostProfileRejectionReasonNamespaceMismatch,
+			config:          Config{SingleReplicaConfirmed: true},
+			want:            hostProfileRejectionReasonNone,
 		},
 		{
 			name:            "unsupported collection",
 			profile:         func() HostProfile { p := valid; p.SupportsCollection = false; return p }(),
 			config:          Config{Collector: &CollectorConfig{}},
 			storeConfigured: true,
-			reportsSession:  true,
 			want:            hostProfileRejectionReasonUnsupportedCollector,
 		},
 		{
 			name:            "unconfirmed single replica",
 			profile:         func() HostProfile { p := valid; p.RedisSession = HostRedisSerialized; p.SingleReplica = true; return p }(),
 			storeConfigured: true,
-			reportsSession:  true,
-			singleSession:   true,
 			want:            hostProfileRejectionReasonUnconfirmedReplica,
 		},
 		{
@@ -250,7 +219,6 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 			profile:         localHostProfile(),
 			config:          Config{GitHubOAuth: &GitHubOAuthConfig{}},
 			storeConfigured: true,
-			reportsSession:  true,
 			want:            hostProfileRejectionReasonUnsupportedOAuth,
 		},
 		{
@@ -258,7 +226,6 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 			profile:         azureFunctionsHostProfile(),
 			config:          Config{Listen: "127.0.0.1:8080"},
 			storeConfigured: true,
-			reportsSession:  true,
 			want:            hostProfileRejectionReasonDelegatedListener,
 		},
 		{
@@ -266,21 +233,19 @@ func TestClassifyHostProfileRejectionOrdersChecksAndReportsReason(t *testing.T) 
 			profile:         func() HostProfile { p := valid; p.Listener = HostListenerExternal; return p }(),
 			config:          Config{CertFile: "server.pem"},
 			storeConfigured: true,
-			reportsSession:  true,
 			want:            hostProfileRejectionReasonDelegatedListener,
 		},
 		{
 			name:            "accepted configuration reports none",
 			profile:         valid,
 			storeConfigured: true,
-			reportsSession:  true,
 			want:            hostProfileRejectionReasonNone,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got := classifyHostProfileRejection(
-				test.profile, test.config, test.storeConfigured, test.reportsSession, test.singleSession, test.processIsolated,
+				test.profile, test.config, test.storeConfigured,
 			)
 			if got != test.want {
 				t.Fatalf("classifyHostProfileRejection() = %q, want %q", got, test.want)
@@ -296,11 +261,11 @@ func TestUpstashHostProfileRequiresSerializedClientAndArtifactIngestion(t *testi
 	}
 	config := Config{HostProfile: upstashHostProfile()}
 	if err := validateHostProfile(nil, &config); err == nil ||
-		!strings.Contains(err.Error(), "requires Redis") {
+		!strings.Contains(err.Error(), "requires operational storage") {
 		t.Fatalf("accepted missing Redis: %v", err)
 	}
 	config.SingleReplicaConfirmed = true
-	if err := validateHostProfile(redisx.NewStore(pooled, "test"), &config); err == nil ||
+	if err := validateRedisStoreComposition(redisx.NewStore(pooled, "test"), config.HostProfile); err == nil ||
 		!strings.Contains(err.Error(), "serialized Redis client") {
 		t.Fatalf("accepted pooled client: %v", err)
 	}
@@ -313,11 +278,11 @@ func TestUpstashHostProfileRequiresSerializedClientAndArtifactIngestion(t *testi
 		t.Fatal(err)
 	}
 	standard := Config{HostProfile: hostedHostProfile()}
-	if err := validateHostProfile(redisx.NewStore(serialized, "test"), &standard); err == nil ||
+	if err := validateRedisStoreComposition(redisx.NewStore(serialized, "test"), standard.HostProfile); err == nil ||
 		!strings.Contains(err.Error(), "pooled Redis client") {
 		t.Fatalf("standard profile accepted serialized client: %v", err)
 	}
-	if err := validateHostProfile(redisx.NewStore(serialized, "test"), &config); err == nil ||
+	if err := validateRedisStoreComposition(redisx.NewStore(serialized, "test"), config.HostProfile); err == nil ||
 		!strings.Contains(err.Error(), "namespace isolation") {
 		t.Fatalf("accepted non-isolated store: %v", err)
 	}

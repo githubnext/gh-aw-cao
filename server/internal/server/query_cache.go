@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -104,8 +104,8 @@ func (a *App) loadCachedQuery(ctx context.Context, key string, config QueryCache
 	defer span.End()
 	started := time.Now()
 	var data []byte
-	var stats redisx.QueryCacheStats
-	var observedStats *redisx.QueryCacheStats
+	var stats operational.QueryCacheStats
+	var observedStats *operational.QueryCacheStats
 	defer func() {
 		outcome := "miss"
 		if err != nil {
@@ -180,7 +180,7 @@ func (a *App) storeCachedQuery(ctx context.Context, key string, result queryResp
 	started := time.Now()
 	outcome := "result-size"
 	var payloadBytes int
-	var observedStats *redisx.QueryCacheStats
+	var observedStats *operational.QueryCacheStats
 	defer func() {
 		if err != nil {
 			outcome = "error"

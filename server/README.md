@@ -1,4 +1,4 @@
-# Go dashboard server with Postgres and Redis
+# Go dashboard server with Postgres and operational storage
 
 The [TypeSpec HTTP contract](spec/README.md) is the source for generated
 OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
@@ -9,11 +9,68 @@ same compacted data published with the deployed dashboard, stores current
 native entity rows in PostgreSQL and executes hosted Dashboard Language plans
 as SQL through the bounded PostgreSQL query engine,
 and serves the built dashboard either over loopback HTTP or through an
-authenticated host-neutral service profile. Redis handles operational caches,
-queues, and sessions; it does not hold or query dashboard entities.
+authenticated host-neutral service profile. Redis is the default operational
+adapter; an explicitly acknowledged single-process memory adapter supports the
+same OAuth, signed-webhook, collection, quota, and backfill services with volatile
+state. Neither adapter holds or queries dashboard entities.
 
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
+
+## Single-process memory operational storage
+
+Redis remains the default. To select memory in reviewed
+`control-plane.web.host` configuration, replace legacy `host.redis` with:
+
+```json
+{
+  "target": { "module": "container", "replicas": 1 },
+  "operational-store": {
+    "backend": "memory",
+    "single-process": true,
+    "allow-volatile": true
+  }
+}
+```
+
+Use `serve-hosted` with the ordinary mandatory OAuth, HTTPS/proxy, organization
+or team, administrator, and webhook-secret configuration. Keep admission,
+collection workers, projection, and backfill in that process. Enable the
+collection profile with `CAO_COLLECT_APP_ID` and its existing App/evidence
+configuration, and set `CAO_COLLECT_WORKERS` to a positive count. Do not use
+`CAO_COLLECT_ADMIT_ONLY`, separate `collect`/`backfill` roles, an externally or
+platform-owned listener, or multiple replicas. PostgreSQL is still required for
+canonical dashboard data. Memory does not need `CAO_REDIS_URL`. Do not specify
+both legacy `host.redis` and `host.operational-store`.
+
+All operational state is lost on restart, including sessions, pending login,
+revocation retries, limits, enrollment, delivery markers, unfinished accepted
+tasks, and backfill checkpoints. Old cookies and OAuth callbacks are rejected;
+GitHub tokens themselves are **not** expired or revoked. Signed webhooks receive
+retryable errors until complete fresh scope reconstruction succeeds. Workers
+then reuse retained evidence and the normal collection/backfill pipeline.
+The existing protected `POST /api/admin/rebuild` reruns scope and backfill even
+with a populated lake. Recovery cannot recover expired artifacts or every
+historical delivery, and capacity exhaustion is reported as incomplete work.
+
+`CAO_OPERATIONAL_CACHE_MAX_BYTES`, `CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES`, and
+`CAO_OPERATIONAL_CACHE_MAX_ENTRIES` bound disposable cache accounting.
+`CAO_OPERATIONAL_PROTECTED_MAX_BYTES` and `CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES`
+bound protected state; `CAO_OPERATIONAL_TASK_MAX_BYTES`,
+`CAO_OPERATIONAL_MAX_QUEUED_TASKS`, and
+`CAO_OPERATIONAL_MAX_RATE_LIMIT_SUBJECTS` apply narrower limits. Values must be
+positive and internally consistent. Defaults are 32 MiB/1,024 cache entries,
+128 MiB/200,000 protected entries, 32 MiB/10,000 queued tasks, and 10,000 limiter
+subjects. These are accounting budgets, not RSS. Cache eviction never evicts
+protected work or active limiter buckets. `CAO_OPERATIONAL_NAMESPACE` names
+operational diagnostics independently of the existing `REDIS_NAMESPACE`
+PostgreSQL identity.
+
+Public health/readiness includes `operational.capabilities` and
+`operational.recoveryReady`; legacy `redis.connected` is a deprecated alias for
+the selected operational dependency. A standalone `doctor` cannot inspect a
+different process's live memory state and reports that limitation rather than
+constructing an empty store. See the [normative operational contract](../specs/server-operational-storage.md).
 
 ## Offline query validation
 
@@ -49,7 +106,7 @@ These synthetic measurements do not establish production traffic coverage.
 
 ### Redis memory budget
 
-Every server profile has a whole-node Redis cache-pressure budget of
+Every Redis server profile has a whole-node Redis cache-pressure budget of
 **200,000,000 bytes** by default. Override it with `CAO_REDIS_MAX_BYTES` (a
 positive byte count), or `server.Config.RedisMaxBytes` when embedding. Startup
 and 30-second maintenance reclaim only disposable caches. Supported providers

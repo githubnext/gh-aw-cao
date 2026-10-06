@@ -267,8 +267,8 @@ func TestOAuthQueuesCredentialsWhenCallbackAuthorizationFails(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("denied callback returned %d", response.Code)
 	}
-	key, err := app.oauth.configStore(t.Context(), "SRANDMEMBER", app.oauth.revocationIndexKey())
-	if err != nil || key == nil {
+	record, err := app.oauth.store.PendingRevocation(t.Context(), app.oauth.config.RevocationKeyPrefix)
+	if err != nil || record.Value == "" {
 		t.Fatalf("unrevoked callback credentials were not queued: %v", err)
 	}
 	github.rejectRevocation = false
@@ -438,18 +438,27 @@ func TestLogoutStagesCredentialsWithoutRefreshing(t *testing.T) {
 }
 
 func TestOAuthRevocationKeysCanUseDurablePrefix(t *testing.T) {
-	oauth := newGitHubOAuth(
-		GitHubOAuthConfig{
-			SessionSecret:       "session-secret-0123456789abcdef",
-			RevocationKeyPrefix: "durable:",
-		},
-		redisx.NewStore(nil, "ephemeral"),
-	)
-	if key := oauth.revocationIndexKey(); key != "durable:oauth-revocations" {
-		t.Fatalf("unexpected durable revocation index key: %q", key)
+	address, closeServer := fakeRedis(t)
+	t.Cleanup(closeServer)
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if key := oauth.revocationKey("session"); !strings.HasPrefix(key, "durable:oauth-revocation:") {
-		t.Fatalf("unexpected durable revocation record key: %q", key)
+	first := redisx.NewStore(client, "ephemeral-first")
+	second := redisx.NewStore(client, "ephemeral-second")
+	if err := first.QueueRevocation(t.Context(), "session", "sealed", "durable:"); err != nil {
+		t.Fatal(err)
+	}
+	record, err := second.PendingRevocation(t.Context(), "durable:")
+	if err != nil || record.Value != "sealed" {
+		t.Fatalf("revocations did not survive namespace replacement: %#v, %v", record, err)
+	}
+	if err := second.CompleteRevocation(t.Context(), "session", "sealed", "durable:"); err != nil {
+		t.Fatal(err)
+	}
+	record, err = first.PendingRevocation(t.Context(), "durable:")
+	if err != nil || record.Value != "" {
+		t.Fatalf("completion did not remove the stable revocation: %#v, %v", record, err)
 	}
 }
 
@@ -532,14 +541,14 @@ func TestRefreshedSessionCannotResurrectAfterRevocationStaging(t *testing.T) {
 	replacement.AccessToken = "newer-queued-token"
 	data, _ := json.Marshal(replacement) // #nosec G117 -- test fixture is immediately encrypted to exercise queued credential replacement.
 	replacementSealed, _ := oauth.seal(data)
-	if _, err := oauth.configStore(t.Context(), "SET", oauth.revocationKey(session.ID), replacementSealed); err != nil {
+	if err := oauth.store.QueueRevocation(t.Context(), session.ID, replacementSealed, oauth.config.RevocationKeyPrefix); err != nil {
 		t.Fatal(err)
 	}
 	if err := oauth.completeRevocation(t.Context(), session.ID, sealed); err != nil {
 		t.Fatal(err)
 	}
-	value, err := oauth.configStore(t.Context(), "GET", oauth.revocationKey(session.ID))
-	if err != nil || value == nil {
+	value, err := oauth.store.PendingRevocation(t.Context(), oauth.config.RevocationKeyPrefix)
+	if err != nil || value.Value != replacementSealed {
 		t.Fatal("stale completion deleted a newer queued credential record")
 	}
 }

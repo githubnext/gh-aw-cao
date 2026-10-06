@@ -44,7 +44,7 @@ func TestPostgresBackfillStress(t *testing.T) {
 	h := newSyntheticBackfill(t, ctx, scenario)
 	h.backfill.Queue.Debounce = time.Hour
 	secret := "synthetic-backfill-webhook-signing-secret"
-	app, err := New(ctx, h.backfill.Store, Config{
+	app, err := New(ctx, h.ops, Config{
 		Database: h.data, DatabaseQueriesPath: backfillDatabaseQueries,
 		Listen: "127.0.0.1:0", SiteDirectory: t.TempDir(), AccessToken: testAccessToken,
 		Collector:     &CollectorConfig{AppID: 1, AdmitOnly: true, QueueMaxLength: 5_000_000},
@@ -116,7 +116,7 @@ func TestPostgresBackfillStress(t *testing.T) {
 		h.proxy.RequestCount(syntheticRunPath, 1) != requests {
 		t.Fatalf("enterprise rerun ignored completion cursors or duplicated historical work: %+v, %v", rerun, err)
 	}
-	depth, err := h.backfill.Store.StreamLength(ctx, "collect:run-tasks")
+	depth, err := taskQueueLength(ctx, h.backfill.Store, "collect:run-tasks")
 	if err != nil || depth != int64(expected) {
 		t.Fatalf("durable run stream = %d, want %d: %v", depth, expected, err)
 	}

@@ -2,7 +2,6 @@ package doctor
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -12,8 +11,8 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var doctorLog = logger.New("cao:doctor")
@@ -23,8 +22,11 @@ var doctorLog = logger.New("cao:doctor")
 // Every field the checks need is injected rather than read from a package
 // global, so a test can drive the whole report deterministically.
 type Doctor struct {
-	// Store is the namespaced Redis store for operational caches, queues, and sessions.
-	Store *redisx.Store
+	// Store is the owning process's operational state, not a new memory instance.
+	Store operational.Store
+	// RedisStore enables optional provider diagnostics only when Redis is selected.
+	RedisStore RedisDiagnostics
+	Backend    string
 	// Postgres is the dashboard entity store used for data and query checks.
 	Postgres *postgresx.Store
 	// RedisURL is the configured endpoint. It is redacted before it reaches
@@ -44,6 +46,14 @@ type Doctor struct {
 	// Now and Getenv are injected so a test controls time and environment.
 	Now    func() time.Time
 	Getenv func(string) string
+}
+
+type RedisDiagnostics interface {
+	Ping(context.Context) error
+	Info(context.Context, string) (string, error)
+	NamespaceStats(context.Context, string, int) (int, bool, []string, error)
+	MaxMemoryBytes() int64
+	EffectiveMaxMemoryBytes(int64) (int64, error)
 }
 
 func (d Doctor) now() time.Time {
@@ -93,14 +103,24 @@ func (d Doctor) Run(ctx context.Context) Report {
 	}
 	checks := []check{
 		d.checkBuild,
-		d.checkRedisConnectivity,
-		d.checkRedisServer,
-		d.checkRedisMemory,
-		d.checkRedisStats,
-		d.checkRedisPersistence,
-		d.checkRedisClients,
-		d.checkRedisTransport,
-		d.checkRedisNamespace,
+		d.checkOperational,
+		d.checkOperationalCapabilities,
+	}
+	if d.Backend == "" || d.Backend == "redis" {
+		checks = append(checks,
+			d.checkRedisConnectivity,
+			d.checkRedisServer,
+			d.checkRedisMemory,
+			d.checkRedisStats,
+			d.checkRedisPersistence,
+			d.checkRedisClients,
+			d.checkRedisTransport,
+			d.checkRedisNamespace,
+		)
+	} else {
+		report.Redis = "(not selected)"
+	}
+	checks = append(checks,
 		d.checkActiveData,
 		d.checkSchemaVersion,
 		d.checkIntegrity,
@@ -116,7 +136,7 @@ func (d Doctor) Run(ctx context.Context) Report {
 		d.checkLake,
 		d.checkTooling,
 		d.checkProjectionLock,
-	}
+	)
 
 	for _, run := range checks {
 		checkCtx, cancel := context.WithTimeout(ctx, d.timeout())
@@ -208,11 +228,25 @@ func redactRedisURL(rawURL string) string {
 // when no store was configured.
 func (d Doctor) storeUnavailable(id, area, title string) (Check, bool) {
 	if d.Store != nil {
+		if area == areaCollect && id != "collect.projection" && d.Store.Services().Collection == nil {
+			return skipped(id, area, title, "collection is unsupported by the selected operational backend"), true
+		}
 		return Check{}, false
 	}
 	return Check{
 		ID: id, Area: area, Title: title, Status: StatusFail,
-		Summary: "Redis is not configured, so this check could not run",
+		Summary: "operational state is unavailable, so this check could not run",
+		Remedy:  "inspect the selected backend in its owning process; a separate memory instance cannot diagnose live state",
+	}, true
+}
+
+func (d Doctor) redisUnavailable(id, title string) (Check, bool) {
+	if d.RedisStore != nil {
+		return Check{}, false
+	}
+	return Check{
+		ID: id, Area: areaRedis, Title: title, Status: StatusFail,
+		Summary: "Redis is not configured, so this provider check could not run",
 		Remedy:  "pass --redis-url or set CAO_REDIS_URL",
 	}, true
 }
@@ -229,14 +263,11 @@ func failed(id, area, title string, err error) Check {
 // INFO is the only way to observe the server's own configuration without
 // CONFIG GET, which a managed Redis commonly disables.
 func (d Doctor) redisInfo(ctx context.Context, section string) (map[string]string, error) {
-	value, err := d.Store.Client.Do(ctx, "INFO", section)
+	value, err := d.RedisStore.Info(ctx, section)
 	if err != nil {
 		return nil, err
 	}
-	if value == nil {
-		return nil, errors.New("INFO returned no data")
-	}
-	fields := parseInfoReply(fmt.Sprint(value))
+	fields := parseInfoReply(value)
 	if len(fields) == 0 {
 		doctorLog.Printf("redis info parsed no fields section=%s", section)
 		return nil, fmt.Errorf("INFO %s returned no fields", section)
@@ -270,42 +301,6 @@ func infoInt(fields map[string]string, name string) int64 {
 		return 0
 	}
 	return value
-}
-
-// scanKeys walks the keyspace for a pattern up to a bounded number of keys.
-//
-// The bound matters: the doctor must never be the reason a production Redis
-// stalls, so it samples rather than enumerating an arbitrarily large keyspace,
-// and reports that it sampled.
-func (d Doctor) scanKeys(ctx context.Context, pattern string, limit int) (keys []string, complete bool, err error) {
-	cursor := "0"
-	for {
-		value, err := d.Store.Client.Do(ctx, "SCAN", cursor, "MATCH", pattern, "COUNT", "500")
-		if err != nil {
-			return keys, false, err
-		}
-		items, ok := value.([]any)
-		if !ok || len(items) != 2 {
-			return keys, false, errors.New("unexpected SCAN reply")
-		}
-		cursor = fmt.Sprint(items[0])
-		batch, ok := items[1].([]any)
-		if !ok {
-			return keys, false, errors.New("unexpected SCAN key list")
-		}
-		for _, entry := range batch {
-			if entry == nil {
-				continue
-			}
-			keys = append(keys, fmt.Sprint(entry))
-			if len(keys) >= limit {
-				return keys, false, nil
-			}
-		}
-		if cursor == "0" || cursor == "" {
-			return keys, true, nil
-		}
-	}
 }
 
 func sortedKeys[V any](values map[string]V) []string {

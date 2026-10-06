@@ -384,7 +384,7 @@ func run(arguments []string) error {
 func newDoctorCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "run a read-only check-up of Redis, canonical data, queries, and collection",
+		Short: "run a read-only check-up of operational state, canonical data, queries, and collection",
 	}
 	redisURL := cmd.Flags().String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
 	redisNamespace, namespaceDefaultSource, namespaceErr := registerRedisNamespaceFlagWithEnvOverride(cmd, "Redis key namespace")
@@ -394,6 +394,7 @@ func newDoctorCommand() *cobra.Command {
 	deep := cmd.Flags().Bool("deep", false, "additionally read every source to confirm stored rows decode")
 	strict := cmd.Flags().Bool("strict", false, "exit non-zero on warnings as well as failures")
 	timeout := cmd.Flags().Duration("timeout", 10*time.Second, "per-check timeout")
+	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
 	cmd.RunE = func(*cobra.Command, []string) error {
 		if namespaceErr != nil {
 			return namespaceErr
@@ -405,10 +406,8 @@ func newDoctorCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
-		if err != nil {
-			return err
-		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 		check := doctor.Doctor{
 			RedisURL:            endpoint,
 			Namespace:           namespace,
@@ -416,15 +415,54 @@ func newDoctorCommand() *cobra.Command {
 			Version:             version,
 			Deep:                *deep,
 			Timeout:             *timeout,
+			Backend:             "redis",
 		}
-		check.Store = doctorStore(endpoint, namespace)
-		if check.Store != nil {
-			if err := check.Store.SetMaxMemoryBytes(maxRedisBytes); err != nil {
+		databaseNamespace := namespace
+		selected, selectionErr := server.OperationalPolicySelectedFromEnv()
+		if selectionErr != nil {
+			return selectionErr
+		}
+		hasPolicy := selected ||
+			strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")) != "" ||
+			strings.TrimSpace(os.Getenv("CAO_MARKETPLACE_POLICY_PATH")) != ""
+		if hasPolicy {
+			settings, provider, selectionErr := server.NewOperationalDiagnosticsFromEnv(ctx)
+			if selectionErr != nil && settings.Backend == "" {
+				return selectionErr
+			}
+			check.Backend = settings.Backend
+			check.Namespace = settings.Namespace
+			check.RedisURL = settings.RedisURL
+			databaseNamespace = settings.DatabaseNamespace
+			if check.Backend == "memory" && (cmd.Flags().Changed("redis-url") || cmd.Flags().Changed("redis-namespace")) {
+				return errors.New("memory operational-store cannot use Redis flags; diagnose live memory state in its owning process")
+			}
+			if provider != nil {
+				check.Store, check.RedisStore = provider, server.NewRedisProviderDiagnostics(provider)
+			}
+		} else {
+			maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
+			if err != nil {
 				return err
 			}
+			provider := doctorStore(endpoint, namespace)
+			if provider != nil {
+				if err := provider.SetMaxMemoryBytes(maxRedisBytes); err != nil {
+					return err
+				}
+				check.Store, check.RedisStore = provider, server.NewRedisProviderDiagnostics(provider)
+			}
 		}
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
+		if check.Store != nil {
+			defer func() { _ = check.Store.Close() }()
+		}
+		if strings.TrimSpace(*postgresURL) != "" || strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL")) != "" {
+			database, dbErr := newPostgresStore(ctx, *postgresURL, databaseNamespace)
+			if dbErr == nil {
+				check.Postgres = database
+				defer func() { _ = database.Close() }()
+			}
+		}
 		report := check.Run(ctx)
 		if err := doctor.Render(os.Stdout, report, *format); err != nil {
 			return err
@@ -582,6 +620,13 @@ func newServeCommand() *cobra.Command {
 		if namespaceErr != nil {
 			return namespaceErr
 		}
+		selected, selectionErr := server.OperationalPolicySelectedFromEnv()
+		if selectionErr != nil {
+			return selectionErr
+		}
+		if selected {
+			return errors.New("reviewed operational-store selection requires serve-hosted or an external OAuth host; local bearer serve cannot override it")
+		}
 		if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
 			return err
 		}
@@ -597,6 +642,7 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		defer func() { _ = store.Close() }()
 		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
 		if err != nil {
 			return err
@@ -642,9 +688,9 @@ func newIngestCommand() *cobra.Command {
 		Use:   "ingest [source]",
 		Short: "ingest a deployed dashboard directory into Postgres",
 	}
-	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	cmd.Flags().String("redis-url", defaultRedisURL, "legacy Redis URL (not used for canonical Postgres ingestion)")
 	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
-	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
+	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "canonical Postgres dataset namespace (legacy flag name)")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	cmd.RunE = func(_ *cobra.Command, args []string) error {
@@ -659,19 +705,12 @@ func newIngestCommand() *cobra.Command {
 			return err
 		}
 		commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
-		store, err := newRedisStore(*redisURL, *redisNamespace)
-		if err != nil {
-			return err
-		}
 		ctx := context.Background()
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
 			return err
 		}
 		defer closeTelemetry()
-		if err := store.Ping(ctx); err != nil {
-			return errors.New("redis is unavailable")
-		}
 		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
 		if err != nil {
 			return err

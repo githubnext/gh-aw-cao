@@ -16,9 +16,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/operationalvalue"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 var projectorLog = logger.New("cao:collect:projector")
@@ -39,7 +39,7 @@ const (
 // window produce a single replacement. Coalescing, not per-run projection, is
 // what keeps projection cost sublinear in run volume.
 type Projector struct {
-	Store               *redisx.Store
+	Store               operational.CollectionStore
 	Data                *postgresx.Store
 	Lake                Lake
 	Enrollment          Enrollment

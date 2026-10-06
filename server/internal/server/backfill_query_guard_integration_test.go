@@ -22,7 +22,7 @@ func TestPostgresBackfillLargeQueriesPreserveResourceGuards(t *testing.T) {
 	if result, err := h.backfill.Replay(ctx); err != nil || result.Counts["$runs"] != 210_000 {
 		t.Fatalf("large synthetic replay = %+v, %v", result, err)
 	}
-	app, err := New(ctx, h.backfill.Store, Config{
+	app, err := New(ctx, h.ops, Config{
 		Database: h.data, DatabaseQueriesPath: backfillDatabaseQueries,
 		Listen: "127.0.0.1:0", SiteDirectory: t.TempDir(), AccessToken: testAccessToken,
 		QueryCache: QueryCacheConfig{Disabled: true},

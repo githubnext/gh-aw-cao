@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -66,19 +67,22 @@ func RedisMaxBytesFromEnv(explicit int64) (int64, error) {
 func (a *App) maintainRedisCaches(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, redisMaintenanceTimeout)
 	defer cancel()
-	stats, err := a.store.MaintainCaches(ctx, a.config.QueryCache.MaxBytes)
-	if errors.Is(err, redisx.ErrMemoryPressure) {
-		a.config.Logger.Printf("Redis node-wide memory pressure used_bytes=%d budget_bytes=%d disposable_cache_entries_evicted=%d action=inspect_provider_memory_and_namespace_key_families_then_scale_redis_and_synchronize_CAO_REDIS_MAX_BYTES",
-			stats.UsedBytes, stats.BudgetBytes, stats.Evicted)
+	err := a.store.Maintain(ctx)
+	var pressure *operational.MaintenanceError
+	if errors.As(err, &pressure) {
+		a.config.Logger.Printf("Operational cache maintenance pressure used_bytes=%d budget_bytes=%d disposable_cache_entries_evicted=%d action=inspect_operational_backend_capacity_and_preserve_protected_state",
+			pressure.UsedBytes, pressure.BudgetBytes, pressure.Evicted)
 	}
-	if err != nil {
-		return err
+	if err == nil {
+		health, healthErr := a.store.Health(ctx)
+		if healthErr != nil {
+			return healthErr
+		}
+		if health.CacheDisabled {
+			a.config.Logger.Printf("Operational disposable caching disabled; protected storage remains enabled")
+		}
 	}
-	if stats.Evicted > 0 {
-		a.config.Logger.Printf("Redis cache maintenance evicted=%d used_bytes=%d budget_bytes=%d",
-			stats.Evicted, stats.UsedBytes, stats.BudgetBytes)
-	}
-	return nil
+	return err
 }
 
 func (a *App) runRedisMaintenance(ctx context.Context, interval time.Duration) {
@@ -91,8 +95,7 @@ func (a *App) runRedisMaintenance(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			if err := a.maintainRedisCaches(ctx); err != nil && ctx.Err() == nil {
 				// Do not log raw Redis errors, which can include internal keys.
-				a.config.Logger.Printf("Redis cache maintenance failed memory_pressure=%t",
-					errors.Is(err, redisx.ErrMemoryPressure))
+				a.config.Logger.Printf("Operational cache maintenance failed")
 			}
 		}
 	}
@@ -103,17 +106,15 @@ func (a *App) initializeRedisMaintenance(ctx context.Context) error {
 		return nil
 	}
 	err := a.maintainRedisCaches(ctx)
-	if (err == nil || errors.Is(err, redisx.ErrMemoryPressure)) && !a.store.DisposableCachesEnabled() {
-		a.config.Logger.Printf("Redis disposable caching disabled reason=atomic-memory-introspection-unsupported; protected storage remains enabled")
-	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if errors.Is(err, redisx.ErrMemoryPressure) {
+		var pressure *operational.MaintenanceError
+		if errors.As(err, &pressure) {
 			return err
 		}
-		return errors.New("redis cache maintenance is unavailable")
+		return errors.New("operational cache maintenance is unavailable")
 	}
 	return nil
 }

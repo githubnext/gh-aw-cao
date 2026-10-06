@@ -37,11 +37,11 @@ func (d Doctor) checkBuild(context.Context) Check {
 
 func (d Doctor) checkRedisConnectivity(ctx context.Context) Check {
 	const id, title = "redis.connectivity", "Redis reachable"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	started := time.Now()
-	if err := d.Store.Ping(ctx); err != nil {
+	if err := d.RedisStore.Ping(ctx); err != nil {
 		return Check{
 			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
 			Summary: "Redis did not answer PING: " + err.Error(),
@@ -65,7 +65,7 @@ func (d Doctor) checkRedisConnectivity(ctx context.Context) Check {
 
 func (d Doctor) checkRedisServer(ctx context.Context) Check {
 	const id, title = "redis.server", "Redis server"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	fields, err := d.redisInfo(ctx, "server")
@@ -97,7 +97,7 @@ func (d Doctor) checkRedisServer(ctx context.Context) Check {
 // checkRedisMemory inspects capacity for operational caches, queues, and sessions.
 func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 	const id, title = "redis.memory", "Redis memory and eviction policy"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	fields, err := d.redisInfo(ctx, "memory")
@@ -116,7 +116,7 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 			return failed(id, areaRedis, title, errors.New("redis maxmemory is invalid"))
 		}
 	}
-	budget, err := d.Store.EffectiveMaxMemoryBytes(maximum)
+	budget, err := d.RedisStore.EffectiveMaxMemoryBytes(maximum)
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
@@ -130,7 +130,7 @@ func (d Doctor) checkRedisMemory(ctx context.Context) Check {
 		detail("usedBytes", fmt.Sprint(used)),
 		detail("maxmemory", providerLimit),
 		detail("providerMemoryLimitReported", strconv.FormatBool(limitReported)),
-		detail("configuredCachePressureBudgetBytes", fmt.Sprint(d.Store.MaxMemoryBytes())),
+		detail("configuredCachePressureBudgetBytes", fmt.Sprint(d.RedisStore.MaxMemoryBytes())),
 		detail("cachePressureBudgetBytes", fmt.Sprint(budget)),
 		detail("cachePressureUtilization", fmt.Sprintf("%.1f%%", 100*float64(used)/float64(budget))),
 		detail("policy", policy),
@@ -290,7 +290,7 @@ func classifyRedisStats(evicted, rejected int64) statsClassification {
 // the current memory snapshot. A past eviction may have affected operational state.
 func (d Doctor) checkRedisStats(ctx context.Context) Check {
 	const id, title = "redis.stats", "Redis operational counters"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	fields, err := d.redisInfo(ctx, "stats")
@@ -368,7 +368,7 @@ func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite str
 // checkRedisPersistence reports whether a restart could lose operational state.
 func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	const id, title = "redis.persistence", "Redis persistence"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	fields, err := d.redisInfo(ctx, "persistence")
@@ -443,7 +443,7 @@ func classifyRedisClients(connected, blocked int64, collecting bool) clientsClas
 
 func (d Doctor) checkRedisClients(ctx context.Context) Check {
 	const id, title = "redis.clients", "Redis clients"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	fields, err := d.redisInfo(ctx, "clients")
@@ -544,23 +544,6 @@ func (d Doctor) checkRedisTransport(context.Context) Check {
 	}
 }
 
-// foreignNamespacesOf collects the top-level namespace prefixes present in
-// keys that are not scoped to namespace, sorted for stable rendering. It is a
-// pure function so checkRedisNamespace's "other namespaces sharing the
-// instance" detail is testable without a fake Redis SCAN reply.
-func foreignNamespacesOf(namespace string, keys []string) []string {
-	others := map[string]struct{}{}
-	for _, key := range keys {
-		if strings.HasPrefix(key, namespace+":") {
-			continue
-		}
-		if prefix, _, found := strings.Cut(key, ":"); found {
-			others[prefix] = struct{}{}
-		}
-	}
-	return sortedKeys(others)
-}
-
 // namespaceClassificationReason names why checkRedisNamespace reached its
 // status, stable across summary wording changes so it is useful to log
 // without exposing the namespace or key count.
@@ -613,15 +596,15 @@ func classifyRedisNamespace(namespace string, keyCount int, complete bool) names
 // explicitly saves a long misdiagnosis.
 func (d Doctor) checkRedisNamespace(ctx context.Context) Check {
 	const id, title = "redis.namespace", "Redis namespace"
-	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
+	if skip, ok := d.redisUnavailable(id, title); ok {
 		return skip
 	}
 	const sampleLimit = 20000
-	keys, complete, err := d.scanKeys(ctx, d.Namespace+":*", sampleLimit)
+	keyCount, complete, others, err := d.RedisStore.NamespaceStats(ctx, d.Namespace, sampleLimit)
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
-	classification := classifyRedisNamespace(d.Namespace, len(keys), complete)
+	classification := classifyRedisNamespace(d.Namespace, keyCount, complete)
 	doctorLog.Printf("redis namespace classified status=%s reason=%s", classification.status, classification.reason)
 	details := []Detail{
 		detail("namespace", d.Namespace),
@@ -630,11 +613,8 @@ func (d Doctor) checkRedisNamespace(ctx context.Context) Check {
 	// Other namespaces sharing the instance are legitimate, but naming them is
 	// what turns an empty-namespace report into a diagnosis: they are the
 	// usual explanation for a namespace that looks like an empty database.
-	foreign, _, foreignErr := d.scanKeys(ctx, "*", 2000)
-	if foreignErr == nil {
-		if others := foreignNamespacesOf(d.Namespace, foreign); len(others) > 0 {
-			details = append(details, detail("otherNamespaces", strings.Join(others, ", ")))
-		}
+	if len(others) > 0 {
+		details = append(details, detail("otherNamespaces", strings.Join(others, ", ")))
 	}
 	return Check{
 		ID: id, Area: areaRedis, Title: title, Status: classification.status,

@@ -10,14 +10,14 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 // UsageInterval is the width of one retained usage slot.
-const UsageInterval = redisx.GitHubQuotaUsageInterval
+const UsageInterval = operational.GitHubQuotaUsageInterval
 
 // UsageRetention is how far back usage history is retained.
-const UsageRetention = redisx.GitHubQuotaUsageRetention
+const UsageRetention = operational.GitHubQuotaUsageRetention
 
 // UsagePoint is the peak observed usage of one bucket during one slot.
 type UsagePoint struct {
@@ -58,7 +58,7 @@ type UsageReport struct {
 // recordUsage merges an accepted observation into the bounded usage history.
 // History is observability only, so a failure is logged rather than failing
 // the observation that was already recorded atomically.
-func (s *Service) recordUsage(ctx context.Context, bucket BucketID, state redisx.GitHubQuotaState) {
+func (s *Service) recordUsage(ctx context.Context, bucket BucketID, state operational.GitHubQuotaState) {
 	if !state.Known || state.ObservedAt.IsZero() || state.Remaining > state.Limit {
 		return
 	}
@@ -103,7 +103,7 @@ func (s *Service) Usage(ctx context.Context) (_ UsageReport, err error) {
 // samples were skipped, so Usage can log that count without recomputing it.
 // It is a pure function extracted from Usage so decoding, bounding, and
 // ordering are independently testable without a Redis-backed Store.
-func buildUsagePoints(samples []redisx.GitHubQuotaUsageSample) ([]UsagePoint, int) {
+func buildUsagePoints(samples []operational.GitHubQuotaUsageSample) ([]UsagePoint, int) {
 	points := make([]UsagePoint, 0, len(samples))
 	skipped := 0
 	for _, sample := range samples {

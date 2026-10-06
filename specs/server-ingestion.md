@@ -45,6 +45,16 @@ A **conforming server ingestion implementation** satisfies every MUST in this
 document. An implementation that does not implement this profile at all remains
 conforming to CAO; this profile is OPTIONAL.
 
+The default deployment uses Redis and preserves this document's durability and
+multi-process requirements. An explicitly acknowledged single-process memory
+deployment MAY use the volatile exception in
+[`server-operational-storage.md`](server-operational-storage.md). Only restart
+durability and deployment-wide coordination are relaxed: atomic webhook
+admission, scope/ownership checks, signatures, OAuth, quota governance, bounded
+work, and explicit incomplete recovery remain mandatory. Its startup gates
+admission on complete fresh scope enumeration and reuses the same evidence lake,
+projector, collector, and backfill, not a second ingestion implementation.
+
 ## 2. Profiles
 
 CAO defines two acquisition profiles.

@@ -78,7 +78,7 @@ flowchart LR
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
     Postgres["Postgres dashboard entities<br/>optional server profile"]
-    Redis["Redis operational caches,<br/>queues, sessions"]
+    Redis["Operational caches, queues, sessions<br/>Redis default or bounded process memory"]
     Query["Dashboard Language queries"]
     GoServer["Go HTTP(S) query server"]
     GitHub["GitHub / gh-aw<br/>authoritative state"]
@@ -119,9 +119,12 @@ dashboard artifact into Postgres, keeps database credentials server-side,
 compiles hosted Dashboard Language queries to parameterized SQL in the
 request's repeatable-read transaction, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
-to the browser. Redis remains operational storage for caches, queues, and
-sessions, not dashboard entity storage or query execution.
-The HTTP and MCP query boundary uses a disposable Redis cache-aside layer for
+to the browser. Operational state is accessed through typed contracts in
+`server/internal/operational/`, with Redis as the default adapter and a bounded,
+volatile memory adapter for an explicitly acknowledged single-process server.
+Neither adapter stores dashboard entities or executes dashboard queries.
+PostgreSQL is not an operational backend.
+The HTTP and MCP query boundary uses a disposable cache-aside layer for
 expensive queries with compact output. SHA-256 query identities include the
 definitions, parameters, pagination, schema, and current authorization class,
 not ingestion revisions. Each entry has a fixed five-minute lifetime; ingestion
@@ -130,7 +133,7 @@ oldest-first eviction bound both allocator-reported result/index memory and
 entry count without changing global Redis eviction policy or touching sessions
 and queues. Cached payloads retain their original evidence revision and
 evaluation time; cache hits report no fresh query-plan work.
-All server profiles also have a configurable whole-node Redis memory-pressure
+All Redis server profiles also have a configurable whole-node Redis memory-pressure
 budget, defaulting to 200,000,000 bytes and capped at 80% of provider-reported
 `maxmemory`. Providers supporting scripted memory introspection use atomic
 query-result, marketplace, and repository-memory admission and reserve outgoing
@@ -166,16 +169,38 @@ integrity, query definitions, and the optional collection profile. It
 produces stable check identifiers as text or versioned JSON, never contacts
 GitHub or mutates either store, and requires deep mode to read every source.
 
-Server construction independently resolves an app server target module and a
-declarative Redis provider module, then composes their provider-agnostic
+Server construction independently resolves an app server target module and an
+operational backend (and, for Redis, a declarative provider module), then composes their provider-agnostic
 capabilities before configuring authentication or ingestion. Target modules own
 authentication, listener ownership, HTTPS, and trusted-proxy requirements.
 Redis modules own environment mappings, session semantics, process namespace
 isolation, replica constraints, and collection support. Local, host-neutral
 container, Azure Functions, and Upstash are compositions rather than provider
 checks in shared request handling.
-Startup rejects configurations or Redis clients that do not satisfy the
-selected capabilities.
+Startup rejects configurations or services that do not satisfy the selected
+per-feature coordination scope and restart-persistence capabilities. Business
+services receive narrow cache, OAuth, limiter, quota, collection, and coordination
+contracts, never raw commands or concrete adapter assertions. Atomicity, CAS,
+namespace isolation, and fail-closed errors are mandatory contract semantics;
+they cannot be disabled by a capability flag. Application-owned maintenance
+and background work stop before an owned store is closed.
+
+The memory adapter requires mandatory GitHub OAuth, HTTPS, explicit single-process
+and volatile-state acknowledgements, and one owning process for HTTP admission,
+quota, collectors, projection, and backfill. Platform listeners, multiple replicas,
+admission-only deployment, and detached collection/backfill roles are rejected.
+Its protected state has separate accounting-byte and entry bounds; cache eviction
+cannot evict sessions or accepted work. These bounds do not claim to measure RSS.
+On restart all CAO sessions and pending login states are invalid, while GitHub
+tokens themselves are not expired or revoked. Revocation retry and acknowledged
+unfinished deliveries can be lost. A fresh GitHub scope enumeration gates
+admission and workers; partial enumeration never authorizes destructive scope
+inference. Retained evidence is replayed through the existing projector, fresh
+quota observations fail closed, and backfill is rerun idempotently. The protected
+rebuild action also reruns backfill in this mode. Recovery repairs observable
+state and available history, not every missed event or expired artifact. There
+is no operational disk journal, PostgreSQL adapter, automatic failover, or
+dual-write path. `specs/server-operational-storage.md` specifies these guarantees.
 
 Hosted server observability uses the same vendor-neutral OTLP contract as
 agentic workflows. Standard `OTEL_*` runtime environment variables select the
@@ -199,6 +224,7 @@ The hosted dashboard has one strict storage split:
 | --- | --- | --- |
 | PostgreSQL | Current dashboard entities, quality metadata, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
 | Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
+| In-process memory (explicit opt-in) | The same operational contracts within one owning process, with bounded volatile state and restart recovery limitations | Dashboard entity storage, query execution, cross-process coordination, restart durability, or fallback for a failed Redis deployment |
 
 The browser communicates only with the Go HTTP(S) server. It never connects to
 either store. Artifact ingestion and rebuilds transactionally replace the
@@ -229,7 +255,7 @@ runtime paths. When no host section exists, legacy environment configuration is
 retained for existing deployments.
 
 Modules are compiled registry entries, not dynamically loaded code. Policy
-selects one target and one Redis module by name. Unknown names, attempts to
+selects one target and one operational backend; Redis selection also resolves one provider module. Unknown names, attempts to
 override fixed module capabilities, incompatible compositions, and runtime
 clients that do not satisfy the composed profile fail before serving traffic.
 
@@ -317,7 +343,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage, Redis operational state, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage, typed Redis or single-process memory operational state, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
@@ -416,14 +442,16 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   to an explicit private CIDR allow-list. Forwarded hosts must still match the
   public host allow-list and forwarded protocol must be HTTPS. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
-  encrypted credentials only in a durable Redis revocation queue drained by a
+  encrypted credentials only in the selected operational revocation queue
+  (restart-persistent with Redis, process-lifetime with opted-in memory), drained by a
   bounded maintenance worker. Encrypted records identify their key so controlled
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
-- In the server-collection profile, delivery deduplication, repository debounce,
-  and task append are one durable Redis admission. Queue transitions append
-  replacements or dead letters before ACK in one Redis operation; completed
+- In the default Redis server-collection profile, delivery deduplication, repository debounce,
+  and task append are one durable Redis admission. Memory provides the same
+  atomic admission within one process lifetime, not restart durability. Queue transitions append
+  replacements or dead letters before ACK in one operational operation; completed
   entries are ACKed and deleted atomically. The task stream applies backpressure
   at its configured capacity and never trims recoverable work, so worker crashes
   and ambiguous client failures may repeat collection but cannot silently lose
@@ -551,9 +579,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
-  exclusively stores and queries current hosted dashboard sources; **Redis**
-  exclusively supports operational caches, queues, coordination, rate limits,
-  and sessions.
+  exclusively stores and queries current hosted dashboard sources; **Redis** is
+  the default operational adapter for caches, queues, coordination, rate limits,
+  and sessions, with bounded volatile memory available only for an explicitly
+  acknowledged single-process hosted deployment.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser

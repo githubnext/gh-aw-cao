@@ -41,6 +41,15 @@ document. The loopback-only local development profile MAY omit the
 pre-authentication edge bucket because it admits requests only from the local
 operator.
 
+Redis remains the default distributed implementation. An explicitly acknowledged
+single-process memory deployment MAY enforce these same token-bucket semantics
+atomically under its process clock instead of Redis server time. Its active
+buckets MUST NOT be evicted to reset quotas; capacity failure MUST fail closed.
+Buckets are lost on restart and MUST NOT coordinate separate processes. This
+limited exception is specified by
+[`server-operational-storage.md`](server-operational-storage.md); it does not
+change request identity, proxy trust, weighted costs, headers, or deadlines.
+
 ## 2. Request classes and limits
 
 The server MUST apply the following token buckets.
