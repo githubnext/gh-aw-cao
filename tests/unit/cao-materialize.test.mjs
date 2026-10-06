@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -13,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 import { parse } from "yaml";
 import {
@@ -64,28 +66,36 @@ test("Windows CAO extraction does not invoke tar and rejects unsafe archive path
   }
 });
 
-test("CAO materialization preserves canonical source paths", () => {
+test("CAO materialization preserves canonical source paths", async () => {
   const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-layout-"));
   try {
     const installedCaoSkills = ["setup-cao", "debug-cao"].map((skill) =>
       path.join(destination, ".github", "skills", skill, "SKILL.md")
     );
     const consumerSkill = path.join(destination, ".github", "skills", "consumer-skill", "SKILL.md");
+    const consumerExtension = path.join(destination, "com.github.copilot", "extensions", "consumer-extension", "extension.mjs");
+    const consumerSpecification = path.join(destination, "specs", "consumer.md");
     for (const installedCaoSkill of installedCaoSkills) {
       mkdirSync(path.dirname(installedCaoSkill), { recursive: true });
       writeFileSync(installedCaoSkill, "installed");
     }
     mkdirSync(path.dirname(consumerSkill), { recursive: true });
     writeFileSync(consumerSkill, "consumer-owned");
+    for (const file of [consumerExtension, consumerSpecification]) {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, "consumer-owned");
+    }
 
     materializeCaoFromSource("root", sourceRoot, destination);
     materializeCaoFromSource("dependabot", sourceRoot, destination);
     const staleRootFile = path.join(destination, "activity", "removed-runtime.mjs");
     const staleCampaignFile = path.join(destination, "dependabot", "removed-runtime.mjs");
+    const staleExtensionFile = path.join(destination, "com.github.copilot", "extensions", "cao-dashboard", "removed-canvas.mjs");
     const intelligenceDeclaration = path.join(destination, ".github", "cao", "intelligence", "dependabot.json");
     writeFileSync(staleRootFile, "stale");
     mkdirSync(path.dirname(staleCampaignFile), { recursive: true });
     writeFileSync(staleCampaignFile, "stale");
+    writeFileSync(staleExtensionFile, "stale");
     writeFileSync(intelligenceDeclaration, "stale");
 
     materializeCaoFromSource("root", sourceRoot, destination);
@@ -95,6 +105,7 @@ test("CAO materialization preserves canonical source paths", () => {
     verifyCaoRuntime("dashboard", destination);
     assert.equal(existsSync(staleRootFile), false);
     assert.equal(existsSync(staleCampaignFile), false);
+    assert.equal(existsSync(staleExtensionFile), false);
     assert.ok(existsSync(path.join(destination, "activity", "cao.mjs")));
     assert.ok(existsSync(path.join(destination, "activity", "normalized-phase.mjs")));
     assert.ok(existsSync(path.join(destination, "dashboard", "site", "package.json")));
@@ -120,6 +131,36 @@ test("CAO materialization preserves canonical source paths", () => {
       filesBelow(destination, "dashboard").sort(),
       trackedDashboardFiles.sort(),
     );
+    const extensionDirectory = "com.github.copilot/extensions/cao-dashboard";
+    const trackedExtensionFiles = spawnSync(
+      "git",
+      ["-C", sourceRoot, "ls-files", "--", extensionDirectory],
+      { encoding: "utf8" },
+    ).stdout.trim().split("\n");
+    assert.deepEqual(filesBelow(destination, extensionDirectory).sort(), trackedExtensionFiles.sort());
+    for (const file of ["plugin.json", "specs/dashboard-data.md", ...trackedExtensionFiles]) {
+      assert.deepEqual(
+        readFileSync(path.join(destination, file)),
+        readFileSync(path.join(sourceRoot, file)),
+      );
+    }
+    const { bundledResources, resolveBundledResource } = await import(
+      pathToFileURL(path.join(destination, extensionDirectory, "bundled-resources.mjs")).href
+    );
+    for (const [name, resource] of Object.entries(bundledResources)) {
+      assert.equal(await resolveBundledResource(name), realpathSync(path.join(destination, resource)));
+    }
+    const { executeDashboardQueryRequest, readDashboardDataSpecification } = await import(
+      pathToFileURL(path.join(destination, extensionDirectory, "dashboard-agent-tools.mjs")).href
+    );
+    assert.deepEqual(JSON.parse(await executeDashboardQueryRequest({
+      queries: [{ name: "failed", from: "runs", filter: { predicates: [{ field: "conclusion", equals: "failure" }] } }],
+      sources: { runs: [{ conclusion: "failure" }, { conclusion: "success" }] },
+    })).failed.rows, [{ conclusion: "failure" }]);
+    assert.equal(JSON.parse(await readDashboardDataSpecification({
+      startLine: 1,
+      endLine: 5,
+    })).endLine, 5);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "instructions.md")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "activity")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dashboard")), false);
@@ -128,6 +169,9 @@ test("CAO materialization preserves canonical source paths", () => {
       assert.equal(existsSync(installedCaoSkill), false);
     }
     assert.equal(readFileSync(consumerSkill, "utf8"), "consumer-owned");
+    for (const file of [consumerExtension, consumerSpecification]) {
+      assert.equal(readFileSync(file, "utf8"), "consumer-owned");
+    }
   } finally {
     rmSync(destination, { force: true, recursive: true });
   }
@@ -151,6 +195,49 @@ test("CAO materialization validates the complete source bundle before replacing 
     rmSync(destination, { force: true, recursive: true });
   }
 });
+
+for (const missingResource of [
+  "plugin.json",
+  "com.github.copilot/extensions/cao-dashboard",
+  "specs/dashboard-data.md",
+]) {
+  test(`CAO materialization rejects a bundle missing ${missingResource} before replacement`, () => {
+    const source = mkdtempSync(path.join(tmpdir(), "cao-materialize-incomplete-plugin-"));
+    const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-existing-plugin-"));
+    try {
+      const [{ resources }] = planCaoMaterialization([{
+        name: "githubnext/gh-aw-cao",
+        record: { resolvedCommit: "1".repeat(40) },
+      }], "root");
+      for (const resource of resources) {
+        if (resource === missingResource) continue;
+        const target = path.join(source, resource);
+        if (statSync(path.join(sourceRoot, resource)).isDirectory()) {
+          mkdirSync(target, { recursive: true });
+        } else {
+          mkdirSync(path.dirname(target), { recursive: true });
+          writeFileSync(target, "source");
+        }
+      }
+      const existingRuntime = path.join(destination, "activity", "existing-runtime.mjs");
+      const existingExtension = path.join(destination, "com.github.copilot", "extensions", "cao-dashboard", "extension.mjs");
+      for (const file of [existingRuntime, existingExtension]) {
+        mkdirSync(path.dirname(file), { recursive: true });
+        writeFileSync(file, "existing");
+      }
+      assert.throws(
+        () => materializeCaoFromSource("root", source, destination),
+        { message: `CAO source revision is missing required resource: ${missingResource}` },
+      );
+      for (const file of [existingRuntime, existingExtension]) {
+        assert.equal(readFileSync(file, "utf8"), "existing");
+      }
+    } finally {
+      rmSync(source, { force: true, recursive: true });
+      rmSync(destination, { force: true, recursive: true });
+    }
+  });
+}
 
 test("CAO materialization rejects paths outside a campaign slug", () => {
   assert.throws(
@@ -183,6 +270,9 @@ test("root materialization preserves exact focused package revisions", () => {
           "dashboard",
           "skills",
           "cao.sh",
+          "plugin.json",
+          "com.github.copilot/extensions/cao-dashboard",
+          "specs/dashboard-data.md",
           ".github/actions/setup-cao-runtime",
           ".github/actions/setup-gh-aw",
           ".github/cao/instructions.md",
