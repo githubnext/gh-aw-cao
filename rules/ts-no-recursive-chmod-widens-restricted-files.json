@@ -71,18 +71,28 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "status": "needs-work",
   "evaluation": {
-    "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
-    "true_positive_count": 0,
-    "false_positive_count": 1,
-    "false_negative_count": 0,
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "4b1a19ed40a7261de8a55b4b23ce710a18d287fe",
+    "true_positive_count": 2,
+    "false_positive_count": 4,
+    "false_negative_count": 1,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD f6ebad6: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a mkdtemp test-fixture directory (public SQLite snapshot only) remains a false positive. No other recursive chmod call sites found; no suppression convention.",
-    "txn_id": "refiner-37499745280-2"
+    "reason": "Re-confirmed unchanged on HEAD 4b1a19e: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods) and same false negative (artifact-permissions.ts shell-string chmod -R) persist, no suppression mechanism.",
+    "txn_id": "refiner-37548458310-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37499745280",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
+  "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f6ebad6: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a mkdtemp test-fixture directory (public SQLite snapshot only) remains a false positive. No other recursive chmod call sites found; no suppression convention.",
+      "txn_id": "refiner-37499745280-2"
+    },
     {
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
@@ -144,6 +154,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-06T16:59:00Z",
-  "last_updated": "2026-10-06T19:00:56Z"
+  "last_seen_at": "2026-10-06T23:48:57Z",
+  "last_updated": "2026-10-06T23:48:57Z"
 }

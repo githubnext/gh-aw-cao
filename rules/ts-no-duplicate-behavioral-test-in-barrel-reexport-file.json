@@ -69,21 +69,31 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-06T22:51:00Z",
-  "last_updated": "2026-10-06T19:00:56Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37499745280",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_seen_at": "2026-10-06T23:48:57Z",
+  "last_updated": "2026-10-06T23:48:57Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
+  "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+    "target_commit": "4b1a19ed40a7261de8a55b4b23ce710a18d287fe",
     "true_positive_count": 2,
     "false_positive_count": 2,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD f1c3282: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-75 still false-positive against a naive heuristic. No suppression convention.",
-    "txn_id": "refiner-37467185149-2"
+    "reason": "Re-confirmed unchanged on HEAD 4b1a19e: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions remain false-positive against a naive heuristic. No suppression convention.",
+    "txn_id": "refiner-37548458310-2"
   },
   "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+      "true_positive_count": 2,
+      "false_positive_count": 2,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f1c3282: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-75 still false-positive against a naive heuristic. No suppression convention.",
+      "txn_id": "refiner-37467185149-2"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
