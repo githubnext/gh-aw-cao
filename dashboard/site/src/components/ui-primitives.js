@@ -140,7 +140,7 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
   );
   tooltipTrigger.setAttribute('aria-label', label);
   tooltipTrigger.setAttribute('aria-describedby', id);
-  return h(
+  const tooltip = h(
     'span',
     { className: ['tooltip-help', className].filter(Boolean).join(' ') },
     tooltipTrigger,
@@ -151,6 +151,62 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
       ...(Array.isArray(content) ? content : [content])
     )
   );
+  const tooltipContent = /** @type {HTMLElement} */ (tooltip.lastElementChild);
+  let pointerInside = false;
+  let focusInside = false;
+  let trackingViewport = false;
+  const updatePosition = () => {
+    if (!pointerInside && !focusInside) return;
+    const triggerRect = tooltipTrigger.getBoundingClientRect();
+    const rootRect = tooltip.getBoundingClientRect();
+    const contentRect = tooltipContent.getBoundingClientRect();
+    if (contentRect.width <= 0 || contentRect.height <= 0) return;
+
+    const margin = 14;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const maxLeft = Math.max(margin, viewportWidth - margin - contentRect.width);
+    const left = Math.min(Math.max(triggerRect.right - contentRect.width, margin), maxLeft);
+    const below = triggerRect.bottom + 8;
+    const above = triggerRect.top - contentRect.height - 8;
+    const top = below + contentRect.height <= viewportHeight - margin
+      ? below
+      : Math.max(margin, above);
+    tooltipContent.style.left = `${left - rootRect.left}px`;
+    tooltipContent.style.right = 'auto';
+    tooltipContent.style.top = `${top - rootRect.top}px`;
+  };
+  const startViewportTracking = () => {
+    if (trackingViewport) return;
+    trackingViewport = true;
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+  };
+  const stopViewportTracking = () => {
+    if (!trackingViewport || pointerInside || focusInside) return;
+    trackingViewport = false;
+    window.removeEventListener('resize', updatePosition);
+    window.removeEventListener('scroll', updatePosition, true);
+  };
+  tooltip.addEventListener('pointerenter', () => {
+    pointerInside = true;
+    startViewportTracking();
+    updatePosition();
+  });
+  tooltip.addEventListener('pointerleave', () => {
+    pointerInside = false;
+    stopViewportTracking();
+  });
+  tooltip.addEventListener('focusin', () => {
+    focusInside = true;
+    startViewportTracking();
+    updatePosition();
+  });
+  tooltip.addEventListener('focusout', (event) => {
+    focusInside = event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget);
+    stopViewportTracking();
+  });
+  return tooltip;
 }
 
 /**

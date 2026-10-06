@@ -127,6 +127,70 @@ describe('ui primitives', () => {
     expect(tooltip.querySelector('.tooltip-content strong')).not.toBeNull();
   });
 
+  it('keeps tooltips inside the viewport and flips above when there is no room below', () => {
+    const tooltip = renderTooltip({
+      id: 'placed-tooltip',
+      label: 'Tooltip placement',
+      icon: document.createTextNode('?'),
+      content: document.createTextNode('Additional context.')
+    });
+    const trigger = /** @type {HTMLElement} */ (tooltip.querySelector('.tooltip-trigger'));
+    const tooltipContent = /** @type {HTMLElement} */ (tooltip.querySelector('.tooltip-content'));
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue({
+      x: 20, y: 240, left: 20, top: 240, right: 44, bottom: 264, width: 24, height: 24, toJSON() {}
+    });
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      x: 20, y: 240, left: 20, top: 240, right: 44, bottom: 264, width: 24, height: 24, toJSON() {}
+    });
+    vi.spyOn(tooltipContent, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 100, width: 320, height: 100, toJSON() {}
+    });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 400 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 300 });
+
+    tooltip.dispatchEvent(new Event('pointerenter'));
+
+    expect(tooltipContent.style.left).toBe('-6px');
+    expect(tooltipContent.style.right).toBe('auto');
+    expect(tooltipContent.style.top).toBe('-108px');
+
+    tooltip.dispatchEvent(new Event('pointerleave'));
+  });
+
+  it('repositions a focused tooltip after the viewport changes', () => {
+    const tooltip = renderTooltip({
+      id: 'focused-tooltip',
+      label: 'Focused tooltip',
+      icon: document.createTextNode('?'),
+      content: document.createTextNode('Additional context.')
+    });
+    const trigger = /** @type {HTMLElement} */ (tooltip.querySelector('.tooltip-trigger'));
+    const tooltipContent = /** @type {HTMLElement} */ (tooltip.querySelector('.tooltip-content'));
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue({
+      x: 390, y: 20, left: 390, top: 20, right: 414, bottom: 44, width: 24, height: 24, toJSON() {}
+    });
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      x: 390, y: 20, left: 390, top: 20, right: 414, bottom: 44, width: 24, height: 24, toJSON() {}
+    });
+    vi.spyOn(tooltipContent, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 100, width: 320, height: 100, toJSON() {}
+    });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 400 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 300 });
+
+    tooltip.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+    expect(tooltipContent.style.left).toBe('-324px');
+    expect(tooltipContent.style.top).toBe('32px');
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 });
+    window.dispatchEvent(new Event('resize'));
+
+    expect(tooltipContent.style.left).toBe('-296px');
+
+    tooltip.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+  });
+
   it('composes caller-owned trigger and content nodes with reactive updates', () => {
     const value = state('Loading');
     const trigger = h('button', { type: 'button', className: 'custom-trigger' });

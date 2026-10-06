@@ -32,6 +32,34 @@ test.beforeEach(async ({ page, context }) => {
   await page.goto('http://dashboard.test/');
 });
 
+test('tooltips near the viewport edge stay visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.evaluate(async (moduleUrls) => {
+    const [{ getPrimerStyles }, { renderTooltip }] = await Promise.all(
+      moduleUrls.map((url) => import(url))
+    );
+    const styles = document.createElement('style');
+    styles.textContent = getPrimerStyles();
+    document.head.append(styles);
+    const anchor = document.createElement('div');
+    anchor.style.cssText = 'position: fixed; left: 8px; top: 100px';
+    anchor.append(renderTooltip({
+      id: 'edge-tooltip',
+      label: 'Tooltip details',
+      icon: document.createTextNode('?'),
+      content: document.createTextNode('Tooltip content.')
+    }));
+    document.body.append(anchor);
+  }, ['http://dashboard.test/src/styles.js', 'http://dashboard.test/src/components/ui-primitives.js']);
+
+  const tooltip = page.locator('.tooltip-help');
+  await tooltip.hover();
+  const bounds = await tooltip.locator('.tooltip-content').boundingBox();
+
+  expect(bounds?.x).toBeGreaterThanOrEqual(0);
+  expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);
+});
+
 test('mobile title bar keeps the dashboard subtitle adjacent to the page title', async ({ page }) => {
   const adjacentTitleGapTolerancePx = 2;
   await page.setViewportSize({ width: 390, height: 844 });
