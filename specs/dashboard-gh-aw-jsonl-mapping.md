@@ -1,14 +1,19 @@
 ---
 title: Cached gh-aw JSONL mapping
-description: Normative mapping of cached schema-v2 gh-aw JSONL into canonical dashboard data.
+description: Normative mapping of cached schema-v2 and schema-v4 gh-aw JSONL into canonical dashboard data.
 ---
 
 # Cached gh-aw JSONL mapping
 
-Each schema-v2 activity shard SHALL be mapped into the existing
+Each schema-v2 or schema-v4 activity shard SHALL be mapped into the existing
 canonical stores without adding source-shaped stores, indexes, or
 relationships. The normative ingestion expression is
 `dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json`.
+Its `sourceSchemaVersions` allowlist SHALL apply to string, binary, streaming,
+and Activity run-reader inputs. Schema-v4 retains the mapped envelope and
+identity fields and adds dispatch-coordinator evidence; unmapped fields SHALL
+NOT be copied into canonical records. Mixed v2/v4 shards SHALL be accepted,
+and canonical ingestion SHALL reject versions outside the allowlist.
 
 The mapping SHALL preserve these mandatory relationships:
 
@@ -29,7 +34,7 @@ projections but SHALL NOT emit canonical Job observations.
 inspect; it SHALL NOT provide Workflow or Run identity. Activity SHALL invoke
 `gh aw logs --repo OWNER/REPOSITORY` once for each resolved repository and SHALL
 give each repository an independent `--cached-jsonl` wildcard prefix. Every
-retained shard is part of the same schema-v2 runtime observation source.
+retained shard is part of the same versioned runtime observation source.
 
 Canonical ingestion SHALL process shards individually and use their content
 hashes to skip unchanged inputs. Each activity shard SHALL contain the

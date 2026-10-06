@@ -32,8 +32,7 @@ test("reports a missing cao add campaign without a stack trace", async () => {
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.match(error.stderr, /^Error: cao add requires a campaign\n\n/);
-  assert.match(error.stderr, /\n  cao add CAMPAIGN\b/);
+  assert.equal(error.stderr, "Error: cao add requires a campaign\n");
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });
 
@@ -47,7 +46,26 @@ test("reports a missing cao enable campaign without a stack trace", async () => 
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.match(error.stderr, /^Error: cao enable requires at least one campaign\n\n/);
-  assert.match(error.stderr, /\n  cao enable CAMPAIGN\.\.\./);
+  assert.equal(error.stderr, "Error: cao enable requires at least one campaign\n");
   assert.doesNotMatch(error.stderr, /\n\s+at /);
+});
+
+test("prints help only when requested", async () => {
+  const { stdout, stderr } = await executeFile(process.execPath, [cao, "--help"]);
+  assert.match(stdout, /^Usage:\n/);
+  assert.match(stdout, /\n  cao ingest-jsonl\b/);
+  assert.equal(stderr, "");
+});
+
+test("reports a runtime failure without appending help", async () => {
+  await assert.rejects(
+    executeFile(process.execPath, [cao, "download", "--url", "file:///cao.json"]),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.equal(error.stdout, "");
+      assert.match(error.stderr, /Dashboard data URL must use HTTP or HTTPS/);
+      assert.doesNotMatch(error.stderr, /Usage:|cao init/);
+      return true;
+    },
+  );
 });

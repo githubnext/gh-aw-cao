@@ -2,7 +2,7 @@
   "contract": "gh-aw-cao.jsonl-ingestion",
   "version": 1,
   "source": "gh-aw-logs",
-  "sourceSchemaVersion": 2,
+  "sourceSchemaVersions": [2, 4],
   "variants": {
     "workflow_runs": {
       "payloadPath": "payload",

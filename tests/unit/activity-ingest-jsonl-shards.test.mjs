@@ -127,6 +127,54 @@ async function queryTransactions(databasePath) {
   return JSON.parse(stdout).filter((transaction) => transaction.kind !== 'audit-curation');
 }
 
+test('schema-v4 shards ingest and publish normalized payloads without CLI help output', async () => {
+  const { root, shardDirectory, databasePath } = await fixture();
+  try {
+    const input = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+    const original = await readFile(input, 'utf8');
+    const content = original.trim().split('\n').map((line) => {
+      const envelope = JSON.parse(line);
+      envelope.schema_version = 4;
+      return JSON.stringify(envelope);
+    }).join('\n') + '\n';
+    await writeFile(input, content);
+    const result = await ingest(shardDirectory, databasePath);
+    assert.equal(result.result.updated, true);
+    assert.ok(result.result.shards[0].committedRecords > 0);
+
+    const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+    const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+    const { stdout, stderr } = await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'hash-payloads',
+      '--shard-dir', shardDirectory,
+      '--runs-dir', runsDirectory,
+      '--records-dir', recordsDirectory,
+    ]);
+    const hashes = JSON.parse(stdout);
+    const published = await readPhasePayload(runsDirectory);
+    assert.ok(published.batch.runs.some((run) => run.githubRunId === '303'));
+    assert.ok(Object.keys(hashes).some((name) => name.startsWith('gh-aw-logs-runs/')));
+    assert.doesNotMatch(stderr, /Usage:/);
+
+    await writeFile(input, '{"schema_version":5,"kind":"run","run":{}}\n');
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        path.resolve('activity/cao.mjs'), 'ingest-jsonl',
+        '--database', databasePath, '--input', input,
+      ]),
+      (error) => {
+        assert.equal(error.code, 1);
+        assert.equal(error.stdout, '');
+        assert.match(error.stderr, /Unsupported gh-aw JSONL schema version at line 1: 5/);
+        assert.doesNotMatch(error.stderr, /Usage:/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs without reparsing them', async () => {
   const { shardDirectory, databasePath } = await fixture();
 

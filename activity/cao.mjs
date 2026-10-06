@@ -105,7 +105,7 @@ const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
 const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
-// Intentional CLI misuse that should print usage without an internal stack trace.
+// Intentional CLI misuse that should report a message without an internal stack trace.
 class UsageError extends Error {}
 
 
@@ -2991,7 +2991,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
       : error instanceof Error
         ? error.stack || `${error.name}: ${error.message}`
         : String(error);
-    process.stderr.write(`${message}\n\n${USAGE}\n`);
+    process.stderr.write(`${message}\n`);
     process.exitCode = 1;
   });
 }

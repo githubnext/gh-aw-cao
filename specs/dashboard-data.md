@@ -1810,7 +1810,7 @@ measure or substitute display names for canonical relationship IDs.
 
 ## 14.4 Cached gh-aw JSONL
 
-The normative mapping for cached schema-v2 activity shard input is
+The normative mapping for cached schema-v2 and schema-v4 activity shard input is
 defined in [Cached gh-aw JSONL Mapping](dashboard-gh-aw-jsonl-mapping.md).
 
 ---

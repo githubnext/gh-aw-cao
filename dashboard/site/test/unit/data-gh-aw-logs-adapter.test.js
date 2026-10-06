@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../../src/data/adapters/gh-aw-logs.js';
+import { adaptCachedGhAwJsonl, adaptCachedGhAwJsonlStream, adaptGhAwLogs } from '../../src/data/adapters/gh-aw-logs.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
@@ -589,10 +589,41 @@ describe('gh-aw logs adapter', () => {
     expect(batch.runs.every((run) => run.targetRepository === undefined)).toBe(true);
   });
 
-  it('rejects unsupported cached JSONL schema versions', () => {
-    expect(() => adaptCachedGhAwJsonl(
-      '{"schema_version":3,"kind":"run","run":{}}\n'
-    )).toThrow('Unsupported gh-aw JSONL schema version');
+  it('maps schema-v4 and mixed-version shards like schema-v2 across input paths', async () => {
+    const original = readFileSync(join(fixtureRoot, 'cached-v2.jsonl'), 'utf8');
+    const expected = adaptCachedGhAwJsonl(original);
+    for (const mixed of [false, true]) {
+      const content = original.trim().split('\n').map((line, index) => {
+        const envelope = JSON.parse(line);
+        envelope.schema_version = mixed && index % 2 === 0 ? 2 : 4;
+        if (envelope.schema_version === 4 && envelope.kind === 'run') {
+          envelope.run.dispatch_coordinator = { operations: [] };
+        }
+        return JSON.stringify(envelope);
+      }).join('\n') + '\n';
+      for (const input of [content, new TextEncoder().encode(content)]) {
+        expect(adaptCachedGhAwJsonl(input)).toEqual(expected);
+      }
+      const bytes = new TextEncoder().encode(content);
+      async function* chunks() {
+        for (let start = 0; start < bytes.length; start += 37) {
+          yield bytes.subarray(start, start + 37);
+        }
+      }
+      const { payloadIdentity, ...streamed } = await adaptCachedGhAwJsonlStream(chunks());
+      expect(payloadIdentity).toMatch(/^[a-f0-9]{64}$/);
+      expect(streamed).toEqual(expected);
+      expect(relationshipErrors(normalize(streamed.observations))).toEqual([]);
+    }
+  });
+
+  it.each([1, 3, 5, '4', null])('rejects unsupported cached JSONL schema version %s', async (version) => {
+    const content = JSON.stringify({ schema_version: version, kind: 'run', run: {} }) + '\n';
+    for (const input of [content, new TextEncoder().encode(content)]) {
+      expect(() => adaptCachedGhAwJsonl(input)).toThrow('Unsupported gh-aw JSONL schema version at line 1');
+    }
+    async function* chunks() { yield content; }
+    await expect(adaptCachedGhAwJsonlStream(chunks())).rejects.toThrow('Unsupported gh-aw JSONL schema version at line 1');
   });
 
   it('retains lifecycle observations with their append-only optimizer run context', () => {

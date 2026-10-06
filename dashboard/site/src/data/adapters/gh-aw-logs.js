@@ -16,6 +16,11 @@ const debug = createDebug('data:ingestion:jsonl');
 const OBSERVATION_SOURCE = 'gh-aw-logs';
 const REPOSITORY_COORDINATE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 
+/** @param {unknown} version */
+export function isSupportedGhAwJsonlSchemaVersion(version) {
+  return cachedJsonlExpression.sourceSchemaVersions.some((supported) => supported === version);
+}
+
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -794,7 +799,6 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     || cachedJsonlExpression.version !== 1) {
     throw new TypeError('Unsupported cached gh-aw ingestion expression');
   }
-  const sourceSchemaVersion = cachedJsonlExpression.sourceSchemaVersion;
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
   /** @param {string} line @param {number} lineNumber */
@@ -803,7 +807,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     try { envelope = objectValue(JSON.parse(line), `gh-aw JSONL line ${lineNumber}`); } catch (error) {
       throw new TypeError(`gh-aw JSONL line ${lineNumber} must contain valid JSON`, { cause: error });
     }
-    if (envelope.schema_version !== sourceSchemaVersion) {
+    if (!isSupportedGhAwJsonlSchemaVersion(envelope.schema_version)) {
       throw new TypeError(
         `Unsupported gh-aw JSONL schema version at line ${lineNumber}: ${String(envelope.schema_version)}`
       );
@@ -869,7 +873,6 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     || cachedJsonlExpression.version !== 1) {
     throw new TypeError('Unsupported cached gh-aw ingestion expression');
   }
-  const sourceSchemaVersion = cachedJsonlExpression.sourceSchemaVersion;
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
@@ -889,7 +892,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     try { envelope = objectValue(JSON.parse(line), `gh-aw JSONL line ${lineNumber}`); } catch (error) {
       throw new TypeError(`gh-aw JSONL line ${lineNumber} must contain valid JSON`, { cause: error });
     }
-    if (envelope.schema_version !== sourceSchemaVersion) {
+    if (!isSupportedGhAwJsonlSchemaVersion(envelope.schema_version)) {
       throw new TypeError(
         `Unsupported gh-aw JSONL schema version at line ${lineNumber}: ${String(envelope.schema_version)}`
       );
