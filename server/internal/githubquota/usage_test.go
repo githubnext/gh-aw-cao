@@ -2,8 +2,11 @@ package githubquota
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 func TestObservationsRecordPeakUsageHistory(t *testing.T) {
@@ -108,5 +111,86 @@ func TestParseStorageKey(t *testing.T) {
 		if _, ok := parseStorageKey(key); ok {
 			t.Errorf("parseStorageKey(%q) accepted an invalid key", key)
 		}
+	}
+}
+
+func TestBuildUsagePointsSortsBySlotThenBucketAndCountsSkipped(t *testing.T) {
+	first := BucketID{App: "collector", Installation: 1, Resource: ResourceCore}
+	second := BucketID{App: "backfill", Installation: 1, Resource: ResourceCore}
+	early := time.Unix(1000, 0)
+	late := time.Unix(2000, 0)
+	samples := []redisx.GitHubQuotaUsageSample{
+		{Bucket: first.storageKey(), Slot: late, Limit: 5000, Used: 1000},
+		{Bucket: "not-a-valid-key", Slot: early, Limit: 1, Used: 1},
+		{Bucket: second.storageKey(), Slot: early, Limit: 4000, Used: 2000},
+		{Bucket: first.storageKey(), Slot: early, Limit: 5000, Used: 500},
+	}
+
+	points, skipped := buildUsagePoints(samples)
+
+	if skipped != 1 {
+		t.Fatalf("skipped = %d, want 1", skipped)
+	}
+	if len(points) != 3 {
+		t.Fatalf("points = %+v, want 3 entries", points)
+	}
+	// Within the early slot, buckets sort by their string form: "backfill" < "collector".
+	if !points[0].Time.Equal(early) || points[0].Bucket != second {
+		t.Fatalf("points[0] = %+v, want bucket %+v at %v", points[0], second, early)
+	}
+	if !points[1].Time.Equal(early) || points[1].Bucket != first {
+		t.Fatalf("points[1] = %+v, want bucket %+v at %v", points[1], first, early)
+	}
+	if !points[2].Time.Equal(late) || points[2].Bucket != first {
+		t.Fatalf("points[2] = %+v, want bucket %+v at %v", points[2], first, late)
+	}
+	if points[1].UsagePercent != 10 {
+		t.Fatalf("points[1].UsagePercent = %v, want 10", points[1].UsagePercent)
+	}
+}
+
+func TestBuildUsagePointsBoundsOversizedCounters(t *testing.T) {
+	bucket := BucketID{App: "collector", Installation: 1, Resource: ResourceCore}
+	samples := []redisx.GitHubQuotaUsageSample{
+		{Bucket: bucket.storageKey(), Slot: time.Unix(1, 0), Limit: math.MaxInt64, Used: -5, Reserved: math.MaxInt64},
+	}
+
+	points, skipped := buildUsagePoints(samples)
+
+	if skipped != 0 || len(points) != 1 {
+		t.Fatalf("buildUsagePoints() = %+v, skipped=%d", points, skipped)
+	}
+	if points[0].Limit != math.MaxInt32 || points[0].Used != 0 || points[0].Reserved != math.MaxInt32 {
+		t.Fatalf("points[0] = %+v, want counters bounded to [0, MaxInt32]", points[0])
+	}
+}
+
+func TestAggregateUsagePointsSumsEachSlotAndWeightsUsagePercentByLimit(t *testing.T) {
+	early := time.Unix(1000, 0)
+	late := time.Unix(2000, 0)
+	points := []UsagePoint{
+		{Time: early, Limit: 4000, Used: 2000, Reserved: 100},
+		{Time: early, Limit: 5000, Used: 500, Reserved: 0},
+		{Time: late, Limit: 5000, Used: 2500},
+	}
+
+	aggregate := aggregateUsagePoints(points)
+
+	if len(aggregate) != 2 {
+		t.Fatalf("aggregate = %+v, want 2 slots", aggregate)
+	}
+	want := AggregateUsagePoint{Time: early, Buckets: 2, Limit: 9000, Used: 2500, Reserved: 100, UsagePercent: usagePercent(2500, 9000)}
+	if aggregate[0] != want {
+		t.Fatalf("aggregate[0] = %+v, want %+v", aggregate[0], want)
+	}
+	want = AggregateUsagePoint{Time: late, Buckets: 1, Limit: 5000, Used: 2500, UsagePercent: 50}
+	if aggregate[1] != want {
+		t.Fatalf("aggregate[1] = %+v, want %+v", aggregate[1], want)
+	}
+}
+
+func TestAggregateUsagePointsEmptyInput(t *testing.T) {
+	if aggregate := aggregateUsagePoints(nil); len(aggregate) != 0 {
+		t.Fatalf("aggregateUsagePoints(nil) = %+v, want empty", aggregate)
 	}
 }

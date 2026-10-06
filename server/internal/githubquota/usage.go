@@ -78,16 +78,38 @@ func (s *Service) Usage(ctx context.Context) (_ UsageReport, err error) {
 		quotaLog.Printf("usage history read failed")
 		return UsageReport{}, err
 	}
+	points, skipped := buildUsagePoints(samples)
+	if skipped > 0 {
+		quotaLog.Printf("usage history samples skipped count=%d", skipped)
+	}
 	report := UsageReport{
 		GeneratedAt:     now,
 		From:            now.Add(-UsageRetention),
 		IntervalSeconds: int(UsageInterval / time.Second),
-		Buckets:         []UsagePoint{},
-		Aggregate:       []AggregateUsagePoint{},
+		Buckets:         points,
+		Aggregate:       aggregateUsagePoints(points),
 	}
+	op.span.SetAttributes(
+		attribute.Int("cao_githubquota.usage_points", len(report.Buckets)),
+		attribute.Int("cao_githubquota.usage_slots", len(report.Aggregate)))
+	quotaLog.Printf("usage history read points=%d slots=%d", len(report.Buckets), len(report.Aggregate))
+	return report, nil
+}
+
+// buildUsagePoints decodes each sample's storage key into a BucketID and
+// bounds its counters into UsagePoint, discarding samples whose bucket key
+// does not decode (for example a corrupted or legacy-format Redis field). It
+// returns the decoded points sorted by slot and then bucket, and how many
+// samples were skipped, so Usage can log that count without recomputing it.
+// It is a pure function extracted from Usage so decoding, bounding, and
+// ordering are independently testable without a Redis-backed Store.
+func buildUsagePoints(samples []redisx.GitHubQuotaUsageSample) ([]UsagePoint, int) {
+	points := make([]UsagePoint, 0, len(samples))
+	skipped := 0
 	for _, sample := range samples {
 		bucket, ok := parseStorageKey(sample.Bucket)
 		if !ok {
+			skipped++
 			continue
 		}
 		point := UsagePoint{
@@ -98,36 +120,41 @@ func (s *Service) Usage(ctx context.Context) (_ UsageReport, err error) {
 			Reserved: boundedInt(sample.Reserved),
 		}
 		point.UsagePercent = usagePercent(point.Used, point.Limit)
-		report.Buckets = append(report.Buckets, point)
+		points = append(points, point)
 	}
-	sort.SliceStable(report.Buckets, func(i, j int) bool {
-		left, right := report.Buckets[i], report.Buckets[j]
+	sort.SliceStable(points, func(i, j int) bool {
+		left, right := points[i], points[j]
 		if !left.Time.Equal(right.Time) {
 			return left.Time.Before(right.Time)
 		}
 		return left.Bucket.String() < right.Bucket.String()
 	})
-	for _, point := range report.Buckets {
-		last := len(report.Aggregate) - 1
-		if last < 0 || !report.Aggregate[last].Time.Equal(point.Time) {
-			report.Aggregate = append(report.Aggregate, AggregateUsagePoint{Time: point.Time})
+	return points, skipped
+}
+
+// aggregateUsagePoints sums every bucket's peak usage within each slot,
+// assuming points is already ordered by slot (buildUsagePoints' contract).
+// It is a pure function extracted from Usage so slot aggregation is
+// independently testable without decoding samples or calling Redis.
+func aggregateUsagePoints(points []UsagePoint) []AggregateUsagePoint {
+	aggregate := make([]AggregateUsagePoint, 0, len(points))
+	for _, point := range points {
+		last := len(aggregate) - 1
+		if last < 0 || !aggregate[last].Time.Equal(point.Time) {
+			aggregate = append(aggregate, AggregateUsagePoint{Time: point.Time})
 			last++
 		}
-		aggregate := &report.Aggregate[last]
-		aggregate.Buckets++
-		aggregate.Limit = saturatingAdd(aggregate.Limit, point.Limit)
-		aggregate.Used = saturatingAdd(aggregate.Used, point.Used)
-		aggregate.Reserved = saturatingAdd(aggregate.Reserved, point.Reserved)
+		slot := &aggregate[last]
+		slot.Buckets++
+		slot.Limit = saturatingAdd(slot.Limit, point.Limit)
+		slot.Used = saturatingAdd(slot.Used, point.Used)
+		slot.Reserved = saturatingAdd(slot.Reserved, point.Reserved)
 	}
-	for index := range report.Aggregate {
-		aggregate := &report.Aggregate[index]
-		aggregate.UsagePercent = usagePercent(aggregate.Used, aggregate.Limit)
+	for index := range aggregate {
+		slot := &aggregate[index]
+		slot.UsagePercent = usagePercent(slot.Used, slot.Limit)
 	}
-	op.span.SetAttributes(
-		attribute.Int("cao_githubquota.usage_points", len(report.Buckets)),
-		attribute.Int("cao_githubquota.usage_slots", len(report.Aggregate)))
-	quotaLog.Printf("usage history read points=%d slots=%d", len(report.Buckets), len(report.Aggregate))
-	return report, nil
+	return aggregate
 }
 
 // parseStorageKey reverses BucketID.storageKey for persisted usage fields.
