@@ -269,6 +269,8 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(page.locator('td[data-field="run"]', { hasText: '1001' })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
+  await expect.poll(async () => Number(await page.locator('.loading-progress').getAttribute('aria-valuenow')))
+    .toBeLessThanOrEqual(70);
   await expectRunsLoadOnScroll(page, completedShards * runsPerShard);
 
   for (let cycle = 0; cycle < 4; cycle += 1) {
@@ -281,6 +283,9 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await navigateToPage(page, 'overview');
   await page.getByRole('button', { name: 'Show import progress' }).click();
   await expect(importScreen).toBeVisible();
+  const importProgress = importScreen.getByRole('progressbar', { name: 'Dashboard import progress' });
+  expect(await importProgress.evaluate((element) => /** @type {HTMLProgressElement} */ (element).position))
+    .toBeLessThanOrEqual(0.7);
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
   await expect(importScreen).toHaveCount(0);

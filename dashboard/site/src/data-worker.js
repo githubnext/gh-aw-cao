@@ -854,7 +854,9 @@ export function processDataRequest(request, signal) {
           const shardLimit = eagerIngest ? undefined : debugShardLimit();
           const shards = shardLimit === undefined ? phasedShards : phasedShards.slice(0, shardLimit);
           const shardCount = shards.length;
-          const importSteps = shardCount + 3;
+          // Reserve at least 10% for each post-shard stage, even for large manifests.
+          const preparationStepWeight = Math.max(1, shardCount / 7);
+          const importSteps = shardCount + 3 * preparationStepWeight;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
@@ -1001,13 +1003,13 @@ export function processDataRequest(request, signal) {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               onMaintenanceProgress: (completed, total) =>
-                progress.reportImportProgress(shardCount + 0.9 * completed / total, importSteps, 'maintenance'),
+                progress.reportImportProgress(shardCount + preparationStepWeight * 0.9 * completed / total, importSteps, 'maintenance'),
               onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
               signal
             });
             changed ||= maintenance.deletedRecords > 0;
           }
-          progress.reportImportProgress(shardCount + 1, importSteps, 'inventory');
+          progress.reportImportProgress(shardCount + preparationStepWeight, importSteps, 'inventory');
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
@@ -1023,7 +1025,7 @@ export function processDataRequest(request, signal) {
               ? 'Inventory metadata is already current.'
               : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
-          progress.reportImportProgress(shardCount + 2, importSteps, 'queries');
+          progress.reportImportProgress(shardCount + 2 * preparationStepWeight, importSteps, 'queries');
         } else {
           progress.log('Normalizing dashboard source data.');
           progress.reportImportProgress(0, 3, 'inventory');

@@ -2440,6 +2440,13 @@ records written, records deleted, keys or records scanned, records returned,
 committed batches, aborted transactions, and unchanged shard skips. Diagnostic
 collection MUST NOT add full-store reads to the measured workload.
 
+Browser import progress MUST reserve at least 10% of the determinate range for
+each post-shard stage: retention maintenance, inventory preparation, and active
+query refresh. These allocations MUST NOT shrink as the shard count grows.
+Both the first-load dialog and the top loading bar MUST consume the same
+worker-owned weighted progress, and MUST NOT report completion before query
+refresh finishes.
+
 ---
 
 # 36. Integrity Validation
