@@ -2280,6 +2280,8 @@
     {
       "id": "workflow-route-record",
       "subject": "Project the selected workflow's identity and registration for its route shell.",
+      "objective": "Identify the workflow and its recorded campaign registration before inspecting route-specific evidence.",
+      "acceptance": "Preserve organization, repository, workflow identity, recorded role, activation, campaign, rollout mode, and source link; absent registration is not inferred from runs, and displayed activation does not grant execution authority.",
       "description": "",
       "parameters": [
         {
@@ -2306,6 +2308,8 @@
     {
       "id": "workflow-runtime-health-summary",
       "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
+      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
+      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
       "description": "",
       "parameters": [
         {
@@ -2330,6 +2334,8 @@
     {
       "id": "workflow-runtime-usage-summary",
       "subject": "Sum retained AI Credits and count telemetry rows for the selected workflow without transferring runs.",
+      "objective": "Inspect a workflow's observed AI Credit consumption together with the amount of retained usage telemetry.",
+      "acceptance": "AI Credits sum the retained aic values within each organization, repository, and workflow, and telemetry-count counts its usage records; absent telemetry does not establish zero cost or complete run coverage.",
       "description": "",
       "parameters": [
         {
@@ -2354,6 +2360,8 @@
     {
       "id": "outcome-route-record",
       "subject": "Project the selected safe-output record for the outcome route and its sections.",
+      "objective": "Inspect a retained safe output's recorded disposition and follow its durable evidence links.",
+      "acceptance": "Preserve safe-output and run identity, title, category, disposition, summary, timestamps, rollout mode, workflow context, and retained links; missing fields stay unknown and a recorded disposition is not independently verified operational impact.",
       "description": "",
       "parameters": [
         {
@@ -5532,6 +5540,8 @@
     {
       "id": "domain-route-record",
       "subject": "Project the selected domain header and one retained run link.",
+      "objective": "Identify the selected domain and open a retained run before investigating its traffic evidence.",
+      "acceptance": "The route header preserves the selected domain and a run link from its retained observations; missing observations or links remain unavailable, and a header does not establish access policy or traffic completeness.",
       "description": "",
       "parameters": [
         {
@@ -5557,6 +5567,8 @@
     {
       "id": "tool-route-record",
       "subject": "Project the selected MCP tool header and one retained run link.",
+      "objective": "Identify the selected MCP tool and open a retained run before investigating its call evidence.",
+      "acceptance": "The route header preserves the selected MCP tool label and a run link from its retained calls; absent calls or links remain unavailable and do not imply zero usage or tool effectiveness.",
       "description": "",
       "parameters": [
         {
@@ -5582,6 +5594,8 @@
     {
       "id": "audit-route-record",
       "subject": "Project the selected audit summary header and one retained run link.",
+      "objective": "Identify the selected audit summary and open a retained run before investigating its observations.",
+      "acceptance": "The route header preserves the selected event summary and a run link from its retained audit observations; absent evidence remains unavailable and neither the header nor its absence establishes incident severity or a clean audit.",
       "description": "",
       "parameters": [
         {

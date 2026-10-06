@@ -3,6 +3,8 @@
     {
       "name": "workflow-route-record",
       "subject": "Project the selected workflow's identity and registration for its route shell.",
+      "objective": "Identify the workflow and its recorded campaign registration before inspecting route-specific evidence.",
+      "acceptance": "Preserve organization, repository, workflow identity, recorded role, activation, campaign, rollout mode, and source link; absent registration is not inferred from runs, and displayed activation does not grant execution authority.",
       "from": "workflows",
       "select": [
         { "field": "organization" }, { "field": "repository" }, { "field": "workflow" },
@@ -14,6 +16,8 @@
     {
       "name": "workflow-runtime-health-summary",
       "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
+      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
+      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
       "from": "runs",
       "compute": [
         { "as": "successful", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }] },
@@ -38,6 +42,8 @@
     {
       "name": "workflow-runtime-usage-summary",
       "subject": "Sum retained AI Credits and count telemetry rows for the selected workflow without transferring runs.",
+      "objective": "Inspect a workflow's observed AI Credit consumption together with the amount of retained usage telemetry.",
+      "acceptance": "AI Credits sum the retained aic values within each organization, repository, and workflow, and telemetry-count counts its usage records; absent telemetry does not establish zero cost or complete run coverage.",
       "from": "usage",
       "aggregate": {
         "by": ["organization", "repository", "workflow"],
@@ -50,6 +56,8 @@
     {
       "name": "outcome-route-record",
       "subject": "Project the selected safe-output record for the outcome route and its sections.",
+      "objective": "Inspect a retained safe output's recorded disposition and follow its durable evidence links.",
+      "acceptance": "Preserve safe-output and run identity, title, category, disposition, summary, timestamps, rollout mode, workflow context, and retained links; missing fields stay unknown and a recorded disposition is not independently verified operational impact.",
       "from": "outcomes",
       "select": [
         { "field": "safe-output" }, { "field": "run" }, { "field": "outcome-title" }, { "field": "outcome-number" },

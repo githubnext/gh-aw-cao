@@ -200,7 +200,8 @@ func (c *sqlCompiler) temporalPanels(tidy SQLRelation, carried []SQLColumn, defi
 		columns[definition.Carry[index]] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: column.Kind}
 	}
 	projection := make([]string, 0, len(keys)+7)
-	partition := []string{tidy.Columns["metric-key"].Expression}
+	partition := make([]string, 0, 1+len(carried))
+	partition = append(partition, tidy.Columns["metric-key"].Expression)
 	for index := range carried {
 		partition = append(partition, tidy.Columns["carry"+strconv.Itoa(index)].Expression)
 	}

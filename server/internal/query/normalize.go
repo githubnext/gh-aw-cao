@@ -184,11 +184,12 @@ func Normalize(definition Definition) NormalizedQuery {
 		}
 		names := append([]string{}, series.Carry...)
 		names = append(names, "metric", "metric-key", "metric-name", "metric-kind", "metric-group")
-		if series.Shape == "groups" {
+		switch series.Shape {
+		case "groups":
 			names = append(names, "points")
-		} else if series.Shape == "panels" {
+		case "panels":
 			names = append(names, "series")
-		} else {
+		default:
 			names = append(names, "time", "series", "value")
 		}
 		produced := map[string]bool{}
