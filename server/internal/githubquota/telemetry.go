@@ -12,12 +12,15 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 // instrumentationName is the OpenTelemetry scope shared with the rest of the
 // CAO server so quota telemetry exports alongside server spans and metrics.
 const instrumentationName = "github.com/githubnext/gh-aw-cao/server"
+
+var quotaTelemetryLog = logger.New("cao:githubquota:telemetry")
 
 // Span and metric names are stable and low-cardinality. Attributes carry only
 // non-secret bucket identity (App name, installation ID, resource), fixed
@@ -104,31 +107,64 @@ func (op *operation) setBucket(bucket BucketID) {
 		attribute.Int64(attributeInstallation, bucket.Installation))
 }
 
-// finish ends the span and records the operation metrics. Unavailable
-// buckets are expected admission outcomes, not errors.
-func (op *operation) finish(ctx context.Context, err error) {
-	outcome := op.outcome
+// operationFinishClassification is the span outcome, status, and optional
+// attributes classifyOperationFinish derives from an operation's declared
+// outcome and its terminal error. It is a pure function result so finish's
+// error-to-outcome mapping is testable without a real OpenTelemetry span.
+type operationFinishClassification struct {
+	outcome           string
+	statusCode        codes.Code
+	statusDescription string
+	// statusAttr, when non-empty, is recorded as attributeStatus: the
+	// specific UnavailableError status behind an expected admission outcome.
+	statusAttr string
+	// errorType, when non-empty, is recorded as error.type: a bounded,
+	// non-secret classification of an unexpected operational error.
+	errorType string
+}
+
+// classifyOperationFinish maps a finishing operation's declared outcome and
+// terminal error to its telemetry outcome, span status, and optional status
+// or error-type attributes. Unavailable buckets and an empty candidate set
+// are expected admission results, not errors.
+func classifyOperationFinish(outcome string, err error) operationFinishClassification {
 	var unavailable *UnavailableError
 	switch {
 	case errors.As(err, &unavailable):
-		outcome = string(unavailable.Status)
-		op.span.SetAttributes(attribute.String(attributeStatus, outcome))
-		op.span.SetStatus(codes.Ok, "")
+		status := string(unavailable.Status)
+		return operationFinishClassification{outcome: status, statusCode: codes.Ok, statusAttr: status}
 	case errors.Is(err, ErrNoCandidates):
-		outcome = outcomeNoBucket
-		op.span.SetStatus(codes.Ok, "")
+		return operationFinishClassification{outcome: outcomeNoBucket, statusCode: codes.Ok}
 	case err != nil && outcome == outcomeInvalid:
-		op.span.SetAttributes(attribute.String("error.type", "invalid_request"))
-		op.span.SetStatus(codes.Error, "invalid github quota request")
+		return operationFinishClassification{
+			outcome: outcomeInvalid, statusCode: codes.Error,
+			statusDescription: "invalid github quota request", errorType: "invalid_request",
+		}
 	case err != nil:
-		outcome = outcomeError
-		op.span.SetAttributes(attribute.String("error.type", telemetry.DatabaseErrorType(err)))
-		op.span.SetStatus(codes.Error, "github quota operation failed")
+		return operationFinishClassification{
+			outcome: outcomeError, statusCode: codes.Error,
+			statusDescription: "github quota operation failed", errorType: telemetry.DatabaseErrorType(err),
+		}
 	default:
-		op.span.SetStatus(codes.Ok, "")
+		return operationFinishClassification{outcome: outcome, statusCode: codes.Ok}
 	}
+}
+
+// finish ends the span and records the operation metrics. Unavailable
+// buckets are expected admission outcomes, not errors.
+func (op *operation) finish(ctx context.Context, err error) {
+	classification := classifyOperationFinish(op.outcome, err)
+	outcome := classification.outcome
+	if classification.statusAttr != "" {
+		op.span.SetAttributes(attribute.String(attributeStatus, classification.statusAttr))
+	}
+	if classification.errorType != "" {
+		op.span.SetAttributes(attribute.String("error.type", classification.errorType))
+	}
+	op.span.SetStatus(classification.statusCode, classification.statusDescription)
 	op.span.SetAttributes(attribute.String(attributeOutcome, outcome))
 	op.span.End()
+	quotaTelemetryLog.Printf("github quota operation finished name=%s outcome=%s", op.name, outcome)
 
 	attrs := metric.WithAttributes(append(op.attrs, attribute.String(attributeOutcome, outcome))...)
 	meter := otel.Meter(instrumentationName)
