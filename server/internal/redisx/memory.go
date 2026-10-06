@@ -121,36 +121,18 @@ func (s *Store) InitializeDisposableCaches(ctx context.Context) error {
 	enabled := true
 	for index, probe := range probes {
 		fields, ok := probe.([]any)
-		if !ok || len(fields) != 2 {
+		if !ok {
 			return errors.New("invalid Redis cache capability response")
 		}
-		status, ok := fields[0].(int64)
-		if !ok {
-			return errors.New("invalid Redis cache capability status")
+		forceDisable, err := classifyCapabilityProbe(index, fields, func(value any) (bool, error) {
+			_, quotaReported, err := s.parseMemoryInfoWithQuota(value)
+			return quotaReported, err
+		})
+		if err != nil {
+			return err
 		}
-		switch status {
-		case 0:
-			message, ok := fields[1].(string)
-			if !ok || !unsupportedScriptIntrospection(message, index) {
-				return errors.New("redis cache introspection probe failed")
-			}
+		if forceDisable {
 			enabled = false
-		case 1:
-			if index == 0 {
-				_, quotaReported, err := s.parseMemoryInfoWithQuota(fields[1])
-				if err != nil {
-					return err
-				}
-				if !quotaReported {
-					enabled = false
-				}
-			} else if fields[1] != nil {
-				if usage, ok := fields[1].(int64); !ok || usage < 0 {
-					return errors.New("invalid Redis memory usage probe")
-				}
-			}
-		default:
-			return errors.New("invalid Redis cache capability status")
 		}
 	}
 	if enabled {
@@ -158,7 +140,52 @@ func (s *Store) InitializeDisposableCaches(ctx context.Context) error {
 	} else {
 		s.cacheCapability.Store(2)
 	}
+	storeLog.Printf("disposable cache capability resolved enabled=%t", enabled)
 	return nil
+}
+
+// classifyCapabilityProbe interprets one indexed probe result decoded from
+// cacheCapabilityScript's EVAL reply (a two-element [status, payload] pair),
+// reporting whether this probe alone forces disposable caches to be
+// disabled. It is a pure function extracted from InitializeDisposableCaches's
+// loop body so each probe status and index combination (an unsupported
+// script-introspection error, a reported-versus-absent provider memory
+// quota, or a plain memory-usage probe) is independently testable against
+// decoded EVAL reply values and a stub quota lookup, without a real Redis
+// client or Store. quotaReported inspects index 0's INFO memory payload for
+// a reported provider quota; it is only called for that index.
+func classifyCapabilityProbe(index int, fields []any, quotaReported func(any) (bool, error)) (forceDisable bool, err error) {
+	if len(fields) != 2 {
+		return false, errors.New("invalid Redis cache capability response")
+	}
+	status, ok := fields[0].(int64)
+	if !ok {
+		return false, errors.New("invalid Redis cache capability status")
+	}
+	switch status {
+	case 0:
+		message, ok := fields[1].(string)
+		if !ok || !unsupportedScriptIntrospection(message, index) {
+			return false, errors.New("redis cache introspection probe failed")
+		}
+		return true, nil
+	case 1:
+		if index == 0 {
+			reported, err := quotaReported(fields[1])
+			if err != nil {
+				return false, err
+			}
+			return !reported, nil
+		}
+		if fields[1] != nil {
+			if usage, ok := fields[1].(int64); !ok || usage < 0 {
+				return false, errors.New("invalid Redis memory usage probe")
+			}
+		}
+		return false, nil
+	default:
+		return false, errors.New("invalid Redis cache capability status")
+	}
 }
 
 func unsupportedScriptIntrospection(message string, probe int) bool {
