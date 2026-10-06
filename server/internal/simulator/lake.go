@@ -12,12 +12,46 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
+
+var lakeLog = logger.New("cao:simulator:lake")
 
 type LakeResult struct {
 	Repositories int `json:"repositories"`
 	Runs         int `json:"runs"`
+}
+
+// lakeRequestRejectionStage identifies which of WriteLake's preconditions
+// failed, so a misconfigured simulation request is diagnosable without
+// logging the operator-supplied directory path itself.
+type lakeRequestRejectionStage string
+
+const (
+	lakeRequestRejectionStageNone      lakeRequestRejectionStage = "none"
+	lakeRequestRejectionStageHistory   lakeRequestRejectionStage = "history"
+	lakeRequestRejectionStageHorizon   lakeRequestRejectionStage = "horizon"
+	lakeRequestRejectionStageDirectory lakeRequestRejectionStage = "directory"
+)
+
+// validateLakeRequest applies WriteLake's precondition: a configured
+// History, a horizon covered by History.Days, and an absolute output
+// directory. It is a pure function extracted from WriteLake's combined
+// inline condition, so each failure mode -- missing history, an
+// out-of-range horizon, and a relative directory -- is independently
+// testable without touching the filesystem.
+func validateLakeRequest(history *History, horizonDays int, directory string) lakeRequestRejectionStage {
+	switch {
+	case history == nil:
+		return lakeRequestRejectionStageHistory
+	case horizonDays < 1 || horizonDays > history.Days:
+		return lakeRequestRejectionStageHorizon
+	case !filepath.IsAbs(directory):
+		return lakeRequestRejectionStageDirectory
+	default:
+		return lakeRequestRejectionStageNone
+	}
 }
 
 // WriteLake streams canonical synthetic evidence, not GitHub data or raw logs.
@@ -27,9 +61,11 @@ func (s Scenario) WriteLake(ctx context.Context, directory string, horizonDays i
 	if err := s.Validate(); err != nil {
 		return LakeResult{}, err
 	}
-	if s.History == nil || horizonDays < 1 || horizonDays > s.History.Days || !filepath.IsAbs(directory) {
+	if stage := validateLakeRequest(s.History, horizonDays, directory); stage != lakeRequestRejectionStageNone {
+		lakeLog.Printf("synthetic lake request rejected stage=%s", stage)
 		return LakeResult{}, errors.New("synthetic lake requires history, a covered horizon, and an absolute directory")
 	}
+	lakeLog.Printf("synthetic lake starting repositories=%d horizonDays=%d", s.Repositories, horizonDays)
 	shards := filepath.Join(directory, "gh-aw-logs-runs")
 	if err := os.MkdirAll(shards, 0o750); err != nil {
 		return LakeResult{}, err
@@ -106,5 +142,6 @@ func (s Scenario) WriteLake(ctx context.Context, directory string, horizonDays i
 	if err := os.WriteFile(filepath.Join(directory, "inventory-sources.json"), []byte("{}\n"), 0o600); err != nil {
 		return LakeResult{}, err
 	}
+	lakeLog.Printf("synthetic lake completed repositories=%d runs=%d", result.Repositories, result.Runs)
 	return result, nil
 }
