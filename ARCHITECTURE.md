@@ -62,6 +62,16 @@ compiled by gh-aw. No one input can widen another.
 Orchestrators decide rollout and selection; workers are independent,
 single-target enforcement points.
 
+A local debugger may manually launch one worker in request-only `debug` mode.
+Admission verifies a human `workflow_dispatch` sender with current write access
+to the control repository, retains policy scope, enablement, and limits, and
+rejects dispatcher-envelope inputs. The target and proposed-output repository
+must match; precompute records the debugger actor and empty dispatcher
+correlation. Shared control forces gh-aw safe-output staging and suppresses
+automatic activation/failure issues. Debug grants no live authority and cannot
+be persisted in policy or selected by an orchestrator. GitHub cannot attest
+local CLI origin; repository-memory staging remains owned by gh-aw.
+
 ### Activity, computations, and dashboard data
 
 CAO Activity is a separate evidence pipeline. It supports observability but

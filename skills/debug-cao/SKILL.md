@@ -30,6 +30,14 @@ metadata:
    `<observation>` would confirm or reject it.
 8. Reproduce only when it stays bounded and review-safe, holding workflow,
    policy, compiler, target, and inputs constant and changing one boundary.
+   For a local worker loop, follow the [debug launch contract](../../docs/execution-and-safety.md#local-worker-debug-loop):
+   use `gh aw run WORKER --repo CONTROL --ref REF` with explicit
+   `target_repo`, matching `safe_output_repo`, and `safe_output_mode=debug`
+   through `--raw-field`. Omit dispatcher correlation inputs. Use the human
+   operator's authentication with control-repository write access, then inspect
+   the run using `gh run`. Never launch debug from an orchestrator or bot,
+   change policy to `debug`, or claim that staged proposals were executed.
+   Repository-memory staging depends on gh-aw support.
 9. Search for an exact existing issue before creating one. Use the
    [diagnostic report](references/diagnostic-report.md); include immutable links,
    redactions, the next bounded observation, and an acceptance condition.

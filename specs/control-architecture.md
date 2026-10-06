@@ -185,6 +185,28 @@ Orchestrators and workers execute from the private control repository. Target re
 
 **CAO-EXE-003:** Every worker dispatch MUST carry `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url`; it MAY carry a campaign-specific `batch_label`. Credentials MUST NOT be included in this envelope.
 
+**CAO-EXE-004:** A local debugger MAY request `debug` only by directly launching
+one worker through `workflow_dispatch`. Admission MUST verify the authoritative
+event's requested mode, target, destination, and human sender, require current
+write, maintain, or admin permission on the control repository, and reject
+bot callers or reruns by a different triggering actor. Unavailable evidence
+MUST fail closed. GitHub does not attest the local origin of a CLI/API request;
+human manual dispatch is the enforceable launch boundary.
+
+Debug MUST retain exact-workflow-SHA policy validation, declared and enabled
+campaign and worker identity, owner and repository scope, request limits,
+credential reach, and API-capacity checks. It MUST require an explicit target
+and matching output repository. Dispatcher correlation ID, central repository,
+and originating-run URL inputs MUST be absent; they MUST NOT be synthesized.
+Precompute MUST recheck debug launch eligibility and record the debug actor,
+`launch_kind: manual-debug`, `safe_outputs_staged: true`, the actual control
+repository, and empty dispatcher correlation fields.
+
+Debug MUST NOT be a persistent policy value, an orchestrator mode, or live
+mutation authority. Compiled shared control MUST force global gh-aw safe-output
+staging and suppress automatic activation and failure issues for debug runs.
+Repository-memory staging remains a gh-aw capability, not a CAO job replacement.
+
 The orchestrator is the rollout decision point. Each worker is an independent enforcement point that revalidates the envelope before execution.
 
 ## 5. JSON Configuration
@@ -303,7 +325,7 @@ Dispatch values are intersected with the persistent result. They are requests an
 
 | Dispatch input | Permitted effect |
 | --- | --- |
-| `safe_output_mode` | Preserve mode or lower `live` to `review` |
+| `safe_output_mode` | Preserve mode or lower `live` to `review`; manual-only `debug` follows CAO-EXE-004 and grants no mutation authority |
 | `target_repo` | Select one authorized repository |
 | `safe_output_repo` | Select one authorized review destination |
 | `max_repos` | Lower the repository ceiling |

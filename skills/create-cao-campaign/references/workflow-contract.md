@@ -37,6 +37,10 @@ Use this checklist after the campaign outcome and worker split are stable.
   Never give workers a default mode: the orchestrator must pass the
   policy-resolved effective mode explicitly, and omission must fail dispatch
   validation rather than silently downgrade a live target to review.
+- Preserve shared control's manual-only `debug` path and global output staging.
+  Debug is never an orchestrator selection or persistent policy mode. Keep
+  dispatcher correlation inputs optional so local debugger runs can omit them;
+  shared control still requires them for ordinary review/live worker dispatches.
 - Import shared control with static campaign, worker, and `role: worker`.
 - Pass each declared GitHub `read` permission to the matching
   `shared/control.md` `read_<permission>` input. The shared control import

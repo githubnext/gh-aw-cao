@@ -77,6 +77,9 @@ safe-outputs:
     report-as-issue: false
   messages:
     footer-install: "<!-- -->"
+  staged: ${{ inputs.safe_output_mode == 'debug' }}
+  activation-comments: ${{ inputs.safe_output_mode != 'debug' }}
+  report-failure-as-issue: ${{ inputs.safe_output_mode != 'debug' }}
 
 env:
   CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
@@ -145,6 +148,10 @@ jobs:
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
           CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
+          CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: ${{ inputs.safe_output_repo || '' }}
+          CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
+          CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
+          CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_REQUESTED_MAX_REPOSITORIES: ${{ inputs.max_repos || '' }}
           CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
@@ -218,6 +225,7 @@ jobs:
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
           CAO_DISPATCH_MAX: "${{ github.aw.import-inputs.dispatch_max }}"
           CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
+          CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: ${{ inputs.safe_output_repo || '' }}
           CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
           CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
           CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
@@ -584,6 +592,8 @@ post-steps:
 Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions. Treat it as authoritative for `control_role`, campaign enablement state, target repository inputs, safe-output routing, and worker workflow availability.
 
 If `control_role` is `worker`, this workflow is a dispatched worker. Do not select repositories and do not dispatch workflows. Use the importing workflow's mission instructions, and treat `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url` as the standard control-plane envelope. When `correlation_id` is present, append one final blockquote line to safe-output issues, pull requests, or comments: `> cao: <central_repo>, correlation: <a href="<control_plane_run_url>"><correlation_id></a>`. Use the envelope values, not the placeholder text. Replace any importing workflow's `### Control Plane` section requirement with this footer; do not include both. Safe outputs are created in `SAFE_OUTPUT_REPO`.
+
+If `safe_output_mode` is `debug`, this is a manually launched single-target worker, not a dispatcher run. Follow the mission's live analysis and proposed-output path, but never perform direct writes: every declared safe output is forcibly staged by gh-aw and is only a preview. Automatic activation/failure issues are disabled. Repository-memory staging is owned by gh-aw, not CAO. Use only the admitted `target_repo` and `safe_output_repo`; do not discover targets or dispatch work. There is no originating orchestrator, so leave correlation fields empty and do not invent a Control Plane footer. Debug does not grant live authority.
 
 Every human-facing durable worker output must be concise, easy to scan, and use progressive disclosure. Begin directly with a short, plain-language executive summary of the decision-relevant result, critical findings, key metrics, and recommended next action; do not add a heading for this opening summary. Immediately follow it with one visible `**Action:**` sentence that says who should do what next and the acceptance check. When a repository change can be delegated safely, tell the maintainer to assign the issue to Copilot and provide the exact prompt inside `<details><summary><b>Agent prompt</b></summary>...</details>`. When human judgment or authority is required, name the reviewer and decision instead; when no action is required, say `**Action:** None.` Keep only the summary, action, and critical findings visible. Put non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details><summary>...</summary>...</details>` sections. In comments and reviews, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings. Put every Markdown table inside a clearly named `<details>` element. Do not repeat the summary or add a table of contents. Metadata markers may precede the opening summary when another contract requires them.
 

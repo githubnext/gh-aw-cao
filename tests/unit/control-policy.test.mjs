@@ -30,6 +30,7 @@ function effective(policy, {
   worker = "",
   requestedMode = "",
   targetRepository = "",
+  eventName = "",
 } = {}) {
   try {
     return {
@@ -42,6 +43,7 @@ function effective(policy, {
         controlRepository: "acme/control",
         requestedMode,
         targetRepository,
+        eventName,
       }),
     };
   } catch (error) {
@@ -86,6 +88,27 @@ const minimalPolicy = JSON.stringify({
       },
     },
   },
+});
+
+test("debug is request-only and cannot become persistent rollout or worker authority", () => {
+  for (const change of [
+    (document) => { document["control-plane"].defaults = { mode: "debug" }; },
+    (document) => { document["control-plane"].campaigns.dependabot.mode = "debug"; },
+    (document) => { document["control-plane"].campaigns.dependabot.targets = { "acme/payments-api": { mode: "debug" } }; },
+    (document) => { document["control-plane"].campaigns.dependabot.workers["update-planner"]["max-mode"] = "debug"; },
+  ]) {
+    const document = JSON.parse(minimalPolicy);
+    change(document);
+    assert.throws(() => parsePolicy(JSON.stringify(document)), /must be review or live/);
+  }
+  const { output, status, stderr } = effective(minimalPolicy, {
+    role: "worker", worker: "update-planner", targetRepository: "acme/payments-api",
+    requestedMode: "debug", eventName: "workflow_dispatch",
+  });
+  assert.equal(status, 0, stderr);
+  assert.equal(output.safe_output_mode, "debug");
+  assert.deepEqual(output.target_policies, {});
+  assert.deepEqual(output.allowed_repositories, ["acme/payments-api", "acme/storefront"]);
 });
 
 test("control policy accepts the minimal version 1 control document", () => {

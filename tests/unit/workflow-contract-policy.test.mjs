@@ -527,14 +527,31 @@ test("review destinations allow control self-review and isolate other targets", 
   assert.match(precompute, /non-central review safe_output_repo must be private/);
 });
 
-test("safe-output modes are review and live with a separate campaign kill switch", () => {
+test("persistent modes remain review and live; manual debug forces compiled staging", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
   assert.match(precompute, /typeof policy\.authorized !== "boolean"/);
   assert.match(precompute, /if \(!policy\.authorized\)/);
   assert.match(precompute, /type: "noop"/);
-  assert.doesNotMatch(`${control}\n${precompute}`, /preview_only|\bstaged\b/);
+  assert.doesNotMatch(`${control}\n${precompute}`, /preview_only/);
+  const config = workflowConfig("shared/control.md");
+  assert.equal(config["safe-outputs"].staged, "${{ inputs.safe_output_mode == 'debug' }}");
+  assert.equal(config["safe-outputs"]["activation-comments"], "${{ inputs.safe_output_mode != 'debug' }}");
+  assert.equal(config["safe-outputs"]["report-failure-as-issue"], "${{ inputs.safe_output_mode != 'debug' }}");
+  for (const { name, role } of operationWorkflowRegistrations()) {
+    const generated = workflow(name.replace(/\.md$/, ".lock.yml"));
+    const jobs = parse(generated).jobs;
+    assert.equal(jobs.safe_outputs.env.GH_AW_SAFE_OUTPUTS_STAGED, "${{ inputs.safe_output_mode == 'debug' }}", name);
+    const failureStep = jobs.conclusion.steps.find((step) => step.env?.GH_AW_FAILURE_REPORT_AS_ISSUE);
+    assert.equal(failureStep?.env.GH_AW_FAILURE_REPORT_AS_ISSUE, "${{ inputs.safe_output_mode != 'debug' }}", name);
+    if (role === "worker") {
+      assert.equal(workflowConfig(name).on.workflow_dispatch.inputs.safe_output_mode.type, "string", name);
+      assert.match(generated, /debug requires a manual, human-authorized worker|safe_output_mode` is `debug`/, name);
+    } else {
+      assert.ok(!workflowConfig(name).on.workflow_dispatch.inputs.safe_output_mode.options.includes("debug"), name);
+    }
+  }
 });
 
 test("exact campaign target modes flow through candidate dispatch and reporting", () => {
