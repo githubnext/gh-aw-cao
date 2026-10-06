@@ -35,9 +35,19 @@
       "files": [
         "src/docker-manager.test.ts"
       ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9460,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated commit 'test: improve docker-manager barrel coverage' re-added parseDifcProxyHost and filterComposeCapDrop behavioral assertions to the barrel re-export smoke-test file src/docker-manager.test.ts; follow-up commit 'test: remove duplicate docker-manager coverage' (co-authored by maintainer lpcox) reverted the duplicated assertions before merge, same revert pattern as #9308/#9368/#9408. A Copilot review comment at src/docker-manager.test.ts:118 flagged the same duplication concern during review.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
     }
   ],
-  "occurrence_count": 3,
+  "occurrence_count": 4,
   "affected_paths": [
     "src/docker-manager.test.ts"
   ],
