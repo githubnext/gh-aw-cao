@@ -30,6 +30,23 @@
       "mcp-tool-label", "mcp-server", "mcp-tool", "mcp-status", "observations"
     ]
   },
+  "elementViews": [
+    { "page": "domain-insights", "id": "domain-route-chrome", "sources": ["domain-route-record"], "route": { "domain": "api.github.com" } },
+    { "page": "domain-runs", "id": "domain-runs-route-chrome", "sources": ["domain-route-record"], "route": { "domain": "api.github.com" } },
+    { "page": "tool-insights", "id": "tool-route-chrome", "sources": ["tool-route-record"], "route": { "tool": "github/issue_read" } },
+    { "page": "tool-runs", "id": "tool-runs-route-chrome", "sources": ["tool-route-record"], "route": { "tool": "github/issue_read" } },
+    { "page": "audit-insights", "id": "audit-route-chrome", "sources": ["audit-route-record"], "route": { "audit": "Selected event" } },
+    { "page": "audit-runs", "id": "audit-runs-route-chrome", "sources": ["audit-route-record"], "route": { "audit": "Selected event" } },
+    { "page": "workflow-runtime", "id": "workflow-runtime-route", "sources": ["workflow-route-record", "workflow-runtime-health-summary", "workflow-runtime-usage-summary"], "route": { "workflow": "org/repo:.github/workflows/worker.md" } },
+    { "page": "workflow-detail", "id": "workflow-reports-route", "sources": ["workflow-route-record"], "route": { "workflow": "org/repo:.github/workflows/worker.md" } },
+    { "page": "workflow-runs", "id": "workflow-runs-route", "sources": ["workflow-route-record"], "route": { "workflow": "org/repo:.github/workflows/worker.md" } },
+    { "page": "outcome-detail", "id": "outcome-record", "sources": ["outcome-route-record"], "route": { "outcome": "selected-output" } },
+    { "page": "outcome-detail", "id": "outcome-discussion", "sources": ["outcome-route-record"], "route": { "outcome": "selected-output" } },
+    { "page": "outcome-detail", "id": "outcome-metadata", "sources": ["outcome-route-record"], "route": { "outcome": "selected-output" } },
+    { "page": "campaign-detail", "id": "campaign-readme", "sources": ["campaign-readme-details"], "route": { "campaign": "selected" } },
+    { "page": "marketplace-package", "id": "marketplace-package-readme", "sources": ["marketplace-package-detail"], "route": { "package-source": "selected-package" } }
+  ],
+  "temporalPanelFields": ["campaign", "operational-value-definition", "operational-value-role", "operational-value-name", "operational-value-unit", "operational-value-direction", "adoption-at", "evaluation-mode", "metric", "metric-key", "metric-name", "metric-kind", "metric-group", "series"],
   "views": [
     {
       "page": "run-events",

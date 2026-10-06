@@ -1434,6 +1434,7 @@
           "id": "marketplace-package-readme",
           "title": "README",
           "data": {
+            "limit": 1,
             "sources": [
               "marketplace-package-detail"
             ],

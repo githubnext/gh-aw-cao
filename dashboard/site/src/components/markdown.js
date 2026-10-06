@@ -1,7 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { findLink } from './link-content.js';
-import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 
@@ -26,8 +25,7 @@ export function renderMarkdownElement(context) {
   const contentField = value(config['content-field']);
   const pathField = value(config['path-field']);
   const baseLinkField = value(config['base-link-field']);
-  const rows = rowsForSource(context.sources, context.sourceNames[0] ?? '');
-  const source = rows.find((row) => value(row[contentField])) ?? rows[0];
+  const source = context.sources[context.sourceNames[0]]?.rows[0];
   const markdown = source ? value(source[contentField]) : '';
   if (!markdown) {
     debugMarkdown({ event: 'render', pageId: context.pageId, status: 'empty' });

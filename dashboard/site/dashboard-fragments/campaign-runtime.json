@@ -160,6 +160,12 @@
       "acceptance": "Success rate is successful-runs divided by concluded-runs, expressed as a percent only where the denominator exists; the numerator and denominator remain inspectable, and co-occurrence does not establish causality or operational value.",
       "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
       "from": "campaign-operational-value-run-day-totals",
+      "filter": {
+        "predicates": [
+          { "field": "concluded-runs", "gte": 1 },
+          { "field": "run-day", "gte": "0000-01-01" }
+        ]
+      },
       "compute": [
         {
           "as": "success-rate-ratio",
@@ -185,7 +191,8 @@
             }
           ]
         }
-      ]
+      ],
+      "order-by": [{ "field": "run-day", "direction": "asc" }]
     },
     {
       "name": "campaign-performance-baseline-totals",

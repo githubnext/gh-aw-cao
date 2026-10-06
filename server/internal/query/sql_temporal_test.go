@@ -51,7 +51,7 @@ func TestTemporalSQLGroupsCompilation(t *testing.T) {
 	for _, fragment := range []string{
 		"AS NOT MATERIALIZED", "pg_input_is_valid", "isfinite(", "GROUP BY",
 		"first_value(", "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
-		"jsonb_agg(jsonb_build_object('x'", `ORDER BY "__order"`,
+		"jsonb_agg(jsonb_build_object('x'", `ORDER BY "__at","__order"`,
 		"LIMIT 100001", "__count <= 100000", "ELSE 0 END = 1", `"count" >= 2`,
 	} {
 		if !strings.Contains(plan.CTEs, fragment) {
@@ -145,22 +145,28 @@ func TestTemporalSQLDeployedCampaignQuery(t *testing.T) {
 			continue
 		}
 		series := definition.TemporalSeries
-		if series == nil || series.Trend == nil {
-			t.Fatal("deployed campaign query must include the temporal trend")
+		if series == nil || series.Shape != "panels" || series.Link != "run-link" {
+			t.Fatal("deployed campaign query must return repository panels with point-level links")
 		}
 		input := SQLRelation{SQL: "observations", Order: "ordinal", Columns: map[string]SQLColumn{}}
 		for _, field := range series.Carry {
 			input.Columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: SQLText}
 		}
 		input.Columns[series.Time] = SQLColumn{Expression: "observed_at", Presence: "observed_at_present", Kind: SQLTimestamp}
+		input.Columns[series.Series] = SQLColumn{Expression: "repository", Presence: "TRUE", Kind: SQLText}
+		input.Columns[series.Link] = SQLColumn{Expression: "run_link", Presence: "link_present", Kind: SQLStructured}
 		for _, measure := range series.Measures {
 			input.Columns[measure.Field] = SQLColumn{Expression: "amount", Presence: "amount_present", Kind: SQLNumber}
 			input.Columns[measure.Key] = SQLColumn{Expression: "identity", Presence: "identity_present", Kind: SQLText}
 		}
 		plan := temporalTestPlan(t, input, *series)
-		if plan.Outputs["observations"].Columns["trend-delta"].Kind != SQLNumber ||
-			plan.Outputs["observations"].Columns["points"].Kind != SQLStructured {
-			t.Fatal("deployed trend must retain native statistics and chart points")
+		if plan.Outputs["observations"].Columns["series"].Kind != SQLStructured {
+			t.Fatal("deployed panels must retain grouped chart series")
+		}
+		for _, fragment := range []string{`jsonb_build_object('link',`, `ORDER BY "__at","__order"`, `ORDER BY "series" COLLATE "C"`} {
+			if !strings.Contains(plan.CTEs, fragment) {
+				t.Errorf("missing panel SQL contract %q", fragment)
+			}
 		}
 		return
 	}
@@ -250,13 +256,82 @@ func TestTemporalSQLPostgresGroupedWorkerSemantics(t *testing.T) {
 		"trend-start-value": float64(10), "trend-end-value": float64(20), "trend-delta": float64(10),
 		"trend-relative-percent": float64(100), "trend-observed-direction": "up", "trend-assessment": "improving", "trend-observation-count": float64(3),
 		"points": []any{
-			map[string]any{"x": "2026-01-03T00:00:00Z", "y": float64(15), "color": "repo", "key": "primary:metric:0"},
 			map[string]any{"x": "2026-01-01T00:00:00Z", "y": float64(10), "color": "repo", "key": "primary:metric:1"},
+			map[string]any{"x": "2026-01-03T00:00:00Z", "y": float64(15), "color": "repo", "key": "primary:metric:0"},
 			map[string]any{"x": "2026-01-03T00:00:00Z", "y": float64(20), "color": "repo", "key": "primary:metric:2"},
 		},
 	}
 	if !reflect.DeepEqual(rows, []map[string]any{want}) {
 		t.Fatalf("worker temporal result mismatch:\ngot  %#v\nwant %#v", rows, want)
+	}
+}
+
+func TestTemporalSQLPostgresPanels(t *testing.T) {
+	connection := temporalTestConnection(t)
+	input := temporalTestInput(`
+		(1,'2026-01-03T00:00:00Z'::text,'z'::text,15::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false),
+		(2,'2026-01-01T00:00:00Z','z',10,'increase',true,'metric','label',NULL,false),
+		(3,'2026-01-01T00:00:00Z','z',10,'increase',true,'metric','label',NULL,false),
+		(4,'2026-01-01T00:00:00Z','a',5,'increase',true,'metric','label',NULL,false),
+		(5,'invalid','a',999,'increase',true,'metric','label',NULL,false),
+		(6,'2026-01-01T00:00:00Z','a',NULL,'increase',true,'metric','label',NULL,false)`)
+	input.Columns["run-link"] = SQLColumn{
+		Expression: `jsonb_build_object('href','https://github.com/org/repo/actions/runs/' || ordinal::text)`,
+		Presence:   "ordinal <> 4", Kind: SQLStructured,
+	}
+	definition := TemporalSeries{
+		Time: "observed-at", Series: "repository", Shape: "panels", Link: "run-link",
+		Carry:    []string{"direction", "label"},
+		Measures: []TemporalMeasure{{Field: "value", Key: "identity", Kind: "primary"}},
+	}
+	rows, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected one metric panel, got %v", rows)
+	}
+	series := rows[0]["series"].([]any)
+	if len(series) != 2 || series[0].(map[string]any)["id"] != "a" || series[1].(map[string]any)["id"] != "z" {
+		t.Fatalf("expected ordered repository series, got %v", series)
+	}
+	if _, exists := series[0].(map[string]any)["points"].([]any)[0].(map[string]any)["link"]; exists {
+		t.Fatal("missing links must remain absent")
+	}
+	points := series[1].(map[string]any)["points"].([]any)
+	if len(points) != 3 {
+		t.Fatalf("duplicate observations were dropped: %v", points)
+	}
+	for index, run := range []int{2, 3, 1} {
+		point := points[index].(map[string]any)
+		link := point["link"].(map[string]any)
+		if link["href"] != "https://github.com/org/repo/actions/runs/"+strconv.Itoa(run) {
+			t.Fatalf("point order or provenance changed: %v", points)
+		}
+	}
+}
+
+func TestTemporalSQLPostgresPanelMetricIdentity(t *testing.T) {
+	connection := temporalTestConnection(t)
+	input := SQLRelation{
+		SQL: `(VALUES (1,'2026-01-02'::text,'z'::text,'{"quality":2}'::jsonb,'[{"id":"quality","name":"Quality"}]'::jsonb),
+			(2,'2026-01-01','a','{"quality":1}','[{"id":"quality","name":"Renamed"}]')) AS observations(ordinal,at,repo,metrics,definitions)`,
+		Order: "ordinal",
+		Columns: map[string]SQLColumn{
+			"at":          {Expression: "at", Presence: "TRUE", Kind: SQLText},
+			"repo":        {Expression: "repo", Presence: "TRUE", Kind: SQLText},
+			"metrics":     {Expression: "metrics", Presence: "TRUE", Kind: SQLStructured},
+			"definitions": {Expression: "definitions", Presence: "TRUE", Kind: SQLStructured},
+		},
+	}
+	definition := TemporalSeries{Time: "at", Series: "repo", Shape: "panels",
+		Maps: []TemporalMap{{Field: "metrics", Definitions: "definitions", Kind: "diagnostic"}}}
+	rows, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0]["metric-name"] != "Quality" || len(rows[0]["series"].([]any)) != 2 {
+		t.Fatalf("renamed metrics must retain one panel and the first label: %v", rows)
 	}
 }
 
@@ -371,7 +446,7 @@ func TestTemporalSQLPostgresProjectionBounds(t *testing.T) {
 			"series": {Expression: "'repo'::text", Presence: "TRUE", Kind: SQLText},
 			"value":  {Expression: "1::numeric", Presence: "TRUE", Kind: SQLNumber},
 		}}
-	for _, shape := range []string{"tidy", "groups"} {
+	for _, shape := range []string{"tidy", "groups", "panels"} {
 		definition := TemporalSeries{Time: "at", Series: "series", Shape: shape, Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}}}
 		if _, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition)); err == nil {
 			t.Fatalf("%s must fail before emitting more than 100k points", shape)

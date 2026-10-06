@@ -5,11 +5,9 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
 import { renderChartWidget, renderPieLegend } from './chart-elements.js';
-import { isApprovalConclusion, isFailureConclusion } from './run-classification.js';
 import { coverageWindowHours, renderVitalStat } from './ui-primitives.js';
 import { finiteNumber, formatCount, text } from './count-formatters.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
-import { rowsFor } from './source-rows.js';
 import { createDebug } from '../debug.js';
 
 const debugWorkflowRuntime = createDebug('workflow-runtime');
@@ -30,33 +28,34 @@ export function renderWorkflowRuntime(context) {
  * @param {Record<string, unknown>} workflow
  */
 export function renderWorkflowRuntimeBody(context, workflow) {
-  const repository = qualifiedRepository(workflow);
-  const workflowPath = text(workflow.workflow);
-  const runs = matchingRows(context, 'runs', repository, workflowPath);
-  const usage = matchingRows(context, 'usage', repository, workflowPath);
-  debugWorkflowRuntime({ event: 'body-resolved', runCount: runs.length, usageCount: usage.length });
-
-  return h(
-    'div',
-    null,
-    renderRuntimeMetrics(context, workflow, runs, usage)
-  );
+  return h('div', null, renderRuntimeMetrics(context, workflow));
 }
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
  * @param {Record<string, unknown>} workflow
- * @param {Array<Record<string, unknown>>} runs
- * @param {Array<Record<string, unknown>>} usage
  */
-function renderRuntimeMetrics(context, workflow, runs, usage) {
-  const runMetadata = context.sources.runs?.metadata;
-  const usageMetadata = context.sources.usage?.metadata;
-  const healthAvailable = runMetadata?.availability === 'available';
-  const usageAvailable = usageMetadata?.availability === 'available';
-  const health = summarizeRunHealth(runs);
-  const usageTotal = usage.reduce((total, row) => total + finiteNumber(row.aic), 0);
-  const usageMeasured = usage.length > 0 || usageMetadata?.completeness === 'complete';
+function renderRuntimeMetrics(context, workflow) {
+  const runSource = context.sources[context.sourceNames[1]];
+  const usageSource = context.sources[context.sourceNames[2]];
+  const runMetadata = runSource?.metadata;
+  const usageMetadata = usageSource?.metadata;
+  const healthAvailable = runMetadata?.availability === 'available' || runMetadata?.availability === 'empty';
+  const usageAvailable = usageMetadata?.availability === 'available' || usageMetadata?.availability === 'empty';
+  const summary = runSource?.rows[0];
+  const health = {
+    total: finiteNumber(summary?.total),
+    successful: finiteNumber(summary?.successful),
+    failed: finiteNumber(summary?.failed),
+    approval: finiteNumber(summary?.approval),
+    pending: finiteNumber(summary?.pending),
+    other: finiteNumber(summary?.other)
+  };
+  const usage = usageSource?.rows[0];
+  const usageTotal = finiteNumber(usage?.aic);
+  const telemetryCount = finiteNumber(usage?.['telemetry-count']);
+  const usageMeasured = telemetryCount > 0 || usageMetadata?.completeness === 'complete';
+  debugWorkflowRuntime({ event: 'body-resolved', runCount: health.total, usageCount: telemetryCount });
   const registration = text(workflow['workflow-active']) === 'true'
     ? 'active'
     : text(workflow['workflow-active']) === 'false' ? 'disabled' : 'unknown';
@@ -80,7 +79,7 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
         recentMetricLabel('AI Credits', usageMetadata),
         usageAvailable && usageMeasured ? formatNumber(usageTotal, { name: 'AI Credits', symbol: 'AIC', significant: 0.1, format: 'number' }) : '',
         usageAvailable
-          ? `${formatCount(usage.length)} ${usage.length === 1 ? 'run' : 'runs'} with AIC telemetry; ${coverageLabel(usageMetadata)}`
+          ? `${formatCount(telemetryCount)} ${telemetryCount === 1 ? 'run' : 'runs'} with AIC telemetry; ${coverageLabel(usageMetadata)}`
           : 'AI Credit data unavailable'
       )
     )
@@ -132,24 +131,9 @@ function renderRunHealthMetric(health, available, coverage, label) {
   );
 }
 
-/** @param {Array<Record<string, unknown>>} runs */
-function summarizeRunHealth(runs) {
-  const health = { total: runs.length, successful: 0, failed: 0, approval: 0, pending: 0, other: 0 };
-  for (const run of runs) {
-    const conclusion = run['run-conclusion'];
-    const status = text(run['run-status']);
-    if (conclusion === 'success') health.successful += 1;
-    else if (isFailureConclusion(conclusion)) health.failed += 1;
-    else if (isApprovalConclusion(conclusion)) health.approval += 1;
-    else if (status && status !== 'completed') health.pending += 1;
-    else health.other += 1;
-  }
-  return health;
-}
-
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function coverageLabel(metadata) {
-  if (metadata?.availability !== 'available') return 'Actions run data unavailable';
+  if (metadata?.availability !== 'available' && metadata?.availability !== 'empty') return 'Actions run data unavailable';
   const hours = coverageWindowHours(metadata);
   return `${hours ? `${hours}-hour ` : ''}Actions run window`;
 }
@@ -158,26 +142,4 @@ function coverageLabel(metadata) {
 function recentMetricLabel(label, metadata) {
   const hours = coverageWindowHours(metadata);
   return hours ? `${label} (last ${hours}h)` : `Recent ${label}`;
-}
-
-/**
- * @param {import('./ui-elements.js').ElementRenderContext} context
- * @param {string} sourceName
- * @param {string} repository
- * @param {string} workflow
- */
-function matchingRows(context, sourceName, repository, workflow) {
-  return rowsFor(context.sources, sourceName).filter((row) => matchesWorkflow(row, repository, workflow));
-}
-
-/** @param {Record<string, unknown>} row @param {string} repository @param {string} workflow */
-function matchesWorkflow(row, repository, workflow) {
-  return qualifiedRepository(row).toLowerCase() === repository.toLowerCase()
-    && text(row.workflow) === workflow;
-}
-
-/** @param {Record<string, unknown>} row */
-function qualifiedRepository(row) {
-  const repository = text(row.repository);
-  return repository.includes('/') ? repository : `${text(row.organization)}/${repository}`.replace(/^\/|\/$/g, '');
 }

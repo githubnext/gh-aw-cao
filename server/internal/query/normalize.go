@@ -164,6 +164,9 @@ func Normalize(definition Definition) NormalizedQuery {
 	}
 	if series := definition.TemporalSeries; series != nil {
 		required := map[string]bool{series.Time: true, series.Series: true}
+		if series.Link != "" {
+			required[series.Link] = true
+		}
 		for _, field := range series.Carry {
 			required[field] = true
 		}
@@ -183,6 +186,8 @@ func Normalize(definition Definition) NormalizedQuery {
 		names = append(names, "metric", "metric-key", "metric-name", "metric-kind", "metric-group")
 		if series.Shape == "groups" {
 			names = append(names, "points")
+		} else if series.Shape == "panels" {
+			names = append(names, "series")
 		} else {
 			names = append(names, "time", "series", "value")
 		}

@@ -1506,6 +1506,10 @@ test('workflow page template follows its JSON-declared route and renders attribu
 
 test('workflow runtime route renders JSON-declared workflow insights', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const runtimePage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'workflow-runtime'
+  );
+  assert(runtimePage, 'Missing workflow runtime page');
   await page.goto('http://dashboard.test/#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md');
   await page.setContent(`
     <div id="root"></div>
@@ -1530,20 +1534,8 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
           id: 'workflow-runtime-route',
           title: 'Workflow runtime route',
           repository: 'githubnext/gh-aw-cao',
-          pages: [{
-            id: 'workflow-runtime',
-            kind: 'custom',
-            title: 'Workflow runtime',
-            route: { 'hash-query-parameter': 'workflow' },
-            views: [{
-              id: 'workflow-runtime-route',
-              title: 'Workflow runtime',
-              data: { sources: ['workflows', 'runs', 'usage'] },
-              mark: 'element',
-              element: 'workflow-route-page',
-              config: { body: 'insights' }
-            }]
-          }]
+          queries: ${JSON.stringify(authoritativeDashboard.dashboard.queries)},
+          pages: [${JSON.stringify(runtimePage)}]
         }
       };
       const sources = {
@@ -1616,7 +1608,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   await expect(page.getByRole('link', { name: 'Reports' })).toHaveAttribute('href', /#page-workflow-detail\?workflow=/);
   await expect(page.locator('.workflow-badges .workflow-badge')).toHaveText([
     'Standalone',
-    'Campaign · Central Agentic Ops',
     'Campaign · Testing'
   ]);
   await expect(page.getByRole('link', { name: 'View authored workflow' })).toHaveAttribute(

@@ -1,6 +1,24 @@
 {
   "queries": [
     {
+      "name": "domain-route-record",
+      "subject": "Project the selected domain header and one retained run link.",
+      "from": "domains",
+      "select": [{ "field": "domain" }, { "field": "run-link" }]
+    },
+    {
+      "name": "tool-route-record",
+      "subject": "Project the selected MCP tool header and one retained run link.",
+      "from": "mcp-tool-calls",
+      "select": [{ "field": "mcp-tool-label" }, { "field": "run-link" }]
+    },
+    {
+      "name": "audit-route-record",
+      "subject": "Project the selected audit summary header and one retained run link.",
+      "from": "audits",
+      "select": [{ "field": "event-summary" }, { "field": "run-link" }]
+    },
+    {
       "name": "domain-entity-insights",
       "subject": "Summarize one domain entity for its dedicated Insights view.",
       "objective": "Identify domain decisions with request volume worth investigating before considering any egress change.",
@@ -125,8 +143,9 @@
           "title": "Domain insights",
           "data": {
             "sources": [
-              "domains"
+              "domain-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "domain",
@@ -206,8 +225,9 @@
           "title": "Domain runs",
           "data": {
             "sources": [
-              "domains"
+              "domain-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "domain",
@@ -314,8 +334,9 @@
           "title": "Tool insights",
           "data": {
             "sources": [
-              "mcp-tool-calls"
+              "tool-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "tool",
@@ -395,8 +416,9 @@
           "title": "Tool runs",
           "data": {
             "sources": [
-              "mcp-tool-calls"
+              "tool-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "tool",
@@ -503,8 +525,9 @@
           "title": "Audit event insights",
           "data": {
             "sources": [
-              "audits"
+              "audit-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "audit",
@@ -584,8 +607,9 @@
           "title": "Audit event runs",
           "data": {
             "sources": [
-              "audits"
+              "audit-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "audit",

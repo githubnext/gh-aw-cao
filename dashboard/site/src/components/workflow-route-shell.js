@@ -7,7 +7,6 @@ import { text } from './count-formatters.js';
 import { renderWorkflowIdentity } from './workflow-identity.js';
 import { createRoutePageShell } from './route-page-shell.js';
 import { findLink } from './link-content.js';
-import { rowsFor } from './source-rows.js';
 import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
 import { createDebug } from '../debug.js';
 
@@ -40,11 +39,11 @@ const debugWorkflowRouteShell = createDebug('workflow-route-shell');
  * @returns {HTMLElement}
  */
 export function renderWorkflowRouteShell(context, config) {
-  const workflows = rowsFor(context.sources, 'workflows');
+  const workflow = context.sources[context.sourceNames[0]]?.rows[0];
   debugWorkflowRouteShell({
     event: 'initialized',
     currentTab: config.currentTab,
-    workflowCount: workflows.length
+    workflowCount: workflow ? 1 : 0
   });
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
@@ -61,13 +60,9 @@ export function renderWorkflowRouteShell(context, config) {
     tabs: ({ routeValue, title }) => workflowTabs(routeValue, title),
     renderMatched: (routeValue) => {
       const route = parseWorkflowRoute(routeValue);
-      const workflow = route
-        ? workflows.find((candidate) => (
-            qualifiedRepository(candidate).toLowerCase() === route.repository.toLowerCase()
-            && text(candidate.workflow) === route.workflow
-          ))
-        : null;
-      if (!workflow || !route) {
+      if (!workflow || !route
+          || qualifiedRepository(workflow).toLowerCase() !== route.repository.toLowerCase()
+          || text(workflow.workflow) !== route.workflow) {
         debugWorkflowRouteShell({ event: 'not-found', currentTab: config.currentTab });
         return null;
       }

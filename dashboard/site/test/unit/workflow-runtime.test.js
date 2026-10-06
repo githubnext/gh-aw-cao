@@ -57,18 +57,14 @@ function context(overrides = {}) {
         source: 'runs',
         metadata: completeMetadata,
         rows: [
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '1', 'run-status': 'completed', 'run-conclusion': 'success' },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '2', 'run-status': 'completed', 'run-conclusion': 'failure' },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '3', 'run-status': 'queued', 'run-conclusion': 'unknown' },
-          { organization: 'other', repository: 'repo', workflow: workflow.workflow, run: '4', 'run-status': 'completed', 'run-conclusion': 'success' }
+          { total: 3, successful: 1, failed: 1, pending: 1, approval: 0, other: 0 }
         ]
       },
       usage: {
         source: 'usage',
         metadata: { ...completeMetadata, completeness: /** @type {'partial'} */ ('partial') },
         rows: [
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '1', aic: 42.5 },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '2', aic: 7.5 }
+          { aic: 50, 'telemetry-count': 2 }
         ]
       },
       ...overrides
@@ -142,11 +138,24 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('2 runs with AIC telemetry; 24-hour Actions run window');
   });
 
+  it('renders confirmed empty query results as zero rather than unavailable', () => {
+    const metadata = { ...completeMetadata, availability: /** @type {'empty'} */ ('empty') };
+    const rendered = renderWorkflowRuntime(context({
+      runs: { source: 'runs', metadata, rows: [] },
+      usage: { source: 'usage', metadata, rows: [] }
+    }));
+    selectWorkflow(rendered);
+
+    expect(rendered.querySelector('.workflow-health-total')?.textContent).toBe('0runs');
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)0');
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).not.toContain('unavailable');
+  });
+
   it('does not present missing partial AI Credit coverage as measured zero usage', () => {
     const sources = context().sources;
     sources.usage = {
       source: 'usage',
-      metadata: { ...completeMetadata, completeness: /** @type {'partial'} */ ('partial') },
+      metadata: { ...completeMetadata, availability: /** @type {'empty'} */ ('empty'), completeness: /** @type {'partial'} */ ('partial') },
       rows: []
     };
     const rendered = renderWorkflowRuntime(context(sources));

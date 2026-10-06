@@ -6,7 +6,6 @@ import { h } from '../dom.js';
 import { resolveTitleLink } from './link-content.js';
 import { renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderRouteDetailView } from './route-detail-view.js';
-import { rowsFor } from './source-rows.js';
 import { text, titleCase } from './count-formatters.js';
 import { createDebug } from '../debug.js';
 
@@ -17,15 +16,15 @@ const debugOutcomeDetailAllocation = createDebug('outcome-detail:allocation');
  * @returns {HTMLElement}
  */
 export function renderOutcomeDetail(context) {
-  const outcomes = rowsFor(context.sources, 'outcomes');
+  const row = context.sources[context.sourceNames[0]]?.rows[0];
   return renderRouteDetailView(context, {
     category: 'outcome-detail',
     rootClassName: 'outcome-detail',
     datasetKey: 'outcome',
     selectMessage: 'Select an outcome to view its details.',
     notFoundMessage: 'Outcome not found.',
-    rows: outcomes,
-    match: (rows, routeValue) => rows.find((row) => String(row['safe-output']) === routeValue.trim()),
+    row,
+    matches: (row, routeValue) => String(row['safe-output']) === routeValue.trim(),
     allocation: (outcome, routeValue) => {
       const title = text(outcome['outcome-title']);
       const titleLink = resolveTitleLink(outcome, context.titleLink);

@@ -42,8 +42,7 @@ function context({ runsAvailable = true } = {}) {
         },
         rows: runsAvailable
           ? [
-              { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '1', 'run-status': 'completed', 'run-conclusion': 'success' },
-              { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '2', 'run-status': 'completed', 'run-conclusion': 'failure' }
+              { total: 2, successful: 1, failed: 1, pending: 0, approval: 0, other: 0 }
             ]
           : []
       },
@@ -51,7 +50,7 @@ function context({ runsAvailable = true } = {}) {
         source: 'usage',
         metadata: { ...completeMetadata, completeness: /** @type {'partial'} */ ('partial') },
         rows: [
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '1', aic: 42.5 }
+          { aic: 42.5, 'telemetry-count': 1 }
         ]
       }
     }

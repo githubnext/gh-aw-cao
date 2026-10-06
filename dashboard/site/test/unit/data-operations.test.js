@@ -283,6 +283,36 @@ describe('dashboard data operations', () => {
     });
   });
 
+  it.each(['groups', 'panels'])('orders temporal %s without splitting a renamed metric', (shape) => {
+    const observations = [
+      { at: '2026-09-02', repo: 'z', metrics: { quality: 2 }, definitions: [{ id: 'quality', name: 'Quality' }] },
+      { at: '2026-09-01', repo: 'z', metrics: { quality: 1 }, definitions: [{ id: 'quality', name: 'Renamed' }] },
+      { at: '2026-09-01', repo: 'a', metrics: { quality: 3 }, definitions: [{ id: 'quality', name: 'Renamed' }] }
+    ];
+    const result = tidy(observations, [{
+      op: 'temporal-series', time: 'at', series: 'repo',
+      shape: /** @type {'groups'|'panels'} */ (shape),
+      maps: [{ field: 'metrics', definitions: 'definitions', kind: 'diagnostic' }]
+    }]);
+    expect(result).toHaveLength(1);
+    expect(result[0]['metric-name']).toBe('Quality');
+    if (shape === 'groups') {
+      expect(result[0].points).toEqual([
+        { x: '2026-09-01', y: 1, color: 'z', key: 'diagnostic:metrics:quality:1' },
+        { x: '2026-09-01', y: 3, color: 'a', key: 'diagnostic:metrics:quality:2' },
+        { x: '2026-09-02', y: 2, color: 'z', key: 'diagnostic:metrics:quality:0' }
+      ]);
+    } else {
+      expect(result[0].series).toEqual([
+        { id: 'a', label: 'a', points: [{ x: '2026-09-01', y: 3, key: 'diagnostic:metrics:quality:2' }] },
+        { id: 'z', label: 'z', points: [
+          { x: '2026-09-01', y: 1, key: 'diagnostic:metrics:quality:1' },
+          { x: '2026-09-02', y: 2, key: 'diagnostic:metrics:quality:0' }
+        ] }
+      ]);
+    }
+  });
+
   it('centers polynomial predictors to preserve large-magnitude forecasts', () => {
     const base = 1_700_000_000;
     const rows = [0, 1, 2, 3].map((offset) => ({

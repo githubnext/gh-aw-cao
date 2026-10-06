@@ -9,7 +9,6 @@ import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
-import { rowsFor } from './source-rows.js';
 import { findLink } from './link-content.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
 import { formatMediumUtcDateTimeWithSuffix, renderLoadingMessage, renderVisualizationEmptyMessage } from './ui-primitives.js';
@@ -59,15 +58,8 @@ export function renderBoundMeasureHistory(context) {
  * @typedef {{
  *   id: string,
  *   label: string,
- *   unit: string,
- *   direction: 'increase'|'decrease'|'maintain'|'target',
- *   points: Array<{ x: string, y: number, key: string, link: import('./link-content.js').SafeLink|null }>
+ *   points: Array<{ x: string, y: number, key: string, link?: Record<string, unknown> }>
  * }} OperationalValueSeries
- * @typedef {{
- *   id: string,
- *   label: string,
- *   series: Map<string, OperationalValueSeries>
- * }} OperationalValueMetricGroup
  */
 
 /**
@@ -75,7 +67,7 @@ export function renderBoundMeasureHistory(context) {
  */
 export function renderMeasureHistory(context) {
   const sourceName = context.sourceNames[0] ?? '';
-  const metrics = rowsFor(context.sources, sourceName);
+  const metrics = context.sources[sourceName]?.rows ?? [];
   const measureSource = context.elementConfig?.['measure-source'] === 'operational-value'
     ? 'operational-value'
     : 'operational-grader';
@@ -103,135 +95,63 @@ export function renderMeasureHistory(context) {
  * @param {Record<string, unknown>[]} rows
  */
 function renderOperationalValueHistory(context, rows) {
-  const metricGroups = operationalValueMetricGroups(rows);
-  const first = rows[0] ?? {};
-  const adoptionAt = String(first['adoption-at'] || '');
-  const mode = first['evaluation-mode'] === 'attainment-only'
-    ? 'attainment-only'
-    : 'baseline-comparable';
   const campaignOutcomeSource = context.sourceNames[1] ?? '';
   const evidenceStateSource = context.sourceNames[2] ?? '';
-  const campaignOutcomes = outcomeContext(rowsFor(context.sources, campaignOutcomeSource));
-  const evidenceState = rowsFor(context.sources, evidenceStateSource)[0] ?? {};
-  const fallbackObservationCount = rows.reduce(
-    (total, row) => total + (Array.isArray(row.points) ? row.points.length : 0),
-    0
-  );
-  const fallbackMaturedObservationCount = rows.reduce(
-    (total, row) => total + (row['maturity-status'] === 'matured' && Array.isArray(row.points)
-      ? row.points.length
-      : 0),
-    0
-  );
-  const observationCount = Object.hasOwn(evidenceState, 'observation-count')
-    ? Number(evidenceState['observation-count']) || 0
-    : fallbackObservationCount;
-  const maturedObservationCount = Object.hasOwn(evidenceState, 'matured-observation-count')
-    ? Number(evidenceState['matured-observation-count']) || 0
-    : fallbackMaturedObservationCount;
-  const onlyInterimEvidence = evidenceState['evidence-state'] === 'interim-evidence'
-    || (!evidenceState['evidence-state'] && observationCount > 0 && maturedObservationCount === 0);
-  const panels = metricGroups.map((group) => h('div', {
+  const campaignOutcomes = (context.sources[campaignOutcomeSource]?.rows ?? []).map((row) => ({
+    date: String(row['run-day']),
+    successfulRuns: Number(row['successful-runs']),
+    failedRuns: Number(row['failed-runs']),
+    successRate: Number(row['success-rate-percent']),
+    concludedRuns: Number(row['concluded-runs'])
+  }));
+  const evidenceState = context.sources[evidenceStateSource]?.rows[0];
+  const state = String(evidenceState?.['evidence-state'] || 'unavailable');
+  const observationCount = Number(evidenceState?.['observation-count']);
+  if (state === 'interim-evidence' && !Number.isFinite(observationCount)) {
+    debugMeasureHistory({ event: 'observation-count-unavailable' });
+  }
+  const panels = rows.map((row) => {
+    const label = String(row['operational-value-name'] || row['metric-name'] || row.metric);
+    const series = /** @type {OperationalValueSeries[]} */ (Array.isArray(row.series) ? row.series : []);
+    const metrics = series.map((entry) => ({
+      ...entry,
+      unit: String(row['operational-value-unit'] || 'value'),
+      direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (row['operational-value-direction']),
+      points: entry.points.map((point) => ({ ...point, link: findLink(point, 'link') }))
+    }));
+    return h('div', {
       className: 'insights-plot-panel insights-temporal-plot-panel',
-      'data-operational-value-metric': group.id,
-      'data-operational-value-state': onlyInterimEvidence
-        ? 'interim-evidence'
-        : 'observed-value'
+      'data-operational-value-metric': String(row.metric),
+      'data-operational-value-state': state
     },
     renderTemporalMetricPlot({
-        title: group.label,
-        mode,
-        adoptionAt,
-        metrics: group.series,
+        title: label,
+        mode: row['evaluation-mode'] === 'attainment-only' ? 'attainment-only' : 'baseline-comparable',
+        adoptionAt: String(row['adoption-at'] || ''),
+        metrics,
         outcomes: campaignOutcomes,
-        provisional: onlyInterimEvidence,
+        provisional: state !== 'observed-value',
         connectPoints: false
       }),
-    group.series.length > 1
-      ? renderChartLegend(group.series.map((series, index) => ({
+    series.length > 1
+      ? renderChartLegend(series.map((series, index) => ({
         name: series.label,
         className: `chart-series-${(index % 12) + 1}`
       })), 'dot')
-      : null));
+      : null);
+  });
 
   return h('section', { className: 'measure-history measure-history-operational-value', 'aria-label': context.title },
     h('div', { className: 'insights-section-heading' },
       h('div', null,
         h('div', { className: 'insights-measure-heading' },
           h('h2', null, 'Operational value')),
-        h('p', null, onlyInterimEvidence
-          ? `${formatNumber(observationCount)} interim observations in each measure’s native units. Amber points are not mature evidence.`
-          : 'Repository-level observations in each measure’s native units; campaign rollups are omitted so anomalies remain visible. Points are not connected across missing observations.'))),
+        h('p', null, state === 'unavailable'
+          ? 'Operational-value maturity evidence is unavailable. Observations are provisional.'
+          : state === 'interim-evidence'
+            ? `${Number.isFinite(observationCount) ? `${formatNumber(observationCount)} interim` : 'Interim'} observations in each measure’s native units. Amber points are not mature evidence.`
+            : 'Repository-level observations in each measure’s native units; campaign rollups are omitted so anomalies remain visible. Points are not connected across missing observations.'))),
     ...panels);
-}
-
-/**
- * @param {Record<string, unknown>[]} rows
- */
-function operationalValueMetricGroups(rows) {
-  /** @type {Map<string, OperationalValueMetricGroup>} */
-  const groups = new Map();
-  for (const row of rows) {
-    const points = /** @type {Array<Record<string, unknown>>} */ (
-      Array.isArray(row.points) ? row.points : []
-    );
-    const name = String(row['operational-value-name'] || row['metric-name'] || row.metric || 'Metric');
-    const metricId = String(row.metric || name);
-    const group = groups.get(metricId) ?? {
-      id: metricId,
-      label: name,
-      series: new Map()
-    };
-    for (const point of points) {
-      const repository = String(point.color || row.repository || '');
-      if (!repository) continue;
-      const series = group.series.get(repository) ?? {
-        id: `${metricId}:${repository}`,
-        label: repository,
-        unit: String(row['operational-value-unit'] || 'value'),
-        direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (
-          ['increase', 'decrease', 'maintain', 'target'].includes(String(row['operational-value-direction']))
-            ? row['operational-value-direction']
-            : 'increase'
-        ),
-        points: []
-      };
-      series.points.push({
-        x: String(point.x),
-        y: Number(point.y),
-        key: String(point.key || ''),
-        link: findLink(row, 'run-link')
-      });
-      group.series.set(repository, series);
-    }
-    groups.set(metricId, group);
-  }
-  return [...groups.values()]
-    .map((group) => ({
-      ...group,
-      series: [...group.series.values()].toSorted((left, right) => left.label.localeCompare(right.label))
-    }))
-    .toSorted((left, right) => left.label.localeCompare(right.label));
-}
-
-/**
- * @param {Record<string, unknown>[]} rows
- */
-function outcomeContext(rows) {
-  return rows.flatMap((row) => {
-    const date = String(row['run-day'] || '');
-    const successfulRuns = Number(row['successful-runs']);
-    const failedRuns = Number(row['failed-runs']);
-    const successRate = Number(row['success-rate-percent']);
-    const concludedRuns = Number(row['concluded-runs']);
-    return Number.isFinite(Date.parse(date))
-      && Number.isFinite(successfulRuns)
-      && Number.isFinite(failedRuns)
-      && Number.isFinite(successRate)
-      && Number.isFinite(concludedRuns)
-      ? [{ date, successfulRuns, failedRuns, successRate, concludedRuns }]
-      : [];
-  }).toSorted((left, right) => Date.parse(left.date) - Date.parse(right.date));
 }
 
 /**
@@ -241,7 +161,7 @@ function outcomeContext(rows) {
  */
 function renderMeasureRow(metric, measureSource) {
   const points = /** @type {Array<{ x: string, y: number, color: string, key: string }>} */ (
-    (Array.isArray(metric.points) ? metric.points : []).slice().sort((left, right) => Date.parse(left.x) - Date.parse(right.x))
+    Array.isArray(metric.points) ? metric.points : []
   );
   const series = listChartSeries(points);
   const kind = String(measureSource === 'operational-value'
@@ -331,6 +251,8 @@ function attachPointSelection(chart, points, readout) {
   }
   /** @type {import('../reactive.js').State<Element | null>} */
   const selectedMark = state(/** @type {Element | null} */ (null));
+  const scope = createFactoryScope();
+  scope.bind(chart);
 
   // The smallest DOM update needed from selection state: toggle each mark's
   // pressed/selected attributes and resync the shared readout text.
@@ -354,7 +276,7 @@ function attachPointSelection(chart, points, readout) {
       h('span', null, formatInstant(point.x)),
       ...(seriesLabel ? [h('span', null, seriesLabel)] : [])
     );
-  });
+  }, { signal: scope.signal });
 
   /** @param {Element} mark */
   const select = (mark) => {

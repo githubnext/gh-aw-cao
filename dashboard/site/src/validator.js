@@ -3192,7 +3192,19 @@ function validateView(view, viewNode, path, viewIds, errors) {
           `${path}.data.source`
         ));
       }
-      for (const key of ['limit', 'order-by', 'source-metadata', 'route-field']) {
+      validateStringField(view.data['route-field'], `${path}.data.route-field`, false, errors);
+      if (typeof view.data['route-field'] === 'string' && Array.isArray(view.data.sources)) {
+        for (const source of view.data.sources) {
+          if (typeof source === 'string' && !sourceFieldNames(source)?.includes(view.data['route-field'])) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'route-field must name a field declared by every data.sources entry.',
+              `${path}.data.route-field`
+            ));
+          }
+        }
+      }
+      for (const key of ['order-by', 'source-metadata']) {
         if (view.data[key] !== undefined) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -4469,8 +4481,15 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       }
       const shape = definition.shape;
       if (shape !== undefined
-          && (typeof shape !== 'string' || (shape !== 'tidy' && shape !== 'groups'))) {
-        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'temporal-series shape must be tidy or groups.', `${seriesPath}.shape`));
+          && (typeof shape !== 'string' || !['tidy', 'groups', 'panels'].includes(shape))) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'temporal-series shape must be tidy, groups, or panels.', `${seriesPath}.shape`));
+      }
+      if (definition.link !== undefined) {
+        validateStringField(definition.link, `${seriesPath}.link`, true, errors);
+        requireField(definition.link, `${seriesPath}.link`);
+        if (shape !== 'panels') {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series link requires panels.', `${seriesPath}.link`));
+        }
       }
       const carry = definition.carry;
       if (carry !== undefined && (!Array.isArray(carry) || carry.length === 0 || carry.length > 16)) {
@@ -4485,6 +4504,9 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       if (trend !== undefined) {
         const trendPath = `${seriesPath}.trend`;
         const trendNode = getValueNodeByKey(seriesNode, 'trend');
+        if (shape !== 'groups') {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series trend requires groups.', trendPath));
+        }
         if (!isPlainObject(trend)) {
           errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series trend must be a mapping.', trendPath));
         } else {
@@ -4501,7 +4523,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       validateTemporalSeriesEntries(measures, getValueNodeByKey(seriesNode, 'measures'), `${seriesPath}.measures`, QUERY_TEMPORAL_SERIES_MEASURE_KEYS, ['field', 'key'], requireField, errors);
       validateTemporalSeriesEntries(maps, getValueNodeByKey(seriesNode, 'maps'), `${seriesPath}.maps`, QUERY_TEMPORAL_SERIES_MAP_KEYS, ['field', 'definitions', 'group'], requireField, errors);
       fields = fields
-        ? definition.shape === 'groups'
+        ? ['groups', 'panels'].includes(String(definition.shape))
           ? [
               ...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []),
               'metric',
@@ -4509,7 +4531,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               'metric-name',
               'metric-kind',
               'metric-group',
-              'points',
+              definition.shape === 'panels' ? 'series' : 'points',
               ...(isPlainObject(trend)
                 ? ['trend-start-value', 'trend-end-value', 'trend-delta', 'trend-relative-percent', 'trend-observed-direction', 'trend-assessment', 'trend-observation-count']
                 : [])

@@ -669,7 +669,7 @@ describe('dashboard view query contracts', () => {
     });
     const series = result[payload.aliases[0]]?.rows ?? [];
     expect(series).toHaveLength(1);
-    const points = /** @type {Array<{ y: number }>} */ (series[0].points);
+    const points = /** @type {Array<{ points: Array<{ y: number }> }>} */ (series[0].series)[0].points;
     expect(points.map((point) => point.y)).toEqual([10, 20, 30]);
   });
 

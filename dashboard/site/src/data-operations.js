@@ -29,7 +29,7 @@ const debugDataOperations = createDebug('data-operations');
  * @typedef {{ field: string, as: string, operation: 'rolling'|'change', ['order-by']: Array<{ field: string, direction?: 'asc'|'desc' }>, groupby?: string[], frame?: number, reducer?: 'sum'|'mean'|'min'|'max', alignment?: 'trailing'|'centered', mode?: 'absolute'|'percentage'|'rate', ['time-field']?: string, unit?: 'second'|'minute'|'hour'|'day' }} WindowField
  * @typedef {{ op: 'window', values: WindowField[] }} WindowOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
- * @typedef {{ time: string, series: string, shape?: 'tidy'|'groups', carry?: string[], measures?: Array<{ field: string, key?: string, kind: string }>, maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>, trend?: { direction: string } }} TemporalSeriesDefinition
+ * @typedef {import('./data/analytics/temporal-series.js').TemporalSeriesDefinition} TemporalSeriesDefinition
  * @typedef {{ op: 'temporal-series' } & TemporalSeriesDefinition} TemporalSeriesOperator
  * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|WindowOperator|SelectOperator|TemporalSeriesOperator} DataOperator
  */

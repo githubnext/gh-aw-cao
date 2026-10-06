@@ -85,23 +85,22 @@ describe('Audit dashboard view', () => {
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
         'operational-value-unit': 'aic-per-run',
-        'run-link': operationalValueObservations[0]['run-link'],
-        points: [
-          expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, color: 'githubnext/gh-aw' })
-        ]
-      }),
-      expect.objectContaining({
-        'run-link': operationalValueObservations[1]['run-link'],
-        points: [
-          expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 8.25, color: 'githubnext/gh-aw' })
-        ]
+        series: [expect.objectContaining({
+          id: 'githubnext/gh-aw',
+          points: [
+            expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, link: operationalValueObservations[0]['run-link'] }),
+            expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 8.25, link: operationalValueObservations[1]['run-link'] })
+          ]
+        })]
       }),
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
-        points: [
-          expect.objectContaining({ y: 1 }),
-          expect.objectContaining({ y: 0.5 })
-        ]
+        series: [expect.objectContaining({
+          points: [
+            expect.objectContaining({ y: 1 }),
+            expect.objectContaining({ y: 0.5 })
+          ]
+        })]
       })
     ]);
     const rendered = renderMeasureHistory({
@@ -145,7 +144,8 @@ describe('Audit dashboard view', () => {
       sources: { 'operational-values': { source: 'operational-values', rows: observations, metadata } }
     }));
     const rows = result['campaign-operational-value-primary-series'].rows;
-    const points = rows.flatMap((row) => /** @type {Array<{ x: string, y: number, color: string }>} */ (row.points));
+    const points = rows.flatMap((row) => /** @type {Array<{ id: string, points: Array<{ x: string, y: number }> }>} */ (row.series)
+      .flatMap((series) => series.points.map((point) => ({ ...point, color: series.id }))));
     expect(points.filter((point) => point.color === 'githubnext/a').map((point) => point.y)).toEqual([10, 20, 30, -2, 0]);
     expect(points.filter((point) => point.color === 'githubnext/b').map((point) => point.y)).toEqual([5, 15]);
     expect(points.some((point) => point.x === '2026-01-05T00:00:00Z')).toBe(false);
@@ -170,7 +170,8 @@ describe('Audit dashboard view', () => {
       }
     }));
     const points = result['campaign-operational-value-primary-series'].rows.flatMap(
-      (row) => /** @type {Array<{ color: string, y: number }>} */ (row.points)
+      (row) => /** @type {Array<{ id: string, points: Array<{ y: number }> }>} */ (row.series)
+        .flatMap((series) => series.points.map((point) => ({ ...point, color: series.id })))
     );
     expect(points).toHaveLength(4);
     expect(points.map((point) => point.color).toSorted()).toEqual(['one/service', 'one/service', 'two/service', 'two/service']);

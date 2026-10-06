@@ -94,6 +94,9 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
+    "astro": {
+      "http-cache-semantics": "4.2.0"
+    },
     "source-map-js": "$source-map-js",
     "undici": "^6.28.1"
   }

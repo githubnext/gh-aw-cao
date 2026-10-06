@@ -4,7 +4,6 @@
 
 import { renderAllCampaignMemory } from './campaign-memory.js';
 import { renderCampaignRouteView } from './campaign-route-view.js';
-import { text as stringValue } from './count-formatters.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderEntityRoute } from './entity-route.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
@@ -15,7 +14,6 @@ import { renderBoundMeasureHistory } from './measure-history.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
-import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { createDebug } from '../debug.js';
 
@@ -161,13 +159,11 @@ export async function renderUiElementAsync(name, context) {
  * @returns {HTMLElement | null}
  */
 function renderOutcomeDetailSectionElement(context) {
-  const outcomes = rowsFor(context, 'outcomes');
+  const outcome = context.sources[context.sourceNames[0]]?.rows[0];
   const sectionConfig = isOutcomeDetailSectionConfig(context.elementConfig)
     ? context.elementConfig
     : null;
   if (!sectionConfig) return null;
-  const outcomeId = stringValue(context.scope?.['safe-output']);
-  const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
   return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
 }
 
@@ -185,12 +181,4 @@ export function elementHandlesEmptyRows(name) {
  */
 export function elementHandlesUnavailableSource(name) {
   return UNAVAILABLE_AWARE_ELEMENTS.has(name);
-}
-
-/**
- * @param {ElementRenderContext} context
- * @param {string} sourceName
- */
-function rowsFor(context, sourceName) {
-  return rowsForSource(context.sources, sourceName);
 }
