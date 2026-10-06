@@ -654,7 +654,7 @@ async function prepareInstalledPackageReleaseSource(
       }
     }
     if (!releaseTag) {
-      throw new Error(`No CAO release tag found for ${record.resolvedCommit}`);
+      throw new Error(`No CAO release tag found for ${record.resolvedCommit}; run "cao update latest" to replace installed CAO packages with the latest stable release`);
     }
     releaseTags.set(record.resolvedCommit, releaseTag);
   }
@@ -870,7 +870,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     }
   }
 
-  const resolvedCommit = resolveUpdateCommit(ref, execute, commandFailureMessage);
+  const resolvedCommit = resolveUpdateCommit(ref, execute, commandFailureMessage, compareGhAwVersions);
   const updatedCampaigns = [];
   const mergedDeclarations = [];
   const releaseTags = new Map();

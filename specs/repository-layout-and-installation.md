@@ -141,11 +141,22 @@ root campaign before invoking gh-aw and direct operators to the root installer.
 declarations.
 
 `cao update` without a ref MUST retain release-based selection. An explicit
-`main` or commit SHA MUST resolve once to a full catalog commit SHA before any
-package is reapplied. Every selected installed CAO package MUST be reapplied
+`main`, `master`, `latest`, or commit SHA MUST resolve once to a full catalog
+commit SHA before any package is reapplied. Every selected installed CAO package MUST be reapplied
 at that same SHA through gh-aw, and its recorded `resolvedCommit` MUST match
 before materialization. Explicit-ref updates replace campaign-owned files;
 they MUST NOT widen operator-owned rollout settings.
+
+`main` and `master` MUST both resolve the catalog repository's default branch
+reported by GitHub, not assume a literal branch name or use the control
+repository's default branch.
+
+`latest` MUST select the highest published stable `vMAJOR.MINOR.PATCH` version,
+excluding drafts, prereleases, and non-version tags across all release pages.
+It MUST provide an explicit path from an untagged install back to release-based updates. It MUST
+NOT depend on a release tag existing at the previously installed commit.
+Options MUST be accepted before or after the ref without interpreting option
+values as refs, and multiple refs MUST be rejected before any mutation.
 
 gh-aw campaign installation by itself cannot run this post-install lifecycle.
 Therefore an implementation MUST NOT represent direct Activity or Dashboard

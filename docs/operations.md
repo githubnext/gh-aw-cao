@@ -320,14 +320,25 @@ The command installs or upgrades `gh-aw` to the minimum version declared by `.gi
 
 Stable releases are used by default. Pass `--pre-releases` to include published prereleases when selecting the latest compatible release.
 
-To explicitly select the current `main` HEAD or a particular commit instead of a release:
+To explicitly select the catalog's default-branch HEAD or a particular commit instead of a release:
 
 ```bash
 ./cao.sh update main
+./cao.sh update master
 ./cao.sh update 0123456789abcdef0123456789abcdef01234567
 ```
 
-The positional ref accepts `main` or a 7-40 character hexadecimal commit SHA. CAO resolves it once through the catalog repository to a full SHA and reapplies every installed CAO package at that same immutable revision, then verifies the recorded revision before materializing its runtime. This is a replacement, not a three-way merge: campaign-owned files and local edits to them are overwritten. Operator-owned rollout policy is preserved, apart from refreshing campaign worker declarations. Review unreleased code before enabling it.
+The positional ref accepts `main`, `master`, `latest`, or a 7-40 character hexadecimal commit SHA. Both `main` and `master` select the CAO catalog repository's default branch as reported by GitHub, regardless of its actual name; they do not use the control repository's branch. Options can appear before or after the ref, for example `./cao.sh update --force main`. CAO resolves the ref once through the catalog repository to a full SHA and reapplies every installed CAO package at that same immutable revision, then verifies the recorded revision before materializing its runtime. This is a replacement, not a three-way merge: campaign-owned files and local edits to them are overwritten. Operator-owned rollout policy is preserved, apart from refreshing campaign worker declarations. Review unreleased code before enabling it.
+
+After installing an untagged default-branch or SHA revision, return to published releases explicitly:
+
+```bash
+./cao.sh update latest
+```
+
+`latest` selects the highest published stable `vMAJOR.MINOR.PATCH` version across all release pages, excluding drafts, prereleases, and non-version tags, and pins its full commit SHA for every installed CAO package. It intentionally bypasses major-version compatibility and cooldown selection, so review the selected release before committing. Once installed, subsequent `./cao.sh update` commands follow release-based selection again. Without a release tag on the installed revision, a bare update stops with guidance to use `latest` rather than guessing a compatible release.
+
+The selected release must contain the canonical runtime resources required by the materializer. Incomplete or incompatible historical releases fail materialization; `latest` does not bypass that check. As with other update failures, inspect the working-tree changes before committing or retrying.
 
 Ref updates accept gh-aw add options such as `--no-security-scanner`, `--engine`, and `--dir`; `--force` is implicit. Release-update options such as `--major`, `--cool-down`, and `--pre-releases` are rejected with an explicit ref. Omitting the ref retains the existing release-selection behavior.
 

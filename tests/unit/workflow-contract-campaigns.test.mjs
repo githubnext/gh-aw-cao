@@ -403,7 +403,8 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO campaign to its latest compatible release/);
   assert.match(updateSection, /\.\/cao\.sh update main/);
-  assert.match(updateSection, /resolves it once[\s\S]*?same immutable revision/);
+  assert.match(updateSection, /resolves the ref once[\s\S]*?same immutable revision/);
+  assert.match(updateSection, /\.\/cao\.sh update latest/);
   assert.match(updateSection, /Do not fetch control files separately or copy them with a script/);
   assert.match(updateSection, /predate the campaign-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add|--create-pull-request/);
