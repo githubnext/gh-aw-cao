@@ -334,15 +334,18 @@ function enableTableFilter(region, options, rows) {
   let lazyShown = 0;
   let continuationToken = options.continuation?.token;
 
-  // `more`'s busy/label/error-flag state is this control's entire visible
-  // continuation-load state; the effect below is the only place that writes
-  // it onto the owned `more` button, matching the `createCopyControl`/
+  // `more`'s busy/label/error-flag state and the filter result readout are
+  // this control's entire visible result/continuation-load state; the
+  // effects below are the only places that write them onto the owned `more`
+  // and `output` nodes, matching the `createCopyControl`/
   // `reset-dashboard-control.js` state/effect/createFactoryScope shape for
   // owned interactive DOM driven by an async flow.
   const continuationScope = createFactoryScope();
   continuationScope.bind(region);
   const continuationBusy = state(false);
   const continuationLoadFailed = state(false);
+  const moreHidden = state(more.hidden);
+  const resultText = state(output.textContent ?? '');
   effect(() => {
     more.disabled = continuationBusy.get();
     more.textContent = continuationLoadFailed.get()
@@ -350,6 +353,12 @@ function enableTableFilter(region, options, rows) {
       : options.lazyList ? 'Load more rows' : 'Show all rows';
     if (continuationLoadFailed.get()) more.dataset.loadError = '';
     else delete more.dataset.loadError;
+  }, { signal: continuationScope.signal });
+  effect(() => {
+    more.hidden = moreHidden.get();
+  }, { signal: continuationScope.signal });
+  effect(() => {
+    output.textContent = resultText.get();
   }, { signal: continuationScope.signal });
   /**
    * @param {HTMLTableRowElement[]} matchedRows
@@ -417,8 +426,8 @@ function enableTableFilter(region, options, rows) {
      const total = unfiltered && options.continuation
        ? options.continuation.totalRows
        : processed.length;
-     output.textContent = formatResultCount(shown, total, options.resultNoun, options.resultNounPlural);
-     more.hidden = !continuationToken && shown >= processed.length;
+     resultText.set(formatResultCount(shown, total, options.resultNoun, options.resultNounPlural));
+     moreHidden.set(!continuationToken && shown >= processed.length);
    });
   };
 
