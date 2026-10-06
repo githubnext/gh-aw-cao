@@ -182,13 +182,15 @@ identity-aware authentication in a remote service.
 
 Hosted mode has no developer override for public transport protections:
 
-- it requires `rediss://` by default;
+- Redis-backed profiles require `rediss://` by default;
 - plaintext Redis requires `allow-private-plaintext: true` in the `cao.json`
   Redis module and is then restricted to a private IP or single-label service
   name;
 - it requires HTTPS and rejects attempts to disable that policy;
-- it binds to loopback by default, allowing forwarded host/protocol headers
-  only across that local process or pod boundary; and
+- it binds to loopback by default; without direct TLS, forwarded host/protocol
+  headers are allowed only across that local process or pod boundary;
+- direct TLS uses the actual TLS transport without requiring forwarded headers,
+  unless `CAO_TRUSTED_PROXY_CIDRS` explicitly configures a trusted proxy; and
 - a non-loopback bind requires an operator-supplied TLS certificate and key,
   or explicit private `CAO_TRUSTED_PROXY_CIDRS`. Forwarded headers are accepted
   only from a direct peer in those CIDRs and must identify an allow-listed host

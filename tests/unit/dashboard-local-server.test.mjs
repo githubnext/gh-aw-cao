@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { runGoDashboardServer, startDashboardServer } from "../../dashboard/local-server.mjs";
 
 const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
@@ -565,6 +565,102 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
   assert.match(result.stdout, /usage: local-server\.mjs/);
   assert.match(result.stdout, /--canvas/);
   assert.match(result.stdout, /--replace-existing/);
+  assert.match(result.stdout, /--operational-store redis\|memory/);
+  assert.match(result.stdout, /matching reviewed host policy/);
+});
+
+test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => {
+  for (const [arguments_, message] of [
+    [["--operational-store"], /requires a value/],
+    [["--operational-store", "postgres"], /must be redis or memory/],
+    [["--operational-store", "memory", "--policy", "--port", "8080"], /--policy requires a value/],
+    [["--operational-store", "redis", "--canvas"], /--canvas cannot be used/],
+    [["--operational-store", "memory", "--repo", "acme/control"], /--repo cannot be used/],
+    [["--operational-store", "redis", "--replace-existing"], /--replace-existing cannot be used/],
+    [["--operational-store", "memory", "--trace-file", "trace.jsonl"], /--trace-file cannot be used/],
+    [["--operational-store", "memory", "--cert", "cert.pem"], /--cert and --key/],
+    [["--policy", "cao.json"], /require --operational-store/],
+    [["--operational-store", "memory", "--port", "0"], /--port must be an integer/],
+  ]) {
+    const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", ...arguments_], {
+      cwd: path.resolve(import.meta.dirname, "../.."),
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, message);
+  }
+});
+
+test("Go local launcher selects either backend without modifying policy or environment", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-go-launcher-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const operationalStore of ["redis", "memory"]) {
+    const calls = [];
+    const policyPath = path.join(root, `${operationalStore}.json`);
+    const policy = JSON.stringify({ fixture: operationalStore });
+    await writeFile(policyPath, policy);
+    const environment = { CAO_POLICY_PATH: "ignored.json", CAO_POSTGRES_URL: "postgres://fixture" };
+    await runGoDashboardServer({
+      operationalStore,
+      policyPath,
+      workingDirectory: root,
+      environment,
+      host: "::1",
+      port: 8443,
+      siteRoot: "built",
+      certFile: "cert.pem",
+      keyFile: "key.pem",
+      runCommand: async (executable, arguments_, options) => {
+        calls.push({ executable, arguments_, options });
+        if (executable === "go") await writeFile(arguments_[2], "build fixture");
+      },
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].executable, "go");
+    assert.deepEqual(calls[0].arguments_.slice(0, 2), ["build", "-o"]);
+    assert.equal(calls[0].arguments_.at(-1), "./cmd/cao-dashboard");
+    assert.equal(calls[1].executable, calls[0].arguments_[2]);
+    assert.deepEqual(calls[1].arguments_, [
+      "serve-hosted", "--operational-store", operationalStore,
+      "--listen", "[::1]:8443", "--site", path.join(root, "built"),
+      "--cert", path.join(root, "cert.pem"), "--key", path.join(root, "key.pem"),
+    ]);
+    assert.equal(calls[1].options.env.CAO_POLICY_PATH, policyPath);
+    assert.equal(calls[1].options.env.CAO_POSTGRES_URL, environment.CAO_POSTGRES_URL);
+    assert.equal(environment.CAO_POLICY_PATH, "ignored.json");
+    assert.equal(await readFile(policyPath, "utf8"), policy);
+    await assert.rejects(stat(calls[1].executable), { code: "ENOENT" });
+  }
+});
+
+test("Go local launcher respects policy environment precedence", async () => {
+  for (const [environment, expected] of [
+    [{ CAO_POLICY_PATH: "primary.json", CAO_MARKETPLACE_POLICY_PATH: "secondary.json" }, "primary.json"],
+    [{ CAO_POLICY_PATH: " ", CAO_MARKETPLACE_POLICY_PATH: "secondary.json" }, "secondary.json"],
+    [{}, path.resolve(import.meta.dirname, "../../.github/workflows/cao.json")],
+  ]) {
+    let selected;
+    await runGoDashboardServer({
+      operationalStore: "memory",
+      environment,
+      runCommand: async (_executable, _arguments, options) => { selected = options.env.CAO_POLICY_PATH; },
+    });
+    assert.equal(selected, path.resolve(expected));
+  }
+});
+
+test("Go local launcher reports build failure and removes its temporary binary", async () => {
+  const failure = new Error("Go build failed");
+  let executable;
+  await assert.rejects(runGoDashboardServer({
+    operationalStore: "memory",
+    runCommand: async (_command, arguments_) => {
+      executable = arguments_[2];
+      await writeFile(executable, "partial build");
+      throw failure;
+    },
+  }), failure);
+  await assert.rejects(stat(executable), { code: "ENOENT" });
 });
 
 test("dashboard local server declares canvas readiness output", async () => {

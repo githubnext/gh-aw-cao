@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -38,6 +40,53 @@ func TestServeHostedLoadsMaterializedDashboardQueriesByDefault(t *testing.T) {
 		}
 	}
 	t.Fatal("default dashboard query definitions omit database-campaign-count")
+}
+
+func TestServeHostedRejectsUnsupportedOperationalBackend(t *testing.T) {
+	t.Setenv("OTEL_SDK_DISABLED", "true")
+	cmd := newServeHostedCommand()
+	cmd.SetArgs([]string{"--operational-store", "postgres"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "must be redis or memory") {
+		t.Fatalf("error = %v, want unsupported operational backend", err)
+	}
+}
+
+func TestOperationalBackendSelectionUsesComposedReviewedPolicy(t *testing.T) {
+	directory := t.TempDir()
+	base := `{"version":1,"control-plane":{"web":{"host":{"target":{"module":"container","replicas":1},"operational-store":{"backend":"memory","single-process":true,"allow-volatile":true}}}}}`
+	if err := os.WriteFile(filepath.Join(directory, "cao.json"), []byte(base), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	profile := `{"extends":"cao.json","control-plane":{"web":{"host":{}}}}`
+	path := filepath.Join(directory, "cao.memory.json")
+	if err := os.WriteFile(path, []byte(profile), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAO_POLICY_PATH", path)
+	t.Setenv("OTEL_SDK_DISABLED", "true")
+	settings, err := server.OperationalEnvironmentFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Backend != "memory" {
+		t.Fatalf("selected = %q, want memory", settings.Backend)
+	}
+	cmd := newServeHostedCommand()
+	cmd.SetArgs([]string{"--operational-store", "redis"})
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "matching reviewed") {
+		t.Fatalf("error = %v, want reviewed-backend mismatch before opening services", err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "cao.json"), []byte(strings.Replace(base, `"allow-volatile":true`, `"allow-volatile":false`, 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd = newServeHostedCommand()
+	cmd.SetArgs([]string{"--operational-store", "memory"})
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "acknowledgements") {
+		t.Fatalf("error = %v, want rejected volatile acknowledgement", err)
+	}
 }
 
 func TestResolveRedisEndpoint(t *testing.T) {

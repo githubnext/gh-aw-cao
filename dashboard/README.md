@@ -74,21 +74,36 @@ The server requires GitHub CLI authentication with Actions read access. It downl
 
 Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the bundled site without a build step. Use `--port` or `--host` to override its address.
 
-### Redis-backed local server
+### Go-backed local server: Redis or memory
 
-`server/` contains a separate Go implementation for testing the
-dashboard with server-owned storage and query execution. It ingests the compacted
-data files from a deployed dashboard artifact into dockerized Redis,
-executes Dashboard Language queries on the server with the Go query engine, and
-serves the built dashboard over loopback HTTP by default or explicitly
-configured HTTPS. The browser receives only
-bounded query results; the Redis URL and credentials remain in the Go process.
+Select a Go-backed server explicitly with the same script:
 
-This profile is intentionally local-only and does not reuse
-`dashboard/local-server.mjs`. GitHub authentication, live GitHub querying,
-webhooks, and remote exposure are future work. See
-[`../server/README.md`](../server/README.md) for the exact Docker, ingest,
-serve, and verification commands.
+```bash
+npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
+npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
+```
+
+The policy paths above are examples: supply an existing reviewed host policy or
+deployment profile selecting that backend. `--policy` takes precedence over
+`CAO_POLICY_PATH` and `CAO_MARKETPLACE_POLICY_PATH`; otherwise the catalog's
+`.github/workflows/cao.json` is used. The selector checks the resolved policy,
+including profile imports, and never rewrites it or overrides its authority.
+
+Go mode builds and launches `serve-hosted` in one owning process. It requires Go,
+PostgreSQL, a built dashboard (`npm run dashboard:server:build`), and the normal
+hosted OAuth, authorization, and HTTPS/proxy configuration. Use `--site` to select
+another built site, `--host`/`--port` for the listener, and `--cert`/`--key` for
+direct TLS. Redis remains the default operational backend in host policy; memory
+requires its explicit single-process and volatility acknowledgements and
+co-resident workers when collection is enabled. Memory mode does not require
+Redis and loses operational state on restart.
+
+PostgreSQL owns canonical dashboard entities and query execution in both modes.
+The browser never receives database credentials. Canvas, static artifact
+download (`--repo`), replacement, and preview trace options are not available in
+Go mode. Omitting `--operational-store` retains the browser-only preview described
+above. See [`../server/README.md`](../server/README.md) for hosted configuration,
+webhooks, backfill, and recovery guarantees.
 
 The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. Those authoring documents may list feature-oriented JSON fragments through their top-level `fragments` array; the preview watches both roots and fragments. It serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 

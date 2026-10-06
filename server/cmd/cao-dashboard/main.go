@@ -534,6 +534,7 @@ func newServeHostedCommand() *cobra.Command {
 		Short: "serve the dashboard and admit webhook deliveries",
 	}
 	listen := cmd.Flags().String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
+	operationalStore := cmd.Flags().String("operational-store", "", "require redis or memory to match the reviewed host policy; does not override policy")
 	cert := cmd.Flags().String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
 	key := cmd.Flags().String("key", "", "TLS private key PEM file required for a non-loopback listener")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
@@ -555,6 +556,7 @@ func newServeHostedCommand() *cobra.Command {
 			ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
 			*mcpEnabled, *agentCatalog, *mcpContract,
 			log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+			*operationalStore,
 		)
 		if err != nil {
 			return err

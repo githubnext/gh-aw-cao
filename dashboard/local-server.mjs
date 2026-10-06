@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createServer } from "node:http";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
   appendFile,
@@ -16,6 +16,7 @@ import {
 } from "node:fs/promises";
 import { createReadStream, createWriteStream, watch } from "node:fs";
 import { isIP } from "node:net";
+import { tmpdir } from "node:os";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
@@ -1267,6 +1268,78 @@ export async function startDashboardServer({
   };
 }
 
+async function runGoCommand(executable, arguments_, options) {
+  await new Promise((accept, reject) => {
+    const child = spawn(executable, arguments_, { ...options, stdio: "inherit" });
+    let failure;
+    child.once("error", (error) => { failure = error; });
+    child.once("close", (code, signal) => {
+      if (options.signal.aborted && (failure?.name === "AbortError" || signal === "SIGTERM")) {
+        accept();
+      } else if (failure) {
+        reject(failure);
+      } else if (code !== 0) {
+        reject(new Error(`Go dashboard command failed (${signal ?? `exit ${code}`}).`));
+      } else {
+        accept();
+      }
+    });
+  });
+}
+
+export async function runGoDashboardServer({
+  operationalStore,
+  host = "127.0.0.1",
+  port = 4173,
+  policyPath,
+  siteRoot,
+  certFile,
+  keyFile,
+  workingDirectory = process.cwd(),
+  environment = process.env,
+  runCommand = runGoCommand,
+}) {
+  const serverDirectory = join(defaultCatalogRoot, "server");
+  if (!(await stat(join(serverDirectory, "go.mod")).catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }))?.isFile()) {
+    throw new Error("--operational-store requires a catalog checkout containing the Go server.");
+  }
+  const selectedPolicy = policyPath || environment.CAO_POLICY_PATH?.trim()
+    || environment.CAO_MARKETPLACE_POLICY_PATH?.trim()
+    || join(defaultCatalogRoot, ".github/workflows/cao.json");
+  const directory = await mkdtemp(join(tmpdir(), "cao-dashboard-go-"));
+  const executable = join(directory, process.platform === "win32" ? "cao-dashboard.exe" : "cao-dashboard");
+  const controller = new AbortController();
+  const shutdown = () => controller.abort();
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+  try {
+    const options = {
+      cwd: serverDirectory,
+      env: { ...environment, CAO_POLICY_PATH: resolve(workingDirectory, selectedPolicy) },
+      signal: controller.signal,
+    };
+    await runCommand("go", ["build", "-o", executable, "./cmd/cao-dashboard"], options);
+    if (controller.signal.aborted) return;
+    const address = isIP(host) === 6 ? `[${host}]` : host;
+    const arguments_ = [
+      "serve-hosted",
+      "--operational-store", operationalStore,
+      "--listen", `${address}:${port}`,
+      "--site", resolve(workingDirectory, siteRoot || join(defaultCatalogRoot, "dashboard/site/dist")),
+    ];
+    if (certFile) arguments_.push("--cert", resolve(workingDirectory, certFile));
+    if (keyFile) arguments_.push("--key", resolve(workingDirectory, keyFile));
+    await runCommand(executable, arguments_, options);
+  } finally {
+    process.removeListener("SIGINT", shutdown);
+    process.removeListener("SIGTERM", shutdown);
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
 function parseArguments(arguments_) {
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -1289,7 +1362,37 @@ function parseArguments(arguments_) {
         throw new Error("--repo must be an OWNER/REPOSITORY name");
       }
     }
+    else if (["--operational-store", "--policy", "--site", "--cert", "--key"].includes(argument)) {
+      const value = arguments_[index += 1];
+      if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
+      const key = {
+        "--operational-store": "operationalStore",
+        "--policy": "policyPath",
+        "--site": "siteRoot",
+        "--cert": "certFile",
+        "--key": "keyFile",
+      }[argument];
+      options[key] = value;
+    }
     else throw new Error(`unknown argument: ${argument}`);
+  }
+  if (options.operationalStore) {
+    if (!["redis", "memory"].includes(options.operationalStore)) {
+      throw new Error("--operational-store must be redis or memory");
+    }
+    for (const [flag, value] of [
+      ["--canvas", options.canvas],
+      ["--replace-existing", options.replaceExisting],
+      ["--trace-file", options.traceFile],
+      ["--repo", options.repository],
+    ]) {
+      if (value) throw new Error(`${flag} cannot be used with --operational-store`);
+    }
+    if (Boolean(options.certFile) !== Boolean(options.keyFile)) {
+      throw new Error("--cert and --key must be provided together");
+    }
+  } else if (options.policyPath || options.siteRoot || options.certFile || options.keyFile) {
+    throw new Error("--policy, --site, --cert, and --key require --operational-store redis|memory");
   }
   if (!options.host) options.host = "127.0.0.1";
   const port = options.port ?? (options.canvas ? 0 : 4173);
@@ -1309,6 +1412,12 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     console.log("usage: local-server.mjs [--canvas] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("       local-server.mjs --operational-store redis|memory [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
+    console.log("Go mode requires a matching reviewed host policy, PostgreSQL, a built site, and hosted OAuth/HTTPS configuration.");
+    return;
+  }
+  if (options.operationalStore) {
+    await runGoDashboardServer(options);
     return;
   }
   const workingDirectory = await realpath(process.cwd());

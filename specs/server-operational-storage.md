@@ -69,6 +69,51 @@ protected state. Active limiter buckets MUST NOT be evicted to reset limits.
 Session admission MUST preserve capacity for its atomic revocation transition.
 Exhausted capacity MUST fail explicitly rather than silently discard work.
 
+## Local launcher modes
+
+`dashboard/local-server.mjs` has three explicit modes:
+
+| Invocation | Runtime | Operational authority |
+| --- | --- | --- |
+| No `--operational-store` | Existing Node.js static/browser preview | No operational adapter, OAuth session store, collection worker, or server-owned canonical database |
+| `--operational-store redis` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting Redis |
+| `--operational-store memory` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
+
+The selector MUST NOT rewrite, synthesize, or override rollout policy. The
+requested backend MUST match the backend resolved by the production Go policy
+loader, including deployment-profile imports. A mismatch, invalid backend,
+missing policy, invalid topology, or missing required credentials MUST fail
+closed. The legacy default of Redis applies only where the reviewed host
+configuration permits it; memory MUST NOT become an automatic fallback.
+
+`--policy PATH` selects an existing reviewed policy/profile and takes precedence
+over `CAO_POLICY_PATH`, then `CAO_MARKETPLACE_POLICY_PATH`; the default is the
+catalog's `.github/workflows/cao.json`. Relative paths MUST resolve against the
+invoking working directory, not the Go module's directory. The selected path is
+passed as `CAO_POLICY_PATH` to the child without mutating the parent's
+environment. The Go loader remains the sole authority for profile composition
+and configuration validation.
+
+Both Go modes require PostgreSQL for canonical entities and query execution,
+the built dashboard, and the ordinary hosted OAuth and HTTPS/proxy protections.
+The launcher MUST NOT substitute the legacy local bearer-capability profile
+for hosted authentication. `--site`, `--host`, `--port`, and paired
+`--cert`/`--key` MAY configure the built site and listener without relaxing those
+protections. A direct TLS listener MUST use its actual TLS transport without
+requiring forwarded headers unless trusted proxy CIDRs are explicitly
+configured. A loopback listener without direct TLS retains the existing
+trusted-proxy profile; an HTTPS-looking header from an untrusted peer MUST NOT
+authorize access. Browser-preview-only canvas, artifact-download, replacement, and
+trace flags MUST be rejected in Go mode; Go-only flags MUST be rejected in
+browser mode.
+
+The launcher builds into a temporary directory and launches the binary
+directly, rather than leaving a detached `go run` child. Interrupt and
+termination signals MUST reach the owned child. The launcher MUST await child
+closure before removing its temporary executable, propagate unexpected build
+or service failures, and remove its signal handlers on every exit path.
+The Go application MUST cancel and join owned workers before store close.
+
 ## Restart and manual recovery
 
 Before volatile collection can acknowledge scope-dependent deliveries or start
@@ -104,3 +149,20 @@ Public health/readiness MAY expose provider-neutral capabilities and bootstrap
 readiness, never keys, record values, credentials, or endpoints. The legacy
 `redis.connected` response is retained as a deprecated compatibility alias for
 the selected operational dependency; `operational` is the neutral health field.
+
+## Formal model
+
+[`tla/ServerOperationalStorage.tla`](tla/ServerOperationalStorage.tla) models
+browser/Redis/memory selection, immutable policy matching, memory topology
+guards, bootstrap-gated admission, bounded atomic delivery/task admission,
+owner-checked work, admitted backfill checkpoints, session epochs, drain/close,
+and restart. The Redis and memory configurations check safety and conditional
+bootstrap/shutdown progress separately. The model preserves evidence across
+both modes but deliberately permits loss of acknowledged unfinished work and
+session authority when memory closes or restarts.
+
+The bounded model is an abstraction, not a proof of the implementation or of
+external GitHub availability, signature verification, encryption, TLS, storage
+durability, complete historical replay, or retained-shard identity validation.
+See [`tla/README.md`](tla/README.md) for bounds, assumptions, commands, and the
+implementation/test correspondence.

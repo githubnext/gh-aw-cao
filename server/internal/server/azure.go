@@ -60,7 +60,7 @@ func validateHostedMode(store operational.Store, config *Config) error {
 		return errors.New("externally hosted forwarded headers require explicit trusted proxy CIDRs")
 	}
 	if profile.Listener == HostListenerProcess {
-		if isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
+		if config.CertFile == "" && isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
 			config.Proxy.TrustForwarded = true
 			config.Proxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
 		}

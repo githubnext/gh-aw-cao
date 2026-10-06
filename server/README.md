@@ -33,6 +33,21 @@ Redis remains the default. To select memory in reviewed
 }
 ```
 
+The local launcher supports either reviewed backend:
+
+```bash
+npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
+npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
+```
+
+Supply your existing reviewed policy/profile at `--policy` (the paths above are
+examples), or use `CAO_POLICY_PATH`. The launcher builds and runs `serve-hosted`;
+the requested backend must match the resolved policy and cannot override it.
+It preserves the ordinary hosted authentication and transport requirements.
+Direct TLS uses the actual TLS connection without requiring forwarded headers
+unless `CAO_TRUSTED_PROXY_CIDRS` explicitly configures a proxy.
+Omitting the selector keeps the separate browser-only preview unchanged.
+
 Use `serve-hosted` with the ordinary mandatory OAuth, HTTPS/proxy, organization
 or team, administrator, and webhook-secret configuration. Keep admission,
 collection workers, projection, and backfill in that process. Enable the

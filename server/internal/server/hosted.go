@@ -30,13 +30,27 @@ func NewHostedAppFromEnv(
 	agentCatalogPath string,
 	mcpContractPath string,
 	logger *log.Logger,
+	requiredBackend ...string,
 ) (*App, error) {
+	if len(requiredBackend) > 1 {
+		return nil, errors.New("only one operational backend requirement is supported")
+	}
+	requested := ""
+	if len(requiredBackend) == 1 {
+		requested = requiredBackend[0]
+	}
+	if requested != "" && requested != "redis" && requested != "memory" {
+		return nil, errors.New("--operational-store must be redis or memory")
+	}
 	host, err := loadHostPolicyFromEnv()
 	if err != nil {
 		return nil, err
 	}
 	if host.Profile.Listener != HostListenerProcess {
 		return nil, fmt.Errorf("host target module %q does not own a process listener", host.Profile.Name)
+	}
+	if requested != "" && host.OperationalBackend != requested {
+		return nil, fmt.Errorf("--operational-store %s requires a matching reviewed control-plane.web.host policy (selected: %s)", requested, host.OperationalBackend)
 	}
 	return newHostedAppWithPolicy(ctx, host, listen, certFile, keyFile, siteDirectory, dashboardQueriesPath, databaseQueriesPath, logger, mcpEnabled, agentCatalogPath, mcpContractPath)
 }
@@ -104,10 +118,7 @@ func newHostedAppWithPolicy(
 	if err != nil {
 		return nil, err
 	}
-	trustForwarded := isLoopbackListen(listen) || len(trustedProxyPrefixes) > 0
-	if trustForwarded {
-		trustedProxyPrefixes = append(trustedProxyPrefixes, loopbackProxyPrefixes()...)
-	}
+	trustForwarded, trustedProxyPrefixes := hostedProxyTrust(listen, certFile, trustedProxyPrefixes)
 	postgresURL := strings.TrimSpace(os.Getenv("CAO_POSTGRES_URL"))
 	if postgresURL == "" {
 		return nil, errors.New("CAO_POSTGRES_URL is required")
@@ -167,6 +178,16 @@ func newHostedAppWithPolicy(
 		initialized = true
 	}
 	return app, err
+}
+
+func hostedProxyTrust(listen, certFile string, configured []netip.Prefix) (bool, []netip.Prefix) {
+	// Direct TLS uses the actual transport unless a proxy was explicitly configured.
+	trustForwarded := len(configured) > 0 || (certFile == "" && isLoopbackListen(listen))
+	prefixes := append([]netip.Prefix(nil), configured...)
+	if trustForwarded {
+		prefixes = append(prefixes, loopbackProxyPrefixes()...)
+	}
+	return trustForwarded, prefixes
 }
 
 // hostedRedisURLRejection classifies why validateHostedRedisURL rejected a
