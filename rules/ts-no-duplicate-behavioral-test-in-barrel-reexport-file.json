@@ -45,9 +45,19 @@
       "files": [
         "src/docker-manager.test.ts"
       ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9491,
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "detail": "Automated commit 'test: cover capability filter via docker-manager barrel' (co-authored by Copilot) added filterCapDrop/getHostCapabilityBoundingSet/filterComposeCapDrop behavioral assertions to the barrel re-export smoke-test file src/docker-manager.test.ts, duplicating src/capability-filter.test.ts. A second commit in the same PR ('fix: upgrade docs sharp past vulnerability', by maintainer lpcox) addressed only an unrelated dependency CVE; the duplicated barrel assertions were merged unchanged, unlike the four prior occurrences (#9308, #9368, #9408, #9460) which were each reverted before merge.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ]
     }
   ],
-  "occurrence_count": 4,
+  "occurrence_count": 5,
   "affected_paths": [
     "src/docker-manager.test.ts"
   ],
@@ -59,10 +69,10 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-06T22:53:13Z",
-  "last_updated": "2026-10-06T22:53:13Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37542942370",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_seen_at": "2026-10-06T22:51:00Z",
+  "last_updated": "2026-10-06T19:00:56Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37499745280",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
     "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
@@ -103,16 +113,6 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD 61108a1e: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-72 still false-positive against a naive heuristic. No suppression convention.",
       "txn_id": "refiner-37406671160-2"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "daef06b3bde81cf9a87fd645988bdb0fbf9c4958",
-      "true_positive_count": 2,
-      "false_positive_count": 2,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD daef06b3: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions still false-positive against a naive heuristic. No suppression convention.",
-      "txn_id": "refiner-37542942370-2"
     }
   ]
 }
