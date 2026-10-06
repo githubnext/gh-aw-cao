@@ -66,6 +66,34 @@ var (
 	sqlParameter    = regexp.MustCompile(`\$([0-9]+)`)
 )
 
+// neededCTEs computes, for each CTE in cteList, whether it is transitively
+// reachable from the starting fragments by relation reference. It is a pure
+// function extracted from Scoped's inline closure so the reachability
+// closure over a CTE dependency graph is independently testable against
+// plain relation-name strings, without constructing a SQLPlan.
+func neededCTEs(cteList []string, fragments []string) []bool {
+	index := make(map[string]int, len(cteList))
+	for position, text := range cteList {
+		index[sqlRelationName.FindString(text)] = position
+	}
+	needed := make([]bool, len(cteList))
+	var visit func(text string, own string)
+	visit = func(text string, own string) {
+		for _, name := range sqlRelationName.FindAllString(text, -1) {
+			position, exists := index[name]
+			if !exists || name == own || needed[position] {
+				continue
+			}
+			needed[position] = true
+			visit(cteList[position], name)
+		}
+	}
+	for _, fragment := range fragments {
+		visit(fragment, "")
+	}
+	return needed
+}
+
 // Scoped returns only the CTEs that the compiler fragments transitively
 // reference, so Postgres does not plan unrelated relations, together with the
 // compact bound arguments they use. The returned fragments are renumbered to
@@ -78,31 +106,14 @@ func (plan SQLPlan) Scoped(fragments ...string) (string, []any, []string) {
 	// relation once; forcing inlining would re-evaluate shared upstream
 	// relations for every consumer.
 	const forcedInline = " AS NOT MATERIALIZED ("
-	index := make(map[string]int, len(plan.CTEList))
-	for position, text := range plan.CTEList {
-		index[sqlRelationName.FindString(text)] = position
-	}
-	needed := make([]bool, len(plan.CTEList))
-	var visit func(text string, own string)
-	visit = func(text string, own string) {
-		for _, name := range sqlRelationName.FindAllString(text, -1) {
-			position, exists := index[name]
-			if !exists || name == own || needed[position] {
-				continue
-			}
-			needed[position] = true
-			visit(plan.CTEList[position], name)
-		}
-	}
-	for _, fragment := range fragments {
-		visit(fragment, "")
-	}
+	needed := neededCTEs(plan.CTEList, fragments)
 	included := make([]string, 0, len(plan.CTEList))
 	for position, text := range plan.CTEList {
 		if needed[position] {
 			included = append(included, text)
 		}
 	}
+	queryLog.Printf("sql plan scoped total_ctes=%d included_ctes=%d", len(plan.CTEList), len(included))
 	numbers := map[string]int{}
 	var args []any
 	renumber := func(text string) string {
