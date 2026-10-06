@@ -80,8 +80,8 @@
     "reason": "Re-confirmed unchanged on HEAD 61108a1e: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (token-persistence.js 0o600 audit file has no cross-file chmod awareness), no suppression mechanism.",
     "txn_id": "refiner-37406671160-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37406671160",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37459230573",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-actions",
@@ -122,8 +122,18 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD b476c7d5: same 4 false positives (sessionStateDir, squid-logs, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R), no suppression mechanism.",
       "txn_id": "refiner-37359981927-1"
+    },
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "6e093fd9535a91bb0791adf690da3921ca8c93a5",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 6e093fd9: sole recursive chmod remains tests/e2e/cao-mcp-container.mjs:89 on an mkdtemp fixture-only directory; still a false positive. No classification change since prior run.",
+      "txn_id": "refiner-37459230573-3"
     }
   ],
-  "last_seen_at": "2026-10-06T02:59:21Z",
-  "last_updated": "2026-10-06T02:59:21Z"
+  "last_seen_at": "2026-10-06T11:54:10Z",
+  "last_updated": "2026-10-06T11:54:10Z"
 }
