@@ -160,7 +160,7 @@ test("CAO admission denies a disabled campaign without failing the workflow", ()
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(output, { authorized: "false", reason: "campaign-disabled", monthly_credit_budget: "0" });
-  assert.match(summary, /Skipped campaign `dependabot` as `orchestrator`: campaign-disabled/);
+  assert.match(summary, /^Skipped campaign `dependabot` as `orchestrator`: campaign-disabled\n\n<details>\n<summary><h3>Central Agentic Ops admission checks<\/h3><\/summary>/);
   assert.match(summary, /- ✅ Workflow identity —/);
   assert.match(summary, /- ❌ Campaign —/);
   assert.match(summary, /- Worker —/);
@@ -231,7 +231,8 @@ test("CAO admission blocks exhausted GitHub API capacity with reset and remediat
     github_api_required: "100",
     github_api_reset_at: new Date(rateReset * 1000).toISOString(),
   });
-  assert.match(summary, /Blocked campaign `dependabot` as `orchestrator` before activation/);
+  assert.match(summary, /^Blocked campaign `dependabot` as `orchestrator` before activation: insufficient GitHub REST API capacity\./);
+  assert.match(summary, /<details>\n<summary><h3>Central Agentic Ops admission checks<\/h3><\/summary>/);
   assert.match(summary, /approximately \*\*60 minutes \(1\.00 hours\)\*\*/);
   assert.match(summary, /### What to do now/);
   assert.match(summary, /Do not rerun before/);
