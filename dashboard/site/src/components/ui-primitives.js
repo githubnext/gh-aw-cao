@@ -152,6 +152,10 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     )
   );
   const tooltipContent = /** @type {HTMLElement} */ (tooltip.lastElementChild);
+  // Every renderPageSection/view-chrome/dashboard-horizon tooltip is rebuilt on
+  // navigation, so viewport-tracking listeners must stop themselves once the
+  // tooltip root leaves the document instead of leaking on every window.
+  const scope = createFactoryScope();
   let pointerInside = false;
   let focusInside = false;
   let trackingViewport = false;
@@ -177,10 +181,10 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     tooltipContent.style.top = `${top - rootRect.top}px`;
   };
   const startViewportTracking = () => {
-    if (trackingViewport) return;
+    if (trackingViewport || scope.signal.aborted) return;
     trackingViewport = true;
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition, { signal: scope.signal });
+    window.addEventListener('scroll', updatePosition, { capture: true, signal: scope.signal });
   };
   const stopViewportTracking = () => {
     if (!trackingViewport || pointerInside || focusInside) return;
@@ -192,20 +196,21 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     pointerInside = true;
     startViewportTracking();
     updatePosition();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('pointerleave', () => {
     pointerInside = false;
     stopViewportTracking();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('focusin', () => {
     focusInside = true;
     startViewportTracking();
     updatePosition();
-  });
+  }, { signal: scope.signal });
   tooltip.addEventListener('focusout', (event) => {
     focusInside = event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget);
     stopViewportTracking();
-  });
+  }, { signal: scope.signal });
+  scope.bind(tooltip);
   return tooltip;
 }
 

@@ -221,6 +221,40 @@ describe('ui primitives', () => {
     binding.stop();
   });
 
+  it('stops tracking the viewport once a focused tooltip detaches from the document', async () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const tooltip = renderTooltip({
+      id: 'detached-tooltip',
+      label: 'Detached tooltip',
+      icon: document.createTextNode('?'),
+      content: document.createTextNode('Additional context.')
+    });
+    document.body.append(tooltip);
+    // Let the MutationObserver microtask backing createFactoryScope observe the attach.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    tooltip.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+    const resizeCall = addSpy.mock.calls.find(([type, , options]) => type === 'resize' && options && typeof options === 'object' && 'signal' in options);
+    const scrollCall = addSpy.mock.calls.find(([type, , options]) => type === 'scroll' && options && typeof options === 'object' && 'signal' in options);
+    expect(resizeCall).toBeDefined();
+    expect(scrollCall).toBeDefined();
+    const resizeOptions = /** @type {AddEventListenerOptions} */ (resizeCall?.[2]);
+    const scope = /** @type {AbortSignal} */ (resizeOptions.signal);
+    expect(scope.aborted).toBe(false);
+
+    tooltip.remove();
+    // Let the MutationObserver microtask backing createFactoryScope run.
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    // The scope's AbortSignal removes window listeners natively once the
+    // tooltip root leaves the document, instead of leaking on every
+    // navigation that rebuilds renderPageSection/view-chrome tooltips.
+    expect(scope.aborted).toBe(true);
+
+    addSpy.mockRestore();
+  });
+
   it('formats UTC date-time text and preserves the unavailable fallback', () => {
     expect(formatUtcDateTime('2026-08-30T10:00:00Z')).toBe('Aug 30, 2026, 10:00 AM');
     expect(formatUtcDateTime('not-a-date')).toBe('Time unavailable');
