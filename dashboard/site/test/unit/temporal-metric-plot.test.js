@@ -211,8 +211,10 @@ describe('Temporal metric plot', () => {
       .toBeGreaterThan(Number(failure?.getAttribute('x2')) - Number(failure?.getAttribute('x1')));
     expect([failureInset?.getAttribute('x1'), failureInset?.getAttribute('x2')])
       .toEqual([failure?.getAttribute('x1'), failure?.getAttribute('x2')]);
-    expect(chartStyles).toContain('.temporal-plot-run-outcome-success { stroke: var(--accent); }');
-    expect(chartStyles).toContain('.temporal-plot-run-outcome-failure { stroke: var(--fg); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-success { stroke: var(--success); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-failure { stroke: var(--danger); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-legend-success { fill: var(--success); }');
+    expect(chartStyles).toContain('.temporal-plot-run-outcome-legend-failure { fill: var(--danger); }');
     expect(chartStyles).toContain('.temporal-plot-run-outcome-failure-inset { stroke: var(--canvas); stroke-width: 4; }');
     expect(chartStyles).toContain('stroke-width: 10; stroke-linecap: butt; vector-effect: non-scaling-stroke;');
   });
