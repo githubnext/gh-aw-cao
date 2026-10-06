@@ -282,8 +282,78 @@
           }
         },
         {
+          "id": "campaign-baseline-concluded-runs",
+          "title": "Concluded runs",
+          "description": "Retained concluded attempts in the selected horizon; not a measure of operational value.",
+          "data": {
+            "source": "campaign-performance-baseline",
+            "route-field": "campaign"
+          },
+          "mark": "metric",
+          "layout": "half",
+          "encoding": {
+            "value": {
+              "field": "concluded-runs",
+              "type": "quantitative"
+            }
+          }
+        },
+        {
+          "id": "campaign-baseline-run-success",
+          "title": "Run success",
+          "description": "Share of concluded runs that succeeded; run success does not verify an accepted outcome.",
+          "data": {
+            "source": "campaign-performance-baseline",
+            "route-field": "campaign"
+          },
+          "mark": "metric",
+          "layout": "half",
+          "encoding": {
+            "value": {
+              "field": "success-rate-percent",
+              "type": "quantitative",
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "id": "campaign-baseline-produced-outputs",
+          "title": "Produced outputs (acceptance unverified)",
+          "description": "Produced safe outputs are not accepted outcomes or operational value.",
+          "data": {
+            "source": "campaign-performance-baseline",
+            "route-field": "campaign"
+          },
+          "mark": "metric",
+          "layout": "half",
+          "encoding": {
+            "value": {
+              "field": "produced-outputs",
+              "type": "quantitative"
+            }
+          }
+        },
+        {
+          "id": "campaign-baseline-aic-per-success",
+          "title": "Average AIC / successful run",
+          "description": "Mean AI Credits on successful attempts; cost is separate from operational value.",
+          "data": {
+            "source": "campaign-performance-baseline",
+            "route-field": "campaign"
+          },
+          "mark": "metric",
+          "layout": "half",
+          "encoding": {
+            "value": {
+              "field": "aic-per-successful-run",
+              "type": "quantitative",
+              "unit": "aic-per-run"
+            }
+          }
+        },
+        {
           "id": "campaign-performance-baseline",
-          "title": "Baseline interpretation",
+          "title": "Baseline evidence and signals",
           "description": "Deterministic reliability, unverified production, and successful-run efficiency facts. Produced outputs are not accepted outcomes or operational value.",
           "data": {
             "source": "campaign-performance-baseline",
@@ -291,6 +361,8 @@
           },
           "mark": "table",
           "layout": "full",
+          "disclosure": "supplemental",
+          "controls": "static",
           "empty-message": "No campaign run attempts were observed during the selected horizon.",
           "encoding": {
             "columns": [

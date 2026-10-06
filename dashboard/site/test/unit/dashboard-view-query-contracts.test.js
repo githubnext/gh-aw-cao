@@ -571,13 +571,28 @@ describe('dashboard view query contracts', () => {
       config: { 'measure-source': 'operational-value' }
     });
 
-    expect(viewsOf(insights)[2]).toMatchObject({
+    expect(viewsOf(insights).slice(2, 6)).toEqual([
+      ['campaign-baseline-concluded-runs', 'concluded-runs', undefined],
+      ['campaign-baseline-run-success', 'success-rate-percent', 'percent'],
+      ['campaign-baseline-produced-outputs', 'produced-outputs', undefined],
+      ['campaign-baseline-aic-per-success', 'aic-per-successful-run', 'aic-per-run']
+    ].map(([id, field, unit]) => expect.objectContaining({
+      id,
+      data: { source: 'campaign-performance-baseline', 'route-field': 'campaign' },
+      mark: 'metric',
+      layout: 'half',
+      encoding: { value: { field, type: 'quantitative', ...(unit ? { unit } : {}) } }
+    })));
+
+    expect(viewsOf(insights)[6]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',
         'route-field': 'campaign'
       },
       mark: 'table',
+      disclosure: 'supplemental',
+      controls: 'static',
       encoding: {
         columns: [
           { field: 'concluded-runs', title: 'Concluded runs' },
