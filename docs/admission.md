@@ -52,7 +52,7 @@ central repository, and originating-run URL inputs must be empty.
 The output repository must equal the explicit target; no review destination
 is resolved because gh-aw stages every declared output. Debug cannot be
 persisted as a policy mode or dispatched by an orchestrator.
-See the [local worker debug loop](execution-and-safety.md#local-worker-debug-loop)
+See [Local Worker Debugging](local-debugging.md)
 for launch commands, staging behavior, and the local-origin limitation.
 
 ## Worker Dispatch Trust Boundary

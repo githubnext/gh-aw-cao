@@ -36,12 +36,12 @@ Pages report routing participates in the control plane. Review routes report sou
 
 ## Standard Control Envelope
 
-Every worker workflow dispatch carries:
+Every orchestrator-to-worker dispatch carries:
 
 | Field | Purpose |
 | --- | --- |
 | `target_repo` | The only target repository the worker workflow may analyze or update |
-| `safe_output_mode` | `review` or `live` for dispatcher runs; `debug` only for a manual debugger worker |
+| `safe_output_mode` | `review` or `live`; debug requests do not use a dispatcher envelope |
 | `safe_output_repo` | safe output destination; review mode defaults this to the current control-plane repository |
 | `correlation_id` | Joins worker workflow safe outputs to the orchestrator workflow run |
 | `central_repo` | Identifies the control-plane repository |
@@ -52,43 +52,15 @@ Credentials are not part of this envelope. Each run resolves authentication thro
 
 ### Local Worker Debug Loop
 
-A local debugger agent can launch one worker directly with `safe_output_mode: debug`.
-This is a request-only mode, not a third rollout-policy value or live authority.
-The campaign and worker must remain declared and enabled, and the target must
-remain inside the checked-in owner and repository scope. Review-only workers
-may be debugged because proposed outputs are staged rather than executed.
+A local debugger may request `safe_output_mode: debug` for one manual worker
+run without a dispatcher. This is not a campaign policy mode or live authority.
+Existing scope and enablement remain enforced; declared safe outputs are
+forcibly staged, while repository-memory persistence remains gh-aw-owned.
+Follow [Local Worker Debugging](local-debugging.md) to prepare a revision,
+launch the worker as an authorized human, inspect evidence, and understand the
+staging limitation.
 
-```bash
-gh aw run dependabot-update-planner --repo acme/central-agentic-ops --ref DEBUG_BRANCH \
-  --raw-field target_repo=acme/example-service \
-  --raw-field safe_output_repo=acme/example-service \
-  --raw-field safe_output_mode=debug
-gh run list --repo acme/central-agentic-ops \
-  --workflow dependabot-update-planner.lock.yml --event workflow_dispatch --limit 5
-gh run watch RUN_ID --repo acme/central-agentic-ops --exit-status
-```
-
-Use the human operator's existing GitHub authentication; never put credentials
-in workflow inputs. `gh aw run` launches the worker, while `gh run` observes it.
-Omit `correlation_id`, `central_repo`, and `control_plane_run_url`: there is no
-dispatcher, and supplying any of those fields rejects debug admission.
-`safe_output_repo` must equal `target_repo` so the staged proposal uses the
-target's real output route. No review-destination metadata is needed.
-
-Admission requires `workflow_dispatch`, an original human sender with current
-write, maintain, or admin access to the control repository, and an unchanged
-triggering actor for reruns. Bots, schedules, orchestrators, unverifiable
-permissions, and mismatched event inputs fail closed. GitHub cannot attest
-that the human's request originated in a local debugger rather than another
-CLI/API client; this is the enforceable boundary.
-
-Shared control forces global gh-aw `safe-outputs.staged`, independent of agent
-instructions, and suppresses automatic activation and failure issues. Inspect
-the run's staged previews, `cao-admission`, and `cao-control-precompute`
-artifacts; the latter records `launch_kind: manual-debug`, the debug actor,
-and `safe_outputs_staged: true`, with empty dispatcher correlation fields.
-Repository-memory staging remains gh-aw's responsibility and is not enforced
-by the currently pinned compiler; CAO does not replace its persistence job.
+### Dispatcher Envelope Example
 
 An effective dispatch envelope resembles:
 
@@ -117,7 +89,7 @@ Never add an App key, PAT, installation token, or other secret to this envelope.
 - Review mode defaults to the current control-plane repository when no destination override is provided.
 - An orchestrator workflow dispatches only worker workflows declared in its `safe-outputs.dispatch-workflow.workflows` list and resolved by exact generated-workflow path.
 - Disabled or unavailable worker workflows are skipped with a reason.
-- A worker workflow handles one dispatched target and does not perform organization-wide discovery.
+- A worker workflow handles one admitted target and does not perform organization-wide discovery.
 - GitHub tools are read-only; writes occur only through declared safe-output primitives.
 - Agents do not receive Pages deployment permission or mode-promotion authority. Pages report mode and destination come from the control envelope; persistent publication is performed only by conventional deterministic workflows from trusted durable inputs.
 - Review Pages must be access-controlled for the intended reviewers and isolated from production Pages. If that boundary is unavailable, review publication fails closed.

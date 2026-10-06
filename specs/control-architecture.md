@@ -123,7 +123,15 @@ Review-only operation MAY conform to Level 2. Live operation MUST NOT claim Leve
 
 **Credential reach:** The repositories and GitHub API operations accessible through the job-local credential selected and provisioned by gh-aw. CAO may require sufficient reach for an admitted repository but does not select, mint, or propagate the credential.
 
-**Effective envelope:** The immutable, least-permissive result of CAO policy, parent dispatch bounds, one-run narrowing, worker ceilings, credential reach, and compiled gh-aw capabilities.
+**Effective envelope:** The immutable, least-permissive result of CAO policy, parent dispatch bounds when present, one-run narrowing, worker ceilings, credential reach, and compiled gh-aw capabilities.
+
+**Persistent output mode:** The `review` or `live` ceiling stored in control
+defaults, campaign policy, exact-target policy, or worker policy. `debug` is
+never a persistent output mode.
+
+**Run-scoped debug request:** A `safe_output_mode: debug` input supplied for one
+manually launched worker run. It permits bounded analysis and staged output
+proposals, not campaign rollout or repository-mutation authority.
 
 ## 4. Architecture and Authority
 
@@ -181,9 +189,9 @@ Orchestrators and workers execute from the private control repository. Target re
 
 **CAO-EXE-001:** An orchestrator MUST discover, filter, rank, and select repositories only within its effective rollout envelope. It MUST dispatch only eligible workers declared by its compiled gh-aw workflow and MUST NOT perform target-repository mutation itself.
 
-**CAO-EXE-002:** A worker MUST process exactly the dispatched `target_repo`. It MUST NOT perform organization-wide discovery, select another target, dispatch downstream workers, or escalate its effective mode.
+**CAO-EXE-002:** A worker MUST process exactly the admitted `target_repo`, supplied by its dispatcher or manual debug request. It MUST NOT perform organization-wide discovery, select another target, dispatch downstream workers, or escalate its effective mode.
 
-**CAO-EXE-003:** Every worker dispatch MUST carry `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url`; it MAY carry a campaign-specific `batch_label`. Credentials MUST NOT be included in this envelope.
+**CAO-EXE-003:** Every orchestrator-to-worker dispatch MUST carry `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url`; it MAY carry a campaign-specific `batch_label`. Its mode MUST be `review` or `live`, never `debug`. Credentials MUST NOT be included in this envelope.
 
 **CAO-EXE-004:** A local debugger MAY request `debug` only by directly launching
 one worker through `workflow_dispatch`. Admission MUST verify the authoritative
@@ -202,8 +210,10 @@ Precompute MUST recheck debug launch eligibility and record the debug actor,
 `launch_kind: manual-debug`, `safe_outputs_staged: true`, the actual control
 repository, and empty dispatcher correlation fields.
 
-Debug MUST NOT be a persistent policy value, an orchestrator mode, or live
-mutation authority. Compiled shared control MUST force global gh-aw safe-output
+Debug applies only to the individually requested worker run. A campaign MUST
+NOT be configured, scheduled, enabled, or rolled out in debug mode. Debug MUST
+NOT be a persistent policy value, an orchestrator mode, or live mutation
+authority. Compiled shared control MUST force global gh-aw safe-output
 staging and suppress automatic activation and failure issues for debug runs.
 Repository-memory staging remains a gh-aw capability, not a CAO job replacement.
 
@@ -309,6 +319,14 @@ dashboard loads.
 | `rollout-percent` | Integer from 1 through 100 | Rollout ceiling |
 | `monthly-ai-credit-budget` | Deprecated compatibility field; no runtime admission effect | None |
 
+**CAO-CFG-007:** Persistent mode fields MUST accept only `review` or `live`.
+The resolver MUST reject `debug` in `control-plane.defaults.mode`,
+`control-plane.campaigns.<campaign>.mode`,
+`control-plane.campaigns.<campaign>.targets.<repository>.mode`, and
+`control-plane.campaigns.<campaign>.workers.<worker>.max-mode`. There MUST NOT
+be a campaign-level debug enablement flag, inherited debug default, or policy
+override that converts normal campaign dispatches into debug runs.
+
 `monthly-ai-credit-budget` MUST NOT replace, raise, or reinterpret gh-aw `max-ai-credits` or `max-turns`. CAO accepts the field for compatibility with existing policy files, but the resolver MUST NOT read month-to-date AI Credit usage or use the value to admit, deny, or cap repositories. Native gh-aw per-run limits remain cumulative.
 
 An absent campaign is disabled. A campaign's `workers` map declares its worker identities and exact workflow slugs; undeclared workers are disabled. Every worker requires `workflow`, defaults to enabled, may set `enabled: false`, and may set `max-mode` only to narrow the resolved campaign or exact-target mode. Campaign, worker, and workflow identifiers use lowercase kebab-case, and workflow identities must be unique within a campaign.
@@ -325,7 +343,7 @@ Dispatch values are intersected with the persistent result. They are requests an
 
 | Dispatch input | Permitted effect |
 | --- | --- |
-| `safe_output_mode` | Preserve mode or lower `live` to `review`; manual-only `debug` follows CAO-EXE-004 and grants no mutation authority |
+| `safe_output_mode` | Preserve `review` or `live`, or lower `live` to `review` |
 | `target_repo` | Select one authorized repository |
 | `safe_output_repo` | Select one authorized review destination |
 | `max_repos` | Lower the repository ceiling |
@@ -333,6 +351,13 @@ Dispatch values are intersected with the persistent result. They are requests an
 | Cell and batch inputs | Select a valid partition within the authorized universe |
 
 **CAO-CFG-006:** A widening dispatch request MUST fail with a stable policy reason. It MUST NOT be silently accepted, persisted, or converted into broader authority.
+
+The table governs ordinary dispatcher requests. A direct, single-worker debug
+request is the separate execution case in CAO-EXE-004, not a third campaign
+mode or an additional value in the rollout-mode ordering. It MUST NOT modify
+persistent policy, carry a parent dispatcher envelope, or authorize subsequent
+runs. It uses the admitted target as its staged output destination rather than
+resolving a review repository.
 
 ## 6. Resolution Lifecycle
 
@@ -363,7 +388,7 @@ The resolver MUST:
 
 The resolver MUST write exactly one derived record to `/tmp/gh-aw/agent/control-precompute.json`. Every authorized record MUST include authorization status and reason, campaign, role, worker when applicable, effective mode and routing, control repository, workflow and policy commit SHA, lowercase SHA-256 policy digest, schema version, and resolution time.
 
-An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope.
+An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope. A manual debug worker MUST instead use the run-specific provenance in CAO-EXE-004: `safe_output_mode: debug`, `launch_kind: manual-debug`, `debug_actor`, and `safe_outputs_staged: true`, with the actual control repository and empty dispatcher correlation fields. Its candidate and downstream-worker lists MUST be empty.
 
 Consumers MUST treat the record's `candidate_repositories`, `worker_workflows`, `effective_max_repos`, `safe_output_mode`, and `safe_output_repo` fields as authoritative. They MUST NOT reconstruct those values from workflow inputs.
 
@@ -374,6 +399,11 @@ The record MUST NOT be treated as persistent configuration. Environment variable
 A worker MUST treat parent policy data as provenance, not current authority, and independently resolve current policy after dispatch and before model invocation. Its authority is the least permissive intersection of the parent envelope, current CAO policy, worker ceilings, credential reach, and compiled gh-aw workflow.
 
 A newer policy MAY revoke or narrow an outstanding dispatch before worker execution. It MUST NOT widen the dispatched envelope. Continuous policy polling during model or safe-output execution is not required; immediate revocation after worker precomputation requires workflow cancellation, credential revocation, or another external execution control.
+
+A manual debug worker has no parent envelope. It MUST independently resolve
+policy at its exact workflow SHA and recheck its human launch eligibility
+during precompute; it MUST NOT infer parent authority or fabricate an
+orchestrator run to satisfy ordinary dispatch requirements.
 
 ## 7. Failure and Revocation
 
@@ -397,10 +427,15 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | T-CFG-002 | Add unknown properties, duplicate keys, expressions, or unknown identifiers | Rejected | 1 |
 | T-CFG-003 | Supply only legacy CAO variables | Ignored as policy and denied | 1 |
 | T-CFG-004 | Put execution fields such as engine, `max-ai-credits`, permissions, or safe outputs in CAO JSON | Rejected | 1 |
+| T-CFG-005 | Set `debug` in a default, campaign, exact-target, or worker-ceiling mode field | Rejected; persistent modes remain `review` and `live` | 1 |
 | T-ARC-001 | Use broad credentials against a target outside CAO scope | Denied | 2 |
 | T-ARC-002 | Declare gh-aw capabilities without CAO live policy | No rollout or live authority inferred | 2 |
 | T-ARC-003 | Configure deprecated monthly admission while a per-run gh-aw limit remains available | Monthly value ignored; native limit unchanged | 2 |
 | T-EXE-001 | Inspect an orchestrator dispatch and worker run | Standard envelope present, credentials absent, worker bound to one target | 2 |
+| T-EXE-002 | Manually launch one enabled, in-scope worker with `debug`, matching target/output repositories, and an authorized human actor | Admitted without dispatcher provenance; no campaign policy changed | 2 |
+| T-EXE-003 | Request debug for an orchestrator, non-manual event, bot, different rerun actor, or actor without verifiable control-repository write access | Denied before model invocation | 2 |
+| T-EXE-004 | Supply dispatcher correlation fields or event-mismatched mode, target, or destination for a debug run | Denied; no fabricated dispatcher envelope | 2 |
+| T-EXE-005 | Request debug for an undeclared or disabled campaign/worker, out-of-scope target, or raised request limit | Denied; debug does not bypass policy | 2 |
 | T-RES-001 | Resolve when workflow SHA differs from latest default branch | Policy at workflow SHA used | 2 |
 | T-RES-002 | Request live under a review ceiling | Rejected as widening | 2 |
 | T-RES-003 | Request lower rollout limits | Accepted as narrowing | 2 |
@@ -408,20 +443,22 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | T-RES-005 | Broaden policy after dispatch but before worker start | Worker remains bounded by parent envelope | 2 |
 | T-RES-006 | Trigger expected denial | Effective record and native `noop`; no model invocation | 2 |
 | T-RES-007 | Inspect authorized orchestrator and worker records | Required role-specific fields and provenance present | 2 |
+| T-RES-008 | Inspect a manual debug worker handoff and revoke actor write access before precompute | Run-specific debug provenance when admitted; denied after revocation; no candidate or downstream-worker discovery | 2 |
 | T-GHA-001 | Inspect generated workflow topology and authentication | Native gh-aw jobs and token path remain authoritative | 2 |
 | T-GHA-002 | Request an undeclared safe output | Primitive unavailable regardless of CAO mode | 2 |
 | T-GHA-003 | Resolve review mode for a live-capable workflow | No target mutation | 2 |
+| T-GHA-004 | Compile a debug-capable worker and inspect its output execution boundary | Global gh-aw safe-output staging forced for debug; automatic activation/failure issues suppressed; no new primitive or live authority | 2 |
 | T-SEC-001 | Compile an operational workflow without a deployment environment | Accepted; generated jobs have no deployment environment and credentials remain secret references | 2 |
 
 ### 8.3 Compliance Checklist
 
 | Requirement group | Test IDs | Level | Status |
 | --- | --- | --- | --- |
-| JSON document and schema | T-CFG-001 through T-CFG-004 | 1 | Required |
+| JSON document and schema | T-CFG-001 through T-CFG-005 | 1 | Required |
 | One-way authority boundary | T-ARC-001 through T-ARC-003 | 2 | Required |
-| Central execution topology | T-EXE-001 | 2 | Required |
-| Deterministic resolution | T-RES-001 through T-RES-007 | 2 | Required |
-| gh-aw execution ownership | T-GHA-001 through T-GHA-003 | 2 | Required |
+| Central execution topology | T-EXE-001 through T-EXE-005 | 2 | Required |
+| Deterministic resolution | T-RES-001 through T-RES-008 | 2 | Required |
+| gh-aw execution ownership | T-GHA-001 through T-GHA-004 | 2 | Required |
 | Credential and source boundary | T-SEC-001 | 2 | Required |
 | Live control authority | T-RES-001 through T-RES-007 | 3 | Required |
 
@@ -480,6 +517,23 @@ The following is invalid because these execution capabilities belong to gh-aw an
 }
 ```
 
+#### A.3 Single-Run Debug Request
+
+This is a manual worker's `workflow_dispatch` input object, not a campaign
+policy document or an orchestrator dispatch:
+
+```json
+{
+  "target_repo": "acme/payments-api",
+  "safe_output_repo": "acme/payments-api",
+  "safe_output_mode": "debug"
+}
+```
+
+It is admitted only under CAO-EXE-004. Dispatcher correlation inputs are
+omitted. Writing the same mode into a campaign's `cao.json` entry is invalid
+under CAO-CFG-007.
+
 ### Appendix B: Resolution Outcomes and Errors
 
 The following stable `reason` values are produced by the version 1 policy resolver. They are authorization outcomes, not exception codes.
@@ -520,3 +574,4 @@ Invalid JSON, schema violations, unknown static identities, widening requests, u
 - Defined the central orchestrator and worker execution contract, credential reach, runtime records, deprecated monthly budget compatibility, revalidation timing, and protected environment boundary.
 - Required job-local GitHub App installation tokens to be scoped to the single admitted target or review repository rather than defaulting to the control repository or an installation-wide wildcard.
 - Added conformance classes, compliance levels, tests, examples, and security and privacy considerations.
+- Defined single-run manual worker debug admission, rejected campaign-level debug policy and dispatches, and added provenance and forced-staging compliance cases.

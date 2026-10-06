@@ -30,7 +30,7 @@ metadata:
    `<observation>` would confirm or reject it.
 8. Reproduce only when it stays bounded and review-safe, holding workflow,
    policy, compiler, target, and inputs constant and changing one boundary.
-   For a local worker loop, follow the [debug launch contract](../../docs/execution-and-safety.md#local-worker-debug-loop):
+   For a local worker loop, follow [Local Worker Debugging](../../docs/local-debugging.md):
    use `gh aw run WORKER --repo CONTROL --ref REF` with explicit
    `target_repo`, matching `safe_output_repo`, and `safe_output_mode=debug`
    through `--raw-field`. Omit dispatcher correlation inputs. Use the human
