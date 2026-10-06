@@ -71,18 +71,28 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "status": "needs-work",
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
-    "true_positive_count": 2,
-    "false_positive_count": 4,
-    "false_negative_count": 1,
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
+    "true_positive_count": 0,
+    "false_positive_count": 1,
+    "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD f1c3282: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R with no cross-file awareness of token-persistence.js's 0o600 audit file), no suppression mechanism.",
-    "txn_id": "refiner-37467185149-1"
+    "reason": "Re-confirmed unchanged on HEAD f6ebad6: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a mkdtemp test-fixture directory (public SQLite snapshot only) remains a false positive. No other recursive chmod call sites found; no suppression convention.",
+    "txn_id": "refiner-37499745280-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37467185149",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37499745280",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+      "true_positive_count": 2,
+      "false_positive_count": 4,
+      "false_negative_count": 1,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f1c3282: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R with no cross-file awareness of token-persistence.js's 0o600 audit file), no suppression mechanism.",
+      "txn_id": "refiner-37467185149-1"
+    },
     {
       "target_repo": "github/gh-aw-actions",
       "target_commit": "a65c3ae1e11016c37f426bb3847a6f5e1a7d58df",
@@ -134,6 +144,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-06T13:02:48Z",
-  "last_updated": "2026-10-06T13:02:48Z"
+  "last_seen_at": "2026-10-06T16:59:00Z",
+  "last_updated": "2026-10-06T16:59:00Z"
 }
