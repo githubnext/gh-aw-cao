@@ -3,6 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <!-- Paint the system-theme canvas before the JavaScript-owned stylesheet loads. -->
+    <style>
+      :root { color-scheme: dark; --canvas: #0d1117; --fg: #f0f6fc; }
+      @media (prefers-color-scheme: light) {
+        :root { color-scheme: light; --canvas: #ffffff; --fg: #1f2328; }
+      }
+      html, body { background: var(--canvas); color: var(--fg); }
+      body { margin: 0; }
+    </style>
     <link rel="icon" href="./favicon.svg">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
     <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">
@@ -11,7 +21,8 @@
     <meta name="dashboard-version" content="development">
     <meta name="cao-version" content="">
     <meta name="gh-aw-version" content="">
-    <meta name="theme-color" content="#0d1117">
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Agentic Ops">

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { primerStylesheet } from '../../src/styles.js';
 import { primerStyles } from '../../src/styles-primer.js';
+import { baseStyles } from '../../src/styles-base.js';
 
 describe('DLS-CONF-004 scaffold gates', () => {
   it('DLS-CONF-004 initializes the presenter workspace tooling', () => {
@@ -46,7 +47,8 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
     expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">');
     expect(preview).toContain('<meta name="application-name" content="Central Agentic Ops Dashboard">');
-    expect(preview).toContain('<meta name="theme-color" content="#0d1117">');
+    expect(preview).toContain('<meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">');
+    expect(preview).toContain('<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">');
     expect(preview).toContain('<meta name="mobile-web-app-capable" content="yes">');
     expect(preview).toContain('<meta name="apple-mobile-web-app-capable" content="yes">');
     expect(preview).toContain('<meta name="apple-mobile-web-app-title" content="Agentic Ops">');
@@ -111,6 +113,25 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8');
 
     expect(preview).toContain('<title>Central Agentic Ops Dashboard</title>');
+  });
+
+  it('paints the system-theme canvas before scripts with the same tokens as Primer', () => {
+    const preview = readFileSync(resolve('index.html'), 'utf8');
+    const shell = new DOMParser().parseFromString(preview, 'text/html');
+    const css = shell.head.querySelector('style')?.textContent ?? '';
+
+    expect(shell.head.querySelector('meta[name="color-scheme"]')?.getAttribute('content'))
+      .toBe('light dark');
+    expect(preview.indexOf('<style>')).toBeLessThan(preview.indexOf('<script>'));
+    expect(css).toContain('html, body { background: var(--canvas); color: var(--fg); }');
+    expect(css).toContain('@media (prefers-color-scheme: light)');
+    for (const declaration of [
+      'color-scheme: dark;', '--canvas: #0d1117;', '--fg: #f0f6fc;',
+      'color-scheme: light;', '--canvas: #ffffff;', '--fg: #1f2328;'
+    ]) {
+      expect(css).toContain(declaration);
+      expect(baseStyles).toContain(declaration);
+    }
   });
 
   it('displays an error when JavaScript is unavailable', () => {
