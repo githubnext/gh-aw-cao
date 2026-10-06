@@ -2,8 +2,8 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-03T11:03:07Z",
-  "status": "deprecated",
+  "last_updated": "2026-10-06T01:24:29Z",
+  "status": "needs-work",
   "affected_languages": [
     "javascript"
   ],
@@ -103,17 +103,17 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
+    "target_commit": "4d712b141c39162e6019c0b076ba1e3dc048c242",
     "true_positive_count": 1,
     "false_positive_count": 15,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since intervening merges (collector workflow fix, account-menu docs) which did not touch evidence files.",
-    "txn_id": "refiner-37118181288-1"
+    "reason": "Re-confirmed unchanged on HEAD 4d712b1 since prior evaluation 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. The only intervening commit (#16508) did not touch any evidence file.",
+    "txn_id": "refiner-37398643365-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37398643365",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-03T11:03:07Z",
+  "last_seen_at": "2026-10-06T01:24:29Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-firewall",
