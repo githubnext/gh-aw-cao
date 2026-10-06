@@ -45,6 +45,34 @@ func TestAuditProjectionProtectsUnsupportedEvidence(t *testing.T) {
 	}
 }
 
+func TestAuditCurationCandidateMatchesKnownMetadataShapes(t *testing.T) {
+	tests := []struct {
+		name string
+		row  model.Row
+		want bool
+	}{
+		{"workflow_run_comparison unavailable baseline", model.Row{"source": "gh-aw-logs", "type": "workflow_run_comparison", "status": "unavailable", "summary": "No baseline comparison"}, true},
+		{"workflow_run_comparison wrong summary", model.Row{"source": "gh-aw-logs", "type": "workflow_run_comparison", "status": "unavailable", "summary": "Something else"}, false},
+		{"workflow_run_working_set observed", model.Row{"source": "gh-aw-logs", "type": "workflow_run_working_set", "status": "observed", "summary": "Working set measured"}, true},
+		{"workflow_run_started with status", model.Row{"source": "gh-aw-logs", "type": "workflow_run_started", "status": "queued"}, true},
+		{"workflow_run_started without status", model.Row{"source": "gh-aw-logs", "type": "workflow_run_started", "status": ""}, false},
+		{"workflow_run_failed", model.Row{"source": "gh-aw-logs", "type": "workflow_run_failed", "status": "failure"}, true},
+		{"workflow_run_failed wrong status", model.Row{"source": "gh-aw-logs", "type": "workflow_run_failed", "status": "success"}, false},
+		{"workflow_run_usage observed", model.Row{"source": "gh-aw-logs", "type": "workflow_run_usage", "status": "observed"}, true},
+		{"workflow_run_behavior is not curated", model.Row{"source": "gh-aw-logs", "type": "workflow_run_behavior", "status": "observed"}, false},
+		{"non gh-aw-logs source", model.Row{"source": "other", "type": "workflow_run_usage", "status": "observed"}, false},
+		{"audit workflow_failed finding", model.Row{"source": "audit", "type": "audit.finding", "status": "critical", "summary": "Workflow Failed", "code": "workflow_failed"}, true},
+		{"audit finding with different code", model.Row{"source": "audit", "type": "audit.finding", "status": "critical", "summary": "Workflow Failed", "code": "other"}, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := auditCurationCandidate(test.row); got != test.want {
+				t.Fatalf("auditCurationCandidate(%v) = %t, want %t", test.row, got, test.want)
+			}
+		})
+	}
+}
+
 func TestAuditCurationRequiresEveryStoredEvidenceFieldToBeNull(t *testing.T) {
 	statement := auditCurationStatement()
 	for _, column := range entityTables["$audits"].columns {

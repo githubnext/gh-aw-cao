@@ -41,6 +41,38 @@ func validateAuditReferenceProjection(source string, row model.Row) error {
 	return fmt.Errorf("%s.auditId is not supported by native storage; refusing lossy audit reference projection", source)
 }
 
+// auditCurationCandidate reports whether a row's source/type/status/summary
+// shape matches one of the known metadata-only patterns native audit
+// curation recognizes. It is extracted from validateAuditProjection so the
+// shape decision is a single, independently testable unit boundary, separate
+// from the per-column storage check that follows it.
+func auditCurationCandidate(row model.Row) bool {
+	source, _ := row["source"].(string)
+	kind, _ := row["type"].(string)
+	status, _ := row["status"].(string)
+	summary, _ := row["summary"].(string)
+	if auditCurationMarker(row) ||
+		source == "audit" && kind == "audit.finding" && status == "critical" && summary == "Workflow Failed" && row["code"] == "workflow_failed" {
+		return true
+	}
+	if source != "gh-aw-logs" {
+		return false
+	}
+	switch kind {
+	case "workflow_run_comparison":
+		return status == "unavailable" && summary == "No baseline comparison"
+	case "workflow_run_working_set":
+		return status == "observed" && summary == "Working set measured"
+	case "workflow_run_started", "workflow_run_completed":
+		return status != ""
+	case "workflow_run_failed":
+		return status == "failure"
+	case "workflow_run_usage", "workflow_run_safe_outputs":
+		return status == "observed"
+	}
+	return false
+}
+
 // Native storage cannot preserve unknown evidence for a later maintenance pass.
 // Reject potentially eligible rows before projection rather than erase that
 // evidence and subsequently mistake the row for a pure metadata copy.
@@ -51,27 +83,7 @@ func validateAuditProjection(row model.Row) error {
 	if discardAuditCopy(row, nil) {
 		return nil
 	}
-	source, _ := row["source"].(string)
-	kind, _ := row["type"].(string)
-	status, _ := row["status"].(string)
-	summary, _ := row["summary"].(string)
-	candidate := auditCurationMarker(row) ||
-		source == "audit" && kind == "audit.finding" && status == "critical" && summary == "Workflow Failed" && row["code"] == "workflow_failed"
-	if source == "gh-aw-logs" {
-		switch kind {
-		case "workflow_run_comparison":
-			candidate = status == "unavailable" && summary == "No baseline comparison"
-		case "workflow_run_working_set":
-			candidate = status == "observed" && summary == "Working set measured"
-		case "workflow_run_started", "workflow_run_completed":
-			candidate = status != ""
-		case "workflow_run_failed":
-			candidate = status == "failure"
-		case "workflow_run_usage", "workflow_run_safe_outputs":
-			candidate = status == "observed"
-		}
-	}
-	if !candidate {
+	if !auditCurationCandidate(row) {
 		return nil
 	}
 	for _, column := range entityTables["$audits"].columns {
@@ -81,6 +93,8 @@ func validateAuditProjection(row model.Row) error {
 			}
 		}
 	}
+	source, _ := row["source"].(string)
+	kind, _ := row["type"].(string)
 	if row["code"] != nil && (source != "audit" || kind != "audit.finding" || row["code"] != "workflow_failed") {
 		return nil
 	}
@@ -96,6 +110,7 @@ func validateAuditProjection(row model.Row) error {
 			}
 		}
 		if !stored {
+			auditCurationLog.Printf("audit projection rejected unsupported evidence field=%q", field)
 			return fmt.Errorf("audit evidence field %q is not supported by native storage; refusing lossy curation", field)
 		}
 	}
