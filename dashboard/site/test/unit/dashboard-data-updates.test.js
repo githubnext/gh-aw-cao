@@ -80,7 +80,7 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(false);
   });
 
-  it('reloads an existing app when an updated worker takes control', async () => {
+  it('offers an existing app a dismissible update when the new worker takes control', async () => {
     const worker = new FakeWorker();
     const currentRegistration = registration(worker);
     const serviceWorkers = new EventTarget();
@@ -90,12 +90,14 @@ describe('automatic dashboard data updates', () => {
     });
 
     const reload = vi.fn();
+    const notify = vi.fn().mockReturnValue({ dismiss: vi.fn(), update: vi.fn() });
     const setTimer = vi.fn();
 
     const stop = startDashboardAppUpdates({
       serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
       scriptUrl: new URL('https://example.test/service-worker.js'),
       reload,
+      notify,
       setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
     });
     await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledOnce());
@@ -103,9 +105,52 @@ describe('automatic dashboard data updates', () => {
     serviceWorkers.dispatchEvent(new Event('controllerchange'));
     serviceWorkers.dispatchEvent(new Event('controllerchange'));
 
+    expect(notify).toHaveBeenCalledOnce();
+    expect(notify.mock.calls[0][0]).toMatchObject({
+      message: 'An update to the dashboard has been downloaded. Update now?',
+      duration: 0
+    });
+    expect(reload).not.toHaveBeenCalled();
+    notify.mock.calls[0][0].actions[1].run();
+    expect(notify.mock.results[0].value.dismiss).toHaveBeenCalledOnce();
+    expect(reload).not.toHaveBeenCalled();
+    notify.mock.calls[0][0].actions[0].run();
     expect(reload).toHaveBeenCalledOnce();
     expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' }));
     stop();
+  });
+
+  it('accepts only update messages from the controlling worker and deduplicates the prompt', async () => {
+    const worker = new FakeWorker();
+    const serviceWorkers = Object.assign(new EventTarget(), {
+      controller: worker,
+      register: vi.fn().mockResolvedValue(registration(worker))
+    });
+    const reload = vi.fn();
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      scriptUrl: new URL('https://example.test/service-worker.js'),
+      reload,
+      setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (vi.fn()))
+    });
+    await vi.waitFor(() => expect(serviceWorkers.register).toHaveBeenCalledOnce());
+    const untrustedMessage = new MessageEvent('message', {
+      data: { type: 'APP_UPDATE_DOWNLOADED' },
+      source: window
+    });
+    serviceWorkers.dispatchEvent(untrustedMessage);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
+    serviceWorkers.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'APP_UPDATE_DOWNLOADED' },
+      source: /** @type {MessageEventSource} */ (/** @type {unknown} */ (worker))
+    }));
+    serviceWorkers.dispatchEvent(new Event('controllerchange'));
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+    expect(reload).not.toHaveBeenCalled();
+    /** @type {HTMLButtonElement} */ (document.querySelector('.dashboard-notification-action')).click();
+    expect(reload).toHaveBeenCalledOnce();
+    stop();
+    document.querySelector('.dashboard-notifications')?.remove();
   });
 
   it('registers a stable service worker script URL that ignores page debug parameters', async () => {
@@ -165,17 +210,25 @@ describe('automatic dashboard data updates', () => {
       register: vi.fn().mockResolvedValue(currentRegistration)
     });
     const reload = vi.fn();
+    const notify = vi.fn();
 
     const stop = startDashboardAppUpdates({
       serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
       scriptUrl: new URL('https://example.test/service-worker.js'),
-      reload
+      reload,
+      notify
     });
     await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledOnce());
 
     serviceWorkers.dispatchEvent(new Event('controllerchange'));
+    Object.assign(serviceWorkers, { controller: worker });
+    serviceWorkers.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'APP_UPDATE_DOWNLOADED' },
+      source: /** @type {MessageEventSource} */ (/** @type {unknown} */ (worker))
+    }));
 
     expect(reload).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
     stop();
   });
 

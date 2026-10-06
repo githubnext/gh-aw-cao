@@ -42,6 +42,7 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     },
     clients: {
       claim: vi.fn().mockResolvedValue(undefined),
+      matchAll: vi.fn().mockResolvedValue([]),
       get: vi.fn().mockResolvedValue(options.clientUrl ? { url: options.clientUrl } : undefined)
     },
     skipWaiting: vi.fn().mockResolvedValue(undefined),
@@ -102,6 +103,18 @@ describe('dashboard service worker', () => {
     expect(entries.has('https://example.test/dashboard/dashboard.json')).toBe(true);
     expect(entries.has('https://example.test/dashboard/dashboard-pages/overview.json')).toBe(true);
     expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('notifies open dashboard pages only after activation finishes', async () => {
+    const { listeners, worker } = serviceWorkerHarness(['central-agentic-ops-dashboard-app-old']);
+    const client = { postMessage: vi.fn() };
+    worker.clients.matchAll.mockResolvedValue([client]);
+    await dispatchExtendedEvent(listeners.activate, {});
+    expect(worker.clients.claim).toHaveBeenCalledOnce();
+    expect(client.postMessage).toHaveBeenCalledWith({
+      type: 'APP_UPDATE_DOWNLOADED',
+      version: 'development'
+    });
   });
 
   it('uses the precached script when its versioned URL cannot be fetched offline', async () => {
