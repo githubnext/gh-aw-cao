@@ -62,7 +62,7 @@ function scriptedSetupPrompt({ repositories, profile, confirm = true, clientIds 
   };
 }
 
-function setupExecutor(repositories, repositoryLists = {}) {
+function setupExecutor(repositories, repositoryLists = {}, organizations = []) {
   return (command, arguments_) => {
     assert.equal(command, "gh");
     if (arguments_.join(" ") === "auth status") {
@@ -77,6 +77,13 @@ function setupExecutor(repositories, repositoryLists = {}) {
       return {
         status: 0,
         stdout: JSON.stringify(repositoryLists[owner]),
+        stderr: "",
+      };
+    }
+    if (arguments_[0] === "api" && arguments_[1].startsWith("/user/orgs?")) {
+      return {
+        status: 0,
+        stdout: JSON.stringify(organizations.map((login) => ({ login }))),
         stderr: "",
       };
     }
@@ -436,6 +443,44 @@ test("cao setup rejects wildcard expansion when no repositories match", async ()
       }),
       /Repository pattern acme\/missing-\* matched no accessible repositories/,
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup expands organization wildcards into exact policy scope", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-org-wildcard-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  }));
+  const prompt = scriptedSetupPrompt({
+    repositories: "acme*/service",
+    profile: "token",
+  });
+  try {
+    const result = await setupCaoControlPlane({
+      policyPath,
+      prompt,
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+      }, {
+        acme: [{ nameWithOwner: "acme/service", visibility: "PRIVATE" }],
+        "acme-labs": [{ nameWithOwner: "acme-labs/service", visibility: "PUBLIC" }],
+      }, ["acme", "acme-labs", "other"]),
+      setupAuthentication: () => ({ command: "setup-auth" }),
+    });
+
+    const policy = JSON.parse(await readFile(policyPath, "utf8"));
+    assert.deepEqual(policy["control-plane"].scope, {
+      "allowed-owners": ["acme", "acme-labs"],
+      "allowed-repositories": ["acme/control", "acme-labs/service", "acme/service"],
+    });
+    assert.deepEqual(result.repositories, ["acme/control", "acme-labs/service", "acme/service"]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

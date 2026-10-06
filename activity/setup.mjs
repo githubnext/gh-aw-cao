@@ -6,8 +6,9 @@ import { createInterface } from 'node:readline/promises';
 
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const REPOSITORY_PATTERN = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.*-]+)$/;
+const REPOSITORY_PATTERN = /^([A-Za-z0-9_.*-]+)\/([A-Za-z0-9_.*-]+)$/;
 const REPOSITORY_LIST_LIMIT = 1000;
+const ORGANIZATION_PAGE_SIZE = 100;
 
 function commandFailureMessage(result, fallback) {
   return (result.stderr || '').trim() || result.error?.message || fallback;
@@ -50,10 +51,45 @@ function parseRepositoryList(value, fallback, UsageError) {
   const selected = repositories.length > 0 ? repositories : fallback;
   for (const repository of selected) {
     if (!REPOSITORY_PATTERN.test(repository)) {
-      throw new UsageError(`Repository must use owner/name or owner/repository* format: ${repository}`);
+      throw new UsageError(`Repository must use owner/repository format with optional * wildcards: ${repository}`);
     }
   }
   return [...new Set(selected)];
+}
+
+function listOrganizations(execute) {
+  const organizations = [];
+  for (let page = 1; page <= REPOSITORY_LIST_LIMIT / ORGANIZATION_PAGE_SIZE; page += 1) {
+    const result = execute('gh', [
+      'api',
+      `/user/orgs?per_page=${ORGANIZATION_PAGE_SIZE}&page=${page}`,
+    ], { encoding: 'utf8' });
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to list organizations: ${commandFailureMessage(result, 'gh api failed')}`);
+    }
+    let entries;
+    try {
+      entries = JSON.parse(result.stdout);
+    } catch {
+      throw new Error('Unable to list organizations: GitHub returned invalid JSON');
+    }
+    if (!Array.isArray(entries)) {
+      throw new Error('Unable to list organizations: GitHub returned invalid organization data');
+    }
+    if (entries.some((entry) => !/^[A-Za-z0-9_.-]+$/.test(entry?.login))) {
+      throw new Error('Unable to list organizations: GitHub returned incomplete organization data');
+    }
+    organizations.push(...entries.map(({ login }) => login));
+    if (organizations.length >= REPOSITORY_LIST_LIMIT) {
+      throw new Error(
+        `Unable to expand organization wildcard: the organization list reached ${REPOSITORY_LIST_LIMIT}; use a narrower pattern`,
+      );
+    }
+    if (entries.length < ORGANIZATION_PAGE_SIZE) return organizations;
+  }
+  throw new Error(
+    `Unable to expand organization wildcard: the organization list reached ${REPOSITORY_LIST_LIMIT}; use a narrower pattern`,
+  );
 }
 
 function listOwnerRepositories(owner, execute) {
@@ -101,10 +137,12 @@ function listOwnerRepositories(owner, execute) {
 
 function repositoryPatternMatches(pattern, repository) {
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const [owner, namePattern] = pattern.split('/');
-  const [repositoryOwner, name] = repository.split('/');
-  const expression = new RegExp(`^${namePattern.split('*').map(escapeRegExp).join('.*')}$`, 'i');
-  return owner.toLowerCase() === repositoryOwner.toLowerCase() && expression.test(name);
+  const matches = (componentPattern, value) => (
+    new RegExp(`^${componentPattern.split('*').map(escapeRegExp).join('.*')}$`, 'i').test(value)
+  );
+  const [ownerPattern, namePattern] = pattern.split('/');
+  const [owner, name] = repository.split('/');
+  return matches(ownerPattern, owner) && matches(namePattern, name);
 }
 
 function inspectRepository(repository, execute) {
@@ -252,18 +290,35 @@ export async function setupCaoControlPlane({
     const requestedRepositories = parseRepositoryList(targetAnswer, [control.repository], UsageError);
     const inspected = [control];
     const ownerRepositories = new Map();
+    let organizations;
     for (const requestedRepository of requestedRepositories) {
+      const [ownerPattern] = requestedRepository.split('/');
       if (!requestedRepository.includes('*')) {
         if (requestedRepository.toLowerCase() !== control.repository.toLowerCase()) {
           inspected.push(inspectRepository(requestedRepository, execute));
         }
         continue;
       }
-      const [owner] = requestedRepository.split('/');
-      if (!ownerRepositories.has(owner.toLowerCase())) {
-        ownerRepositories.set(owner.toLowerCase(), listOwnerRepositories(owner, execute));
+      let owners;
+      if (ownerPattern.includes('*')) {
+        organizations ??= listOrganizations(execute);
+        owners = organizations.filter((owner) => repositoryPatternMatches(
+          `${ownerPattern}/*`,
+          `${owner}/*`,
+        ));
+        if (owners.length === 0) {
+          throw new Error(`Organization pattern ${ownerPattern} matched no accessible organizations`);
+        }
+      } else {
+        owners = [ownerPattern];
       }
-      const matches = ownerRepositories.get(owner.toLowerCase())
+      const matches = owners.flatMap((owner) => {
+        const key = owner.toLowerCase();
+        if (!ownerRepositories.has(key)) {
+          ownerRepositories.set(key, listOwnerRepositories(owner, execute));
+        }
+        return ownerRepositories.get(key);
+      })
         .filter(({ repository }) => repositoryPatternMatches(requestedRepository, repository))
         .sort((left, right) => left.repository.localeCompare(right.repository, 'en'));
       if (matches.length === 0) {
