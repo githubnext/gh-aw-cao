@@ -47,10 +47,10 @@ curl --fail --silent --show-error --location \
 The setup command:
 
 1. asks which repositories CAO should read; enter exact `owner/repository`
-   names or wildcard patterns such as `acme*/service-*`;
-2. expands organization wildcards against your accessible organization list,
-   saves only exact matched repositories in policy, then checks visibility and
-   owners;
+   names or `*` wildcards in either component (for example, `acme*/service-*`
+   or `*/service-*`); `*` means `*/*`;
+2. expands patterns against your accessible organization list and saves only
+   exact matched repositories in policy, then checks visibility and owners;
 3. offers authentication choices based on that scope; verify each profile's
    prerequisites in the [authentication profile guide](control-plane-authentication.md);
 4. shows the exact plan before changing policy, credentials, or Pages settings;

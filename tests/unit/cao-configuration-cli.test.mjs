@@ -486,6 +486,114 @@ test("cao setup expands organization wildcards into exact policy scope", async (
   }
 });
 
+test("cao setup treats * as equivalent to */* across accessible organizations", async () => {
+  const results = [];
+  for (const pattern of ["*", "*/*"]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-all-wildcard-"));
+    const policyPath = path.join(root, "cao.json");
+    await writeFile(policyPath, JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+        campaigns: {},
+      },
+    }));
+    try {
+      const result = await setupCaoControlPlane({
+        policyPath,
+        prompt: scriptedSetupPrompt({ repositories: pattern, profile: "token" }),
+        execute: setupExecutor({
+          "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        }, {
+          acme: [{ nameWithOwner: "acme/service", visibility: "PRIVATE" }],
+          "acme-labs": [{ nameWithOwner: "acme-labs/library", visibility: "PUBLIC" }],
+        }, ["acme", "acme-labs"]),
+        setupAuthentication: () => ({ command: "setup-auth" }),
+      });
+      results.push({
+        repositories: result.repositories,
+        scope: JSON.parse(await readFile(policyPath, "utf8"))["control-plane"].scope,
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  assert.deepEqual(results[0], results[1]);
+  assert.deepEqual(results[0].repositories, [
+    "acme/control",
+    "acme-labs/library",
+    "acme/service",
+  ]);
+});
+
+test("cao setup expands */service-* across organizations and filters repository names", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-any-org-wildcard-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  }));
+  try {
+    const result = await setupCaoControlPlane({
+      policyPath,
+      prompt: scriptedSetupPrompt({ repositories: "*/service-*", profile: "token" }),
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+      }, {
+        acme: [
+          { nameWithOwner: "acme/service-api", visibility: "PRIVATE" },
+          { nameWithOwner: "acme/worker", visibility: "PRIVATE" },
+        ],
+        "acme-labs": [
+          { nameWithOwner: "acme-labs/service-web", visibility: "PUBLIC" },
+          { nameWithOwner: "acme-labs/internal", visibility: "PUBLIC" },
+        ],
+        other: [],
+      }, ["acme", "acme-labs", "other"]),
+      setupAuthentication: () => ({ command: "setup-auth" }),
+    });
+
+    assert.deepEqual(result.repositories, [
+      "acme/control",
+      "acme-labs/service-web",
+      "acme/service-api",
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup rejects organization wildcards with no accessible organization matches", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-org-wildcard-empty-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  }));
+  try {
+    await assert.rejects(
+      setupCaoControlPlane({
+        policyPath,
+        prompt: scriptedSetupPrompt({ repositories: "missing-*/service-*", profile: "token" }),
+        execute: setupExecutor({
+          "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        }, {}, ["acme", "acme-labs"]),
+        setupAuthentication: () => assert.fail("unmatched organization pattern must not configure credentials"),
+      }),
+      /Organization pattern missing-\* matched no accessible organizations/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("cao setup cancellation leaves policy and credentials unchanged", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-cancel-"));
   const policyPath = path.join(root, "cao.json");

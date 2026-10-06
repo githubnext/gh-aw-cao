@@ -48,7 +48,8 @@ function parseRepositoryList(value, fallback, UsageError) {
     .split(',')
     .map((repository) => repository.trim())
     .filter(Boolean);
-  const selected = repositories.length > 0 ? repositories : fallback;
+  const selected = (repositories.length > 0 ? repositories : fallback)
+    .map((repository) => repository === '*' ? '*/*' : repository);
   for (const repository of selected) {
     if (!REPOSITORY_PATTERN.test(repository)) {
       throw new UsageError(`Repository must use owner/repository format with optional * wildcards: ${repository}`);
@@ -284,7 +285,7 @@ export async function setupCaoControlPlane({
     interactive.note('\nSet up this CAO control plane');
     interactive.note('No campaign will be installed, enabled, or run.\n');
     const targetAnswer = await interactive.text(
-      'Repositories CAO should be able to read (comma-separated owner/name or owner/repository* patterns)',
+      'Repositories CAO should be able to read (comma-separated owner/repository names or * wildcards; * means */*)',
       control.repository,
     );
     const requestedRepositories = parseRepositoryList(targetAnswer, [control.repository], UsageError);
