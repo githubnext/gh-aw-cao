@@ -224,8 +224,8 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   await transactionsPage.getByRole('button', { name: 'Cards' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('.entity-card-list-card')).toHaveCount(100);
-  await expect(view.getByText('Committed records').first()).toBeVisible();
-  await expect(view.getByText('Payload hash').first()).toBeVisible();
+  await expect(view.locator('.entity-card-list-card').getByText('Committed records').first()).toBeVisible();
+  await expect(view.locator('.entity-card-list-card').getByText('Payload hash').first()).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.org-sidebar')).toBeVisible();
