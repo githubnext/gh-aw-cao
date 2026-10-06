@@ -113,6 +113,8 @@ describe('automatic dashboard data updates', () => {
     expect(reload).not.toHaveBeenCalled();
     notify.mock.calls[0][0].actions[1].run();
     expect(notify.mock.results[0].value.dismiss).toHaveBeenCalledOnce();
+    serviceWorkers.dispatchEvent(new Event('controllerchange'));
+    expect(notify).toHaveBeenCalledOnce();
     expect(reload).not.toHaveBeenCalled();
     notify.mock.calls[0][0].actions[0].run();
     expect(reload).toHaveBeenCalledOnce();
