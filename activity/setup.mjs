@@ -6,6 +6,8 @@ import { createInterface } from 'node:readline/promises';
 
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const REPOSITORY_PATTERN = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.*-]+)$/;
+const REPOSITORY_LIST_LIMIT = 1000;
 
 function commandFailureMessage(result, fallback) {
   return (result.stderr || '').trim() || result.error?.message || fallback;
@@ -47,11 +49,62 @@ function parseRepositoryList(value, fallback, UsageError) {
     .filter(Boolean);
   const selected = repositories.length > 0 ? repositories : fallback;
   for (const repository of selected) {
-    if (!REPOSITORY_COORDINATE.test(repository)) {
-      throw new UsageError(`Repository must use owner/name format: ${repository}`);
+    if (!REPOSITORY_PATTERN.test(repository)) {
+      throw new UsageError(`Repository must use owner/name or owner/repository* format: ${repository}`);
     }
   }
   return [...new Set(selected)];
+}
+
+function listOwnerRepositories(owner, execute) {
+  const result = execute('gh', [
+    'repo',
+    'list',
+    owner,
+    '--json',
+    'nameWithOwner,visibility',
+    '--limit',
+    String(REPOSITORY_LIST_LIMIT),
+  ], { encoding: 'utf8' });
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to list repositories for ${owner}: ${commandFailureMessage(result, 'gh repo list failed')}`);
+  }
+  let repositories;
+  try {
+    repositories = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(`Unable to list repositories for ${owner}: gh repo list returned invalid JSON`);
+  }
+  if (!Array.isArray(repositories)) {
+    throw new Error(`Unable to list repositories for ${owner}: gh repo list returned invalid repository data`);
+  }
+  if (repositories.length >= REPOSITORY_LIST_LIMIT) {
+    throw new Error(
+      `Unable to expand wildcard for ${owner}: the repository list reached ${REPOSITORY_LIST_LIMIT}; enter exact repository names instead`,
+    );
+  }
+  return repositories.map((repository) => {
+    if (
+      !REPOSITORY_COORDINATE.test(repository?.nameWithOwner)
+      || typeof repository.visibility !== 'string'
+      || repository.nameWithOwner.split('/')[0].toLowerCase() !== owner.toLowerCase()
+    ) {
+      throw new Error(`Unable to list repositories for ${owner}: gh repo list returned incomplete repository data`);
+    }
+    return {
+      repository: repository.nameWithOwner,
+      owner: repository.nameWithOwner.split('/')[0],
+      visibility: repository.visibility.toLowerCase(),
+    };
+  });
+}
+
+function repositoryPatternMatches(pattern, repository) {
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const [owner, namePattern] = pattern.split('/');
+  const [repositoryOwner, name] = repository.split('/');
+  const expression = new RegExp(`^${namePattern.split('*').map(escapeRegExp).join('.*')}$`, 'i');
+  return owner.toLowerCase() === repositoryOwner.toLowerCase() && expression.test(name);
 }
 
 function inspectRepository(repository, execute) {
@@ -193,19 +246,41 @@ export async function setupCaoControlPlane({
     interactive.note('\nSet up this CAO control plane');
     interactive.note('No campaign will be installed, enabled, or run.\n');
     const targetAnswer = await interactive.text(
-      'Repositories CAO should be able to read (comma-separated owner/name)',
+      'Repositories CAO should be able to read (comma-separated owner/name or owner/repository* patterns)',
       control.repository,
     );
     const requestedRepositories = parseRepositoryList(targetAnswer, [control.repository], UsageError);
-    const inspected = [
-      control,
-      ...requestedRepositories
-        .filter((repository) => repository.toLowerCase() !== control.repository.toLowerCase())
-        .map((repository) => inspectRepository(repository, execute)),
-    ];
-    const repositories = [...new Set(inspected.map(({ repository }) => repository))];
-    const owners = [...new Set(inspected.map(({ owner }) => owner))];
-    const hasNonPublicTarget = inspected.some(({ repository, visibility }) => (
+    const inspected = [control];
+    const ownerRepositories = new Map();
+    for (const requestedRepository of requestedRepositories) {
+      if (!requestedRepository.includes('*')) {
+        if (requestedRepository.toLowerCase() !== control.repository.toLowerCase()) {
+          inspected.push(inspectRepository(requestedRepository, execute));
+        }
+        continue;
+      }
+      const [owner] = requestedRepository.split('/');
+      if (!ownerRepositories.has(owner.toLowerCase())) {
+        ownerRepositories.set(owner.toLowerCase(), listOwnerRepositories(owner, execute));
+      }
+      const matches = ownerRepositories.get(owner.toLowerCase())
+        .filter(({ repository }) => repositoryPatternMatches(requestedRepository, repository))
+        .sort((left, right) => left.repository.localeCompare(right.repository, 'en'));
+      if (matches.length === 0) {
+        throw new Error(`Repository pattern ${requestedRepository} matched no accessible repositories`);
+      }
+      inspected.push(...matches);
+    }
+    const seenRepositories = new Set();
+    const uniqueInspected = inspected.filter(({ repository }) => {
+      const key = repository.toLowerCase();
+      if (seenRepositories.has(key)) return false;
+      seenRepositories.add(key);
+      return true;
+    });
+    const repositories = uniqueInspected.map(({ repository }) => repository);
+    const owners = [...new Set(uniqueInspected.map(({ owner }) => owner))];
+    const hasNonPublicTarget = uniqueInspected.some(({ repository, visibility }) => (
       repository.toLowerCase() !== control.repository.toLowerCase() && visibility !== 'public'
     ));
     if (control.visibility === 'public' && hasNonPublicTarget) {

@@ -62,7 +62,7 @@ function scriptedSetupPrompt({ repositories, profile, confirm = true, clientIds 
   };
 }
 
-function setupExecutor(repositories) {
+function setupExecutor(repositories, repositoryLists = {}) {
   return (command, arguments_) => {
     assert.equal(command, "gh");
     if (arguments_.join(" ") === "auth status") {
@@ -70,6 +70,15 @@ function setupExecutor(repositories) {
     }
     if (arguments_.join(" ") === repositoryLookup.join(" ")) {
       return { status: 0, stdout: "acme/control\n", stderr: "" };
+    }
+    if (arguments_[0] === "repo" && arguments_[1] === "list") {
+      const owner = arguments_[2];
+      assert.ok(repositoryLists[owner], `unexpected repository list request: ${owner}`);
+      return {
+        status: 0,
+        stdout: JSON.stringify(repositoryLists[owner]),
+        stderr: "",
+      };
     }
     if (arguments_[0] === "repo" && arguments_[1] === "view") {
       const repository = arguments_[2];
@@ -355,6 +364,78 @@ test("cao setup offers organization Apps for one-owner private scope", async () 
     assert.equal(authenticationCalls[0][0], "github-app");
     assert.deepEqual(authenticationCalls[0][1].slice(0, 2), ["--repo", "acme/control"]);
     assert.equal(authenticationCalls[0][1][2], "--policy");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup expands repository wildcards into exact policy scope", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-wildcard-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: {
+        "allowed-owners": ["acme"],
+        "allowed-repositories": ["acme/control"],
+      },
+      campaigns: {},
+    },
+  }));
+  const prompt = scriptedSetupPrompt({
+    repositories: "acme/service-*",
+    profile: "github-app",
+  });
+  try {
+    const result = await setupCaoControlPlane({
+      policyPath,
+      prompt,
+      execute: setupExecutor({
+        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+      }, {
+        acme: [
+          { nameWithOwner: "acme/service-b", visibility: "PRIVATE" },
+          { nameWithOwner: "acme/unrelated", visibility: "PUBLIC" },
+          { nameWithOwner: "acme/service-a", visibility: "PRIVATE" },
+        ],
+      }),
+      setupAuthentication: () => ({ command: "setup-auth" }),
+    });
+
+    const policy = JSON.parse(await readFile(policyPath, "utf8"));
+    assert.deepEqual(policy["control-plane"].scope, {
+      "allowed-owners": ["acme"],
+      "allowed-repositories": ["acme/control", "acme/service-a", "acme/service-b"],
+    });
+    assert.deepEqual(result.repositories, ["acme/control", "acme/service-a", "acme/service-b"]);
+    assert.match(prompt.notes.join("\n"), /Read scope: acme\/control, acme\/service-a, acme\/service-b/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao setup rejects wildcard expansion when no repositories match", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-wildcard-empty-"));
+  const policyPath = path.join(root, "cao.json");
+  await writeFile(policyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  }));
+  try {
+    await assert.rejects(
+      setupCaoControlPlane({
+        policyPath,
+        prompt: scriptedSetupPrompt({ repositories: "acme/missing-*", profile: "github-app" }),
+        execute: setupExecutor({
+          "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+        }, { acme: [] }),
+        setupAuthentication: () => assert.fail("wildcard with no matches must not configure credentials"),
+      }),
+      /Repository pattern acme\/missing-\* matched no accessible repositories/,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
