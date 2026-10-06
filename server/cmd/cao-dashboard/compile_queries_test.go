@@ -84,6 +84,36 @@ func TestSummarizeCompilationValidityHandlesEmptyResults(t *testing.T) {
 	}
 }
 
+func TestFragmentFileNamesSkipsSubdirectoriesAndNonJSONFiles(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Mkdir(filepath.Join(directory, "nested.json"), 0750); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"alpha.json", "beta.json", "readme.md", "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte("{}"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := fragmentFileNames(entries)
+	if len(names) != 2 || names[0] != "alpha.json" || names[1] != "beta.json" {
+		t.Fatalf("expected only the JSON files in order, got %v", names)
+	}
+}
+
+func TestFragmentFileNamesHandlesEmptyDirectory(t *testing.T) {
+	entries, err := os.ReadDir(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names := fragmentFileNames(entries); len(names) != 0 {
+		t.Fatalf("expected no fragment names for an empty directory, got %v", names)
+	}
+}
+
 func TestCompileQueriesFailsOnMissingInputsAndUnknownFormat(t *testing.T) {
 	_, err := loadCompilationQueries("", filepath.Join(t.TempDir(), "missing"), "database.json")
 	if err == nil {

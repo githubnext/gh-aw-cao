@@ -86,13 +86,12 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 	if err != nil {
 		return nil, fmt.Errorf("read dashboard fragments: %w", err)
 	}
-	fragmentFiles := 0
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
-			continue
-		}
-		fragmentFiles++
-		path := filepath.Join(directory, entry.Name())
+	fragmentNames := fragmentFileNames(entries)
+	if len(fragmentNames) == 0 {
+		compileQueriesLog.Printf("compile-queries found no fragment files")
+	}
+	for _, name := range fragmentNames {
+		path := filepath.Join(directory, name)
 		part, err := server.ParseDashboardQueries(path)
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", path, err)
@@ -107,8 +106,24 @@ func loadCompilationQueries(dashboard, directory, database string) ([]query.Defi
 	if len(definitions) == 0 {
 		return nil, fmt.Errorf("no dashboard queries found")
 	}
-	compileQueriesLog.Printf("compile-queries loaded definitions=%d fragment-files=%d", len(definitions), fragmentFiles)
+	compileQueriesLog.Printf("compile-queries loaded definitions=%d fragment-files=%d", len(definitions), len(fragmentNames))
 	return definitions, nil
+}
+
+// fragmentFileNames selects the JSON fragment file names compile-queries
+// reads from a directory listing, skipping subdirectories and non-JSON
+// entries. It is extracted from loadCompilationQueries so this selection
+// boundary is independently testable without reading or parsing any query
+// definitions from disk.
+func fragmentFileNames(entries []os.DirEntry) []string {
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		names = append(names, entry.Name())
+	}
+	return names
 }
 
 func renderCompilation(out io.Writer, results []queryValidation, format string) error {
