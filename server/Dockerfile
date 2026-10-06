@@ -3,7 +3,9 @@ FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b533
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 ARG REVISION
+ARG VERSION=dev
 ARG CAO_PROFILE=cao.json
+ENV CAO_VERSION=${VERSION}
 WORKDIR /workspace
 COPY dashboard/site/package.json dashboard/site/package-lock.json ./dashboard/site/
 RUN sed -i \

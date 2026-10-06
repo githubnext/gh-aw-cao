@@ -16,6 +16,7 @@ export async function buildDashboardSite({
   destination,
   controlSettings,
   commitSha,
+  caoVersion = process.env.CAO_VERSION,
   activityDataPath,
   githubRepository = process.env.GITHUB_REPOSITORY,
   githubServerUrl = process.env.GITHUB_SERVER_URL,
@@ -48,7 +49,11 @@ export async function buildDashboardSite({
 
   const indexPath = join(destinationPath, "index.html");
   const configuredIndex = configureSite(await readFile(indexPath, "utf8"), controlSettings);
-  const versions = await loadDashboardVersions(repositoryPath);
+  const versions = {
+    caoVersion: caoVersion && caoVersion !== "dev" ? caoVersion : commitSha
+      ? `0.0.0-main.${commitSha.slice(0, 12)}` : undefined,
+    ghAwVersion: await loadDashboardGhAwVersion(repositoryPath),
+  };
   await writeFile(indexPath, embedDashboardVersions(embedDashboardVersion(configuredIndex, commitSha), versions));
 
   const campaignDashboards = await findCampaignDashboards(repositoryPath, controlSettings);
@@ -140,19 +145,13 @@ export function embedDashboardVersion(html, commitSha) {
   return html.replace(declaration, `<meta name="dashboard-version" content="${commitSha}">`);
 }
 
-async function loadDashboardVersions(repositoryPath) {
-  const readVersion = async (file, field) => {
-    try {
-      return JSON.parse(await readFile(join(repositoryPath, file), "utf8"))[field];
-    } catch (error) {
-      if (error?.code === "ENOENT") return undefined;
-      throw error;
-    }
-  };
-  return {
-    caoVersion: await readVersion("package.json", "version"),
-    ghAwVersion: await readVersion(".github/workflows/cao.json", "gh-aw-version"),
-  };
+async function loadDashboardGhAwVersion(repositoryPath) {
+  try {
+    return JSON.parse(await readFile(join(repositoryPath, ".github/workflows/cao.json"), "utf8"))["gh-aw-version"];
+  } catch (error) {
+    if (error?.code === "ENOENT") return undefined;
+    throw error;
+  }
 }
 
 export function embedDashboardVersions(html, { caoVersion, ghAwVersion }) {

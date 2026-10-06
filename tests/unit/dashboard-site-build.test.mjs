@@ -79,6 +79,7 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
     await buildDashboardSite({
       destination: path.join(root, "output"),
       controlSettings: { campaigns: {} },
+      commitSha: "0123456789abcdef0123456789abcdef01234567",
       githubRepository: "octo-org/operations",
       githubServerUrl: "https://github.example.com",
     });
@@ -86,9 +87,8 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
     assert.equal(dashboard.dashboard.repository, "octo-org/operations");
     assert.equal(dashboard.dashboard["github-url-base"], "https://github.example.com");
     const index = await readFile(path.join(root, "output", "index.html"), "utf8");
-    const packageMetadata = JSON.parse(await readFile(path.resolve("package.json"), "utf8"));
     const controlPolicy = JSON.parse(await readFile(path.resolve(".github/workflows/cao.json"), "utf8"));
-    assert.ok(index.includes(`<meta name="cao-version" content="${packageMetadata.version}">`));
+    assert.ok(index.includes('<meta name="cao-version" content="0.0.0-main.0123456789ab">'));
     assert.ok(index.includes(`<meta name="gh-aw-version" content="${controlPolicy["gh-aw-version"]}">`));
     const { document } = await loadDashboardSource(path.resolve("dashboard/site/dashboard.json"));
     const queries = JSON.parse(await readFile(path.join(root, "output", "src/agent/queries.generated.json"), "utf8"));
@@ -107,6 +107,22 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
         "github-url-base": "https://github.example.com",
       },
     }));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("dashboard build uses an explicit packaged CAO version rather than the source revision", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-package-version-"));
+  try {
+    await buildDashboardSite({
+      destination: path.join(root, "output"),
+      controlSettings: { campaigns: {} },
+      commitSha: "0123456789abcdef0123456789abcdef01234567",
+      caoVersion: "v1.2.3",
+    });
+    const index = await readFile(path.join(root, "output", "index.html"), "utf8");
+    assert.ok(index.includes('<meta name="cao-version" content="v1.2.3">'));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
