@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -196,5 +197,48 @@ func TestVolatileRecoveryRejectsMixedShardIdentity(t *testing.T) {
 	}
 	if _, err := b.Lake.RetainedRepositories(t.Context(), 10); err == nil {
 		t.Fatal("only the first record's identity was checked")
+	}
+}
+
+func TestDetectAmbiguousShardPrefixesAcceptsDisjointNames(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	fresh := map[string]int64{"octo/current": 1}
+	previous := map[string]struct{}{"octo/withdrawn": {}}
+	if err := detectAmbiguousShardPrefixes(lake, fresh, previous); err != nil {
+		t.Fatalf("disjoint repository names must not collide: %v", err)
+	}
+}
+
+func TestDetectAmbiguousShardPrefixesRejectsCollisionAcrossFreshAndPrevious(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	fresh := map[string]int64{"a/b-c": 1}
+	previous := map[string]struct{}{"a-b/c": {}}
+	if err := detectAmbiguousShardPrefixes(lake, fresh, previous); err == nil {
+		t.Fatal("colliding shard prefixes across fresh and previous scope accepted")
+	}
+}
+
+func TestDetectAmbiguousShardPrefixesRejectsCollisionWithinPrevious(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	previous := map[string]struct{}{"a/b-c": {}, "a-b/c": {}}
+	if err := detectAmbiguousShardPrefixes(lake, nil, previous); err == nil {
+		t.Fatal("colliding shard prefixes within previous scope accepted")
+	}
+}
+
+func TestWithdrawnRepositoriesReturnsSortedComplement(t *testing.T) {
+	fresh := map[string]int64{"octo/current": 1}
+	previous := map[string]struct{}{"octo/current": {}, "octo/zeta": {}, "octo/alpha": {}}
+	withdrawn := withdrawnRepositories(fresh, previous)
+	if want := []string{"octo/alpha", "octo/zeta"}; !reflect.DeepEqual(withdrawn, want) {
+		t.Fatalf("withdrawnRepositories() = %v, want %v", withdrawn, want)
+	}
+}
+
+func TestWithdrawnRepositoriesEmptyWhenScopeUnchanged(t *testing.T) {
+	fresh := map[string]int64{"octo/current": 1}
+	previous := map[string]struct{}{"octo/current": {}}
+	if withdrawn := withdrawnRepositories(fresh, previous); len(withdrawn) != 0 {
+		t.Fatalf("expected no withdrawals, got %v", withdrawn)
 	}
 }

@@ -8,16 +8,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var volatileRecoveryLog = logger.New("cao:collect:volatile-recovery")
 
 // reconstructScope serializes fresh GitHub enumeration with webhook mutations.
 // A partial enumeration never authorizes erasure or out-of-scope acknowledgments.
 func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolledRepository, installations, failures int, err error) {
+	volatileRecoveryLog.Printf("scope reconstruction started")
 	err = b.Enrollment.withMutationLock(ctx, func(ctx context.Context) error {
 		listed, listErr := b.Enumerator.ListInstallations(ctx)
 		if listErr != nil {
@@ -81,34 +86,17 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 			}
 			cursor = next
 		}
-		prefixes := make(map[string]string, len(previous)+len(fresh))
-		checkPrefix := func(name string) error {
-			prefix := b.Lake.ShardPrefix(name)
-			if owner, exists := prefixes[prefix]; exists && owner != name {
-				return errors.New("ambiguous retained shard prefixes prevent safe scope recovery")
-			}
-			prefixes[prefix] = name
-			return nil
-		}
-		for name := range fresh {
-			if err := checkPrefix(name); err != nil {
-				return err
-			}
-		}
-		for name := range previous {
-			if err := checkPrefix(name); err != nil {
-				return err
-			}
+		if err := detectAmbiguousShardPrefixes(b.Lake, fresh, previous); err != nil {
+			return err
 		}
 		for _, s := range scopes {
 			if err := b.Enrollment.addRepositories(ctx, s.installation.ID, s.names); err != nil {
 				return err
 			}
 		}
-		for name := range previous {
-			if _, included := fresh[name]; included {
-				continue
-			}
+		withdrawn := withdrawnRepositories(fresh, previous)
+		volatileRecoveryLog.Printf("scope reconstruction pruning withdrawn=%d", len(withdrawn))
+		for _, name := range withdrawn {
 			token, err := operationToken()
 			if err != nil {
 				return err
@@ -151,7 +139,53 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 		}
 		return nil
 	})
+	volatileRecoveryLog.Printf("scope reconstruction completed installations=%d failures=%d err=%t", installations, failures, err != nil)
 	return
+}
+
+// detectAmbiguousShardPrefixes reports whether any two distinct repository
+// names across fresh and previous scope collide on the same evidence-lake
+// shard prefix. It is a pure function extracted from reconstructScope's
+// inline closure so prefix collisions are independently testable against
+// plain repository-name sets, without constructing a Backfill or mutating
+// enrollment state.
+func detectAmbiguousShardPrefixes(lake Lake, fresh map[string]int64, previous map[string]struct{}) error {
+	prefixes := make(map[string]string, len(previous)+len(fresh))
+	checkPrefix := func(name string) error {
+		prefix := lake.ShardPrefix(name)
+		if owner, exists := prefixes[prefix]; exists && owner != name {
+			return errors.New("ambiguous retained shard prefixes prevent safe scope recovery")
+		}
+		prefixes[prefix] = name
+		return nil
+	}
+	for name := range fresh {
+		if err := checkPrefix(name); err != nil {
+			return err
+		}
+	}
+	for name := range previous {
+		if err := checkPrefix(name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// withdrawnRepositories reports the previously retained repository names that
+// no longer appear in the freshly enumerated scope, sorted for deterministic
+// pruning order. It is a pure function extracted from reconstructScope's
+// inline loop so the withdrawal set itself is independently testable without
+// touching the queue, enrollment store, or evidence lake.
+func withdrawnRepositories(fresh map[string]int64, previous map[string]struct{}) []string {
+	withdrawn := make([]string, 0, len(previous))
+	for name := range previous {
+		if _, included := fresh[name]; !included {
+			withdrawn = append(withdrawn, name)
+		}
+	}
+	sort.Strings(withdrawn)
+	return withdrawn
 }
 
 // RetainedRepositories discovers identity from authoritative raw shard content,
