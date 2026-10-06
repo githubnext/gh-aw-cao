@@ -329,6 +329,8 @@
           document: dashboardDocument,
           sources,
           commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
+          caoVersion: document.querySelector('meta[name="cao-version"]')?.getAttribute("content"),
+          ghAwVersion: document.querySelector('meta[name="gh-aw-version"]')?.getAttribute("content"),
           prepared,
           loading: state === "loading" || (state === "stale" && snapshot === null),
           loadPageSources,

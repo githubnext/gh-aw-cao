@@ -130,7 +130,8 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--neutral-muted); f
 footer { min-height: 44px; display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; padding: 7px var(--dashboard-page-padding-inline); border-top: 1px solid var(--border); color: var(--muted); font-size: .75rem; }
 .report-footer-status { min-width: 0; display: flex; align-items: center; gap: 5px; }
 .report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
-.report-footer-version { white-space: nowrap; }
+.report-footer-versions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
+.report-footer-versions > span { white-space: nowrap; }
 .empty, .page-placeholder { margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
 .page-load-error { display: flex; align-items: flex-start; gap: 12px; width: min(100% - 32px, 560px); margin: 32px auto; padding: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); }
 .page-load-error > .octicon { flex: none; color: var(--attention); }

@@ -48,7 +48,8 @@ export async function buildDashboardSite({
 
   const indexPath = join(destinationPath, "index.html");
   const configuredIndex = configureSite(await readFile(indexPath, "utf8"), controlSettings);
-  await writeFile(indexPath, embedDashboardVersion(configuredIndex, commitSha));
+  const versions = await loadDashboardVersions(repositoryPath);
+  await writeFile(indexPath, embedDashboardVersions(embedDashboardVersion(configuredIndex, commitSha), versions));
 
   const campaignDashboards = await findCampaignDashboards(repositoryPath, controlSettings);
 
@@ -133,6 +134,34 @@ export function embedDashboardVersion(html, commitSha) {
   if (commitSha === undefined) return html;
   if (typeof commitSha !== "string" || !/^[0-9a-f]{40}$/.test(commitSha)) {
     throw new Error("dashboard commit SHA must be a 40-character lowercase hexadecimal string");
+  }
+
+  async function loadDashboardVersions(repositoryPath) {
+    const readVersion = async (file, field) => {
+      try {
+        return JSON.parse(await readFile(join(repositoryPath, file), "utf8"))[field];
+      } catch (error) {
+        if (error?.code === "ENOENT") return undefined;
+        throw error;
+      }
+    };
+    return {
+      caoVersion: await readVersion("package.json", "version"),
+      ghAwVersion: await readVersion(".github/workflows/cao.json", "gh-aw-version"),
+    };
+  }
+
+  export function embedDashboardVersions(html, { caoVersion, ghAwVersion }) {
+    for (const [name, value] of [["cao-version", caoVersion], ["gh-aw-version", ghAwVersion]]) {
+      if (value === undefined) continue;
+      if (typeof value !== "string" || !/^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(value)) {
+        throw new Error(`${name} must be a semantic version`);
+      }
+      const declaration = `<meta name="${name}" content="">`;
+      if (!html.includes(declaration)) throw new Error(`${name} declaration is missing`);
+      html = html.replace(declaration, `<meta name="${name}" content="${value}">`);
+    }
+    return html;
   }
   const declaration = '<meta name="dashboard-version" content="development">';
   if (!html.includes(declaration)) throw new Error("dashboard version declaration is missing");

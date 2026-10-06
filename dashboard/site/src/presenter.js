@@ -107,7 +107,7 @@ import {
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, caoVersion?: string | null, ghAwVersion?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
  */
 
 /**
@@ -239,7 +239,7 @@ export function renderDashboard(input) {
     }),
     callouts: renderSiteCallouts(document.dashboard.callouts, sources),
     pages: pages.map((page) => renderPagePlaceholder(page)),
-    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha, githubUrlBase, dashboardRepository })
+    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha, caoVersion: input.caoVersion, ghAwVersion: input.ghAwVersion, githubUrlBase, dashboardRepository })
   });
   const root = h(
     'div',
