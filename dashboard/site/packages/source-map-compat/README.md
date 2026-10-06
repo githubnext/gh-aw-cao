@@ -15,8 +15,9 @@ This is not a general replacement for the entire `source-map-js` API: it does
 not implement `SourceNode`, reverse lookups, or original-order iteration.
 Keep the adapter scoped to its build-tool consumers. Its location inside the
 dashboard package lets npm's local-package link resolve dependencies in both
-root-only and dashboard-only installs. The Docker build copies it before
-installing dependencies.
+root-only and dashboard-only installs. Docker installs only the dashboard's
+build dependencies (`esbuild` and `yaml`) with `--omit=dev --ignore-scripts`,
+so it does not install Vitest, Vite, PostCSS, or this adapter.
 
 Run `node --test tests/unit/source-map-compat.test.mjs` from the repository root
 after installing root dependencies.

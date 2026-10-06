@@ -6,11 +6,10 @@ ARG REVISION
 ARG CAO_PROFILE=cao.json
 WORKDIR /workspace
 COPY dashboard/site/package.json dashboard/site/package-lock.json ./dashboard/site/
-COPY dashboard/site/packages/source-map-compat/ ./dashboard/site/packages/source-map-compat/
 RUN sed -i \
       's#https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/#https://registry.npmjs.org/#' \
       dashboard/site/package-lock.json \
-    && npm --prefix dashboard/site ci --ignore-scripts
+    && npm --prefix dashboard/site ci --omit=dev --ignore-scripts
 COPY . .
 RUN REPORT_ROOT=/workspace \
     REPORT_INVENTORY=/tmp/control-plane-inventory.json \
