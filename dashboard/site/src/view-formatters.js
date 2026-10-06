@@ -2,6 +2,12 @@
  * Shared presentation-only formatting and aggregation helpers for custom dashboard views.
  */
 
+import { createDebug } from './debug.js';
+
+const debugViewFormatters = createDebug('view-formatters');
+
+const KNOWN_AGGREGATES = new Set(['count', 'distinct-count', 'sum', 'mean', 'min', 'max']);
+
 const HUMAN_RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const HUMAN_DATE_FORMAT = new Intl.DateTimeFormat('en', {
   month: 'short',
@@ -38,9 +44,18 @@ export function formatAggregateValue(rows, fieldName, aggregate, toText, unit = 
   if (!fieldName) {
     return '';
   }
+  if (rows.length === 0) {
+    debugViewFormatters({ event: 'aggregate-empty-rows', aggregate });
+  }
 
   const presentValues = rows.map((row) => row[fieldName]).filter((value) => value != null && value !== '');
   const numericValues = presentValues.filter((value) => isFiniteNumber(value));
+  if (presentValues.length === 0 && rows.length > 0) {
+    debugViewFormatters({ event: 'aggregate-no-present-values', aggregate, rowCount: rows.length });
+  }
+  if (aggregate !== 'none' && !KNOWN_AGGREGATES.has(aggregate)) {
+    debugViewFormatters({ event: 'aggregate-unmatched', aggregate });
+  }
   if (aggregate === 'count') {
     return presentValues.length > 0 ? formatNumber(presentValues.length, unit) : '';
   }
