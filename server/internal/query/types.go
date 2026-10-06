@@ -210,6 +210,7 @@ type TemporalSeries struct {
 	Time     string            `json:"time"`
 	Series   string            `json:"series"`
 	Shape    string            `json:"shape,omitempty"`
+	Link     string            `json:"link,omitempty"`
 	Carry    []string          `json:"carry,omitempty"`
 	Measures []TemporalMeasure `json:"measures,omitempty"`
 	Maps     []TemporalMap     `json:"maps,omitempty"`

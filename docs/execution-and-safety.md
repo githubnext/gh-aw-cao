@@ -36,12 +36,12 @@ Pages report routing participates in the control plane. Review routes report sou
 
 ## Standard Control Envelope
 
-Every worker workflow dispatch carries:
+Every orchestrator-to-worker dispatch carries:
 
 | Field | Purpose |
 | --- | --- |
 | `target_repo` | The only target repository the worker workflow may analyze or update |
-| `safe_output_mode` | `review` or `live` |
+| `safe_output_mode` | `review` or `live`; debug requests do not use a dispatcher envelope |
 | `safe_output_repo` | safe output destination; review mode defaults this to the current control-plane repository |
 | `correlation_id` | Joins worker workflow safe outputs to the orchestrator workflow run |
 | `central_repo` | Identifies the control-plane repository |
@@ -49,6 +49,18 @@ Every worker workflow dispatch carries:
 | `batch_label` | Optional worker-specific grouping value |
 
 Credentials are not part of this envelope. Each run resolves authentication through shared control.
+
+### Local Worker Debug Loop
+
+A local debugger may request `safe_output_mode: debug` for one manual worker
+run without a dispatcher. This is not a campaign policy mode or live authority.
+Existing scope and enablement remain enforced; declared safe outputs are
+forcibly staged, while repository-memory persistence remains gh-aw-owned.
+Follow [Local Worker Debugging](local-debugging.md) to prepare a revision,
+launch the worker as an authorized human, inspect evidence, and understand the
+staging limitation.
+
+### Dispatcher Envelope Example
 
 An effective dispatch envelope resembles:
 
@@ -77,7 +89,7 @@ Never add an App key, PAT, installation token, or other secret to this envelope.
 - Review mode defaults to the current control-plane repository when no destination override is provided.
 - An orchestrator workflow dispatches only worker workflows declared in its `safe-outputs.dispatch-workflow.workflows` list and resolved by exact generated-workflow path.
 - Disabled or unavailable worker workflows are skipped with a reason.
-- A worker workflow handles one dispatched target and does not perform organization-wide discovery.
+- A worker workflow handles one admitted target and does not perform organization-wide discovery.
 - GitHub tools are read-only; writes occur only through declared safe-output primitives.
 - Agents do not receive Pages deployment permission or mode-promotion authority. Pages report mode and destination come from the control envelope; persistent publication is performed only by conventional deterministic workflows from trusted durable inputs.
 - Review Pages must be access-controlled for the intended reviewers and isolated from production Pages. If that boundary is unavailable, review publication fails closed.

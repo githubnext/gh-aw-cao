@@ -9,8 +9,11 @@ import (
 // temporal lowers projection before aggregation. Only the chart-ready points
 // field is serialized; dimensions, measures and trend statistics stay typed.
 func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, queryName string) (SQLRelation, error) {
-	if definition.Shape != "" && definition.Shape != "tidy" && definition.Shape != "groups" {
+	if definition.Shape != "" && definition.Shape != "tidy" && definition.Shape != "groups" && definition.Shape != "panels" {
 		return SQLRelation{}, errors.New("unsupported temporal-series shape")
+	}
+	if definition.Link != "" && definition.Shape != "panels" {
+		return SQLRelation{}, errors.New("temporal link requires panels")
 	}
 	if len(definition.Carry) > 16 || len(definition.Measures) > 64 || len(definition.Maps) > 64 ||
 		len(definition.Measures)+len(definition.Maps) == 0 {
@@ -66,6 +69,15 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	}
 	validTime := "CASE WHEN " + timeColumn.Presence + " THEN isfinite(" + at + ") ELSE FALSE END"
 	series := temporalScalarText(seriesColumn)
+	link := "'{}'::jsonb"
+	if definition.Link != "" {
+		column := sqlField(input, definition.Link)
+		if column.Kind != SQLStructured && column.Kind != sqlNull {
+			return SQLRelation{}, errors.New("temporal link requires a structured field")
+		}
+		link = "CASE WHEN " + column.Presence + " THEN jsonb_build_object('link', " +
+			column.Expression + ") ELSE '{}'::jsonb END"
+	}
 	var branches []string
 	appendBranch := func(declaration int, entry, metric, key, name, kind, group, value, lateral string) {
 		projection := make([]string, 0, 12+len(carryProjection))
@@ -76,6 +88,7 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 			series+` AS "series"`, metric+` AS "metric"`, key+` AS "metric-key"`,
 			name+` AS "metric-name"`, kind+` AS "metric-kind"`, group+` AS "metric-group"`,
 			`tv.number AS "value"`,
+			link+` AS "__link"`,
 		)
 		projection = append(projection, carryProjection...)
 		branches = append(branches, "SELECT "+strings.Join(projection, ",")+" FROM "+input.SQL+lateral+
@@ -144,6 +157,7 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	}
 	fields["value"] = SQLColumn{Expression: `"value"`, Presence: "TRUE", Kind: SQLNumber}
 	fields["__at"] = SQLColumn{Expression: `"__at"`, Presence: "TRUE", Kind: SQLNumber}
+	fields["__link"] = SQLColumn{Expression: `"__link"`, Presence: "TRUE", Kind: SQLStructured}
 	for index, column := range carried {
 		fields["carry"+strconv.Itoa(index)] = SQLColumn{Expression: carryFields[index], Presence: "TRUE", Kind: column.Kind}
 	}
@@ -155,6 +169,9 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	bounded := "(SELECT numbered.*, count(*) OVER () AS __count FROM " + numbered + ") AS bounded"
 	tidy := c.materialize(SQLRelation{SQL: bounded + " WHERE 1 / CASE WHEN __count <= 100000 THEN 1 ELSE 0 END = 1",
 		Columns: fields, Order: `"__order"`}, queryName, "temporal-series", 1)
+	if definition.Shape == "panels" {
+		return c.temporalPanels(tidy, carried, definition, queryName), nil
+	}
 	if definition.Shape != "groups" {
 		output := map[string]SQLColumn{}
 		for index, field := range definition.Carry {
@@ -167,6 +184,51 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		return tidy, nil
 	}
 	return c.temporalGroups(tidy, carried, definition, queryName), nil
+}
+
+func (c *sqlCompiler) temporalPanels(tidy SQLRelation, carried []SQLColumn, definition TemporalSeries, queryName string) SQLRelation {
+	metadata := []string{"metric", "metric-key", "metric-name", "metric-kind", "metric-group"}
+	keys := make([]string, 0, len(metadata)+len(carried))
+	columns := map[string]SQLColumn{}
+	for _, field := range metadata {
+		keys = append(keys, SQLIdentifier(field))
+		columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: SQLText}
+	}
+	for index, column := range carried {
+		field := "carry" + strconv.Itoa(index)
+		keys = append(keys, SQLIdentifier(field))
+		columns[definition.Carry[index]] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: column.Kind}
+	}
+	projection := make([]string, 0, len(keys)+7)
+	partition := make([]string, 0, 1+len(carried))
+	partition = append(partition, tidy.Columns["metric-key"].Expression)
+	for index := range carried {
+		partition = append(partition, tidy.Columns["carry"+strconv.Itoa(index)].Expression)
+	}
+	first := "PARTITION BY " + strings.Join(partition, ",") + " ORDER BY " + tidy.Order +
+		" ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"
+	for _, field := range metadata {
+		projection = append(projection, "first_value("+tidy.Columns[field].Expression+") OVER ("+first+") AS "+SQLIdentifier(field))
+	}
+	for index := range carried {
+		field := "carry" + strconv.Itoa(index)
+		projection = append(projection, tidy.Columns[field].Expression+" AS "+SQLIdentifier(field))
+	}
+	for _, field := range []string{"series", "time", "value", "__at", "__link"} {
+		projection = append(projection, tidy.Columns[field].Expression+" AS "+SQLIdentifier(field))
+	}
+	projection = append(projection, tidy.Order+` AS "__order"`)
+	input := "(SELECT " + strings.Join(projection, ",") + " FROM " + tidy.SQL + ") AS panel_input"
+	groupKeys := strings.Join(keys, ",")
+	point := `jsonb_build_object('x',"time",'y',"value",'key',"metric-key" || ':' || ("__order"-1)::text) || "__link"`
+	series := "(SELECT " + groupKeys + `,"series",min("__order") AS "__order",jsonb_agg(` +
+		point + ` ORDER BY "__at","__order") AS "points" FROM ` + input +
+		" GROUP BY " + groupKeys + `,"series") AS panel_series`
+	panels := "(SELECT " + groupKeys + `,min("__order") AS "__order",jsonb_agg(jsonb_build_object(` +
+		`'id',"series",'label',"series",'points',"points") ORDER BY "series" COLLATE "C") AS "series" FROM ` +
+		series + " GROUP BY " + groupKeys + ") AS panels"
+	columns["series"] = SQLColumn{Expression: `"series"`, Presence: "TRUE", Kind: SQLStructured}
+	return c.materialize(SQLRelation{SQL: panels, Columns: columns, Order: `"__order"`}, queryName, "temporal-panels", 1)
 }
 
 func temporalScalarText(column SQLColumn) string {
@@ -214,7 +276,7 @@ func (c *sqlCompiler) temporalGroups(tidy SQLRelation, carried []SQLColumn, defi
 	}
 	windowProjection = append(windowProjection,
 		tidy.Columns["time"].Expression+` AS "time"`, tidy.Columns["series"].Expression+` AS "series"`,
-		tidy.Columns["value"].Expression+` AS "value"`)
+		tidy.Columns["value"].Expression+` AS "value"`, tidy.Columns["__at"].Expression+` AS "__at"`)
 	if definition.Trend != nil {
 		for _, order := range []struct{ alias, direction string }{{"start", "ASC"}, {"end", "DESC"}} {
 			windowProjection = append(windowProjection, "first_value("+tidy.Columns["value"].Expression+
@@ -232,7 +294,7 @@ func (c *sqlCompiler) temporalGroups(tidy SQLRelation, carried []SQLColumn, defi
 	}
 	projection := append([]string{}, groupBy...)
 	projection = append(projection, `min("__order") AS "__order"`,
-		`jsonb_agg(jsonb_build_object('x',"time",'y',"value",'color',"series",'key',"metric-key" || ':' || ("__order"-1)::text) ORDER BY "__order") AS "points"`)
+		`jsonb_agg(jsonb_build_object('x',"time",'y',"value",'color',"series",'key',"metric-key" || ':' || ("__order"-1)::text) ORDER BY "__at","__order") AS "points"`)
 	columns["points"] = SQLColumn{Expression: `"points"`, Presence: "TRUE", Kind: SQLStructured, Point: "temporal"}
 	if definition.Trend != nil {
 		projection = append(projection, `count(*) AS "count"`, `min("start") AS "start"`, `min("end") AS "end"`)

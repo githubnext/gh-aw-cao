@@ -20,7 +20,8 @@ describe('canonical entity insights', () => {
         expect.objectContaining({ id: 'runs', page: `${entity.id}-runs` })
       ]));
       expect(insights?.views.filter((/** @type {Record<string, any>} */ view) => view.mark === 'chart')).toHaveLength(1);
-      expect(chrome?.data.sources).toEqual([entity.source]);
+      expect(chrome?.data.sources).toEqual([`${entity.id}-route-record`]);
+      expect(chrome?.data.limit).toBe(1);
       expect(chrome?.['title-link']).toEqual({
         'href-field': 'run-link',
         'identifier-field': entity.identifier

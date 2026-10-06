@@ -627,6 +627,7 @@ export function effectivePolicy(
     requestedMaxRepositories = "",
     requestedRolloutPercent = "",
     targetRepository = "",
+    eventName = "",
   },
 ) {
   log("Resolving effective policy.");
@@ -690,7 +691,14 @@ export function effectivePolicy(
     }
   }
 
-  if (requestedMode) {
+  if (requestedMode === "debug") {
+    if (role !== "worker" || eventName !== "workflow_dispatch") {
+      throw new PolicyError("debug requires a manual workflow_dispatch worker run");
+    }
+    if (!targetRepository) throw new PolicyError("debug worker target_repo is required");
+    effective.mode = "debug";
+    targetPolicies = {};
+  } else if (requestedMode) {
     assertMode(requestedMode, "safe_output_mode");
     if (modeRank(requestedMode) > modeRank(effective.mode)) {
       throw new PolicyError("safe_output_mode exceeds checked-in policy");

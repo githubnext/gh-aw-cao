@@ -105,6 +105,7 @@ export default defineConfig({
             "deployment*",
             "execution-*",
             "glossary",
+            "local-debugging",
             "marketplace",
             "operational-*",
             "operations",
@@ -335,6 +336,7 @@ export default defineConfig({
           items: [
             { label: "Add a campaign", link: "/operations/#adding-a-campaign" },
             { label: "Add a worker", link: "/operations/#adding-a-worker" },
+            { label: "Local worker debugging", link: "/local-debugging/" },
             { label: "Validate changes", link: "/operations/#change-validation" },
           ],
         },

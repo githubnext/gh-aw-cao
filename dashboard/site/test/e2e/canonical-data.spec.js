@@ -544,6 +544,78 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('workflow route queries return bounded records and subscribed aggregates through the real worker', async ({ page, context }) => {
+  const input = databaseTables();
+  input.workflows.rows.push({ ...input.workflows.rows[0], repository: 'unrelated' });
+  input.runs.rows.push({ ...input.runs.rows[0], repository: 'unrelated', run: '999', 'aic-total': 999 });
+  input.usage.rows = [];
+  const updated = databaseTables('updated-browser-generation', '12346');
+  updated.runs.rows[0]['run-conclusion'] = 'success';
+  updated.runs.rows[0]['aic-total'] = 23;
+  updated.usage.rows = [];
+  await context.route('http://dashboard.test/element-sources.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(input)
+  }));
+  await context.route('http://dashboard.test/updated-element-sources.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(updated)
+  }));
+
+  const result = await page.evaluate(async () => {
+    const processor = await import(`${location.origin}/src/data-processor.js`);
+    const document = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const dashboard = document.dashboard;
+    const pageId = 'workflow-runtime';
+    const viewId = 'workflow-runtime-route';
+    const view = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === pageId)
+      .views.find((/** @type {{ id: string }} */ view) => view.id === viewId);
+    const options = { pageId, viewId, routeParameters: { workflow: 'githubnext/gh-aw-cao:.github/workflows/dashboard.md' } };
+    const initial = await processor.loadCanonicalDashboardSources(
+      `${location.origin}/element-sources.json`, view.data.sources, dashboard, undefined, options
+    );
+    const missing = await processor.loadCanonicalDashboardPage(view.data.sources, dashboard, undefined, {
+      ...options, routeParameters: { workflow: 'githubnext/missing:.github/workflows/dashboard.md' }
+    });
+    const lifetime = new AbortController();
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>[]} */
+    const deliveries = [];
+    try {
+      const refreshed = await new Promise((resolve, reject) => {
+        processor.subscribeCanonicalDashboardView('bounded-runtime-test', view.data.sources, dashboard, (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ payload) => {
+          deliveries.push(payload);
+          if (deliveries.length === 1) {
+            processor.refreshCanonicalDashboardSources(
+              `${location.origin}/updated-element-sources.json`, view.data.sources, dashboard, undefined, options
+            ).catch(reject);
+          } else if (Object.values(payload).some((source) => source.rows[0]?.aic === 40)) {
+            resolve(payload);
+          }
+        }, undefined, { ...options, signal: lifetime.signal, onError: reject });
+      });
+      return { initial, missing, subscribed: deliveries[0], refreshed };
+    } finally {
+      lifetime.abort();
+    }
+  });
+  for (const payload of [result.initial, result.subscribed]) {
+    const sources = Object.values(payload);
+    expect(sources).toHaveLength(3);
+    expect(sources.every((source) => source.rows.length === 1)).toBe(true);
+    expect(sources.every((source) => source.metadata.availability === 'available')).toBe(true);
+    expect(sources.flatMap((source) => source.rows)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }),
+      expect.objectContaining({ total: 1, failed: 1 }),
+      expect.objectContaining({ aic: 17, 'telemetry-count': 1 })
+    ]));
+  }
+  const refreshed = Object.values(result.refreshed);
+  expect(refreshed.every((source) => source.rows.length === 1)).toBe(true);
+  expect(refreshed.flatMap((source) => source.rows)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ total: 2, failed: 1, successful: 1 }),
+    expect.objectContaining({ aic: 40, 'telemetry-count': 2 })
+  ]));
+  expect(Object.values(result.missing).every((source) => source.rows.length === 0)).toBe(true);
+});
+
 test('data worker avoids unavailable legacy boundaries on initial and navigated requests', async ({ context, page }) => {
   await context.route('http://dashboard.test/canonical-warning-sources.json', async (route) => {
     await route.fulfill({

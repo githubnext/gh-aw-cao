@@ -366,9 +366,10 @@ function queryStructuralDefect(definition) {
     if (!isPlainObject(series)
         || typeof series.time !== 'string'
         || typeof series.series !== 'string'
-      || (series.shape !== undefined && !['tidy', 'groups'].includes(series.shape))
+        || (series.shape !== undefined && !['tidy', 'groups', 'panels'].includes(series.shape))
+        || (series.link !== undefined && (series.shape !== 'panels' || typeof series.link !== 'string'))
         || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
-        || (series.trend !== undefined && (!isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
+        || (series.trend !== undefined && (series.shape !== 'groups' || !isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
         || (!Array.isArray(measures) || measures.length > 64)
         || (!Array.isArray(maps) || maps.length > 64)
         || measures.length + maps.length === 0
@@ -561,7 +562,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
   }
   for (const computed of definition.compute ?? []) fields.push(computed.as);
   if (definition['temporal-series']) {
-    fields = definition['temporal-series'].shape === 'groups'
+    fields = ['groups', 'panels'].includes(definition['temporal-series'].shape ?? '')
       ? [
           ...(definition['temporal-series'].carry ?? []),
           'metric',
@@ -569,7 +570,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
           'metric-name',
           'metric-kind',
           'metric-group',
-          'points',
+          definition['temporal-series'].shape === 'panels' ? 'series' : 'points',
           ...(definition['temporal-series'].trend
             ? ['trend-start-value', 'trend-end-value', 'trend-delta', 'trend-relative-percent', 'trend-observed-direction', 'trend-assessment', 'trend-observation-count']
             : [])

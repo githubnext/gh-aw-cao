@@ -47,6 +47,9 @@ await executeFile("tar", [
     "dashboard",
     "cao.sh",
     "skills",
+    "plugin.json",
+    "com.github.copilot/extensions/cao-dashboard",
+    "specs/dashboard-data.md",
     ".github/actions/setup-cao-runtime",
     ".github/actions/setup-gh-aw",
     ".github/cao/instructions.md",
@@ -263,6 +266,16 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository) {
   await executeFile(...launcher, { cwd: consumer, env, timeout });
   for (const bundle of ["activity", "dashboard"]) {
     await executeFile(process.execPath, [materializer, "verify", bundle], { cwd: consumer, env, timeout });
+  }
+  for (const file of [
+    "plugin.json",
+    "com.github.copilot/extensions/cao-dashboard/extension.mjs",
+    "specs/dashboard-data.md",
+  ]) {
+    assert.deepEqual(
+      await readFile(path.join(consumer, file)),
+      await readFile(path.join(catalog, file)),
+    );
   }
 }
 

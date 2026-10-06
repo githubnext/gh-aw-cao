@@ -207,7 +207,8 @@
         }
       ],
       "queries": [
-        "workflow-reports"
+        "workflow-reports",
+        "workflow-route-record"
       ]
     },
     {
@@ -228,6 +229,7 @@
       ],
       "queries": [
         "workflow-failure-trend",
+        "workflow-route-record",
         "workflow-runs"
       ]
     },
@@ -269,7 +271,10 @@
         }
       ],
       "queries": [
-        "workflow-runs"
+        "workflow-route-record",
+        "workflow-runs",
+        "workflow-runtime-health-summary",
+        "workflow-runtime-usage-summary"
       ]
     },
     {
@@ -288,7 +293,9 @@
           }
         }
       ],
-      "queries": []
+      "queries": [
+        "outcome-route-record"
+      ]
     },
     {
       "id": "campaigns",
@@ -851,7 +858,8 @@
         }
       ],
       "queries": [
-        "domain-entity-insights"
+        "domain-entity-insights",
+        "domain-route-record"
       ]
     },
     {
@@ -870,7 +878,9 @@
           }
         }
       ],
-      "queries": []
+      "queries": [
+        "domain-route-record"
+      ]
     },
     {
       "id": "tool-insights",
@@ -889,8 +899,8 @@
         }
       ],
       "queries": [
-        "mcp-tool-calls",
-        "tool-entity-insights"
+        "tool-entity-insights",
+        "tool-route-record"
       ]
     },
     {
@@ -910,7 +920,8 @@
         }
       ],
       "queries": [
-        "mcp-tool-calls"
+        "mcp-tool-calls",
+        "tool-route-record"
       ]
     },
     {
@@ -930,7 +941,8 @@
         }
       ],
       "queries": [
-        "audit-entity-insights"
+        "audit-entity-insights",
+        "audit-route-record"
       ]
     },
     {
@@ -949,7 +961,9 @@
           }
         }
       ],
-      "queries": []
+      "queries": [
+        "audit-route-record"
+      ]
     }
   ],
   "queries": [
@@ -1180,7 +1194,6 @@
         "mcp-calls"
       ],
       "used-by-pages": [
-        "tool-insights",
         "tool-runs"
       ],
       "execution": {
@@ -2265,6 +2278,112 @@
       }
     },
     {
+      "id": "workflow-route-record",
+      "subject": "Project the selected workflow's identity and registration for its route shell.",
+      "objective": "Identify the workflow and its recorded campaign registration before inspecting route-specific evidence.",
+      "acceptance": "Preserve organization, repository, workflow identity, recorded role, activation, campaign, rollout mode, and source link; absent registration is not inferred from runs, and displayed activation does not grant execution authority.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [
+        "workflow-detail",
+        "workflow-runs",
+        "workflow-runtime"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "workflow-runtime-health-summary",
+      "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
+      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
+      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [
+        "workflow-runtime"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-runtime-usage-summary",
+      "subject": "Sum retained AI Credits and count telemetry rows for the selected workflow without transferring runs.",
+      "objective": "Inspect a workflow's observed AI Credit consumption together with the amount of retained usage telemetry.",
+      "acceptance": "AI Credits sum the retained aic values within each organization, repository, and workflow, and telemetry-count counts its usage records; absent telemetry does not establish zero cost or complete run coverage.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow"
+        }
+      ],
+      "sources": [
+        "usage"
+      ],
+      "used-by-pages": [
+        "workflow-runtime"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "usage"
+        ]
+      }
+    },
+    {
+      "id": "outcome-route-record",
+      "subject": "Project the selected safe-output record for the outcome route and its sections.",
+      "objective": "Inspect a retained safe output's recorded disposition and follow its durable evidence links.",
+      "acceptance": "Preserve safe-output and run identity, title, category, disposition, summary, timestamps, rollout mode, workflow context, and retained links; missing fields stay unknown and a recorded disposition is not independently verified operational impact.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "outcome",
+          "field": "safe-output"
+        }
+      ],
+      "sources": [
+        "outcomes"
+      ],
+      "used-by-pages": [
+        "outcome-detail"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "outcomes"
+        ]
+      }
+    },
+    {
       "id": "entity-runs",
       "subject": "Project run entities for reusable run cards and workflow drill-down.",
       "objective": "Expose retained run-attempt identity, execution timing, conclusion, and link for a bounded workflow-run inspection.",
@@ -2973,7 +3092,7 @@
       "id": "campaign-operational-value-primary-series",
       "subject": "Project native operational-value observations into repository temporal series.",
       "objective": "Choose a repository and measure whose observed value needs evidence review.",
-      "acceptance": "Points retain native values, units, and optional run-links partitioned by provenance for tooltip drilldown; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for maturity before interpreting trends; do not infer causality.",
+      "acceptance": "Panels retain native values, units, repository series, and point-level run links; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for maturity before interpreting trends; do not infer causality.",
       "description": "Repository observations in native units; point-level maturity and missing values require source observation review.",
       "parameters": [
         {
@@ -3115,7 +3234,7 @@
       "id": "campaign-operational-value-plot-inventory",
       "subject": "Describe each repository operational-value observation plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with a plottable observation, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series panel with a plottable repository observation, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
       "description": "Plot inventory derived from native-unit repository observations; maturity must be checked separately.",
       "parameters": [],
       "sources": [
@@ -5416,6 +5535,87 @@
           "runs"
         ],
         "reason": "Requires work-items, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "domain-route-record",
+      "subject": "Project the selected domain header and one retained run link.",
+      "objective": "Identify the selected domain and open a retained run before investigating its traffic evidence.",
+      "acceptance": "The route header preserves the selected domain and a run link from its retained observations; missing observations or links remain unavailable, and a header does not establish access policy or traffic completeness.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "domain",
+          "field": "domain"
+        }
+      ],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [
+        "domain-insights",
+        "domain-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "tool-route-record",
+      "subject": "Project the selected MCP tool header and one retained run link.",
+      "objective": "Identify the selected MCP tool and open a retained run before investigating its call evidence.",
+      "acceptance": "The route header preserves the selected MCP tool label and a run link from its retained calls; absent calls or links remain unavailable and do not imply zero usage or tool effectiveness.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "tool",
+          "field": "mcp-tool-label"
+        }
+      ],
+      "sources": [
+        "mcp-tool-calls"
+      ],
+      "used-by-pages": [
+        "tool-insights",
+        "tool-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "mcp-calls"
+        ]
+      }
+    },
+    {
+      "id": "audit-route-record",
+      "subject": "Project the selected audit summary header and one retained run link.",
+      "objective": "Identify the selected audit summary and open a retained run before investigating its observations.",
+      "acceptance": "The route header preserves the selected event summary and a run link from its retained audit observations; absent evidence remains unavailable and neither the header nor its absence establishes incident severity or a clean audit.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "audit",
+          "field": "event-summary"
+        }
+      ],
+      "sources": [
+        "audits"
+      ],
+      "used-by-pages": [
+        "audit-insights",
+        "audit-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
       }
     },
     {

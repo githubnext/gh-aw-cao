@@ -4,7 +4,7 @@
       "name": "campaign-operational-value-primary-series",
       "subject": "Project native operational-value observations into repository temporal series.",
       "objective": "Choose a repository and measure whose observed value needs evidence review.",
-      "acceptance": "Points retain native values, units, and optional run-links partitioned by provenance for tooltip drilldown; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for maturity before interpreting trends; do not infer causality.",
+      "acceptance": "Panels retain native values, units, repository series, and point-level run links; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for maturity before interpreting trends; do not infer causality.",
       "description": "Repository observations in native units; point-level maturity and missing values require source observation review.",
       "from": "operational-values",
       "compute": [
@@ -17,21 +17,17 @@
       "temporal-series": {
         "time": "observed-at",
         "series": "series-repository",
-        "shape": "groups",
+        "shape": "panels",
+        "link": "run-link",
         "carry": [
           "campaign",
-          "organization",
-          "repository",
           "operational-value-definition",
           "operational-value-role",
           "operational-value-name",
           "operational-value-unit",
           "operational-value-direction",
           "adoption-at",
-          "evaluation-mode",
-          "workflow-slug",
-          "workflow-name",
-          "run-link"
+          "evaluation-mode"
         ],
         "measures": [
           {
@@ -39,11 +35,9 @@
             "key": "operational-value-definition",
             "kind": "primary"
           }
-        ],
-        "trend": {
-          "direction": "operational-value-direction"
-        }
-      }
+        ]
+      },
+      "order-by": [{ "field": "operational-value-name", "direction": "asc" }]
     },
     {
       "name": "campaign-operational-value-evidence-state-totals",
@@ -158,11 +152,11 @@
       "name": "campaign-operational-value-plot-inventory",
       "subject": "Describe each repository operational-value observation plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with a plottable observation, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series panel with a plottable repository observation, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
       "description": "Plot inventory derived from native-unit repository observations; maturity must be checked separately.",
       "from": "campaign-operational-value-primary-series",
       "aggregate": {
-        "by": ["campaign", "organization", "repository", "operational-value-definition", "operational-value-unit", "operational-value-direction"],
+        "by": ["campaign", "operational-value-definition", "operational-value-unit", "operational-value-direction", "adoption-at", "evaluation-mode"],
         "values": [{ "field": "operational-value-definition", "as": "observation-groups", "reducer": "count" }]
       }
     },

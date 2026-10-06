@@ -111,7 +111,15 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
       const compiled = compileAliasedQuery(sourceName, alias, predicates, useQueryContext ? options.queryContext?.search : undefined, useQueryContext ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries);
-      queries.push(...compiled.dependencies, compiled.query);
+      /** @type {Record<string, unknown>} */
+      const query = compiled.query;
+      if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {
+        query.limit = Math.min(
+          Number(viewData?.limit),
+          typeof query.limit === 'number' ? query.limit : Infinity
+        );
+      }
+      queries.push(...compiled.dependencies, query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });
   });

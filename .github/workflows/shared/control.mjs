@@ -38,7 +38,7 @@ const ADMISSION_CHECKS = [
   ["Campaign", "The requested campaign is declared and enabled."],
   ["Worker", "For worker runs, the requested worker is declared and enabled."],
   ["Target input", "Any supplied `target_repo` uses the exact `owner/repository` form."],
-  ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling."],
+  ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling; debug requires a manual, human-authorized worker with staged outputs."],
   ["Run limits", "Any supplied `max_repos` and `rollout_percent` do not exceed checked-in limits."],
   ["GitHub API capacity", "The exact credential selected for control precompute has enough primary REST API capacity before activation."],
 ];
@@ -229,8 +229,9 @@ function failedAdmissionCheckIndex(reason) {
   ) return 3; // Workflow identity
   if (reason === "campaign-undeclared" || reason === "campaign-disabled") return 4; // Campaign
   if (reason === "worker-disabled" || reason.startsWith("unknown worker:")) return 5; // Worker
-  if (reason === "target_repo must use owner/repository form") return 6; // Target input
+  if (reason.startsWith("target_repo ")) return 6; // Target input
   if (reason === "safe_output_mode exceeds checked-in policy" || reason === "safe_output_mode must be review or live") return 7; // Mode input
+  if (reason.startsWith("debug ")) return 7; // Debug admission
   if (reason.startsWith("max_repositories") || reason.startsWith("rollout_percent")) return 8; // Run limits
   if (reason === "github-api-capacity-insufficient" || reason === "github-api-capacity-unavailable") return 9; // GitHub API capacity
   return -1;
@@ -354,7 +355,58 @@ function policyOptions({ normalizeOrchestrator = false } = {}) {
     requestedMaxRepositories: environment("CAO_REQUESTED_MAX_REPOSITORIES"),
     requestedRolloutPercent: environment("CAO_REQUESTED_ROLLOUT_PERCENT"),
     targetRepository: environment("CAO_TARGET_REPOSITORY"),
+    eventName: environment("GITHUB_EVENT_NAME"),
   };
+}
+
+async function validateDebugLaunch(policy, options) {
+  if (options.requestedMode !== "debug") return;
+  if (environment("GITHUB_ACTIONS") !== "true" || options.role !== "worker"
+    || options.eventName !== "workflow_dispatch") {
+    throw new ControlError("debug requires a manual workflow_dispatch worker run");
+  }
+  if (environment("CAO_CORRELATION_ID") || environment("CAO_CENTRAL_REPOSITORY")
+    || environment("CAO_CONTROL_PLANE_RUN_URL")) {
+    throw new ControlError("debug must not carry a dispatcher envelope");
+  }
+  const destination = environment("CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY");
+  if (!destination || !repositoryEqual(destination, options.targetRepository)) {
+    throw new ControlError("debug safe_output_repo must equal target_repo");
+  }
+  validateRepositoryOwner("target_repo", options.targetRepository, policy.allowed_owners);
+  if (policy.allowed_repositories.length > 0
+    && !policy.allowed_repositories.some((repository) => repositoryEqual(repository, options.targetRepository))) {
+    throw new ControlError("debug target_repo is not allowed");
+  }
+  const actor = environment("GITHUB_ACTOR");
+  let payload;
+  try {
+    payload = globalThis.context?.payload ?? readJson(environment("GITHUB_EVENT_PATH"));
+  } catch {
+    throw new ControlError("debug requires an authoritative dispatch event");
+  }
+  if (payload?.inputs?.safe_output_mode !== "debug"
+    || payload.inputs.target_repo !== options.targetRepository
+    || payload.inputs.safe_output_repo !== destination) {
+    throw new ControlError("debug inputs must match the authoritative dispatch event");
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(actor)
+    || payload.sender?.type !== "User" || payload.sender?.login !== actor
+    || environment("GITHUB_TRIGGERING_ACTOR") !== actor) {
+    throw new ControlError("debug requires the original human dispatch actor");
+  }
+  let permission;
+  try {
+    const endpoint = `repos/${options.controlRepository}/collaborators/${actor}/permission`;
+    permission = await githubRequest(endpoint) ?? JSON.parse(run("gh", ["api", endpoint]));
+  } catch {
+    throw new ControlError("debug actor write permission could not be verified");
+  }
+  if (permission?.user?.type !== "User" || permission.user?.login !== actor
+    || !["write", "maintain", "admin"].includes(permission.permission)) {
+    throw new ControlError("debug actor must have write access to the control repository");
+  }
+  logDecision("debug-launch", "accepted", { actor, safe_outputs_staged: true });
 }
 
 function admissionDirectory() {
@@ -387,6 +439,11 @@ function writeAdmissionRecord(result, options, workflowSha) {
     reason: result.reason || "unknown",
     failed_check: failedIndex >= 0 ? ADMISSION_CHECKS[failedIndex][0] : null,
     checks,
+    ...(options.requestedMode === "debug" ? {
+      requested_mode: "debug",
+      safe_outputs_staged: true,
+      debug_actor: environment("GITHUB_ACTOR"),
+    } : {}),
     ...(result.github_api_capacity ? { github_api_capacity: result.github_api_capacity } : {}),
   });
 }
@@ -426,6 +483,7 @@ async function admit() {
       throw new ControlError(error instanceof PolicyError ? "control policy validation failed" : error.message);
     }
     const effective = effectivePolicy(document, options);
+    if (effective.authorized) await validateDebugLaunch(effective, options);
     logDecision("effective-policy", effective.authorized ? "authorized" : "denied", {
       reason: effective.reason,
     });
@@ -478,7 +536,8 @@ function requireNonNegativeInteger(value, message) {
   if (!Number.isSafeInteger(value) || value < 0) throw new ControlError(message);
 }
 
-function requireMode(value, label) {
+function requireMode(value, label, { allowDebug = false } = {}) {
+  if (allowDebug && value === "debug") return;
   if (!["review", "live"].includes(value)) throw new ControlError(`${label} must be review or live`);
 }
 
@@ -615,6 +674,13 @@ function inventoryDigest(repositories) {
 }
 
 async function validateOutputDestination({ mode, role, safeOutputRepository, targetRepository, controlRepository }) {
+  if (mode === "debug") {
+    if (role !== "worker" || !repositoryEqual(safeOutputRepository, targetRepository)) {
+      throw new ControlError("debug safe_output_repo must equal target_repo");
+    }
+    logDecision("safe-output-destination", "accepted", { mode, validation: "staged-target-preview" });
+    return;
+  }
   if (mode === "live") {
     if (role === "worker" && !repositoryEqual(safeOutputRepository, targetRepository)) {
       throw new ControlError("live worker safe_output_repo must equal target_repo");
@@ -654,6 +720,10 @@ function validateWorkerDispatch(context) {
   if (context.mode === "live" && context.workerPolicy.maxMode !== "live") {
     throw new ControlError("safe_output_mode exceeds the worker_max_mode ceiling");
   }
+  if (context.mode === "debug") {
+    logDecision("worker-dispatch-envelope", "not-required", { mode: "debug", safe_outputs_staged: true });
+    return;
+  }
   if (context.centralRepository !== context.controlRepository) {
     throw new ControlError("central_repo must identify the current control repository");
   }
@@ -676,7 +746,8 @@ function createContext(policy) {
   const role = environment("CAO_ROLE");
   const worker = role === "orchestrator" ? "" : environment("CAO_WORKER");
   if (!campaignName || !role) throw new ControlError("precompute requires campaign and role inputs");
-  const workerPolicy = policy.worker_policies?.[worker];
+  const workerPolicy = Object.values(policy.worker_policies ?? {}).find((entry) => entry.worker === worker);
+  const debug = policy.safe_output_mode === "debug";
   return {
     policy,
     campaignName,
@@ -686,7 +757,7 @@ function createContext(policy) {
     dispatchMaximum: parseInteger(environment("CAO_DISPATCH_MAX"), 1),
     safeOutputRepository: environment("CAO_SAFE_OUTPUT_REPOSITORY"),
     correlationId: environment("CAO_CORRELATION_ID"),
-    centralRepository: role === "orchestrator" ? environment("GITHUB_REPOSITORY") : environment("CAO_CENTRAL_REPOSITORY"),
+    centralRepository: role === "orchestrator" || debug ? environment("GITHUB_REPOSITORY") : environment("CAO_CENTRAL_REPOSITORY"),
     controlPlaneRunUrl: environment("CAO_CONTROL_PLANE_RUN_URL"),
     orchestratorCredits: parseInteger(environment("CAO_ORCHESTRATOR_CREDITS"), 0),
     workerCreditsPerTarget: parseInteger(environment("CAO_WORKER_CREDITS_PER_TARGET"), 0),
@@ -695,7 +766,7 @@ function createContext(policy) {
     mode: policy.safe_output_mode,
     workerPolicy: {
       enabled: workerPolicy?.enabled ?? true,
-      maxMode: workerPolicy?.max_mode ?? policy.safe_output_mode,
+      maxMode: workerPolicy?.max_mode ?? (debug ? "review" : policy.safe_output_mode),
     },
   };
 }
@@ -743,6 +814,11 @@ function writeWorkerPrecompute(context) {
     target_repo: context.targetRepository,
     safe_output_mode: context.mode,
     safe_output_repo: context.safeOutputRepository,
+    ...(context.mode === "debug" ? {
+      launch_kind: "manual-debug",
+      debug_actor: environment("GITHUB_ACTOR"),
+      safe_outputs_staged: true,
+    } : {}),
     correlation_id: context.correlationId,
     central_repo: context.centralRepository,
     control_plane_run_url: context.controlPlaneRunUrl,
@@ -985,7 +1061,10 @@ async function precompute() {
   });
   const context = createContext(policy);
   try {
-    requireMode(context.mode, "safe_output_mode");
+    requireMode(context.mode, "safe_output_mode", { allowDebug: context.role === "worker" });
+    if (context.mode === "debug") {
+      await validateDebugLaunch(policy, { ...policyOptions(), requestedMode: "debug" });
+    }
     validateRepositoryOwner("target_repo", context.targetRepository, policy.allowed_owners);
     validateRepositoryOwner("safe_output_repo", context.safeOutputRepository, policy.allowed_owners);
     await validateOutputDestination(context);

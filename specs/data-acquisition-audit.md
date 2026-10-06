@@ -78,6 +78,25 @@ The former two-request Contents API bootstrap in `shared/control.md` has been re
 
 `control.mjs` reads `rate_limit` via `github.request("GET /rate_limit")` (falling back to `gh api rate_limit` only if `github` is unset) during each admission and precompute rate-limit-error retry, and uses the returned core limit, remaining count, and reset time directly. The check does not require a repository variable or a write-scoped token.
 
+**Manual worker debug admission:** `validateDebugLaunch` adds one
+`GET /repos/{control-owner}/{control-repo}/collaborators/{actor}/permission`
+read in admission and repeats it during authorized-run precompute. The normal
+successful path makes two permission reads; a request failing earlier can make
+fewer. Both reads use the injected Octokit
+client, with an uncached `gh api` fallback when that client is absent.
+Permission evidence is deliberately not reused between the two gates so
+precompute can detect a revoked grant.
+
+This acquisition is restricted to a single human-launched `workflow_dispatch`
+worker with explicit `safe_output_mode: debug`. It introduces no scheduled
+campaign collection, actor enumeration, repository discovery, or additional
+dispatch. Campaign/default/target/worker policy cannot select debug. Event
+inputs and sender identity are read from the existing Actions context or event
+file; debug provenance and staged-output flags are local artifact writes, not
+new GitHub requests. The ordinary policy and rate-limit reads remain unchanged,
+and debug does not look up review-destination metadata because its staged
+output destination is the admitted target.
+
 ### 3.2 Activity and dashboard path
 
 | Source | Requests and behavior | Existing mitigation or gap |
@@ -241,7 +260,7 @@ The direct activity client retries 403 and 429 responses only when the advertise
 ```mermaid
 flowchart LR
   subgraph Control
-    control["control.mjs admission<br/>rate_limit, policy, inventory via github-script Octokit<br/>(monthly budget + disk gates removed)"]
+    control["control.mjs admission<br/>rate_limit, policy, inventory via github-script Octokit<br/>manual debug: actor permission at admission + precompute"]
   end
   subgraph Activity
     logsmjs["collect-logs.sh + activity/logs.mjs<br/>gh aw logs, 30-day window,<br/>10000-run cap, usage artifacts"]

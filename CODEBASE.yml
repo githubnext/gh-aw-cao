@@ -93,7 +93,7 @@ components:
     responsibility: discover, filter, rank, select, and dispatch targets within the resolved policy
   worker:
     path: .github/workflows/<operation>-<worker>.md
-    responsibility: revalidate an envelope, analyze one target, and emit declared safe outputs
+    responsibility: revalidate a dispatch or manual-debug envelope, analyze one target, and emit declared safe outputs
   activity:
     path: activity/
     responsibility: collect bounded evidence, ingest JSONL, create SQLite projections, and provide the cao CLI
@@ -346,11 +346,12 @@ invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
   - "Review mode is the default; live mode requires explicit campaign, worker, scope, and target authority."
+  - "Debug is request-only for one human workflow_dispatch worker with current control-repository write access; preserve exact-SHA policy, scope, enablement, and limits, require matching target/output repositories, reject dispatcher-envelope inputs, and record the actor with empty dispatcher correlation. Shared control MUST force gh-aw safe-output staging and suppress automatic activation/failure issues. Debug MUST NOT grant live authority, enter persistent policy, or be selected by an orchestrator. GitHub cannot attest local CLI origin; repository-memory staging remains gh-aw-owned."
   - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
   - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
   - "GitHub tools available to agents are read-only; repository changes use only workflow-declared safe outputs."
   - "Target repository files MUST NOT grant, narrow, or revoke control-plane authority."
-  - "Workers process exactly one dispatched target and MUST NOT discover targets, dispatch work, or widen mode."
+  - "Workers process exactly one admitted target and MUST NOT discover targets, dispatch work, or widen mode."
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
@@ -441,6 +442,11 @@ flows:
     - orchestrator
     - worker
     - target_repository
+  operation_debug:
+    - control_repository
+    - policy_resolution
+    - worker
+    - gh_aw
   activity_dashboard:
     - gh_aw_logs
     - activity_jsonl_shards

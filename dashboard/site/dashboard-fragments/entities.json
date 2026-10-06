@@ -1,6 +1,30 @@
 {
   "queries": [
     {
+      "name": "domain-route-record",
+      "subject": "Project the selected domain header and one retained run link.",
+      "objective": "Identify the selected domain and open a retained run before investigating its traffic evidence.",
+      "acceptance": "The route header preserves the selected domain and a run link from its retained observations; missing observations or links remain unavailable, and a header does not establish access policy or traffic completeness.",
+      "from": "domains",
+      "select": [{ "field": "domain" }, { "field": "run-link" }]
+    },
+    {
+      "name": "tool-route-record",
+      "subject": "Project the selected MCP tool header and one retained run link.",
+      "objective": "Identify the selected MCP tool and open a retained run before investigating its call evidence.",
+      "acceptance": "The route header preserves the selected MCP tool label and a run link from its retained calls; absent calls or links remain unavailable and do not imply zero usage or tool effectiveness.",
+      "from": "mcp-tool-calls",
+      "select": [{ "field": "mcp-tool-label" }, { "field": "run-link" }]
+    },
+    {
+      "name": "audit-route-record",
+      "subject": "Project the selected audit summary header and one retained run link.",
+      "objective": "Identify the selected audit summary and open a retained run before investigating its observations.",
+      "acceptance": "The route header preserves the selected event summary and a run link from its retained audit observations; absent evidence remains unavailable and neither the header nor its absence establishes incident severity or a clean audit.",
+      "from": "audits",
+      "select": [{ "field": "event-summary" }, { "field": "run-link" }]
+    },
+    {
       "name": "domain-entity-insights",
       "subject": "Summarize one domain entity for its dedicated Insights view.",
       "objective": "Identify domain decisions with request volume worth investigating before considering any egress change.",
@@ -125,8 +149,9 @@
           "title": "Domain insights",
           "data": {
             "sources": [
-              "domains"
+              "domain-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "domain",
@@ -206,8 +231,9 @@
           "title": "Domain runs",
           "data": {
             "sources": [
-              "domains"
+              "domain-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "domain",
@@ -314,8 +340,9 @@
           "title": "Tool insights",
           "data": {
             "sources": [
-              "mcp-tool-calls"
+              "tool-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "tool",
@@ -395,8 +422,9 @@
           "title": "Tool runs",
           "data": {
             "sources": [
-              "mcp-tool-calls"
+              "tool-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "tool",
@@ -503,8 +531,9 @@
           "title": "Audit event insights",
           "data": {
             "sources": [
-              "audits"
+              "audit-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "audit",
@@ -584,8 +613,9 @@
           "title": "Audit event runs",
           "data": {
             "sources": [
-              "audits"
+              "audit-route-record"
             ],
+            "limit": 1,
             "arguments": [
               {
                 "name": "audit",

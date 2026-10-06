@@ -48,6 +48,9 @@ control repository, or more than one of those roles.
 | `<campaign>/` | CAO catalog or materializer | Canonical executable campaign runtime |
 | `activity/` | CAO catalog or materializer | Canonical Activity runtime |
 | `dashboard/` | CAO catalog or materializer | Canonical Dashboard runtime |
+| `plugin.json` | CAO catalog or materializer | Portable Agent Plugin manifest |
+| `com.github.copilot/extensions/cao-dashboard/` | CAO catalog or materializer | Copilot CLI extension and Dashboard canvas runtime |
+| `specs/dashboard-data.md` | CAO catalog or materializer | Canonical data specification bundled with the Dashboard extension |
 | `.github/workflows/` | Control repository and gh-aw | Workflow sources, generated locks, and CAO policy |
 | `.github/workflows/cao.json` | Control repository | Persistent non-secret rollout policy |
 | `.github/workflows/shared/materialize-cao.mjs` | CAO bootstrap | Trusted canonical-runtime materializer |
@@ -111,6 +114,8 @@ preflighted before the first replacement.
 ### 4.2 Replacement
 
 Root materialization owns `activity/`, `dashboard/`, `cao.sh`,
+`plugin.json`, `com.github.copilot/extensions/cao-dashboard/`,
+`specs/dashboard-data.md`,
 `.github/actions/setup-cao-runtime/`, `.github/actions/setup-gh-aw/`, and
 `.github/cao/instructions.md`. Every repository-local action referenced by a
 workflow that the root campaign installs MUST be provided at its canonical path
@@ -119,6 +124,13 @@ reference the catalog, because gh-aw records their content hashes.
 Focused Activity or Dashboard materialization owns the corresponding canonical
 directory. Operational campaign materialization owns its complete
 `<campaign>/` directory.
+
+Root materialization MUST include the complete Copilot CLI extension and canvas
+runtime, its plugin manifest, and its bundled data specification at their
+canonical source paths. Other extensions under `com.github.copilot/extensions/`
+and other specifications under `specs/` MUST NOT be replaced. Materialization
+provides the plugin files; it does not install or enable the plugin in a user's
+Copilot CLI.
 
 Root materialization MUST remove CAO plugin skills installed under
 `.github/skills/`. It MUST preserve skills not owned by the CAO plugin. Portable
@@ -204,7 +216,10 @@ A conforming implementation MUST test:
 6. local fail-closed Activity and Dashboard runtime verification; and
 7. installation and update behavior for canonical destinations; and
 8. rejection or documentation of unsupported campaign removal until a
-   transactional removal lifecycle exists.
+   transactional removal lifecycle exists; and
+9. complete Copilot CLI extension and canvas resources, executable bundled
+   query and specification tools, stale extension-file removal, and preservation
+   of consumer-owned extensions and specifications.
 
 Generated workflow lock files are implementation artifacts. Conformance tests
 MUST validate the editable workflow sources and MUST NOT require hand edits to

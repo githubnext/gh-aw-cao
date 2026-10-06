@@ -147,6 +147,10 @@ gh run watch RUN_ID --exit-status
 
 Manual inputs may narrow checked-in policy for one run; they never widen it.
 
+For a single-worker development loop without a dispatcher, use
+[Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
+is not a `cao mode` command or a campaign configuration.
+
 ## Inspect Activity
 
 First download the JSONL shards and SQLite snapshot published by your deployed CAO dashboard:

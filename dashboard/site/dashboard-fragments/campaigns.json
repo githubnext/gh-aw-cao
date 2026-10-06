@@ -827,6 +827,7 @@
           "id": "campaign-readme",
           "title": "README",
           "data": {
+            "limit": 1,
             "sources": [
               "campaign-readme-details"
             ],

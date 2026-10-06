@@ -101,7 +101,7 @@ describe('Measure history', () => {
         metric: 'sample.value',
         'operational-value-name': 'Sample value',
         'operational-value-unit': 'percent',
-        points: [{ x: '2026-09-24T00:00:00Z', y: 42, color: 'github/repo' }]
+        series: [{ id: 'github/repo', label: 'github/repo', points: [{ x: '2026-09-24T00:00:00Z', y: 42 }] }]
       }]
     });
     await vi.waitFor(() => expect(root.querySelector('.temporal-metric-plot')).not.toBeNull());
@@ -149,7 +149,7 @@ describe('Measure history', () => {
             'adoption-at': '2026-09-15T23:30:36Z',
             'evaluation-mode': 'baseline-comparable',
             'workflow-name': 'Optimization / Token Optimizer',
-            points: [{
+            series: [{ id: 'gh-aw', label: 'gh-aw', points: [{
               x: '2026-09-15T23:30:36Z',
               y: 0,
               color: 'gh-aw',
@@ -159,7 +159,7 @@ describe('Measure history', () => {
               y: 0.5,
               color: 'gh-aw',
               key: 'primary:value:1'
-            }]
+            }] }]
           }]
         },
         'campaign-run-days': {
@@ -173,7 +173,7 @@ describe('Measure history', () => {
         'evidence-state': {
           source: 'evidence-state',
           metadata,
-          rows: [{ 'evidence-state': 'interim-evidence' }]
+          rows: [{ 'evidence-state': 'interim-evidence', 'observation-count': 2 }]
         }
       },
       elementConfig: { 'measure-source': 'operational-value' },
@@ -214,10 +214,10 @@ describe('Measure history', () => {
             'operational-value-direction': 'increase',
             'maturity-status': 'interim',
             'evaluation-mode': 'attainment-only',
-            points: [
+            series: [{ id: 'gh-aw', label: 'gh-aw', points: [
               { x: '2026-09-16T00:00:00Z', y: 0.5, color: 'gh-aw', key: 'value:0' },
               { x: '2026-09-24T00:00:00Z', y: 1, color: 'gh-aw', key: 'value:1' }
-            ]
+            ] }]
           }]
         }
       },
@@ -244,10 +244,10 @@ describe('Measure history', () => {
             'operational-value-name': 'AI Credit per successful run',
             'operational-value-unit': 'aic-per-run',
             'operational-value-direction': 'decrease',
-            points: [
+            series: [{ id: 'githubnext/gh-aw', label: 'githubnext/gh-aw', points: [
               { x: '2026-09-22T00:00:00Z', y: 12.5, color: 'githubnext/gh-aw' },
               { x: '2026-09-24T00:00:00Z', y: 8.25, color: 'githubnext/gh-aw' }
-            ]
+            ] }]
           }]
         }
       },
@@ -289,12 +289,12 @@ describe('Measure history', () => {
             'adoption-at': '2026-09-15T23:30:36Z',
             'evaluation-mode': 'baseline-comparable',
             'workflow-name': 'Optimization / Token Optimizer',
-            points: [{
+            series: [{ id: 'gh-aw', label: 'gh-aw', points: [{
               x: '2026-09-24T20:56:21Z',
               y: 0,
               color: 'gh-aw',
               key: 'primary:value:0'
-            }]
+            }] }]
           }]
         },
         'campaign-runs': {
@@ -337,9 +337,9 @@ describe('Measure history', () => {
       'maturity-status': 'matured',
       'evaluation-mode': 'attainment-only',
       'workflow-name': 'Optimization / Token Optimizer',
-      points: [
-        { x: '2026-09-24T00:00:00Z', y: 0.5, color: 'github/gh-aw', key: 'gh-aw' },
-        { x: '2026-09-24T00:00:00Z', y: 1, color: 'githubnext/gh-aw-cao', key: 'gh-aw-cao' }
+      series: [
+        { id: 'github/gh-aw', label: 'github/gh-aw', points: [{ x: '2026-09-24T00:00:00Z', y: 0.5, key: 'gh-aw' }] },
+        { id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [{ x: '2026-09-24T00:00:00Z', y: 1, key: 'gh-aw-cao' }] }
       ]
     }];
     const rendered = renderMeasureHistory({
@@ -381,10 +381,10 @@ describe('Measure history', () => {
       'maturity-status': 'matured',
       'evaluation-mode': 'attainment-only',
       'workflow-name': 'Optimization / Token Optimizer',
-      points: [
+      series: [{ id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [
         { x: '2026-09-23T00:00:00Z', y: 16.25, color: 'githubnext/gh-aw-cao' },
         { x: '2026-09-24T00:00:00Z', y: 14.75, color: 'githubnext/gh-aw-cao' }
-      ]
+      ] }]
     }, {
       metric: 'optimization-token-optimizer.failure-rate-percent',
       'operational-value-name': 'Failure rate',
@@ -393,10 +393,10 @@ describe('Measure history', () => {
       'maturity-status': 'matured',
       'evaluation-mode': 'attainment-only',
       'workflow-name': 'Optimization / Token Optimizer',
-      points: [
+      series: [{ id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [
         { x: '2026-09-23T00:00:00Z', y: 4.5, color: 'githubnext/gh-aw-cao' },
         { x: '2026-09-24T00:00:00Z', y: 3.5, color: 'githubnext/gh-aw-cao' }
-      ]
+      ] }]
     }];
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',

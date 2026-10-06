@@ -4227,7 +4227,7 @@ dashboard:
         - id: topology
           data:
             source: workflows
-            limit: 1
+            limit: 0
           mark: element
           element: unknown-topology
           encoding: {}
@@ -4256,7 +4256,7 @@ dashboard:
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].icon' }),
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].element' }),
         expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].data.source' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].data.limit' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.limit' }),
         expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].encoding' }),
         expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[1].data.sources' }),
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[1].encoding.columns[0].display' }),

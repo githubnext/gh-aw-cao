@@ -2043,7 +2043,9 @@ export function resolveQueryDrillPageTitle(parameters, knownQueries) {
  * @param {string} value
  */
 function dispatchPageRoute(page, parameter, value) {
-  for (const routeView of page.querySelectorAll('[data-route-view]')) {
+  const routeViews = [...page.querySelectorAll('[data-route-view]')];
+  if (page.matches('[data-route-view]')) routeViews.unshift(page);
+  for (const routeView of routeViews) {
     routeView.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter, value }
     }));

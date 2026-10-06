@@ -1,6 +1,74 @@
 {
   "queries": [
     {
+      "name": "workflow-route-record",
+      "subject": "Project the selected workflow's identity and registration for its route shell.",
+      "objective": "Identify the workflow and its recorded campaign registration before inspecting route-specific evidence.",
+      "acceptance": "Preserve organization, repository, workflow identity, recorded role, activation, campaign, rollout mode, and source link; absent registration is not inferred from runs, and displayed activation does not grant execution authority.",
+      "from": "workflows",
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "workflow" },
+        { "field": "workflow-name" }, { "field": "workflow-role" }, { "field": "workflow-active" },
+        { "field": "campaign" }, { "field": "campaign-name" },
+        { "field": "rollout-mode" }, { "field": "workflow-link" }
+      ]
+    },
+    {
+      "name": "workflow-runtime-health-summary",
+      "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
+      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
+      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
+      "from": "runs",
+      "compute": [
+        { "as": "successful", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }] },
+        { "as": "failed", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }] },
+        { "as": "approval", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "action-required" }] },
+        { "as": "classified", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }, { "value": "action-required" }] },
+        { "as": "status", "function": "concat", "args": [{ "field": "run-status" }, { "value": "" }] },
+        { "as": "terminal-or-missing", "function": "equals-any", "args": [{ "field": "status" }, { "value": "completed" }, { "value": "" }] }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "run", "as": "total", "reducer": "count" },
+          { "field": "run", "as": "successful", "reducer": "count", "filter": { "predicates": [{ "field": "successful", "equals": true }] } },
+          { "field": "run", "as": "failed", "reducer": "count", "filter": { "predicates": [{ "field": "failed", "equals": true }] } },
+          { "field": "run", "as": "approval", "reducer": "count", "filter": { "predicates": [{ "field": "approval", "equals": true }] } },
+          { "field": "run", "as": "pending", "reducer": "count", "filter": { "predicates": [{ "field": "classified", "equals": false }, { "field": "terminal-or-missing", "equals": false }] } },
+          { "field": "run", "as": "other", "reducer": "count", "filter": { "predicates": [{ "field": "classified", "equals": false }, { "field": "terminal-or-missing", "equals": true }] } }
+        ]
+      }
+    },
+    {
+      "name": "workflow-runtime-usage-summary",
+      "subject": "Sum retained AI Credits and count telemetry rows for the selected workflow without transferring runs.",
+      "objective": "Inspect a workflow's observed AI Credit consumption together with the amount of retained usage telemetry.",
+      "acceptance": "AI Credits sum the retained aic values within each organization, repository, and workflow, and telemetry-count counts its usage records; absent telemetry does not establish zero cost or complete run coverage.",
+      "from": "usage",
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "aic", "as": "aic", "reducer": "sum" },
+          { "field": "run", "as": "telemetry-count", "reducer": "count" }
+        ]
+      }
+    },
+    {
+      "name": "outcome-route-record",
+      "subject": "Project the selected safe-output record for the outcome route and its sections.",
+      "objective": "Inspect a retained safe output's recorded disposition and follow its durable evidence links.",
+      "acceptance": "Preserve safe-output and run identity, title, category, disposition, summary, timestamps, rollout mode, workflow context, and retained links; missing fields stay unknown and a recorded disposition is not independently verified operational impact.",
+      "from": "outcomes",
+      "select": [
+        { "field": "safe-output" }, { "field": "run" }, { "field": "outcome-title" }, { "field": "outcome-number" },
+        { "field": "outcome-category" }, { "field": "outcome-status" }, { "field": "outcome-state" },
+        { "field": "outcome-summary" },
+        { "field": "published-at" }, { "field": "observed-at" }, { "field": "rollout-mode" },
+        { "field": "workflow" }, { "field": "workflow-name" }, { "field": "workflow-link" },
+        { "field": "external-link" }, { "field": "issue-link" }, { "field": "pull-request-link" }, { "field": "run-link" }
+      ]
+    },
+    {
       "name": "entity-runs",
       "subject": "Project run entities for reusable run cards and workflow drill-down.",
       "objective": "Expose retained run-attempt identity, execution timing, conclusion, and link for a bounded workflow-run inspection.",
@@ -499,8 +567,10 @@
           "title": "Workflow reports",
           "data": {
             "sources": [
-              "workflows"
-            ]
+              "workflow-route-record"
+            ],
+            "route-field": "workflow",
+            "limit": 1
           },
           "mark": "element",
           "element": "workflow-route-page",
@@ -630,8 +700,10 @@
           "title": "Workflow runs",
           "data": {
             "sources": [
-              "workflows"
-            ]
+              "workflow-route-record"
+            ],
+            "route-field": "workflow",
+            "limit": 1
           },
           "mark": "element",
           "element": "workflow-route-page",
@@ -860,10 +932,12 @@
           "title": "Workflow runtime",
           "data": {
             "sources": [
-              "workflows",
-              "runs",
-              "usage"
-            ]
+              "workflow-route-record",
+              "workflow-runtime-health-summary",
+              "workflow-runtime-usage-summary"
+            ],
+            "route-field": "workflow",
+            "limit": 1
           },
           "mark": "element",
           "element": "workflow-route-page",
@@ -925,8 +999,10 @@
           "element": "outcome-detail",
           "data": {
             "sources": [
-              "outcomes"
-            ]
+              "outcome-route-record"
+            ],
+            "route-field": "safe-output",
+            "limit": 1
           },
           "layout": "full"
         },
@@ -935,8 +1011,10 @@
           "title": "Outcome discussion",
           "data": {
             "sources": [
-              "outcomes"
-            ]
+              "outcome-route-record"
+            ],
+            "route-field": "safe-output",
+            "limit": 1
           },
           "mark": "element",
           "element": "outcome-detail-section",
@@ -950,8 +1028,10 @@
           "title": "Outcome metadata",
           "data": {
             "sources": [
-              "outcomes"
-            ]
+              "outcome-route-record"
+            ],
+            "route-field": "safe-output",
+            "limit": 1
           },
           "mark": "element",
           "element": "outcome-detail-section",

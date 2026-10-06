@@ -30,11 +30,30 @@ The shared control component keeps one canonical runtime under `.github/workflow
 | Campaign | The campaign is declared and not disabled. |
 | Worker | A worker is declared under that campaign and not disabled. |
 | Target input | A supplied `target_repo` uses exact `owner/repository` form. Scope and access are checked later during precompute. |
-| Mode input | `safe_output_mode` is `review` or `live` and does not exceed the checked-in campaign, target, or worker ceiling. |
+| Mode input | `review` or `live` does not exceed the checked-in ceiling; request-only `debug` passes the manual worker and human authorization gates below. |
 | Run limits | `max_repos` and `rollout_percent` are valid and do not exceed checked-in policy. |
 | GitHub API capacity | The credential used for precompute has enough primary REST API capacity for the run. |
 
 A manual dispatch can narrow a run, such as changing an authorized `live` run to `review` or reducing `max_repos`. It cannot promote mode, add scope, enable a campaign or worker, or increase a limit.
+
+### Manual Debug Admission
+
+`debug` is accepted only for a directly launched `workflow_dispatch` worker,
+not an orchestrator, scheduled run, or bot dispatch. Admission verifies the
+authoritative event inputs and human sender, rejects a different rerun actor,
+and checks that the sender still has write, maintain, or admin permission on
+the control repository. Missing event or permission evidence denies the run.
+Precompute repeats that check before producing the worker handoff.
+
+Debug retains exact-SHA policy validation, campaign and worker enablement,
+target scope, request limits, credential requirements, and API-capacity
+checks. It replaces only dispatcher-envelope requirements: correlation ID,
+central repository, and originating-run URL inputs must be empty.
+The output repository must equal the explicit target; no review destination
+is resolved because gh-aw stages every declared output. Debug cannot be
+persisted as a policy mode or dispatched by an orchestrator.
+See [Local Worker Debugging](local-debugging.md)
+for launch commands, staging behavior, and the local-origin limitation.
 
 ## Worker Dispatch Trust Boundary
 
@@ -96,6 +115,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 | `worker-disabled`, `unknown worker: <campaign>/<worker>` | Worker | Review the worker, then remove `enabled: false` or declare it under `control-plane.campaigns.<campaign>.workers` when it is safe to resume. |
 | `target_repo must use owner/repository form` | Target input | Fix the `target_repo` manual input to the exact `owner/repository` form. |
 | `safe_output_mode exceeds checked-in policy`, `safe_output_mode must be review or live` | Mode input | Narrow the requested `safe_output_mode`, or raise the checked-in campaign, target, or worker `mode`/`max-mode` ceiling. |
+| `debug ...` | Mode input | Launch a worker manually as a write-authorized human, use an in-scope target as the output repository, and omit dispatcher-envelope inputs. Inspect the exact reason for missing event or permission evidence. |
 | `max_repositories exceeds checked-in policy`, `rollout_percent exceeds checked-in policy`, or an integer-range message | Run limits | Narrow the requested `max_repos`/`rollout_percent`, or raise the checked-in `max-repositories`/`rollout-percent`. |
 | `github-api-capacity-insufficient`, `github-api-capacity-unavailable` | GitHub API capacity | Follow the remediation guidance in the run summary and wait until the reported reset time before retrying. |
 

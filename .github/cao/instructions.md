@@ -16,6 +16,13 @@ Treat this as a one-way boundary. CAO may deny a run or narrow its scope, but it
 
 Orchestrators select and dispatch within the resolved rollout envelope; they do not perform target work. Workers enforce one dispatched target, resolve current policy before model execution, and do not discover repositories, dispatch downstream work, escalate mode, or accept credentials in the dispatch envelope.
 
+`debug` is a request-only exception for one manually launched worker: require a
+human `workflow_dispatch` actor with current control-repository write access,
+retain policy scope and enablement, reject dispatcher-envelope inputs, and force
+gh-aw safe-output staging. It is not a policy ceiling, dispatcher mode, or live
+authority. GitHub cannot verify local CLI origin; repository-memory staging
+remains gh-aw-owned.
+
 ## Workflow authoring
 
 For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.

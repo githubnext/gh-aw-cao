@@ -1,12 +1,11 @@
 /**
  * Reusable routed single-record detail view.
  *
- * Binds a route parameter to a single matched row drawn from an already
- * resolved row set, dispatches the shared `dashboard-route-allocation` event
+ * Binds a route parameter to a single query result, dispatches the shared `dashboard-route-allocation` event
  * describing the matched record, and renders one of the select/not-found/
  * matched states through {@link createRouteView}. Domain-specific detail
- * views (an outcome, an entity, a problem) differ only in how they locate a
- * row and how they describe and render it once found; this primitive
+ * views differ only in how they validate the result's route identity
+ * and how they describe and render it; this primitive
  * captures the shared route-binding, debug-logging, and allocation-dispatch
  * control flow so each view supplies only that domain-specific behavior.
  */
@@ -21,8 +20,8 @@ import { createDebug } from '../debug.js';
  *   datasetKey: string,
  *   selectMessage: string,
  *   notFoundMessage: string,
- *   rows: Array<Record<string, unknown>>,
- *   match: (rows: Array<Record<string, unknown>>, routeValue: string) => Record<string, unknown> | undefined,
+ *   row: Record<string, unknown> | undefined,
+ *   matches: (row: Record<string, unknown>, routeValue: string) => boolean,
  *   allocation: (row: Record<string, unknown>, routeValue: string) => Record<string, unknown>,
  *   renderContent: (row: Record<string, unknown>, routeValue: string) => HTMLElement
  * }} RouteDetailViewOptions
@@ -35,7 +34,7 @@ import { createDebug } from '../debug.js';
  */
 export function renderRouteDetailView(context, options) {
   const debug = createDebug(options.category);
-  debug({ event: 'initialized', pageId: context.pageId, rowCount: options.rows.length });
+  debug({ event: 'initialized', pageId: context.pageId, rowCount: options.row ? 1 : 0 });
   /** @type {HTMLElement} */
   let root;
   root = createRouteView({
@@ -45,8 +44,8 @@ export function renderRouteDetailView(context, options) {
     selectMessage: options.selectMessage,
     notFoundMessage: options.notFoundMessage,
     renderMatched: (routeValue) => {
-      const row = options.match(options.rows, routeValue);
-      if (!row) {
+      const row = options.row;
+      if (!row || !options.matches(row, routeValue)) {
         debug({ event: 'not-found', pageId: context.pageId });
         return null;
       }

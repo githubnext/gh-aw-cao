@@ -74,7 +74,7 @@ func Validate(definitions []Definition) error {
 			return fmt.Errorf("query %q exceeds temporal-series resource limits", definition.Name)
 		}
 		if definition.TemporalSeries != nil && definition.TemporalSeries.Shape != "" &&
-			definition.TemporalSeries.Shape != "tidy" && definition.TemporalSeries.Shape != "groups" {
+			definition.TemporalSeries.Shape != "tidy" && definition.TemporalSeries.Shape != "groups" && definition.TemporalSeries.Shape != "panels" {
 			return fmt.Errorf("query %q has unsupported temporal-series shape %q", definition.Name, definition.TemporalSeries.Shape)
 		}
 		for _, computed := range definition.Compute {

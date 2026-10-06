@@ -269,6 +269,13 @@ describe('workflow detail route', () => {
         value: 'githubnext/gh-aw-cao:.github/workflows/release@prod.md'
       }
     }));
-    expect(rendered.textContent).toContain('.github/workflows/release@prod.md');
+    expect(rendered.textContent).toBe('Workflow not found.');
+    const updated = context();
+    updated.sources.workflows.rows = [updated.sources.workflows.rows[2]];
+    const selected = renderWorkflowRoutePage(updated);
+    selected.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'workflow', value: 'githubnext/gh-aw-cao:.github/workflows/release@prod.md' }
+    }));
+    expect(selected.textContent).toContain('.github/workflows/release@prod.md');
   });
 });

@@ -21,8 +21,8 @@ function baseOptions(overrides = {}) {
     datasetKey: 'fixture',
     selectMessage: 'Select a fixture.',
     notFoundMessage: 'Fixture not found.',
-    rows: [{ id: 'a', label: 'Alpha' }],
-    match: (rows, routeValue) => rows.find((row) => row.id === routeValue.trim()),
+    row: { id: 'a', label: 'Alpha' },
+    matches: (row, routeValue) => row.id === routeValue.trim(),
     allocation: (row) => ({ title: row.label }),
     renderContent: (row) => Object.assign(document.createElement('p'), { textContent: `Content for ${row.label}` }),
     ...overrides
