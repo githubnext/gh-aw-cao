@@ -626,7 +626,7 @@ describe('dashboard view query contracts', () => {
     }
   });
 
-  it('computes native-unit operational-value rates using only selected-horizon observations', () => {
+  it('retains native-unit operational-value observations using only the selected horizon', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
     );
@@ -654,7 +654,7 @@ describe('dashboard view query contracts', () => {
     const series = result[payload.aliases[0]]?.rows ?? [];
     expect(series).toHaveLength(1);
     const points = /** @type {Array<{ y: number }>} */ (series[0].points);
-    expect(points.map((point) => point.y)).toEqual([10, 10]);
+    expect(points.map((point) => point.y)).toEqual([10, 20, 30]);
   });
 
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {

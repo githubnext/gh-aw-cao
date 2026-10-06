@@ -1,31 +1,12 @@
 {
   "queries": [
     {
-      "name": "campaign-operational-value-daily-change",
-      "subject": "Measure elapsed-day changes in each repository's operational value.",
-      "objective": "Compare rates of change across irregularly spaced observations.",
-      "acceptance": "The first observation and observations without a valid prior value or elapsed time have no rate; repositories and definitions never share a previous observation.",
-      "from": "operational-values",
-      "window": [
-        {
-          "operation": "change",
-          "field": "operational-value",
-          "as": "change-per-day",
-          "mode": "rate",
-          "time-field": "observed-at",
-          "unit": "day",
-          "order-by": [{ "field": "observed-at" }],
-          "groupby": ["campaign", "organization", "repository", "operational-value-definition"]
-        }
-      ]
-    },
-    {
       "name": "campaign-operational-value-primary-series",
-      "subject": "Project native-unit daily operational-value changes into repository temporal series.",
-      "objective": "Choose a repository and measure whose daily change needs evidence review.",
-      "acceptance": "Each plotted point is a valid elapsed-day change in the measure's native units; the first and missing changes are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
-      "description": "Repository daily rates in native units; point-level maturity and missing values require source observation review.",
-      "from": "campaign-operational-value-daily-change",
+      "subject": "Project native operational-value observations into repository temporal series.",
+      "objective": "Choose a repository and measure whose observed value needs evidence review.",
+      "acceptance": "Each plotted point retains the observed measure's native value and unit, including the first observation; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for point maturity before interpreting trends; do not infer causality.",
+      "description": "Repository observations in native units; point-level maturity and missing values require source observation review.",
+      "from": "operational-values",
       "compute": [
         {
           "as": "series-repository",
@@ -51,7 +32,7 @@
         ],
         "measures": [
           {
-            "field": "change-per-day",
+            "field": "operational-value",
             "key": "operational-value-definition",
             "kind": "primary"
           }
@@ -133,10 +114,10 @@
     },
     {
       "name": "campaign-operational-value-plot-inventory",
-      "subject": "Describe each repository operational-value daily-change plot rendered on campaign Insights.",
+      "subject": "Describe each repository operational-value observation plot rendered on campaign Insights.",
       "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series group with a plottable daily change, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
-      "description": "Plot inventory derived from native-unit repository daily-change series; maturity must be checked separately.",
+      "acceptance": "Every plot entry derives from a primary-series group with a plottable observation, its repository, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
+      "description": "Plot inventory derived from native-unit repository observations; maturity must be checked separately.",
       "from": "campaign-operational-value-primary-series"
     },
     {
@@ -259,7 +240,7 @@
         },
         {
           "id": "campaign-operational-value-history",
-          "title": "Repository operational value change per day",
+          "title": "Repository operational value observations",
           "data": {
             "sources": [
               "campaign-operational-value-primary-series",
@@ -278,7 +259,7 @@
           "layout": "full",
           "config": {
             "measure-source": "operational-value",
-            "empty-message": "No daily operational-value changes can be plotted in this horizon. At least two valid observations per repository and measure are needed."
+            "empty-message": "No operational-value observations can be plotted in this horizon."
           }
         },
         {

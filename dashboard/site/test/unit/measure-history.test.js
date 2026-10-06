@@ -231,6 +231,40 @@ describe('Measure history', () => {
     expect(rendered.textContent).toContain('Recommendation acceptance share');
   });
 
+  it('labels decreasing AIC per successful run as a native observation, not a negative daily rate', () => {
+    const rendered = renderMeasureHistory({
+      title: 'Repository operational value',
+      sourceNames: ['value-series'],
+      sources: {
+        'value-series': {
+          source: 'value-series',
+          metadata,
+          rows: [{
+            metric: 'optimization-token-optimizer.aic-per-successful-run',
+            'operational-value-name': 'AI Credit per successful run',
+            'operational-value-unit': 'aic-per-run',
+            'operational-value-direction': 'decrease',
+            points: [
+              { x: '2026-09-22T00:00:00Z', y: 12.5, color: 'githubnext/gh-aw' },
+              { x: '2026-09-24T00:00:00Z', y: 8.25, color: 'githubnext/gh-aw' }
+            ]
+          }]
+        }
+      },
+      elementConfig: { 'measure-source': 'operational-value' },
+      pageId: 'test-page',
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+    expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent).toBe('Lower is better');
+    expect([...rendered.querySelectorAll('.temporal-plot-point')].map((point) => point.getAttribute('aria-label')))
+      .toEqual([
+        expect.stringContaining('12.5 aic-per-run'),
+        expect.stringContaining('8.25 aic-per-run')
+      ]);
+    expect(rendered.textContent).not.toContain('AIC/run/day');
+  });
+
   it('plots interim evidence with an explicit not-yet-mature state', () => {
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
@@ -290,7 +324,7 @@ describe('Measure history', () => {
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
     expect(rendered.querySelector('.temporal-plot-metric')).toBeNull();
     expect(rendered.querySelector('.temporal-plot-point')).not.toBeNull();
-    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toContain('repository daily change timeline');
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toContain('repository observations timeline');
     expect(rendered.querySelector('.temporal-metric-plot-provisional')).not.toBeNull();
   });
 
@@ -379,8 +413,8 @@ describe('Measure history', () => {
     expect(rendered.querySelectorAll('.temporal-metric-plot')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(4);
     expect(rendered.textContent).toContain('Lower is better');
-    expect(rendered.textContent).toContain('14.75AIC/run/day');
-    expect(rendered.textContent).toContain('3.5pp/day');
+    expect(rendered.textContent).toContain('14.75AIC/run');
+    expect(rendered.textContent).toContain('3.5%');
   });
 
   it('toggles an operational-grader chart point selection and its readout on repeated activation', () => {
