@@ -183,7 +183,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     { width: 390, height: 844, introColumns: 1, colorScheme: 'light', itemBackground: 'rgb(246, 248, 250)' }
   ]) {
     await page.setViewportSize(viewport);
-    await page.emulateMedia({ colorScheme: viewport.colorScheme });
+    await page.emulateMedia({ colorScheme: /** @type {'dark'|'light'} */ (viewport.colorScheme) });
     const factory = await render(overviewPage);
 
     await expect(factory).toBeVisible();
