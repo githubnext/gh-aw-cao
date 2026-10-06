@@ -589,7 +589,7 @@ for (const [description, repository] of [
   });
 }
 
-test("streamed install.sh requires an explicit Activity authentication profile", async (t) => {
+test("streamed install.sh defaults Activity authentication to the control repository workflow token", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   assert.equal(await log(), "add\n");
@@ -601,10 +601,24 @@ test("streamed install.sh requires an explicit Activity authentication profile",
   assert.deepEqual(settings.allowed_repositories, [repository]);
   assert.deepEqual(settings.campaigns, {});
   const authentication = await import(pathToFileURL(path.join(consumer, "activity", "authentication.mjs")).href);
-  assert.throws(
-    () => authentication.activityCollectionPlan(settings, { controlRepository: repository }),
-    /GH_AW_GITHUB_AUTH_MODE must explicitly select app or pat.*\.\/cao\.sh setup-auth github-app/s,
+  assert.deepEqual(
+    authentication.activityCollectionPlan(settings, { controlRepository: repository }),
+    [{
+      owner: repository.split("/")[0],
+      repositories: [repository],
+      credentialRepository: repository,
+      artifact: repository.split("/")[0].toLowerCase(),
+    }],
   );
+  for (const broaderScope of [
+    { ...settings, allowed_repositories: [repository, "alpha-org/service"] },
+    { ...settings, allowed_repositories: [] },
+  ]) {
+    assert.throws(
+      () => authentication.activityCollectionPlan(broaderScope, { controlRepository: repository }),
+      /GITHUB_TOKEN can collect CAO Activity only for the control repository/,
+    );
+  }
 });
 
 test("installed Activity reserves owner-wide discovery for App mode", async (t) => {
