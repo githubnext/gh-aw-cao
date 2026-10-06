@@ -26,7 +26,7 @@ beforeEach(async () => {
 });
 
 describe('canonical dashboard worker ingestion order', () => {
-  it('stores JSONL run records once when bootstrapping with inventory sources', async () => {
+  it.each([1, 100])('stores JSONL run records once and reserves preparation progress with %i shards', async (shardCount) => {
     /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */
     const listeners = new Map();
     /** @type {Record<string, unknown>[]} */
@@ -45,6 +45,7 @@ describe('canonical dashboard worker ingestion order', () => {
         if (message.id === 1) resolveResponse(message);
       }
     }));
+    vi.resetModules();
     await import('../../src/data-worker.js');
 
     const run = {
@@ -79,7 +80,8 @@ describe('canonical dashboard worker ingestion order', () => {
       },
       ...runRecords
     ].map((line) => JSON.stringify(line)).join('\n') + '\n';
-    const runName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    const runNames = Array.from({ length: shardCount }, (_, index) =>
+      `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${index.toString(16).padStart(16, '0')}.jsonl`);
     const inventory = {
       repositories: {
         rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
@@ -101,7 +103,7 @@ describe('canonical dashboard worker ingestion order', () => {
         return Response.json(inventory);
       }
       if (url.endsWith('/payload-hashes.json')) {
-        return Response.json({ [runName]: 'a'.repeat(64) });
+        return Response.json(Object.fromEntries(runNames.map((name) => [name, 'a'.repeat(64)])));
       }
       return new Response(normalizedRuns);
     });
@@ -150,12 +152,31 @@ describe('canonical dashboard worker ingestion order', () => {
     const updates = posted.filter((message) => message.type === 'loading-progress'
       && /** @type {{ phase?: string }} */ (message.state)?.phase === 'update')
       .map((message) => /** @type {{ completed: number, total: number, stage: string }} */ (message.state));
+    const preparationStepWeight = Math.max(1, shardCount / 7);
+    const totalSteps = shardCount + 3 * preparationStepWeight;
     expect(updates.some(({ stage, completed, total }) =>
-      stage === 'files' && completed === total - 3)).toBe(true);
+      stage === 'files' && completed === shardCount && total === totalSteps)).toBe(true);
     expect(updates.some(({ stage, completed, total }) =>
-      stage === 'maintenance' && completed > total - 3 && completed < total - 2)).toBe(true);
-    expect(updates.at(-2)).toMatchObject({ stage: 'inventory', completed: 2, total: 4 });
-    expect(updates.at(-1)).toMatchObject({ stage: 'queries', completed: 3, total: 4 });
+      stage === 'maintenance' && completed > shardCount
+      && completed < shardCount + preparationStepWeight && total === totalSteps)).toBe(true);
+    const inventoryProgress = updates.at(-2);
+    const queryProgress = updates.at(-1);
+    expect(inventoryProgress).toMatchObject({
+      stage: 'inventory', completed: shardCount + preparationStepWeight, total: totalSteps
+    });
+    expect(queryProgress).toMatchObject({
+      stage: 'queries', completed: shardCount + 2 * preparationStepWeight, total: totalSteps
+    });
+    if (!inventoryProgress || !queryProgress) throw new Error('Missing post-shard progress.');
+    const stageBoundaries = [
+      shardCount,
+      inventoryProgress.completed,
+      queryProgress.completed,
+      totalSteps
+    ].map((completed) => completed / totalSteps);
+    for (let index = 1; index < stageBoundaries.length; index += 1) {
+      expect(stageBoundaries[index] - stageBoundaries[index - 1]).toBeGreaterThanOrEqual(0.1 - Number.EPSILON);
+    }
     expect(updates.every(({ completed, total }) => completed < total)).toBe(true);
     expect(posted.findIndex((message) => message.type === 'loading-progress'
       && /** @type {{ phase?: string }} */ (message.state)?.phase === 'complete'))

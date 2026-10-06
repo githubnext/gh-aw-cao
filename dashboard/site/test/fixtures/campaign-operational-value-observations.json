@@ -1,0 +1,52 @@
+[
+  {
+    "campaign": "optimization",
+    "organization": "githubnext",
+    "repository": "gh-aw",
+    "operational-value": 12.5,
+    "operational-value-definition": "optimization-token-optimizer.aic-per-successful-run",
+    "operational-value-role": "primary",
+    "operational-value-name": "AI Credit per successful run",
+    "operational-value-unit": "aic-per-run",
+    "maturity-status": "interim",
+    "adoption-at": "2026-09-15T23:30:36Z",
+    "observed-at": "2026-09-22T20:56:21Z"
+  },
+  {
+    "campaign": "optimization",
+    "organization": "githubnext",
+    "repository": "gh-aw",
+    "operational-value": 8.25,
+    "operational-value-definition": "optimization-token-optimizer.aic-per-successful-run",
+    "operational-value-role": "primary",
+    "operational-value-name": "AI Credit per successful run",
+    "operational-value-unit": "aic-per-run",
+    "maturity-status": "interim",
+    "adoption-at": "2026-09-15T23:30:36Z",
+    "observed-at": "2026-09-24T20:56:21Z"
+  },
+  {
+    "campaign": "optimization",
+    "organization": "githubnext",
+    "repository": "gh-aw",
+    "operational-value": 1,
+    "operational-value-definition": "optimization-token-optimizer.recommendation-acceptance-share",
+    "operational-value-role": "diagnostic",
+    "operational-value-name": "Recommendation acceptance share",
+    "maturity-status": "interim",
+    "adoption-at": "2026-09-15T23:30:36Z",
+    "observed-at": "2026-09-22T20:56:21Z"
+  },
+  {
+    "campaign": "optimization",
+    "organization": "githubnext",
+    "repository": "gh-aw",
+    "operational-value": 0.5,
+    "operational-value-definition": "optimization-token-optimizer.recommendation-acceptance-share",
+    "operational-value-role": "diagnostic",
+    "operational-value-name": "Recommendation acceptance share",
+    "maturity-status": "interim",
+    "adoption-at": "2026-09-15T23:30:36Z",
+    "observed-at": "2026-09-24T20:56:21Z"
+  }
+]

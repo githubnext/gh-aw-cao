@@ -35,7 +35,10 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', './apple-touch-icon.png');
   await expect(page.locator('meta[name="application-name"]'))
     .toHaveAttribute('content', 'Central Agentic Ops Dashboard');
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d1117');
+  await expect(page.locator('meta[name="theme-color"][media="(prefers-color-scheme: dark)"]'))
+    .toHaveAttribute('content', '#0d1117');
+  await expect(page.locator('meta[name="theme-color"][media="(prefers-color-scheme: light)"]'))
+    .toHaveAttribute('content', '#ffffff');
   await expect(page.locator('meta[name="mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
   await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Agentic Ops');
@@ -71,6 +74,33 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
   if (testInfo.project.name === 'desktop-chrome') {
     expect(result.userAgent).toContain('Chrome/');
     expect(result.userAgent).not.toContain('Edg/');
+  }
+});
+
+test.describe('system-theme startup without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+    test(`paints the ${colorScheme} canvas before the app loads`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await page.goto('http://localhost/');
+
+      const background = colorScheme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(13, 17, 23)';
+      const foreground = colorScheme === 'light' ? 'rgb(31, 35, 40)' : 'rgb(240, 246, 252)';
+      await expect(page.locator('html')).toHaveCSS('background-color', background);
+      await expect(page.locator('html')).toHaveCSS('color-scheme', colorScheme);
+      await expect(page.locator('body')).toHaveCSS('background-color', background);
+      await expect(page.locator('body')).toHaveCSS('color', foreground);
+      await expect(page.locator('noscript [role="alert"]')).toBeVisible();
+      await expect(page.locator('#root')).toBeEmpty();
+
+      const nextScheme = colorScheme === 'light' ? 'dark' : 'light';
+      await page.emulateMedia({ colorScheme: nextScheme });
+      await expect(page.locator('html')).toHaveCSS('color-scheme', nextScheme);
+      await expect(page.locator('body')).toHaveCSS(
+        'background-color', nextScheme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(13, 17, 23)'
+      );
+    });
   }
 });
 

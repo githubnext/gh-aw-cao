@@ -12,7 +12,17 @@ export default defineConfig({
           name: 'dashboard',
           environment: 'jsdom',
           include: ['test/unit/**/*.test.js'],
-          exclude: ['test/unit/audit-curation.test.js']
+          exclude: ['test/unit/audit-curation.test.js', 'test/unit/dashboard-navigation.test.js']
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'dashboard-navigation',
+          environment: 'jsdom',
+          include: ['test/unit/dashboard-navigation.test.js'],
+          // VM workers suppress diagnostics when the mocked localStorage getter throws.
+          pool: 'forks'
         }
       },
       {

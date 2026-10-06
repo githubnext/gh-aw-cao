@@ -62,6 +62,110 @@ func TestRedisMemoryBudgetAndReplyValidation(t *testing.T) {
 	}
 }
 
+func TestUnsupportedScriptIntrospection(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		message string
+		probe   int
+		want    bool
+	}{
+		{name: "command not allowed from script", message: "ERR This Redis command is not allowed from script", probe: 0, want: true},
+		{name: "command not allowed in script", message: "ERR This Redis command is not allowed in script", probe: 1, want: true},
+		{name: "not supported for scripts", message: "ERR INFO is not supported for scripts", probe: 0, want: true},
+		{name: "not supported in lua", message: "ERR MEMORY is not supported in lua", probe: 1, want: true},
+		{name: "unknown command info", message: "ERR unknown command 'INFO'", probe: 0, want: true},
+		{name: "unknown command memory on info probe mismatches", message: "ERR unknown command 'MEMORY'", probe: 0, want: false},
+		{name: "unknown command memory", message: "ERR unknown command 'MEMORY'", probe: 1, want: true},
+		{name: "unknown subcommand usage", message: "ERR unknown subcommand or wrong number of arguments for 'USAGE'", probe: 1, want: true},
+		{name: "unknown subcommand usage on info probe mismatches", message: "ERR unknown subcommand 'USAGE'", probe: 0, want: false},
+		{name: "unrelated error", message: "ERR wrong number of arguments", probe: 0, want: false},
+		{name: "mixed case still matches", message: "Err Unknown Command 'info'", probe: 0, want: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := unsupportedScriptIntrospection(test.message, test.probe); got != test.want {
+				t.Fatalf("unsupportedScriptIntrospection(%q, %d) = %t, want %t", test.message, test.probe, got, test.want)
+			}
+		})
+	}
+}
+
+func TestClassifyCapabilityProbe(t *testing.T) {
+	quotaReported := func(any) (bool, error) { return true, nil }
+	quotaAbsent := func(any) (bool, error) { return false, nil }
+	quotaFailed := func(any) (bool, error) { return false, errors.New("invalid Redis memory INFO response") }
+
+	t.Run("wrong field count is rejected", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{int64(1)}, quotaReported); err == nil {
+			t.Fatal("expected an error for a malformed probe shape")
+		}
+	})
+	t.Run("non-integer status is rejected", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{"1", nil}, quotaReported); err == nil {
+			t.Fatal("expected an error for a non-integer status")
+		}
+	})
+	t.Run("unsupported introspection disables caches", func(t *testing.T) {
+		forceDisable, err := classifyCapabilityProbe(0, []any{int64(0), "ERR unknown command 'INFO'"}, quotaReported)
+		if err != nil || !forceDisable {
+			t.Fatalf("forceDisable=%t err=%v, want true, nil", forceDisable, err)
+		}
+	})
+	t.Run("unrecognized script failure is rejected", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{int64(0), "ERR wrong number of arguments"}, quotaReported); err == nil {
+			t.Fatal("expected an error for an unrecognized script failure")
+		}
+	})
+	t.Run("non-string failure payload is rejected", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{int64(0), int64(1)}, quotaReported); err == nil {
+			t.Fatal("expected an error for a non-string failure payload")
+		}
+	})
+	t.Run("index zero with reported quota stays enabled", func(t *testing.T) {
+		forceDisable, err := classifyCapabilityProbe(0, []any{int64(1), "used_memory:1\r\nmaxmemory:0\r\n"}, quotaReported)
+		if err != nil || forceDisable {
+			t.Fatalf("forceDisable=%t err=%v, want false, nil", forceDisable, err)
+		}
+	})
+	t.Run("index zero without a reported quota disables caches", func(t *testing.T) {
+		forceDisable, err := classifyCapabilityProbe(0, []any{int64(1), "used_memory:1\r\n"}, quotaAbsent)
+		if err != nil || !forceDisable {
+			t.Fatalf("forceDisable=%t err=%v, want true, nil", forceDisable, err)
+		}
+	})
+	t.Run("index zero propagates a quota lookup failure", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{int64(1), "invalid"}, quotaFailed); err == nil {
+			t.Fatal("expected the quota lookup error to propagate")
+		}
+	})
+	t.Run("index one accepts a nil usage probe", func(t *testing.T) {
+		forceDisable, err := classifyCapabilityProbe(1, []any{int64(1), nil}, quotaReported)
+		if err != nil || forceDisable {
+			t.Fatalf("forceDisable=%t err=%v, want false, nil", forceDisable, err)
+		}
+	})
+	t.Run("index one accepts a valid usage probe", func(t *testing.T) {
+		forceDisable, err := classifyCapabilityProbe(1, []any{int64(1), int64(64)}, quotaReported)
+		if err != nil || forceDisable {
+			t.Fatalf("forceDisable=%t err=%v, want false, nil", forceDisable, err)
+		}
+	})
+	t.Run("index one rejects a negative usage probe", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(1, []any{int64(1), int64(-1)}, quotaReported); err == nil {
+			t.Fatal("expected an error for a negative usage probe")
+		}
+	})
+	t.Run("index one rejects a non-integer usage probe", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(1, []any{int64(1), "64"}, quotaReported); err == nil {
+			t.Fatal("expected an error for a non-integer usage probe")
+		}
+	})
+	t.Run("unknown status is rejected", func(t *testing.T) {
+		if _, err := classifyCapabilityProbe(0, []any{int64(2), nil}, quotaReported); err == nil {
+			t.Fatal("expected an error for an unknown probe status")
+		}
+	})
+}
+
 func TestDisposableCacheKeyAllowlist(t *testing.T) {
 	store := NewStore(nil, "memory-unit")
 	digest := queryDigest("test")

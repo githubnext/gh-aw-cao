@@ -9,13 +9,17 @@ import { expect, test } from '@playwright/test';
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const buildScript = fileURLToPath(new URL('../../scripts/build.mjs', import.meta.url));
 const controlSettings = fileURLToPath(new URL('../performance/fixtures/control-settings.json', import.meta.url));
-const buildRoot = mkdtempSync(join(tmpdir(), 'lazy-page-chunks-'));
+/** @type {string} */
+let buildRoot;
 const origin = 'http://lazy-page-chunks.dashboard.test';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 
-execFileSync(process.execPath, [buildScript, buildRoot, controlSettings], {
-  cwd: siteRoot,
-  stdio: 'inherit',
+test.beforeAll(() => {
+  buildRoot = mkdtempSync(join(tmpdir(), 'lazy-page-chunks-'));
+  execFileSync(process.execPath, [buildScript, buildRoot, controlSettings], {
+    cwd: siteRoot,
+    stdio: 'inherit',
+  });
 });
 
 const inventory = {

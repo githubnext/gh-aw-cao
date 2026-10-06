@@ -572,12 +572,24 @@ describe('dashboard view query contracts', () => {
     });
 
     expect(viewsOf(insights)[2]).toMatchObject({
+      id: 'campaign-baseline-outcomes',
+      data: { source: 'campaign-baseline-outcome-distribution', 'route-field': 'campaign' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'outcome', type: 'nominal' },
+        y: { field: 'runs', type: 'quantitative' }
+      }
+    });
+
+    expect(viewsOf(insights)[3]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',
         'route-field': 'campaign'
       },
       mark: 'table',
+      controls: 'static',
       encoding: {
         columns: [
           { field: 'concluded-runs', title: 'Concluded runs' },
@@ -588,6 +600,10 @@ describe('dashboard view query contracts', () => {
           { field: 'aic-per-successful-run', title: 'Average AIC / successful run', unit: 'aic-per-run' }
         ]
       }
+    });
+    expect(viewsOf(insights)[4]).toMatchObject({
+      id: 'campaign-audit-event-table',
+      disclosure: 'supplemental'
     });
 
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
@@ -626,7 +642,7 @@ describe('dashboard view query contracts', () => {
     }
   });
 
-  it('computes native-unit operational-value rates using only selected-horizon observations', () => {
+  it('retains native-unit operational-value observations using only the selected horizon', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
     );
@@ -654,7 +670,7 @@ describe('dashboard view query contracts', () => {
     const series = result[payload.aliases[0]]?.rows ?? [];
     expect(series).toHaveLength(1);
     const points = /** @type {Array<{ y: number }>} */ (series[0].points);
-    expect(points.map((point) => point.y)).toEqual([10, 10]);
+    expect(points.map((point) => point.y)).toEqual([10, 20, 30]);
   });
 
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {
@@ -781,6 +797,32 @@ describe('dashboard view query contracts', () => {
       'production-signal': 'Outputs produced; acceptance unverified',
       'aic-per-successful-run': 5
     }]);
+  });
+
+  it('projects the baseline into honest successful and other concluded run slices', () => {
+    const outcomeQueries = dashboard.queries.filter(
+      (/** @type {{ name?: string }} */ candidate) => [
+        'campaign-baseline-successful-runs',
+        'campaign-baseline-other-runs',
+        'campaign-baseline-outcome-distribution'
+      ].includes(candidate.name ?? '')
+    );
+    const results = executeDashboardQueries(outcomeQueries, {
+      'campaign-performance-baseline-totals': {
+        source: 'campaign-performance-baseline-totals',
+        metadata,
+        rows: [
+          { campaign: 'optimization', 'concluded-runs': 3, 'successful-runs': 2 },
+          { campaign: 'all-success', 'concluded-runs': 1, 'successful-runs': 1 }
+        ]
+      }
+    });
+    expect(results['campaign-baseline-outcome-distribution'].rows).toEqual([
+      { campaign: 'optimization', outcome: 'Successful runs', runs: 2 },
+      { campaign: 'all-success', outcome: 'Successful runs', runs: 1 },
+      { campaign: 'optimization', outcome: 'Other concluded runs', runs: 1 },
+      { campaign: 'all-success', outcome: 'Other concluded runs', runs: 0 }
+    ]);
   });
 
   it('renders one campaign problem as a dedicated full detail view', () => {

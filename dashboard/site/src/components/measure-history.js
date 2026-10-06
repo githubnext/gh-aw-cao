@@ -159,8 +159,8 @@ function renderOperationalValueHistory(context, rows) {
         h('div', { className: 'insights-measure-heading' },
           h('h2', null, 'Operational value')),
         h('p', null, onlyInterimEvidence
-          ? `${formatNumber(observationCount)} interim observations. Rates use each measure’s native units per day. Amber points are not mature evidence.`
-          : 'Repository-level daily changes in each measure’s native units per day; campaign rollups are omitted so anomalies remain visible. Points are not connected across missing rates.'))),
+          ? `${formatNumber(observationCount)} interim observations in each measure’s native units. Amber points are not mature evidence.`
+          : 'Repository-level observations in each measure’s native units; campaign rollups are omitted so anomalies remain visible. Points are not connected across missing observations.'))),
     ...panels);
 }
 
@@ -187,7 +187,7 @@ function operationalValueMetricGroups(rows) {
       const series = group.series.get(repository) ?? {
         id: `${metricId}:${repository}`,
         label: repository,
-        unit: `${String(row['operational-value-unit'] || 'value')}/day`,
+        unit: String(row['operational-value-unit'] || 'value'),
         direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (
           ['increase', 'decrease', 'maintain', 'target'].includes(String(row['operational-value-direction']))
             ? row['operational-value-direction']

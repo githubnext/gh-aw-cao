@@ -182,3 +182,91 @@ describe('semantic view prompt debug logging', () => {
     }
   });
 });
+
+describe('view semantics resolution debug logging', () => {
+  const resolveQueries = [
+    { name: 'base', from: 'runs', subject: 'Observe runs', acceptance: 'Runs healthy' },
+    { name: 'summary', from: 'base', subject: 'Summarize health', objective: 'Investigate failures' }
+  ];
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { effectiveViewSemantics: mockedEffectiveViewSemantics } = await import('../../src/view-semantics.js');
+
+    mockedEffectiveViewSemantics({ id: 'health', data: { source: 'summary' } }, resolveQueries);
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs resolved/missing query counts and annotation status under its predictable category when enabled', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=view-semantics:resolve', output })
+      };
+    });
+    vi.resetModules();
+    const { effectiveViewSemantics: mockedEffectiveViewSemantics } = await import('../../src/view-semantics.js');
+
+    mockedEffectiveViewSemantics({
+      id: 'health',
+      data: { sources: ['summary', 'missing-query'] },
+      acceptance: 'Verified resolution'
+    }, resolveQueries);
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:view-semantics:resolve]',
+      {
+        viewId: 'health',
+        resolvedQueryCount: 2,
+        missingQueryCount: 2,
+        annotated: true
+      }
+    );
+  });
+
+  it('never logs sensitive view or query content, only scalar metadata', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=view-semantics:resolve', output })
+      };
+    });
+    vi.resetModules();
+    const { effectiveViewSemantics: mockedEffectiveViewSemantics } = await import('../../src/view-semantics.js');
+
+    mockedEffectiveViewSemantics({
+      id: 'health',
+      data: { source: 'summary' },
+      subject: 'Secret subject text that must not leak'
+    }, resolveQueries);
+
+    for (const call of output.debug.mock.calls) {
+      const [, payload] = call;
+      for (const value of Object.values(payload)) {
+        expect(typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean').toBe(true);
+      }
+      expect(JSON.stringify(payload)).not.toContain('Secret subject text');
+    }
+  });
+});

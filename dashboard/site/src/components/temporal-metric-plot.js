@@ -168,10 +168,10 @@ export function renderTemporalMetricPlot(options) {
   h('svg', {
     viewBox: '0 0 1280 366',
     role: 'img',
-    'aria-label': `${options.title} ${options.connectPoints === false ? 'repository daily change' : `workflow ${modeLabel}`} timeline${options.provisional ? ', not yet mature' : ''}`
+    'aria-label': `${options.title} ${options.connectPoints === false ? 'repository observations' : `workflow ${modeLabel}`} timeline${options.provisional ? ', not yet mature' : ''}`
   },
-  h('title', null, `${options.title} ${options.connectPoints === false ? 'repository daily change' : `workflow ${modeLabel}`} timeline`),
-  h('desc', null, `${options.connectPoints === false ? 'Discrete repository daily changes' : 'Repository outcome metric'} (${displayUnit(unit)}) with nearby daily run outcomes shown as solid success and hollow failure segments below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
+  h('title', null, `${options.title} ${options.connectPoints === false ? 'repository observations' : `workflow ${modeLabel}`} timeline`),
+  h('desc', null, `${options.connectPoints === false ? 'Discrete repository observations' : 'Repository outcome metric'} (${displayUnit(unit)}) with nearby daily run outcomes shown as solid success and hollow failure segments below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
   options.mode === 'baseline-comparable' && showAdoption
     ? h('rect', {
       className: 'temporal-plot-baseline',
