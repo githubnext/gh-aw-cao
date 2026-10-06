@@ -181,6 +181,50 @@ func TestDecodeManifestBlobRejectsInvalidBase64(t *testing.T) {
 	}
 }
 
+func TestDecodeBase64BlobDecodesValidContent(t *testing.T) {
+	payload := map[string]any{
+		"encoding": "base64",
+		"content":  base64.StdEncoding.EncodeToString([]byte("hello")),
+	}
+	decoded, outcome, err := decodeBase64Blob(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded != "hello" {
+		t.Fatalf("unexpected decoded content: %q", decoded)
+	}
+	if outcome != decodeBlobOutcomeDecoded {
+		t.Fatalf("unexpected outcome: %q", outcome)
+	}
+}
+
+func TestDecodeBase64BlobReportsInvalidShape(t *testing.T) {
+	for name, payload := range map[string]map[string]any{
+		"missing encoding": {"content": "abc"},
+		"empty content":    {"encoding": "base64", "content": ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, outcome, err := decodeBase64Blob(payload)
+			if err == nil {
+				t.Fatal("expected an invalid-shape blob to be rejected")
+			}
+			if outcome != decodeBlobOutcomeInvalidShape {
+				t.Fatalf("unexpected outcome: %q", outcome)
+			}
+		})
+	}
+}
+
+func TestDecodeBase64BlobReportsBadBase64(t *testing.T) {
+	_, outcome, err := decodeBase64Blob(map[string]any{"encoding": "base64", "content": "!!! not base64 !!!"})
+	if err == nil {
+		t.Fatal("expected invalid base64 content to be rejected")
+	}
+	if outcome != decodeBlobOutcomeBadBase64 {
+		t.Fatalf("unexpected outcome: %q", outcome)
+	}
+}
+
 func TestResolveRegistryCarriesThePackageReadme(t *testing.T) {
 	server := newFakeGitHubServer(t, fakeGitHubConfig{readmePaths: []string{"demo/README.md"}})
 	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
@@ -196,6 +240,24 @@ func TestResolveRegistryCarriesThePackageReadme(t *testing.T) {
 	}
 	if packages[0].ReadmePath != "demo/README.md" {
 		t.Fatalf("expected the README path to be carried, got: %q", packages[0].ReadmePath)
+	}
+}
+
+// TestResolveRegistryDiscardsAnOversizedReadme exercises fetchReadme's own
+// decoded-size check, which applies even when the Git tree entry omits (or
+// understates) the blob's "size" field.
+func TestResolveRegistryDiscardsAnOversizedReadme(t *testing.T) {
+	server := newFakeGitHubServer(t, fakeGitHubConfig{
+		readme:      strings.Repeat("a", maxReadmeBytes+1),
+		readmePaths: []string{"demo/README.md"},
+	})
+	registry := Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}
+	packages, err := ResolveRegistry(t.Context(), registry, 0, Options{HTTPClient: insecureTestClient()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packages) != 1 || packages[0].Readme != "" || packages[0].ReadmePath != "" {
+		t.Fatalf("expected the oversized README to be discarded, got: %#v", packages)
 	}
 }
 

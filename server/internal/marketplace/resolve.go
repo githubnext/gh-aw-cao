@@ -417,21 +417,48 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 	return packages, nil
 }
 
+// decodeBlobOutcome names why decodeBase64Blob did or did not confirm a
+// usable decoded blob, stable across error-message wording so it is useful
+// to log without exposing the blob's encoded content.
+type decodeBlobOutcome string
+
+const (
+	decodeBlobOutcomeDecoded      decodeBlobOutcome = "decoded"
+	decodeBlobOutcomeInvalidShape decodeBlobOutcome = "invalid-shape"
+	decodeBlobOutcomeBadBase64    decodeBlobOutcome = "bad-base64"
+	decodeBlobOutcomeOversized    decodeBlobOutcome = "oversized"
+)
+
+// decodeBase64Blob extracts and base64-decodes one GitHub git/blobs API
+// response, rejecting a blob that is not base64-encoded, empty, or
+// malformed. It is the shared decode boundary for both an aw.yml manifest
+// blob (decodeManifestBlob) and a README blob (fetchReadme), so the same
+// shape and encoding rules apply to both and are independently testable
+// without a fake GitHub API. Callers that need a size limit apply it to the
+// returned content themselves, matching each blob kind's own limit.
+func decodeBase64Blob(blobPayload map[string]any) (string, decodeBlobOutcome, error) {
+	encoding, _ := blobPayload["encoding"].(string)
+	content, _ := blobPayload["content"].(string)
+	if encoding != "base64" || content == "" {
+		return "", decodeBlobOutcomeInvalidShape, fmt.Errorf("blob is invalid")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
+	if err != nil {
+		return "", decodeBlobOutcomeBadBase64, fmt.Errorf("blob is invalid")
+	}
+	return string(decoded), decodeBlobOutcomeDecoded, nil
+}
+
 // decodeManifestBlob extracts and base64-decodes one aw.yml manifest from a
 // GitHub git/blobs API response. It is a pure function so the blob-shape
 // validation ResolveRegistry relies on (a missing encoding, empty content, or
 // content that fails to base64-decode) is testable without a fake GitHub API.
 func decodeManifestBlob(blobPayload map[string]any) (string, error) {
-	encoding, _ := blobPayload["encoding"].(string)
-	content, _ := blobPayload["content"].(string)
-	if encoding != "base64" || content == "" {
-		return "", fmt.Errorf("package manifest blob is invalid")
-	}
-	decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
+	manifest, _, err := decodeBase64Blob(blobPayload)
 	if err != nil {
 		return "", fmt.Errorf("package manifest blob is invalid")
 	}
-	return string(decoded), nil
+	return manifest, nil
 }
 
 // readmeEntries indexes each package directory's README blob by directory
@@ -477,18 +504,18 @@ func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token,
 	blobPayload, err := githubJSON(ctx, opts, http.MethodGet,
 		fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, sha), token)
 	if err != nil {
+		resolveLog.Printf("readme blob request failed")
 		return ""
 	}
-	encoding, _ := blobPayload["encoding"].(string)
-	content, _ := blobPayload["content"].(string)
-	if encoding != "base64" || content == "" {
+	decoded, outcome, err := decodeBase64Blob(blobPayload)
+	if err == nil && len(decoded) > maxReadmeBytes {
+		outcome, err = decodeBlobOutcomeOversized, fmt.Errorf("blob exceeds size limit")
+	}
+	if err != nil {
+		resolveLog.Printf("readme blob discarded outcome=%s", outcome)
 		return ""
 	}
-	decoded, err := base64.StdEncoding.DecodeString(stripBase64Whitespace(content))
-	if err != nil || len(decoded) > maxReadmeBytes {
-		return ""
-	}
-	return string(decoded)
+	return decoded
 }
 
 // manifestEntries collects eligible package manifests from a registry tree in
