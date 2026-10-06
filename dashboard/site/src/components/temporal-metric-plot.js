@@ -171,7 +171,7 @@ export function renderTemporalMetricPlot(options) {
     'aria-label': `${options.title} ${options.connectPoints === false ? 'repository daily change' : `workflow ${modeLabel}`} timeline${options.provisional ? ', not yet mature' : ''}`
   },
   h('title', null, `${options.title} ${options.connectPoints === false ? 'repository daily change' : `workflow ${modeLabel}`} timeline`),
-  h('desc', null, `${options.connectPoints === false ? 'Discrete repository daily changes' : 'Repository outcome metric'} (${displayUnit(unit)}) with nearby daily run outcomes shown as a green success and red failure rail below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
+  h('desc', null, `${options.connectPoints === false ? 'Discrete repository daily changes' : 'Repository outcome metric'} (${displayUnit(unit)}) with nearby daily run outcomes shown as solid success and hollow failure segments below the x-axis. The rail shows temporal proximity and does not imply causation.${provisionalDescription}`),
   options.mode === 'baseline-comparable' && showAdoption
     ? h('rect', {
       className: 'temporal-plot-baseline',
@@ -261,18 +261,22 @@ export function renderTemporalMetricPlot(options) {
         x2: failureEnd,
         y2: SUCCESS_Y
       }) : null,
+      outcome.failedRuns > 0 ? h('line', {
+        className: 'temporal-plot-run-outcome-failure-inset',
+        x1: successEnd,
+        y1: SUCCESS_Y,
+        x2: failureEnd,
+        y2: SUCCESS_Y
+      }) : null,
       h('title', null, `${outcome.date}: ${formatValue(outcome.successfulRuns)} successful, ${formatValue(outcome.failedRuns)} failed (${formatValue(outcome.concludedRuns)} concluded)`));
     }),
-    h('text', {
-      x: RIGHT,
-      y: TOP + 18,
-      'text-anchor': 'end',
-      className: 'temporal-plot-run-outcome-legend'
-    },
-    h('tspan', { className: 'temporal-plot-run-outcome-legend-label' }, 'Runs: '),
-    h('tspan', { className: 'temporal-plot-run-outcome-legend-success' }, 'success'),
-    h('tspan', { className: 'temporal-plot-run-outcome-legend-label' }, ' · '),
-    h('tspan', { className: 'temporal-plot-run-outcome-legend-failure' }, 'failed'))) : null));
+    h('g', { className: 'temporal-plot-run-outcome-legend' },
+      h('text', { x: RIGHT - 300, y: TOP + 18, className: 'temporal-plot-run-outcome-legend-label' }, 'Runs:'),
+      h('line', { className: 'temporal-plot-run-outcome-success', x1: RIGHT - 242, y1: TOP + 12, x2: RIGHT - 220, y2: TOP + 12, 'aria-hidden': 'true' }),
+      h('text', { x: RIGHT - 210, y: TOP + 18, className: 'temporal-plot-run-outcome-legend-success' }, 'success'),
+      h('line', { className: 'temporal-plot-run-outcome-failure', x1: RIGHT - 110, y1: TOP + 12, x2: RIGHT - 88, y2: TOP + 12, 'aria-hidden': 'true' }),
+      h('line', { className: 'temporal-plot-run-outcome-failure-inset', x1: RIGHT - 110, y1: TOP + 12, x2: RIGHT - 88, y2: TOP + 12, 'aria-hidden': 'true' }),
+      h('text', { x: RIGHT - 78, y: TOP + 18, className: 'temporal-plot-run-outcome-legend-failure' }, 'failed'))) : null));
 }
 
 /**

@@ -111,14 +111,15 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .temporal-plot-adoption { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 5 6; }
 .temporal-plot-metric { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .temporal-plot-point { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.temporal-plot-run-outcome-track { stroke: var(--border); stroke-width: 7; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
-.temporal-plot-run-outcome-success, .temporal-plot-run-outcome-failure { stroke-width: 5; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
-.temporal-plot-run-outcome-success { stroke: var(--success); }
-.temporal-plot-run-outcome-failure { stroke: var(--danger); }
+.temporal-plot-run-outcome-track { stroke: var(--border); stroke-width: 12; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
+.temporal-plot-run-outcome-success, .temporal-plot-run-outcome-failure, .temporal-plot-run-outcome-failure-inset { stroke-width: 10; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
+.temporal-plot-run-outcome-success { stroke: var(--accent); }
+.temporal-plot-run-outcome-failure { stroke: var(--fg); }
+.temporal-plot-run-outcome-failure-inset { stroke: var(--canvas); stroke-width: 4; }
 .temporal-plot-run-outcome-legend { font-size: 17px; font-weight: 600; }
 .temporal-plot-run-outcome-legend-label { fill: var(--muted); }
-.temporal-plot-run-outcome-legend-success { fill: var(--success); }
-.temporal-plot-run-outcome-legend-failure { fill: var(--danger); }
+.temporal-plot-run-outcome-legend-success { fill: var(--accent); }
+.temporal-plot-run-outcome-legend-failure { fill: var(--fg); }
 @media (min-width: 1440px) {
   .temporal-plot-axis { font-size: 10px; }
   .temporal-plot-run-outcome-legend { font-size: 10px; }
