@@ -2,7 +2,7 @@
   "rule_key": "js-no-literal-color-value-in-test-assertion",
   "schema_version": 1,
   "first_seen": "2026-10-01T14:53:00Z",
-  "last_updated": "2026-10-06T10:53:00Z",
+  "last_updated": "2026-10-03T11:03:07Z",
   "status": "deprecated",
   "affected_languages": [
     "javascript"
@@ -111,19 +111,19 @@
     "reason": "Re-confirmed unchanged on HEAD 10b42295: --terminal-syntax-placeholder pair remains in sync (#953800/#ffa657); 15 stable non-actively-tuned literals, 1 confirmed regression-prone true positive. No new occurrences since intervening merges (collector workflow fix, account-menu docs) which did not touch evidence files.",
     "txn_id": "refiner-37118181288-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37452519529",
-  "last_updated_target_repo": "github/gh-aw-firewall",
-  "last_seen_at": "2026-10-06T10:53:00Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37118181288",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_seen_at": "2026-10-03T11:03:07Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw-firewall",
-      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+      "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
       "true_positive_count": 0,
       "false_positive_count": 0,
       "false_negative_count": 0,
       "readiness_for_target": "not-applicable",
       "reason": "No .astro files, themed UI components, or color-mix()/hex-literal test assertions exist anywhere in this infrastructure/CLI-firewall repository; the rule's unsafe pattern cannot occur here.",
-      "txn_id": "refiner-37452519529-3"
+      "txn_id": "refiner-37156057344-2"
     }
   ]
 }

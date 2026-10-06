@@ -59,19 +59,19 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-06T10:53:00Z",
-  "last_updated": "2026-10-06T10:53:00Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37452519529",
+  "last_seen_at": "2026-10-06T02:59:21Z",
+  "last_updated": "2026-10-06T02:59:21Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37406671160",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+    "target_commit": "61108a1eed42b4bbb1030538fcf2dad764e5bfd2",
     "true_positive_count": 2,
     "false_positive_count": 2,
     "false_negative_count": 0,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD f1c3282: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions still false-positive against a naive heuristic. No suppression convention.",
-    "txn_id": "refiner-37452519529-2"
+    "reason": "Re-confirmed unchanged on HEAD 61108a1e: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-72 still false-positive against a naive heuristic. No suppression convention.",
+    "txn_id": "refiner-37406671160-2"
   },
   "additional_target_evaluations": [
     {

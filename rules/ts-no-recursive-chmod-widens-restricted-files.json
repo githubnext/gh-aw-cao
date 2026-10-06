@@ -72,15 +72,15 @@
   "status": "needs-work",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
-    "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+    "target_commit": "61108a1eed42b4bbb1030538fcf2dad764e5bfd2",
     "true_positive_count": 2,
     "false_positive_count": 4,
     "false_negative_count": 1,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD f1c3282: auditDir/default-audit-dir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
-    "txn_id": "refiner-37452519529-1"
+    "reason": "Re-confirmed unchanged on HEAD 61108a1e: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (token-persistence.js 0o600 audit file has no cross-file chmod awareness), no suppression mechanism.",
+    "txn_id": "refiner-37406671160-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37452519529",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37406671160",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
     {
@@ -124,6 +124,6 @@
       "txn_id": "refiner-37359981927-1"
     }
   ],
-  "last_seen_at": "2026-10-06T10:53:00Z",
-  "last_updated": "2026-10-06T10:53:00Z"
+  "last_seen_at": "2026-10-06T02:59:21Z",
+  "last_updated": "2026-10-06T02:59:21Z"
 }
