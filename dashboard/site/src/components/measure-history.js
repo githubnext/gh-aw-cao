@@ -111,7 +111,9 @@ function renderOperationalValueHistory(context, rows) {
     : 'baseline-comparable';
   const campaignOutcomeSource = context.sourceNames[1] ?? '';
   const evidenceStateSource = context.sourceNames[2] ?? '';
-  const campaignOutcomes = outcomeContext(rowsFor(context.sources, campaignOutcomeSource));
+  const campaignOutcomes = /** @type {import('./temporal-metric-plot.js').OutcomeContext[]} */ (
+    rowsFor(context.sources, campaignOutcomeSource)
+  );
   const evidenceState = rowsFor(context.sources, evidenceStateSource)[0] ?? {};
   const fallbackObservationCount = rows.reduce(
     (total, row) => total + (Array.isArray(row.points) ? row.points.length : 0),
@@ -212,26 +214,6 @@ function operationalValueMetricGroups(rows) {
       series: [...group.series.values()].toSorted((left, right) => left.label.localeCompare(right.label))
     }))
     .toSorted((left, right) => left.label.localeCompare(right.label));
-}
-
-/**
- * @param {Record<string, unknown>[]} rows
- */
-function outcomeContext(rows) {
-  return rows.flatMap((row) => {
-    const date = String(row['run-day'] || '');
-    const successfulRuns = Number(row['successful-runs']);
-    const failedRuns = Number(row['failed-runs']);
-    const successRate = Number(row['success-rate-percent']);
-    const concludedRuns = Number(row['concluded-runs']);
-    return Number.isFinite(Date.parse(date))
-      && Number.isFinite(successfulRuns)
-      && Number.isFinite(failedRuns)
-      && Number.isFinite(successRate)
-      && Number.isFinite(concludedRuns)
-      ? [{ date, successfulRuns, failedRuns, successRate, concludedRuns }]
-      : [];
-  }).toSorted((left, right) => Date.parse(left.date) - Date.parse(right.date));
 }
 
 /**

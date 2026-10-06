@@ -157,8 +157,8 @@
       "name": "campaign-operational-value-run-days",
       "subject": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
       "objective": "Compare campaign-day runtime reliability with nearby value observations before selecting days to investigate.",
-      "acceptance": "Success rate is successful-runs divided by concluded-runs, expressed as a percent only where the denominator exists; the numerator and denominator remain inspectable, and co-occurrence does not establish causality or operational value.",
-      "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
+      "acceptance": "Success rate is successful-runs divided by concluded-runs, expressed as a percent only where the denominator exists; the numerator and denominator remain inspectable, rows are ordered by run-day ascending, and co-occurrence does not establish causality or operational value.",
+      "description": "Campaign success and failure counts for temporal proximity only, ordered by run-day, without implying a causal relationship.",
       "from": "campaign-operational-value-run-day-totals",
       "compute": [
         {
@@ -185,6 +185,9 @@
             }
           ]
         }
+      ],
+      "order-by": [
+        { "field": "run-day", "direction": "asc" }
       ]
     },
     {

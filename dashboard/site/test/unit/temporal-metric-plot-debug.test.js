@@ -39,8 +39,8 @@ const SINGLE_METRIC_OPTIONS = {
     ]
   }],
   outcomes: [
-    { date: '2025-10-25', successfulRuns: 4, failedRuns: 1, successRate: 0.8, concludedRuns: 5 },
-    { date: '2099-01-01', successfulRuns: 1, failedRuns: 0, successRate: 1, concludedRuns: 1 }
+    { 'run-day': '2025-10-25', 'successful-runs': 4, 'failed-runs': 1, 'concluded-runs': 5 },
+    { 'run-day': '2099-01-01', 'successful-runs': 1, 'failed-runs': 0, 'concluded-runs': 1 }
   ]
 };
 

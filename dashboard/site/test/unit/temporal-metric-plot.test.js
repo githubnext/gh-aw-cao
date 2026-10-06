@@ -211,8 +211,8 @@ describe('Temporal metric plot', () => {
         ]
       }],
       outcomes: [
-        { date: '2025-11-15', successfulRuns: 8, failedRuns: 2, successRate: 80, concludedRuns: 10 },
-        { date: '2025-12-06', successfulRuns: 3, failedRuns: 2, successRate: 60, concludedRuns: 5 }
+        { 'run-day': '2025-11-15', 'successful-runs': 8, 'failed-runs': 2, 'concluded-runs': 10 },
+        { 'run-day': '2025-12-06', 'successful-runs': 3, 'failed-runs': 2, 'concluded-runs': 5 }
       ]
     });
 
