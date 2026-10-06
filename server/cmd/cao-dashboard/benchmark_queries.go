@@ -175,6 +175,35 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	return report, nil
 }
 
+// benchmarkFlagFailure identifies which required benchmark-queries flag was
+// left blank, so a misconfigured invocation is diagnosable without logging
+// the operator-supplied flag values themselves (the source directory and
+// candidates path).
+type benchmarkFlagFailure string
+
+const (
+	benchmarkFlagFailureNone       benchmarkFlagFailure = "none"
+	benchmarkFlagFailureSource     benchmarkFlagFailure = "source"
+	benchmarkFlagFailureCandidates benchmarkFlagFailure = "candidates"
+)
+
+// validateBenchmarkFlags applies benchmark-queries' required-flag
+// precondition: both --source and --candidates must be non-empty. It is a
+// pure function extracted from newBenchmarkQueriesCommand's RunE closure, so
+// each missing-flag case is independently testable without constructing a
+// cobra command. --source is checked first, matching the combined error
+// message's ordering.
+func validateBenchmarkFlags(source, candidatesPath string) (benchmarkFlagFailure, error) {
+	switch {
+	case source == "":
+		return benchmarkFlagFailureSource, errors.New("--source and --candidates are required")
+	case candidatesPath == "":
+		return benchmarkFlagFailureCandidates, errors.New("--source and --candidates are required")
+	default:
+		return benchmarkFlagFailureNone, nil
+	}
+}
+
 // loadBenchmarkCandidates reads and decodes the --candidates JSON file into a
 // non-empty list of query names. It is a pure, testable boundary extracted
 // from newBenchmarkQueriesCommand's RunE closure, so the read, decode, and
@@ -211,8 +240,9 @@ func newBenchmarkQueriesCommand() *cobra.Command {
 	candidatesPath := cmd.Flags().String("candidates", "", "JSON array of query names selected by the static evaluator")
 	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres URL; defaults to CAO_POSTGRES_URL")
 	cmd.RunE = func(*cobra.Command, []string) (runErr error) {
-		if *source == "" || *candidatesPath == "" {
-			return errors.New("--source and --candidates are required")
+		if failure, err := validateBenchmarkFlags(*source, *candidatesPath); err != nil {
+			benchmarkLog.Printf("benchmark flag validation failed flag=%s", failure)
+			return err
 		}
 		candidates, err := loadBenchmarkCandidates(*candidatesPath)
 		if err != nil {

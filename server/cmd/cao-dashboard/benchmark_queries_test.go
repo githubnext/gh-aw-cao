@@ -269,6 +269,32 @@ func TestBenchmarkCleanupPreservesOtherNamespaces(t *testing.T) {
 	}
 }
 
+func TestValidateBenchmarkFlagsRequiresSourceAndCandidates(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, candidatesPath string
+		wantFailure                  benchmarkFlagFailure
+		wantErr                      bool
+	}{
+		{"both set", "artifacts", "candidates.json", benchmarkFlagFailureNone, false},
+		{"missing source", "", "candidates.json", benchmarkFlagFailureSource, true},
+		{"missing candidates", "artifacts", "", benchmarkFlagFailureCandidates, true},
+		{"missing both reports source first", "", "", benchmarkFlagFailureSource, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			failure, err := validateBenchmarkFlags(tc.source, tc.candidatesPath)
+			if failure != tc.wantFailure {
+				t.Fatalf("failure = %q, want %q", failure, tc.wantFailure)
+			}
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr = %t", err, tc.wantErr)
+			}
+			if err != nil && !strings.Contains(err.Error(), "--source and --candidates are required") {
+				t.Fatalf("unexpected error message: %v", err)
+			}
+		})
+	}
+}
+
 func TestLoadBenchmarkCandidatesReadsValidFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "candidates.json")
 	if err := os.WriteFile(path, []byte(`["overview","cso-summary"]`), 0600); err != nil {
