@@ -125,11 +125,13 @@ export function renderLabeledSpan(label, value) {
  *   content?: Node | Node[],
  *   trigger?: HTMLElement,
  *   className?: string,
- *   contentClassName?: string
+ *   contentClassName?: string,
+ *   viewportAnchored?: boolean,
+ *   signal?: AbortSignal
  * }} options
  * @returns {HTMLElement}
  */
-export function renderTooltip({ id, label, description, icon, content, trigger, className, contentClassName }) {
+export function renderTooltip({ id, label, description, icon, content, trigger, className, contentClassName, viewportAnchored = false, signal }) {
   const tooltipTrigger = trigger ?? h(
     'button',
     {
@@ -152,6 +154,7 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     )
   );
   const tooltipContent = /** @type {HTMLElement} */ (tooltip.lastElementChild);
+  if (viewportAnchored) tooltipContent.classList.add('tooltip-content-viewport');
   let pointerInside = false;
   let focusInside = false;
   let trackingViewport = false;
@@ -172,12 +175,12 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     const top = below + contentRect.height <= viewportHeight - margin
       ? below
       : Math.max(margin, above);
-    tooltipContent.style.left = `${left - rootRect.left}px`;
+    tooltipContent.style.left = `${viewportAnchored ? left : left - rootRect.left}px`;
     tooltipContent.style.right = 'auto';
-    tooltipContent.style.top = `${top - rootRect.top}px`;
+    tooltipContent.style.top = `${viewportAnchored ? top : top - rootRect.top}px`;
   };
   const startViewportTracking = () => {
-    if (trackingViewport) return;
+    if (trackingViewport || signal?.aborted) return;
     trackingViewport = true;
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
@@ -206,6 +209,11 @@ export function renderTooltip({ id, label, description, icon, content, trigger, 
     focusInside = event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget);
     stopViewportTracking();
   });
+  signal?.addEventListener('abort', () => {
+    pointerInside = false;
+    focusInside = false;
+    stopViewportTracking();
+  }, { once: true });
   return tooltip;
 }
 

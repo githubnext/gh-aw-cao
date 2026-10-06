@@ -3,6 +3,35 @@ import { describe, expect, it } from 'vitest';
 import { renderTemporalMetricPlot } from '../../src/components/temporal-metric-plot.js';
 
 describe('Temporal metric plot', () => {
+  it('exposes the observation run report in an accessible point tooltip', () => {
+    const rendered = renderTemporalMetricPlot({
+      title: 'Repository value',
+      mode: 'attainment-only',
+      adoptionAt: '',
+      provisional: true,
+      metrics: [{
+        id: 'value',
+        label: 'githubnext/gh-aw',
+        points: [
+          { x: '2026-09-22T00:00:00Z', y: 12.5, link: { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/101', label: 'View run 101' } },
+          { x: '2026-09-24T00:00:00Z', y: 8.25 }
+        ]
+      }]
+    });
+    const trigger = rendered.querySelector('.temporal-plot-point-trigger');
+    const tooltip = rendered.querySelector('[role="tooltip"]');
+    expect(trigger?.getAttribute('aria-label')).toContain('12.5');
+    expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.id);
+    expect(tooltip?.textContent).toContain('not yet mature interim observation');
+    const link = tooltip?.querySelector('a');
+    expect(link?.textContent).toBe('View run report');
+    expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/101');
+    expect(link?.getAttribute('aria-label')).toBe('View run 101');
+    expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(rendered.querySelectorAll('.temporal-plot-point-tooltip')).toHaveLength(1);
+    expect(rendered.querySelectorAll('.temporal-plot-point[tabindex="0"]')).toHaveLength(1);
+  });
+
   it('matches the deterministic timeline SVG structure', () => {
     const rendered = renderTemporalMetricPlot({
       title: 'Example Workflow',

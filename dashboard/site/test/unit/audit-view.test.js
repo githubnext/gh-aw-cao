@@ -4,6 +4,7 @@ import { processDataRequest } from '../../src/data-worker.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import hostedQueries from '../../src/agent/queries.generated.json' with { type: 'json' };
 import operationalValueObservations from '../fixtures/campaign-operational-value-observations.json' with { type: 'json' };
+import { renderMeasureHistory } from '../../src/components/measure-history.js';
 
 const dashboard = authoritativeDashboard.dashboard;
 const metadata = {
@@ -68,7 +69,7 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-primary-series'],
+      sourceNames: ['campaign-operational-value-primary-series', 'campaign-operational-value-plot-inventory'],
       sources: {
         'operational-values': {
           source: 'operational-values',
@@ -84,8 +85,14 @@ describe('Audit dashboard view', () => {
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
         'operational-value-unit': 'aic-per-run',
+        'run-link': operationalValueObservations[0]['run-link'],
         points: [
-          expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, color: 'githubnext/gh-aw' }),
+          expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, color: 'githubnext/gh-aw' })
+        ]
+      }),
+      expect.objectContaining({
+        'run-link': operationalValueObservations[1]['run-link'],
+        points: [
           expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 8.25, color: 'githubnext/gh-aw' })
         ]
       }),
@@ -97,6 +104,22 @@ describe('Audit dashboard view', () => {
         ]
       })
     ]);
+    const rendered = renderMeasureHistory({
+      title: 'Repository operational value',
+      pageId: 'campaign-insights',
+      sourceNames: ['campaign-operational-value-primary-series'],
+      sources: result,
+      elementConfig: { 'measure-source': 'operational-value' },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+    expect([...rendered.querySelectorAll('.temporal-plot-point-tooltip a')]
+      .map((link) => link.getAttribute('href'))).toEqual([
+        'https://github.com/githubnext/gh-aw-cao/actions/runs/101',
+        'https://github.com/githubnext/gh-aw-cao/actions/runs/102'
+      ]);
+    expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(4);
+    expect(result['campaign-operational-value-plot-inventory'].rows).toHaveLength(2);
   });
 
   it('keeps irregular observations partitioned and leaves missing native values unplotted', () => {

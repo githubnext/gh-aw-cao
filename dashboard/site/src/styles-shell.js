@@ -301,6 +301,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 }
 .tooltip-content { width: min(320px, calc(100vw - 28px)); position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-weight: 400; line-height: 1.4; white-space: normal; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
 .tooltip-help:hover .tooltip-content, .tooltip-help:focus-within .tooltip-content { visibility: visible; opacity: 1; }
+.tooltip-content.tooltip-content-viewport { position: fixed; }
 .tooltip-description { color: var(--muted); }
 .refresh-button { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 120ms ease; }
 .refresh-button:hover { background: var(--neutral-muted); }

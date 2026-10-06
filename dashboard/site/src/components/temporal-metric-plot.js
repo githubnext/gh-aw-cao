@@ -3,7 +3,9 @@
  */
 
 import { h } from '../dom.js';
-import { renderVisualizationEmptyMessage } from './ui-primitives.js';
+import { renderTooltip, renderVisualizationEmptyMessage } from './ui-primitives.js';
+import { renderSafeLink } from './link-content.js';
+import { createFactoryScope } from './factory-elements.js';
 import { createDebug } from '../debug.js';
 
 const debugTemporalMetricPlot = createDebug('temporal-metric-plot');
@@ -16,6 +18,7 @@ const WIDTH = RIGHT - LEFT;
 const HEIGHT = BOTTOM - TOP;
 const SUCCESS_Y = 306;
 const MAX_TICKS = 5;
+let tooltipId = 0;
 
 /**
  * @typedef {{
@@ -23,7 +26,7 @@ const MAX_TICKS = 5;
  *   label: string,
  *   unit?: string,
  *   direction?: 'increase'|'decrease'|'maintain'|'target',
- *   points: Array<{ x: string, y: number, key?: string }>
+ *   points: Array<{ x: string, y: number, key?: string, link?: import('./link-content.js').SafeLink|null }>
  * }} TemporalMetric
  * @typedef {{ date: string, successfulRuns: number, failedRuns: number, successRate: number, concludedRuns: number }} OutcomeContext
  * @typedef {{
@@ -148,7 +151,8 @@ export function renderTemporalMetricPlot(options) {
     provisional: Boolean(options.provisional)
   });
 
-  return h('article', {
+  const scope = createFactoryScope();
+  const root = h('article', {
     className: `temporal-metric-plot${options.provisional ? ' temporal-metric-plot-provisional' : ''}`,
     'data-maturity-state': options.provisional ? 'not-yet-mature' : 'matured'
   },
@@ -165,6 +169,7 @@ export function renderTemporalMetricPlot(options) {
           h('strong', null, formatCurrentValue(latestValue, unit)),
           displayUnit(unit) ? h('span', null, displayUnit(unit)) : null),
       multipleSeries ? null : renderTrendSummary(options.trend, unit, options.provisional))),
+  h('div', { className: 'temporal-plot-chart' },
   h('svg', {
     viewBox: '0 0 1280 366',
     role: 'img',
@@ -221,7 +226,7 @@ export function renderTemporalMetricPlot(options) {
         cx: x(point.x),
         cy: y(point.y),
         r: 6,
-        tabIndex: 0,
+        tabIndex: point.link ? undefined : 0,
         role: 'img',
         'aria-label': `${metric.label}: ${formatValue(point.y)} ${metric.unit ?? ''} at ${point.x}${options.provisional ? '; not yet mature interim observation' : ''}`
       }, h('title', null, `${metric.label}: ${point.y} at ${point.x}${options.provisional ? ' · Not yet mature' : ''}`)))
@@ -272,7 +277,26 @@ export function renderTemporalMetricPlot(options) {
     h('tspan', { className: 'temporal-plot-run-outcome-legend-label' }, 'Runs: '),
     h('tspan', { className: 'temporal-plot-run-outcome-legend-success' }, 'success'),
     h('tspan', { className: 'temporal-plot-run-outcome-legend-label' }, ' · '),
-    h('tspan', { className: 'temporal-plot-run-outcome-legend-failure' }, 'failed'))) : null));
+    h('tspan', { className: 'temporal-plot-run-outcome-legend-failure' }, 'failed'))) : null),
+  ...metrics.flatMap((metric) => metric.points.flatMap((point) => {
+    if (!point.link) return [];
+    const label = `${metric.label}: ${formatValue(point.y)} ${metric.unit ?? ''} at ${point.x}${options.provisional ? '; not yet mature interim observation' : ''}`;
+    const tooltip = renderTooltip({
+      id: `temporal-point-tooltip-${++tooltipId}`,
+      label,
+      description: label,
+      className: 'temporal-plot-point-tooltip',
+      viewportAnchored: true,
+      signal: scope.signal,
+      trigger: h('button', { type: 'button', className: 'temporal-plot-point-trigger' }),
+      content: h('span', null, renderSafeLink('View run report', point.link))
+    });
+    tooltip.style.left = `${(x(point.x) / 1280) * 100}%`;
+    tooltip.style.top = `${(y(point.y) / 366) * 100}%`;
+    return [tooltip];
+  }))));
+  scope.bind(root);
+  return root;
 }
 
 /**

@@ -5,6 +5,25 @@ import { h } from '../../src/dom.js';
 import { effect, state } from '../../src/reactive.js';
 
 describe('ui primitives', () => {
+  it('positions viewport-anchored tooltips and stops tracking when their owner aborts', () => {
+    const scope = new AbortController();
+    const tooltip = renderTooltip({
+      id: 'viewport-tooltip',
+      label: 'Run observation',
+      description: 'Observed value',
+      viewportAnchored: true,
+      signal: scope.signal
+    });
+    const content = /** @type {HTMLElement} */ (tooltip.lastElementChild);
+    expect(content.classList.contains('tooltip-content-viewport')).toBe(true);
+    const removeListener = vi.spyOn(window, 'removeEventListener');
+    tooltip.dispatchEvent(new Event('pointerenter'));
+    scope.abort();
+    expect(removeListener).toHaveBeenCalledWith('resize', expect.any(Function));
+    expect(removeListener).toHaveBeenCalledWith('scroll', expect.any(Function), true);
+    removeListener.mockRestore();
+  });
+
   it('renders a checkbox that can stop click propagation without blocking changes', () => {
     const onChange = vi.fn();
     const parentClick = vi.fn();

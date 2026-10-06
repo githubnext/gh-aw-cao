@@ -10,6 +10,7 @@ import { renderStatusBadge } from './badge.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
+import { findLink } from './link-content.js';
 import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
 import { formatMediumUtcDateTimeWithSuffix, renderLoadingMessage, renderVisualizationEmptyMessage } from './ui-primitives.js';
 
@@ -60,7 +61,7 @@ export function renderBoundMeasureHistory(context) {
  *   label: string,
  *   unit: string,
  *   direction: 'increase'|'decrease'|'maintain'|'target',
- *   points: Array<{ x: string, y: number, key: string }>
+ *   points: Array<{ x: string, y: number, key: string, link: import('./link-content.js').SafeLink|null }>
  * }} OperationalValueSeries
  * @typedef {{
  *   id: string,
@@ -198,7 +199,8 @@ function operationalValueMetricGroups(rows) {
       series.points.push({
         x: String(point.x),
         y: Number(point.y),
-        key: String(point.key || '')
+        key: String(point.key || ''),
+        link: findLink(row, 'run-link')
       });
       group.series.set(repository, series);
     }

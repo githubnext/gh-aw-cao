@@ -111,6 +111,15 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .temporal-plot-adoption { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 5 6; }
 .temporal-plot-metric { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .temporal-plot-point { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.temporal-plot-chart { position: relative; }
+.temporal-plot-point-tooltip { position: absolute; margin: -12px 0 0 -12px; }
+.temporal-plot-point-trigger { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.temporal-plot-point-trigger:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.temporal-plot-point-tooltip:hover, .temporal-plot-point-tooltip:focus-within { z-index: 1; }
+.temporal-plot-point-tooltip:hover .tooltip-content, .temporal-plot-point-tooltip:focus-within .tooltip-content { pointer-events: auto; }
+.temporal-plot-point-tooltip .tooltip-content { font-size: .8125rem; }
+.temporal-plot-point-tooltip .tooltip-content::before { position: absolute; inset: -10px 0; z-index: -1; content: ""; }
+.temporal-plot-point-tooltip .tooltip-content a { color: var(--accent); }
 .temporal-plot-run-outcome-track { stroke: var(--border); stroke-width: 7; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
 .temporal-plot-run-outcome-success, .temporal-plot-run-outcome-failure { stroke-width: 5; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
 .temporal-plot-run-outcome-success { stroke: var(--success); }
