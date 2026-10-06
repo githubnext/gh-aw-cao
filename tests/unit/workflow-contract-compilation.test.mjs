@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { generatedJobs, ghAwVersion, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { generatedJobs, ghAwVersion, root, stepBlock, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Compiled workflow output contracts.
 
@@ -113,7 +113,12 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /\.authorized == true/);
       assert.match(preActivation, /\.policy_source == \{repository:\$repository,path:"\.github\/workflows\/cao\.json",sha:\$sha\}/);
       assert.match(preActivation, /name: Upload CAO control precompute artifact/);
-      assert.match(preActivation, /retention-days: 1(?:\.0)?/);
+      const precomputeUpload = parse(stepBlock(preActivation, "Upload CAO control precompute artifact"))[0];
+      assert.equal(
+        precomputeUpload.with["retention-days"],
+        "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '1.0' }}",
+        `${name} must retain the one-day precompute fallback under the compiler retention policy`,
+      );
 
       assert.match(agent, /name: Download CAO control precompute artifact/);
       assert.doesNotMatch(agent, /name: Validate CAO control precompute artifact/);
