@@ -19,6 +19,9 @@ Run the wrapper from the repository root:
 ./cao.sh --help
 ```
 
+Command failures exit nonzero and report the error without printing the command
+reference. Request `./cao.sh --help` explicitly when needed.
+
 CAO and gh-aw have separate jobs:
 
 - **`./cao.sh`** configures CAO policy, authentication, installed campaigns, workflow enablement, and operational data.

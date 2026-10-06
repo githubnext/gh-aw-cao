@@ -2,13 +2,14 @@ import { createReadStream } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { isSupportedGhAwJsonlSchemaVersion } from "../dashboard/site/src/data/adapters/gh-aw-logs.js";
 
 export function parseGhAwLogsJsonl(contents) {
   return contents
     .split(/\r?\n/)
     .filter(Boolean)
     .map((line) => JSON.parse(line))
-    .flatMap((record) => record.schema_version === 2 && record.kind === "run" && record.run
+    .flatMap((record) => isSupportedGhAwJsonlSchemaVersion(record.schema_version) && record.kind === "run" && record.run
       ? [record.run]
       : []);
 }
@@ -34,7 +35,7 @@ export async function* iterateGhAwLogShards(directory, shardNames) {
     for await (const line of lines) {
       if (!line) continue;
       const record = JSON.parse(line);
-      if (record.schema_version === 2 && record.kind === "run" && record.run) yield record.run;
+      if (isSupportedGhAwJsonlSchemaVersion(record.schema_version) && record.kind === "run" && record.run) yield record.run;
     }
   }
 }
