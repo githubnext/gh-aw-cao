@@ -69,7 +69,8 @@
   "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
-  "status": "needs-work",
+  "status": "deprecated",
+  "deprecation_reason": "librarian-37446110044-1: 14 refiner rule-outcome evaluations across 2026-09-16 to 2026-10-06 (~3 weeks) in three target repositories never reached ready. github/gh-aw-firewall's 2 true positives, 4 false positives, and 1 false negative recur byte-for-byte across 6 separate re-evaluations with zero narrowing; githubnext/gh-aw-cao finds 0 true positives and 1 persistent false positive across 6 evaluations; github/gh-aw-actions is not-applicable. No refiner proposed or landed a directory-provenance allowlist or shell-string matcher fix despite the gaps being identified from the first evaluation.",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
     "target_commit": "61108a1eed42b4bbb1030538fcf2dad764e5bfd2",
@@ -122,18 +123,9 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD b476c7d5: same 4 false positives (sessionStateDir, squid-logs, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R), no suppression mechanism.",
       "txn_id": "refiner-37359981927-1"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "6e093fd9535a91bb0791adf690da3921ca8c93a5",
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged: sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive (no restricted-mode file ever written there). No change in classification.",
-      "txn_id": "refiner-37446072039-2"
     }
   ],
-  "last_seen_at": "2026-10-06T09:59:04Z",
-  "last_updated": "2026-10-06T09:59:04Z"
+  "last_seen_at": "2026-10-06T02:59:21Z",
+  "last_updated": "2026-10-06T09:55:50Z",
+  "last_normalized_by_txn": "librarian-37446110044-1"
 }
