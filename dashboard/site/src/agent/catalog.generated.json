@@ -3411,7 +3411,7 @@
       "id": "workflow-list",
       "subject": "List declared workflows in latest observed run order.",
       "objective": "Open a dedicated workflow page from a lightweight inventory with its latest execution status.",
-      "acceptance": "Keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
+      "acceptance": "Preserve textual run identities and keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
       "description": "",
       "parameters": [],
       "sources": [
