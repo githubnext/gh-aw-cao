@@ -137,12 +137,7 @@ type Requirements struct {
 // Validate checks guarantees rather than adapter names. Atomicity is required
 // by every service contract and cannot be disabled with a capability flag.
 func Validate(c Capabilities, s Services, r Requirements) error {
-	features := []struct {
-		name     string
-		cap      Capability
-		present  bool
-		required bool
-	}{
+	return validateFeatures([]serviceFeature{
 		{"cache", c.Cache, !nilService(s.Cache), true},
 		{"request limits", c.RequestLimits, !nilService(s.RequestLimits), true},
 		{"sessions", c.Sessions, !nilService(s.OAuth), r.OAuth},
@@ -151,7 +146,17 @@ func Validate(c Capabilities, s Services, r Requirements) error {
 		{"collection", c.Collection, !nilService(s.Collection), r.Collection},
 		{"coordination", c.Coordination, !nilService(s.Coordination), true},
 		{"diagnostics", c.Diagnostics, !nilService(s.Diagnostics), true},
-	}
+	}, r)
+}
+
+type serviceFeature struct {
+	name     string
+	cap      Capability
+	present  bool
+	required bool
+}
+
+func validateFeatures(features []serviceFeature, r Requirements) error {
 	for _, f := range features {
 		if f.cap.Scope > ScopeDeployment || f.cap.Persistence > PersistenceRestart ||
 			(f.cap.Scope == ScopeUnsupported && f.cap.Persistence != PersistenceVolatile) {
@@ -180,75 +185,26 @@ func Validate(c Capabilities, s Services, r Requirements) error {
 // ValidateOperationalServices checks every advertised service independently,
 // including the components of optional collection and OAuth profiles.
 func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requirements) error {
-	features := []struct {
-		name string
-		cap  Capability
-		svc  any
-	}{
-		{"backend", c.Coordination, s.Backend},
-		{"cache", c.Cache, s.Cache},
-		{"request limits", c.RequestLimits, s.RequestLimiter},
-		{"sessions", c.Sessions, s.Sessions},
-		{"session invalidator", c.Sessions, s.SessionInvalidator},
-		{"revocations", c.Revocations, s.Revocations},
-		{"leases", c.Coordination, s.Leases},
-		{"state", c.Coordination, s.State},
-		{"deliveries", c.Coordination, s.Deliveries},
-		{"queue", c.Collection, s.Queue},
-		{"admission", c.Collection, s.Admission},
-		{"collection metadata", c.Collection, s.Collection},
-		{"github quota", c.GitHubQuota, s.GitHubQuota},
-		{"rate limits", c.GitHubQuota, s.RateLimits},
-		{"health", c.Diagnostics, s.Health},
-		{"ingestion metrics", c.Diagnostics, s.IngestionMetrics},
-	}
 	if nilService(s.Backend) {
 		return fmt.Errorf("backend: %w", ErrUnsupported)
 	}
-	for _, f := range features[1:] {
-		if f.cap.Scope != ScopeUnsupported && nilService(f.svc) {
-			return fmt.Errorf("%s advertised without a service: %w", f.name, ErrUnsupported)
-		}
-	}
-	// Reuse the existing scope, persistence and topology checks.
-	return Validate(c, Services{
-		Cache: s.Cache, RequestLimits: s.RequestLimiter,
-		OAuth:        oauthServices{s.Sessions, s.SessionInvalidator, s.Revocations},
-		GitHubQuota:  quotaServices{s.GitHubQuota, s.RateLimits, s.Collection},
-		Collection:   collectionServices{s.Queue, s.Admission, s.Collection, s.Leases, s.State, s.Deliveries, s.Health, s.IngestionMetrics},
-		Coordination: coordinationServices{s.Leases, s.State, s.Deliveries},
-		Diagnostics:  diagnosticsServices{s.Health, s.IngestionMetrics},
+	return validateFeatures([]serviceFeature{
+		{"cache", c.Cache, !nilService(s.Cache), true},
+		{"request limits", c.RequestLimits, !nilService(s.RequestLimiter), true},
+		{"sessions", c.Sessions, !nilService(s.Sessions), r.OAuth},
+		{"session invalidator", c.Sessions, !nilService(s.SessionInvalidator), r.OAuth},
+		{"revocations", c.Revocations, !nilService(s.Revocations), r.OAuth},
+		{"leases", c.Coordination, !nilService(s.Leases), true},
+		{"state", c.Coordination, !nilService(s.State), true},
+		{"deliveries", c.Coordination, !nilService(s.Deliveries), true},
+		{"queue", c.Collection, !nilService(s.Queue), r.Collection},
+		{"admission", c.Collection, !nilService(s.Admission), r.Collection},
+		{"collection", c.Collection, !nilService(s.Collection), r.Collection},
+		{"github quota", c.GitHubQuota, !nilService(s.GitHubQuota), true},
+		{"rate limits", c.GitHubQuota, !nilService(s.RateLimits), true},
+		{"health", c.Diagnostics, !nilService(s.Health), true},
+		{"ingestion metrics", c.Diagnostics, !nilService(s.IngestionMetrics), true},
 	}, r)
-}
-
-type oauthServices struct {
-	SessionStore
-	SessionInvalidator
-	RevocationQueue
-}
-type quotaServices struct {
-	GitHubQuotaStore
-	RateLimitStateStore
-	CollectionMetadata
-}
-type coordinationServices struct {
-	LeaseStore
-	StateStore
-	DeliveryDeduplicator
-}
-type diagnosticsServices struct {
-	HealthProbe
-	IngestionMetrics
-}
-type collectionServices struct {
-	TaskQueue
-	DeliveryAdmissionStore
-	CollectionMetadata
-	LeaseStore
-	StateStore
-	DeliveryDeduplicator
-	HealthProbe
-	IngestionMetrics
 }
 
 type QueryCacheStats struct {

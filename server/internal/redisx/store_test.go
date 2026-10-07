@@ -49,6 +49,13 @@ func TestProcessIsolatedStoresUseFreshNamespaces(t *testing.T) {
 	if first.Key("") == second.Key("") {
 		t.Fatal("process-isolated stores shared a namespace")
 	}
+	services := first.OperationalServices()
+	if services.Queue != nil || services.Admission != nil || services.Collection != nil {
+		t.Fatal("process-isolated store exposed collection services")
+	}
+	if services.Sessions != first || services.Revocations != first || services.Backend != first {
+		t.Fatal("process-isolated services did not share the owning store")
+	}
 }
 
 func TestCacheMarketplaceRegistrySetsNamespacedKeyAndMillisecondTTL(t *testing.T) {
