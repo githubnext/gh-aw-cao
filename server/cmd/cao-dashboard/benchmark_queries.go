@@ -179,21 +179,36 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 		if err != nil {
 			return report, fmt.Errorf("query %q failed: %w", name, err)
 		}
-		source, ok := sources[name]
-		if !ok || source.Metadata["availability"] == "unavailable" {
-			return report, fmt.Errorf("query %q unavailable", name)
+		measurement, err := buildBenchmarkMeasurement(name, time.Since(started), sources, metrics)
+		if err != nil {
+			return report, err
 		}
-		totalRows, ok := source.Metadata["total-row-count"].(int)
-		if !ok || totalRows < len(source.Rows) {
-			return report, fmt.Errorf("query %q has invalid page cardinality", name)
-		}
-		report.Measurements = append(report.Measurements, benchmarkMeasurement{
-			Query: name, DurationMS: float64(time.Since(started).Microseconds()) / 1000,
-			Metrics: metrics, Rows: len(source.Rows), TotalRows: totalRows,
-		})
+		report.Measurements = append(report.Measurements, measurement)
 	}
 	benchmarkLog.Printf("benchmark completed measurements=%d", len(report.Measurements))
 	return report, nil
+}
+
+// buildBenchmarkMeasurement validates one candidate query's result and
+// converts it into a benchmarkMeasurement. It is extracted from
+// benchmarkQueries's per-candidate loop so the unavailable-source and
+// invalid-page-cardinality failure modes are independently testable against
+// a constructed model.Source, without executing a live Postgres query.
+func buildBenchmarkMeasurement(name string, elapsed time.Duration, sources map[string]model.Source, metrics model.Metrics) (benchmarkMeasurement, error) {
+	source, ok := sources[name]
+	if !ok || source.Metadata["availability"] == "unavailable" {
+		benchmarkLog.Printf("benchmark query unavailable query=%s", name)
+		return benchmarkMeasurement{}, fmt.Errorf("query %q unavailable", name)
+	}
+	totalRows, ok := source.Metadata["total-row-count"].(int)
+	if !ok || totalRows < len(source.Rows) {
+		benchmarkLog.Printf("benchmark query invalid page cardinality query=%s", name)
+		return benchmarkMeasurement{}, fmt.Errorf("query %q has invalid page cardinality", name)
+	}
+	return benchmarkMeasurement{
+		Query: name, DurationMS: float64(elapsed.Microseconds()) / 1000,
+		Metrics: metrics, Rows: len(source.Rows), TotalRows: totalRows,
+	}, nil
 }
 
 // benchmarkFlagFailure identifies which required benchmark-queries flag was

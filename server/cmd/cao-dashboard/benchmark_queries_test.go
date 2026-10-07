@@ -133,6 +133,56 @@ func TestBenchmarkQueriesRejectsEmptyEvidence(t *testing.T) {
 	}
 }
 
+func TestBuildBenchmarkMeasurementRejectsUnavailableSource(t *testing.T) {
+	sources := map[string]model.Source{
+		"overview": {Metadata: model.Metadata{"availability": "unavailable"}},
+	}
+	if _, err := buildBenchmarkMeasurement("overview", time.Millisecond, sources, model.Metrics{}); err == nil ||
+		!strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("expected an unavailable-source error, got %v", err)
+	}
+	if _, err := buildBenchmarkMeasurement("missing", time.Millisecond, map[string]model.Source{}, model.Metrics{}); err == nil ||
+		!strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("expected an unavailable error for a missing source, got %v", err)
+	}
+}
+
+func TestBuildBenchmarkMeasurementRejectsInvalidPageCardinality(t *testing.T) {
+	sources := map[string]model.Source{
+		"overview": {
+			Rows:     []model.Row{{"id": "a"}, {"id": "b"}},
+			Metadata: model.Metadata{"total-row-count": 1},
+		},
+	}
+	if _, err := buildBenchmarkMeasurement("overview", time.Millisecond, sources, model.Metrics{}); err == nil ||
+		!strings.Contains(err.Error(), "invalid page cardinality") {
+		t.Fatalf("expected an invalid page cardinality error, got %v", err)
+	}
+	missingCount := map[string]model.Source{"overview": {Rows: []model.Row{{"id": "a"}}, Metadata: model.Metadata{}}}
+	if _, err := buildBenchmarkMeasurement("overview", time.Millisecond, missingCount, model.Metrics{}); err == nil ||
+		!strings.Contains(err.Error(), "invalid page cardinality") {
+		t.Fatalf("expected an invalid page cardinality error for a missing total-row-count, got %v", err)
+	}
+}
+
+func TestBuildBenchmarkMeasurementReturnsMeasurement(t *testing.T) {
+	sources := map[string]model.Source{
+		"overview": {
+			Rows:     []model.Row{{"id": "a"}, {"id": "b"}},
+			Metadata: model.Metadata{"total-row-count": 5},
+		},
+	}
+	metrics := model.Metrics{QueryCount: 3}
+	measurement, err := buildBenchmarkMeasurement("overview", 2500*time.Microsecond, sources, metrics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if measurement.Query != "overview" || measurement.Rows != 2 || measurement.TotalRows != 5 ||
+		measurement.DurationMS != 2.5 || measurement.Metrics.QueryCount != 3 {
+		t.Fatalf("unexpected measurement: %+v", measurement)
+	}
+}
+
 func TestBenchmarkQueriesWithDeployedSubset(t *testing.T) {
 	url := os.Getenv("POSTGRES_URL")
 	if url == "" {
