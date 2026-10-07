@@ -1,5 +1,8 @@
 import { ACTION_LEVELS } from './action-model.js';
 import { ERROR_CODES, IDENTIFIER_PATTERN } from './specification.js';
+import { createDebug } from './debug.js';
+
+const debugActionValidator = createDebug('action-validator');
 
 /**
  * @param {string} command
@@ -47,6 +50,16 @@ export function parseCliActionTokens(command) {
  * @returns {boolean}
  */
 export function validWorkflowDispatchArguments(args) {
+  const valid = workflowDispatchArgumentsAreValid(args);
+  debugActionValidator({ event: 'workflow-dispatch-arguments-checked', status: valid ? 'valid' : 'invalid', argumentCount: args.length });
+  return valid;
+}
+
+/**
+ * @param {string[]} args
+ * @returns {boolean}
+ */
+function workflowDispatchArgumentsAreValid(args) {
   if (!args[0] || args[0].startsWith('-')) return false;
   const repositoryPattern =
     /^(?:[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+|\{\{[a-z][a-z0-9-]*\}\})$/;
@@ -79,7 +92,7 @@ export function validWorkflowDispatchArguments(args) {
 export function isReadOnlyCliAction(action) {
   if (action.arguments?.length || typeof action.command !== 'string') return false;
   const tokens = parseCliActionTokens(action.command);
-  return Boolean(tokens && (
+  const allowed = Boolean(tokens && (
     tokens[0] === 'gh' && tokens[1] === 'aw'
       && ['status', 'list', 'logs', 'version'].includes(tokens[2]) && tokens.length === 3
     || tokens[0] === './cao.sh' && (
@@ -88,6 +101,8 @@ export function isReadOnlyCliAction(action) {
         && tokens.length === 3 && IDENTIFIER_PATTERN.test(tokens[2])
     )
   ));
+  debugActionValidator({ event: 'read-only-cli-check', status: allowed ? 'allowed' : 'rejected', tokenCount: tokens?.length ?? 0 });
+  return allowed;
 }
 
 /**
@@ -108,5 +123,8 @@ export function validateActionLevel(level, path, errors) {
       message: 'The ui level is reserved for native dashboard and account-session controls; prompts, CLI commands, and external links cannot use it.',
       path
     });
+  }
+  if (errors.length > 0 && errors.at(-1)?.path === path) {
+    debugActionValidator({ event: 'action-level-rejected', reason: level === 'ui' ? 'ui-reserved' : 'unknown-level' });
   }
 }
