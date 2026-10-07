@@ -149,7 +149,8 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .report-actions { width: 100%; position: relative; margin-left: 0; }
   .report-actions .tooltip-help { position: static; }
   .report-actions .tooltip-content { width: min(320px, 100%); right: auto; left: 0; }
-  .report-footer-provenance { display: none; }
+  .report-footer-status { display: none; }
+  .report-footer-versions { justify-content: flex-start; }
   /* Keep full-width wrapping for the desktop header only; the same header moves into .mobile-page-header where it must stay content-sized. */
   .app-main .overview-header { flex-basis: 100%; }
   .toolbar { align-items: stretch; flex-wrap: wrap; }
