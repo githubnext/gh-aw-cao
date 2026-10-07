@@ -5,7 +5,37 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var coordinationLog = logger.New("cao:operational:memory:coordination")
+
+// lockAttemptOutcome classifies why TryLock did or did not acquire a lock,
+// so the outcome is diagnosable without logging the lock name or owner.
+type lockAttemptOutcome string
+
+const (
+	lockAttemptAcquired   lockAttemptOutcome = "acquired"
+	lockAttemptHeld       lockAttemptOutcome = "already-held"
+	lockAttemptAtCapacity lockAttemptOutcome = "at-capacity"
+)
+
+// classifyLockAttempt decides TryLock's outcome from already-computed
+// boundary facts (whether the name is currently locked, and whether the
+// store is at its configured lock-name budget). It is a pure function
+// extracted from TryLock so each branch is independently testable without
+// constructing a *Store or exercising the mutex and reservation accounting.
+func classifyLockAttempt(alreadyHeld bool, count, max int) lockAttemptOutcome {
+	switch {
+	case alreadyHeld:
+		return lockAttemptHeld
+	case count >= max:
+		return lockAttemptAtCapacity
+	default:
+		return lockAttemptAcquired
+	}
+}
 
 func (s *Store) TryLock(ctx context.Context, name, owner string, ttl time.Duration) (bool, error) {
 	if err := s.enter(ctx); err != nil {
@@ -20,11 +50,14 @@ func (s *Store) TryLock(ctx context.Context, name, owner string, ttl time.Durati
 	}
 	now := s.config.Clock()
 	s.prune(now)
-	if _, ok := s.locks[name]; ok {
+	_, held := s.locks[name]
+	outcome := classifyLockAttempt(held, len(s.locks), s.config.MaxLocks)
+	coordinationLog.Printf("lock attempt classified outcome=%s", outcome)
+	if outcome != lockAttemptAcquired {
+		if outcome == lockAttemptAtCapacity {
+			return false, capacity()
+		}
 		return false, nil
-	}
-	if len(s.locks) >= s.config.MaxLocks {
-		return false, capacity()
 	}
 	if err := s.reserve(map[recordKey]int64{{"lock", name, ""}: charge(name, owner)}); err != nil {
 		return false, err
