@@ -1,7 +1,10 @@
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { octicon } from '../octicons.js';
 import { effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
+
+const debug = createDebug('card-filter-bar');
 
 /** @typedef {{ selected: Record<string, string[]>, open: boolean[], scroll: number[] }} CardFilterState */
 /** @type {WeakMap<HTMLElement, { read: () => CardFilterState, restore: (value: CardFilterState) => void }>} */
@@ -71,13 +74,17 @@ export function renderCardFilterBar(options) {
     apply.addEventListener('click', () => {
       details.open = false;
       summary.focus();
-      options.onChange(selected.get());
+      const current = selected.get();
+      const selectedCount = control.groups.reduce((sum, group) => sum + (current[group.field]?.length ?? 0), 0);
+      debug({ event: 'filters-applied', viewId: options.viewId, controlId: control.id, count: selectedCount });
+      options.onChange(current);
     }, { signal: scope.signal });
     details.append(h('div', { className: 'card-filter-popover' }, groups, apply));
     details.addEventListener('toggle', () => {
       summary.setAttribute('aria-expanded', String(details.open));
       if (details.open) {
         for (const other of menus) if (other !== details) other.open = false;
+        debug({ event: 'menu-opened', viewId: options.viewId, controlId: control.id });
       }
     }, { signal: scope.signal });
     summary.setAttribute('aria-expanded', 'false');
@@ -96,6 +103,7 @@ export function renderCardFilterBar(options) {
     for (const menu of menus) menu.open = false;
     selected.set({});
     menus[0]?.querySelector('summary')?.focus();
+    debug({ event: 'filters-cleared', viewId: options.viewId });
     options.onChange({});
   }, { signal: scope.signal });
   effect(() => {

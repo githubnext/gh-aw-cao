@@ -251,6 +251,82 @@ describe('card filter controls', () => {
     expect(replacement.onChange).not.toHaveBeenCalled();
   });
 
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=card-filter-bar', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCardFilterBar: renderWithDebug } = await import('../../src/components/card-filter-bar.js');
+
+    const onChange = vi.fn();
+    const root = renderWithDebug({
+      pageId: page.id, viewId: view.id, controls: contract['filter-bar'].filters, sources: payload(), onChange
+    });
+    document.body.append(root);
+
+    const label = [...root.querySelectorAll('label')].find((node) => node.textContent === 'Open');
+    label?.querySelector('input')?.click();
+    const details = /** @type {HTMLDetailsElement} */ (root.querySelector('details'));
+    details.open = true;
+    details.dispatchEvent(new Event('toggle'));
+    root.querySelector('.card-filter-popover button')?.dispatchEvent(new MouseEvent('click'));
+    root.querySelector('.card-filter-clear')?.dispatchEvent(new MouseEvent('click'));
+
+    expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]', { event: 'menu-opened', viewId: view.id, controlId: 'labels' });
+    expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]',
+      { event: 'filters-applied', viewId: view.id, controlId: 'labels', count: 1 });
+    expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]', { event: 'filters-cleared', viewId: view.id });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCardFilterBar: renderWithoutDebug } = await import('../../src/components/card-filter-bar.js');
+
+    const onChange = vi.fn();
+    const root = renderWithoutDebug({
+      pageId: page.id, viewId: view.id, controls: contract['filter-bar'].filters, sources: payload(), onChange
+    });
+    document.body.append(root);
+
+    const label = [...root.querySelectorAll('label')].find((node) => node.textContent === 'Open');
+    label?.querySelector('input')?.click();
+    const details = /** @type {HTMLDetailsElement} */ (root.querySelector('details'));
+    details.open = true;
+    details.dispatchEvent(new Event('toggle'));
+    root.querySelector('.card-filter-popover button')?.dispatchEvent(new MouseEvent('click'));
+    root.querySelector('.card-filter-clear')?.dispatchEvent(new MouseEvent('click'));
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
   it('keeps the filter bar and clear action available for an empty card list', () => {
     const results = payload({ viewFilters: { [view.id]: { 'issue-status-detail': ['absent'] } } });
     const listView = dashboard.views.find((/** @type {{ id: string }} */ entry) => entry.id === 'issues');
