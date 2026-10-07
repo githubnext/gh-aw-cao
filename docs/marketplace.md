@@ -20,6 +20,9 @@ action only copies the canonical command:
 ```
 
 Review the command and run it separately from a trusted checkout.
+`cao add` and `gh aw add` install packages without using AI. AI is used only
+when installed agentic workflows run; copying or running an add command does
+not start those workflows.
 
 The marketplace presents a declarative list of package cards from the
 resolved marketplace table, without search, filters, or ranking controls.

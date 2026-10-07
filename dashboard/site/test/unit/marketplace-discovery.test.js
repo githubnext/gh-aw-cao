@@ -41,6 +41,15 @@ function resolve() {
 }
 
 describe('marketplace discovery', () => {
+  it('explains that add commands do not use AI on list and detail pages', () => {
+    const detail = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace-package');
+    for (const description of [page.views[0].description, detail.description]) {
+      expect(description).toContain('cao add');
+      expect(description).toContain('gh aw add');
+      expect(description).toMatch(/does not use AI|uses AI/);
+    }
+  });
+
   it('requires a recovery route for the declared package availability view', () => {
     const document = structuredClone(authoritativeDashboard);
     const detail = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'marketplace-package');
