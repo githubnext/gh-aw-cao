@@ -69,9 +69,9 @@
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
-  "last_seen_at": "2026-10-07T02:14:00Z",
-  "last_updated": "2026-10-07T03:08:32Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37564278133",
+  "last_seen_at": "2026-10-06T23:48:57Z",
+  "last_updated": "2026-10-07T02:14:05Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
@@ -123,26 +123,6 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD 61108a1e: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite (TP), and the shape-only typeof/Array.isArray assertions at lines 66-72 still false-positive against a naive heuristic. No suppression convention.",
       "txn_id": "refiner-37406671160-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "15e1e96120b59b3b19a4c6ad1a164398910e639e",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 15e1e96120b59b3b19a4c6ad1a164398910e639e: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; none exist. Not applicable here regardless of the rule's readiness elsewhere.",
-      "txn_id": "refiner-37557116506-3"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "b3f1fa1a3445e3696ba970174aacbd6caa7190f6",
-      "true_positive_count": 2,
-      "false_positive_count": 2,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged at HEAD b3f1fa1a3445e3696ba970174aacbd6caa7190f6: docker-manager.test.ts still duplicates capability-filter.test.ts's behavioral suite for filterCapDrop, filterComposeCapDrop, getHostCapabilityBoundingSet and isCapDropSkipped (2 TP groups), while the shape-only typeof/Array.isArray checks remain correct non-duplicative usage (2 FP against a naive heuristic). No suppression convention. No drift since refiner-37548458310-2.",
-      "txn_id": "refiner-37560505197-2"
     }
   ]
 }
