@@ -544,6 +544,42 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('repository inventory subscription publishes identity rows before computed run counts', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processor = await import(`${location.origin}/src/data-processor.js`);
+    const dashboard = (await fetch(`${location.origin}/dashboard.json`).then((response) => response.json())).dashboard;
+    await processor.loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`, ['repositories'], dashboard
+    );
+    const lifetime = new AbortController();
+    const deliveries = /** @type {Array<{ repository: string, runs?: number, pending?: string }>} */ ([]);
+    try {
+      return await new Promise((resolve, reject) => {
+        processor.subscribeCanonicalDashboardView(
+          'repository-partial-result-test', ['repository-activity'], dashboard,
+          (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ sources) => {
+            const source = sources['view:repositories:repositories-activity:repository-activity'];
+            if (!source) return;
+            deliveries.push({
+              repository: String(source.rows[0]?.repository),
+              runs: /** @type {number | undefined} */ (source.rows[0]?.runs),
+              pending: /** @type {string | undefined} */ (source.metadata['projection-state'])
+            });
+            if (deliveries.at(-1)?.pending === undefined) resolve(deliveries);
+          },
+          undefined,
+          { pageId: 'repositories', viewId: 'repositories-activity', routeParameters: {}, signal: lifetime.signal, onError: reject }
+        );
+      });
+    } finally {
+      lifetime.abort();
+    }
+  });
+  expect(result[0]).toMatchObject({ repository: 'githubnext/gh-aw-cao', pending: 'pending' });
+  expect(result[0].runs).toBeUndefined();
+  expect(result.at(-1)).toMatchObject({ repository: 'githubnext/gh-aw-cao', runs: 1 });
+});
+
 test('workflow route queries return bounded records and subscribed aggregates through the real worker', async ({ page, context }) => {
   const input = databaseTables();
   input.workflows.rows.push({ ...input.workflows.rows[0], repository: 'unrelated' });

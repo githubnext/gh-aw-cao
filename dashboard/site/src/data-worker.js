@@ -420,7 +420,7 @@ function subscriptionPartialSource(subscription) {
     && !Object.keys(interactive?.viewFilters ?? {}).length
     && !interactive?.search?.query
     && !interactive?.orderBy?.length
-    && !subscription.routeParameters
+    && !Object.keys(subscription.routeParameters ?? {}).length
     ? partialSource : null;
 }
 
@@ -649,7 +649,8 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             ? subscription.pagination
             : resetPagination(subscription.pagination);
           const partialSource = subscriptionPartialSource(subscription);
-          if (partialSource && isPhaseSubscription(subscription, publicationPhase, [partialSource])) {
+          if (partialSource && !subscription.emitted
+              && isPhaseSubscription(subscription, publicationPhase, [partialSource])) {
             const partial = await queryLiveDashboard(
               new Set(subscription.sourceNames),
               subscription.context,

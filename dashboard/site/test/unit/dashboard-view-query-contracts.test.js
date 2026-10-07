@@ -77,7 +77,10 @@ function sourceNamesOf(view) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return [];
   const configured = /** @type {Record<string, unknown>} */ (data);
   if (Array.isArray(configured.sources)) return configured.sources.filter((/** @type {unknown} */ name) => typeof name === 'string');
-  return typeof configured.source === 'string' ? [configured.source] : [];
+  return [
+    ...(typeof configured.source === 'string' ? [configured.source] : []),
+    ...(typeof configured['partial-source'] === 'string' ? [configured['partial-source']] : [])
+  ];
 }
 
 /**
@@ -89,7 +92,7 @@ function declaredQueryReferences(value) {
   if (Array.isArray(value)) return value.flatMap(declaredQueryReferences);
   const configured = /** @type {Record<string, unknown>} */ (value);
   return Object.entries(configured).flatMap(([key, nested]) => {
-    if ((key === 'from' || key === 'source' || key === 'query') && typeof nested === 'string' && queryNames.has(nested)) {
+    if ((key === 'from' || key === 'source' || key === 'partial-source' || key === 'query') && typeof nested === 'string' && queryNames.has(nested)) {
       return [nested];
     }
     if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
