@@ -113,6 +113,10 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
   border: 0;
   border-radius: 0;
 }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] .mobile-table-card-list-items {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
 .dashboard-full-view .card-filter-bar { border-inline: 0; border-radius: 0; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 /* Keep the search inside the table scroll surface without giving it a second horizontal scrollbar. */
