@@ -1,5 +1,5 @@
 {
-  "source_sha": "bf2e1c826793bdeea788555d64ff68a83890e261",
+  "source_sha": "04d36fd794fe564d33dc80a7168ea3d19536c964",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -443,6 +443,34 @@
         37699280341
       ],
       "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was entirely cancelled or action_required schedule, push, and workflow_run attempts on recent source SHAs e1c62ae91594ceee9a96cb08ac78f36ae689fa90, c33caa02c92511e18124fb0b732bea196bc27e7c, d3186112881dd995d51007a536108f269a68aac1, 8d994c03373c21e20537c324bca0e52724d30087, and 4bf40f5858a2ae96cf47c8500c382827f1f0a5cb, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-07T23:54:18Z",
+      "worker_run_id": 37704629933,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37704512495,
+        37704240299,
+        37703914720,
+        37703691947,
+        37703134868,
+        37702980335,
+        37702872795,
+        37702872393,
+        37702487133,
+        37702470976,
+        37702458270,
+        37701889335,
+        37701617992,
+        37700921282,
+        37700247713,
+        37700247587,
+        37700101811,
+        37700094984,
+        37700091564,
+        37699820665
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was entirely cancelled or action_required schedule, push, and workflow_run attempts on source SHAs 04d36fd794fe564d33dc80a7168ea3d19536c964, bf2e1c826793bdeea788555d64ff68a83890e261, e1c62ae91594ceee9a96cb08ac78f36ae689fa90, c33caa02c92511e18124fb0b732bea196bc27e7c, d3186112881dd995d51007a536108f269a68aac1, and 8d994c03373c21e20537c324bca0e52724d30087, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
     }
   ]
 }
