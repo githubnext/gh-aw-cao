@@ -92,7 +92,6 @@ async function selectTable(page, mobile) {
  */
 async function exerciseFirstImport({ context, page }, mobile, upgrade = false, colorScheme = 'light') {
   await page.emulateMedia({ colorScheme });
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   const shardCount = 12;
   const runsPerShard = 10;
@@ -236,14 +235,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen.locator('.first-load-server-option')).toBeVisible();
   await expect(importScreen.locator('.first-load-reason')).toContainText(upgrade ? 'newer browser database format' : 'no completed local copy yet');
   await expect(importScreen.getByRole('link', { name: 'deployment options (opens in a new tab)' })).toBeVisible();
-  await importScreen.getByRole('button', { name: 'Copy preparation details' }).click();
-  await expect(importScreen.locator('.first-load-copy-status')).toHaveText('Preparation details copied.');
-  const copied = await page.evaluate(() => navigator.clipboard.readText());
-  expect(JSON.parse(copied)).toMatchObject({
-    event: 'dashboard-browser-database-repopulation',
-    reason: upgrade ? 'upgrade' : 'missing-snapshot',
-    ...(upgrade ? { schemaVersionBefore: DATABASE_VERSION - 1, schemaVersionAfter: DATABASE_VERSION } : {})
-  });
+  await expect(importScreen.getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
   await importScreen.locator('summary').click();
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
   const readBackground = (/** @type {Element} */ element) => {

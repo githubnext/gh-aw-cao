@@ -258,6 +258,7 @@ describe("dashboard data startup", () => {
     dataProcessor.loadCanonicalDashboardPage.mockImplementationOnce(() => new Promise((resolve) => {
       finishUpgrade = () => resolve({});
     }));
+    /** @type {(versions: { oldVersion: number, newVersion: number }) => void} */
     let notifyUpgrade = () => {};
     const stopUpgrade = vi.fn();
     dataProcessor.subscribeDatabaseUpgrade.mockImplementation((notify) => {
