@@ -1,29 +1,30 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderWorkflowBadges, workflowCampaignMemberships, workflowRole } from '../../src/components/workflow-badges.js';
+import { renderWorkflowBadges, workflowCampaignMembership, workflowRole } from '../../src/components/workflow-badges.js';
 
 describe('workflow-badges', () => {
-  it('renders the workflow role and sorted campaign memberships', () => {
+  it('renders the workflow role and its single campaign membership', () => {
     const element = renderWorkflowBadges({
       campaign: 'ambient-context',
       'campaign-name': 'Ambient Context',
-      'campaign-memberships': [
-        { id: 'central-agentic-ops', name: 'Central Agentic Ops' },
-        { id: 'ambient-context', name: 'Ambient Context' }
-      ],
       'workflow-role': 'orchestrator'
     });
 
     expect(element.className).toBe('workflow-badges');
     expect([...element.querySelectorAll('.workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
-      'Campaign · Ambient Context',
-      'Campaign · Central Agentic Ops'
+      'Campaign · Ambient Context'
     ]);
     expect([...element.querySelectorAll('a')].map((badge) => badge.getAttribute('href'))).toEqual([
-      '#page-campaign-insights?campaign=ambient-context',
-      '#page-campaign-insights?campaign=central-agentic-ops'
+      '#page-campaign-insights?campaign=ambient-context'
     ]);
+  });
+
+  it('omits the campaign badge when there is no membership', () => {
+    const element = renderWorkflowBadges({ 'workflow-role': 'worker' });
+
+    expect([...element.querySelectorAll('.workflow-badge')].map((badge) => badge.textContent)).toEqual(['Worker']);
+    expect(element.querySelectorAll('a')).toHaveLength(0);
   });
 
   it('supports custom class names and campaign destinations', () => {
@@ -48,27 +49,12 @@ describe('workflow-badges', () => {
     expect(workflowRole({})).toBe('unknown');
   });
 
-  it('normalizes and deduplicates campaign memberships while skipping invalid items', () => {
-    expect(workflowCampaignMemberships({
-      campaign: 'fallback',
-      'campaign-name': 'Fallback',
-      'campaign-memberships': [
-        { id: 'beta', name: 'Beta' },
-        { id: 'alpha', name: 'Alpha' },
-        { id: 'beta', name: 'Beta duplicate' },
-        null,
-        [],
-        { id: '', name: 'Missing id' },
-        { id: 'missing-name', name: '' }
-      ]
-    })).toEqual([
-      { id: 'alpha', name: 'Alpha' },
-      { id: 'beta', name: 'Beta duplicate' }
-    ]);
-
-    expect(workflowCampaignMemberships({ campaign: 'fallback', 'campaign-name': 'Fallback' })).toEqual([
-      { id: 'fallback', name: 'Fallback' }
-    ]);
-    expect(workflowCampaignMemberships({})).toEqual([]);
+  it('projects the canonical singular campaign/campaign-name pair', () => {
+    expect(workflowCampaignMembership({ campaign: 'fallback', 'campaign-name': 'Fallback' })).toEqual({
+      id: 'fallback',
+      name: 'Fallback'
+    });
+    expect(workflowCampaignMembership({ campaign: 'fallback' })).toEqual({ id: 'fallback', name: 'fallback' });
+    expect(workflowCampaignMembership({})).toBeNull();
   });
 });

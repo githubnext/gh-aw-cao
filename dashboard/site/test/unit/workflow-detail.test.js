@@ -31,10 +31,6 @@ function context(pageId = 'workflow-detail') {
             repository: 'gh-aw-cao',
             campaign: 'ambient-context',
             'campaign-name': 'Ambient Context',
-            'campaign-memberships': [
-              { id: 'central-agentic-ops', name: 'Central Agentic Ops' },
-              { id: 'ambient-context', name: 'Ambient Context' }
-            ],
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'workflow-role': 'orchestrator',
@@ -129,12 +125,10 @@ describe('workflow detail route', () => {
     );
     expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
-      'Campaign · Ambient Context',
-      'Campaign · Central Agentic Ops'
+      'Campaign · Ambient Context'
     ]);
     expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge-operation')].map((badge) => badge.getAttribute('href'))).toEqual([
-      '#page-campaign-insights?campaign=ambient-context',
-      '#page-campaign-insights?campaign=central-agentic-ops'
+      '#page-campaign-insights?campaign=ambient-context'
     ]);
     expect(allocation.mock.calls.at(-1)?.[0]).toMatchObject({
       detail: {

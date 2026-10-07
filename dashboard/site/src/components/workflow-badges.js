@@ -30,19 +30,21 @@ export function renderWorkflowBadges(workflow, options = {}) {
     campaignPage = 'campaign-insights'
   } = options;
   const role = workflowRole(workflow);
-  const memberships = workflowCampaignMemberships(workflow);
+  const membership = workflowCampaignMembership(workflow);
   return h(
     'span',
     { className: containerClassName },
     h('span', { className: `${roleClassName} workflow-badge-${role}` }, titleCase(role)),
-    ...memberships.map((membership) => h(
-      'a',
-      {
-        className: membershipClassName,
-        href: `#page-${campaignPage}?campaign=${encodeURIComponent(membership.id)}`
-      },
-      `Campaign · ${membership.name}`
-    ))
+    membership
+      ? h(
+        'a',
+        {
+          className: membershipClassName,
+          href: `#page-${campaignPage}?campaign=${encodeURIComponent(membership.id)}`
+        },
+        `Campaign · ${membership.name}`
+      )
+      : null
   );
 }
 
@@ -50,26 +52,22 @@ export function renderWorkflowBadges(workflow, options = {}) {
 export function workflowRole(workflow) {
   const role = text(workflow['workflow-role']).toLowerCase();
   if (['orchestrator', 'worker', 'standalone'].includes(role)) return role;
-  const membershipCount = workflowCampaignMemberships(workflow).length;
-  const resolved = membershipCount > 0 ? 'operation' : 'unknown';
-  debugWorkflowBadges({ event: 'role-fallback', resolved, membershipCount });
+  const hasMembership = workflowCampaignMembership(workflow) !== null;
+  const resolved = hasMembership ? 'operation' : 'unknown';
+  debugWorkflowBadges({ event: 'role-fallback', resolved, hasMembership });
   return resolved;
 }
 
-/** @param {Record<string, unknown>} workflow */
-export function workflowCampaignMemberships(workflow) {
-  const memberships = Array.isArray(workflow['campaign-memberships'])
-    ? workflow['campaign-memberships']
-    : workflow.campaign
-      ? [{ id: workflow.campaign, name: workflow['campaign-name'] ?? workflow.campaign }]
-      : [];
-  const unique = new Map();
-  for (const membership of memberships) {
-    if (!membership || typeof membership !== 'object' || Array.isArray(membership)) continue;
-    const id = text(membership.id).trim();
-    const name = text(membership.name).trim();
-    if (id && name) unique.set(id, { id, name });
-  }
-  return [...unique.values()].sort((left, right) => left.name.localeCompare(right.name));
+/**
+ * The canonical `workflows` query always resolves at most one campaign per
+ * workflow (`campaignId` is a singular schema reference), so this returns a
+ * single optional membership rather than a list.
+ * @param {Record<string, unknown>} workflow
+ * @returns {{ id: string, name: string } | null}
+ */
+export function workflowCampaignMembership(workflow) {
+  const id = text(workflow.campaign).trim();
+  const name = text(workflow['campaign-name'] ?? workflow.campaign).trim();
+  return id && name ? { id, name } : null;
 }
 

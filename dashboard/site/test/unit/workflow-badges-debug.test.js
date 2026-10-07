@@ -45,7 +45,7 @@ describe('workflow-badges debug logging', () => {
     expect(debugFn).not.toHaveBeenCalled();
   });
 
-  it('logs a role-fallback event with the resolved role and membership count under its predictable category', async () => {
+  it('logs a role-fallback event with the resolved role and membership presence under its predictable category', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=workflow-badges');
     const { workflowRole } = await import('../../src/components/workflow-badges.js');
@@ -58,7 +58,7 @@ describe('workflow-badges debug logging', () => {
     expect(debugFn).toHaveBeenCalledWith('[cao:workflow-badges]', {
       event: 'role-fallback',
       resolved: 'operation',
-      membershipCount: 1
+      hasMembership: true
     });
 
     debugFn.mockClear();
@@ -67,7 +67,7 @@ describe('workflow-badges debug logging', () => {
     expect(debugFn).toHaveBeenCalledWith('[cao:workflow-badges]', {
       event: 'role-fallback',
       resolved: 'unknown',
-      membershipCount: 0
+      hasMembership: false
     });
   });
 
@@ -78,8 +78,7 @@ describe('workflow-badges debug logging', () => {
 
     workflowRole({
       campaign: 'ambient-context',
-      'campaign-name': 'Ambient Context',
-      'campaign-memberships': [{ id: 'secret-token', name: 'should-not-leak' }]
+      'campaign-name': 'Ambient Context'
     });
 
     for (const call of debugFn.mock.calls) {

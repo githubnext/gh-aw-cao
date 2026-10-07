@@ -1561,10 +1561,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             'workflow-role': 'standalone',
             campaign: 'testing',
             'campaign-name': 'Testing',
-            'campaign-memberships': [
-              { id: 'testing', name: 'Testing' },
-              { id: 'central-agentic-ops', name: 'Central Agentic Ops' }
-            ],
             'workflow-active': 'true',
             'rollout-mode': 'review',
             'workflow-link': {
