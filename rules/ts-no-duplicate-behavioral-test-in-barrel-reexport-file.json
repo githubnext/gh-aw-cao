@@ -70,7 +70,7 @@
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "status": "needs-work",
   "last_seen_at": "2026-10-06T23:48:57Z",
-  "last_updated": "2026-10-07T01:33:01Z",
+  "last_updated": "2026-10-07T02:14:05Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
