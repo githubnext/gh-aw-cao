@@ -69,7 +69,12 @@
   "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
-  "status": "needs-work",
+  "status": "deprecated",
+  "normalization": {
+    "relationship": "deprecated",
+    "txn_id": "librarian-37573767430-1",
+    "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history."
+  },
   "evaluation": {
     "target_repo": "github/gh-aw-firewall",
     "target_commit": "4b1a19ed40a7261de8a55b4b23ce710a18d287fe",
