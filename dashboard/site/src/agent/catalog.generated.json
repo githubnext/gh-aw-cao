@@ -1865,6 +1865,25 @@
       }
     },
     {
+      "id": "campaign-inventory-preview",
+      "subject": "Show declared campaigns before execution evidence is evaluated.",
+      "objective": "Expose campaign identities and navigation links while observed totals remain pending.",
+      "acceptance": "Preserve every declared campaign and its dashboard link without reporting missing execution totals as zero.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaigns"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns"
+        ]
+      }
+    },
+    {
       "id": "campaign-inventory",
       "subject": "List centrally managed campaigns with their observed workflow and execution totals.",
       "objective": "Compare declared campaigns with retained workflow composition, dispatches, target reach, runs, and AIC to choose an evidence-backed drill-down.",
@@ -3423,6 +3442,25 @@
         "backend": "sqlite",
         "requirements": [
           "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-list-preview",
+      "subject": "Show workflow declarations while latest-run evidence is still loading.",
+      "objective": "Make workflow identities and drill links available before retained runs are evaluated.",
+      "acceptance": "Preserve every declared workflow and its drill link; leave latest-run fields absent until the complete projection arrives.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
         ]
       }
     },
