@@ -8,6 +8,7 @@ import { dashboardViewSourceNames, normalizeViewFilters } from '../../src/view-f
 import { validateDashboardDocument } from '../../src/validator.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/card-filter-contract.json' with { type: 'json' };
+import repositoryContract from '../fixtures/repository-card-filter-contract.json' with { type: 'json' };
 
 const dashboard = authoritativeDashboard.dashboard;
 const page = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === contract.page);
@@ -43,6 +44,40 @@ function payload(queryContext) {
 afterEach(() => document.body.replaceChildren());
 
 describe('declarative card filters', () => {
+  it('declares repository card filters without a semantic prompt and resolves their options in the worker', () => {
+    const repositories = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === repositoryContract.page);
+    const repositoryView = repositories.definition.views.find(
+      (/** @type {{ id: string }} */ entry) => entry.id === repositoryContract.view
+    );
+    expect(repositoryView['filter-bar']).toEqual(repositoryContract['filter-bar']);
+    expect(repositoryView.prompt).toBe('none');
+    const model = { languageVersion: authoritativeDashboard['language-version'], dashboard };
+    expect(dashboardPageSourceNames(model, repositories.id, 'card')).toContain('repository-status-options');
+    const compiled = compileDashboardViewPayloadQueries(repositories, repositories.id, {
+      queries: dashboard.queries, viewId: repositoryView.id,
+      queryContext: { viewFilters: { [repositoryView.id]: { repository: ['octo/first'] } } }
+    });
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries: compiled.queries, sourceNames: compiled.aliases,
+      sources: {
+        repositories: source('repositories', [
+          { organization: 'octo', repository: 'first' },
+          { organization: 'other', repository: 'second' }
+        ]),
+        workflows: source('workflows', []),
+        runs: source('runs', []),
+        reports: source('reports', [])
+      }
+    }));
+    const resolved = Object.fromEntries(dashboardViewSourceNames(repositoryView).map((name, index) => [
+      name, results[dashboardViewAliasName(repositories.id, repositoryView, 1, name, index)]
+    ]));
+    expect(resolved['repository-name-options'].rows.map((row) => row.repository)).toEqual(['octo/first', 'other/second']);
+    expect(resolved['repository-activity'].rows.map((row) => row.organization)).toEqual(['octo']);
+    expect(resolved['repository-status-options'].metadata.availability).toBe('available');
+    expect(resolved['repository-status-options'].rows.length).toBeGreaterThan(0);
+  });
+
   it('keeps the Issues view and reusable card list aligned with the contract', () => {
     expect(view['filter-bar']).toEqual(contract['filter-bar']);
     expect(dashboard.views.find((/** @type {{ id: string }} */ entry) => entry.id === 'issues')['filter-bar'])

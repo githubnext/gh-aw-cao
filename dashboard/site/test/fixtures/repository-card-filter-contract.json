@@ -1,0 +1,27 @@
+{
+  "page": "repositories",
+  "view": "repositories-activity",
+  "source": "repository-activity",
+  "filter-bar": {
+    "filters": [
+      {
+        "id": "repositories",
+        "label": "Filter",
+        "groups": [
+          {
+            "label": "Repository",
+            "field": "repository",
+            "source": "repository-name-options",
+            "value-field": "repository"
+          },
+          {
+            "label": "Status",
+            "field": "status",
+            "source": "repository-status-options",
+            "value-field": "status"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/card-filter-contract.json' with { type: 'json' };
+import repositoryContract from '../fixtures/repository-card-filter-contract.json' with { type: 'json' };
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://card-filters.dashboard.test';
@@ -60,6 +61,8 @@ for (const mobile of [false, true]) {
           ? { contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript', body: readFileSync(path) }
           : { status: 404 });
       }
+
+
     });
     await page.goto(`${origin}/#page-issues`);
     await page.addStyleTag({ content: '.card-filter-popover { max-height: 160px !important; }' });
@@ -153,3 +156,76 @@ for (const mobile of [false, true]) {
     await expect(page.locator('body')).toHaveJSProperty('scrollWidth', await page.locator('body').evaluate((body) => body.clientWidth));
   });
 }
+
+test('repository cards hide the prompt, filter through the worker, and hug their rounded contents', async ({ context, page }) => {
+  const repositoriesPage = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === repositoryContract.page);
+  const repositoryView = repositoriesPage.definition.views.find(
+    (/** @type {{ id: string }} */ entry) => entry.id === repositoryContract.view
+  );
+  const model = {
+    languageVersion: '0.1.0',
+    dashboard: { ...dashboard, pages: [{ ...repositoriesPage, definition: { views: [repositoryView] } }] }
+  };
+  await context.route(`${origin}/**`, async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === '/') {
+      await route.fulfill({ contentType: 'text/html', body: '<main id="root"></main>' });
+    } else if (pathname === '/sources.json') {
+      const metadata = { 'as-of': '2026-10-04T00:00:00Z' };
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        repositories: { rows: [
+          { organization: 'octo', repository: 'first' },
+          { organization: 'other', repository: 'second' }
+        ], metadata },
+        workflows: { rows: [], metadata },
+        runs: { rows: [], metadata },
+        reports: { rows: [], metadata }
+      }) });
+    } else {
+      const path = join(siteRoot, pathname);
+      await route.fulfill(existsSync(path)
+        ? { contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript', body: readFileSync(path) }
+        : { status: 404 });
+    }
+  });
+  await page.goto(`${origin}/#page-repositories`);
+  await page.evaluate(async (documentModel) => {
+    const { renderDashboard, dashboardPageSourceNames } = await import(`${location.origin}/src/presenter.js`);
+    const { loadCanonicalDashboardSources, subscribeCanonicalDashboardView } = await import(`${location.origin}/src/data-processor.js`);
+    const dashboardContext = {
+      pages: documentModel.dashboard.pages, queries: documentModel.dashboard.queries, githubUrlBase: 'https://github.com'
+    };
+    await loadCanonicalDashboardSources(`${location.origin}/sources.json`, [], dashboardContext);
+    /** @type {import('../../src/presenter.js').PageSourceLoader} */
+    const loader = (pageId, options) => new Promise((resolve, reject) => {
+      let initial = true;
+      subscribeCanonicalDashboardView('repository-filter-page',
+        dashboardPageSourceNames(documentModel, pageId, options.queryContext?.viewMode),
+        dashboardContext, (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ result) => {
+          if (initial) { initial = false; resolve(result); }
+          else options.onUpdate(result);
+        }, undefined, { ...options, pageId, onError: reject });
+    });
+    document.querySelector('#root')?.replaceChildren(renderDashboard({
+      document: documentModel, sources: {}, loadPageSources: loader
+    }));
+  }, model);
+  await page.getByRole('button', { name: 'Cards', exact: true }).click();
+  const view = page.locator(`[data-view-id="${repositoryContract.view}"]`);
+  const cards = view.locator('.mobile-table-card-list-items');
+  await expect(cards.locator('li[data-custom-row-key]')).toHaveCount(2);
+  await expect(view.locator('.semantic-prompt-action')).toHaveCount(0);
+  await expect(view.locator('.card-filter-menu > summary')).toBeVisible();
+  await expect.poll(async () => cards.evaluate((list) => {
+    const last = list.querySelector('li[data-custom-row-key]:last-of-type');
+    return last ? Math.round(list.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom) : -1;
+  })).toBeLessThan(10);
+  await expect(cards).toHaveCSS('border-top-left-radius', '6px');
+  await view.locator('.card-filter-menu > summary').click();
+  await view.getByRole('checkbox', { name: 'octo/first' }).check();
+  await view.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(cards.locator('li[data-custom-row-key]')).toHaveCount(1);
+  await expect(cards).toContainText('octo/first');
+  await view.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(cards.locator('li[data-custom-row-key]')).toHaveCount(2);
+});

@@ -998,16 +998,16 @@
       ]
     },
     {
-      "name": "repository-organization-options",
-      "subject": "List organizations represented in the repository inventory.",
-      "objective": "Offer observed organization values for the repository filter.",
-      "acceptance": "Return distinct observed organizations without treating missing inventory as an empty scope.",
-      "from": "repositories",
+      "name": "repository-name-options",
+      "subject": "List repository names represented in the inventory.",
+      "objective": "Offer observed repository names for the repository filter.",
+      "acceptance": "Return distinct observed repository coordinates without treating missing inventory as an empty scope.",
+      "from": "repository-activity",
       "aggregate": {
-        "by": ["organization"],
+        "by": ["repository"],
         "values": [{ "field": "repository", "as": "items", "reducer": "count" }]
       },
-      "order-by": [{ "field": "organization", "direction": "asc" }]
+      "order-by": [{ "field": "repository", "direction": "asc" }]
     },
     {
       "name": "repository-status-options",
@@ -1167,10 +1167,10 @@
                   "label": "Filter",
                   "groups": [
                     {
-                      "label": "Organization",
-                      "field": "organization",
-                      "source": "repository-organization-options",
-                      "value-field": "organization"
+                      "label": "Repository",
+                      "field": "repository",
+                      "source": "repository-name-options",
+                      "value-field": "repository"
                     },
                     {
                       "label": "Status",
