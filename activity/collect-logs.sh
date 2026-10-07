@@ -65,6 +65,7 @@ if [[ ${#repositories[@]} -eq 0 ]]; then
   printf '1\n' > "$exit_code_path"
   exit 1
 fi
+echo "Activity log collection: ${#repositories[@]} repositories; window=${window_days}d; run limit=${run_limit}; request timeout=${request_timeout}s; storage limit=${max_storage}MB"
 
 exit_code=0
 drain3_args=()
@@ -80,12 +81,15 @@ for target_repository in "${repositories[@]}"; do
   fi
   shard_prefixes+=("$shard_prefix")
   shard_groups+=("$target_repository=$(basename "$shard_prefix")")
+  seed_count=0
   if [[ -n "$seed_shard_directory" && -d "$seed_shard_directory" ]]; then
     for seed_shard in "$seed_shard_directory/$(basename "$shard_prefix")"*.jsonl; do
       [[ -f "$seed_shard" ]] || continue
       cp "$seed_shard" "$shard_directory/"
+      ((seed_count+=1))
     done
   fi
+  echo "Activity log collection: $target_repository restored $seed_count matching cache shards"
 done
 
 cao_script=activity/cao.mjs
@@ -102,6 +106,7 @@ compact_shards() {
   node "$cao_script" "${compact_args[@]}"
 }
 if [[ $exit_code -eq 0 ]]; then
+  echo "Activity log collection: compacting restored shards for ${#shard_groups[@]} repository groups"
   compact_shards || exit_code=$?
 fi
 
@@ -110,10 +115,14 @@ for index in "${!repositories[@]}"; do
   target_repository="${repositories[$index]}"
   cache_name="${target_repository//\//-}"
   shard_prefix="${shard_prefixes[$index]}"
+  echo "Activity log collection: checking API capacity before $target_repository ($((index + 1))/${#repositories[@]})"
   if ! node activity/github-telemetry.mjs capacity "$rate_limit"; then
+    echo "Activity log collection: API capacity check failed before $target_repository" >&2
     exit_code=1
     break
   fi
+  echo "Activity log collection: downloading $target_repository (cached shards retained; no credential details logged)"
+  started_at="$SECONDS"
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \
@@ -131,6 +140,7 @@ for index in "${!repositories[@]}"; do
     "${drain3_args[@]+"${drain3_args[@]}"}"
   repository_exit_code=$?
   set -e
+  echo "Activity log collection: $target_repository download exited $repository_exit_code after $((SECONDS - started_at))s"
   generated_weights="$output_directory/$cache_name/drain3_weights.json"
   if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
     mkdir -p "$(dirname "$drain3_weights_path")"
@@ -138,13 +148,17 @@ for index in "${!repositories[@]}"; do
     drain3_args=(--drain3-weights "$drain3_weights_path")
   fi
   if [[ $repository_exit_code -ne 0 ]]; then
+    echo "Activity log collection: $target_repository failed; stopping before the next repository" >&2
     exit_code=$repository_exit_code
+    break
   fi
 done
 
 if [[ $exit_code -eq 0 ]]; then
+  echo "Activity log collection: compacting downloaded shards"
   compact_shards || exit_code=$?
   if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
+    echo "Activity log collection: ingesting scoped shards into the activity database"
     node "$cao_script" ingest-jsonl \
       --database "$activity_database" \
       --input-dir "$shard_directory" \
@@ -152,6 +166,7 @@ if [[ $exit_code -eq 0 ]]; then
       --run-retention-days "$window_days" || exit_code=$?
   fi
   if [[ $exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then
+    echo "Activity log collection: enriching issue statuses"
     node "$cao_script" issue-status \
       --database "$activity_database" \
       --input-dir "$shard_directory" \
@@ -161,6 +176,7 @@ if [[ $exit_code -eq 0 ]]; then
 fi
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
+echo "Activity log collection: completed with exit code $exit_code"
 
 # The shard directory is persisted by the caller so each repository reuses
 # known runs. Restored shards are compacted before collection, successful

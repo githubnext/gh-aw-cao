@@ -97,6 +97,10 @@ process.stderr.write("Fetched 1 run\\n");
     await writeFile(path.join(seedPath, "github-gh-aw-logs-1000-first.jsonl"), `${duplicate}\n`);
     await writeFile(path.join(seedPath, "github-gh-aw-logs-2000-second.jsonl"), `${duplicate}\n`);
     const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
+    assert.match(collection.stdout, /Activity log collection: 2 repositories; window=30d/);
+    assert.match(collection.stdout, /github\/gh-aw restored 2 matching cache shards/);
+    assert.match(collection.stdout, /githubnext\/gh-aw-cao download exited 0 after \d+s/);
+    assert.match(collection.stdout, /Activity log collection: completed with exit code 0/);
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
     assert.deepEqual(invocations.filter((args) => args[0] === "api"), [
@@ -224,6 +228,8 @@ process.exit(99);
     },
   });
   assert.match(result.stderr, /capacity insufficient: 4000\/5000.*reset at/);
+  assert.match(result.stderr, /API capacity check failed before githubnext\/gh-aw-cao/);
+  assert.match(result.stdout, /Activity log collection: completed with exit code 1/);
   assert.equal(await readFile(exitCodePath, "utf8"), "1\n");
   await assert.rejects(readFile(item.argumentsPath, "utf8"), { code: "ENOENT" });
 });
