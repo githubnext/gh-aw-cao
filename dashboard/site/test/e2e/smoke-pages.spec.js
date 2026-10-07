@@ -513,6 +513,17 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   const scroll = view.locator('.table-scroll');
   const cards = view.locator('[data-mobile-card-list]');
   const cardScroll = cards.locator('.mobile-table-card-list-items');
+  const chrome = page.locator('.dashboard-page:not([hidden]) > .page-chrome');
+  const fullViewSpacing = () => chrome.evaluate((element) => {
+    const selector = element.querySelector('.view-mode-control');
+    const header = document.querySelector('.app-main > .top-nav');
+    const content = element.parentElement?.querySelector('.custom-view-grid');
+    if (!selector || !header || !content) throw new Error('Expected full-view toolbar and content.');
+    return {
+      selectorGap: selector.getBoundingClientRect().top - header.getBoundingClientRect().bottom,
+      contentGap: content.getBoundingClientRect().top - element.getBoundingClientRect().bottom
+    };
+  });
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(scroll).toBeHidden();
@@ -522,6 +533,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(chart).toBeHidden();
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect.poll(fullViewSpacing).toEqual({ selectorGap: 12, contentGap: 0 });
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect.poll(async () => scroll.evaluate((element) => ({
     fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
@@ -534,6 +546,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(chart).toBeHidden();
   await expect(scroll).toBeHidden();
   await expect(cards).toBeVisible();
+  await expect.poll(fullViewSpacing).toEqual({ selectorGap: 12, contentGap: 0 });
   await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
   await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
   await expect(cards.getByRole('button', { name: 'Load more cards' })).toHaveCount(0);
