@@ -171,28 +171,28 @@ describe('entity card templates', () => {
     expect(selected).toEqual(expect.arrayContaining(['workflow', 'target-repository', 'run-title', 'run-status', 'run-conclusion', 'branch', 'event', 'duration', 'started-at']));
   });
 
-  it('presents workflow inventory cards with identity and run outcome totals', () => {
-    expect(templates.workflow).toMatchObject({
+  it('presents the workflow list with latest execution status instead of aggregate counters', () => {
+    expect(templates['workflow-latest']).toMatchObject({
       icon: 'workflow',
+      status: { field: 'latest-run-status' },
       title: { field: 'workflow-name' },
       subtitle: { field: 'workflow', format: 'workflow-relative-path' },
       details: expect.arrayContaining([
-        { field: 'successful-runs', title: 'Success' },
-        { field: 'failed-runs', title: 'Failures' },
-        { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
+        { field: 'latest-run-at', title: 'Latest run', format: 'human-friendly-timestamp' }
       ])
     });
-    expect(templates.workflow.details).not.toContainEqual({ field: 'runs', title: 'Runs' });
     const inventoryQuery = dashboard.queries.find(
-      (/** @type {Record<string, any>} */ query) => query.name === 'workflow-inventory'
+      (/** @type {Record<string, any>} */ query) => query.name === 'workflow-list'
     );
     const selected = inventoryQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
-    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'latest-run-status', 'latest-run-at']));
     const inventoryView = pages.workflows.definition.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'workflows-inventory'
     );
     const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
-    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'latest-run-status', 'latest-run-at']));
+    expect(columns).not.toEqual(expect.arrayContaining(['successful-runs', 'failed-runs']));
+    expect(inventoryView).toMatchObject({ prompt: 'none', 'card-drill': { type: 'external', field: 'workflow-link' } });
     const entityQuery = dashboard.queries.find(
       (/** @type {Record<string, any>} */ query) => query.name === 'entity-workflows'
     );

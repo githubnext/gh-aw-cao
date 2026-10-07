@@ -1238,8 +1238,11 @@ describe('dashboard document validation', () => {
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'workflows-inventory'
     )).toMatchObject({
-      data: { source: 'workflow-inventory' },
+      data: { source: 'workflow-list' },
       mark: 'table',
+      prompt: 'none',
+      'column-summaries': false,
+      'card-drill': { type: 'external', field: 'workflow-link' },
       controls: 'interactive',
       'lazy-list': true,
       layout: 'full-view'
@@ -1248,10 +1251,11 @@ describe('dashboard document validation', () => {
       view.id === 'workflows-inventory'
     ).encoding.columns;
     expect(columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
+      expect.objectContaining({ field: 'workflow-name' }),
       expect.objectContaining({ field: 'repository', display: 'repository-link' }),
       expect.objectContaining({ field: 'campaign-name' }),
-      expect.objectContaining({ field: 'runs', type: 'quantitative' })
+      expect.objectContaining({ field: 'latest-run-status', display: 'status' }),
+      expect.objectContaining({ field: 'latest-run-at', type: 'temporal' })
     ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

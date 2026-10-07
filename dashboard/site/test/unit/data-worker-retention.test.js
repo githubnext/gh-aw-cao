@@ -188,8 +188,9 @@ describe('canonical dashboard worker retention updates', () => {
 
     expect(firstJsonl?.data).toMatchObject({ changed: true });
     expect(repeatedJsonl?.data).toMatchObject({ changed: false });
-    expect(posted.slice(repeatedStart).filter(({ type }) => (
-      type === 'notification' || type === 'loading-progress'
+    expect(posted.slice(repeatedStart).filter(({ type, state }) => (
+      type === 'notification' || (type === 'loading-progress'
+        && !String(/** @type {{ id?: string }} */ (state).id).startsWith('query-progress-'))
     ))).toEqual([]);
     expect(jsonlRequests).toEqual([
       expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),

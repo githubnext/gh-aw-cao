@@ -104,7 +104,7 @@ dashboard:
         views:
           - id: workflow-inventory
             data:
-              source: workflow-inventory
+              source: workflows
             mark: table
             encoding:
               columns:
@@ -114,8 +114,6 @@ dashboard:
                 - field: workflow-role
                 - field: workflow-active
                 - field: rollout-mode
-                - field: aic
-                - field: runs
     - id: usage-by-repository
       kind: custom
       title: Usage by Repository

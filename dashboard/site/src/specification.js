@@ -281,7 +281,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
   repositories: ['repository-activity'],
   campaigns: ['campaign-inventory'],
-  workflows: ['workflow-inventory'],
+  workflows: ['workflows'],
   runs: ['runs'],
   audits: ['audits'],
   experiments: ['experiments'],
@@ -316,7 +316,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'campaign-inventory': ['campaign-name', 'workflows', 'roles', 'modes', 'registration', 'runs', 'aic']
   },
   workflows: {
-    'workflow-inventory': ['runs']
+    workflows: ['workflow-active', 'rollout-mode']
   },
   runs: {
     runs: ['run', 'run-status', 'run-conclusion', 'repository-coordinate', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']

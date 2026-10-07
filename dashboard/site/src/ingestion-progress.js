@@ -21,7 +21,7 @@ export function publishWorkerNotification(notification, target = self) {
  * @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number, stage?: 'files' | 'maintenance' | 'inventory' | 'queries' }} state
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
-function publishWorkerLoadingProgress(state, target = self) {
+export function publishWorkerLoadingProgress(state, target = self) {
   target.postMessage({ type: 'loading-progress', state });
 }
 

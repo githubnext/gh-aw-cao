@@ -28,7 +28,7 @@ import {
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
-import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
+import { formatDataSize, publishWorkerLoadingProgress, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugEagerIngest, debugShardLimit } from './debug.js';
 import { withRetries } from './retry.js';
@@ -36,6 +36,26 @@ import { withRetries } from './retry.js';
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
 const DASHBOARD_SNAPSHOT_TRANSACTION_ID = 'dashboard-snapshot:complete';
+let nextQueryProgressId = 0;
+
+/** @template T @param {() => T} query @returns {T} */
+function withQueryProgress(query) {
+  if (typeof self === 'undefined' || typeof self.postMessage !== 'function'
+      || typeof document !== 'undefined') return query();
+  const id = `query-progress-${++nextQueryProgressId}`;
+  publishWorkerLoadingProgress({ id, phase: 'start' });
+  try {
+    const result = query();
+    if (result instanceof Promise) {
+      return /** @type {T} */ (result.finally(() => publishWorkerLoadingProgress({ id, phase: 'complete' })));
+    }
+    publishWorkerLoadingProgress({ id, phase: 'complete' });
+    return result;
+  } catch (error) {
+    publishWorkerLoadingProgress({ id, phase: 'complete' });
+    throw error;
+  }
+}
 
 async function readDashboardSnapshotMetadata() {
   const snapshot = await readTransaction(indexedDB, DASHBOARD_SNAPSHOT_TRANSACTION_ID);
@@ -412,6 +432,7 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
+ * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 async function queryLiveDashboard(
   requested,
@@ -424,6 +445,17 @@ async function queryLiveDashboard(
   queryContext,
   viewId,
   dashboard = liveDashboard
+) {
+  return withQueryProgress(() => executeLiveDashboardQuery(
+    requested, context, requestContext, signal, pagination, pageId,
+    routeParameters, queryContext, viewId, dashboard
+  ));
+}
+
+/** @type {typeof queryLiveDashboard} */
+async function executeLiveDashboardQuery(
+  requested, context, requestContext, signal, pagination = {}, pageId,
+  routeParameters, queryContext, viewId, dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
@@ -1094,7 +1126,7 @@ export function processDataRequest(request, signal) {
     const requested = request.sourceNames === undefined
       ? undefined
       : requestedSourceNames(request.sourceNames);
-    const querySources = executeDashboardQueries(
+    const querySources = withQueryProgress(() => ({ ...executeDashboardQueries(
       request.queries,
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
       requested,
@@ -1102,14 +1134,14 @@ export function processDataRequest(request, signal) {
         signal,
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       }
-    );
+    ) }));
     return querySources;
   }
   if (request?.operation === 'load-dashboard-query-sources') {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
       throw new TypeError('Dashboard database query requests require a sources object.');
     }
-    return (async () => {
+    return withQueryProgress(async () => {
       const sources = /** @type {Record<string, unknown>} */ (request.sources);
       const sourceNames = request.sourceNames === undefined
         ? Object.keys(sources)
@@ -1130,7 +1162,7 @@ export function processDataRequest(request, signal) {
           ))
         )
       };
-    })();
+    });
   }
   if (request?.operation === 'query-canonical-database-diagnostics') {
     return collectCanonicalDatabaseDiagnostics();

@@ -1,0 +1,24 @@
+{
+  "page": "workflows",
+  "view": "workflows-inventory",
+  "source": "workflow-list",
+  "fields": [
+    "organization", "repository", "workflow", "workflow-name", "workflow-label",
+    "workflow-role", "rollout-mode", "workflow-active", "latest-run",
+    "latest-run-at", "latest-run-status", "workflow-link"
+  ],
+  "order": [
+    { "field": "has-observed-run", "direction": "desc" },
+    { "field": "latest-run-at", "direction": "desc" },
+    { "field": "repository", "direction": "asc" },
+    { "field": "workflow", "direction": "asc" }
+  ],
+  "drillPage": "workflow-runtime",
+  "cases": [
+    { "repository": "org/other", "workflow": "worker.md", "run": "400", "status": "queued" },
+    { "repository": "org/control", "workflow": "worker.md", "run": "10", "status": "in-progress" },
+    { "repository": "org/control", "workflow": "failed.md", "run": "300", "status": "failure" },
+    { "repository": "org/control", "workflow": "successful.md", "run": "200", "status": "success" },
+    { "repository": "org/control", "workflow": "idle.md", "status": "No observed run" }
+  ]
+}
