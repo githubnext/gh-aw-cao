@@ -679,6 +679,7 @@
               {
                 "intent": "Open the precise GitHub Actions run page without executing an action.",
                 "presentation": "external-link",
+                "level": "explore",
                 "icon": "mark-github",
                 "label": "Open run on GitHub",
                 "context": [
@@ -689,6 +690,7 @@
                 "action": "create-agent-task",
                 "intent": "Debug this failed workflow dispatch. Explain the retained failure reason, verify it against the linked GitHub Actions run, and propose the safest next action.",
                 "presentation": "copy-prompt",
+                "level": "explore",
                 "icon": "search",
                 "label": "Review debug prompt",
                 "context": [

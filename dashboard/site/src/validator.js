@@ -3540,6 +3540,14 @@ function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
   }
 }
 
+/** @param {unknown} level @param {string} path @param {ValidationError[]} errors */
+function validateActionLevel(level, path, errors) {
+  if (level !== undefined && !ACTION_LEVELS.some((allowed) => allowed === level)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'action level must be explore, propose, or operate.', path));
+  }
+}
+
 /**
  * @param {unknown} encoding
  * @param {unknown} encodingNode
@@ -3548,13 +3556,6 @@ function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
  * @param {string} path
  * @param {ValidationError[]} errors
  */
-function validateActionLevel(level, path, errors) {
-  if (level !== undefined && !ACTION_LEVELS.includes(level)) {
-    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      'action level must be explore, propose, or operate.', path));
-  }
-}
-
 function validateTableActions(encoding, encodingNode, mark, sourceName, path, errors) {
   if (!isPlainObject(encoding) || encoding.actions === undefined) return;
   if (!['list', 'table'].includes(String(mark))) {

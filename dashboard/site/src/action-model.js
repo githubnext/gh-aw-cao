@@ -5,6 +5,7 @@
 export const ACTION_LEVELS = /** @type {const} */ (['explore', 'propose', 'operate']);
 
 const DEFAULT_ICONS = { explore: 'search', propose: 'git-pull-request', operate: 'zap' };
+/** @type {Record<string, string>} */
 const VERB_ICONS = {
   refresh: 'sync', synchronize: 'sync', retry: 'play', execute: 'play',
   delete: 'trash', inspect: 'search', investigate: 'search',
@@ -18,7 +19,7 @@ const VERB_ICONS = {
  * intent?: string, presentation?: string }} Action
  */
 
-/** @param {ActionLevel} level @param {string | undefined} verb */
+/** @param {ActionLevel} level @param {string} [verb] */
 export function actionIcon(level, verb) {
   return (verb && VERB_ICONS[verb.toLowerCase()]) || DEFAULT_ICONS[level];
 }

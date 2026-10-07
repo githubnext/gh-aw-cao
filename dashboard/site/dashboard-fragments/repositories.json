@@ -1642,6 +1642,7 @@
               {
                 "intent": "Open the precise GitHub Actions run page without executing an action.",
                 "presentation": "external-link",
+                "level": "explore",
                 "icon": "mark-github",
                 "label": "Open run on GitHub",
                 "context": [
@@ -1733,6 +1734,7 @@
               {
                 "action": "upgrade-target-repository",
                 "presentation": "cli-action",
+                "level": "operate",
                 "icon": "download",
                 "label": "Update agentic workflows",
                 "context": [

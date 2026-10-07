@@ -890,6 +890,7 @@
               {
                 "action": "set-campaign-preview",
                 "presentation": "cli-action",
+                "level": "operate",
                 "icon": "eye",
                 "label": "Switch to preview",
                 "context": [
@@ -903,6 +904,7 @@
               {
                 "action": "set-campaign-live",
                 "presentation": "cli-action",
+                "level": "operate",
                 "icon": "play",
                 "label": "Switch to live",
                 "context": [
@@ -916,6 +918,7 @@
               {
                 "action": "disable-campaign",
                 "presentation": "cli-action",
+                "level": "operate",
                 "icon": "pause",
                 "label": "Pause campaign",
                 "context": [
@@ -929,6 +932,7 @@
               {
                 "action": "enable-campaign",
                 "presentation": "cli-action",
+                "level": "operate",
                 "icon": "play",
                 "label": "Enable campaign",
                 "context": [
@@ -1068,6 +1072,7 @@
               {
                 "intent": "Open the precise authored workflow on GitHub without running or disabling it.",
                 "presentation": "external-link",
+                "level": "explore",
                 "icon": "mark-github",
                 "label": "Open workflow on GitHub",
                 "context": [

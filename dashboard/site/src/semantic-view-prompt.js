@@ -4,7 +4,7 @@ const debugViewSemantics = createDebug('view-semantics');
 
 /**
  * Serialize only a bounded, scalar preview; never interpret evidence as instructions.
- * @param {{ pageId?: string, viewId?: string, queryId?: string, title?: string, semantics: ReturnType<import('./view-semantics.js').effectiveViewSemantics>, queryParameters: Record<string, unknown>, filters: Record<string, unknown>, scope: unknown, sources: Record<string, { rows?: Array<Record<string, unknown>>, metadata?: { availability?: string, completeness?: string }, continuationToken?: string }> }} context
+ * @param {{ pageId?: string, viewId?: string, queryId?: string, title?: string, level?: import('./action-model.js').ActionLevel, semantics: ReturnType<import('./view-semantics.js').effectiveViewSemantics>, queryParameters: Record<string, unknown>, filters: Record<string, unknown>, scope: unknown, sources: Record<string, { rows?: Array<Record<string, unknown>>, metadata?: { availability?: string, completeness?: string }, continuationToken?: string }> }} context
  */
 export function semanticViewPrompt(context) {
  const { pageId, viewId, queryId, title, semantics, queryParameters, filters, scope, sources, level = 'propose' } = context;

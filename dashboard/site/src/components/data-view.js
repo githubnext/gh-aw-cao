@@ -1588,7 +1588,7 @@ function actionMatches(action, row) {
  * @param {Record<string, unknown> | (() => Record<string, unknown> | undefined)} row
  */
 export function renderIntentAction(action, row) {
-  const normalized = normalizeAction(action, { id: action.action ?? action.label ?? 'row-prompt', type: 'prompt' });
+  const normalized = normalizeAction({ ...action, actionId: action.action }, { id: action.action ?? action.label ?? 'row-prompt', type: 'prompt' });
   return renderPromptPreviewAction(normalized, () => {
     const current = typeof row === 'function' ? row() : row;
     const context = Object.fromEntries(action.context.flatMap((field) => {
@@ -1601,13 +1601,16 @@ export function renderIntentAction(action, row) {
 
 /**
  * Shared prompt preview for row actions and semantic view actions.
- * @param {string} label
+ * @param {import('../action-model.js').Action | string} action
  * @param {() => string} getContent
  * @param {string | undefined} [actionId]
- * @param {string} [icon]
+ * @param {string} [iconName]
  * @param {string} [presentation]
  */
-export function renderPromptPreviewAction(action, getContent) {
+export function renderPromptPreviewAction(action, getContent, actionId, iconName, presentation) {
+  if (typeof action === 'string') action = normalizeAction({
+    label: action, actionId, icon: iconName, presentation
+  }, { id: action, type: 'prompt' });
   const { label, icon } = actionPresentation(action);
   const scope = createFactoryScope();
   const content = state('');
@@ -1654,12 +1657,13 @@ export function renderPromptPreviewAction(action, getContent) {
         onClick: closePreview
       })
     ),
-    h('p', { className: 'table-intent-guidance' }, action.level === 'explore'
-      ? 'This investigation is read-only and must not change repository or operational state.'
-      : action.level === 'propose'
-        ? 'The agent may propose a plan, issue, patch, pull request, or configuration change; it must not perform direct operational changes.'
-        : 'Review the exact requested side effect before explicitly starting this action.'),
-    preview,
+    h('div', { className: 'table-intent-dialog-body' },
+      h('p', { className: 'table-intent-guidance' }, action.level === 'explore'
+        ? 'This investigation is read-only and must not change repository or operational state.'
+        : action.level === 'propose'
+          ? 'The agent may propose a plan, issue, patch, pull request, or configuration change; it must not perform direct operational changes.'
+          : 'Review the exact requested side effect before explicitly starting this action.'),
+      preview),
     ...(promptCliAction ? [promptCliAction.output] : []),
     h(
       'footer',

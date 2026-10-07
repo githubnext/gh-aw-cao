@@ -19,7 +19,7 @@ let declaredCliActionTemplateValues = {};
 /** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean, templateValues?: Record<string, string> }} [options] */
 export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActions = Array.isArray(actions)
-    ? actions.map((action) => normalizeAction(action, { id: action.id, type: 'cli' })) : [];
+    ? actions.map((action) => ({ ...normalizeAction(action, { id: action.id, type: 'cli' }), ...action })) : [];
   declaredCliActionsCanExecute = options.canExecute !== false;
   declaredCliActionTemplateValues = options.templateValues ?? {};
 }
@@ -183,8 +183,7 @@ function commandPreview(action, values, templateValues) {
  * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
-  action = normalizeAction(action, { id: action.id, type: 'cli' });
-  const presentation = actionPresentation(action);
+  const presentation = actionPresentation(normalizeAction(action, { id: action.id, type: 'cli' }));
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
   const canExecute = options.canExecute !== false && action['copy-only'] !== true;
@@ -387,9 +386,13 @@ function renderCliActionControl(action, options = {}) {
 export function renderRowCliAction(actionId, templateValues, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action) return null;
-  const { trigger, dialog } = renderCliActionControl({ ...action, ...Object.fromEntries(
-    ['level', 'verb', 'label', 'icon'].filter((key) => options[key] !== undefined).map((key) => [key, options[key]])
-  ) }, {
+  const { trigger, dialog } = renderCliActionControl({
+    ...action,
+    ...(options.level && { level: options.level }),
+    ...(options.verb && { verb: options.verb }),
+    ...(options.label && { label: options.label }),
+    ...(options.icon && { icon: options.icon })
+  }, {
     presentation: 'row',
     templateValues,
     canExecute: declaredCliActionsCanExecute,
@@ -463,7 +466,7 @@ export function renderCliActions(actions, options = {}) {
   if (!settingsPresentation) root.append(list);
 
   for (const declared of actions) {
-    const action = normalizeAction(declared, { id: declared.id, type: 'cli' });
+    const action = { ...normalizeAction(declared, { id: declared.id, type: 'cli' }), ...declared };
     const { trigger, dialog } = renderCliActionControl(action, options);
     list.append(trigger);
     root.append(dialog);

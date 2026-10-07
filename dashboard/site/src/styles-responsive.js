@@ -7,6 +7,14 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
+  .cli-action-trigger, .table-intent-button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .cli-action-trigger-copy strong { white-space: normal; overflow-wrap: anywhere; }
+  .custom-table :is(th.table-compact-column, td.table-cli-action-cell) { width: auto; min-width: 120px; max-width: none; }
+  .table-cli-action-button { width: auto; min-height: 44px; padding: 8px; text-align: left; }
+  .table-cli-action-control { max-width: 100%; }
+  .cli-action-dialog-footer, .table-intent-dialog-footer { flex-wrap: wrap; }
+  .cli-action-cancel, .cli-action-confirm, .table-intent-copy-button { min-height: 44px; }
+  .cli-action-dialog-body { overflow: auto; }
   .card-filter-bar { padding: 6px 12px; }
   .card-filter-menu > summary, .card-filter-bar button, .card-filter-group label { min-height: 44px; }
   .card-filter-menu { position: static; }

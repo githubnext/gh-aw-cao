@@ -29,7 +29,55 @@ test.beforeEach(async ({ page, context }) => {
       await route.fulfill({ status: 404 });
     }
   });
+
   await page.goto('http://dashboard.test/');
+});
+
+test('tiered actions keep visible labels and usable approval on portrait and landscape phones', async ({ page }) => {
+  await page.evaluate(async (moduleUrls) => {
+    const [{ getPrimerStyles }, { renderCliActions }, { renderPromptPreviewAction }, { normalizeAction }] = await Promise.all(
+      moduleUrls.map((url) => import(url))
+    );
+    const styles = document.createElement('style');
+    styles.textContent = getPrimerStyles();
+    document.head.append(styles);
+    const root = /** @type {HTMLElement} */ (document.querySelector('#root'));
+    root.append(renderCliActions([
+      { id: 'refresh', level: 'operate', label: 'Refresh the retained evidence for this repository',
+        verb: 'refresh', icon: 'sync', command: 'gh aw compile', placement: 'settings' },
+      { id: 'inspect', level: 'explore', label: 'Investigate a longer description of the current problem',
+        command: 'gh aw status', placement: 'settings' }
+    ], { presentation: 'settings', canExecute: true }));
+    root.append(renderPromptPreviewAction(normalizeAction({ level: 'propose', subject: 'Observed errors',
+      objective: 'Propose a fix', acceptance: 'Explain measurable impact' },
+    { id: 'proposal', type: 'prompt' }), () => 'Subject: Observed errors\nObjective: Propose a fix\nAcceptance: Explain measurable impact'));
+  }, [
+    'http://dashboard.test/src/styles.js',
+    'http://dashboard.test/src/components/cli-actions.js',
+    'http://dashboard.test/src/components/data-view.js',
+    'http://dashboard.test/src/action-model.js'
+  ]);
+  for (const viewport of [{ width: 375, height: 812 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(viewport);
+    const triggers = page.locator('.cli-action-trigger, .table-intent-button');
+    await expect(triggers).toHaveCount(3);
+    for (const trigger of await triggers.all()) {
+      await expect(trigger).toBeVisible();
+      const box = await trigger.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.x).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+    }
+    await triggers.first().click();
+    const dialog = page.locator('.cli-action-dialog[open]');
+    await expect(dialog.getByText(/Confirm the exact effect/)).toBeVisible();
+    await expect(dialog.locator('.cli-action-command')).toHaveText('gh aw compile');
+    await expect(dialog.locator('.cli-action-confirm')).toBeVisible();
+    await dialog.locator('.cli-action-cancel').click();
+    await triggers.last().click();
+    await expect(page.locator('.table-intent-dialog[open]')).toContainText('Proposal request preview');
+    await page.locator('.table-intent-dialog-close').click();
+  }
 });
 
 test('tooltips near the viewport edge stay visible', async ({ page }) => {

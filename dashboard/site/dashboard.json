@@ -816,6 +816,7 @@
     "cli-actions": [
       {
         "id": "update-repository",
+        "level": "operate",
         "label": "Update all",
         "description": "Update all installed Agentic Workflow campaigns in this repository.",
         "icon": "sync",
@@ -834,6 +835,7 @@
       },
       {
         "id": "upgrade-repository",
+        "level": "operate",
         "label": "Upgrade all",
         "description": "Upgrade the gh-aw compiler version across this repository's Agentic Workflows files.",
         "icon": "download",
@@ -860,6 +862,7 @@
       },
       {
         "id": "upgrade-target-repository",
+        "level": "operate",
         "label": "Upgrade repository",
         "description": "Upgrade Agentic Workflows in the selected repository and create a pull request.",
         "icon": "download",
@@ -886,6 +889,7 @@
       },
       {
         "id": "update-campaign",
+        "level": "operate",
         "label": "Update campaign",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
@@ -894,6 +898,7 @@
       },
       {
         "id": "set-campaign-live",
+        "level": "operate",
         "label": "Switch to live",
         "description": "Switch this campaign's workflows to live mode.",
         "icon": "play",
@@ -902,6 +907,7 @@
       },
       {
         "id": "set-campaign-preview",
+        "level": "operate",
         "label": "Switch to preview",
         "description": "Switch this campaign's workflows to preview mode.",
         "icon": "eye",
@@ -910,6 +916,7 @@
       },
       {
         "id": "enable-campaign",
+        "level": "operate",
         "label": "Activate campaign",
         "description": "Activate this campaign's orchestrator and worker workflows.",
         "icon": "play",
@@ -918,6 +925,7 @@
       },
       {
         "id": "disable-campaign",
+        "level": "operate",
         "label": "Deactivate campaign",
         "description": "Deactivate future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
         "icon": "pause",
@@ -926,6 +934,7 @@
       },
       {
         "id": "create-agent-task",
+        "level": "propose",
         "label": "Start agent task",
         "description": "Start a GitHub Copilot coding agent task from the reviewed prompt.",
         "icon": "copilot",
@@ -934,6 +943,7 @@
       },
       {
         "id": "add-marketplace-package",
+        "level": "operate",
         "label": "Add",
         "description": "Copy the canonical CAO add command for this package. The dashboard does not install packages.",
         "icon": "plus",
