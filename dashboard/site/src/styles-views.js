@@ -22,6 +22,8 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .semantic-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }
 .semantic-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .semantic-prompt-action .table-intent-button span { display: none; }
+[data-view-mode-content="card"] .semantic-prompt-action,
+.dashboard-page[data-view-mode="card"] [data-view-mode-content="table"] .semantic-prompt-action { display: none; }
 .semantic-prompt-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .semantic-prompt-heading > :is(h3, h4) { margin: 0; }
 .chart-prompt-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
