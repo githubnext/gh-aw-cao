@@ -36,7 +36,7 @@ flowchart LR
 
 | Requirement | Details |
 | --- | --- |
-| Application host | A container platform or host that can run exactly one replica of `server/Dockerfile` behind HTTPS. Upstash mode doesn't support load-balanced replicas. To use the checked-in Compose profile, follow the [Coolify deployment](deployment-coolify.md). |
+| Application host | A container platform or host that can run exactly one replica of `server/Dockerfile` behind HTTPS. Upstash mode doesn't support load-balanced replicas. The checked-in `server/coolify/compose.yml` profile uses the PostgreSQL operational-store backend and has no Redis setting; building with Upstash on Coolify requires your own `cao.<name>.json` profile and `CAO_PROFILE` build argument. |
 | PostgreSQL | A PostgreSQL database reachable by the application host. It stores all dashboard entity sources, documents, diagnostics, and revision state. |
 | Upstash Redis | A dedicated Upstash Redis database for this deployment's security boundary, with TLS enabled. Place it near the application host to reduce query and ingestion latency. |
 | Capacity | Enough PostgreSQL capacity for dashboard data and enough Upstash storage and command capacity for operational state. |
@@ -84,7 +84,7 @@ The application host needs outbound access to PostgreSQL, the Upstash Redis endp
 1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-service-profile).
 1. Build or select the CAO container image and provide the verified dashboard artifact to the container as read-only input.
 
-   To deploy with Coolify, use `server/coolify/compose.yml` and follow [Deploying the dashboard to Coolify](deployment-coolify.md#deploying-the-dashboard). Set its `REDIS_URL` secret to the Upstash TLS Redis connection string and keep the resource at one replica.
+   The checked-in `server/coolify/compose.yml` bakes in `cao.coolify.json`, which selects the PostgreSQL operational-store backend and has no `REDIS_URL` setting. To run this Upstash profile on Coolify, build `server/Dockerfile` with your own `cao.<name>.json` profile (matching `^cao(\.[a-z0-9-]+)?\.json$`) that declares the `redis` host example above, pass it as the `CAO_PROFILE` build argument, and set `REDIS_URL` as a secret on that resource. Keep the resource at one replica.
 
 1. Start the container. On startup, `serve-hosted` verifies the artifact and transactionally replaces the current dashboard dataset in PostgreSQL.
 1. Verify the deployment.

@@ -17,14 +17,14 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## Comparing the options
 
-You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities and queries, plus Redis for operational caches and security state. Redis may come from the platform or a compatible external provider such as Upstash.
+You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities, queries, and operational state by default. Azure still pairs PostgreSQL with Azure Managed Redis for operational caches and security state; Redis remains available elsewhere as an explicit legacy selection, including through a compatible external provider such as Upstash.
 
 | Option | Dashboard host | Where queries run | Who can sign in | Infrastructure you operate |
 | --- | --- | --- | --- | --- |
 | [GitHub Actions only with GitHub Apps](deployment-actions-github-app.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two private GitHub Apps |
 | [GitHub Actions only with a fine-grained PAT](deployment-actions-pat.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two fine-grained personal access tokens (PATs) owned by one user |
 | [Azure](deployment-azure.md) | Azure Functions | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Function App, PostgreSQL, Key Vault, Azure Managed Redis, storage account, and Application Insights |
-| [Coolify](deployment-coolify.md) | A container on your Coolify server | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Coolify server, PostgreSQL, Redis or [Upstash Redis](deployment-upstash.md), container image, and a deployment adapter |
+| [Coolify](deployment-coolify.md) | A container on your Coolify server | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Coolify server, PostgreSQL, container image, and a deployment adapter; no Redis service is required |
 
 ## Choosing an option
 
@@ -52,7 +52,7 @@ Every option serves data derived from the same evidence.
 
 1. The `cao-activity.yml` workflow collects bounded `gh aw logs` evidence on a schedule.
 1. The `cao-dashboard.yml` workflow builds the dashboard site and a data payload. The payload includes a hash manifest (`payload-hashes.json`), an inventory (`inventory-sources.json`), and run and record files (`gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl`).
-1. Your deployment serves the payload. GitHub Pages sends it to the browser. The Go server verifies it, transactionally loads dashboard entities into PostgreSQL, and answers bounded queries from PostgreSQL. Redis retains only operational caches and state.
+1. Your deployment serves the payload. GitHub Pages sends it to the browser. The Go server verifies it, transactionally loads dashboard entities into PostgreSQL, and answers bounded queries from PostgreSQL. Operational caches and state live in PostgreSQL by default, or in Redis when a deployment explicitly selects that legacy backend.
 
 The optional Azure collection profile replaces the first step with server-side collection workers that GitHub App webhooks drive. For more information, see [Using the optional collection profile](deployment-azure.md#using-the-optional-collection-profile).
 
@@ -61,7 +61,7 @@ For collection boundaries, retention, and browser processing, see [Data ingestio
 ## What every option guarantees
 
 - **Read-only access.** The dashboard can't start work, approve outputs, change policy, or write to target repositories. For more information, see [Know the boundary](dashboard.md#know-the-boundary) and [Execution and safety](execution-and-safety.md).
-- **Disposable data.** Browser storage (IndexedDB) and hosted PostgreSQL hold rebuildable dashboard projections. Redis holds rebuildable operational caches and state. None is the authoritative Activity evidence source.
+- **Disposable data.** Browser storage (IndexedDB) and hosted PostgreSQL hold rebuildable dashboard projections. PostgreSQL or, where explicitly selected, Redis holds rebuildable operational caches and state. None is the authoritative Activity evidence source.
 - **Verified payloads.** Each payload file is checked against `payload-hashes.json` before it is parsed. A missing manifest, a hash mismatch, an unsafe path, or a malformed record stops ingestion.
 - **No exposed secrets.** Secrets never appear in the dashboard site, API responses, URLs, or logs.
 
