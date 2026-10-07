@@ -31,6 +31,7 @@ describe('entity card templates', () => {
     expect(templates['marketplace-package-summary']).toMatchObject({
       icon: 'archive',
       'icon-field': 'package-icon',
+      'image-field': 'package-icon-image',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
       details: [
@@ -42,6 +43,7 @@ describe('entity card templates', () => {
     expect(templates['marketplace-package']).toMatchObject({
       icon: 'archive',
       'icon-field': 'package-icon',
+      'image-field': 'package-icon-image',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
       actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]

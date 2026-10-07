@@ -115,36 +115,36 @@ func TestResolveRegistrySkipsPrivateManifests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	func TestResolveRegistryCarriesBundledSVGIcon(t *testing.T) {
-		icon := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>`
-		for _, tc := range []struct {
-			name, icon string
-			status     int
-			want       string
-		}{
-			{"valid", icon, 0, "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(icon))},
-			{"invalid", "<html></html>", 0, ""},
-			{"oversized", strings.Repeat("x", maxIconBytes+1), 0, ""},
-			{"unavailable", icon, 404, ""},
-		} {
-			t.Run(tc.name, func(t *testing.T) {
-				server := newFakeGitHubServer(t, fakeGitHubConfig{icon: tc.icon, iconPaths: []string{"demo/icon.svg"}, iconStatus: tc.status})
-				packages, err := ResolveRegistry(t.Context(), Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}, 0, Options{HTTPClient: insecureTestClient()})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if len(packages) != 1 || packages[0].IconImage != tc.want || packages[0].Icon != "workflow" {
-					t.Fatalf("unexpected package icon: %#v", packages)
-				}
-				if packages[0].Row()["package-icon-image"] != tc.want {
-					t.Fatal("hosted dashboard row lost the image")
-				}
-			})
-		}
-	}
 	if len(packages) != 0 {
 		t.Fatalf("expected private packages to be skipped, got: %#v", packages)
+	}
+}
+
+func TestResolveRegistryCarriesBundledSVGIcon(t *testing.T) {
+	icon := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>`
+	for _, tc := range []struct {
+		name, icon string
+		status     int
+		want       string
+	}{
+		{"valid", icon, 0, "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(icon))},
+		{"invalid", "<html></html>", 0, ""},
+		{"oversized", strings.Repeat("x", maxIconBytes+1), 0, ""},
+		{"unavailable", icon, 404, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := newFakeGitHubServer(t, fakeGitHubConfig{icon: tc.icon, iconPaths: []string{"demo/icon.svg"}, iconStatus: tc.status})
+			packages, err := ResolveRegistry(t.Context(), Registry{ID: "official", Repository: "example/packages", Ref: "main", APIURL: server.baseURL()}, 0, Options{HTTPClient: insecureTestClient()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(packages) != 1 || packages[0].IconImage != tc.want || packages[0].Icon != "workflow" {
+				t.Fatalf("unexpected package icon: %#v", packages)
+			}
+			if packages[0].Row()["package-icon-image"] != tc.want {
+				t.Fatal("hosted dashboard row lost the image")
+			}
+		})
 	}
 }
 

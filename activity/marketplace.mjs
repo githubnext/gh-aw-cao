@@ -179,32 +179,32 @@ function readmeEntries(tree, prefix) {
     if (typeof entry.size === "number" && entry.size > MAX_README_BYTES) continue;
     if (!entries.has(directory)) entries.set(directory, entry);
   }
+  return entries;
+}
 
-  function iconEntries(tree, prefix) {
-    const entries = new Map();
-    for (const entry of tree) {
-      if (entry?.type !== "blob" || typeof entry.path !== "string" || !entry.path.startsWith(prefix)) continue;
-      if (entry.path.slice(entry.path.lastIndexOf("/") + 1) !== "icon.svg") continue;
-      if (typeof entry.size === "number" && entry.size > MAX_ICON_BYTES) continue;
-      entries.set(entry.path.slice(0, -"icon.svg".length), entry);
-    }
-    return entries;
-  }
-
-  async function fetchIcon(entry, { base, repositoryPath, token, fetchImpl }) {
-    try {
-      const response = await githubRequest(fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
-      const blob = await response.json();
-      if (blob.encoding !== "base64" || typeof blob.content !== "string") return "";
-      const content = Buffer.from(blob.content.replace(/\s/g, ""), "base64");
-      if (!content.length || content.byteLength > MAX_ICON_BYTES
-        || !/^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(content.toString("utf8"))) return "";
-      return `data:image/svg+xml;base64,${content.toString("base64")}`;
-    } catch {
-      return "";
-    }
+function iconEntries(tree, prefix) {
+  const entries = new Map();
+  for (const entry of tree) {
+    if (entry?.type !== "blob" || typeof entry.path !== "string" || !entry.path.startsWith(prefix)) continue;
+    if (entry.path.slice(entry.path.lastIndexOf("/") + 1) !== "icon.svg") continue;
+    if (typeof entry.size === "number" && entry.size > MAX_ICON_BYTES) continue;
+    entries.set(entry.path.slice(0, -"icon.svg".length), entry);
   }
   return entries;
+}
+
+async function fetchIcon(entry, { base, repositoryPath, token, fetchImpl }) {
+  try {
+    const response = await githubRequest(fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
+    const blob = await response.json();
+    if (blob.encoding !== "base64" || typeof blob.content !== "string") return "";
+    const content = Buffer.from(blob.content.replace(/\s/g, ""), "base64");
+    if (!content.length || content.byteLength > MAX_ICON_BYTES
+      || !/^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(content.toString("utf8"))) return "";
+    return `data:image/svg+xml;base64,${content.toString("base64")}`;
+  } catch {
+    return "";
+  }
 }
 
 async function fetchReadme(entry, { base, repositoryPath, token, fetchImpl }) {

@@ -3,6 +3,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import { validateDashboardDocument } from '../../src/validator.js';
+import { renderDataView } from '../../src/components/data-view.js';
 
 const dashboard = authoritativeDashboard.dashboard;
 const page = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace');
@@ -41,6 +42,41 @@ function resolve() {
 }
 
 describe('marketplace discovery', () => {
+  it('renders bundled SVG icons as square images with safe Octicon fallback', () => {
+    const icon = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg"></svg>')}`;
+    const definition = dashboard['card-templates'].find(
+      (/** @type {{ id: string }} */ template) => template.id === 'marketplace-package-summary'
+    );
+    const rendered = renderDataView('list', {
+      pageId: 'marketplace',
+      title: 'Packages',
+      view: page.views[0],
+      sourceName: 'marketplace-packages',
+      rows: [
+        { 'package-name': 'With image', 'package-icon-image': icon, 'package-icon': 'workflow' },
+        { 'package-name': 'Without image', 'package-icon': 'workflow' },
+        { 'package-name': 'Unsafe image', 'package-icon-image': 'javascript:alert(1)', 'package-icon': 'workflow' }
+      ],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      cardTemplates: { 'marketplace-package-summary': definition }
+    });
+    const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
+    const image = cards[0]?.querySelector('img');
+    expect(image?.getAttribute('src')).toBe(icon);
+    expect(image?.getAttribute('width')).toBe('56');
+    expect(image?.getAttribute('height')).toBe('56');
+    expect(cards[1]?.querySelector('.issue-list-card-icon .octicon-workflow')).not.toBeNull();
+    expect(cards[2]?.querySelector('img')).toBeNull();
+    expect(cards[2]?.querySelector('.issue-list-card-icon .octicon-workflow')).not.toBeNull();
+    image?.dispatchEvent(new Event('error'));
+    expect(cards[0]?.querySelector('.issue-list-card-icon .octicon-workflow')).not.toBeNull();
+  });
   it('requires a recovery route for the declared package availability view', () => {
     const document = structuredClone(authoritativeDashboard);
     const detail = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'marketplace-package');

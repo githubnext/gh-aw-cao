@@ -516,41 +516,6 @@ func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token,
 		resolveLog.Printf("readme blob request failed")
 		return ""
 	}
-
-	func iconEntries(rawTree []any, prefix string) map[string]treeEntry {
-		entries := map[string]treeEntry{}
-		for _, raw := range rawTree {
-			entry, ok := raw.(map[string]any)
-			if !ok {
-				continue
-			}
-			path, _ := entry["path"].(string)
-			if entry["type"] != "blob" || !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/icon.svg") {
-				continue
-			}
-			if size, ok := entry["size"].(float64); ok && size > maxIconBytes {
-				continue
-			}
-			sha, _ := entry["sha"].(string)
-			if sha != "" {
-				entries[strings.TrimSuffix(path, "icon.svg")] = treeEntry{path: path, sha: sha}
-			}
-		}
-		return entries
-	}
-
-	func fetchIcon(ctx context.Context, opts Options, base, repositoryPath, token, sha string) string {
-		blob, err := githubJSON(ctx, opts, http.MethodGet,
-			fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, sha), token)
-		if err != nil {
-			return ""
-		}
-		content, _, err := decodeBase64Blob(blob)
-		if err != nil || len(content) == 0 || len(content) > maxIconBytes || !svgStartPattern.MatchString(content) {
-			return ""
-		}
-		return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(content))
-	}
 	decoded, outcome, err := decodeBase64Blob(blobPayload)
 	if err == nil && len(decoded) > maxReadmeBytes {
 		outcome, err = decodeBlobOutcomeOversized, fmt.Errorf("blob exceeds size limit")
@@ -560,6 +525,41 @@ func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token,
 		return ""
 	}
 	return decoded
+}
+
+func iconEntries(rawTree []any, prefix string) map[string]treeEntry {
+	entries := map[string]treeEntry{}
+	for _, raw := range rawTree {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		path, _ := entry["path"].(string)
+		if entry["type"] != "blob" || !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/icon.svg") {
+			continue
+		}
+		if size, ok := entry["size"].(float64); ok && size > maxIconBytes {
+			continue
+		}
+		sha, _ := entry["sha"].(string)
+		if sha != "" {
+			entries[strings.TrimSuffix(path, "icon.svg")] = treeEntry{path: path, sha: sha}
+		}
+	}
+	return entries
+}
+
+func fetchIcon(ctx context.Context, opts Options, base, repositoryPath, token, sha string) string {
+	blob, err := githubJSON(ctx, opts, http.MethodGet,
+		fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, sha), token)
+	if err != nil {
+		return ""
+	}
+	content, _, err := decodeBase64Blob(blob)
+	if err != nil || len(content) == 0 || len(content) > maxIconBytes || !svgStartPattern.MatchString(content) {
+		return ""
+	}
+	return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(content))
 }
 
 // manifestEntries collects eligible package manifests from a registry tree in

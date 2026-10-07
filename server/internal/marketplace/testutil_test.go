@@ -30,9 +30,9 @@ type fakeGitHubConfig struct {
 	readme string
 	// readmePaths lists README tree entries returned for git/trees requests.
 	readmePaths []string
-	icon       string
-	iconPaths  []string
-	iconStatus int
+	icon        string
+	iconPaths   []string
+	iconStatus  int
 	// failStatus, if non-zero, makes every request fail with that HTTP status.
 	failStatus int
 	// installationToken, if set, answers GitHub App installation token

@@ -543,8 +543,10 @@ function renderEntityCardItems(rows, options) {
           'span',
           { className: 'issue-list-card-icon', 'aria-hidden': 'true' },
           imageSource
-            ? h('img', { src: imageSource, alt: '', width: 56, height: 56, onError: (event) => {
-              event.currentTarget.replaceWith(octicon(resolveEntityCardIcon(definition, row, toText)));
+            ? h('img', { src: imageSource, alt: '', width: 56, height: 56, onError: (/** @type {Event} */ event) => {
+              if (event.currentTarget instanceof HTMLImageElement) {
+                event.currentTarget.replaceWith(octicon(resolveEntityCardIcon(definition, row, toText)));
+              }
             } })
             : octicon(resolveEntityCardIcon(definition, row, toText))
         ),

@@ -191,6 +191,7 @@ describe('dashboard source ingestion queries', () => {
   });
 
   it('preserves marketplace repository links during canonical ingestion', () => {
+    const iconImage = `data:image/svg+xml;base64,${btoa('<svg></svg>')}`;
     const repositoryLink = {
       relation: 'repository',
       href: 'https://github.com/example/packages',
@@ -203,6 +204,7 @@ describe('dashboard source ingestion queries', () => {
           'registry-id': 'official',
           repository: 'example/packages',
           'repository-link': repositoryLink,
+          'icon-image': iconImage,
           'verification-status': 'verified',
           'installation-status': 'installed',
           'adoption-count': 42,
@@ -219,6 +221,7 @@ describe('dashboard source ingestion queries', () => {
 
     const packageRecord = normalize(adapted.observations).marketplacePackages[0];
     expect(packageRecord.repositoryLink).toEqual(repositoryLink);
+    expect(packageRecord.iconImage).toBe(iconImage);
     expect(packageRecord.stars).toBe(12);
     expect(packageRecord).not.toHaveProperty('verificationStatus');
     expect(packageRecord).not.toHaveProperty('installationStatus');
