@@ -178,6 +178,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-actions-list { width: min(320px, calc(100vw - 28px)); display: grid; gap: 4px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .cli-action-trigger { width: 100%; min-width: 0; display: flex; align-items: flex-start; gap: 9px; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .cli-action-trigger:hover { background: var(--neutral-muted); }
+.cli-action-trigger:focus-visible, .cli-action-cancel:focus-visible, .cli-action-confirm:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .cli-action-trigger > .octicon { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; color: var(--muted); }
 .cli-action-trigger-copy { min-width: 0; display: grid; gap: 2px; }
 .cli-action-trigger-copy strong { font-size: .8125rem; }

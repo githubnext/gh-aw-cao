@@ -912,6 +912,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             return source ? [[sourceName, source]] : [];
           }));
           const action = normalizeViewAction(view, semantics);
+          action.viewTitle = getViewTitle(view, index);
           action.actionId = declaredAgentTaskActionId();
           const prompt = renderPromptPreviewAction(
             action,

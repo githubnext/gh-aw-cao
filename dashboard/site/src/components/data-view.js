@@ -1619,7 +1619,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
   let triggerButton = null;
   const { dialog, open: openPreview, close: dismissPreview } = createModalDialog({
     className: 'table-intent-dialog',
-    ariaLabel: `${label} request preview`,
+    ariaLabel: `${label} prompt preview`,
     onFallbackClose: () => triggerButton?.focus()
   });
   const closePreview = () => {
@@ -1643,7 +1643,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
     trackState: true
   });
   const promptCliAction = typeof action.actionId === 'string'
-    ? createPromptCliActionControl(action.actionId, content.get)
+    ? createPromptCliActionControl(action.actionId, content.get, { level: action.level, label })
     : null;
   const activeControl = promptCliAction ?? copyControl;
   dialog.append(
@@ -1653,7 +1653,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
       h('h2', null, action.level === 'operate' ? `Confirm ${label}` : action.level === 'explore' ? 'Read-only investigation' : 'Proposal request preview'),
       renderCloseButton({
         className: 'table-intent-dialog-close',
-        label: 'Close request preview',
+        label: 'Close prompt preview',
         onClick: closePreview
       })
     ),
@@ -1678,7 +1678,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
       className: 'table-intent-button',
       type: 'button',
       title: label,
-      'aria-label': label,
+      'aria-label': action.source === 'view' && action.viewTitle ? `${label}: ${action.viewTitle}` : label,
       'data-intent-presentation': action.presentation ?? 'semantic-prompt',
       'data-action-level': action.level,
       onClick: () => {

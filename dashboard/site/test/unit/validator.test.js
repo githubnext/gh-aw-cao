@@ -1069,6 +1069,7 @@ describe('dashboard document validation', () => {
       action: 'create-agent-task',
       intent: 'Investigate this failed workflow run.',
       presentation: 'copy-prompt',
+      level: 'explore',
       icon: 'search',
       label: 'Investigate',
       context: [

@@ -48,9 +48,11 @@ test('tiered actions keep visible labels and usable approval on portrait and lan
       { id: 'inspect', level: 'explore', label: 'Investigate a longer description of the current problem',
         command: 'gh aw status', placement: 'settings' }
     ], { presentation: 'settings', canExecute: true }));
-    root.append(renderPromptPreviewAction(normalizeAction({ level: 'propose', subject: 'Observed errors',
+    const promptAction = renderPromptPreviewAction(normalizeAction({ level: 'propose', subject: 'Observed errors',
       objective: 'Propose a fix', acceptance: 'Explain measurable impact' },
-    { id: 'proposal', type: 'prompt' }), () => 'Subject: Observed errors\nObjective: Propose a fix\nAcceptance: Explain measurable impact'));
+    { id: 'proposal', type: 'prompt' }), () => 'Subject: Observed errors\nObjective: Propose a fix\nAcceptance: Explain measurable impact');
+    promptAction.classList.add('chart-prompt-action');
+    root.append(promptAction);
   }, [
     'http://dashboard.test/src/styles.js',
     'http://dashboard.test/src/components/cli-actions.js',
@@ -61,6 +63,7 @@ test('tiered actions keep visible labels and usable approval on portrait and lan
     await page.setViewportSize(viewport);
     const triggers = page.locator('.cli-action-trigger, .table-intent-button');
     await expect(triggers).toHaveCount(3);
+    await expect(triggers.last().locator('span')).toHaveText('Propose fix');
     for (const trigger of await triggers.all()) {
       await expect(trigger).toBeVisible();
       const box = await trigger.boundingBox();

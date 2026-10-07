@@ -982,7 +982,9 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       }
       validateActionLevel(action.level, `${path}.level`, errors);
       validateOptionalStringField(action.verb, `${path}.verb`, errors);
-      if (action.label !== undefined) validateStringField(action.label, `${path}.label`, true, errors);
+      if (action.label !== undefined || action.level === undefined || action.level === 'operate') {
+        validateStringField(action.label, `${path}.label`, true, errors);
+      }
       validateOptionalStringField(action.description, `${path}.description`, errors);
       if (action.icon !== undefined) validateStringField(action.icon, `${path}.icon`, true, errors);
       if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
@@ -1034,6 +1036,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           && commandTokens[2] === 'create'
           && commandTokens[3] === '--from-file'
           && commandTokens[4] === '-';
+        if (action.level === 'explore' && !isReadOnlyCliAction(action)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'Explore CLI actions must use a supported read-only command.',
+            `${path}.command`
+          ));
+        }
         if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand && !isAgentTaskCreateCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -3540,6 +3549,21 @@ function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
   }
 }
 
+/** @param {{ command?: string, arguments?: unknown[] }} action */
+function isReadOnlyCliAction(action) {
+  if (action.arguments?.length || typeof action.command !== 'string') return false;
+  const tokens = parseCliActionTokens(action.command);
+  return Boolean(tokens && (
+    tokens[0] === 'gh' && tokens[1] === 'aw'
+      && ['status', 'list', 'logs', 'version'].includes(tokens[2]) && tokens.length === 3
+    || tokens[0] === './cao.sh' && (
+      tokens[1] === 'status' && tokens.length === 2
+      || ['query', 'query-info', 'prompt'].includes(tokens[1])
+        && tokens.length === 3 && IDENTIFIER_PATTERN.test(tokens[2])
+    )
+  ));
+}
+
 /** @param {unknown} level @param {string} path @param {ValidationError[]} errors */
 function validateActionLevel(level, path, errors) {
   if (level !== undefined && !ACTION_LEVELS.some((allowed) => allowed === level)) {
@@ -3592,6 +3616,10 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
       } else if (declaredAction.command === 'gh agent-task create --from-file -') {
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'agent-task actions must use copy-prompt presentation.', `${actionPath}.action`));
       }
+      if (action.level === 'explore' && declaredAction && !isReadOnlyCliAction(declaredAction)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+          'Explore CLI actions must use a supported read-only command.', `${actionPath}.action`));
+      }
       if (action.intent !== undefined) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'cli-action table actions must not declare intent.', `${actionPath}.intent`));
       }
@@ -3627,7 +3655,10 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
     if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action icon must use one canonical icon value.', `${actionPath}.icon`));
     }
-    if (action.label !== undefined) validateStringField(action.label, `${actionPath}.label`, true, errors);
+    if (action.label !== undefined || action.level === 'operate'
+      || action.level === undefined && action.presentation === 'cli-action') {
+      validateStringField(action.label, `${actionPath}.label`, true, errors);
+    }
     if (!Array.isArray(action.context) || action.context.length === 0) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action context must be a non-empty sequence of source fields.', `${actionPath}.context`));
     } else {

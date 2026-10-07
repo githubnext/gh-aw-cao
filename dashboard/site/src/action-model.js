@@ -15,7 +15,7 @@ const VERB_ICONS = {
 /**
  * @typedef {{ id: string, level: ActionLevel, type: ActionType, source: ActionSource,
  * label: string, icon: string, verb?: string, subject?: string, objective?: string,
- * acceptance?: string, context?: unknown, actionId?: string, command?: string,
+ * acceptance?: string, context?: unknown, viewTitle?: string, actionId?: string, command?: string,
  * intent?: string, presentation?: string }} Action
  */
 
@@ -42,7 +42,7 @@ export function actionPresentation(action) {
  */
 export function normalizeAction(declared, { type, id, source = 'explicit' }) {
   /** @type {ActionLevel} */
-  const level = declared.level ?? (type === 'cli' ? 'operate' : 'propose');
+  const level = declared.level ?? (type === 'cli' ? 'operate' : type === 'link' ? 'explore' : 'propose');
   const verb = declared.verb;
   return {
     ...declared, id, type, source, level, verb,
@@ -65,5 +65,7 @@ export function normalizeViewAction(view, semantics) {
 export function constrainPrompt(prompt, level) {
   return level === 'explore'
     ? `Read-only investigation. Do not modify repositories, create issues, patches, pull requests, change configuration, or perform operational side effects.\n\n${prompt}`
-    : prompt;
+    : level === 'propose'
+      ? `Proposal only. Create changes through normal repository or change-management mechanisms; do not perform direct operational mutations.\n\n${prompt}`
+      : prompt;
 }

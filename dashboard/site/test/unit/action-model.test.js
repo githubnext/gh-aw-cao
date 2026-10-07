@@ -8,8 +8,37 @@ describe('declarative action levels', () => {
   it.each(ACTION_LEVELS)('accepts %s on dashboard CLI actions regardless of executor', (level) => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'][0].level = level;
+    if (level === 'explore') {
+      document.dashboard['cli-actions'][0].command = 'gh aw status';
+      delete document.dashboard['cli-actions'][0].arguments;
+    }
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     expect(normalizeAction(document.dashboard['cli-actions'][0], { id: 'test', type: 'cli' }).level).toBe(level);
+  });
+
+  it('rejects mutating CLI commands declared as read-only exploration', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard['cli-actions'][0].level = 'explore';
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'Explore CLI actions must use a supported read-only command.' })
+    ]));
+    /** @param {any} node @returns {any} */
+    const findRowCli = (node) => {
+      if (!node || typeof node !== 'object') return null;
+      if (node.presentation === 'cli-action') return node;
+      for (const child of Object.values(node)) {
+        const found = findRowCli(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    const rowAction = findRowCli(document);
+    rowAction.level = 'explore';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'Explore CLI actions must use a supported read-only command.' })
+    ]));
   });
 
   it('rejects invalid CLI and generated view levels', () => {
@@ -21,6 +50,31 @@ describe('declarative action levels', () => {
     expect(result.ok).toBe(false);
     expect(result.errors.some((error) => error.path.endsWith('.level'))).toBe(true);
     expect(result.errors.some((error) => error.path.endsWith('.prompt-level'))).toBe(true);
+  });
+
+  it.each(['explore', 'propose', 'operate'])('validates a declared row prompt at %s', (level) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    /** @param {any} node @returns {any} */
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return null;
+      if (node.presentation === 'copy-prompt') return node;
+      for (const child of Object.values(node)) {
+        const found = visit(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    const prompt = visit(document);
+    expect(prompt).toBeTruthy();
+    prompt.level = level;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    if (level === 'propose') {
+      delete prompt.label;
+      delete prompt.level;
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    }
+    prompt.level = 'invalid';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
   it('normalizes explicit prompt, CLI and generated view actions without coupling level to type', () => {
@@ -37,6 +91,7 @@ describe('declarative action levels', () => {
     expect(normalizeViewAction({ 'prompt-level': 'explore' }, { subject: '', objective: '', acceptance: '' }).level).toBe('explore');
     expect(normalizeAction({}, { id: 'old', type: 'cli' }).level).toBe('operate');
     expect(normalizeAction({}, { id: 'old', type: 'prompt' }).level).toBe('propose');
+    expect(normalizeAction({}, { id: 'old', type: 'link' }).level).toBe('explore');
   });
 
   it('keeps read-only investigation separate from proposals in generated prompts', () => {

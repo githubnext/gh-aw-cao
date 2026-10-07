@@ -496,15 +496,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignInsights.locator('.custom-view-grid > .custom-view').first()).toHaveCSS('padding-left', '14px');
   const prompt = campaignInsights.locator('.semantic-prompt-action').first();
   if (await prompt.count() > 0) {
-    await expect(prompt).toHaveCSS('position', 'absolute');
+    await expect(prompt).toHaveCSS('position', 'static');
+    await expect(prompt.locator('.table-intent-button span')).toBeVisible();
     const promptAndHelp = await prompt.evaluate((element) => {
       const section = element.closest('.view-description-section');
       const promptBox = element.getBoundingClientRect();
       const helpBox = section?.querySelector('.view-description-tooltip')?.getBoundingClientRect();
-      return promptBox && helpBox ? { promptRight: promptBox.right, helpLeft: helpBox.left } : null;
+      return promptBox && helpBox ? {
+        separated: promptBox.bottom <= helpBox.top || helpBox.bottom <= promptBox.top
+          || promptBox.right <= helpBox.left || helpBox.right <= promptBox.left
+      } : null;
     });
     if (promptAndHelp) {
-      expect(promptAndHelp.promptRight).toBeLessThanOrEqual(promptAndHelp.helpLeft);
+      expect(promptAndHelp.separated).toBe(true);
     }
   }
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);

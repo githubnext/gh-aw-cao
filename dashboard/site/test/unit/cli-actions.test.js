@@ -14,6 +14,34 @@ afterEach(() => {
 });
 
 describe('CLI actions', () => {
+  it('requires explicit confirmation for operate and retains readable row labels and decorative icons', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"type":"complete","result":{"ok":true}}\n'));
+        controller.close();
+      } })
+    });
+    vi.stubGlobal('fetch', fetch);
+    setDeclaredCliActions([{
+      id: 'refresh',
+      level: 'operate',
+      label: 'Refresh data',
+      icon: 'zap',
+      command: 'gh aw compile',
+      placement: 'row'
+    }]);
+    const rendered = renderRowCliAction('refresh', {});
+    expect(rendered?.querySelector('.octicon-zap')?.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered?.querySelector('.cli-action-trigger')?.textContent).toContain('Refresh data');
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(fetch).not.toHaveBeenCalled();
+    expect(rendered?.querySelector('.cli-action-command')?.textContent).toBe('gh aw compile');
+    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toContain('Confirm Refresh data');
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  });
+
   it('renders update actions with repository and pull-request creation', () => {
     const rendered = renderCliActions([{
       id: 'update-repository',

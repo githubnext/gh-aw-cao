@@ -52,7 +52,7 @@ for (const theme of ['light', 'dark']) {
     await page.addStyleTag({ content: getPrimerStyles() });
 
     const view = page.locator('[data-view-id="runs-runs-source"]');
-    const prompt = view.getByRole('button', { name: 'Create prompt for Runs', exact: true });
+    const prompt = view.getByRole('button', { name: 'Propose fix: Runs', exact: true });
     await expect(prompt).toBeVisible();
     await page.getByRole('button', { name: 'Cards', exact: true }).click();
     await expect(prompt).toBeHidden();
@@ -72,7 +72,7 @@ for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(cards.first()).toBeVisible();
     await expect(prompt).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Create prompt for Runs', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Propose fix: Runs', exact: true })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole('button', { name: 'Table', exact: true }).click();

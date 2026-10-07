@@ -10,7 +10,7 @@ import { normalizeAction, actionPresentation } from '../action-model.js';
 const debugCliActions = createDebug('cli-actions');
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -96,8 +96,9 @@ function resultText(result) {
  * Create the canvas-only control that starts an agent task from a generated prompt.
  * @param {string} actionId
  * @param {() => string} getPrompt
+ * @param {{ level?: import('../action-model.js').ActionLevel, label?: string }} [options]
  */
-export function createPromptCliActionControl(actionId, getPrompt) {
+export function createPromptCliActionControl(actionId, getPrompt, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!declaredCliActionsCanExecute || !action || action['copy-only'] === true) return null;
   const scope = createFactoryScope();
@@ -133,7 +134,7 @@ export function createPromptCliActionControl(actionId, getPrompt) {
         busy.set(false);
       }
     }
-  }, 'Start agent task'));
+  }, options.level === 'operate' ? `Confirm ${options.label ?? 'operation'}` : 'Start agent task'));
   effect(() => {
     button.disabled = busy.get();
     status.textContent = statusText.get();
