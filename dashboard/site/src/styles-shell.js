@@ -21,7 +21,8 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .dashboard-page[data-view-mode="card"] [data-view-mode-content="table"] > .table-region { display: none; }
 .dashboard-page[data-view-mode="card"] [data-mobile-card-list] { display: grid; gap: 12px; }
 .mobile-table-card-list { display: none; }
-.dashboard-full-view .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { min-height: 0; flex: 1; overflow: hidden; }
+.dashboard-full-view .dashboard-page[data-view-mode="card"] .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { display: flex; flex-direction: column; }
 .dashboard-full-view .mobile-table-card-list-items { min-height: 0; flex: 0 1 auto; overflow-y: auto; }
 .mobile-table-card-list-items { display: grid; gap: 10px; border: 0; background: transparent; }
 .mobile-table-card-list-boundary { min-height: 1px; list-style: none; }
