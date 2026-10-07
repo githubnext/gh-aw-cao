@@ -24,7 +24,7 @@ export const CARD_DETAIL_LABEL_VALUES = ['hidden', 'visible'];
 export const CARD_TEMPLATE_ACTION_KEYS = ['action', 'context', 'when'];
 export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
-export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments', 'copy-only'];
+export const CLI_ACTION_KEYS = ['id', 'level', 'verb', 'label', 'description', 'icon', 'command', 'placement', 'arguments', 'copy-only'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
 export const CLI_ACTION_ARGUMENT_KEYS = ['id', 'label', 'description', 'type', 'flag', 'default'];
 export const CLI_ACTION_ARGUMENT_TYPE_VALUES = ['boolean'];
@@ -82,7 +82,7 @@ export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
 
-export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'prompt-level', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_FILTER_BAR_KEYS = ['filters'];
 export const VIEW_FILTER_CONTROL_KEYS = ['id', 'label', 'groups'];
 export const VIEW_FILTER_GROUP_KEYS = ['label', 'field', 'source', 'value-field', 'label-field'];
@@ -147,7 +147,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'insights'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions'];
-export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'icon', 'label', 'context', 'when'];
+export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action', 'external-link'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];

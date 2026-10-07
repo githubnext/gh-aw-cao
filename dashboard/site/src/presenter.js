@@ -18,6 +18,7 @@ import { renderPageLoadError } from './components/page-load-error.js';
 import { declaredAgentTaskActionId } from './components/cli-actions.js';
 import { effectiveViewSemantics } from './view-semantics.js';
 import { semanticViewPrompt } from './semantic-view-prompt.js';
+import { normalizeViewAction } from './action-model.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderDashboardForm } from './components/dashboard-form.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -910,8 +911,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, sourceName, sourceIndex)];
             return source ? [[sourceName, source]] : [];
           }));
+          const action = normalizeViewAction(view, semantics);
+          action.actionId = declaredAgentTaskActionId();
           const prompt = renderPromptPreviewAction(
-            view.mark === 'chart' ? `Fix: ${getViewTitle(view, index)}` : `Create prompt for ${getViewTitle(view, index)}`,
+            action,
             () => {
               const routeValues = Object.fromEntries(new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? ''));
               return semanticViewPrompt({
@@ -930,12 +933,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
                 },
                 filters: { ...queryContext, viewFilters: view.data?.filters ?? {} },
                 scope: view.data?.scope ?? dashboardDefaults.scope ?? {},
-                sources: selectedSources
+                sources: selectedSources,
+                level: action.level
               });
-            },
-            declaredAgentTaskActionId(),
-            'copilot',
-            'semantic-prompt'
+            }
           );
           prompt.classList.add(view.mark === 'chart' ? 'chart-prompt-action' : 'semantic-prompt-action');
           const section = rendered.matches('.page-section') ? rendered : null;

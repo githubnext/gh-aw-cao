@@ -1,5 +1,6 @@
 import { parseAllDocuments } from 'yaml';
 import { createDebug } from './debug.js';
+import { ACTION_LEVELS } from './action-model.js';
 import {
   ADDITIVE_MEASURE_FIELDS,
   AGGREGATE_VALUES,
@@ -979,9 +980,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         ids.add(action.id);
         declaredCliActions.set(action.id, action);
       }
-      validateStringField(action.label, `${path}.label`, true, errors);
+      validateActionLevel(action.level, `${path}.level`, errors);
+      validateOptionalStringField(action.verb, `${path}.verb`, errors);
+      if (action.label !== undefined) validateStringField(action.label, `${path}.label`, true, errors);
       validateOptionalStringField(action.description, `${path}.description`, errors);
-      validateStringField(action.icon, `${path}.icon`, true, errors);
+      if (action.icon !== undefined) validateStringField(action.icon, `${path}.icon`, true, errors);
       if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
         errors.push(createError(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2602,6 +2605,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       `${path}.prompt`
     ));
   }
+  if (view['prompt-level'] !== undefined) validateActionLevel(view['prompt-level'], `${path}.prompt-level`, errors);
   validateCallout(
     view.callout,
     getValueNodeByKey(viewNode, 'callout'),
@@ -3544,6 +3548,13 @@ function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
  * @param {string} path
  * @param {ValidationError[]} errors
  */
+function validateActionLevel(level, path, errors) {
+  if (level !== undefined && !ACTION_LEVELS.includes(level)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'action level must be explore, propose, or operate.', path));
+  }
+}
+
 function validateTableActions(encoding, encodingNode, mark, sourceName, path, errors) {
   if (!isPlainObject(encoding) || encoding.actions === undefined) return;
   if (!['list', 'table'].includes(String(mark))) {
@@ -3562,6 +3573,8 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
       return;
     }
     validateObjectKeys(actionNode, TABLE_ACTION_KEYS, actionPath, errors);
+    validateActionLevel(action.level, `${actionPath}.level`, errors);
+    validateOptionalStringField(action.verb, `${actionPath}.verb`, errors);
     validateStringField(action.presentation, `${actionPath}.presentation`, true, errors);
     if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt, cli-action, or external-link.', `${actionPath}.presentation`));
@@ -3609,11 +3622,11 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         `${actionPath}.context`
       ));
     }
-    validateStringField(action.icon, `${actionPath}.icon`, true, errors);
+    if (action.icon !== undefined) validateStringField(action.icon, `${actionPath}.icon`, true, errors);
     if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action icon must use one canonical icon value.', `${actionPath}.icon`));
     }
-    validateStringField(action.label, `${actionPath}.label`, true, errors);
+    if (action.label !== undefined) validateStringField(action.label, `${actionPath}.label`, true, errors);
     if (!Array.isArray(action.context) || action.context.length === 0) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action context must be a non-empty sequence of source fields.', `${actionPath}.context`));
     } else {
