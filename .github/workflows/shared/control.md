@@ -80,6 +80,76 @@ safe-outputs:
   staged: ${{ inputs.safe_output_mode == 'debug' }}
   activation-comments: ${{ inputs.safe_output_mode != 'debug' }}
   report-failure-as-issue: ${{ inputs.safe_output_mode != 'debug' }}
+  steps:
+    - name: Download CAO dispatcher precompute artifact
+      id: cao_dispatcher_precompute_download
+      if: ${{ github.job == 'safe_outputs' && env.CAO_ROLE == 'orchestrator' }}
+      continue-on-error: true
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: cao-control-precompute
+        path: ${{ runner.temp }}/cao-dispatcher
+    - name: Emit control-plane dispatcher telemetry
+      if: ${{ always() && github.job == 'safe_outputs' && env.CAO_ROLE == 'orchestrator' && steps.cao_dispatcher_precompute_download.outcome == 'success' }}
+      continue-on-error: true
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const otlp = require(path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions', 'otlp.cjs'));
+
+          function count(value) {
+            const parsed = Number(value);
+            return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+          }
+
+          const precompute = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'cao-dispatcher', 'control-precompute.json'), 'utf8'));
+          if (precompute.control_role !== 'orchestrator') {
+            throw new Error('Dispatcher telemetry requires orchestrator precompute evidence');
+          }
+
+          const output = JSON.parse(fs.readFileSync(process.env.GH_AW_AGENT_OUTPUT, 'utf8'));
+          if (!Array.isArray(output.items)) {
+            throw new Error('Dispatcher telemetry requires normalized safe-output items');
+          }
+          const items = output.items;
+          const dispatches = items.filter(item => item?.type === 'dispatch_workflow');
+          const incompleteCount = items.filter(item => item?.type === 'report_incomplete').length;
+          const noopCount = items.filter(item => item?.type === 'noop').length;
+          const targetCount = new Set(dispatches.map(item => item?.inputs?.target_repo).filter(Boolean)).size;
+          const workflowCount = new Set(dispatches.map(item => item?.workflow_name).filter(Boolean)).size;
+          const dispatchModes = new Set(dispatches.map(item => item?.inputs?.safe_output_mode).filter(Boolean));
+          const effectiveMode = dispatchModes.size === 0
+            ? String(precompute.safe_output_mode || 'unknown')
+            : dispatchModes.size === 1
+              ? [...dispatchModes][0]
+              : 'mixed';
+          const status = incompleteCount > 0
+            ? 'incomplete'
+            : dispatches.length > 0
+              ? 'requested'
+              : noopCount > 0
+                ? 'noop'
+                : 'empty';
+
+          await otlp.logSpan('central-agentic-ops.dispatcher', {
+            'central_agentic_ops.dispatcher.campaign': String(precompute.campaign || precompute.bundle || 'unknown'),
+            'central_agentic_ops.dispatcher.status': status,
+            'central_agentic_ops.dispatcher.enabled': precompute.enabled === true,
+            'central_agentic_ops.dispatcher.safe_output_mode': effectiveMode,
+            'central_agentic_ops.dispatcher.candidate_count': Array.isArray(precompute.candidate_repositories) ? precompute.candidate_repositories.length : 0,
+            'central_agentic_ops.dispatcher.target_limit': count(precompute.effective_max_repos),
+            'central_agentic_ops.dispatcher.dispatch_requested_count': dispatches.length,
+            'central_agentic_ops.dispatcher.target_count': targetCount,
+            'central_agentic_ops.dispatcher.workflow_count': workflowCount,
+            'central_agentic_ops.dispatcher.incomplete_count': incompleteCount,
+          }, {
+            isError: incompleteCount > 0,
+            errorMessage: incompleteCount > 0 ? 'dispatcher reported incomplete' : undefined,
+          });
 
 env:
   CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
@@ -522,71 +592,6 @@ jobs:
               effective_cap: precompute.effective_max_repos ?? 0,
             })}`);
 
-post-steps:
-  - name: Emit control-plane dispatcher telemetry
-    if: ${{ always() }}
-    continue-on-error: true
-    uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-    with:
-      script: |
-        const fs = require('fs');
-        const path = require('path');
-        const otlp = require(path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions', 'otlp.cjs'));
-
-        function readJson(file, fallback) {
-          try {
-            return JSON.parse(fs.readFileSync(file, 'utf8'));
-          } catch {
-            return fallback;
-          }
-        }
-
-        function count(value) {
-          const parsed = Number(value);
-          return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
-        }
-
-        const precompute = readJson('/tmp/gh-aw/agent/control-precompute.json', {});
-        if (precompute.control_role !== 'orchestrator') {
-          return;
-        }
-
-        const output = readJson('/tmp/gh-aw/agent_output.json', { items: [] });
-        const items = Array.isArray(output.items) ? output.items : [];
-        const dispatches = items.filter(item => item?.type === 'dispatch_workflow');
-        const incompleteCount = items.filter(item => item?.type === 'report_incomplete').length;
-        const noopCount = items.filter(item => item?.type === 'noop').length;
-        const targetCount = new Set(dispatches.map(item => item?.inputs?.target_repo).filter(Boolean)).size;
-        const workflowCount = new Set(dispatches.map(item => item?.workflow_name).filter(Boolean)).size;
-        const dispatchModes = new Set(dispatches.map(item => item?.inputs?.safe_output_mode).filter(Boolean));
-        const effectiveMode = dispatchModes.size === 0
-          ? String(precompute.safe_output_mode || 'unknown')
-          : dispatchModes.size === 1
-            ? [...dispatchModes][0]
-            : 'mixed';
-        const status = incompleteCount > 0
-          ? 'incomplete'
-          : dispatches.length > 0
-            ? 'requested'
-            : noopCount > 0
-              ? 'noop'
-              : 'empty';
-
-        await otlp.logSpan('central-agentic-ops.dispatcher', {
-          'central_agentic_ops.dispatcher.campaign': String(precompute.campaign || precompute.bundle || 'unknown'),
-          'central_agentic_ops.dispatcher.status': status,
-          'central_agentic_ops.dispatcher.enabled': precompute.enabled === true,
-          'central_agentic_ops.dispatcher.safe_output_mode': effectiveMode,
-          'central_agentic_ops.dispatcher.candidate_count': Array.isArray(precompute.candidate_repositories) ? precompute.candidate_repositories.length : 0,
-          'central_agentic_ops.dispatcher.target_limit': count(precompute.effective_max_repos),
-          'central_agentic_ops.dispatcher.dispatch_requested_count': dispatches.length,
-          'central_agentic_ops.dispatcher.target_count': targetCount,
-          'central_agentic_ops.dispatcher.workflow_count': workflowCount,
-          'central_agentic_ops.dispatcher.incomplete_count': incompleteCount,
-        }, {
-          isError: incompleteCount > 0,
-          errorMessage: incompleteCount > 0 ? 'dispatcher reported incomplete' : undefined,
-        });
 ---
 
 Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions. Treat it as authoritative for `control_role`, campaign enablement state, target repository inputs, safe-output routing, and worker workflow availability.

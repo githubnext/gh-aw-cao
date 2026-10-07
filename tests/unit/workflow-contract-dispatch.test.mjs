@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
+import { parse } from "yaml";
 import { controlPrecompute, portableSkill, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Orchestrator-to-worker dispatch, provenance, and telemetry contracts.
@@ -77,9 +79,12 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
   const campaignSkill = portableSkill("create-cao-campaign");
 
-  assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
-  assert.match(control, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(control, /if \(precompute\.control_role !== 'orchestrator'\) \{\n\s+return;\n\s+\}/);
+  assert.match(control, /safe-outputs:[\s\S]*?steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
+  assert.doesNotMatch(control, /^post-steps:/m);
+  assert.match(control, /github\.job == 'safe_outputs' && env\.CAO_ROLE == 'orchestrator'/);
+  assert.match(control, /steps\.cao_dispatcher_precompute_download\.outcome == 'success'/);
+  assert.match(control, /GH_AW_AGENT_OUTPUT: \$\{\{ steps\.setup-agent-output-env\.outputs\.GH_AW_AGENT_OUTPUT \}\}/);
+  assert.match(control, /if \(precompute\.control_role !== 'orchestrator'\) \{\n\s+throw new Error/);
   assert.match(control, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
   assert.match(control, /central_agentic_ops\.dispatcher\.dispatch_requested_count/);
   assert.match(control, /central_agentic_ops\.dispatcher\.target_count/);
@@ -115,6 +120,70 @@ test("orchestrators dispatch workers only through safe-output tools", () => {
   assert.match(precompute, /const item = inWorkflows/);
   assert.match(campaignSkill, /Declare `safe_output_mode` as a required `workflow_dispatch` string input/);
   assert.match(campaignSkill, /omission must fail dispatch validation rather than silently downgrade a live target to review/);
+});
+
+test("dispatcher telemetry preserves aggregate intent without mutating safe outputs", async (t) => {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow("shared/control.md"))[1];
+  const config = parse(frontmatter);
+  const script = config["safe-outputs"].steps.find(({ name }) => name === "Emit control-plane dispatcher telemetry").with.script;
+  const precompute = {
+    control_role: "orchestrator",
+    campaign: "test",
+    enabled: true,
+    safe_output_mode: "review",
+    candidate_repositories: ["private/one", "private/two"],
+    effective_max_repos: 2,
+  };
+  const dispatch = (repository, worker, mode) => ({
+    type: "dispatch_workflow",
+    workflow_name: worker,
+    inputs: { target_repo: repository, safe_output_mode: mode },
+  });
+  async function execute(output, evidence = precompute) {
+    const spans = [];
+    const files = new Map([
+      ["/runner/cao-dispatcher/control-precompute.json", JSON.stringify(evidence)],
+      ["/normalized-output.json", JSON.stringify(output)],
+    ]);
+    await runInNewContext(`(async () => { ${script} })()`, {
+      process: { env: { RUNNER_TEMP: "/runner", GH_AW_AGENT_OUTPUT: "/normalized-output.json" } },
+      require(module) {
+        if (module === "fs") return { readFileSync: (file) => {
+          assert.ok(files.has(file), `Unexpected telemetry read: ${file}`);
+          return files.get(file);
+        } };
+        if (module === "path") return { join: (...parts) => parts.join("/") };
+        assert.equal(module, "/runner/gh-aw/actions/otlp.cjs");
+        return { logSpan: async (...args) => spans.push(args) };
+      },
+    });
+    return spans;
+  }
+  for (const [status, items, mode, requested, incomplete] of [
+    ["requested", [dispatch("private/one", "worker-a", "review"), dispatch("private/one", "worker-b", "live")], "mixed", 2, 0],
+    ["incomplete", [dispatch("private/one", "worker-a", "review"), { type: "report_incomplete" }], "review", 1, 1],
+    ["noop", [{ type: "noop" }], "review", 0, 0],
+    ["empty", [], "review", 0, 0],
+  ]) {
+    await t.test(status, async () => {
+      const output = { items };
+      const snapshot = JSON.stringify(output);
+      const [[name, attributes, options]] = await execute(output);
+      const value = (key) => attributes[`central_agentic_ops.dispatcher.${key}`];
+      assert.equal(name, "central-agentic-ops.dispatcher");
+      assert.equal(value("status"), status);
+      assert.equal(value("safe_output_mode"), mode);
+      assert.equal(value("dispatch_requested_count"), requested);
+      assert.equal(value("target_count"), requested ? 1 : 0);
+      assert.equal(value("workflow_count"), requested);
+      assert.equal(value("incomplete_count"), incomplete);
+      assert.equal(options.isError, incomplete > 0);
+      assert.doesNotMatch(JSON.stringify(attributes), /private\/|worker-a|worker-b/);
+      assert.equal(JSON.stringify(output), snapshot);
+    });
+  }
+  await assert.rejects(execute({}), /normalized safe-output items/);
+  await assert.rejects(execute({ items: [] }, { control_role: "worker" }), /orchestrator precompute evidence/);
 });
 
 test("Optimization emits a no-op safe output when no workers are dispatched", () => {

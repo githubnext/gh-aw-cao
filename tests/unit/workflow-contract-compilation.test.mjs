@@ -146,12 +146,18 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /rollout_percent:\n\s+default: 100\n\s+type: number/);
       assert.match(generated, /timeout-minutes: 15/);
       assert.match(generated, /cancel-in-progress: true/);
-      const outputPlaceholder = generated.indexOf("- name: Write agent output placeholder if missing");
-      const dispatcherTelemetry = generated.indexOf("name: Emit control-plane dispatcher telemetry");
-      const agentArtifact = generated.indexOf("- name: Upload agent artifacts");
-      assert.ok(outputPlaceholder < dispatcherTelemetry, `${lockName} emits dispatcher telemetry before output normalization`);
-      assert.ok(dispatcherTelemetry < agentArtifact, `${lockName} uploads the agent artifact before dispatcher telemetry`);
-      assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
+      const jobs = generatedJobs(generated);
+      const agent = jobs.get("agent").block;
+      const safeOutputs = jobs.get("safe_outputs").block;
+      assert.doesNotMatch(agent, /name: Emit control-plane dispatcher telemetry/);
+      const outputSetup = safeOutputs.indexOf("name: Setup agent output environment variable");
+      const precomputeDownload = safeOutputs.indexOf("name: Download CAO dispatcher precompute artifact");
+      const dispatcherTelemetry = safeOutputs.indexOf("name: Emit control-plane dispatcher telemetry");
+      const outputHandlers = safeOutputs.indexOf("id: process_safe_outputs");
+      assert.ok(outputSetup >= 0 && outputSetup < precomputeDownload, `${lockName} must restore normalized outputs before dispatcher precompute`);
+      assert.ok(precomputeDownload < dispatcherTelemetry, `${lockName} must restore dispatcher precompute before telemetry`);
+      assert.ok(dispatcherTelemetry < outputHandlers, `${lockName} must emit dispatch intent before processing safe outputs`);
+      assert.match(safeOutputs, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
     }
 
     for (const { lockName, campaignName, workerName } of controlContracts.filter(({ role }) => role === "worker")) {

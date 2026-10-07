@@ -6,7 +6,7 @@ x-collector-build: &collector-build
     CAO_PROFILE: cao.coolify.json
     VERSION: ${SOURCE_COMMIT:-dev}
     REVISION: ${SOURCE_COMMIT:-unknown}
-    GH_AW_VERSION: v0.91.1
+    GH_AW_VERSION: v0.91.5
 
 x-collector-environment: &collector-environment
   CAO_POSTGRES_URL: ${CAO_POSTGRES_URL:?Configure the PostgreSQL connection URL}
