@@ -446,18 +446,19 @@ async function queryLiveDashboard(
   routeParameters,
   queryContext,
   viewId,
-  dashboard = liveDashboard
+  dashboard = liveDashboard,
+  partial = false
 ) {
   return withQueryProgress(() => executeLiveDashboardQuery(
     requested, context, requestContext, signal, pagination, pageId,
-    routeParameters, queryContext, viewId, dashboard
+    routeParameters, queryContext, viewId, dashboard, partial
   ));
 }
 
 /** @type {typeof queryLiveDashboard} */
 async function executeLiveDashboardQuery(
   requested, context, requestContext, signal, pagination = {}, pageId,
-  routeParameters, queryContext, viewId, dashboard = liveDashboard
+  routeParameters, queryContext, viewId, dashboard = liveDashboard, partial = false
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
@@ -478,13 +479,14 @@ async function executeLiveDashboardQuery(
     const viewPayload = page && pageId
       ? compileDashboardViewPayloadQueries(page, pageId, {
           routeParameters,
-          queryContext,
+          queryContext: partial ? { ...queryContext, timeWindow: undefined } : queryContext,
           evaluatedAt,
           queries: context.queries,
           views: context.views,
           backend: 'static',
           viewId,
-          sourceNames: requested
+          sourceNames: requested,
+          partial
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
@@ -538,6 +540,15 @@ async function executeLiveDashboardQuery(
       ...selected,
       ...pageScopedSources(querySources, new Set(viewPayload.aliases))
     };
+    if (partial) {
+      for (const alias of viewPayload.aliases) {
+        const source = responseSources[alias];
+        if (source) responseSources[alias] = {
+          ...source,
+          metadata: { ...source.metadata, 'projection-state': 'pending' }
+        };
+      }
+    }
     const response = paginateDashboardSources(
       responseSources,
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
@@ -615,6 +626,36 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
+          const page = subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId);
+          const views = page?.kind === 'built-in' ? page.definition?.views : page?.views;
+          const view = Array.isArray(views) && views.find((candidate) => candidate?.id === subscription.viewId);
+          const hasPartialSource = subscription.sourceNames.length === 1
+            && typeof view?.data?.['partial-source'] === 'string'
+            && view.data.source === subscription.sourceNames[0];
+          const interactive = subscription.queryContext;
+          const canPreview = hasPartialSource
+            && !Object.keys(interactive?.filters ?? {}).length
+            && !Object.keys(interactive?.viewFilters ?? {}).length
+            && !interactive?.search?.query
+            && !interactive?.orderBy?.length
+            && !subscription.routeParameters;
+          if (canPreview) {
+            const partial = await queryLiveDashboard(
+              new Set(subscription.sourceNames),
+              subscription.context,
+              subscription.requestContext,
+              undefined,
+              pagination,
+              subscription.pageId,
+              subscription.routeParameters,
+              subscription.queryContext,
+              subscription.viewId,
+              dashboard,
+              true
+            );
+            if (dashboardSubscriptions.get(id) !== subscription || liveDashboard !== dashboard) continue;
+            workerScope?.postMessage({ subscriptionId: id, revision: dashboard.revision, data: partial, partial: true });
+          }
           const data = await queryLiveDashboard(
             new Set(subscription.sourceNames),
             subscription.context,

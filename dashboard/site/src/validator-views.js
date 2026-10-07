@@ -773,6 +773,16 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       );
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors);
+      if (view.data['partial-source'] !== undefined) {
+        validateSource(view.data['partial-source'], `${path}.data.partial-source`, errors);
+        if (view.mark !== 'table' || view.data['partial-source'] === view.data.source) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'partial-source requires a table view and a distinct source.',
+            `${path}.data.partial-source`
+          ));
+        }
+      }
       if (typeof view.data.source === 'string'
           && (QUERY_SOURCE_VALUES.includes(view.data.source) || state.declaredQueries.has(view.data.source))) {
         sourceName = view.data.source;

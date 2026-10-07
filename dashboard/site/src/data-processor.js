@@ -40,9 +40,10 @@ const pending = new Map();
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
- *   latest: Record<string, import('./presenter.js').LogicalSourceInput> | null,
+ *   latest: { sources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number | null, partial: boolean } | null,
  *   snapshot: Record<string, import('./presenter.js').LogicalSourceInput> | null,
  *   snapshotRevision: number | null,
+ *   snapshotPartial: boolean,
  *   frame: number | null,
  *   emitCurrent: boolean,
  *   remoteStop?: () => void,
@@ -491,6 +492,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       latest: null,
       snapshot: null,
       snapshotRevision: null,
+      snapshotPartial: false,
       frame: null,
       emitCurrent: options.emitCurrent !== false
     };
@@ -530,6 +532,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.latest = null;
     current.snapshot = null;
     current.snapshotRevision = null;
+    current.snapshotPartial = false;
     if (current.frame !== null && typeof globalThis.cancelAnimationFrame === 'function') {
       globalThis.cancelAnimationFrame(current.frame);
     }
@@ -736,12 +739,14 @@ function registerSubscription(processor, subscription) {
  * @param {ViewSubscription} subscription
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
  * @param {unknown} revision
+ * @param {boolean} [partial]
  */
-function enqueueSubscriptionUpdate(subscription, sources, revision) {
+function enqueueSubscriptionUpdate(subscription, sources, revision, partial = false) {
   if (Number.isSafeInteger(revision)
       && subscription.snapshot
-      && subscription.snapshotRevision === revision) return;
-  subscription.latest = sources;
+      && subscription.snapshotRevision === revision
+      && (partial || !subscription.snapshotPartial)) return;
+  subscription.latest = { sources, revision: Number.isSafeInteger(revision) ? Number(revision) : null, partial };
   for (const listener of subscription.listeners) cancelSubscriberFrame(listener);
   if (subscription.frame !== null) return;
   const flush = () => {
@@ -749,11 +754,12 @@ function enqueueSubscriptionUpdate(subscription, sources, revision) {
     const latest = subscription.latest;
     subscription.latest = null;
     if (!latest || subscriptions.get(subscription.id) !== subscription) return;
-    subscription.snapshot = latest;
-    subscription.snapshotRevision = Number.isSafeInteger(revision) ? Number(revision) : null;
+    subscription.snapshot = latest.sources;
+    subscription.snapshotRevision = latest.revision;
+    subscription.snapshotPartial = latest.partial;
     batch(() => {
       for (const listener of [...subscription.listeners]) {
-        if (subscription.listeners.has(listener)) invokeSubscriber(() => listener.notify(latest));
+        if (subscription.listeners.has(listener)) invokeSubscriber(() => listener.notify(latest.sources));
       }
     });
   };
@@ -866,7 +872,7 @@ function getWorker() {
       const subscription = subscriptions.get(event.data.subscriptionId);
       if (subscription?.registeredWorker === processor
           && event.data.data && typeof event.data.data === 'object') {
-        enqueueSubscriptionUpdate(subscription, event.data.data, event.data.revision);
+        enqueueSubscriptionUpdate(subscription, event.data.data, event.data.revision, event.data.partial === true);
       } else if (subscription?.registeredWorker === processor
           && typeof event.data.error === 'string') {
         const error = new Error(event.data.error);

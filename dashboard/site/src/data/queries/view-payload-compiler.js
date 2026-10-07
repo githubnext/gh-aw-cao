@@ -44,7 +44,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend, partial?: boolean }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -60,8 +60,11 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     return !options.queryContext?.viewMode || viewMatchesMode(view, options.queryContext.viewMode);
   });
   const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
-  const relevantSources = activeViews.flatMap(getViewSources)
-    .filter((source) => !requestedSources || requestedSources.has(source));
+  const relevantSources = activeViews.flatMap((view) => getViewSources(view)
+    .filter((source) => !requestedSources || requestedSources.has(source))
+    .map((source) => options.partial && isPlainObject(view.data) && view.data.source === source
+      ? view.data['partial-source'] ?? source
+      : source));
   const required = new Set(resolveDashboardQuerySources(options.queries, relevantSources));
   const scopedDefinitions = Array.isArray(options.queries)
     ? options.queries.filter((definition) => (
@@ -101,6 +104,9 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 
     sources.forEach((sourceName, sourceIndex) => {
       if (requestedSources && !requestedSources.has(sourceName)) return;
+      const querySource = options.partial && viewData?.source === sourceName
+        ? viewData['partial-source'] ?? sourceName
+        : sourceName;
       const isOptions = optionSources.has(sourceName);
       const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
       const selected = options.queryContext?.viewFilters?.[viewId];
@@ -123,7 +129,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, useQueryContext && !isOptions ? options.queryContext?.search : undefined, useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries, isOptions);
+      const compiled = compileAliasedQuery(querySource, alias, predicates, useQueryContext && !isOptions ? options.queryContext?.search : undefined, useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries, isOptions);
       /** @type {Record<string, unknown>} */
       const query = compiled.query;
       if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {
@@ -133,7 +139,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         );
       }
       queries.push(...compiled.dependencies, query);
-      if (compiled.replacesSource) replacedSources.add(sourceName);
+      if (compiled.replacesSource || querySource !== sourceName) replacedSources.add(sourceName);
     });
   });
 
