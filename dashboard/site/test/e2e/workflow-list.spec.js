@@ -3,7 +3,7 @@ import { authoritativeDashboard, expect, registerSmokeRoutes, test } from './hel
 registerSmokeRoutes();
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
-  test(`workflow list shows latest status and opens its dedicated page at ${viewport.width}px`, async ({ page, context }) => {
+  test(`workflow list loads declared workflows and opens its dedicated page at ${viewport.width}px`, async ({ page, context }) => {
     await page.setViewportSize(viewport);
     const metadata = { 'as-of': '2026-10-07T13:00:00Z', 'retrieved-at': '2026-10-07T13:00:00Z' };
     const sources = {
@@ -54,21 +54,23 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await page.locator('.mobile-view-mode-toggle').click();
       const cards = view.locator('[data-mobile-card-list] .entity-card-list-card');
       await expect(cards).toHaveCount(3);
-      await expect(cards.nth(0)).toContainText('recent');
-      await expect(cards.nth(1)).toContainText('failure');
-      await expect(cards.nth(2)).toContainText('No observed run');
-      await expect(cards.nth(0).locator('.entity-card-list-status-success')).toHaveCount(1);
+      await expect(cards.nth(0)).toContainText('idle');
+      await expect(cards.nth(1)).toContainText('recent');
+      await expect(cards.nth(2)).toContainText('worker');
+      await expect(cards.nth(0)).not.toContainText('No observed run');
+      await expect(cards.nth(1)).not.toContainText('success');
       await expect(view.locator('.semantic-prompt-action')).toHaveCount(0);
-      await cards.nth(1).locator('[data-card-drill]').click();
+      await cards.nth(2).locator('[data-card-drill]').click();
     } else {
       await page.locator('[data-view-mode-value="table"]').click();
       const rows = view.locator('tbody > tr');
       await expect(rows).toHaveCount(3);
-      await expect(rows.nth(0)).toContainText('recent');
-      await expect(rows.nth(1)).toContainText('failure');
-      await expect(rows.nth(2)).toContainText('No observed run');
+      await expect(rows.nth(0)).toContainText('idle');
+      await expect(rows.nth(1)).toContainText('recent');
+      await expect(rows.nth(2)).toContainText('worker');
+      await expect(rows.nth(1)).not.toContainText('success');
       await expect(view.locator('.semantic-prompt-action')).toHaveCount(0);
-      await rows.nth(1).locator('td').first().getByRole('link').click();
+      await rows.nth(2).locator('td').first().getByRole('link').click();
     }
     await expect(page).toHaveURL(/#page-workflow-runtime\?workflow=org%2Fcontrol%3A.github%2Fworkflows%2Fworker.md/);
     await expect(page.locator('[data-page-id="workflow-runtime"]')).toBeVisible();

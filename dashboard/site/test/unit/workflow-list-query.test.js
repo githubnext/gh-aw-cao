@@ -43,19 +43,12 @@ function evidence(history = 2) {
       'started-at': '2026-10-01T00:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success'
     }))
   ].map((row) => ({ organization: 'org', 'run-attempt': 1, ...row }));
-  const events = runs.flatMap((run, index) => Array.from({ length: 4 }, (_, event) => ({
-    organization: run.organization, repository: run.repository, workflow: run.workflow,
-    run: run.run, 'run-attempt': run['run-attempt'], event: `${index}-${event}`,
-    'safe-output-url': `https://github.com/org/${run.repository}/issues/${index * 4 + event + 1}`,
-    'event-timestamp': '2026-10-07T09:00:00Z', 'event-source': 'fixture', 'event-type': 'tool.call'
-  })));
   return {
     repositories: input('repositories', [
       { organization: 'org', repository: 'control' },
       { organization: 'org', repository: 'other' }
     ]),
-    workflows: input('workflows', workflows), runs: input('runs', runs),
-    ...Object.fromEntries(['audits', 'domains', 'tools', 'issues'].map((name) => [name, input(name, events)]))
+    workflows: input('workflows', workflows), runs: input('runs', runs)
   };
 }
 
@@ -91,16 +84,14 @@ beforeEach(async () => {
 });
 
 describe('workflow list query contract', () => {
-  it('selects the latest chronological attempt, including older-run reruns and queued runs, through the canonical worker boundary', async () => {
+  it('lists every declared workflow in stable order through the canonical worker boundary', async () => {
     const payload = viewPayload(await canonical());
     expect(payload.metadata.availability).toBe('available');
     expect(payload.rows.map((row) => ({
-      repository: row.repository, workflow: row.workflow,
-      ...(row['latest-run'] ? { run: row['latest-run'] } : {}),
-      status: row['latest-run-status'], hasObservedRun: row['has-observed-run']
+      repository: row.repository, workflow: row.workflow
     }))).toEqual(contract.cases);
     for (const row of payload.rows) {
-      for (const field of contract.fields.filter((field) => !['latest-run', 'latest-run-at'].includes(field))) {
+      for (const field of contract.fields) {
         expect(row).toHaveProperty(field);
       }
       expect(row['workflow-link']).toMatchObject({
@@ -108,43 +99,24 @@ describe('workflow list query contract', () => {
       });
       expect(row).not.toHaveProperty('successful-runs');
       expect(row).not.toHaveProperty('failed-runs');
+      expect(row).not.toHaveProperty('latest-run-status');
+      expect(row).not.toHaveProperty('latest-run-at');
       expect(row).not.toHaveProperty('ingestion');
     }
   });
 
-  it('applies a selected horizon before selecting each workflow latest attempt', async () => {
-    const payload = viewPayload(await canonical(), {
-      timeWindow: { start: '2026-10-06T00:00:00Z', end: '2026-10-07T00:00:00Z' }
-    });
-    expect(payload.rows.find((row) => row.workflow === 'worker.md' && row.repository === 'org/control'))
-      .toMatchObject({ 'latest-run': '100', 'latest-run-status': 'success' });
-    expect(payload.rows.filter((row) => row.repository === 'org/control')
-      .every((row) => !row['latest-run-at'] || String(row['latest-run-at']) < '2026-10-07T00:00:00Z')).toBe(true);
-  });
-
-  it('keeps stable repository and workflow tie-breaks and the latest attempt when timestamps tie', async () => {
+  it('does not depend on retained run history', async () => {
     const sources = await canonical();
-    const tied = {
-      ...sources,
-      runs: {
-        ...sources.runs,
-        rows: sources.runs.rows.map((row) => ({
-          ...row, 'started-at': '2026-10-07T12:00:00Z', 'created-at': '2026-10-07T12:00:00Z'
-        }))
-      }
-    };
-    const payload = viewPayload(tied);
-    expect(payload.rows.map((row) => `${row.repository}:${row.workflow}`)).toEqual([
-      'org/control:failed.md', 'org/control:successful.md', 'org/control:worker.md', 'org/other:worker.md', 'org/control:idle.md'
-    ]);
+    const payload = viewPayload({ ...sources, runs: { ...sources.runs, rows: [] } });
+    expect(payload.rows.map((row) => ({ repository: row.repository, workflow: row.workflow }))).toEqual(contract.cases);
   });
 
-  it('degrades evidence quality when runs are unavailable and fails closed when inventory is unavailable', async () => {
+  it('keeps inventory available when runs are unavailable and fails closed when inventory is unavailable', async () => {
     const sources = await canonical();
     const missingRuns = viewPayload({
       ...sources, runs: { ...sources.runs, rows: [], metadata: { ...metadata, availability: 'unavailable' } }
     });
-    expect(missingRuns.metadata.completeness).toBe('partial');
+    expect(missingRuns.metadata.availability).toBe('available');
     expect(missingRuns.rows).toHaveLength(contract.cases.length);
     const missingInventory = viewPayload({
       ...sources, workflows: { ...sources.workflows, metadata: { ...metadata, availability: 'unavailable' } }
@@ -153,10 +125,10 @@ describe('workflow list query contract', () => {
     expect(missingInventory.rows).toEqual([]);
   });
 
-  it('drops all event-coverage dependencies and reduces original inventory query operations by at least 25 percent', async () => {
+  it('reads only workflow declarations and reduces original inventory query operations by at least 75 percent', async () => {
     const sources = await canonical(200);
     expect(resolveDashboardQuerySources(queries, ['workflow-list']).filter((name) => Object.hasOwn(sources, name)).sort())
-      .toEqual(['runs', 'workflows']);
+      .toEqual(['workflows']);
     const before = createDashboardQueryBudget();
     const after = createDashboardQueryBudget();
     expect(executeDashboardQueries(queries, sources, ['workflow-inventory'], { budget: before })['workflow-inventory'].rows)
@@ -164,6 +136,6 @@ describe('workflow list query contract', () => {
     const result = executeDashboardQueries(queries, sources, ['workflow-list'], { budget: after })['workflow-list'];
     expect(result.rows).toHaveLength(contract.cases.length);
     expect(result.metadata.availability).toBe('available');
-    expect(after.operations).toBeLessThan(before.operations * 0.75);
+    expect(after.operations).toBeLessThan(before.operations * 0.25);
   }, 30000);
 });

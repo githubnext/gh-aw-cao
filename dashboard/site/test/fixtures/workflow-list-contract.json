@@ -4,21 +4,18 @@
   "source": "workflow-list",
   "fields": [
     "organization", "repository", "workflow", "workflow-name", "workflow-label",
-    "workflow-role", "rollout-mode", "workflow-active", "latest-run",
-    "latest-run-at", "latest-run-status", "has-observed-run", "workflow-link"
+    "workflow-role", "rollout-mode", "workflow-active", "workflow-link"
   ],
   "order": [
-    { "field": "has-observed-run", "direction": "desc" },
-    { "field": "latest-run-at", "direction": "desc" },
     { "field": "repository", "direction": "asc" },
     { "field": "workflow", "direction": "asc" }
   ],
   "drillPage": "workflow-runtime",
   "cases": [
-    { "repository": "org/other", "workflow": "worker.md", "run": "400", "status": "queued", "hasObservedRun": true },
-    { "repository": "org/control", "workflow": "worker.md", "run": "10", "status": "in-progress", "hasObservedRun": true },
-    { "repository": "org/control", "workflow": "failed.md", "run": "300", "status": "failure", "hasObservedRun": true },
-    { "repository": "org/control", "workflow": "successful.md", "run": "200", "status": "success", "hasObservedRun": true },
-    { "repository": "org/control", "workflow": "idle.md", "status": "No observed run", "hasObservedRun": false }
+    { "repository": "org/control", "workflow": "failed.md" },
+    { "repository": "org/control", "workflow": "idle.md" },
+    { "repository": "org/control", "workflow": "successful.md" },
+    { "repository": "org/control", "workflow": "worker.md" },
+    { "repository": "org/other", "workflow": "worker.md" }
   ]
 }
