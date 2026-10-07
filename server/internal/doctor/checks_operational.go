@@ -43,6 +43,25 @@ func (d Doctor) checkOperationalCapabilities(context.Context) Check {
 	}); err != nil {
 		return failed(id, area, title, err)
 	}
+	details, volatile := summarizeOperationalCapabilities(caps)
+	doctorLog.Printf("operational capabilities summarized features=%d volatile=%t", len(details), volatile)
+	if volatile {
+		return Check{
+			ID: id, Area: area, Title: title, Status: StatusWarn, Details: details,
+			Summary: "process-lifetime state: sessions may invalidate and accepted work or pending revocations may be lost on restart",
+			Remedy:  "keep admission, collection, and backfill in the owning process; reconcile GitHub scope and rerun backfill after restart",
+		}
+	}
+	return Check{ID: id, Area: area, Title: title, Status: StatusPass, Details: details,
+		Summary: "selected supported features advertise restart persistence"}
+}
+
+// summarizeOperationalCapabilities derives the per-feature scope/persistence
+// details and the overall volatile flag that checkOperationalCapabilities
+// previously computed inline in its loop. It is a pure function extracted so
+// the feature classification is independently testable against a
+// constructed operational.Capabilities value, without a Doctor or a store.
+func summarizeOperationalCapabilities(caps operational.Capabilities) ([]Detail, bool) {
 	details := []Detail{}
 	volatile := false
 	for _, feature := range []struct {
@@ -72,13 +91,5 @@ func (d Doctor) checkOperationalCapabilities(context.Context) Check {
 			volatile = true
 		}
 	}
-	if volatile {
-		return Check{
-			ID: id, Area: area, Title: title, Status: StatusWarn, Details: details,
-			Summary: "process-lifetime state: sessions may invalidate and accepted work or pending revocations may be lost on restart",
-			Remedy:  "keep admission, collection, and backfill in the owning process; reconcile GitHub scope and rerun backfill after restart",
-		}
-	}
-	return Check{ID: id, Area: area, Title: title, Status: StatusPass, Details: details,
-		Summary: "selected supported features advertise restart persistence"}
+	return details, volatile
 }

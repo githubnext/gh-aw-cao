@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
 )
 
@@ -46,5 +47,51 @@ func TestOperationalMemoryDoctorDoesNotInventHealthyDisconnectedState(t *testing
 	check := d.checkOperational(t.Context())
 	if check.Status != StatusFail || !strings.Contains(check.Remedy, "owning process") {
 		t.Fatalf("disconnected memory diagnostics appeared healthy: %+v", check)
+	}
+}
+
+func TestSummarizeOperationalCapabilitiesAllSupportedRestart(t *testing.T) {
+	restart := operational.Capability{Scope: operational.ScopeDeployment, Persistence: operational.PersistenceRestart}
+	caps := operational.Capabilities{
+		Cache: restart, RequestLimits: restart, Sessions: restart, Revocations: restart,
+		GitHubQuota: restart, Collection: restart, Coordination: restart, Diagnostics: restart,
+	}
+	details, volatile := summarizeOperationalCapabilities(caps)
+	if volatile {
+		t.Fatalf("all-restart capabilities reported volatile: %+v", details)
+	}
+	if len(details) != 8 {
+		t.Fatalf("expected 8 feature details, got %d: %+v", len(details), details)
+	}
+	for _, d := range details {
+		if d.Value != "deployment/restart" {
+			t.Fatalf("expected deployment/restart detail, got %+v", d)
+		}
+	}
+}
+
+func TestSummarizeOperationalCapabilitiesFlagsSupportedVolatile(t *testing.T) {
+	caps := operational.Capabilities{
+		Cache: operational.Capability{Scope: operational.ScopeProcess, Persistence: operational.PersistenceVolatile},
+	}
+	details, volatile := summarizeOperationalCapabilities(caps)
+	if !volatile {
+		t.Fatalf("supported volatile cache capability was not flagged: %+v", details)
+	}
+}
+
+func TestSummarizeOperationalCapabilitiesIgnoresUnsupportedVolatile(t *testing.T) {
+	// An unsupported feature is always reported as volatile internally, but
+	// that should never count toward the overall volatile warning because
+	// the feature was never offered in the first place.
+	caps := operational.Capabilities{}
+	details, volatile := summarizeOperationalCapabilities(caps)
+	if volatile {
+		t.Fatalf("unsupported capabilities incorrectly flagged volatile: %+v", details)
+	}
+	for _, d := range details {
+		if d.Value != "unsupported/volatile" {
+			t.Fatalf("expected unsupported/volatile detail, got %+v", d)
+		}
 	}
 }
