@@ -168,15 +168,17 @@ func NewCollector(
 	if err := operational.CheckStore(store); err != nil {
 		return nil, err
 	}
-	if store.Capabilities().Collection.Scope == operational.ScopeUnsupported {
+	capabilities := store.Capabilities()
+	if capabilities.Collection.Scope == operational.ScopeUnsupported {
 		return nil, errors.New("collection requires operational collection capability")
 	}
-	services := store.Services()
-	ops := services.Collection
-	if ops == nil || services.GitHubQuota == nil {
-		return nil, errors.New("collection services are unavailable")
+	services := store.OperationalServices()
+	volatile := capabilities.Collection.Persistence == operational.PersistenceVolatile
+	if err := operational.ValidateOperationalServices(capabilities, services, operational.Requirements{
+		SingleProcess: volatile, AllowVolatile: volatile, Collection: true,
+	}); err != nil {
+		return nil, fmt.Errorf("collection services: %w", err)
 	}
-	volatile := store.Capabilities().Collection.Persistence == operational.PersistenceVolatile
 	if volatile && config.AdmitOnly {
 		return nil, errors.New("volatile collection requires co-resident workers and backfill")
 	}
@@ -195,14 +197,16 @@ func NewCollector(
 		return nil, fmt.Errorf("configure github quota: %w", err)
 	}
 	quotaApp := "github-app-" + strconv.FormatInt(config.AppID, 10)
-	enrollment := collect.Enrollment{Store: ops}
-	queue := collect.Queue{Store: ops, MaxLength: int64(config.QueueMaxLength)}
+	enrollment := collect.Enrollment{Metadata: services.Collection, Leases: services.Leases}
+	queue := collect.Queue{
+		Tasks: services.Queue, Admission: services.Admission, Metadata: services.Collection,
+		Leases: services.Leases, Deliveries: services.Deliveries, Metrics: services.IngestionMetrics,
+		MaxLength: int64(config.QueueMaxLength),
+	}
 	if config.AdmitOnly {
 		// Erasure is enqueued rather than performed, because this process has
 		// no evidence lake to erase from.
-		backfill := collect.Backfill{
-			Store: ops, Quota: quota, QuotaApp: quotaApp,
-		}
+		backfill := collect.Backfill{StateStore: services.State, Metadata: services.Collection, Quota: quota, QuotaApp: quotaApp}
 		collector := &Collector{
 			volatile:   volatile,
 			config:     config,
@@ -212,7 +216,7 @@ func NewCollector(
 			backfill:   backfill,
 			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
 			reporter: collect.Reporter{
-				Enrollment: enrollment, Queue: queue, Backfill: backfill, Store: ops, Data: data,
+				Enrollment: enrollment, Queue: queue, Backfill: backfill, Metrics: services.IngestionMetrics, Data: data,
 			},
 		}
 		return collector, nil
@@ -234,7 +238,7 @@ func NewCollector(
 	if err := lake.Prepare(); err != nil {
 		return nil, err
 	}
-	budget := &githubapp.Budget{Store: services.GitHubQuota, Floor: config.RateLimitFloor}
+	budget := &githubapp.Budget{Metadata: services.Collection, Store: services.RateLimits, Floor: config.RateLimitFloor}
 	runner := collect.Runner{
 		Lake:                  lake,
 		CatalogRoot:           config.CatalogRoot,
@@ -252,9 +256,7 @@ func NewCollector(
 	if err := runner.Validate(); err != nil {
 		return nil, err
 	}
-	projector := collect.Projector{
-		Store:                    ops,
-		Data:                     data,
+	projector := collect.Projector{State: services.State, Leases: services.Leases, Data: data,
 		Lake:                     lake,
 		Enrollment:               enrollment,
 		CatalogRoot:              config.CatalogRoot,
@@ -271,8 +273,7 @@ func NewCollector(
 		MinInterval:              config.MinProjectionInterval,
 		InventoryRepositoryLimit: config.InventoryLimit,
 	}
-	backfill := collect.Backfill{
-		Store: ops, Enrollment: enrollment, Queue: queue,
+	backfill := collect.Backfill{StateStore: services.State, Metadata: services.Collection, Enrollment: enrollment, Queue: queue,
 		Projector: projector, Lake: lake, Enumerator: client, RunEnumerator: client,
 		Quota: quota, QuotaApp: quotaApp,
 		WindowDays: config.WindowDays,
@@ -294,11 +295,9 @@ func NewCollector(
 		backfill: backfill,
 		reporter: collect.Reporter{
 			Enrollment: enrollment, Queue: queue, Backfill: backfill,
-			Budget: budget, Store: ops, Data: data,
+			Budget: budget, Metrics: services.IngestionMetrics, Data: data,
 		},
-		replayer: collect.DeliveryReplayer{
-			Store: ops, Client: client, Enabled: config.RecoverDeliveries,
-		},
+		replayer: collect.DeliveryReplayer{State: services.State, Metadata: services.Collection, Client: client, Enabled: config.RecoverDeliveries},
 	}
 	if volatile {
 		collector.bootstrapDone = make(chan struct{})

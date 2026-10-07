@@ -87,8 +87,7 @@ type Config struct {
 }
 
 type App struct {
-	store            appStore
-	operationalStore operational.Store
+	services         operational.OperationalServices
 	ownedOperational operational.Store
 	database         *postgresx.Store
 	ownedDatabase    *postgresx.Store
@@ -147,7 +146,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
 	}
-	services := store.Services()
+	services := store.OperationalServices()
 	capabilities := store.Capabilities()
 	requirements := operational.Requirements{
 		SingleProcess: (config.HostProfile.SingleProcess && config.SingleReplicaConfirmed) || config.HostProfile.IsolateProcessNamespace,
@@ -155,10 +154,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		OAuth:         config.HostProfile.Authentication == HostAuthenticationOAuth,
 		Collection:    config.Collector != nil,
 	}
-	if err := operational.Validate(capabilities, services, requirements); err != nil {
-		return nil, fmt.Errorf("operational guarantees: %w", err)
-	}
-	if err := operational.ValidateOperationalServices(capabilities, store.OperationalServices(), requirements); err != nil {
+	if err := operational.ValidateOperationalServices(capabilities, services, requirements); err != nil {
 		return nil, fmt.Errorf("operational services: %w", err)
 	}
 	if capabilities.Collection.Persistence == operational.PersistenceVolatile &&
@@ -215,7 +211,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 				return nil, fmt.Errorf("initialize process login state: %w", err)
 			}
 		}
-		oauth = newGitHubOAuth(oauthConfig, services.OAuth)
+		oauth = newGitHubOAuth(oauthConfig, services.Sessions, services.SessionInvalidator, services.Revocations)
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
 		if accessToken == "" {
@@ -243,11 +239,11 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		reconciler = collector
 		if !config.Collector.AdmitOnly {
 			memoryResolver = &repositorymemory.RemoteResolver{
-				Cache:         repositoryMemoryServices{Cache: services.Cache, Coordination: services.Coordination},
+				Cache:         repositoryMemoryServices{Cache: services.Cache, LeaseStore: services.Leases},
 				Installations: collector.enrollment,
 				Source:        collector.client,
 				Governor: &githubapp.Budget{
-					Store: services.GitHubQuota, Floor: config.Collector.RateLimitFloor, Cost: 1,
+					Store: services.RateLimits, Metadata: services.Collection, Floor: config.Collector.RateLimitFloor, Cost: 1,
 				},
 				ControlRepository: config.Collector.ControlRepository,
 			}
@@ -282,10 +278,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		store: appServices{
-			Store: store, Cache: services.Cache, RequestLimiter: services.RequestLimits,
-			Coordination: services.Coordination, Diagnostics: services.Diagnostics,
-		}, operationalStore: store,
+		services: services,
 		database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
@@ -389,7 +382,7 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	}
 	a.startContext = runCtx
 	a.stop = cancel
-	if a.store != nil {
+	if a.services.Backend != nil {
 		a.startTask(func() { a.runRedisMaintenance(runCtx, redisMaintenanceInterval) })
 	}
 	if a.oauth != nil && (a.config.SourceDirectory != "" || a.Collector() != nil) {
@@ -1038,7 +1031,7 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
 	active, activeErr := a.database.State(ctx)
-	redisHealthy := a.store.Ping(ctx) == nil
+	redisHealthy := a.services.Health.Ping(ctx) == nil
 	status := http.StatusOK
 	if !redisHealthy || activeErr != nil {
 		status = http.StatusServiceUnavailable
@@ -1080,7 +1073,7 @@ func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
 	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
 	defer cancel()
 	active, activeErr := a.database.State(ctx)
-	redisHealthy := a.store.Ping(ctx) == nil
+	redisHealthy := a.services.Health.Ping(ctx) == nil
 	ready := redisHealthy && activeErr == nil && active.Ready
 	if collector := a.Collector(); collector != nil {
 		ready = ready && collector.RecoveryReady()
@@ -1211,7 +1204,7 @@ func (a *App) ingestionHealthRevision(ctx context.Context, allowed bool) (int64,
 	if !allowed {
 		return 0, nil
 	}
-	_, events, err := a.store.IngestionHealth(ctx)
+	_, events, err := a.services.IngestionMetrics.IngestionHealth(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -1323,12 +1316,12 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 	if err != nil {
 		return queryResponse{}, http.StatusInternalServerError, err
 	}
-	cacheEnabled := !cache.Disabled && a.store != nil && (len(input.SourceNames) > 0 || len(input.Aliases) > 0)
+	cacheEnabled := !cache.Disabled && a.services.Cache != nil && (len(input.SourceNames) > 0 || len(input.Aliases) > 0)
 	if !cacheEnabled {
 		reason := "readiness"
 		if cache.Disabled {
 			reason = "disabled"
-		} else if a.store == nil {
+		} else if a.services.Cache == nil {
 			reason = "no-redis"
 		}
 		if err := a.recordQueryCacheBypass(ctx, reason); err != nil {
@@ -1380,7 +1373,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 	evaluatedAt := evaluationTime(active)
 	healthRevision := int64(0)
 	if allowCollectionHealth {
-		_, events, healthErr := a.store.IngestionHealth(ctx)
+		_, events, healthErr := a.services.IngestionMetrics.IngestionHealth(ctx)
 		if healthErr == nil {
 			healthRevision, _ = strconv.ParseInt(events["healthRevision"], 10, 64)
 		}
@@ -1411,7 +1404,7 @@ func (a *App) executeQueryWithReader(ctx context.Context, input queryRequest, al
 	}
 	started := time.Now()
 	loader := &databaseLoader{
-		ctx: ctx, database: reader, operational: a.store, dataRevision: active.DataRevision,
+		ctx: ctx, database: reader, operational: a.services.Cache, dataRevision: active.DataRevision,
 		app: a, allowCollectionHealth: allowCollectionHealth,
 	}
 	pages := map[string]postgresx.SQLPage{}

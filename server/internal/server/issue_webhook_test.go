@@ -28,12 +28,12 @@ func TestSignedIssueWebhookQueuesDeduplicatedRepositoryRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := redisx.NewStore(client, "issue-server-"+strconv.FormatInt(time.Now().UnixNano(), 36))
-	enrollment := collect.Enrollment{Store: store}
+	enrollment := collect.Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(t.Context(), 42, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	queue := collect.Queue{Store: store}
-	app := &App{store: store, webhookSecret: []byte("test-issue-webhook-secret"),
+	queue := collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
+	app := &App{services: store.OperationalServices(), webhookSecret: []byte("test-issue-webhook-secret"),
 		reconciler: &Collector{admitter: collect.Admitter{
 			Enrollment: enrollment, Queue: queue,
 		}}}

@@ -229,7 +229,7 @@ func TestSortByRecencyHandlesEmptyAndSingleton(t *testing.T) {
 func TestEnumerateContinuesAfterInstallationRepositoryFailure(t *testing.T) {
 	store, ctx := integrationStore(t)
 	backfill := Backfill{
-		Enrollment: Enrollment{Store: store},
+		Enrollment: Enrollment{Metadata: store, Leases: store},
 		Enumerator: fakeRepositoryEnumerator{
 			installations: []githubapp.Installation{{ID: 1}, {ID: 2}},
 			repositories: map[int64][]githubapp.Repository{
@@ -278,9 +278,7 @@ func TestEnqueueHistoricalRunsPaginatesResumesAndPrioritizesNewRuns(t *testing.T
 		},
 		{installationID: 3, repository: "octo/three", page: 1}: {err: failure},
 	}}
-	backfill := Backfill{
-		Store: store, Queue: Queue{Store: store, MaxLength: 100}, RunEnumerator: enumerator,
-	}
+	backfill := Backfill{StateStore: store, Metadata: store, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 100}, RunEnumerator: enumerator}
 	repositories := []enrolledRepository{
 		{name: "octo/one", installationID: 1},
 		{name: "octo/two", installationID: 2},
@@ -388,8 +386,7 @@ func TestRunEnumerationQuotaExhaustionLeavesCursorUnchanged(t *testing.T) {
 			runs: []githubapp.WorkflowRun{{ID: 42, Attempt: 1}},
 		},
 	}}
-	backfill := Backfill{
-		Store: store, Queue: Queue{Store: store, MaxLength: 100},
+	backfill := Backfill{StateStore: store, Metadata: store, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 100},
 		RunEnumerator: enumerator, Quota: &fakeRunQuota{unavailable: githubquota.ErrExhausted},
 		QuotaApp: "github-app-123",
 	}

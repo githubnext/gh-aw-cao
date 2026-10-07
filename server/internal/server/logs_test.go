@@ -113,11 +113,10 @@ func TestServerLogsOnlyExportsSafeRedisCounters(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			store := redisx.NewStore(test.client, "log-test")
 			app := &App{
-				logs:  logger.EnableBuffer(),
-				store: store,
+				logs: logger.EnableBuffer(), services: store.OperationalServices(),
 			}
 			if test.collection {
-				app.reconciler = &Collector{reporter: collect.Reporter{Queue: collect.Queue{Store: store}}}
+				app.reconciler = &Collector{reporter: collect.Reporter{Queue: collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}}}
 			}
 			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/admin/logs", nil)
 			response := httptest.NewRecorder()
@@ -212,7 +211,7 @@ func TestCollectionQueueCounts(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store := redisx.NewStore(test.client, "queue-test")
-			queue := collect.Queue{Store: store}
+			queue := collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 			depth, pending, dead, err := collectionQueueCounts(t.Context(), queue)
 			if test.wantErr {
 				if err == nil {

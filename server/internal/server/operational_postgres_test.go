@@ -45,7 +45,7 @@ func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: validOAuthConfig(github.URL),
 	}
-	first, err := New(t.Context(), store, config)
+	first, err := New(t.Context(), focusedTestStore(store), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = reopened.Close() }()
-	second, err := New(t.Context(), reopened, config)
+	second, err := New(t.Context(), focusedTestStore(reopened), config)
 	if err != nil {
 		t.Fatal(err)
 	}

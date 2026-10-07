@@ -62,10 +62,10 @@ func TestOperationalPostgresPolicyAndFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	if err := operational.Validate(store.Capabilities(), store.Services(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
+	if err := operational.ValidateOperationalServices(store.Capabilities(), store.OperationalServices(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
 		t.Fatal(err)
 	}
-	health, err := store.Health(t.Context())
+	health, err := store.OperationalServices().Health.Health(t.Context())
 	if err != nil || !health.Ready {
 		t.Fatalf("PostgreSQL health: %+v %v", health, err)
 	}
@@ -212,11 +212,11 @@ func TestOperationalMemoryFactoryAndStandaloneRoles(t *testing.T) {
 		store.Capabilities().Collection.Persistence != operational.PersistenceVolatile {
 		t.Fatal("memory factory changed process-lifetime guarantees")
 	}
-	services := store.Services()
-	if services.Collection != store.Services().Collection {
+	services := store.OperationalServices()
+	if services.Collection != store.OperationalServices().Collection {
 		t.Fatal("unstable service identity")
 	}
-	health, err := store.Health(t.Context())
+	health, err := services.Health.Health(t.Context())
 	if err != nil || !health.Ready {
 		t.Fatalf("memory health: %+v %v", health, err)
 	}

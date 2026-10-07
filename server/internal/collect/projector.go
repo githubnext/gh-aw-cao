@@ -39,7 +39,8 @@ const (
 // window produce a single replacement. Coalescing, not per-run projection, is
 // what keeps projection cost sublinear in run volume.
 type Projector struct {
-	Store               operational.CollectionStore
+	State               operational.StateStore
+	Leases              operational.LeaseStore
 	Data                *postgresx.Store
 	Lake                Lake
 	Enrollment          Enrollment
@@ -118,14 +119,14 @@ func (p Projector) windowDays() int {
 // RequestProjection marks the lake as changed. Marking is idempotent, so a
 // burst of collections requests one projection.
 func (p Projector) RequestProjection(ctx context.Context) error {
-	return p.Store.SetOperationalState(ctx, projectionDirtyKey,
+	return p.State.SetOperationalState(ctx, projectionDirtyKey,
 		[]byte(time.Now().UTC().Format(time.RFC3339Nano)))
 }
 
 // PendingProjection reports whether the lake changed since the last
 // projection.
 func (p Projector) PendingProjection(ctx context.Context) (bool, error) {
-	value, err := p.Store.OperationalState(ctx, projectionDirtyKey)
+	value, err := p.State.OperationalState(ctx, projectionDirtyKey)
 	return len(value) > 0, err
 }
 
@@ -156,7 +157,7 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	if err != nil {
 		return ingest.Result{}, err
 	}
-	acquired, err := p.Store.TryLock(ctx, projectionLockName, token, p.lockTTL())
+	acquired, err := p.Leases.TryLock(ctx, projectionLockName, token, p.lockTTL())
 	if err != nil {
 		return ingest.Result{}, err
 	}
@@ -166,11 +167,11 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	defer func() {
 		release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cancel()
-		_ = p.Store.Unlock(release, projectionLockName, token)
+		_ = p.Leases.Unlock(release, projectionLockName, token)
 	}()
 	ctx, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
-	if err := p.Store.SetOperationalState(ctx, projectionDirtyKey, nil); err != nil {
+	if err := p.State.SetOperationalState(ctx, projectionDirtyKey, nil); err != nil {
 		return ingest.Result{}, err
 	}
 	if err := p.refreshCompaction(ctx); err != nil {

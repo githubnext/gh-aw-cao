@@ -261,7 +261,7 @@ func TestMCPLogsSharesHTTPAuthorizationAndSafeSnapshot(t *testing.T) {
 			} {
 				app := &App{
 					logs: logger.EnableBuffer(), config: Config{AdminUsers: []string{"operator"}},
-					oauth: &githubOAuth{}, store: redisx.NewStore(client, "test"),
+					oauth: &githubOAuth{}, services: redisx.NewStore(client, "test").OperationalServices(),
 				}
 				runtime := &mcpRuntime{app: app}
 				payload, err := runtime.callLogs(test.ctx, map[string]any{})

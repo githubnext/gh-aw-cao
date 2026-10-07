@@ -97,22 +97,18 @@ func newSyntheticBackfill(t *testing.T, ctx context.Context, scenario simulator.
 	if err != nil {
 		t.Fatal(err)
 	}
-	enrollment := collect.Enrollment{Store: store}
+	enrollment := collect.Enrollment{Metadata: store, Leases: store}
 	return syntheticBackfill{
 		ops: store,
-		backfill: collect.Backfill{
-			Store: store,
-			Lake:  lake, Enrollment: enrollment, Queue: collect.Queue{Store: store, MaxLength: 5_000_000},
-			Projector: collect.Projector{
-				Store: store, Data: data, Lake: lake, Enrollment: enrollment, DatabaseQueriesPath: backfillDatabaseQueries,
-			},
+		backfill: collect.Backfill{StateStore: store, Metadata: store, Lake: lake, Enrollment: enrollment, Queue: collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 5_000_000},
+			Projector:  collect.Projector{State: store, Leases: store, Data: data, Lake: lake, Enrollment: enrollment, DatabaseQueriesPath: backfillDatabaseQueries},
 			Enumerator: github, RunEnumerator: github, Quota: quota, QuotaApp: "simulator", WindowDays: 7,
 		},
 		data: data, api: api, proxy: proxy, restart: restart, quota: quota,
 	}
 }
 
-func taskQueueLength(ctx context.Context, store operational.CollectionStore, queue string) (int64, error) {
+func taskQueueLength(ctx context.Context, store operational.TaskQueue, queue string) (int64, error) {
 	stats, err := store.QueueStats(ctx, queue, "")
 	return stats.Length, err
 }

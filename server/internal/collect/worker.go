@@ -205,7 +205,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 		workerLog.Printf("debounce clear failed")
 		return false
 	}
-	if w.Enrollment.Store != nil {
+	if w.Enrollment.Metadata != nil {
 		installationID, err := w.Enrollment.InstallationFor(ctx, task.Repository)
 		if err != nil {
 			workerLog.Printf("repository enrollment check failed")

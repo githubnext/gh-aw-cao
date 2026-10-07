@@ -78,7 +78,7 @@ type Observation struct {
 	Remaining int
 	ResetAt   time.Time
 	// ObservedAt is when GitHub produced the response. When zero, the shared
-	// Redis clock is recorded so replicas with skewed clocks agree.
+	// The operational store's clock is recorded so replicas with skewed clocks agree.
 	ObservedAt time.Time
 }
 
@@ -120,21 +120,8 @@ type BucketState struct {
 	ObservedAt  time.Time `json:"observedAt,omitzero"`
 	ParkedUntil time.Time `json:"parkedUntil,omitzero"`
 	ParkReason  string    `json:"parkReason,omitempty"`
-	// CheckedAt is the shared Redis clock at which the state was read.
+	// CheckedAt is the operational store's clock at which the state was read.
 	CheckedAt time.Time `json:"checkedAt"`
-}
-
-// Store is the atomic persistence the service needs. *operational.Store
-// implements it; tests may substitute an in-memory implementation.
-type Store interface {
-	GitHubQuotaSnapshot(ctx context.Context, bucket string) (operational.GitHubQuotaState, error)
-	ObserveGitHubQuota(ctx context.Context, bucket string, observation operational.GitHubQuotaObservation, releaseID string) (operational.GitHubQuotaObserveOutcome, bool, operational.GitHubQuotaState, error)
-	ReserveGitHubQuota(ctx context.Context, bucket, id string, cost, minimumRemain int64, ttl time.Duration) (operational.GitHubQuotaAdmission, time.Time, operational.GitHubQuotaState, error)
-	ReleaseGitHubQuota(ctx context.Context, bucket, id string) (bool, operational.GitHubQuotaState, error)
-	ParkGitHubQuota(ctx context.Context, bucket string, until time.Time, reason string) (bool, operational.GitHubQuotaState, error)
-	UnparkGitHubQuota(ctx context.Context, bucket string) (operational.GitHubQuotaState, error)
-	RecordGitHubQuotaUsage(ctx context.Context, bucket string, at time.Time, limit, used, reserved int64) (bool, error)
-	GitHubQuotaUsage(ctx context.Context) ([]operational.GitHubQuotaUsageSample, time.Time, error)
 }
 
 // Options configures a Service.
@@ -149,13 +136,13 @@ type Options struct {
 
 // Service coordinates GitHub API quota across buckets and replicas.
 type Service struct {
-	store          Store
+	store          operational.GitHubQuotaStore
 	reservationTTL time.Duration
 	safetyReserve  int
 }
 
 // New constructs a Service over an atomic store.
-func New(store Store, options Options) (*Service, error) {
+func New(store operational.GitHubQuotaStore, options Options) (*Service, error) {
 	if store == nil {
 		return nil, errors.New("github quota service requires a store")
 	}

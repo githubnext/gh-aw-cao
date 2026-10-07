@@ -267,7 +267,7 @@ func TestOAuthQueuesCredentialsWhenCallbackAuthorizationFails(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("denied callback returned %d", response.Code)
 	}
-	record, err := app.oauth.store.PendingRevocation(t.Context(), app.oauth.config.RevocationKeyPrefix)
+	record, err := app.oauth.revocations.PendingRevocation(t.Context(), app.oauth.config.RevocationKeyPrefix)
 	if err != nil || record.Value == "" {
 		t.Fatalf("unrevoked callback credentials were not queued: %v", err)
 	}
@@ -465,7 +465,7 @@ func TestOAuthRevocationKeysCanUseDurablePrefix(t *testing.T) {
 func TestSessionEncryptionSupportsControlledKeyRotation(t *testing.T) {
 	oldSecret := "old-session-secret-0123456789abcdef"
 	newSecret := "new-session-secret-0123456789abcdef"
-	oldOAuth := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: oldSecret}, nil)
+	oldOAuth := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: oldSecret}, nil, nil, nil)
 	sealed, err := oldOAuth.seal([]byte("encrypted session"))
 	if err != nil {
 		t.Fatal(err)
@@ -474,7 +474,7 @@ func TestSessionEncryptionSupportsControlledKeyRotation(t *testing.T) {
 	rotated := newGitHubOAuth(GitHubOAuthConfig{
 		SessionSecret:         newSecret,
 		PreviousSessionSecret: oldSecret,
-	}, nil)
+	}, nil, nil, nil)
 	plain, err := rotated.open(sealed)
 	if err != nil || string(plain) != "encrypted session" {
 		t.Fatalf("rotated key ring could not decrypt prior session: %q, %v", plain, err)
@@ -485,7 +485,7 @@ func TestSessionEncryptionSupportsControlledKeyRotation(t *testing.T) {
 		t.Fatalf("rotated key ring could not decrypt legacy session: %q, %v", plain, err)
 	}
 
-	withoutPrevious := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: newSecret}, nil)
+	withoutPrevious := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: newSecret}, nil, nil, nil)
 	if _, err := withoutPrevious.open(sealed); err == nil {
 		t.Fatal("session encrypted with an unavailable key was accepted")
 	}
@@ -500,7 +500,7 @@ func TestRefreshedSessionCannotResurrectAfterRevocationStaging(t *testing.T) {
 	}
 	oauth := newGitHubOAuth(GitHubOAuthConfig{
 		SessionSecret: "session-secret-0123456789abcdef",
-	}, redisx.NewStore(client, "oauth-cas-test"))
+	}, redisx.NewStore(client, "oauth-cas-test"), redisx.NewStore(client, "oauth-cas-test"), redisx.NewStore(client, "oauth-cas-test"))
 	session := oauthSession{
 		ID: "session-id", Login: "octocat", AccessToken: "old",
 		AccessExpires: time.Now().Add(time.Hour), RefreshExpires: time.Now().Add(24 * time.Hour),
@@ -541,13 +541,13 @@ func TestRefreshedSessionCannotResurrectAfterRevocationStaging(t *testing.T) {
 	replacement.AccessToken = "newer-queued-token"
 	data, _ := json.Marshal(replacement) // #nosec G117 -- test fixture is immediately encrypted to exercise queued credential replacement.
 	replacementSealed, _ := oauth.seal(data)
-	if err := oauth.store.QueueRevocation(t.Context(), session.ID, replacementSealed, oauth.config.RevocationKeyPrefix); err != nil {
+	if err := oauth.revocations.QueueRevocation(t.Context(), session.ID, replacementSealed, oauth.config.RevocationKeyPrefix); err != nil {
 		t.Fatal(err)
 	}
 	if err := oauth.completeRevocation(t.Context(), session.ID, sealed); err != nil {
 		t.Fatal(err)
 	}
-	value, err := oauth.store.PendingRevocation(t.Context(), oauth.config.RevocationKeyPrefix)
+	value, err := oauth.revocations.PendingRevocation(t.Context(), oauth.config.RevocationKeyPrefix)
 	if err != nil || value.Value != replacementSealed {
 		t.Fatal("stale completion deleted a newer queued credential record")
 	}

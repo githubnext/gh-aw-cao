@@ -16,9 +16,6 @@ import (
 )
 
 var _ operational.Store = (*Store)(nil)
-var _ operational.CollectionStore = (*Store)(nil)
-var _ operational.OAuthStore = (*Store)(nil)
-var _ operational.QuotaStore = (*Store)(nil)
 
 func (s *Store) Capabilities() operational.Capabilities {
 	shared := operational.Capability{Scope: operational.ScopeDeployment, Persistence: operational.PersistenceRestart}
@@ -35,17 +32,6 @@ func (s *Store) Capabilities() operational.Capabilities {
 		Cache: local, RequestLimits: local, Sessions: local, Revocations: shared,
 		GitHubQuota: local, Collection: collection, Coordination: local, Diagnostics: local,
 	}
-}
-
-func (s *Store) Services() operational.Services {
-	services := operational.Services{
-		Cache: s, RequestLimits: s, OAuth: s, GitHubQuota: s,
-		Coordination: s, Diagnostics: s,
-	}
-	if !s.ProcessIsolated() {
-		services.Collection = s
-	}
-	return services
 }
 
 func (s *Store) OperationalServices() operational.OperationalServices {

@@ -97,7 +97,7 @@ describe('workflow list query contract', () => {
     expect(payload.rows.map((row) => ({
       repository: row.repository, workflow: row.workflow,
       ...(row['latest-run'] ? { run: row['latest-run'] } : {}),
-      status: row['latest-run-status']
+      status: row['latest-run-status'], hasObservedRun: row['has-observed-run']
     }))).toEqual(contract.cases);
     for (const row of payload.rows) {
       for (const field of contract.fields.filter((field) => !['latest-run', 'latest-run-at'].includes(field))) {

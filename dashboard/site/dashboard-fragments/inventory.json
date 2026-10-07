@@ -79,7 +79,7 @@
       "name": "workflow-list",
       "subject": "List declared workflows in latest observed run order.",
       "objective": "Open a dedicated workflow page from a lightweight inventory with its latest execution status.",
-      "acceptance": "Keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
+      "acceptance": "Preserve textual run identities and keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
       "from": "workflows",
       "joins": [
         {
@@ -105,7 +105,7 @@
         { "as": "declared-role", "function": "coalesce", "args": [{ "field": "workflow-role" }, { "value": "standalone" }] },
         { "as": "declared-mode", "function": "coalesce", "args": [{ "field": "rollout-mode" }, { "value": "unknown" }] },
         { "as": "declared-registration", "function": "coalesce", "args": [{ "field": "workflow-active" }, { "value": "unknown" }] },
-        { "as": "observed-run-id", "function": "coalesce", "args": [{ "field": "latest-run" }, { "value": 0 }] },
+        { "as": "observed-run-id", "function": "coalesce", "args": [{ "field": "latest-run" }, { "value": "0" }] },
         { "as": "has-observed-run", "function": "greater-than", "args": [{ "field": "observed-run-id" }, { "value": 0 }] },
         { "as": "latest-run-status", "function": "coalesce", "args": [{ "field": "observed-run-status" }, { "value": "No observed run" }] },
         { "as": "encoded-workflow", "function": "url-encode", "args": [{ "field": "workflow-label" }] },

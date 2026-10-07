@@ -87,10 +87,8 @@ func TestRepositoryMemoryHandlerReportsConcurrentRefresh(t *testing.T) {
 	database := integrationDatabase(t)
 	seedDatabase(t, database, nil)
 	store := redisx.NewStore(&repositoryMemoryClient{}, "test")
-	app := &App{
-		store:    store,
-		database: database,
-		memory:   &repositorymemory.RemoteResolver{Cache: store},
+	app := &App{services: store.OperationalServices(), database: database,
+		memory: &repositorymemory.RemoteResolver{Cache: store},
 	}
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/example", nil)

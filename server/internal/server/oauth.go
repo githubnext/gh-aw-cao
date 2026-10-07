@@ -114,12 +114,14 @@ type GitHubOAuthConfig struct {
 }
 
 type githubOAuth struct {
-	config GitHubOAuthConfig
-	client *http.Client
-	store  operational.OAuthStore
-	key    []byte
-	keys   map[string][]byte
-	log    func(string)
+	config      GitHubOAuthConfig
+	client      *http.Client
+	sessions    operational.SessionStore
+	invalidator operational.SessionInvalidator
+	revocations operational.RevocationQueue
+	key         []byte
+	keys        map[string][]byte
+	log         func(string)
 }
 
 type oauthSession struct {
@@ -189,7 +191,7 @@ func (config *GitHubOAuthConfig) validate() error {
 	return nil
 }
 
-func newGitHubOAuth(config GitHubOAuthConfig, store operational.OAuthStore) *githubOAuth {
+func newGitHubOAuth(config GitHubOAuthConfig, sessions operational.SessionStore, invalidator operational.SessionInvalidator, revocations operational.RevocationQueue) *githubOAuth {
 	client := config.HTTPClient
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
@@ -201,11 +203,13 @@ func newGitHubOAuth(config GitHubOAuthConfig, store operational.OAuthStore) *git
 		keys[sessionKeyID(previous[:])] = previous[:]
 	}
 	return &githubOAuth{
-		config: config,
-		client: client,
-		store:  store,
-		key:    sum[:],
-		keys:   keys,
+		config:      config,
+		client:      client,
+		sessions:    sessions,
+		invalidator: invalidator,
+		revocations: revocations,
+		key:         sum[:],
+		keys:        keys,
 		log: func(branch string) {
 			serverLog.Printf("oauth branch=%s", branch)
 		},
@@ -844,7 +848,7 @@ func (oauth *githubOAuth) stageRevocation(ctx context.Context, sessionID string)
 var errSessionSuperseded = operational.ErrConflict
 
 func (oauth *githubOAuth) stageRevocationIfUnchanged(ctx context.Context, sessionID, expected string) (oauthSession, string, error) {
-	sealed, err := oauth.store.InvalidateSession(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
+	sealed, err := oauth.invalidator.InvalidateSession(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
 	if err != nil {
 		return oauthSession{}, "", err
 	}
@@ -876,16 +880,16 @@ func (oauth *githubOAuth) queueRevocation(ctx context.Context, session oauthSess
 	if err != nil {
 		return err
 	}
-	return oauth.store.QueueRevocation(ctx, session.ID, sealed, oauth.config.RevocationKeyPrefix)
+	return oauth.revocations.QueueRevocation(ctx, session.ID, sealed, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) completeRevocation(ctx context.Context, sessionID, expected string) error {
-	return oauth.store.CompleteRevocation(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
+	return oauth.revocations.CompleteRevocation(ctx, sessionID, expected, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) retryPendingRevocations(ctx context.Context, limit int) {
 	for range limit {
-		record, err := oauth.store.PendingRevocation(ctx, oauth.config.RevocationKeyPrefix)
+		record, err := oauth.revocations.PendingRevocation(ctx, oauth.config.RevocationKeyPrefix)
 		if err != nil {
 			oauth.logBranch("revocation_retry.record_read_failed")
 			return
@@ -1004,7 +1008,7 @@ func (oauth *githubOAuth) loadSession(ctx context.Context, sessionID string) (oa
 }
 
 func (oauth *githubOAuth) loadSessionRecord(ctx context.Context, sessionID string) (oauthSession, string, error) {
-	sealed, err := oauth.store.SessionRecord(ctx, sessionID)
+	sealed, err := oauth.sessions.SessionRecord(ctx, sessionID)
 	if err != nil {
 		return oauthSession{}, "", fmt.Errorf("load session: %w", err)
 	}
@@ -1031,7 +1035,7 @@ func (oauth *githubOAuth) saveSession(ctx context.Context, session oauthSession)
 	if err != nil {
 		return err
 	}
-	return oauth.store.PutSession(ctx, session.ID, sealed, sessionTTL)
+	return oauth.sessions.PutSession(ctx, session.ID, sealed, sessionTTL)
 }
 
 func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oauthSession, expected string) (bool, error) {
@@ -1043,11 +1047,11 @@ func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oa
 	if err != nil {
 		return false, err
 	}
-	return oauth.store.CompareSession(ctx, session.ID, expected, sealed, sessionTTL)
+	return oauth.sessions.CompareSession(ctx, session.ID, expected, sealed, sessionTTL)
 }
 
 func (oauth *githubOAuth) deleteSession(ctx context.Context, sessionID string) error {
-	return oauth.store.DeleteSession(ctx, sessionID)
+	return oauth.sessions.DeleteSession(ctx, sessionID)
 }
 
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {

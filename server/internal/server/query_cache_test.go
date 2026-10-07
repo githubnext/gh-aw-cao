@@ -181,7 +181,7 @@ func compactQueryResult() queryResponse {
 
 func TestQueryCacheCompactEncodingAndNumericFidelity(t *testing.T) {
 	client := &queryCacheClient{}
-	app := &App{store: redisx.NewStore(client, "query-test")}
+	app := &App{services: redisx.NewStore(client, "query-test").OperationalServices()}
 	config, err := (QueryCacheConfig{}).resolve()
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +227,7 @@ func TestQueryCacheCompactEncodingAndNumericFidelity(t *testing.T) {
 
 func TestQueryCacheErrorsAreExplicitAndRedacted(t *testing.T) {
 	client := &queryCacheClient{err: errors.New("secret redis endpoint")}
-	app := &App{database: constructorDatabase(), store: redisx.NewStore(client, "query-errors")}
+	app := &App{database: constructorDatabase(), services: redisx.NewStore(client, "query-errors").OperationalServices()}
 	_, status, err := app.executeQuery(t.Context(), queryRequest{SourceNames: []string{"runs"}}, false)
 	if status != http.StatusServiceUnavailable || err == nil ||
 		err.Error() != "query result cache is unavailable" || strings.Contains(err.Error(), "secret") {
@@ -237,7 +237,7 @@ func TestQueryCacheErrorsAreExplicitAndRedacted(t *testing.T) {
 
 func TestQueryCacheRejectsTrailingAndIncompleteDocuments(t *testing.T) {
 	client := &queryCacheClient{}
-	app := &App{store: redisx.NewStore(client, "corruption-test")}
+	app := &App{services: redisx.NewStore(client, "corruption-test").OperationalServices()}
 	config, err := (QueryCacheConfig{}).resolve()
 	if err != nil {
 		t.Fatal(err)
@@ -291,7 +291,7 @@ func (blockedQueryCacheClient) DoMany(context.Context, [][]string) ([]any, error
 
 func TestQueryCacheCancellationAndOperationDeadline(t *testing.T) {
 	client := blockedQueryCacheClient{deadline: make(chan time.Duration, 1)}
-	app := &App{database: constructorDatabase(), store: redisx.NewStore(client, "deadline-test")}
+	app := &App{database: constructorDatabase(), services: redisx.NewStore(client, "deadline-test").OperationalServices()}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	type execution struct {
@@ -352,8 +352,7 @@ func TestQueryCacheSurvivesIngestionAndSeparatesAuthorization(t *testing.T) {
 	}
 	seed("old")
 	app := &App{
-		database: database, store: store,
-		config:          Config{QueryCache: QueryCacheConfig{MinDuration: time.Nanosecond}},
+		database: database, services: store.OperationalServices(), config: Config{QueryCache: QueryCacheConfig{MinDuration: time.Nanosecond}},
 		databaseQueries: []query.Definition{{Name: "runs", From: "$runs"}},
 	}
 	input := queryRequest{SourceNames: []string{"runs"}}

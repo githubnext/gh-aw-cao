@@ -16,12 +16,12 @@ func validateSyntheticRunTasks(t *testing.T, ctx context.Context, backfill colle
 	expected := scenario.Repositories * horizon * scenario.History.RunsPerDay
 	seen := make([]byte, (expected+7)/8)
 	const stream, group = "collect:run-tasks", "stress-audit"
-	if err := backfill.Store.EnsureQueue(ctx, stream, group); err != nil {
+	if err := backfill.Queue.Tasks.EnsureQueue(ctx, stream, group); err != nil {
 		t.Fatal(err)
 	}
 	total := 0
 	for {
-		messages, err := backfill.Store.ReadTasks(ctx, operational.QueueRead{Queue: stream, Group: group, Consumer: "audit", Count: 1000})
+		messages, err := backfill.Queue.Tasks.ReadTasks(ctx, operational.QueueRead{Queue: stream, Group: group, Consumer: "audit", Count: 1000})
 		if err != nil {
 			t.Fatal(err)
 		}

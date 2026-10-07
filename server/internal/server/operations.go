@@ -77,7 +77,7 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusInternalServerError, "rebuild could not start")
 		return
 	}
-	acquired, err := a.store.TryLock(request.Context(), a.rebuildLockName(), token, projectionLockTTL)
+	acquired, err := a.services.Leases.TryLock(request.Context(), a.rebuildLockName(), token, projectionLockTTL)
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "rebuild coordination is unavailable")
 		return
@@ -154,7 +154,7 @@ func (a *App) releaseRebuildLock(parent context.Context, token string) {
 func (a *App) releaseLock(parent context.Context, name, token string) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
 	defer cancel()
-	_ = a.store.Unlock(ctx, name, token)
+	_ = a.services.Leases.Unlock(ctx, name, token)
 }
 
 func (a *App) rebuildStatus(response http.ResponseWriter, request *http.Request) {
@@ -204,7 +204,7 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		writeError(response, http.StatusInternalServerError, "reconciliation could not start")
 		return
 	}
-	acquired, err := a.store.TryLock(request.Context(), "projection", token, projectionLockTTL)
+	acquired, err := a.services.Leases.TryLock(request.Context(), "projection", token, projectionLockTTL)
 	if err != nil || !acquired {
 		if err != nil {
 			writeError(response, http.StatusServiceUnavailable, "reconciliation coordination is unavailable")
@@ -213,7 +213,7 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		}
 		return
 	}
-	fresh, err := a.store.RememberDelivery(request.Context(), delivery, deliveryTTL)
+	fresh, err := a.services.Deliveries.RememberDelivery(request.Context(), delivery, deliveryTTL)
 	if err != nil {
 		a.recordIngestionCounter(request.Context(), "webhookAdmissionFailed")
 		a.recordIngestionFailure(request.Context(), "redis")
@@ -283,7 +283,7 @@ func (a *App) admitWebhook(
 }
 
 func (a *App) recordIngestionCounter(ctx context.Context, name string) {
-	if err := a.store.IncrementIngestionCounter(ctx, name); err != nil {
+	if err := a.services.IngestionMetrics.IncrementIngestionCounter(ctx, name); err != nil {
 		serverLog.Printf("ingestion counter update failed")
 	}
 }
@@ -293,7 +293,7 @@ func (a *App) recordIngestionFailure(ctx context.Context, code string) {
 }
 
 func (a *App) recordIngestionEvent(ctx context.Context, event, code string) {
-	if err := a.store.RecordIngestionHealthEvent(ctx, event, code, time.Now().UTC()); err != nil {
+	if err := a.services.IngestionMetrics.RecordIngestionHealthEvent(ctx, event, code, time.Now().UTC()); err != nil {
 		serverLog.Printf("ingestion health update failed")
 	}
 }
@@ -310,7 +310,7 @@ func (a *App) performReconciliation(
 	if err != nil {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cleanupCancel()
-		_ = a.store.ForgetDelivery(cleanupCtx, event.Delivery)
+		_ = a.services.Deliveries.ForgetDelivery(cleanupCtx, event.Delivery)
 		serverLog.Printf("webhook reconciliation failed")
 		return
 	}
@@ -345,7 +345,7 @@ func (a *App) writeRebuildStatus(ctx context.Context, status rebuildStatus) erro
 	if err != nil {
 		return err
 	}
-	return a.store.SetOperationalState(ctx, "rebuild", payload)
+	return a.services.State.SetOperationalState(ctx, "rebuild", payload)
 }
 
 // reconcileInterruptedRebuild applies the pure decision behind readRebuildStatus's
@@ -364,7 +364,7 @@ func reconcileInterruptedRebuild(status rebuildStatus, lockHeld bool, databaseRe
 }
 
 func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
-	payload, err := a.store.OperationalState(ctx, "rebuild")
+	payload, err := a.services.State.OperationalState(ctx, "rebuild")
 	if err != nil {
 		return rebuildStatus{}, err
 	}
@@ -374,7 +374,7 @@ func (a *App) readRebuildStatus(ctx context.Context) (rebuildStatus, error) {
 			return rebuildStatus{}, err
 		}
 		if status.State == "running" {
-			held, err := a.store.LockHeld(ctx, a.rebuildLockName())
+			held, err := a.services.Leases.LockHeld(ctx, a.rebuildLockName())
 			if err != nil {
 				return rebuildStatus{}, err
 			}

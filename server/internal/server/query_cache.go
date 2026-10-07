@@ -117,7 +117,7 @@ func (a *App) loadCachedQuery(ctx context.Context, key string, config QueryCache
 	}()
 	ctx, cancel := context.WithTimeout(ctx, queryCacheTimeout)
 	defer cancel()
-	data, stats, err = a.store.CachedQueryResult(ctx, key, config.MaxResultBytes, config.MaxBytes)
+	data, stats, err = a.services.Cache.CachedQueryResult(ctx, key, config.MaxResultBytes, config.MaxBytes)
 	if err == nil {
 		observedStats = &stats
 	}
@@ -197,7 +197,7 @@ func (a *App) storeCachedQuery(ctx context.Context, key string, result queryResp
 	payloadBytes = len(data)
 	ctx, cancel := context.WithTimeout(ctx, queryCacheTimeout)
 	defer cancel()
-	stored, stats, err := a.store.CacheQueryResult(ctx, key, data, config.MaxResultBytes, config.MaxBytes)
+	stored, stats, err := a.services.Cache.CacheQueryResult(ctx, key, data, config.MaxResultBytes, config.MaxBytes)
 	if err == nil {
 		observedStats = &stats
 		outcome = "capacity"

@@ -40,7 +40,7 @@ func (*serverRateLimitClient) DoMany(context.Context, [][]string) ([]any, error)
 
 func TestRateLimitReturnsStandardHeaders(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(28), int64(0), int64(4000)}}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	nextCalled := false
 	handler := app.rateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		nextCalled = true
@@ -96,7 +96,7 @@ func TestQueryRateLimitCostChargesLongRunningQueries(t *testing.T) {
 
 func TestChargeQueryRateLimitUsesReservedSubjectAndAdditionalCost(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(24), int64(0), int64(12000)}}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	reservation := rateLimitReservation{
 		key:    "query:opaque-subject",
 		policy: requestRatePolicy{name: "query", capacity: queryRateLimit, window: queryRateWindow},
@@ -120,7 +120,7 @@ func TestChargeQueryRateLimitUsesReservedSubjectAndAdditionalCost(t *testing.T) 
 
 func TestRateLimitRejectsExhaustedBucketWithCooldown(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	handler := app.rateLimit(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("limited request reached handler")
 	}))
@@ -144,9 +144,7 @@ func TestRateLimitRejectsExhaustedBucketWithCooldown(t *testing.T) {
 
 func TestMCPUsesQueryRateLimitBeforeHandler(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
-	app := &App{
-		store:       redisx.NewStore(client, "test"),
-		accessToken: testAccessToken,
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices(), accessToken: testAccessToken,
 		mcp: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			t.Fatal("rate-limited MCP request reached handler")
 		}),
@@ -170,9 +168,7 @@ func TestMCPUsesQueryRateLimitBeforeHandler(t *testing.T) {
 
 func TestMCPRateLimitUsesValidatedGitHubActionsActor(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(0), int64(0), int64(1500), int64(60000)}}
-	app := &App{
-		store:        redisx.NewStore(client, "test"),
-		accessToken:  testAccessToken,
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices(), accessToken: testAccessToken,
 		actionsToken: testActionsToken,
 		actionsActor: testActionsActor,
 		mcp: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -198,7 +194,7 @@ func TestMCPRateLimitUsesValidatedGitHubActionsActor(t *testing.T) {
 
 func TestRateLimitUsesHashedAuthenticatedIdentity(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(119), int64(0), int64(500)}}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	handler := app.rateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusNoContent)
 	}))
@@ -223,7 +219,7 @@ func TestRateLimitSeparatesOAuthCallbacksBehindEnterpriseProxy(t *testing.T) {
 	oauth := &githubOAuth{key: []byte("test-signing-key")}
 	for _, state := range []string{"state-one", "state-two"} {
 		client := &serverRateLimitClient{result: []any{int64(1), int64(9), int64(0), int64(500)}}
-		app := &App{store: redisx.NewStore(client, "test"), oauth: oauth}
+		app := &App{services: redisx.NewStore(client, "test").OperationalServices(), oauth: oauth}
 		handler := app.rateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusNoContent)
 		}))
@@ -250,7 +246,7 @@ func TestRateLimitSeparatesOAuthCallbacksBehindEnterpriseProxy(t *testing.T) {
 func TestInnerRateLimitExemptsServiceProbesWebhooksAndAssets(t *testing.T) {
 	for _, path := range []string{"/api/v1/health", "/api/health", "/api/readiness", "/api/github/webhook", "/assets/app.js"} {
 		client := &serverRateLimitClient{}
-		app := &App{store: redisx.NewStore(client, "test")}
+		app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 		handler := app.rateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusNoContent)
 		}))
@@ -341,7 +337,7 @@ func TestHostedPublicProbeFailsClosedWhenLimiterUnavailable(t *testing.T) {
 
 func TestLocalPublicProbesRemainUnmetered(t *testing.T) {
 	client := &serverRateLimitClient{}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusNoContent)
 	}))
@@ -523,9 +519,7 @@ func TestPreAuthRateLimitCoversOAuthEntryAtSharedEnterpriseEdge(t *testing.T) {
 }
 
 func hostedRateLimitApp(client *serverRateLimitClient) *App {
-	return &App{
-		store: redisx.NewStore(client, "test"),
-		oauth: &githubOAuth{},
+	return &App{services: redisx.NewStore(client, "test").OperationalServices(), oauth: &githubOAuth{},
 		config: Config{Proxy: ProxyPolicy{
 			AllowedHosts: []string{"dashboard.example"},
 			RequireHTTPS: true,
@@ -571,7 +565,7 @@ func TestRateLimitConfigRejectsInvalidPolicies(t *testing.T) {
 
 func TestQueryChargeIsCappedAtConfiguredCapacity(t *testing.T) {
 	client := &serverRateLimitClient{result: []any{int64(1), int64(0), int64(0), int64(1000)}}
-	app := &App{store: redisx.NewStore(client, "test")}
+	app := &App{services: redisx.NewStore(client, "test").OperationalServices()}
 	ctx := context.WithValue(t.Context(), rateLimitReservationContextKey{}, rateLimitReservation{
 		key: "query:subject", policy: requestRatePolicy{name: "query", capacity: 4, window: time.Second},
 	})

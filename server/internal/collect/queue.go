@@ -65,7 +65,12 @@ type Lease struct {
 // scheduled work, while consumer-group claims recover work from a stopped
 // worker.
 type Queue struct {
-	Store operational.CollectionStore
+	Tasks      operational.TaskQueue
+	Admission  operational.DeliveryAdmissionStore
+	Metadata   operational.CollectionMetadata
+	Leases     operational.LeaseStore
+	Deliveries operational.DeliveryDeduplicator
+	Metrics    operational.IngestionMetrics
 	// Group is the consumer group name; empty selects the default.
 	Group string
 	// Debounce collapses repeated events for one repository into one task.
@@ -100,7 +105,7 @@ func (q Queue) maxAttempts() int {
 
 // Ensure creates the consumer group, tolerating an existing one.
 func (q Queue) Ensure(ctx context.Context) error {
-	return q.Store.EnsureQueue(ctx, taskStream, q.group())
+	return q.Tasks.EnsureQueue(ctx, taskStream, q.group())
 }
 
 // Enqueue appends a task unless one is already pending for the repository.
@@ -129,7 +134,7 @@ func (q Queue) EnqueueRun(ctx context.Context, task RunTask) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return q.Store.EnqueueUniqueTask(
+	return q.Tasks.EnqueueUniqueTask(
 		ctx, runTaskStream, task.Key, q.MaxLength,
 		operational.TaskFields{Key: task.Key, Repository: repository, Task: string(payload)},
 	)
@@ -150,7 +155,7 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 	if task.Lifecycle != "" {
 		debounce = ""
 	}
-	result, err := q.Store.AdmitDelivery(ctx, operational.DeliveryRequest{
+	result, err := q.Admission.AdmitDelivery(ctx, operational.DeliveryRequest{
 		Delivery: delivery, DeliveryTTL: deliveryTTL,
 		EnqueueRequest: operational.EnqueueRequest{
 			Queue: taskStream, Delayed: delayedTaskSet, Debounce: debounce,
@@ -163,9 +168,9 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 	switch result {
 	case operational.DeliveryDuplicate:
 	case operational.DeliveryEnqueued:
-		_ = q.Store.IncrementIngestionCounter(ctx, "taskQueued")
+		_ = q.Metrics.IncrementIngestionCounter(ctx, "taskQueued")
 	case operational.DeliveryCoalesced:
-		_ = q.Store.IncrementIngestionCounter(ctx, "taskCoalesced")
+		_ = q.Metrics.IncrementIngestionCounter(ctx, "taskCoalesced")
 	}
 	return result == operational.DeliveryEnqueued, result == operational.DeliveryDuplicate, nil
 }
@@ -179,7 +184,7 @@ func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 	if task.Attempt == 0 && !task.Erase && task.Lifecycle == "" {
 		debounce = debounceKey(repository)
 	}
-	enqueued, err := q.Store.EnqueueTask(ctx, operational.EnqueueRequest{
+	enqueued, err := q.Tasks.EnqueueTask(ctx, operational.EnqueueRequest{
 		Queue: taskStream, Delayed: delayedTaskSet, Debounce: debounce,
 		DebounceTTL: q.debounce(), Capacity: q.MaxLength, Fields: taskFields(repository, payload),
 	})
@@ -187,11 +192,11 @@ func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
 		return false, err
 	}
 	if !enqueued {
-		_ = q.Store.IncrementIngestionCounter(ctx, "taskCoalesced")
+		_ = q.Metrics.IncrementIngestionCounter(ctx, "taskCoalesced")
 		queueLog.Printf("collapsed duplicate task repository=%s", repository)
 		return false, nil
 	}
-	_ = q.Store.IncrementIngestionCounter(ctx, "taskQueued")
+	_ = q.Metrics.IncrementIngestionCounter(ctx, "taskQueued")
 	queueLog.Printf("enqueued task repository=%s attempt=%d", repository, task.Attempt)
 	return true, nil
 }
@@ -221,7 +226,7 @@ func (q Queue) Lease(ctx context.Context, consumer string, count int, block time
 	if _, err := q.promoteDue(ctx, time.Now().UTC(), count); err != nil {
 		return nil, err
 	}
-	messages, err := q.Store.ReadTasks(ctx, operational.QueueRead{
+	messages, err := q.Tasks.ReadTasks(ctx, operational.QueueRead{
 		Queue: taskStream, Group: q.group(), Consumer: consumer, Count: count, Block: block,
 	})
 	if err != nil {
@@ -233,7 +238,7 @@ func (q Queue) Lease(ctx context.Context, consumer string, count int, block time
 // Reclaim takes over tasks abandoned by a consumer that stopped, so a worker
 // crash does not strand a repository.
 func (q Queue) Reclaim(ctx context.Context, consumer string, minIdle time.Duration, count int) ([]Lease, error) {
-	messages, err := q.Store.ClaimTasks(ctx, operational.QueueRead{
+	messages, err := q.Tasks.ClaimTasks(ctx, operational.QueueRead{
 		Queue: taskStream, Group: q.group(), Consumer: consumer, Count: count,
 	}, minIdle)
 	if err != nil {
@@ -265,7 +270,7 @@ func (q Queue) leases(ctx context.Context, messages []operational.TaskMessage) (
 // enqueue a follow-up task rather than being silently collapsed into a
 // collection that already started.
 func (q Queue) Admit(ctx context.Context, task Task) error {
-	return q.Store.Clear(ctx, debounceKey(task.Repository))
+	return q.Metadata.Clear(ctx, debounceKey(task.Repository))
 }
 
 // Defer returns a task that is not yet due, without counting an attempt.
@@ -277,11 +282,11 @@ func (q Queue) Defer(ctx context.Context, lease Lease) error {
 
 // Complete acknowledges a finished task.
 func (q Queue) Complete(ctx context.Context, lease Lease) error {
-	if err := q.Store.CompleteTask(ctx, taskStream, q.group(), lease.MessageID); err != nil {
+	if err := q.Tasks.CompleteTask(ctx, taskStream, q.group(), lease.MessageID); err != nil {
 		return err
 	}
-	_ = q.Store.IncrementIngestionCounter(ctx, "collectionSucceeded")
-	_ = q.Store.RecordIngestionHealthEvent(ctx, "success", "", time.Now().UTC())
+	_ = q.Metrics.IncrementIngestionCounter(ctx, "collectionSucceeded")
+	_ = q.Metrics.RecordIngestionHealthEvent(ctx, "success", "", time.Now().UTC())
 	return nil
 }
 
@@ -322,18 +327,18 @@ func (q Queue) Retry(ctx context.Context, lease Lease, cause error) error {
 		if err := q.deadLetterLease(ctx, lease.MessageID, decision.task, decision.reason); err != nil {
 			return err
 		}
-		_ = q.Store.IncrementIngestionCounter(ctx, "collectionFailed")
-		_ = q.Store.IncrementIngestionCounter(ctx, "collectionDeadLettered")
-		_ = q.Store.RecordIngestionHealthEvent(ctx, "failure", "collection", now)
+		_ = q.Metrics.IncrementIngestionCounter(ctx, "collectionFailed")
+		_ = q.Metrics.IncrementIngestionCounter(ctx, "collectionDeadLettered")
+		_ = q.Metrics.RecordIngestionHealthEvent(ctx, "failure", "collection", now)
 		return nil
 	}
 	queueLog.Printf("rescheduling task repository=%s attempt=%d", decision.task.Repository, decision.task.Attempt)
 	if err := q.replace(ctx, lease.MessageID, decision.task); err != nil {
 		return err
 	}
-	_ = q.Store.IncrementIngestionCounter(ctx, "collectionFailed")
-	_ = q.Store.IncrementIngestionCounter(ctx, "collectionRetried")
-	_ = q.Store.RecordIngestionHealthEvent(ctx, "failure", "collection", now)
+	_ = q.Metrics.IncrementIngestionCounter(ctx, "collectionFailed")
+	_ = q.Metrics.IncrementIngestionCounter(ctx, "collectionRetried")
+	_ = q.Metrics.RecordIngestionHealthEvent(ctx, "failure", "collection", now)
 	return nil
 }
 
@@ -358,11 +363,11 @@ func (q Queue) replace(ctx context.Context, messageID string, task Task) error {
 	if task.NotBefore.After(time.Now().UTC()) {
 		replacement.Due = task.NotBefore
 	}
-	return q.Store.ReplaceTask(ctx, replacement)
+	return q.Tasks.ReplaceTask(ctx, replacement)
 }
 
 func (q Queue) promoteDue(ctx context.Context, now time.Time, count int) (int64, error) {
-	return q.Store.PromoteTasks(ctx, delayedTaskSet, taskStream, now, count)
+	return q.Tasks.PromoteTasks(ctx, delayedTaskSet, taskStream, now, count)
 }
 
 func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task, reason string) error {
@@ -370,7 +375,7 @@ func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task,
 	if err != nil {
 		return err
 	}
-	return q.Store.ReplaceTask(ctx, operational.Replacement{
+	return q.Tasks.ReplaceTask(ctx, operational.Replacement{
 		Source: taskStream, Group: q.group(), ID: messageID,
 		Destination: deadLetterStream, Capacity: q.MaxLength,
 		Fields: operational.TaskFields{
@@ -382,11 +387,11 @@ func (q Queue) deadLetterLease(ctx context.Context, messageID string, task Task,
 
 // Depth reports ready and scheduled work, excluding already leased tasks.
 func (q Queue) Depth(ctx context.Context) (int64, error) {
-	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
+	stats, err := q.Tasks.QueueStats(ctx, taskStream, q.group())
 	if err != nil {
 		return 0, err
 	}
-	delayed, err := q.Store.DelayedDepth(ctx, delayedTaskSet)
+	delayed, err := q.Tasks.DelayedDepth(ctx, delayedTaskSet)
 	if err != nil {
 		return 0, err
 	}
@@ -395,18 +400,18 @@ func (q Queue) Depth(ctx context.Context) (int64, error) {
 
 // Pending reports delivered but unacknowledged tasks, which is processing lag.
 func (q Queue) Pending(ctx context.Context) (int64, error) {
-	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
+	stats, err := q.Tasks.QueueStats(ctx, taskStream, q.group())
 	return stats.Pending, err
 }
 
 func (q Queue) OldestPendingAge(ctx context.Context) (time.Duration, error) {
-	stats, err := q.Store.QueueStats(ctx, taskStream, q.group())
+	stats, err := q.Tasks.QueueStats(ctx, taskStream, q.group())
 	return stats.OldestPendingAge, err
 }
 
 // DeadLetters reports how many tasks exhausted their retries.
 func (q Queue) DeadLetters(ctx context.Context) (int64, error) {
-	stats, err := q.Store.QueueStats(ctx, deadLetterStream, "")
+	stats, err := q.Tasks.QueueStats(ctx, deadLetterStream, "")
 	return stats.Length, err
 }
 
@@ -416,7 +421,7 @@ var ErrRepositoryBusy = errors.New("repository collection is already running")
 // LockRepository takes the per-repository lease. Exclusion is per repository,
 // so unrelated repositories proceed in parallel.
 func (q Queue) LockRepository(ctx context.Context, repository, token string, ttl time.Duration) error {
-	acquired, err := q.Store.TryLock(ctx, repositoryLockName(repository), token, ttl)
+	acquired, err := q.Leases.TryLock(ctx, repositoryLockName(repository), token, ttl)
 	if err != nil {
 		return err
 	}
@@ -428,7 +433,7 @@ func (q Queue) LockRepository(ctx context.Context, repository, token string, ttl
 
 // UnlockRepository releases the per-repository lease.
 func (q Queue) UnlockRepository(ctx context.Context, repository, token string) error {
-	return q.Store.Unlock(ctx, repositoryLockName(repository), token)
+	return q.Leases.Unlock(ctx, repositoryLockName(repository), token)
 }
 
 func repositoryLockName(repository string) string {

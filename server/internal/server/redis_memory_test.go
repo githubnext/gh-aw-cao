@@ -129,12 +129,10 @@ func (redisMaintenanceClient) DoMany(context.Context, [][]string) ([]any, error)
 }
 
 func maintenanceApp(client redisx.CommandClient, output io.Writer) *App {
-	return &App{
-		store: redisx.NewStore(client, "maintenance"),
-		config: Config{
-			QueryCache: QueryCacheConfig{MaxBytes: 64 << 20},
-			Logger:     log.New(output, "", 0),
-		},
+	return &App{services: redisx.NewStore(client, "maintenance").OperationalServices(), config: Config{
+		QueryCache: QueryCacheConfig{MaxBytes: 64 << 20},
+		Logger:     log.New(output, "", 0),
+	},
 	}
 }
 
@@ -289,7 +287,7 @@ func (managedRedisMaintenanceClient) DoMany(context.Context, [][]string) ([]any,
 func TestRedisMaintenanceReportsUnsupportedCachingWithoutBlockingStartup(t *testing.T) {
 	var output bytes.Buffer
 	app := maintenanceApp(redisMaintenanceClient{}, &output)
-	app.store = redisx.NewStore(managedRedisMaintenanceClient{}, "managed-startup")
+	app.services = redisx.NewStore(managedRedisMaintenanceClient{}, "managed-startup").OperationalServices()
 	if err := app.Start(t.Context()); err != nil {
 		t.Fatalf("optional cache capabilities blocked protected storage startup: %v", err)
 	}
@@ -298,7 +296,7 @@ func TestRedisMaintenanceReportsUnsupportedCachingWithoutBlockingStartup(t *test
 	if err := app.Stop(stopCtx); err != nil {
 		t.Fatal(err)
 	}
-	health, err := app.store.Health(t.Context())
+	health, err := app.services.Health.Health(t.Context())
 	if err != nil || !health.CacheDisabled {
 		t.Fatal("unsupported managed-provider caches remained enabled")
 	}

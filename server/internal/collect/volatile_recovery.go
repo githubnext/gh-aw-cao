@@ -130,10 +130,10 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 			if _, present := currentInstallations[installation]; present {
 				continue
 			}
-			if err := b.Enrollment.Store.Clear(ctx, installationRepositoriesKey(installation)); err != nil {
+			if err := b.Enrollment.Metadata.Clear(ctx, installationRepositoriesKey(installation)); err != nil {
 				return err
 			}
-			if err := b.Enrollment.Store.RemoveMembers(ctx, installationsKey, fmt.Sprint(installation)); err != nil {
+			if err := b.Enrollment.Metadata.RemoveMembers(ctx, installationsKey, fmt.Sprint(installation)); err != nil {
 				return err
 			}
 		}

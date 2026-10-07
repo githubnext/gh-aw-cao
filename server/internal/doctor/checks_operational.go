@@ -13,7 +13,7 @@ func (d Doctor) checkOperational(ctx context.Context) Check {
 		unavailable.Details = []Detail{detail("backend", orDefault(d.Backend, "redis"))}
 		return unavailable
 	}
-	health, err := d.Store.Health(ctx)
+	health, err := d.Store.OperationalServices().Health.Health(ctx)
 	if err != nil {
 		return failed(id, area, title, err)
 	}
@@ -38,7 +38,7 @@ func (d Doctor) checkOperationalCapabilities(context.Context) Check {
 		return unavailable
 	}
 	caps := d.Store.Capabilities()
-	if err := operational.Validate(caps, d.Store.Services(), operational.Requirements{
+	if err := operational.ValidateOperationalServices(caps, d.Store.OperationalServices(), operational.Requirements{
 		SingleProcess: true, AllowVolatile: true,
 	}); err != nil {
 		return failed(id, area, title, err)

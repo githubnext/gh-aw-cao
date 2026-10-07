@@ -129,9 +129,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 
 	reconciler := &testReconciler{called: make(chan struct{})}
 	var authBranches []string
-	app := &App{
-		store:         redisx.NewStore(client, "webhook-test"),
-		reconciler:    reconciler,
+	app := &App{services: redisx.NewStore(client, "webhook-test").OperationalServices(), reconciler: reconciler,
 		webhookSecret: []byte("webhook-secret"),
 		hub:           newEventHub(),
 		oauth: &githubOAuth{log: func(branch string) {
@@ -166,7 +164,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 	<-reconciler.called
 	deadline := time.Now().Add(time.Second)
 	for {
-		held, err := app.store.LockHeld(t.Context(), "projection")
+		held, err := app.services.Leases.LockHeld(t.Context(), "projection")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -187,7 +185,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 }
 
 func TestEmptyRedisIsHealthyButNotReady(t *testing.T) {
-	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: integrationDatabase(t)}
+	app := &App{services: redisx.NewStore(emptyRedisClient{}, "empty-test").OperationalServices(), database: integrationDatabase(t)}
 
 	healthResponse := httptest.NewRecorder()
 	app.health(
@@ -221,7 +219,7 @@ func TestHealthReportsPostgresFailureAsUnhealthy(t *testing.T) {
 	if err := database.Close(); err != nil {
 		t.Fatal(err)
 	}
-	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: database}
+	app := &App{services: redisx.NewStore(emptyRedisClient{}, "empty-test").OperationalServices(), database: database}
 	response := httptest.NewRecorder()
 	app.health(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health", nil))
 	var health map[string]any

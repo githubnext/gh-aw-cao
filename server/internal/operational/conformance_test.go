@@ -82,54 +82,48 @@ func TestAdapters(t *testing.T) {
 func conformance(t *testing.T, store operational.Store) {
 	t.Helper()
 	ctx := t.Context()
-	services := store.Services()
-	if err := operational.Validate(store.Capabilities(), services, operational.Requirements{
-		SingleProcess: true, AllowVolatile: true, OAuth: true, Collection: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	focused := store.OperationalServices()
-	if err := operational.ValidateOperationalServices(store.Capabilities(), focused, operational.Requirements{
+	services := store.OperationalServices()
+	if err := operational.ValidateOperationalServices(store.Capabilities(), services, operational.Requirements{
 		SingleProcess: true, AllowVolatile: true, OAuth: true, Collection: true,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	t.Run("session-cas-and-logout", func(t *testing.T) {
-		oauth := services.OAuth
-		if err := oauth.PutSession(ctx, "session", "encrypted-original", time.Hour); err != nil {
+		sessions := services.Sessions
+		if err := sessions.PutSession(ctx, "session", "encrypted-original", time.Hour); err != nil {
 			t.Fatal(err)
 		}
-		saved, err := oauth.CompareSession(ctx, "session", "encrypted-original", "encrypted-refresh", time.Hour)
+		saved, err := sessions.CompareSession(ctx, "session", "encrypted-original", "encrypted-refresh", time.Hour)
 		if err != nil || !saved {
 			t.Fatalf("refresh: %t, %v", saved, err)
 		}
-		if _, err := oauth.InvalidateSession(ctx, "session", "encrypted-original", ""); !errors.Is(err, operational.ErrConflict) {
+		if _, err := services.SessionInvalidator.InvalidateSession(ctx, "session", "encrypted-original", ""); !errors.Is(err, operational.ErrConflict) {
 			t.Fatalf("stale logout: %v", err)
 		}
-		value, err := oauth.InvalidateSession(ctx, "session", "encrypted-refresh", "")
+		value, err := services.SessionInvalidator.InvalidateSession(ctx, "session", "encrypted-refresh", "")
 		if err != nil || value != "encrypted-refresh" {
 			t.Fatalf("stage: %q, %v", value, err)
 		}
-		saved, err = oauth.CompareSession(ctx, "session", "encrypted-refresh", "resurrected", time.Hour)
+		saved, err = sessions.CompareSession(ctx, "session", "encrypted-refresh", "resurrected", time.Hour)
 		if err != nil || saved {
 			t.Fatalf("resurrected: %t, %v", saved, err)
 		}
-		if err := oauth.QueueRevocation(ctx, "session", "newer-encrypted", ""); err != nil {
+		if err := services.Revocations.QueueRevocation(ctx, "session", "newer-encrypted", ""); err != nil {
 			t.Fatal(err)
 		}
-		if err := oauth.CompleteRevocation(ctx, "session", value, ""); err != nil {
+		if err := services.Revocations.CompleteRevocation(ctx, "session", value, ""); err != nil {
 			t.Fatal(err)
 		}
-		record, err := oauth.PendingRevocation(ctx, "")
+		record, err := services.Revocations.PendingRevocation(ctx, "")
 		if err != nil || record.Value != "newer-encrypted" {
 			t.Fatalf("stale completion: %#v, %v", record, err)
 		}
-		if err := oauth.CompleteRevocation(ctx, "session", record.Value, ""); err != nil {
+		if err := services.Revocations.CompleteRevocation(ctx, "session", record.Value, ""); err != nil {
 			t.Fatal(err)
 		}
 	})
 	t.Run("atomic-delivery-capacity", func(t *testing.T) {
-		queue := services.Collection
+		queue := services.Queue
 		if err := queue.EnsureQueue(ctx, "admission", "workers"); err != nil {
 			t.Fatal(err)
 		}
@@ -144,7 +138,7 @@ func conformance(t *testing.T, store operational.Store) {
 		var wg sync.WaitGroup
 		for range 32 {
 			wg.Go(func() {
-				result, err := queue.AdmitDelivery(ctx, request)
+				result, err := services.Admission.AdmitDelivery(ctx, request)
 				if err != nil {
 					t.Error(err)
 					return
@@ -159,7 +153,7 @@ func conformance(t *testing.T, store operational.Store) {
 			t.Fatalf("admissions = %d", admitted.Load())
 		}
 		request.Delivery = "retryable-delivery"
-		if _, err := queue.AdmitDelivery(ctx, request); !errors.Is(err, operational.ErrCapacity) {
+		if _, err := services.Admission.AdmitDelivery(ctx, request); !errors.Is(err, operational.ErrCapacity) {
 			t.Fatalf("capacity: %v", err)
 		}
 		messages, err := queue.ReadTasks(ctx, operational.QueueRead{Queue: "admission", Group: "workers", Consumer: "one", Count: 1})
@@ -169,13 +163,13 @@ func conformance(t *testing.T, store operational.Store) {
 		if err := queue.CompleteTask(ctx, "admission", "workers", messages[0].ID); err != nil {
 			t.Fatal(err)
 		}
-		result, err := queue.AdmitDelivery(ctx, request)
+		result, err := services.Admission.AdmitDelivery(ctx, request)
 		if err != nil || result != operational.DeliveryEnqueued {
 			t.Fatalf("capacity consumed delivery: %d, %v", result, err)
 		}
 	})
 	t.Run("delay-and-ownership", func(t *testing.T) {
-		queue := services.Collection
+		queue := services.Queue
 		if err := queue.EnsureQueue(ctx, "retry", "workers"); err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +201,7 @@ func conformance(t *testing.T, store operational.Store) {
 		if err != nil || promoted != 1 {
 			t.Fatalf("promotion: %d, %v", promoted, err)
 		}
-		lock := services.Coordination
+		lock := services.Leases
 		acquired, err := lock.TryLock(ctx, "owned", "one", time.Hour)
 		if err != nil || !acquired {
 			t.Fatalf("lock: %t, %v", acquired, err)
@@ -242,12 +236,12 @@ func conformance(t *testing.T, store operational.Store) {
 		}
 		canceled, cancel := context.WithCancel(ctx)
 		cancel()
-		if err := services.Diagnostics.Ping(canceled); !errors.Is(err, context.Canceled) {
+		if err := services.Health.Ping(canceled); !errors.Is(err, context.Canceled) {
 			t.Fatalf("canceled operation: %v", err)
 		}
 	})
 	t.Run("in-flight-blocking-read-cancellation", func(t *testing.T) {
-		queue := services.Collection
+		queue := services.Queue
 		if err := queue.EnsureQueue(ctx, "cancel-blocking-read", "workers"); err != nil {
 			t.Fatal(err)
 		}
@@ -271,8 +265,84 @@ func conformance(t *testing.T, store operational.Store) {
 		case <-time.After(time.Second):
 			t.Fatal("blocking read ignored cancellation")
 		}
-		if err := services.Diagnostics.Ping(ctx); err != nil {
+		if err := services.Health.Ping(ctx); err != nil {
 			t.Fatalf("cancellation poisoned subsequent operations: %v", err)
+		}
+	})
+	t.Run("focused-cache-limits-state-and-metadata", func(t *testing.T) {
+		cache := services.Cache
+		if err := cache.CacheMarketplaceRegistry(ctx, "registry", "generation", []byte("cached"), time.Hour); err != nil {
+			t.Fatal(err)
+		}
+		if value, err := cache.CachedMarketplaceRegistry(ctx, "registry", "generation"); err != nil || string(value) != "cached" {
+			t.Fatalf("cache: %q, %v", value, err)
+		}
+		limit, err := services.RequestLimiter.TakeRateLimitTokens(ctx, "requests", 3, time.Hour, 2)
+		if err != nil || !limit.Allowed || limit.Remaining != 1 {
+			t.Fatalf("request limit: %+v, %v", limit, err)
+		}
+		limit, err = services.RequestLimiter.TakeRateLimitTokens(ctx, "requests", 3, time.Hour, 2)
+		if err != nil || limit.Allowed {
+			t.Fatalf("exhausted request limit: %+v, %v", limit, err)
+		}
+		if err := services.State.SetOperationalState(ctx, "checkpoint", []byte("saved")); err != nil {
+			t.Fatal(err)
+		}
+		if value, err := services.State.OperationalState(ctx, "checkpoint"); err != nil || string(value) != "saved" {
+			t.Fatalf("state: %q, %v", value, err)
+		}
+		if _, err := services.Collection.AddMembers(ctx, "enrollment", "octo/repo"); err != nil {
+			t.Fatal(err)
+		}
+		if present, err := services.Collection.HasMember(ctx, "enrollment", "octo/repo"); err != nil || !present {
+			t.Fatalf("metadata: %t, %v", present, err)
+		}
+		reset := time.Now().Add(time.Hour).Unix()
+		if err := services.RateLimits.ObserveRateLimit(ctx, "legacy-budget", "installation", 30, reset); err != nil {
+			t.Fatal(err)
+		}
+		result, err := services.RateLimits.ReserveRateLimit(ctx, "legacy-budget", "installation", 10, 5, time.Now().Unix())
+		if err != nil || result != 0 {
+			t.Fatalf("rate-limit state: %d, %v", result, err)
+		}
+		if value, err := services.Collection.ReadAttribute(ctx, "legacy-budget", "installation"); err != nil || value == "" {
+			t.Fatalf("rate-limit metadata: %q, %v", value, err)
+		}
+		if err := services.IngestionMetrics.IncrementIngestionCounter(ctx, "webhookReceived"); err != nil {
+			t.Fatal(err)
+		}
+		if counters, _, err := services.IngestionMetrics.IngestionHealth(ctx); err != nil || counters["webhookReceived"] != 1 {
+			t.Fatalf("metrics: %v, %v", counters, err)
+		}
+		if err := services.Backend.Maintain(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if health, err := services.Health.Health(ctx); err != nil || !health.Ready {
+			t.Fatalf("health: %+v, %v", health, err)
+		}
+	})
+	t.Run("focused-delivery-reservations", func(t *testing.T) {
+		deliveries := services.Deliveries
+		reserved, err := deliveries.ReserveDelivery(ctx, "reserved-delivery", time.Hour)
+		if err != nil || reserved != operational.DeliveryReserved {
+			t.Fatalf("reserve: %d, %v", reserved, err)
+		}
+		reserved, err = deliveries.ReserveDelivery(ctx, "reserved-delivery", time.Hour)
+		if err != nil || reserved != operational.DeliveryInProgress {
+			t.Fatalf("concurrent reserve: %d, %v", reserved, err)
+		}
+		if err := deliveries.ReleaseDeliveryReservation(ctx, "reserved-delivery"); err != nil {
+			t.Fatal(err)
+		}
+		if fresh, err := deliveries.RememberDelivery(ctx, "reserved-delivery", time.Hour); err != nil || !fresh {
+			t.Fatalf("commit: %t, %v", fresh, err)
+		}
+		reserved, err = deliveries.ReserveDelivery(ctx, "reserved-delivery", time.Hour)
+		if err != nil || reserved != operational.DeliveryAlreadyCommitted {
+			t.Fatalf("committed reserve: %d, %v", reserved, err)
+		}
+		if err := deliveries.ForgetDelivery(ctx, "reserved-delivery"); err != nil {
+			t.Fatal(err)
 		}
 	})
 }
@@ -284,26 +354,26 @@ func TestCapabilitiesRejectInvalidServices(t *testing.T) {
 	}
 	defer func() { _ = store.Close() }()
 	requirements := operational.Requirements{OAuth: true, Collection: true, SingleProcess: true, AllowVolatile: true}
-	if err := operational.Validate(store.Capabilities(), store.Services(), requirements); err != nil {
+	if err := operational.ValidateOperationalServices(store.Capabilities(), store.OperationalServices(), requirements); err != nil {
 		t.Fatal(err)
 	}
 	requirements.AllowVolatile = false
-	if err := operational.Validate(store.Capabilities(), store.Services(), requirements); err == nil {
+	if err := operational.ValidateOperationalServices(store.Capabilities(), store.OperationalServices(), requirements); err == nil {
 		t.Fatal("volatile state accepted without acknowledgement")
 	}
 	requirements.AllowVolatile = true
 	requirements.SingleProcess = false
-	if err := operational.Validate(store.Capabilities(), store.Services(), requirements); err == nil {
+	if err := operational.ValidateOperationalServices(store.Capabilities(), store.OperationalServices(), requirements); err == nil {
 		t.Fatal("process-only state accepted for multiple processes")
 	}
 	var absent *memory.Store
 	if err := operational.CheckStore(absent); !errors.Is(err, operational.ErrUnavailable) {
 		t.Fatalf("typed-nil store: %v", err)
 	}
-	services := store.Services()
-	services.OAuth = absent
+	services := store.OperationalServices()
+	services.Sessions = absent
 	requirements.SingleProcess = true
-	if err := operational.Validate(store.Capabilities(), services, requirements); err == nil {
+	if err := operational.ValidateOperationalServices(store.Capabilities(), services, requirements); err == nil {
 		t.Fatal("typed-nil service accepted")
 	}
 	focused := store.OperationalServices()

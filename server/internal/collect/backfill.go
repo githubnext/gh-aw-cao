@@ -74,7 +74,8 @@ type RunQuotaService interface {
 // empty canonical database with zero GitHub requests. GitHub enumeration then
 // repairs enrollment and admits durable repository and historical-run tasks.
 type Backfill struct {
-	Store         operational.CollectionStore
+	StateStore    operational.StateStore
+	Metadata      operational.CollectionMetadata
 	Enrollment    Enrollment
 	Queue         Queue
 	Projector     Projector
@@ -346,7 +347,7 @@ func (b Backfill) enqueueHistoricalRuns(
 		if repository.installationID <= 0 {
 			continue
 		}
-		if b.Enrollment.Store != nil {
+		if b.Enrollment.Metadata != nil {
 			owner, err := b.Enrollment.InstallationFor(ctx, repository.name)
 			if err != nil {
 				return queued, failures, err
@@ -379,7 +380,7 @@ func (b Backfill) enqueueHistoricalRuns(
 			if err := ctx.Err(); err != nil {
 				return queued, failures, err
 			}
-			cursorValue, err := b.Store.ReadAttribute(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
+			cursorValue, err := b.Metadata.ReadAttribute(ctx, runBackfillCursorKey, runBackfillCursorField(repository))
 			if err != nil {
 				return queued, failures, err
 			}
@@ -497,7 +498,7 @@ func (b Backfill) enqueueHistoricalRuns(
 			if err != nil {
 				return queued, failures, err
 			}
-			if err := b.Store.WriteAttribute(
+			if err := b.Metadata.WriteAttribute(
 				ctx, runBackfillCursorKey, runBackfillCursorField(page.repository), string(payload),
 			); err != nil {
 				return queued, failures, err
@@ -745,7 +746,7 @@ func (b Backfill) publish(ctx context.Context, state BackfillState) error {
 	if err != nil {
 		return err
 	}
-	if err := b.Store.SetOperationalState(ctx, backfillStateKey, payload); err != nil {
+	if err := b.StateStore.SetOperationalState(ctx, backfillStateKey, payload); err != nil {
 		backfillLog.Printf("backfill checkpoint write failed")
 		return errors.New("persist backfill checkpoint")
 	}
@@ -754,7 +755,7 @@ func (b Backfill) publish(ctx context.Context, state BackfillState) error {
 
 // State reads the last published cold-start checkpoint.
 func (b Backfill) State(ctx context.Context) (BackfillState, error) {
-	payload, err := b.Store.OperationalState(ctx, backfillStateKey)
+	payload, err := b.StateStore.OperationalState(ctx, backfillStateKey)
 	if err != nil || len(payload) == 0 {
 		return BackfillState{Phase: "idle"}, err
 	}

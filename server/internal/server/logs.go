@@ -44,12 +44,12 @@ func collectionQueueCounts(ctx context.Context, queue collect.Queue) (depth, pen
 }
 
 func (a *App) serverLogRedis(ctx context.Context) serverLogRedis {
-	if a.store == nil {
+	if a.services.IngestionMetrics == nil {
 		return serverLogRedis{Status: "not-configured"}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	counters, _, err := a.store.IngestionHealth(ctx)
+	counters, _, err := a.services.IngestionMetrics.IngestionHealth(ctx)
 	if err != nil {
 		serverLogsLog.Printf("server log snapshot unavailable stage=ingestion-health")
 		return serverLogRedis{Status: "unavailable"}

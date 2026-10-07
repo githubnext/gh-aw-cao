@@ -71,7 +71,7 @@ func (checkpointFailureClient) DoMany(_ context.Context, _ [][]string) ([]any, e
 
 func TestBackfillDoesNotReportSuccessWhenCheckpointCannotBePersisted(t *testing.T) {
 	store := redisx.NewStore(checkpointFailureClient{}, "checkpoint-failure")
-	state, err := (Backfill{Store: store}).Run(t.Context())
+	state, err := (Backfill{StateStore: store, Metadata: store}).Run(t.Context())
 	if err == nil || state.Phase != "failed" || state.CompletedAt == "" {
 		t.Fatalf("checkpoint failure was hidden: %+v, %v", state, err)
 	}

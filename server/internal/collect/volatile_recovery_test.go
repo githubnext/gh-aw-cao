@@ -40,8 +40,7 @@ func volatileBackfill(t *testing.T) Backfill {
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
 	}
-	return Backfill{
-		Store: store, Enrollment: Enrollment{Store: store}, Queue: Queue{Store: store},
+	return Backfill{StateStore: store, Metadata: store, Enrollment: Enrollment{Metadata: store, Leases: store}, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store},
 		Lake: lake, ReconstructScope: true, ScopeLimit: 100,
 	}
 }

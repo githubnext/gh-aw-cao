@@ -72,7 +72,7 @@ func TestCollectionHealthQueryRunsThroughServerQueryEngine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := &App{store: redisx.NewStore(client, "health-query-test"), database: database}
+	app := &App{services: redisx.NewStore(client, "health-query-test").OperationalServices(), database: database}
 	input := queryRequest{
 		Queries:     []query.Definition{{Name: "ingestion-health", From: collectionHealthSourceName}},
 		SourceNames: []string{"ingestion-health"},

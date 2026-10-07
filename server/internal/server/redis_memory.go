@@ -67,14 +67,14 @@ func RedisMaxBytesFromEnv(explicit int64) (int64, error) {
 func (a *App) maintainRedisCaches(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, redisMaintenanceTimeout)
 	defer cancel()
-	err := a.store.Maintain(ctx)
+	err := a.services.Backend.Maintain(ctx)
 	var pressure *operational.MaintenanceError
 	if errors.As(err, &pressure) {
 		a.config.Logger.Printf("Operational cache maintenance pressure used_bytes=%d budget_bytes=%d disposable_cache_entries_evicted=%d action=inspect_operational_backend_capacity_and_preserve_protected_state",
 			pressure.UsedBytes, pressure.BudgetBytes, pressure.Evicted)
 	}
 	if err == nil {
-		health, healthErr := a.store.Health(ctx)
+		health, healthErr := a.services.Health.Health(ctx)
 		if healthErr != nil {
 			return healthErr
 		}
@@ -102,7 +102,7 @@ func (a *App) runRedisMaintenance(ctx context.Context, interval time.Duration) {
 }
 
 func (a *App) initializeRedisMaintenance(ctx context.Context) error {
-	if a.store == nil {
+	if a.services.Backend == nil {
 		return nil
 	}
 	err := a.maintainRedisCaches(ctx)

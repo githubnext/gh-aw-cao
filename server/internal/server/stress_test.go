@@ -152,7 +152,7 @@ func newStressHarness(tb testing.TB, options stressOptions) *stressHarness {
 	if floor <= 0 {
 		floor = 1
 	}
-	governor := &githubapp.Budget{Store: store, Floor: floor, Cost: 1}
+	governor := &githubapp.Budget{Metadata: store, Store: store, Floor: floor, Cost: 1}
 	app.memory = &repositorymemory.RemoteResolver{
 		Cache:             store,
 		Installations:     fixedInstallation(stressInstallationID),

@@ -164,7 +164,8 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.oauth.store = redisx.NewStore(unavailable, "test")
+	unavailableStore := redisx.NewStore(unavailable, "test")
+	app.oauth.sessions, app.oauth.invalidator, app.oauth.revocations = unavailableStore, unavailableStore, unavailableStore
 	failedSave := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodGet, "/auth/callback?code="+callbackCode+"&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)

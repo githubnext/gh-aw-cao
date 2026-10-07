@@ -79,9 +79,7 @@ func CheckStore(store Store) error {
 
 type Store interface {
 	Backend
-	Services() Services
 	OperationalServices() OperationalServices
-	Health(context.Context) (Health, error)
 }
 
 // Backend owns the lifecycle and guarantees of one operational backend.
@@ -117,36 +115,11 @@ type OperationalServices struct {
 	IngestionMetrics   IngestionMetrics
 }
 
-type Services struct {
-	Cache         Cache
-	RequestLimits RequestLimiter
-	OAuth         OAuthStore
-	GitHubQuota   QuotaStore
-	Collection    CollectionStore
-	Coordination  Coordination
-	Diagnostics   Diagnostics
-}
-
 type Requirements struct {
 	SingleProcess bool
 	AllowVolatile bool
 	OAuth         bool
 	Collection    bool
-}
-
-// Validate checks guarantees rather than adapter names. Atomicity is required
-// by every service contract and cannot be disabled with a capability flag.
-func Validate(c Capabilities, s Services, r Requirements) error {
-	return validateFeatures([]serviceFeature{
-		{"cache", c.Cache, !nilService(s.Cache), true},
-		{"request limits", c.RequestLimits, !nilService(s.RequestLimits), true},
-		{"sessions", c.Sessions, !nilService(s.OAuth), r.OAuth},
-		{"revocations", c.Revocations, !nilService(s.OAuth), r.OAuth},
-		{"github quota", c.GitHubQuota, !nilService(s.GitHubQuota), true},
-		{"collection", c.Collection, !nilService(s.Collection), r.Collection},
-		{"coordination", c.Coordination, !nilService(s.Coordination), true},
-		{"diagnostics", c.Diagnostics, !nilService(s.Diagnostics), true},
-	}, r)
 }
 
 type serviceFeature struct {
@@ -244,14 +217,7 @@ type RequestLimiter interface {
 	TakeRateLimitTokens(context.Context, string, int, time.Duration, int) (RateLimitResult, error)
 }
 
-// OAuth records are opaque encrypted values. Invalidating a session and
-// staging its revocation must be one atomic transition.
-type OAuthStore interface {
-	SessionStore
-	SessionInvalidator
-	RevocationQueue
-}
-
+// Session records are opaque encrypted values.
 type SessionStore interface {
 	SessionRecord(context.Context, string) (string, error)
 	PutSession(context.Context, string, string, time.Duration) error
@@ -281,12 +247,6 @@ type IssueUpdate struct {
 	ClosedAt, ObservedAt     string
 }
 
-type Coordination interface {
-	LeaseStore
-	StateStore
-	DeliveryDeduplicator
-}
-
 type LeaseStore interface {
 	TryLock(context.Context, string, string, time.Duration) (bool, error)
 	RenewLock(context.Context, string, string, time.Duration) (bool, error)
@@ -304,11 +264,6 @@ type DeliveryDeduplicator interface {
 	ForgetDelivery(context.Context, string) error
 	ReserveDelivery(context.Context, string, time.Duration) (DeliveryReservation, error)
 	ReleaseDeliveryReservation(context.Context, string) error
-}
-
-type Diagnostics interface {
-	IngestionMetrics
-	Ping(context.Context) error
 }
 
 type IngestionMetrics interface {
@@ -399,24 +354,20 @@ type DeliveryAdmissionStore interface {
 // CollectionMetadata owns logical enrollment indexes and checkpoint attributes.
 // Names are namespace-local domain identities, never physical storage keys.
 type CollectionMetadata interface {
+	AttributeReader
 	AddMembers(context.Context, string, ...string) (int64, error)
 	RemoveMembers(context.Context, string, ...string) error
 	HasMember(context.Context, string, string) (bool, error)
 	MemberCount(context.Context, string) (int64, error)
 	ScanMembers(context.Context, string, string, int) ([]string, string, error)
-	ReadAttribute(context.Context, string, string) (string, error)
 	WriteAttribute(context.Context, string, string, string) error
 	DeleteAttribute(context.Context, string, string) error
 	Clear(context.Context, string) error
 	TransferOwners(context.Context, string, string, string, int64, []string) (int, error)
 }
 
-type CollectionStore interface {
-	TaskQueue
-	DeliveryAdmissionStore
-	CollectionMetadata
-	Coordination
-	Diagnostics
+type AttributeReader interface {
+	ReadAttribute(context.Context, string, string) (string, error)
 }
 
 type GitHubQuotaState struct {
@@ -454,12 +405,6 @@ type GitHubQuotaUsageSample struct {
 	Bucket                string
 	Slot                  time.Time
 	Limit, Used, Reserved int64
-}
-
-type QuotaStore interface {
-	GitHubQuotaStore
-	RateLimitStateStore
-	ReadAttribute(context.Context, string, string) (string, error)
 }
 
 type GitHubQuotaStore interface {

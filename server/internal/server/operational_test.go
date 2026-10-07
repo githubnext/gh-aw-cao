@@ -32,7 +32,7 @@ func memoryOAuthApp(t *testing.T, githubURL string) *App {
 	profile.SingleProcess = true
 	profile.SingleReplica = true
 	profile.RequiresRedis = false
-	app, err := New(t.Context(), store, Config{
+	app, err := New(t.Context(), focusedTestStore(store), Config{
 		Database: constructorDatabase(), SiteDirectory: t.TempDir(),
 		HostProfile: profile, Listen: "0.0.0.0:8443",
 		CertFile: "certificate.pem", KeyFile: "key.pem",
@@ -166,7 +166,7 @@ func TestMemoryCollectorHTTPBootstrapAndPopulatedAdminBackfill(t *testing.T) {
 	}
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	const secret = "memory-integration-webhook-secret"
-	app, err := New(t.Context(), store, Config{
+	app, err := New(t.Context(), focusedTestStore(store), Config{
 		Database: data, DatabaseQueriesPath: backfillDatabaseQueries, SiteDirectory: t.TempDir(),
 		HostProfile: host.Profile, Listen: "0.0.0.0:8443", CertFile: "certificate.pem", KeyFile: "key.pem",
 		SingleReplicaConfirmed: true, AllowVolatile: true,

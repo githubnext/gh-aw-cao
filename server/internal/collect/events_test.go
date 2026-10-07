@@ -9,11 +9,11 @@ import (
 
 func TestIssueDeliveryQueuesRepositoryRefresh(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 42, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}

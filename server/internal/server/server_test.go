@@ -347,8 +347,7 @@ func TestEventStreamOutlivesHTTPWriteTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := &App{
-		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+	app := &App{services: redisx.NewStore(client, "stream-test").OperationalServices(), hub: newEventHub(),
 		database:    database,
 		config:      Config{HostProfile: localHostProfile()},
 		accessToken: testAccessToken,
@@ -397,8 +396,7 @@ func TestEventStreamSupportsWriterWithoutDeadlineControl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := &App{
-		store: redisx.NewStore(client, "stream-test"), hub: newEventHub(),
+	app := &App{services: redisx.NewStore(client, "stream-test").OperationalServices(), hub: newEventHub(),
 		database:    database,
 		config:      Config{HostProfile: localHostProfile()},
 		accessToken: testAccessToken,
@@ -747,7 +745,7 @@ func TestHealthAndReadinessExposeAuthoritativeEvaluatedAt(t *testing.T) {
 	seedDatabase(t, database, map[string]model.Source{
 		"$runs": {Source: "$runs", Rows: []model.Row{}},
 	})
-	app := &App{store: redisx.NewStore(emptyRedisClient{}, "empty-test"), database: database}
+	app := &App{services: redisx.NewStore(emptyRedisClient{}, "empty-test").OperationalServices(), database: database}
 	for _, path := range []string{"/api/v1/health", "/api/readiness"} {
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://localhost"+path, nil)
 		response := httptest.NewRecorder()

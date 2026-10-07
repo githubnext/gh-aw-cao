@@ -1,36 +1,14 @@
 package server
 
-import (
-	"context"
-
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-)
-
-type appStore interface {
-	operational.Cache
-	operational.RequestLimiter
-	operational.Coordination
-	operational.Diagnostics
-	Capabilities() operational.Capabilities
-	Health(context.Context) (operational.Health, error)
-	Maintain(context.Context) error
-}
-
-type appServices struct {
-	operational.Store
-	operational.Cache
-	operational.RequestLimiter
-	operational.Coordination
-	operational.Diagnostics
-}
+import "github.com/githubnext/gh-aw-cao/server/internal/operational"
 
 type repositoryMemoryServices struct {
 	operational.Cache
-	operational.Coordination
+	operational.LeaseStore
 }
 
 func (a *App) operationalHealth(connected bool) map[string]any {
-	c := a.store.Capabilities()
+	c := a.services.Backend.Capabilities()
 	capability := func(value operational.Capability) map[string]string {
 		scope := "unsupported"
 		switch value.Scope {

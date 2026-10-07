@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -51,6 +52,116 @@ func TestDashboardQueryCorpusUsesPostgres(t *testing.T) {
 			if len(metrics.FallbackOperations) != 0 {
 				return fmt.Errorf("dashboard query %q used Go fallback operations: %v",
 					definition.Name, metrics.FallbackOperations)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWorkflowListContractUsesPostgres(t *testing.T) {
+	content, err := os.ReadFile("../../../dashboard/site/test/fixtures/workflow-list-contract.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contract struct {
+		Cases []struct {
+			Repository, Workflow, Run, Status string
+			HasObservedRun                    bool
+		}
+	}
+	if err := json.Unmarshal(content, &contract); err != nil {
+		t.Fatal(err)
+	}
+	if len(contract.Cases) == 0 {
+		t.Fatal("workflow list contract has no cases")
+	}
+	inputs := map[string]model.Source{
+		"$repositories": {Rows: []model.Row{}},
+		"$workflows":    {Rows: []model.Row{}},
+		"$runs":         {Rows: []model.Row{}},
+	}
+	repositories := map[string]bool{}
+	for index, testcase := range contract.Cases {
+		owner, repository, valid := strings.Cut(testcase.Repository, "/")
+		if !valid || owner == "" || repository == "" {
+			t.Fatalf("invalid fixture repository %q", testcase.Repository)
+		}
+		if !repositories[testcase.Repository] {
+			source := inputs["$repositories"]
+			source.Rows = append(source.Rows, model.Row{"id": testcase.Repository, "owner": owner, "name": repository})
+			inputs["$repositories"] = source
+			repositories[testcase.Repository] = true
+		}
+		workflowID := testcase.Repository + ":" + testcase.Workflow
+		workflows := inputs["$workflows"]
+		workflows.Rows = append(workflows.Rows, model.Row{
+			"id": workflowID, "repositoryId": testcase.Repository, "path": testcase.Workflow,
+			"name": testcase.Workflow, "role": "standalone", "state": "active", "rolloutMode": "review",
+		})
+		inputs["$workflows"] = workflows
+		if testcase.Run == "" {
+			continue
+		}
+		at := fmt.Sprintf("2026-10-07T%02d:00:00Z", 12-index)
+		run := model.Row{
+			"id": workflowID + ":latest", "repositoryId": testcase.Repository, "workflowId": workflowID,
+			"owner": owner, "repository": repository, "githubRunId": testcase.Run,
+			"attempt": 2, "createdAt": at, "status": testcase.Status,
+		}
+		if testcase.Status != "queued" {
+			run["startedAt"] = at
+		}
+		if testcase.Status == "success" || testcase.Status == "failure" {
+			run["status"], run["conclusion"] = "completed", testcase.Status
+		}
+		runs := inputs["$runs"]
+		runs.Rows = append(runs.Rows, run, model.Row{
+			"id": workflowID + ":earlier-attempt", "repositoryId": testcase.Repository, "workflowId": workflowID,
+			"owner": owner, "repository": repository, "githubRunId": testcase.Run,
+			"attempt": 1, "startedAt": "2026-10-06T12:00:00Z", "status": "completed", "conclusion": "failure",
+		}, model.Row{
+			"id": workflowID + ":older-run", "repositoryId": testcase.Repository, "workflowId": workflowID,
+			"owner": owner, "repository": repository, "githubRunId": "1000",
+			"attempt": 1, "startedAt": "2026-10-05T12:00:00Z", "status": "completed", "conclusion": "success",
+		})
+		inputs["$runs"] = runs
+	}
+	store := integrationDatabase(t)
+	seedDatabase(t, store, inputs)
+	definitions, parameters, err := dashboardSQLCorpus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bindDashboardSQLCorpusInputs(definitions, parameters); err != nil {
+		t.Fatal(err)
+	}
+	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.NativeReader) error {
+		sources, metrics, err := reader.ExecuteSQLPlan(ctx, definitions, []string{"workflow-list"})
+		if err != nil {
+			return err
+		}
+		if len(metrics.FallbackOperations) != 0 {
+			t.Fatalf("workflow list used Go fallback operations: %v", metrics.FallbackOperations)
+		}
+		rows := sources["workflow-list"].Rows
+		if len(rows) != len(contract.Cases) {
+			t.Fatalf("workflow list has %d rows, want %d", len(rows), len(contract.Cases))
+		}
+		for index, testcase := range contract.Cases {
+			row := rows[index]
+			if row["repository"] != testcase.Repository || row["workflow"] != testcase.Workflow ||
+				row["latest-run-status"] != testcase.Status || row["has-observed-run"] != testcase.HasObservedRun {
+				t.Errorf("workflow list row %d = %+v, want %+v", index, row, testcase)
+			}
+			if testcase.HasObservedRun {
+				if row["latest-run"] != testcase.Run {
+					t.Errorf("workflow list run %d = %#v, want textual %q", index, row["latest-run"], testcase.Run)
+				}
+			} else if row["latest-run"] != nil || row["latest-run-at"] != nil {
+				t.Errorf("unobserved workflow has run evidence: %+v", row)
 			}
 		}
 		return nil

@@ -17,8 +17,17 @@ sessions, atomic session invalidation, revocations, leases, state, delivery
 deduplication, task queue, atomic delivery admission, collection metadata,
 GitHub quota, rate-limit state, health, and ingestion metrics. One backend MAY
 implement multiple services; the split does not relax atomic transitions.
-Consumers MUST depend on narrow cache, request-limit, OAuth, quota, collection,
-coordination, or diagnostic contracts. Raw Redis commands, physical keys,
+Only composition boundaries MAY consume `Store` and its
+`OperationalServices()` bundle. Runtime consumers MUST retain the focused
+contracts they actually use: OAuth separates sessions, atomic invalidation,
+and revocations; collection separates metadata, leases, state, task queues,
+delivery admission, deduplication, and metrics; the legacy rate-limit governor
+separates rate-limit state from attribute reads. The obsolete `Services()`
+bundle and aggregate OAuth, collection, quota, coordination, and diagnostic
+interfaces MUST NOT be reintroduced as compatibility paths.
+Shared adapter conformance MUST execute through these same focused services,
+including transitions that span sessions and revocations or queues and delivery
+admission. Raw Redis commands, physical keys,
 streams, scripts, adapter assertions, and backend-name decisions MUST remain
 inside adapters and construction/configuration code.
 

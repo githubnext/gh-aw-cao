@@ -8,6 +8,40 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
 )
 
+type focusedDoctorStore struct {
+	operational.Backend
+	services operational.OperationalServices
+}
+
+func (s focusedDoctorStore) OperationalServices() operational.OperationalServices {
+	return s.services
+}
+
+func TestDoctorRejectsIncompleteFocusedServices(t *testing.T) {
+	store, err := memory.New(memory.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	for name, remove := range map[string]func(*operational.OperationalServices){
+		"health":    func(s *operational.OperationalServices) { s.Health = nil },
+		"queue":     func(s *operational.OperationalServices) { s.Queue = nil },
+		"admission": func(s *operational.OperationalServices) { s.Admission = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			services := store.OperationalServices()
+			remove(&services)
+			d := Doctor{Backend: "memory", Store: focusedDoctorStore{Backend: store, services: services}}
+			if check := d.checkOperational(t.Context()); check.Status != StatusFail {
+				t.Fatalf("incomplete operational services appeared healthy: %+v", check)
+			}
+			if check := d.checkOperationalCapabilities(t.Context()); check.Status != StatusFail {
+				t.Fatalf("incomplete operational capabilities accepted: %+v", check)
+			}
+		})
+	}
+}
+
 func TestOperationalMemoryDoctorUsesOwningStateAndSkipsRedisProviderChecks(t *testing.T) {
 	store, err := memory.New(memory.Config{})
 	if err != nil {

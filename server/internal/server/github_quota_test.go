@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 type usageQuotaStore struct {
-	githubquota.Store
+	operational.GitHubQuotaStore
 	samples []redisx.GitHubQuotaUsageSample
 	now     time.Time
 	err     error
@@ -104,10 +105,8 @@ func TestGitHubQuotaUsageQueryRunsThroughServerQueryEngine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := &App{
-		store:    redisx.NewStore(client, "quota-query-test"),
-		database: database,
-		quota:    newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
+	app := &App{services: redisx.NewStore(client, "quota-query-test").OperationalServices(), database: database,
+		quota: newUsageQuota(t, usageQuotaStore{samples: usageSamples(), now: usageNow}),
 	}
 	input := queryRequest{
 		Queries:     []query.Definition{{Name: "github-api-usage", From: gitHubQuotaUsageSourceName}},

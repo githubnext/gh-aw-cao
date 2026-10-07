@@ -17,6 +17,16 @@ state. The PostgreSQL operational adapter supports durable,
 deployment-scoped services in separate tables. No operational adapter holds or
 queries dashboard entities.
 
+Operational composition uses only the focused `OperationalServices` bundle.
+The provider owns lifecycle through `Backend`; consumers retain just the cache,
+limiter, session, invalidation, revocation, lease, state, delivery, queue,
+admission, metadata, quota, health, or metrics contracts they use. The old
+`Services()` bundle and aggregate operational interfaces are removed.
+Separately injected services preserve the same backend's atomic transitions;
+the split is not permission to put session invalidation or delivery admission
+across unrelated stores. All three adapters share behavioral conformance over
+the focused contracts.
+
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
@@ -1214,6 +1224,12 @@ The SQL engine reads current native entity tables from PostgreSQL and evaluates
 Dashboard Language operators there. The Go server validates requests, binds
 parameters, enforces resource limits, and serializes bounded results; Redis is
 not a query backend.
+
+SQL `coalesce`, `if`, and union branches must have compatible declared types.
+Run identifiers are text, so the workflow list uses a textual `"0"` missing-run
+fallback before the numeric `greater-than` comparison. Its shared contract
+fixture is checked against both the browser worker and PostgreSQL, including
+queued runs, reruns, and workflows with no observed run.
 
 The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, observation-window frames, input rows, output

@@ -258,11 +258,17 @@ func resolvePrivateKeySource(
 }
 
 func (d Doctor) collectEnrollment() collect.Enrollment {
-	return collect.Enrollment{Store: d.Store.Services().Collection}
+	services := d.Store.OperationalServices()
+	return collect.Enrollment{Metadata: services.Collection, Leases: services.Leases}
 }
 
 func (d Doctor) collectQueue() collect.Queue {
-	return collect.Queue{Store: d.Store.Services().Collection, MaxLength: int64(d.queueMaxLength())}
+	services := d.Store.OperationalServices()
+	return collect.Queue{
+		Tasks: services.Queue, Admission: services.Admission, Metadata: services.Collection,
+		Leases: services.Leases, Deliveries: services.Deliveries, Metrics: services.IngestionMetrics,
+		MaxLength: int64(d.queueMaxLength()),
+	}
 }
 
 func (d Doctor) queueMaxLength() int {
@@ -461,7 +467,7 @@ func (d Doctor) checkBackfill(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
-	state, err := collect.Backfill{Store: d.Store.Services().Collection}.State(ctx)
+	state, err := collect.Backfill{StateStore: d.Store.OperationalServices().State}.State(ctx)
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}
@@ -503,12 +509,13 @@ func (d Doctor) checkBudget(ctx context.Context) Check {
 		return skip
 	}
 	floor := intEnv(d.getenv("CAO_COLLECT_RATE_LIMIT_FLOOR"))
+	services := d.Store.OperationalServices()
 	reporter := collect.Reporter{
 		Enrollment: d.collectEnrollment(),
 		Queue:      d.collectQueue(),
-		Backfill:   collect.Backfill{Store: d.Store.Services().Collection},
-		Budget:     &githubapp.Budget{Store: d.Store.Services().GitHubQuota, Floor: floor},
-		Store:      d.Store.Services().Collection,
+		Backfill:   collect.Backfill{StateStore: services.State},
+		Budget:     &githubapp.Budget{Metadata: services.Collection, Store: services.RateLimits, Floor: floor},
+		Metrics:    services.IngestionMetrics,
 		Data:       d.Postgres,
 	}
 	status, err := reporter.Snapshot(ctx)
@@ -707,7 +714,7 @@ func (d Doctor) checkProjectionLock(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaCollect, title); ok {
 		return skip
 	}
-	held, err := d.Store.Services().Coordination.LockHeld(ctx, "projection")
+	held, err := d.Store.OperationalServices().Leases.LockHeld(ctx, "projection")
 	if err != nil {
 		return failed(id, areaCollect, title, err)
 	}

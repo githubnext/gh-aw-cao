@@ -62,7 +62,7 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 	if err := os.CopyFS(lake.Directory, os.DirFS("../../testdata/deployed-subset")); err != nil {
 		t.Fatal(err)
 	}
-	enrollment := collect.Enrollment{Store: store}
+	enrollment := collect.Enrollment{Metadata: store, Leases: store}
 	github, api, proxy, _ := syntheticGitHub(t, simulator.Scenario{
 		Name: "backfill-replay", Repositories: 1,
 		History: &simulator.History{Days: 1, RunsPerDay: 1, AsOf: started.Add(-time.Minute).UTC().Format(time.RFC3339)},
@@ -71,11 +71,9 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backfill := collect.Backfill{
-		Store: store, Lake: lake, Enrollment: enrollment,
-		Queue: collect.Queue{Store: store, MaxLength: 100},
-		Projector: collect.Projector{
-			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
+	backfill := collect.Backfill{StateStore: store, Metadata: store, Lake: lake, Enrollment: enrollment,
+		Queue: collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 100},
+		Projector: collect.Projector{State: store, Leases: store, Data: data, Lake: lake, Enrollment: enrollment,
 			DatabaseQueriesPath: backfillDatabaseQueries,
 		},
 		Enumerator: github, RunEnumerator: github, Quota: quota, QuotaApp: "simulator", WindowDays: 7,
@@ -269,7 +267,7 @@ func assertBackfillQueueDepth(t *testing.T, ctx context.Context, queue collect.Q
 	if err != nil || depth != 1 {
 		t.Fatalf("durable repository task depth = %d, err=%v", depth, err)
 	}
-	runDepth, err := taskQueueLength(ctx, queue.Store, "collect:run-tasks")
+	runDepth, err := taskQueueLength(ctx, queue.Tasks, "collect:run-tasks")
 	if err != nil || runDepth != 1 {
 		t.Fatalf("durable historical run task depth = %d, err=%v", runDepth, err)
 	}

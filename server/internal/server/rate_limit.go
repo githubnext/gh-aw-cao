@@ -154,7 +154,7 @@ func (a *App) enforceRateLimit(
 	key := policy.name + ":" + hex.EncodeToString(sum[:])
 	ctx, cancel := context.WithTimeout(request.Context(), rateLimitTimeout)
 	defer cancel()
-	result, err := a.store.TakeRateLimitToken(ctx, key, policy.capacity, policy.window)
+	result, err := a.services.RequestLimiter.TakeRateLimitToken(ctx, key, policy.capacity, policy.window)
 	if err != nil {
 		serverLog.Printf("rate limit unavailable policy=%s", policy.name)
 		writeError(response, http.StatusServiceUnavailable, "request rate limiter is unavailable")
@@ -195,7 +195,7 @@ func (a *App) chargeQueryRateLimit(
 	cost = min(cost, reservation.policy.capacity)
 	chargeCtx, cancel := context.WithTimeout(ctx, rateLimitTimeout)
 	defer cancel()
-	result, err := a.store.TakeRateLimitTokens(
+	result, err := a.services.RequestLimiter.TakeRateLimitTokens(
 		chargeCtx,
 		reservation.key,
 		reservation.policy.capacity,

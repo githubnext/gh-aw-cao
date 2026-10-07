@@ -91,7 +91,7 @@ func (s *memoryBudgetStore) ParkRateLimit(
 
 func TestBudgetRefusesToSpendBelowTheFloor(t *testing.T) {
 	store := newMemoryBudgetStore()
-	budget := Budget{Store: store, Floor: 1000, Cost: 500}
+	budget := Budget{Metadata: store, Store: store, Floor: 1000, Cost: 500}
 	ctx := context.Background()
 	reset := time.Now().Add(time.Hour)
 	if err := budget.Observe(ctx, 7, 900, reset); err != nil {
@@ -121,7 +121,7 @@ func TestBudgetRefusesToSpendBelowTheFloor(t *testing.T) {
 
 func TestBudgetParksAnInstallation(t *testing.T) {
 	store := newMemoryBudgetStore()
-	budget := Budget{Store: store, Floor: 100, Cost: 10}
+	budget := Budget{Metadata: store, Store: store, Floor: 100, Cost: 10}
 	ctx := context.Background()
 	if err := budget.Observe(ctx, 3, 5000, time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestBudgetParksAnInstallation(t *testing.T) {
 
 func TestBudgetIsolatesInstallations(t *testing.T) {
 	store := newMemoryBudgetStore()
-	budget := Budget{Store: store, Floor: 100, Cost: 10}
+	budget := Budget{Metadata: store, Store: store, Floor: 100, Cost: 10}
 	ctx := context.Background()
 	if err := budget.Observe(ctx, 1, 200, time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
@@ -180,15 +180,22 @@ func TestBudgetRequiresAStore(t *testing.T) {
 }
 
 func TestBudgetRejectsUnknownHeadroom(t *testing.T) {
-	budget := Budget{Store: newMemoryBudgetStore()}
+	store := newMemoryBudgetStore()
+	budget := Budget{Metadata: store, Store: store}
 	if _, err := budget.Reserve(context.Background(), 1); !errors.Is(err, ErrBudgetUnknown) {
 		t.Fatalf("expected unknown budget, got %v", err)
 	}
 }
 
+func TestBudgetRequiresMetadataForHeadroom(t *testing.T) {
+	if _, _, err := (Budget{Store: newMemoryBudgetStore()}).Headroom(context.Background(), 1); err == nil {
+		t.Fatal("headroom accepted a missing metadata reader")
+	}
+}
+
 func TestBudgetReservationsAreSerialized(t *testing.T) {
 	store := newMemoryBudgetStore()
-	budget := Budget{Store: store, Floor: 100, Cost: 10}
+	budget := Budget{Metadata: store, Store: store, Floor: 100, Cost: 10}
 	if err := budget.Observe(context.Background(), 9, 120, time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +223,7 @@ func TestBudgetReservationsAreSerialized(t *testing.T) {
 
 func TestBudgetObservationDoesNotRestoreReservedHeadroom(t *testing.T) {
 	store := newMemoryBudgetStore()
-	budget := Budget{Store: store, Floor: 1000, Cost: 500}
+	budget := Budget{Metadata: store, Store: store, Floor: 1000, Cost: 500}
 	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 	if err := budget.Observe(context.Background(), 4, 4000, reset); err != nil {
 		t.Fatal(err)
@@ -260,7 +267,7 @@ func TestParseBudgetStateRejectsMalformedValue(t *testing.T) {
 func TestHeadroomToleratesMalformedStoredValue(t *testing.T) {
 	store := newMemoryBudgetStore()
 	store.values[budgetKey+"/5"] = "corrupted"
-	budget := Budget{Store: store}
+	budget := Budget{Metadata: store, Store: store}
 	remaining, parkedTo, err := budget.Headroom(context.Background(), 5)
 	if err != nil {
 		t.Fatalf("expected a malformed stored value to decode to the zero state, got error %v", err)

@@ -38,7 +38,7 @@ func TestQueryCacheTelemetryTracksUsageWithoutPrivateContent(t *testing.T) {
 	client := &queryCacheClient{
 		stats: redisx.QueryCacheStats{MemoryBytes: 4096, Entries: 2, Expired: 1, Evicted: 2},
 	}
-	app := &App{store: redisx.NewStore(client, "private-namespace")}
+	app := &App{services: redisx.NewStore(client, "private-namespace").OperationalServices()}
 	config, err := (QueryCacheConfig{}).resolve()
 	if err != nil {
 		t.Fatal(err)

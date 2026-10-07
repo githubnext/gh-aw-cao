@@ -24,9 +24,8 @@ func TestBackfillRunsEnumerationAndQueuesWork(t *testing.T) {
 			}},
 		},
 	}}
-	enrollment := Enrollment{Store: store}
-	backfill := Backfill{
-		Store: store, Enrollment: enrollment, Queue: Queue{Store: store, MaxLength: 100},
+	enrollment := Enrollment{Metadata: store, Leases: store}
+	backfill := Backfill{StateStore: store, Metadata: store, Enrollment: enrollment, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 100},
 		Lake: Lake{Directory: t.TempDir()}, Enumerator: enumerator,
 		RunEnumerator: runEnumerator,
 	}
@@ -57,7 +56,7 @@ func TestBackfillRunsEnumerationAndQueuesWork(t *testing.T) {
 		t.Fatalf("repository installation = %d, err=%v; want 7", installation, err)
 	}
 
-	leases, err := (Queue{Store: store}).Lease(ctx, "backfill-integration", 10, 0)
+	leases, err := (Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}).Lease(ctx, "backfill-integration", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

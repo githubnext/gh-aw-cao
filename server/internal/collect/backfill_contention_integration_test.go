@@ -17,8 +17,7 @@ func TestBackfillWaitsForConcurrentEnrollmentMutation(t *testing.T) {
 	if acquired, err := store.TryLock(ctx, enrollmentMutationLock, token, time.Second); err != nil || !acquired {
 		t.Fatalf("hold webhook enrollment lease: %t, %v", acquired, err)
 	}
-	backfill := Backfill{
-		Store: store, Enrollment: Enrollment{Store: store}, Queue: Queue{Store: store},
+	backfill := Backfill{StateStore: store, Metadata: store, Enrollment: Enrollment{Metadata: store, Leases: store}, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store},
 		Lake: Lake{Directory: t.TempDir()},
 		Enumerator: fakeRepositoryEnumerator{
 			installations: []githubapp.Installation{{ID: 7}},

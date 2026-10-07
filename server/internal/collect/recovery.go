@@ -27,9 +27,10 @@ const deliveryProgressKey = "collect:delivery-progress"
 // events already recorded in a delivery list costs orders of magnitude more
 // requests.
 type DeliveryReplayer struct {
-	Store   operational.CollectionStore
-	Client  DeliveryClient
-	Enabled bool
+	State    operational.StateStore
+	Metadata operational.CollectionMetadata
+	Client   DeliveryClient
+	Enabled  bool
 	// Limit bounds how many deliveries one recovery pass inspects.
 	Limit int
 }
@@ -97,12 +98,12 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	lastSeen, err := r.Store.OperationalState(ctx, deliveryCursorKey)
+	lastSeen, err := r.State.OperationalState(ctx, deliveryCursorKey)
 	if err != nil {
 		return ReplayResult{}, err
 	}
 	progress := deliveryProgress{Boundary: string(lastSeen)}
-	rawProgress, err := r.Store.OperationalState(ctx, deliveryProgressKey)
+	rawProgress, err := r.State.OperationalState(ctx, deliveryProgressKey)
 	if err != nil {
 		return ReplayResult{}, err
 	}
@@ -135,18 +136,18 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 		if err != nil {
 			return result, err
 		}
-		if err := r.Store.SetOperationalState(ctx, deliveryProgressKey, encoded); err != nil {
+		if err := r.State.SetOperationalState(ctx, deliveryProgressKey, encoded); err != nil {
 			return result, err
 		}
 		recoveryLog.Printf("delivery recovery inspected=%d redelivered=%d more=true", result.Inspected, result.Redelivered)
 		return result, nil
 	}
 	if progress.Newest != "" {
-		if err := r.Store.SetOperationalState(ctx, deliveryCursorKey, []byte(progress.Newest)); err != nil {
+		if err := r.State.SetOperationalState(ctx, deliveryCursorKey, []byte(progress.Newest)); err != nil {
 			return result, err
 		}
 	}
-	if err := r.Store.Clear(ctx, "state:"+deliveryProgressKey); err != nil {
+	if err := r.Metadata.Clear(ctx, "state:"+deliveryProgressKey); err != nil {
 		return result, err
 	}
 	recoveryLog.Printf("delivery recovery inspected=%d redelivered=%d", result.Inspected, result.Redelivered)
@@ -193,7 +194,7 @@ type Reporter struct {
 	Queue      Queue
 	Backfill   Backfill
 	Budget     *githubapp.Budget
-	Store      operational.CollectionStore
+	Metrics    operational.IngestionMetrics
 	Data       *postgresx.Store
 }
 
@@ -222,12 +223,12 @@ func (r Reporter) Snapshot(ctx context.Context) (Status, error) {
 	if status.DeadLetters, err = r.Queue.DeadLetters(ctx); err != nil {
 		return status, err
 	}
-	counters, events, err := r.Store.IngestionHealth(ctx)
+	counters, events, err := r.Metrics.IngestionHealth(ctx)
 	if err != nil {
 		return status, err
 	}
 	status.Counters = counters
-	status.Load, err = r.Store.Loads(ctx, []string{"webhook", "collection", "failure"}, time.Minute)
+	status.Load, err = r.Metrics.Loads(ctx, []string{"webhook", "collection", "failure"}, time.Minute)
 	if err != nil {
 		return status, err
 	}

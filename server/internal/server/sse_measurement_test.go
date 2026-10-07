@@ -33,8 +33,7 @@ func TestSSEFanoutAcrossReplicasAndDrain(t *testing.T) {
 	apps := make([]*App, 0, 2)
 	streams := make([]stream, 0, 6)
 	for range 2 {
-		app := &App{
-			store: redisx.NewStore(client, "sse-replica"), hub: newEventHub(),
+		app := &App{services: redisx.NewStore(client, "sse-replica").OperationalServices(), hub: newEventHub(),
 			database: database, drain: make(chan struct{}),
 			config: Config{HostProfile: localHostProfile()}, accessToken: testAccessToken,
 		}
@@ -107,8 +106,7 @@ func TestSSEFanoutMeasurements(t *testing.T) {
 		servers := make([]*httptest.Server, replicas)
 		apps := make([]*App, replicas)
 		for i := range servers {
-			apps[i] = &App{
-				store: redisx.NewStore(client, "sse-measure"), hub: newEventHub(),
+			apps[i] = &App{services: redisx.NewStore(client, "sse-measure").OperationalServices(), hub: newEventHub(),
 				database: database, drain: make(chan struct{}),
 				config: Config{HostProfile: localHostProfile()}, accessToken: testAccessToken,
 			}

@@ -330,7 +330,7 @@ func (a Admitter) AdmitDelivery(
 		return a.admitIssue(ctx, intent, delivery, deliveryTTL)
 	}
 	if intent.Kind != IntentCollect {
-		reservation, err := a.Queue.Store.ReserveDelivery(ctx, delivery, 30*time.Second)
+		reservation, err := a.Queue.Deliveries.ReserveDelivery(ctx, delivery, 30*time.Second)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -345,13 +345,13 @@ func (a Admitter) AdmitDelivery(
 		defer func() {
 			release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 			defer cancel()
-			_ = a.Queue.Store.ReleaseDeliveryReservation(release, delivery)
+			_ = a.Queue.Deliveries.ReleaseDeliveryReservation(release, delivery)
 		}()
 		admission, err := a.admitIntent(ctx, intent)
 		if err != nil {
 			return Admission{}, err
 		}
-		fresh, err := a.Queue.Store.RememberDelivery(ctx, delivery, deliveryTTL)
+		fresh, err := a.Queue.Deliveries.RememberDelivery(ctx, delivery, deliveryTTL)
 		if err != nil {
 			return Admission{}, err
 		}

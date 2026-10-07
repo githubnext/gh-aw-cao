@@ -168,7 +168,7 @@ func TestDeliveryRecoveryResumesPaginationBeforeAdvancingCursor(t *testing.T) {
 			{ID: 1, GUID: "guid-1", StatusCode: 500},
 		}},
 	}}
-	replayer := DeliveryReplayer{Store: store, Client: client, Enabled: true, Limit: 2}
+	replayer := DeliveryReplayer{State: store, Metadata: store, Client: client, Enabled: true, Limit: 2}
 
 	first, err := replayer.Recover(t.Context())
 	if err != nil {
@@ -226,7 +226,7 @@ func TestDeliveryRecoveryDoesNotAdvanceAfterRedeliveryFailure(t *testing.T) {
 		}},
 		failID: 2,
 	}
-	replayer := DeliveryReplayer{Store: store, Client: client, Enabled: true}
+	replayer := DeliveryReplayer{State: store, Metadata: store, Client: client, Enabled: true}
 	if _, err := replayer.Recover(t.Context()); err == nil {
 		t.Fatal("expected redelivery failure")
 	}

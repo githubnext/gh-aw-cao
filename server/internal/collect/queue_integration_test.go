@@ -80,7 +80,7 @@ func integrationStore(t *testing.T) (*redisx.Store, context.Context) {
 
 func TestEnrollmentTracksInstallationCoverage(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 7, []string{"Octo/API", "octo/web"}); err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestEnrollmentTracksInstallationCoverage(t *testing.T) {
 
 func TestQueueDebouncesAndLeasesExactlyOnce(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, Debounce: time.Minute}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, Debounce: time.Minute}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestQueueDebouncesAndLeasesExactlyOnce(t *testing.T) {
 
 func TestQueueDurablyDeduplicatesRunTasksByRepositoryRunAndAttempt(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	task := RunTask{
 		Repository: "Octo/API", InstallationID: 7, RunID: 4242, Attempt: 1,
 		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -219,7 +219,7 @@ func TestQueueDurablyDeduplicatesRunTasksByRepositoryRunAndAttempt(t *testing.T)
 
 func TestQueueReclaimsAbandonedWork(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestQueueReclaimsAbandonedWork(t *testing.T) {
 
 func TestRetryTransitionFailureLeavesOriginalPending(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestRetryTransitionFailureLeavesOriginalPending(t *testing.T) {
 
 func TestDeadLetterFailureLeavesOriginalPending(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, MaxAttempts: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 1}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +304,7 @@ func TestDeadLetterFailureLeavesOriginalPending(t *testing.T) {
 
 func TestMalformedTaskMovesToDeadLetterBeforeAck(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestMalformedTaskMovesToDeadLetterBeforeAck(t *testing.T) {
 
 func TestConcurrentDeliveryAdmissionEnqueuesOnce(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -372,7 +372,7 @@ func TestConcurrentDeliveryAdmissionEnqueuesOnce(t *testing.T) {
 
 func TestQueueCapacityBackpressuresWithoutTrimmingPendingWork(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, MaxLength: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 1}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestQueueCapacityBackpressuresWithoutTrimmingPendingWork(t *testing.T) {
 
 func TestQueueCapacityCountsScheduledRetries(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, MaxLength: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxLength: 1}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func TestQueueCapacityCountsScheduledRetries(t *testing.T) {
 
 func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, MaxAttempts: 2}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 2}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +457,7 @@ func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
 
 func TestDeadLetterRetentionIsBounded(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store, MaxAttempts: 1, MaxLength: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 1, MaxLength: 1}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -483,7 +483,7 @@ func TestDeadLetterRetentionIsBounded(t *testing.T) {
 }
 func TestQueueSerializesOneRepository(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.LockRepository(ctx, "octo/api", "token-a", time.Minute); err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +501,7 @@ func TestQueueSerializesOneRepository(t *testing.T) {
 
 func TestWorkerCancellationPreservesNotBeforeTask(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -543,7 +543,7 @@ func TestWorkerCancellationPreservesNotBeforeTask(t *testing.T) {
 
 func TestDelayedTaskDoesNotBlockReadyQueueWork(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -582,8 +582,8 @@ func TestDelayedTaskDoesNotBlockReadyQueueWork(t *testing.T) {
 
 func TestAdmitterRefusesRepositoriesOutsideScope(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
-	queue := Queue{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -624,12 +624,12 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
 	}
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 11, []string{"acme/kept", "acme/withdrawn"}); err != nil {
 		t.Fatal(err)
 	}
-	projector := Projector{Store: store, Lake: lake, Enrollment: enrollment}
-	queue := Queue{Store: store}
+	projector := Projector{State: store, Leases: store, Lake: lake, Enrollment: enrollment}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -695,8 +695,8 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 // queue erasure for a worker that does rather than silently retain evidence.
 func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
-	queue := Queue{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -725,7 +725,7 @@ func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
 
 func TestInstallationRemovalSerializesMembershipSnapshot(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 17, []string{"Acme/first", "acme/second"}); err != nil {
 		t.Fatal(err)
 	}
@@ -753,7 +753,7 @@ func TestInstallationRemovalSerializesMembershipSnapshot(t *testing.T) {
 
 func TestTransferredRepositoryIgnoresStaleInstallationRemoval(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 11, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
@@ -792,8 +792,8 @@ func TestTransferredRepositoryIgnoresStaleInstallationRemoval(t *testing.T) {
 
 func TestStaleRemovalErasureDoesNotDeleteTransferredEvidence(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
-	queue := Queue{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -834,7 +834,7 @@ func TestStaleRemovalErasureDoesNotDeleteTransferredEvidence(t *testing.T) {
 
 func TestReplacementPersistsWhenAckCannotComplete(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -867,11 +867,11 @@ func TestReplacementPersistsWhenAckCannotComplete(t *testing.T) {
 
 func TestDeliveryAdmissionFailureDoesNotConsumeDelivery(t *testing.T) {
 	store, ctx := integrationStore(t)
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 7, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -894,7 +894,7 @@ func TestDeliveryAdmissionFailureDoesNotConsumeDelivery(t *testing.T) {
 
 func TestFinalAckFailureLeavesCompletedTaskReclaimable(t *testing.T) {
 	store, ctx := integrationStore(t)
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}

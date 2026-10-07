@@ -95,10 +95,10 @@ func invariant(t *testing.T, s *Store) {
 func TestCapabilitiesRestartAndClose(t *testing.T) {
 	s, clock := fixture(t, Config{})
 	ctx := t.Context()
-	must(t, operational.Validate(s.Capabilities(), s.Services(), operational.Requirements{
+	must(t, operational.ValidateOperationalServices(s.Capabilities(), s.OperationalServices(), operational.Requirements{
 		SingleProcess: true, AllowVolatile: true, OAuth: true, Collection: true,
 	}))
-	if err := operational.Validate(s.Capabilities(), s.Services(), operational.Requirements{OAuth: true}); err == nil {
+	if err := operational.ValidateOperationalServices(s.Capabilities(), s.OperationalServices(), operational.Requirements{OAuth: true}); err == nil {
 		t.Fatal("process ownership must be explicit")
 	}
 	must(t, s.PutSession(ctx, "session", "sealed", time.Hour))

@@ -28,12 +28,12 @@ func TestSignedRepositoryLifecycleQueuesEveryTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := redisx.NewStore(client, "repository-webhook-"+strconv.FormatInt(time.Now().UnixNano(), 36))
-	enrollment := collect.Enrollment{Store: store}
+	enrollment := collect.Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(t.Context(), 42, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	queue := collect.Queue{Store: store}
-	app := &App{store: store, webhookSecret: []byte("repository-webhook-test"),
+	queue := collect.Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
+	app := &App{services: store.OperationalServices(), webhookSecret: []byte("repository-webhook-test"),
 		reconciler: &Collector{admitter: collect.Admitter{Enrollment: enrollment, Queue: queue}}}
 	for i, action := range []string{"created", "archived", "unarchived", "deleted"} {
 		body := fmt.Sprintf(`{"action":%q,"repository":{"id":123,"full_name":"octo/api"},"installation":{"id":42}}`, action)

@@ -59,9 +59,8 @@ func TestProfilesProduceIdenticalCanonicalRecords(t *testing.T) {
 	if !populated {
 		t.Fatal("an evidence lake holding collected shards must be projectable")
 	}
-	projector := Projector{
-		Store: collectionStore, Data: collectionData, Lake: lake,
-		Enrollment:          Enrollment{Store: collectionStore},
+	projector := Projector{State: collectionStore, Leases: collectionStore, Data: collectionData, Lake: lake,
+		Enrollment:          Enrollment{Metadata: collectionStore, Leases: collectionStore},
 		DatabaseQueriesPath: databaseQueries,
 	}
 	collected, err := projector.Project(collectionCtx)
@@ -101,8 +100,7 @@ func TestProjectionIsCoalesced(t *testing.T) {
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
 	}
-	projector := Projector{
-		Store: store, Lake: lake, Enrollment: Enrollment{Store: store},
+	projector := Projector{State: store, Leases: store, Lake: lake, Enrollment: Enrollment{Metadata: store, Leases: store},
 		MinInterval: time.Hour,
 	}
 	pending, err := projector.PendingProjection(ctx)
@@ -139,8 +137,7 @@ func TestBackfillFailsClosedWithoutEnrollment(t *testing.T) {
 	if err := lake.Prepare(); err != nil {
 		t.Fatal(err)
 	}
-	backfill := Backfill{
-		Store: store, Enrollment: Enrollment{Store: store}, Queue: Queue{Store: store},
+	backfill := Backfill{StateStore: store, Metadata: store, Enrollment: Enrollment{Metadata: store, Leases: store}, Queue: Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store},
 		Lake: lake,
 	}
 	if _, err := backfill.Run(ctx); err == nil {

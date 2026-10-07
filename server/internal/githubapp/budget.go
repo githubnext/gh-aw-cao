@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var budgetLog = logger.New("cao:githubapp:budget")
@@ -16,23 +17,15 @@ var budgetLog = logger.New("cao:githubapp:budget")
 // Budget governs GitHub API consumption per installation.
 //
 // GitHub meters App traffic per installation, so budget is tracked per
-// installation and shared across workers through Redis. The governor fails
+// installation and shared across workers through operational storage. The governor fails
 // closed: when the recorded headroom is unknown or below the floor, a worker
 // does not start a collection.
 type Budget struct {
-	Store BudgetStore
-	Floor int
+	Store    operational.RateLimitStateStore
+	Metadata operational.AttributeReader
+	Floor    int
 	// Cost is the budget one collection is assumed to spend.
 	Cost int
-}
-
-// BudgetStore is the subset of the Redis store the governor needs. It exists
-// so tests can substitute an in-memory implementation without a Redis server.
-type BudgetStore interface {
-	ReadAttribute(ctx context.Context, key, field string) (string, error)
-	ReserveRateLimit(ctx context.Context, key, field string, floor, cost int, now int64) (int, error)
-	ObserveRateLimit(ctx context.Context, key, field string, remaining int, reset int64) error
-	ParkRateLimit(ctx context.Context, key, field string, parkedTo int64) error
 }
 
 const budgetKey = "collect:rate-limit"
@@ -103,7 +96,7 @@ func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) 
 	return floor, nil
 }
 
-// interpretReservationResult maps one of BudgetStore.ReserveRateLimit's
+// interpretReservationResult maps one of RateLimitStateStore.ReserveRateLimit's
 // integer result codes to the governor's sentinel errors. It is a pure
 // function so the code-to-error mapping is testable without a Redis-backed
 // store, and so Reserve's own logic stays limited to orchestrating the call.
@@ -133,10 +126,10 @@ func (b Budget) Headroom(ctx context.Context, installationID int64) (int, time.T
 }
 
 func (b Budget) read(ctx context.Context, installationID int64) (budgetState, error) {
-	if b.Store == nil {
+	if b.Metadata == nil {
 		return budgetState{}, errors.New("rate-limit governor requires a store")
 	}
-	value, err := b.Store.ReadAttribute(ctx, budgetKey, strconv.FormatInt(installationID, 10))
+	value, err := b.Metadata.ReadAttribute(ctx, budgetKey, strconv.FormatInt(installationID, 10))
 	if err != nil || value == "" {
 		return budgetState{}, err
 	}

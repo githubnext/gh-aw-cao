@@ -127,16 +127,7 @@ type Store struct {
 	loads                         [3]load
 }
 
-var (
-	_ operational.Store           = (*Store)(nil)
-	_ operational.Cache           = (*Store)(nil)
-	_ operational.RequestLimiter  = (*Store)(nil)
-	_ operational.OAuthStore      = (*Store)(nil)
-	_ operational.QuotaStore      = (*Store)(nil)
-	_ operational.CollectionStore = (*Store)(nil)
-	_ operational.Coordination    = (*Store)(nil)
-	_ operational.Diagnostics     = (*Store)(nil)
-)
+var _ operational.Store = (*Store)(nil)
 
 func New(c Config) (*Store, error) {
 	d := DefaultConfig()
@@ -308,11 +299,6 @@ func (s *Store) Capabilities() operational.Capabilities {
 	c := operational.Capability{Scope: operational.ScopeProcess, Persistence: operational.PersistenceVolatile}
 	return operational.Capabilities{Cache: c, RequestLimits: c, Sessions: c, Revocations: c,
 		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c}
-}
-
-func (s *Store) Services() operational.Services {
-	return operational.Services{Cache: s, RequestLimits: s, OAuth: s, GitHubQuota: s,
-		Collection: s, Coordination: s, Diagnostics: s}
 }
 
 func (s *Store) OperationalServices() operational.OperationalServices {

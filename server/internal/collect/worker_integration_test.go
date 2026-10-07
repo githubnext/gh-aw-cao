@@ -27,11 +27,11 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 	// to activate; the fake CLI stands in for acquiring it.
 	copyTree(t, publishedSnapshot, lake.Directory)
 
-	enrollment := Enrollment{Store: store}
+	enrollment := Enrollment{Metadata: store, Leases: store}
 	if err := enrollment.AddRepositories(ctx, 7, []string{"octo/api"}); err != nil {
 		t.Fatal(err)
 	}
-	queue := Queue{Store: store}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -47,8 +47,7 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 			GitHubBinary: gh, NodeBinary: node,
 			Tokens: fakeTokens{token: "installation-token"},
 		},
-		Projector: Projector{
-			Store: store, Data: data, Lake: lake, Enrollment: enrollment,
+		Projector: Projector{State: store, Leases: store, Data: data, Lake: lake, Enrollment: enrollment,
 			DatabaseQueriesPath: databaseQueries,
 			MinInterval:         50 * time.Millisecond,
 		},
@@ -113,7 +112,7 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	gh := writeFakeBinary(t, workspace, "gh", `echo "rate limited" >&2; exit 1`)
 	node := writeFakeBinary(t, workspace, "node", "exit 0")
 	lake := Lake{Directory: filepath.Join(workspace, "lake")}
-	queue := Queue{Store: store, MaxAttempts: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 1}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -127,8 +126,7 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 			GitHubBinary: gh, NodeBinary: node,
 			Tokens: fakeTokens{token: "installation-token"},
 		},
-		Projector: Projector{
-			Store: store, Lake: lake, Enrollment: Enrollment{Store: store},
+		Projector: Projector{State: store, Leases: store, Lake: lake, Enrollment: Enrollment{Metadata: store, Leases: store},
 			DatabaseQueriesPath: databaseQueries,
 			MinInterval:         time.Hour,
 		},
@@ -162,7 +160,7 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	if dead != 1 {
 		t.Fatalf("dead letters = %d, want the exhausted task to be retained for inspection", dead)
 	}
-	pending, err := (Projector{Store: store, Lake: lake}).PendingProjection(ctx)
+	pending, err := (Projector{State: store, Leases: store, Lake: lake}).PendingProjection(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

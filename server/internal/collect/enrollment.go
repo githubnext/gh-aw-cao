@@ -36,7 +36,8 @@ var ErrEnrollmentMutationBusy = errors.New("enrollment mutation is already in pr
 // covers. In this profile enrollment is ingestion scope; it is never authority
 // to act on a repository, and it is never derived from cao.json.
 type Enrollment struct {
-	Store operational.CollectionStore
+	Metadata operational.CollectionMetadata
+	Leases   operational.LeaseStore
 }
 
 // Coverage summarizes enrollment for status reporting.
@@ -112,7 +113,7 @@ func (e Enrollment) withMutationLock(
 	if err != nil {
 		return err
 	}
-	acquired, err := e.Store.TryLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
+	acquired, err := e.Leases.TryLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
 	if err != nil {
 		return err
 	}
@@ -165,14 +166,14 @@ func (e Enrollment) withMutationLock(
 	}
 	unlockCtx, cancelUnlock := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancelUnlock()
-	if err := e.Store.Unlock(unlockCtx, enrollmentMutationLock, token); mutationErr == nil {
+	if err := e.Leases.Unlock(unlockCtx, enrollmentMutationLock, token); mutationErr == nil {
 		mutationErr = err
 	}
 	return mutationErr
 }
 
 func (e Enrollment) renewMutationLock(ctx context.Context, token string) (bool, error) {
-	return e.Store.RenewLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
+	return e.Leases.RenewLock(ctx, enrollmentMutationLock, token, enrollmentLockTTL)
 }
 
 // AddRepositories records repositories covered by one installation.
@@ -197,19 +198,19 @@ func (e Enrollment) addRepositories(ctx context.Context, installationID int64, r
 		}
 		normalized = append(normalized, name)
 	}
-	if _, err := e.Store.AddMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10)); err != nil {
+	if _, err := e.Metadata.AddMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10)); err != nil {
 		return err
 	}
-	if _, err := e.Store.AddMembers(ctx, repositoriesKey, normalized...); err != nil {
+	if _, err := e.Metadata.AddMembers(ctx, repositoriesKey, normalized...); err != nil {
 		return err
 	}
-	if _, err := e.Store.AddMembers(ctx, installationRepositoriesKey(installationID), normalized...); err != nil {
+	if _, err := e.Metadata.AddMembers(ctx, installationRepositoriesKey(installationID), normalized...); err != nil {
 		return err
 	}
 	transferred := 0
 	for start := 0; start < len(normalized); start += 256 {
 		batch := normalized[start:min(start+256, len(normalized))]
-		count, err := e.Store.TransferOwners(ctx, repositoryInstallations,
+		count, err := e.Metadata.TransferOwners(ctx, repositoryInstallations,
 			"collect:installation:", ":repositories", installationID, batch)
 		if err != nil {
 			return err
@@ -288,11 +289,11 @@ func (e Enrollment) removeRepositories(
 	for _, repository := range repositories {
 		name := repository
 		if installationID > 0 {
-			if err := e.Store.RemoveMembers(ctx, installationRepositoriesKey(installationID), name); err != nil {
+			if err := e.Metadata.RemoveMembers(ctx, installationRepositoriesKey(installationID), name); err != nil {
 				return removed, err
 			}
 		}
-		owner, err := e.Store.ReadAttribute(ctx, repositoryInstallations, name)
+		owner, err := e.Metadata.ReadAttribute(ctx, repositoryInstallations, name)
 		if err != nil {
 			return removed, err
 		}
@@ -300,10 +301,10 @@ func (e Enrollment) removeRepositories(
 			stale++
 			continue
 		}
-		if err := e.Store.RemoveMembers(ctx, repositoriesKey, name); err != nil {
+		if err := e.Metadata.RemoveMembers(ctx, repositoriesKey, name); err != nil {
 			return removed, err
 		}
-		if err := e.Store.DeleteAttribute(ctx, repositoryInstallations, name); err != nil {
+		if err := e.Metadata.DeleteAttribute(ctx, repositoryInstallations, name); err != nil {
 			return removed, err
 		}
 		removed = append(removed, name)
@@ -352,11 +353,11 @@ func (e Enrollment) RemoveInstallationBefore(
 		if err != nil {
 			return err
 		}
-		if err := e.Store.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
+		if err := e.Metadata.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
 			return err
 		}
 		enrollmentLog.Printf("removed installation=%d repositories=%d", installationID, len(removed))
-		return e.Store.RemoveMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10))
+		return e.Metadata.RemoveMembers(ctx, installationsKey, strconv.FormatInt(installationID, 10))
 	})
 	return removed, err
 }
@@ -367,7 +368,7 @@ func (e Enrollment) RepositoriesForInstallation(ctx context.Context, installatio
 	var names []string
 	cursor := ""
 	for {
-		repositories, next, err := e.Store.ScanMembers(ctx, installationRepositoriesKey(installationID), cursor, 500)
+		repositories, next, err := e.Metadata.ScanMembers(ctx, installationRepositoriesKey(installationID), cursor, 500)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +389,7 @@ func (e Enrollment) Enrolled(ctx context.Context, repository string) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	return e.Store.HasMember(ctx, repositoriesKey, name)
+	return e.Metadata.HasMember(ctx, repositoriesKey, name)
 }
 
 // InstallationFor reports which installation covers a repository.
@@ -397,7 +398,7 @@ func (e Enrollment) InstallationFor(ctx context.Context, repository string) (int
 	if err != nil {
 		return 0, err
 	}
-	value, err := e.Store.ReadAttribute(ctx, repositoryInstallations, name)
+	value, err := e.Metadata.ReadAttribute(ctx, repositoryInstallations, name)
 	if err != nil || value == "" {
 		return 0, err
 	}
@@ -407,11 +408,11 @@ func (e Enrollment) InstallationFor(ctx context.Context, repository string) (int
 // Coverage reports enrollment size, published as source metadata so partial
 // coverage is visible rather than rendered as a complete zero.
 func (e Enrollment) Coverage(ctx context.Context) (Coverage, error) {
-	installations, err := e.Store.MemberCount(ctx, installationsKey)
+	installations, err := e.Metadata.MemberCount(ctx, installationsKey)
 	if err != nil {
 		return Coverage{}, err
 	}
-	repositories, err := e.Store.MemberCount(ctx, repositoriesKey)
+	repositories, err := e.Metadata.MemberCount(ctx, repositoriesKey)
 	if err != nil {
 		return Coverage{}, err
 	}
@@ -423,7 +424,7 @@ func (e Enrollment) Installations(ctx context.Context) ([]int64, error) {
 	cursor := ""
 	var identifiers []int64
 	for {
-		members, next, err := e.Store.ScanMembers(ctx, installationsKey, cursor, 500)
+		members, next, err := e.Metadata.ScanMembers(ctx, installationsKey, cursor, 500)
 		if err != nil {
 			return nil, err
 		}
@@ -444,7 +445,7 @@ func (e Enrollment) Installations(ctx context.Context) ([]int64, error) {
 // ScanRepositories walks enrolled repositories by cursor so cold start over a
 // very large enrollment set is resumable and never blocks Redis.
 func (e Enrollment) ScanRepositories(ctx context.Context, cursor string, count int) ([]string, string, error) {
-	return e.Store.ScanMembers(ctx, repositoriesKey, cursor, count)
+	return e.Metadata.ScanMembers(ctx, repositoriesKey, cursor, count)
 }
 
 func installationRepositoriesKey(installationID int64) string {

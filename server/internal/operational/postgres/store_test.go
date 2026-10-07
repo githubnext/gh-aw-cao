@@ -71,7 +71,7 @@ func TestConfigurationAndTransport(t *testing.T) {
 func TestRestartAndDeploymentIsolation(t *testing.T) {
 	s, dsn := testStore(t, Config{})
 	ctx := t.Context()
-	if err := operational.Validate(s.Capabilities(), s.Services(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
+	if err := operational.ValidateOperationalServices(s.Capabilities(), s.OperationalServices(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.PutSession(ctx, "session", "encrypted", time.Hour); err != nil {

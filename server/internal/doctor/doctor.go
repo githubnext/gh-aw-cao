@@ -227,9 +227,16 @@ func redactRedisURL(rawURL string) string {
 // storeUnavailable is the shared skip used by every check that needs Redis
 // when no store was configured.
 func (d Doctor) storeUnavailable(id, area, title string) (Check, bool) {
-	if d.Store != nil {
-		if area == areaCollect && id != "collect.projection" && d.Store.Services().Collection == nil {
+	if operational.CheckStore(d.Store) == nil {
+		caps := d.Store.Capabilities()
+		collection := area == areaCollect && id != "collect.projection"
+		if collection && caps.Collection.Scope == operational.ScopeUnsupported {
 			return skipped(id, area, title, "collection is unsupported by the selected operational backend"), true
+		}
+		if err := operational.ValidateOperationalServices(caps, d.Store.OperationalServices(), operational.Requirements{
+			SingleProcess: true, AllowVolatile: true, Collection: collection,
+		}); err != nil {
+			return failed(id, area, title, err), true
 		}
 		return Check{}, false
 	}

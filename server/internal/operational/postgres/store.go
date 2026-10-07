@@ -62,16 +62,7 @@ type Store struct {
 	config    Config
 }
 
-var (
-	_ operational.Store           = (*Store)(nil)
-	_ operational.Cache           = (*Store)(nil)
-	_ operational.OAuthStore      = (*Store)(nil)
-	_ operational.RequestLimiter  = (*Store)(nil)
-	_ operational.QuotaStore      = (*Store)(nil)
-	_ operational.CollectionStore = (*Store)(nil)
-	_ operational.Coordination    = (*Store)(nil)
-	_ operational.Diagnostics     = (*Store)(nil)
-)
+var _ operational.Store = (*Store)(nil)
 
 func New(ctx context.Context, dsn, namespace string, config Config) (*Store, error) {
 	return open(ctx, dsn, namespace, config, true)
@@ -337,9 +328,13 @@ func (s *Store) Capabilities() operational.Capabilities {
 		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c}
 }
 
-func (s *Store) Services() operational.Services {
-	return operational.Services{Cache: s, RequestLimits: s, OAuth: s, GitHubQuota: s,
-		Collection: s, Coordination: s, Diagnostics: s}
+func (s *Store) OperationalServices() operational.OperationalServices {
+	return operational.OperationalServices{
+		Backend: s, Cache: s, RequestLimiter: s, Sessions: s,
+		SessionInvalidator: s, Revocations: s, Leases: s, State: s,
+		Deliveries: s, Queue: s, Admission: s, Collection: s,
+		GitHubQuota: s, RateLimits: s, Health: s, IngestionMetrics: s,
+	}
 }
 
 func (s *Store) Ping(ctx context.Context) error { return s.db.PingContext(ctx) }
