@@ -1,8 +1,12 @@
+import { createDebug } from './debug.js';
+
 /** @typedef {'ui' | 'explore' | 'propose' | 'operate'} ActionLevel */
 /** @typedef {'ui' | 'prompt' | 'cli' | 'link'} ActionType */
 /** @typedef {'explicit' | 'view'} ActionSource */
 
 export const ACTION_LEVELS = /** @type {const} */ (['ui', 'explore', 'propose', 'operate']);
+
+const debugActionModel = createDebug('action-model');
 
 const DEFAULT_ICONS = { ui: 'device-desktop', explore: 'search', propose: 'git-pull-request', operate: 'zap' };
 const DEFAULT_LABELS = { ui: 'UI action', explore: 'Investigate', propose: 'Propose fix', operate: 'Operate' };
@@ -23,10 +27,18 @@ const VERB_ICONS = {
 
 /** @param {ActionLevel} level @param {ActionType} type */
 export function assertActionLevel(level, type) {
-  if (!ACTION_LEVELS.includes(level)) throw new TypeError(`Unknown action level: ${level}`);
-  if ((level === 'ui') !== (type === 'ui')) {
-    throw new TypeError('The ui level is reserved for native dashboard and account-session controls.');
+  const unknownLevel = !ACTION_LEVELS.includes(level);
+  const uiMismatch = !unknownLevel && (level === 'ui') !== (type === 'ui');
+  if (unknownLevel || uiMismatch) {
+    debugActionModel({
+      operation: 'assert-action-level',
+      status: 'rejected',
+      reason: unknownLevel ? 'unknown-level' : 'ui-reserved',
+      type
+    });
   }
+  if (unknownLevel) throw new TypeError(`Unknown action level: ${level}`);
+  if (uiMismatch) throw new TypeError('The ui level is reserved for native dashboard and account-session controls.');
 }
 
 /** @param {ActionLevel} level @param {string} [verb] */
@@ -56,6 +68,7 @@ export function normalizeAction(declared, { type, id, source = 'explicit' }) {
   const level = declared.level ?? (type === 'ui' ? 'ui' : type === 'cli' ? 'operate' : type === 'link' ? 'explore' : 'propose');
   assertActionLevel(level, type);
   const verb = declared.verb;
+  debugActionModel({ operation: 'normalize-action', type, level, source, explicit: declared.level !== undefined });
   return {
     ...declared, id, type, source, level, verb,
     label: declared.label ?? (level === 'operate' ? '' : DEFAULT_LABELS[level]),
@@ -76,6 +89,7 @@ export function normalizeViewAction(view, semantics) {
 /** @param {string} prompt @param {ActionLevel} level */
 export function constrainPrompt(prompt, level) {
   assertActionLevel(level, 'prompt');
+  debugActionModel({ operation: 'constrain-prompt', level });
   return level === 'explore'
     ? `Read-only investigation. Do not modify repositories, create issues, patches, pull requests, change configuration, or perform operational side effects.\n\n${prompt}`
     : level === 'propose'
