@@ -1,103 +1,11 @@
 {
   "queries": [
     {
-      "name": "workflow-ordered-runs",
-      "subject": "Order retained run attempts within each workflow by their observed start time.",
-      "objective": "Identify each workflow's latest execution without importing event coverage or outcome totals.",
-      "acceptance": "The first chronological attempt in each workflow partition has no preceding run delta; break timestamp ties by run ID and attempt, and use creation time for queued runs.",
-      "from": "runs",
-      "compute": [
-        {
-          "as": "latest-run-at",
-          "function": "coalesce",
-          "args": [{ "field": "started-at" }, { "field": "created-at" }]
-        }
-      ],
-      "window": [
-        {
-          "operation": "change",
-          "field": "run",
-          "as": "preceding-run-delta",
-          "mode": "absolute",
-          "groupby": ["organization", "repository", "workflow"],
-          "order-by": [
-            { "field": "latest-run-at", "direction": "desc" },
-            { "field": "run", "direction": "desc" },
-            { "field": "run-attempt", "direction": "desc" }
-          ]
-        }
-      ],
-      "select": [
-        { "field": "organization" },
-        { "field": "repository" },
-        { "field": "workflow" },
-        { "field": "run" },
-        { "field": "run-attempt" },
-        { "field": "latest-run-at" },
-        { "field": "run-status" },
-        { "field": "run-conclusion" },
-        { "field": "preceding-run-delta" },
-        { "field": "run-link" }
-      ]
-    },
-    {
-      "name": "workflow-latest-runs",
-      "subject": "Project the latest retained run attempt for each workflow.",
-      "objective": "Expose each workflow's latest observed execution state without implying aggregate outcomes.",
-      "acceptance": "Select only the first chronologically ordered attempt per workflow; preserve queued and in-progress states instead of treating unknown conclusions as failures.",
-      "from": "workflow-ordered-runs",
-      "filter": { "predicates": [{ "field": "preceding-run-delta", "equals": "unknown" }] },
-      "compute": [
-        {
-          "as": "observed-conclusion",
-          "function": "coalesce",
-          "args": [{ "field": "run-conclusion" }, { "value": "unknown" }]
-        },
-        {
-          "as": "completed",
-          "function": "equals-any",
-          "args": [{ "field": "run-status" }, { "value": "completed" }]
-        },
-        {
-          "as": "latest-run-status",
-          "function": "if",
-          "args": [{ "field": "completed" }, { "field": "observed-conclusion" }, { "field": "run-status" }]
-        }
-      ],
-      "select": [
-        { "field": "organization" },
-        { "field": "repository" },
-        { "field": "workflow" },
-        { "field": "run" },
-        { "field": "run-attempt" },
-        { "field": "latest-run-at" },
-        { "field": "latest-run-status" },
-        { "field": "run-link" }
-      ]
-    },
-    {
       "name": "workflow-list",
-      "subject": "List declared workflows in latest observed run order.",
-      "objective": "Open a dedicated workflow page from a lightweight inventory with its latest execution status.",
-      "acceptance": "Preserve textual run identities and keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
+      "subject": "List declared workflows in stable repository and workflow order.",
+      "objective": "Open a dedicated workflow page without querying retained run history.",
+      "acceptance": "Include every declared workflow with its identity, registration and rollout mode; do not calculate run outcomes or imply missing runs mean no execution.",
       "from": "workflows",
-      "joins": [
-        {
-          "source": "workflow-latest-runs",
-          "type": "left",
-          "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
-          ],
-          "fields": [
-            { "field": "run", "as": "latest-run" },
-            { "field": "latest-run-at", "as": "latest-run-at" },
-            { "field": "latest-run-status", "as": "observed-run-status" },
-            { "field": "run-link", "as": "run-link" }
-          ]
-        }
-      ],
       "compute": [
         { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
         { "as": "workflow-label", "function": "concat", "args": [{ "field": "repository-coordinate" }, { "value": ":" }, { "field": "workflow" }] },
@@ -105,9 +13,6 @@
         { "as": "declared-role", "function": "coalesce", "args": [{ "field": "workflow-role" }, { "value": "standalone" }] },
         { "as": "declared-mode", "function": "coalesce", "args": [{ "field": "rollout-mode" }, { "value": "unknown" }] },
         { "as": "declared-registration", "function": "coalesce", "args": [{ "field": "workflow-active" }, { "value": "unknown" }] },
-        { "as": "observed-run-id", "function": "coalesce", "args": [{ "field": "latest-run" }, { "value": "0" }] },
-        { "as": "has-observed-run", "function": "greater-than", "args": [{ "field": "observed-run-id" }, { "value": 0 }] },
-        { "as": "latest-run-status", "function": "coalesce", "args": [{ "field": "observed-run-status" }, { "value": "No observed run" }] },
         { "as": "encoded-workflow", "function": "url-encode", "args": [{ "field": "workflow-label" }] },
         { "as": "workflow-dashboard-href", "function": "concat", "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }] },
         { "as": "workflow-dashboard-link", "function": "dashboard-link", "args": [{ "field": "workflow-link" }, { "field": "workflow-dashboard-href" }, { "field": "workflow-display-name" }, { "field": "workflow-label" }] }
@@ -122,17 +27,10 @@
         { "field": "declared-role", "as": "workflow-role" },
         { "field": "declared-mode", "as": "rollout-mode" },
         { "field": "declared-registration", "as": "workflow-active" },
-        { "field": "latest-run" },
-        { "field": "latest-run-at" },
-        { "field": "latest-run-status" },
-        { "field": "has-observed-run" },
         { "field": "repository-link" },
-        { "field": "workflow-dashboard-link", "as": "workflow-link" },
-        { "field": "run-link" }
+        { "field": "workflow-dashboard-link", "as": "workflow-link" }
       ],
       "order-by": [
-        { "field": "has-observed-run", "direction": "desc" },
-        { "field": "latest-run-at", "direction": "desc" },
         { "field": "repository", "direction": "asc" },
         { "field": "workflow", "direction": "asc" }
       ]
@@ -573,7 +471,7 @@
           {
             "id": "workflows-inventory",
             "title": "Workflows",
-            "description": "Declared workflows ordered by their latest retained run. Open a workflow for its runtime details.",
+            "description": "Declared workflows ordered by repository and workflow. Open a workflow for its runtime details.",
             "data": {
               "source": "workflow-list"
             },
@@ -628,18 +526,6 @@
                   "type": "nominal",
                   "title": "State",
                   "display": "active-state"
-                },
-                {
-                  "field": "latest-run-status",
-                  "type": "nominal",
-                  "title": "Latest run status",
-                  "display": "status"
-                },
-                {
-                  "field": "latest-run-at",
-                  "type": "temporal",
-                  "title": "Latest run",
-                  "format": "human-friendly-timestamp"
                 }
               ]
             }

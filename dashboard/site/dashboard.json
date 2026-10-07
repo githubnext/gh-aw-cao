@@ -77,18 +77,15 @@
       {
         "id": "workflow-latest",
         "icon": "workflow",
-        "status": { "field": "latest-run-status", "title": "Latest run status" },
         "title": { "field": "workflow-name", "title": "Workflow" },
         "subtitle": { "field": "workflow", "title": "Workflow file", "format": "workflow-relative-path" },
         "labels": [
           { "field": "workflow-role", "title": "Role", "display": "label" },
-          { "field": "workflow-active", "title": "State", "display": "active-state" },
-          { "field": "latest-run-status", "title": "Latest run", "display": "label" }
+          { "field": "workflow-active", "title": "State", "display": "active-state" }
         ],
         "details": [
           { "field": "repository", "title": "Repository" },
-          { "field": "campaign-name", "title": "Campaign" },
-          { "field": "latest-run-at", "title": "Latest run", "format": "human-friendly-timestamp" }
+          { "field": "campaign-name", "title": "Campaign" }
         ]
       },
       {
