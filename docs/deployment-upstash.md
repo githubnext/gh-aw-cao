@@ -126,7 +126,7 @@ Configure capacity alerts before the database reaches its storage or command lim
 
 Container logs include Redis operation names and argument or batch counts, but not the Upstash URL, credentials, source records, or query payloads. To enable selected debug namespaces, set `DEBUG` to a value such as `cao:server,cao:redis`.
 
-The server exports vendor-neutral OpenTelemetry traces when standard `OTEL_*` environment variables are configured. Keep exporter credentials in your application's secret manager.
+The server exports vendor-neutral OpenTelemetry traces when standard `OTEL_*` environment variables are configured. Keep exporter credentials in your application's secret manager. OAuth callbacks are excluded from the generic HTTP instrumentation and instead emit a dedicated `GET /auth/callback` span and `cao_dashboard.auth.callback.count` metric with only a fixed outcome (`success` or `failure`) and, on failure, a bounded `error.type`.
 
 ## Rotating the Upstash credential
 

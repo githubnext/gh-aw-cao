@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.8.1
+version: 1.8.2
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.8.1
+**Version:** 1.8.2
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
@@ -1446,6 +1446,13 @@ canonical definition keys also include the owning Workflow
 to avoid collisions when two workflows reuse an ID. A grader result links
 to an experiment variant only when its explicit experiment identity matches
 an assignment for the same Run.
+An `experimentAssignments`, `graderObservations`, or `evalObservations` record
+MUST reference a definition (`experiments`, `graders`, or `evals` respectively)
+whose `workflowId` equals the `workflowId` of the Run named by the record's
+`runId`; a record whose definition belongs to a different Workflow is not a
+valid evidence relationship and MUST be excluded from every ingestion path,
+including Activity's pre-publication consolidation, before the canonical
+browser database, SQLite mirror, or Postgres store accepts it.
 Repeated definitions keep the earliest and latest observed timestamps across
 runs and normalized shards; later collection of an older run cannot erase the
 latest definition. Browser shard ingestion writes bounded batches before its
@@ -3762,6 +3769,15 @@ set or enumerate unrelated worker partitions.
 ---
 
 # 74. Change Log
+
+## Version 1.8.2 — Cross-workflow evidence relationship rejection
+
+* Required every `experimentAssignments`, `graderObservations`, and
+  `evalObservations` record to reference a definition whose `workflowId`
+  matches the owning Run's `workflowId`, and required every ingestion path,
+  including Activity's pre-publication consolidation, to exclude a mismatched
+  record before the canonical browser database, SQLite mirror, or Postgres
+  store accepts it.
 
 ## Version 1.8.0 — Indexed run aggregate pushdown and worker heap budgets
 

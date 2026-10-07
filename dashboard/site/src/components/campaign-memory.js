@@ -161,12 +161,10 @@ export function renderAllCampaignMemory(context) {
       root.replaceChildren(renderEmptyMessage('Campaign memory is unavailable.', { role: 'alert' }));
       return;
     }
-    const campaigns = source.rows()
-      .map((row) => ({
-        campaign: typeof row.campaign === 'string' ? row.campaign : '',
-        campaignName: typeof row['campaign-name'] === 'string' ? row['campaign-name'] : '',
-      }))
-      .filter((campaign) => campaign.campaign && campaign.campaignName);
+    const campaigns = source.rows().map((row) => ({
+      campaign: String(row.campaign),
+      campaignName: String(row['campaign-name']),
+    }));
     const campaignSignature = JSON.stringify(campaigns);
     if (campaignSignature === renderedCampaigns) return;
     renderedCampaigns = campaignSignature;

@@ -329,7 +329,7 @@ when the dashboard remains ready with its last committed PostgreSQL projection.
 
 ### OpenTelemetry traces
 
-The server emits a span for every HTTP request through `otelhttp`, plus `cao_dashboard.query.execute` and `cao_dashboard.ingest.run` spans. Spans contain no secrets.
+The server emits a span for every HTTP request through `otelhttp`, plus `cao_dashboard.query.execute` and `cao_dashboard.ingest.run` spans. OAuth callbacks are excluded from the generic `otelhttp` instrumentation and instead emit a dedicated `GET /auth/callback` span and `cao_dashboard.auth.callback.count` metric with only a fixed outcome (`success` or `failure`) and, on failure, a bounded `error.type`. Spans contain no secrets.
 
 The checked-in `compose.yml` passes standard `OTEL_*` variables from the
 Coolify resource into the container. Export remains off until an endpoint is

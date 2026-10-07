@@ -222,6 +222,7 @@ The template sets `APPLICATIONINSIGHTS_CONNECTION_STRING`, so Functions host req
 The Go server uses vendor-neutral OpenTelemetry and doesn't include the Azure Monitor SDK. It emits the following spans, which contain only counts, revisions, and durations:
 
 - A span for every HTTP request, through `otelhttp`.
+- A dedicated `GET /auth/callback` span and `cao_dashboard.auth.callback.count` metric for OAuth callbacks, which are excluded from the generic `otelhttp` instrumentation and carry only a fixed outcome (`success` or `failure`) and, on failure, a bounded `error.type`. No OAuth code, state, cookie, token, or provider message is recorded.
 - `cao_dashboard.query.execute` for each query.
 - `cao_dashboard.ingest.run` for each ingestion.
 
