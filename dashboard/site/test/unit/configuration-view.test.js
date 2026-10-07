@@ -293,14 +293,14 @@ describe('Configuration dashboard view', () => {
     expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
     expect(templates.get('maintenance-campaign').actions).toEqual([
       {
-        action: 'update-campaign',
-        context: ['campaign'],
-        when: { field: 'campaign-update-state', equals: 'update-available' }
-      },
-      {
         action: 'disable-campaign',
         context: ['campaign'],
         when: { field: 'campaign-registration', equals: 'true' }
+      },
+      {
+        action: 'update-campaign',
+        context: ['campaign'],
+        when: { field: 'campaign-update-state', equals: 'update-available' }
       },
       {
         action: 'enable-campaign',
@@ -327,6 +327,12 @@ describe('Configuration dashboard view', () => {
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
       .command).toBe('./cao.sh update {{campaign}}');
+    expect(dashboard['cli-actions']
+      .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
+      .label).toBe('Update');
+    expect(dashboard['cli-actions']
+      .find((/** @type {{ id: string }} */ action) => action.id === 'disable-campaign')
+      .label).toBe('Deactivate');
     expect(manageNavigation.placement).toBe('bottom');
     expect(manageNavigation.pages).toContain('maintenance');
   });
