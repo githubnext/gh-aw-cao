@@ -1228,6 +1228,46 @@
       }
     },
     {
+      "id": "issue-safe-output-label-options",
+      "subject": "List observed safe-output badges for the issue list Labels filter.",
+      "objective": "Choose retained safe-output types without scanning or filtering presented cards.",
+      "acceptance": "Return distinct observed badge values in ascending order; missing evidence is not an empty label inventory.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issue-safe-outputs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues",
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "issue-status-label-options",
+      "subject": "List observed status badges for the issue list Labels filter.",
+      "objective": "Choose retained issue states and closing reasons without inferring resolution.",
+      "acceptance": "Return distinct observed status details in ascending order; Unknown remains distinct from Open and Closed.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issue-safe-outputs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues",
+          "runs"
+        ]
+      }
+    },
+    {
       "id": "issue-repository-totals",
       "subject": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
       "objective": "Locate repositories with the largest observed issue-safe-output volume for a bounded review of linked records.",
