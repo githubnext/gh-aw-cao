@@ -195,6 +195,13 @@ uses `GITHUB_TOKEN` for collection as well as trusted control-repository
 checkout and notification operations. Explicit App/PAT modes never fall back
 to it when the selected collection credential is missing.
 
+Owner-scoped PATs isolate repository permissions, not rate-limit capacity:
+tokens created by the same user share the user's core API quota. Activity
+serializes PAT collection jobs and checks remaining core capacity before
+inventory discovery and each repository log invocation. It stops at the
+configured reserve without waiting for reset or switching credentials. App
+installation collection jobs retain independent, parallel execution.
+
 ## API Capacity Admission
 
 Before activation, shared control checks the primary REST API capacity of the exact credential selected for control precompute. The check uses GitHub's `GET /rate_limit` endpoint, which [does not consume primary rate-limit capacity](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#checking-the-status-of-your-rate-limit). Admission reserves at least 100 core requests and raises that requirement for broader configured inventory scans.

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { normalizeAdmissionRecord } from "./admission-evidence.mjs";
 
 const WINDOW_MS = 30 * 60 * 1000;
 
@@ -95,7 +96,39 @@ async function artifactContents(repository, runId, name, filename, token, option
   }
 }
 
-export async function checkDispatches({ repository, token, now = Date.now() }) {
+async function activationSkippedCycle(repository, cycle, token, request, readArtifact) {
+  if (cycle.conclusion !== "success" || !Number.isSafeInteger(cycle.run_attempt) || cycle.run_attempt < 1) return false;
+  const { jobs, total_count: totalCount } = await (await request(
+    `repos/${repository}/actions/runs/${cycle.id}/jobs?filter=latest&per_page=100`, token,
+  )).json();
+  if (!Array.isArray(jobs) || jobs.length >= 100 || totalCount !== jobs.length) {
+    throw new Error(`Incomplete job list for orchestrator run ${cycle.id}`);
+  }
+  for (const [name, conclusion] of [
+    ["pre_activation", "success"],
+    ["activation", "skipped"],
+    ["agent", "skipped"],
+    ["safe_outputs", "skipped"],
+  ]) {
+    const matches = jobs.filter((job) => job.name === name);
+    if (matches.length !== 1 || matches[0].status !== "completed" || matches[0].conclusion !== conclusion) return false;
+  }
+  const output = await readArtifact(repository, cycle.id, "cao-admission", "admission.json", token);
+  const admission = normalizeAdmissionRecord(JSON.parse(output), {
+    repository,
+    runId: cycle.id,
+    runAttempt: cycle.run_attempt,
+  });
+  return Boolean(admission && admission.campaign === "cao-evolution" && admission.role === "orchestrator");
+}
+
+export async function checkDispatches({
+  repository,
+  token,
+  now = Date.now(),
+  request = api,
+  readArtifact = artifactContents,
+}) {
   if (!repository || !token) throw new Error("Control repository or read credential unavailable");
   const policy = JSON.parse(await readFile(".github/workflows/cao.json", "utf8"));
   if (policy["control-plane"]?.campaigns?.["cao-evolution"]?.enabled === false
@@ -103,7 +136,7 @@ export async function checkDispatches({ repository, token, now = Date.now() }) {
     return { status: "healthy", workers: [], reason: "CAO Evolution is not enabled in this control repository" };
   }
   const since = new Date(now - 4 * 60 * 60 * 1000).toISOString();
-  const { workflow_runs: recent } = await (await api(
+  const { workflow_runs: recent } = await (await request(
     `repos/${repository}/actions/workflows/cao-evolution.lock.yml/runs?per_page=20&created=%3E%3D${encodeURIComponent(since)}`, token,
   )).json();
   if (!Array.isArray(recent) || recent.length === 20) throw new Error("Incomplete orchestrator run list");
@@ -114,10 +147,17 @@ export async function checkDispatches({ repository, token, now = Date.now() }) {
 
   const artifacts = new Map();
   for (const cycle of cycles) {
-    const output = await artifactContents(repository, cycle.id, "agent-output-fallback", "agent_output.json", token);
+    const output = await readArtifact(repository, cycle.id, "agent-output-fallback", "agent_output.json", token, true);
+    if (!output) {
+      if (!await activationSkippedCycle(repository, cycle, token, request, readArtifact)) {
+        throw new Error(`Missing agent-output-fallback for orchestrator run ${cycle.id}`);
+      }
+      artifacts.set(cycle.id, { requests: [], manifest: [] });
+      continue;
+    }
     const requests = JSON.parse(output).items;
     const hasDispatch = !Array.isArray(requests) || requests.some((item) => item.type === "dispatch_workflow");
-    const manifest = await artifactContents(repository, cycle.id, "safe-outputs-items", "safe-output-items.jsonl", token, !hasDispatch);
+    const manifest = await readArtifact(repository, cycle.id, "safe-outputs-items", "safe-output-items.jsonl", token, !hasDispatch);
     artifacts.set(cycle.id, {
       requests,
       manifest: manifest.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)),
@@ -130,7 +170,7 @@ export async function checkDispatches({ repository, token, now = Date.now() }) {
     if (typeof name !== "string" || !/^cao-evolution-[a-z-]+$/.test(name)) {
       return { status: "incomplete", reason: "Invalid worker workflow name in dispatch evidence" };
     }
-    const { workflow_runs: runs } = await (await api(
+    const { workflow_runs: runs } = await (await request(
       `repos/${repository}/actions/workflows/${name}.lock.yml/runs?event=workflow_dispatch&per_page=100&created=%3E%3D${encodeURIComponent(since)}`, token,
     )).json();
     if (!Array.isArray(runs) || runs.length === 100) throw new Error(`Incomplete run list for ${name}`);

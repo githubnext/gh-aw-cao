@@ -373,8 +373,9 @@ test("CAO Activity workflow-token API reserves fit its standard 1000-request quo
   const activity = parse(workflow("cao-activity.yml"));
   const steps = activity.jobs.collect.steps;
   const logs = steps.find(({ name }) => name === "Download owner-scoped agentic workflow logs");
+  const inventory = steps.find(({ name }) => name === "Collect owner-scoped dashboard inventory");
   const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
-  for (const [step, appPatReserve] of [[logs, 4000], [value, 2000]]) {
+  for (const [step, appPatReserve] of [[inventory, 4000], [logs, 4000], [value, 2000]]) {
     assert.equal(
       step.env.REPORT_MAX_GITHUB_API_RATE_LIMIT,
       "${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-"
@@ -382,6 +383,15 @@ test("CAO Activity workflow-token API reserves fit its standard 1000-request quo
     );
   }
   assert.match(value.run, /--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
+  assert.ok(inventory.run.indexOf('github-telemetry.mjs capacity "$REPORT_MAX_GITHUB_API_RATE_LIMIT"')
+    < inventory.run.indexOf("cao.mjs discover-workflows"));
+});
+
+test("CAO Activity serializes PAT collection jobs sharing a user quota without changing App scope", () => {
+  const activity = parse(workflow("cao-activity.yml"));
+  assert.equal(activity.jobs.collect.strategy["max-parallel"],
+    "${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && 1 || 256 }}");
+  assert.equal(activity.jobs.collect.strategy["fail-fast"], false);
 });
 
 test("CAO Activity PAT mode groups exact repositories by owner-scoped secret", () => {

@@ -110,6 +110,10 @@ for index in "${!repositories[@]}"; do
   target_repository="${repositories[$index]}"
   cache_name="${target_repository//\//-}"
   shard_prefix="${shard_prefixes[$index]}"
+  if ! node activity/github-telemetry.mjs capacity "$rate_limit"; then
+    exit_code=1
+    break
+  fi
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \

@@ -288,6 +288,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.GRAPHQL_CALLS_PATH, JSON.stringify(args) + '\\n');
+if (args[0] === 'api' && args[1] === 'rate_limit') {
+  process.stdout.write(JSON.stringify({ resources: {
+    core: { limit: 5000, remaining: 5000, reset: 1791406800 }
+  } }));
+  process.exit(0);
+}
 if (args[0] === 'aw' && args[1] === 'logs') {
   const shardPattern = args[args.indexOf('--cached-jsonl') + 1];
   const shardPath = shardPattern.replace(/\\*$/, '') + 'fixture.jsonl';

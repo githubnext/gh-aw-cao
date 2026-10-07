@@ -285,7 +285,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v5-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(activityPlanJob, /GH_AW_GITHUB_AUTH_MODE[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?activityCollectionPlan/);
-  assert.match(activityCollectJob, /strategy:\n\s+fail-fast: false\n\s+matrix:/);
+  const collectionStrategy = parse(activityWorkflow).jobs.collect.strategy;
+  assert.equal(collectionStrategy["fail-fast"], false);
+  assert.equal(collectionStrategy["max-parallel"], "${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && 1 || 256 }}");
+  assert.equal(collectionStrategy.matrix, "${{ fromJSON(needs.plan.outputs.matrix) }}");
   assert.match(activityCollectJob, /permissions:\n\s+actions: read\n\s+contents: read/);
   assert.match(activityCollectJob, /pull-requests: read\n\s+security-events: read/);
   assert.match(activityCollectJob, /permission-security-events: read/);

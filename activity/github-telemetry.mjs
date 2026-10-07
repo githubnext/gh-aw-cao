@@ -76,6 +76,28 @@ function queryRateLimit(token, execute = spawnSync) {
   return rateLimit;
 }
 
+export function requireGithubApiCapacity({
+  maxRequests,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  execute = spawnSync,
+}) {
+  if (!Number.isSafeInteger(maxRequests) || maxRequests === 0) {
+    throw new Error("GitHub API request budget must be a non-zero integer");
+  }
+  const core = queryRateLimit(token, execute).core;
+  if (!core || core.limit <= 0 || core.remaining < 0 || core.remaining > core.limit) {
+    throw new Error("GitHub API returned no valid core rate-limit capacity.");
+  }
+  const reserve = maxRequests < 0 ? -maxRequests : Math.max(0, core.limit - maxRequests);
+  if (core.remaining <= reserve) {
+    throw new Error(
+      `GitHub API core capacity insufficient: ${core.remaining}/${core.limit} requests remaining; `
+      + `collection requires more than the reserved ${reserve} requests; reset at ${core.resetAt}`,
+    );
+  }
+  return { ...core, reserve };
+}
+
 export async function prepareGithubTelemetryHistory({
   sourcePath,
   ledgerPath = DEFAULT_LEDGER_PATH,
@@ -174,12 +196,17 @@ export async function recordGithubTelemetry({
 export async function main(actions = {}, args = process.argv.slice(2)) {
   setActionsGlobals(actions);
   const [phase, operation, outcome] = args;
+  if (phase === "capacity") {
+    const core = requireGithubApiCapacity({ maxRequests: Number(operation) });
+    log.info`GitHub API core capacity: ${core.remaining}/${core.limit} remaining; reserve=${core.reserve}; reset at ${core.resetAt}`;
+    return;
+  }
   if (phase === "prepare") {
     await prepareGithubTelemetryHistory({ sourcePath: operation });
     return;
   }
   if (!["before", "after"].includes(phase) || !operation) {
-    throw new Error("usage: github-telemetry.mjs prepare [prior-ledger] | <before|after> <operation> [outcome]");
+    throw new Error("usage: github-telemetry.mjs capacity <request-budget> | prepare [prior-ledger] | <before|after> <operation> [outcome]");
   }
   await recordGithubTelemetry({
     phase,

@@ -9,6 +9,7 @@ import {
   normalizeGithubTelemetryStackTrace,
   prepareGithubTelemetryHistory,
   recordGithubTelemetry,
+  requireGithubApiCapacity,
 } from "../../activity/github-telemetry.mjs";
 
 test("GitHub telemetry records rate-limit and bounded cache metadata without token values", async () => {
@@ -159,5 +160,74 @@ test("GitHub telemetry tolerates a missing default Error stack", async () => {
   } finally {
     globalThis.Error = OriginalError;
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+function capacityResponse(remaining, limit = 5000) {
+  return { status: 0, stdout: JSON.stringify({
+    resources: { core: { limit, remaining, reset: 1_788_528_000 } },
+  }) };
+}
+
+test("collection capacity requires headroom above its reserved core quota", () => {
+  const core = requireGithubApiCapacity({
+    maxRequests: -4000,
+    token: "fixture-token",
+    execute: (command, args, options) => {
+      assert.equal(command, "gh");
+      assert.deepEqual(args, ["api", "rate_limit"]);
+      assert.equal(options.env.GH_TOKEN, "fixture-token");
+      return capacityResponse(4001);
+    },
+  });
+  assert.equal(core.reserve, 4000);
+  for (const remaining of [4000, 3999, 0]) {
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests: -4000,
+      execute: () => capacityResponse(remaining),
+    }), /capacity insufficient:.*reserved 4000 requests; reset at 2026-09-04T13:20:00.000Z/);
+  }
+});
+
+test("collection capacity preserves the smaller workflow-token reserve", () => {
+  assert.equal(requireGithubApiCapacity({
+    maxRequests: -100, execute: () => capacityResponse(101, 1000),
+  }).reserve, 100);
+  assert.throws(() => requireGithubApiCapacity({
+    maxRequests: -100, execute: () => capacityResponse(100, 1000),
+  }), /capacity insufficient/);
+});
+
+test("positive collection budgets preserve the absolute-used-request limit", () => {
+  assert.equal(requireGithubApiCapacity({
+    maxRequests: 1000, execute: () => capacityResponse(4001),
+  }).reserve, 4000);
+  assert.throws(() => requireGithubApiCapacity({
+    maxRequests: 1000, execute: () => capacityResponse(4000),
+  }), /capacity insufficient/);
+});
+
+test("collection capacity rejects invalid budgets before inspecting credentials", () => {
+  for (const maxRequests of [0, undefined, NaN, Infinity, 1.5, "100"]) {
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests, execute: () => assert.fail("invalid budgets must not query GitHub"),
+    }), /must be a non-zero integer/);
+  }
+});
+
+test("collection capacity fails closed for missing, invalid, or unreadable core evidence", () => {
+  for (const response of [
+    { status: 0, stdout: '{"resources":{}}' },
+    { status: 0, stdout: '{"resources":{"graphql":{"limit":5000,"remaining":5000,"reset":1788528000}}}' },
+    capacityResponse(-1),
+    capacityResponse(5001),
+    capacityResponse(0, 0),
+    { status: 0, stdout: "invalid" },
+    { status: 1, stderr: "capacity unavailable" },
+    { error: new Error("credential lookup failed") },
+  ]) {
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests: -4000, execute: () => response,
+    }));
   }
 });

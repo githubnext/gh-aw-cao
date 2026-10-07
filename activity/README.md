@@ -64,6 +64,32 @@ the bounded run window for every repository. Later collections reuse each
 repository's wildcard shard cache and canonical transaction hashes, making the
 normal refresh incremental.
 
+Collection and snapshot consumers restore the same ordered cache paths as
+publication, including the normalized phases, inventory, and repository memory.
+Actions includes the path list in its cache version; restoring only the raw
+shards and database cannot reuse the published snapshot. Each collection job
+rebuilds a separate `collection.sqlite` projection from its owner-scoped shards
+for issue-status and operational-value queries. It does not query the restored
+cross-owner database, which is reused only by indexing and snapshot consumers.
+
+Owner-scoped PAT collection jobs run serially because different PATs belonging
+to the same user share a core API quota. App installation jobs can run in
+parallel. Before inventory discovery and each repository log invocation,
+Activity checks the selected credential's current core capacity against the
+same request reserve used by log collection (100 requests for workflow-token
+mode, 4000 for App/PAT mode). Missing capacity evidence or capacity at or below
+the reserve stops collection, reports the reset time when available, and leaves
+the published snapshot unchanged; it never waits for replenishment or borrows
+another credential.
+
+Dispatch reconciliation treats an activation-skipped orchestrator as a
+no-dispatch cycle only when the run succeeded, its pre-activation job succeeded,
+its activation, agent, and safe-output jobs were skipped, and its validated
+`cao-admission` artifact identifies the same repository, run, and attempt.
+This includes admission denial and precompute capacity deferral after admission
+was granted: neither executes dispatch-producing jobs. Missing output from an
+activated or failed run remains incomplete evidence.
+
 ## Data ownership and joins
 
 Activity has two source classes:

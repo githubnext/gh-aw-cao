@@ -153,15 +153,26 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     /run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
   );
   assertCachePathSets(workflow, 4, [
-    [
-      "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
-      "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
-      "${{ runner.temp }}/cao-activity/drain3_weights.json",
-    ],
+    repositoryMemoryCachePaths,
     repositoryMemoryCachePaths,
     legacyCachePaths,
     repositoryMemoryCachePaths,
   ]);
+  const parsed = parse(workflow);
+  const collectRestore = parsed.jobs.collect.steps.find((step) => step.uses?.startsWith("actions/cache/restore@"));
+  const cacheSave = parsed.jobs.cache.steps.find((step) => step.uses?.startsWith("actions/cache/save@"));
+  assert.equal(collectRestore.with.path, cacheSave.with.path, "collection must match the saved cache version");
+  const collectSteps = parsed.jobs.collect.steps;
+  for (const [name, variable] of [
+    ["Download owner-scoped agentic workflow logs", "REPORT_ACTIVITY_DATABASE"],
+    ["Enrich owner-scoped issue statuses", "ACTIVITY_DATABASE"],
+    ["Compute owner-scoped operational value", "ACTIVITY_DATABASE"],
+  ]) {
+    assert.equal(collectSteps.find((step) => step.name === name).env[variable],
+      "${{ runner.temp }}/cao-activity/collection.sqlite",
+      "owner-scoped collection must not query the restored cross-owner projection");
+  }
+  assert.doesNotMatch(cacheSave.with.path, /collection\.sqlite/);
   const legacyPathBlock = workflow.match(
     /Restore legacy activity cache layout[\s\S]*?path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/,
   )?.[1];
@@ -179,7 +190,19 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1, repositoryMemoryCachePaths);
-  assertCachePathSets(sharedCache, 2);
+  assertCachePathSets(sharedCache, 2, repositoryMemoryCachePaths);
+  const producer = parse(await readFile(".github/workflows/cao-activity.yml", "utf8"));
+  const savedPath = producer.jobs.cache.steps.find((step) => step.uses?.startsWith("actions/cache/save@")).with.path;
+  for (const source of [dashboardWorkflow, sharedCache]) {
+    const consumer = parse(source.startsWith("---") ? /^---\n([\s\S]*?)\n---/.exec(source)[1] : source);
+    for (const job of Object.values(consumer.jobs)) {
+      for (const step of job.steps ?? job["pre-steps"] ?? []) {
+        if (step.uses?.startsWith("actions/cache/restore@")) {
+          assert.equal(step.with.path, savedPath, "every consumer must match the published cache version");
+        }
+      }
+    }
+  }
 });
 
 const execute = promisify(execFile);
