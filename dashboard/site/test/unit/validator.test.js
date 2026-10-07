@@ -1255,9 +1255,10 @@ describe('dashboard document validation', () => {
       expect.objectContaining({ field: 'workflow-name' }),
       expect.objectContaining({ field: 'repository', display: 'repository-link' }),
       expect.objectContaining({ field: 'campaign-name' }),
-      expect.objectContaining({ field: 'latest-run-status', display: 'status' }),
-      expect.objectContaining({ field: 'latest-run-at', type: 'temporal' })
+      expect.objectContaining({ field: 'workflow-active', display: 'active-state' })
     ]));
+    expect(columns.map((/** @type {{ field: string }} */ column) => column.field))
+      .not.toEqual(expect.arrayContaining(['latest-run-status', 'latest-run-at', 'successful-runs', 'failed-runs']));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
