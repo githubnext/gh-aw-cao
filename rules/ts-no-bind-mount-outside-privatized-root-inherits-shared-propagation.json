@@ -1,0 +1,57 @@
+{
+  "rule_key": "ts-no-bind-mount-outside-privatized-root-inherits-shared-propagation",
+  "language": "typescript",
+  "additional_languages": [],
+  "unsafe_pattern": "Calling `mount(tools, ['--bind', source, destination])` to bind a source under an already-privatized root (made private via a prior `mount --make-private <root>`) onto a `destination` path that lives OUTSIDE that privatized root (e.g. an invocation export directory under a separate shared `invocationsDir`), without also running `mount --make-private <destination>` on that specific bind result before using it. Privatizing the root/source does not privatize a separate destination mount point that is still covered by a shared ancestor mount.",
+  "consequence": "Per Linux shared-subtree semantics, binding a private source onto a shared destination mount point creates a shared clone at the destination, even though the source was private. The resulting mount silently remains shared propagation, which can leak mount events/visibility across namespaces and defeat the isolation the privatization was meant to guarantee for enclave/VM storage. This was the confirmed root cause of two consecutive live environment-probe failures (`storage-mount-propagation`) in this repository's Cloud Hypervisor enclave storage setup.",
+  "mechanical_correction": "After every `mount --bind <source> <destination>` where `destination` is not itself inside a path that was just privatized, immediately run `mount --make-private <destination>` (non-recursive, scoped to exactly that mount) and then verify via `/proc/self/mountinfo` that the resulting entry shows private propagation before trusting the mount. Do this for each distinct bind destination separately; privatizing an ancestor/source does not substitute for privatizing the specific destination mount.",
+  "evidence": [
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9530,
+      "title": "fix: isolate enclave allocation mount propagation",
+      "detail": "Root cause: 'the allocation root and artifact parent were overlapping shared peers'. Fix: run `mount --make-private <allocation-root>` before creating any child layout or bind, and verify exactly one private mount-table entry, specifically because nested self-binds inside the allocation were propagating back through overlapping shared views.",
+      "files": [
+        "src/cloud-hypervisor/trusted-enclave-storage.ts",
+        "src/cloud-hypervisor/mount-topology.ts"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 9536,
+      "title": "fix(enclave): privatize invocation mount beneath shared destination",
+      "detail": "Second, distinct occurrence of the same root defect class one probe-release later: 'The private `<allocation>/state` source is bound beneath a shared external invocation destination, so Linux shared-subtree semantics make the new mount shared.' Fix added a dedicated `mount --make-private <invocationHostDir>` immediately after the `--bind` in `mountTmpfs`, plus a post-remount assertion requiring exactly one private entry, because the prior PR's allocation-root privatization did not cover this separate external destination.",
+      "files": [
+        "src/cloud-hypervisor/trusted-enclave-storage.ts"
+      ]
+    },
+    {
+      "type": "review_comment",
+      "repo": "github/gh-aw-firewall",
+      "number": 9532,
+      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203171519",
+      "detail": "Copilot review comment on trusted-enclave-storage.ts:341 (the exact bind call later fixed by #9536) during the diagnostic-only PR that preceded the fix, flagging the same shared-destination propagation concern before root cause was confirmed."
+    },
+    {
+      "type": "review_comment",
+      "repo": "github/gh-aw-firewall",
+      "number": 9532,
+      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203274458",
+      "detail": "Second Copilot review comment reiterating the same concern at the same trusted-enclave-storage.ts:341 location on PR #9532."
+    }
+  ],
+  "occurrence_count": 4,
+  "affected_paths": [
+    "src/cloud-hypervisor/trusted-enclave-storage.ts",
+    "src/cloud-hypervisor/mount-topology.ts"
+  ],
+  "syntactic_constructs": [
+    "mount(tools, ['--bind', source, destination]) call where destination is a distinct path from any previously `--make-private`'d root, with no subsequent `mount(tools, ['--make-private', destination])` call before the mount is relied upon"
+  ],
+  "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
+  "autofix_safe": false,
+  "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
+  "status": "candidate"
+}
