@@ -358,6 +358,22 @@ export function readRepositoryMemoryFile(campaign, path, signal) {
 }
 
 /**
+ * Prepares Raw and Table memory-file payloads exclusively in the data worker.
+ * @param {string} path
+ * @param {string} content
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<import('./data/repository-memory-jsonl.js').MemoryFileContent>}
+ */
+export function processRepositoryMemoryFile(path, content, signal) {
+  return /** @type {Promise<import('./data/repository-memory-jsonl.js').MemoryFileContent>} */ (processRequest(
+    { operation: 'prepare-repository-memory-file', path, content },
+    () => Promise.reject(new Error('Memory file formatting requires a data worker.')),
+    false,
+    signal
+  ));
+}
+
+/**
  * Loads and hydrates the live canonical dashboard entirely in the data worker.
  * The main thread sends only a URL and receives the query projection needed by
  * the renderer.

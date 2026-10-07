@@ -261,6 +261,16 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .cao-memory-file-content > .memory-file-body { min-width: 0; min-height: 0; flex: 1; overflow: auto; }
 .memory-file-header { margin: 0 0 16px; }
 .memory-file-header h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.memory-file-viewer { min-width: 0; min-height: 0; display: flex; flex: 1; flex-direction: column; }
+.memory-file-tabs { display: flex; flex: none; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+.memory-file-tabs > button { position: relative; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 6px 6px 0 0; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.memory-file-tabs > button:hover { background: var(--neutral-muted); }
+.memory-file-tabs > button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.memory-file-tabs > button[aria-selected="true"] { font-weight: 600; }
+.memory-file-tabs > button[aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 -1px; height: 2px; background: var(--accent); }
+.memory-file-viewer > [role="tabpanel"] { min-width: 0; min-height: 0; flex: 1; overflow: auto; }
+.memory-file-viewer .table-region { margin-top: 0; }
+.memory-jsonl-table td { max-width: 32rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .cao-memory-file-content pre { width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 16px; overflow: visible; border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font: .75rem/1.5 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
 .cao-memory-file-content pre > code, .campaign-memory-content pre > code { display: block; min-width: 0; overflow-wrap: anywhere; }
 .campaign-memory-browser { min-width: 0; }

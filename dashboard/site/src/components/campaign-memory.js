@@ -6,7 +6,7 @@ import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { errorMessage } from './count-formatters.js';
 import { renderEmptyMessage, renderLoadingMessage } from './ui-primitives.js';
-import { renderFileContent } from './file-content.js';
+import { renderMemoryFileContent } from './memory-file-content.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
 const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
@@ -17,7 +17,7 @@ const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles }} CampaignMemory */
 /** @typedef {{ status: string, branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles, error: string }} ManifestState */
-/** @typedef {{ status: string, content: string, error: string }} MemoryFileState */
+/** @typedef {{ status: string, view: HTMLElement | null, error: string }} MemoryFileState */
 
 /**
  * @param {{ campaignId: string, campaignName: string }} options
@@ -32,7 +32,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
     status: 'loading', branch: '', commit: '', files: [], omitted: emptyOmissions(), error: ''
   }));
   const selectedPath = state('');
-  const fileState = state(/** @type {MemoryFileState} */ ({ status: 'idle', content: '', error: '' }));
+  const fileState = state(/** @type {MemoryFileState} */ ({ status: 'idle', view: null, error: '' }));
   const mobileView = state('browser');
   const mobileNavigation = createMobileMemoryNavigation(
     root,
@@ -103,7 +103,7 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
   effect(() => {
     const filePath = selectedPath.get();
     if (!filePath) {
-      fileState.set({ status: 'idle', content: '', error: '' });
+      fileState.set({ status: 'idle', view: null, error: '' });
       return;
     }
     const controller = new AbortController();
@@ -113,19 +113,22 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
       controller.abort();
       scope.signal.removeEventListener('abort', abort);
     });
-    fileState.set({ status: 'loading', content: '', error: '' });
-    readRepositoryMemoryFile(campaignId, filePath, controller.signal).then((result) => {
+    fileState.set({ status: 'loading', view: null, error: '' });
+    readRepositoryMemoryFile(campaignId, filePath, controller.signal).then(async (result) => {
       const content = result.content;
+      const view = await renderMemoryFileContent(filePath, content, controller.signal);
       if (!controller.signal.aborted) {
         debugCampaignMemory({ operation: 'read-file', status: 'ready', contentLength: content.length });
-        fileState.set({ status: 'ready', content, error: '' });
+        fileState.set({
+          status: 'ready', view, error: ''
+        });
       }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
         debugCampaignMemory({ operation: 'read-file', status: 'error', errorName: error?.name ?? 'Error' });
         fileState.set({
           status: 'error',
-          content: '',
+          view: null,
           error: errorMessage(error),
         });
       }
@@ -316,9 +319,10 @@ function renderCampaignTree(campaigns, signal) {
       controller.abort();
       signal.removeEventListener('abort', abort);
     });
-    readRepositoryMemoryFile(selected.campaign, selected.entry.path, controller.signal).then((result) => {
+    readRepositoryMemoryFile(selected.campaign, selected.entry.path, controller.signal).then(async (result) => {
+      const view = await renderMemoryFileContent(selected.entry.path, result.content, controller.signal);
       if (!controller.signal.aborted) {
-        fileBody.replaceChildren(renderFileContent(formatMemoryFileContent(selected.entry.path, result.content)));
+        fileBody.replaceChildren(view);
       }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
@@ -541,36 +545,11 @@ function memoryView({ campaignName, manifest, selectedPath, file, mobileView, se
           : file.status === 'error'
             ? renderEmptyMessage(`Unable to load this memory file. ${file.error}`, { role: 'alert' })
             : file.status === 'ready' && selected
-              ? renderFileContent(formatMemoryFileContent(selected.path, file.content))
+              ? file.view
               : null
       )
     )
   );
-}
-
-/**
- * Pretty-prints JSON and each valid JSONL record for display without changing
- * the underlying memory file.
- * @param {string} path
- * @param {string} content
- */
-export function formatMemoryFileContent(path, content) {
-  /** @param {string} text */
-  const prettyPrint = (text) => {
-    const trailingWhitespace = text.match(/\s*$/u)?.[0] ?? '';
-    const json = text.slice(0, text.length - trailingWhitespace.length);
-    try {
-      return `${JSON.stringify(JSON.parse(json), null, 2) ?? text}${trailingWhitespace}`;
-    } catch {
-      return text;
-    }
-  };
-  if (/\.json$/i.test(path)) return prettyPrint(content);
-  if (!/\.jsonl$/i.test(path)) return content;
-  return content.split(/(\r\n|\n|\r)/).map((part, index) => {
-    if (index % 2 === 1 || part.trim() === '') return part;
-    return prettyPrint(part);
-  }).join('');
 }
 
 /**

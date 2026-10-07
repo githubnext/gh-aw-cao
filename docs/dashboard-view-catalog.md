@@ -44,10 +44,18 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `findings` | Linked security and quality findings with status and severity. |
 | `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
 | `cost` | Observed AI Credit cost across campaigns, repositories, and workflows. |
-| `memory` | Browses repository memory published by centrally managed campaigns. |
+| `memory` | Browses repository memory published by centrally managed campaigns, with Raw and Table tabs for JSONL files. |
 | `skills` (experimental) | Observed skill invocations and the workflows that invoked them. |
 | `marketplace` | Read-only CAO campaign packages from the configured registries. See [Browse campaign packages](marketplace.md). |
 | `indexing` | Dashboard and server-side collection health, Activity ingestion, and retained database transactions. |
+
+JSONL memory files expose their top-level fields as table columns, with physical
+line numbers and the shared sorting, filtering, and load-more controls. Nested
+values remain JSON text; missing fields remain blank. Invalid records report
+their line number without hiding them from the Raw view. This file viewer uses
+a named element because memory-file schemas are discovered only after loading,
+outside the canonical dashboard sources. Both Raw pretty-printing and table
+parsing run exclusively in the data worker, including for hosted memory files.
 
 ## Declarative marks
 

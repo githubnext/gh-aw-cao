@@ -8,6 +8,62 @@ afterEach(() => {
 });
 
 describe('repository-memory worker protocol', () => {
+  it('formats Raw JSON and JSONL content through the worker boundary, preserving invalid records', () => {
+    const prepare = (/** @type {string} */ path, /** @type {string} */ content) =>
+      processDataRequest({ operation: 'prepare-repository-memory-file', path, content });
+    expect(prepare('notes.json', '{"answer":42,"nested":{"ok":true}}\n'))
+      .toEqual({ content: '{\n  "answer": 42,\n  "nested": {\n    "ok": true\n  }\n}\n' });
+    expect(prepare('transactions.jsonl', '{"id":1}\r\nnot-json\r\n\r\n{"id":2,"ok":true}'))
+      .toMatchObject({ content: '{\n  "id": 1\n}\r\nnot-json\r\n\r\n{\n  "id": 2,\n  "ok": true\n}' });
+    expect(prepare('notes.md', '{"answer":42}')).toEqual({ content: '{"answer":42}' });
+    expect(prepare('broken.json', '{"answer":')).toEqual({ content: '{"answer":' });
+  });
+
+  it('parses JSONL into ordered columns and physical line numbers through the worker boundary', () => {
+    expect(processDataRequest({
+      operation: 'prepare-repository-memory-file', path: 'records.jsonl',
+      content: '{"id":2,"nested":{"ok":true},"nullable":null}\r\n\r\n{"id":1,"later":[1,2],"html":"<script>"}\n',
+    })).toMatchObject({ table: {
+      columns: ['id', 'nested', 'nullable', 'later', 'html'],
+      rows: [
+        { line: 1, cells: ['2', '{"ok":true}', 'null', '', ''] },
+        { line: 3, cells: ['1', '', '', '[1,2]', '<script>'] },
+      ],
+      error: '',
+    } });
+  });
+
+  it('preserves scalar, array, empty-object, and unusual-key JSON records', () => {
+    expect(processDataRequest({
+      operation: 'prepare-repository-memory-file', path: 'records.jsonl',
+      content: '{"__proto__":"safe","constructor":false,"":0}\n{}\nnull\nfalse\n0\n""\n[1,2]',
+    })).toMatchObject({ table: {
+      columns: ['__proto__', 'constructor', '', 'Value (non-object)'],
+      rows: [
+        { line: 1, cells: ['safe', 'false', '0', ''] },
+        { line: 2, cells: ['', '', '', ''] },
+        { line: 3, cells: ['', '', '', 'null'] },
+        { line: 4, cells: ['', '', '', 'false'] },
+        { line: 5, cells: ['', '', '', '0'] },
+        { line: 6, cells: ['', '', '', ''] },
+        { line: 7, cells: ['', '', '', '[1,2]'] },
+      ],
+      error: '',
+    } });
+  });
+
+  it('reports malformed records and rejects invalid or oversized parser requests', () => {
+    expect(processDataRequest({
+      operation: 'prepare-repository-memory-file', path: 'records.jsonl', content: '{"id":1}\n\nbad\n{"id":2}',
+    })).toMatchObject({ table: { columns: [], rows: [], error: 'Invalid JSON on line 3. Use Raw to inspect the file.' } });
+    expect(() => processDataRequest({
+      operation: 'prepare-repository-memory-file', path: 'records.jsonl', content: {},
+    })).toThrow('must be text');
+    expect(() => processDataRequest({
+      operation: 'prepare-repository-memory-file', path: 'records.jsonl', content: 'x'.repeat(1024 * 1024 + 1),
+    })).toThrow('size limit');
+  });
+
   it('lists all requested campaigns from one manifest without inventing missing entries', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       version: 1,

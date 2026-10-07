@@ -2,6 +2,12 @@ import { expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
+const jsonlContent = Array.from({ length: 30 }, (_, index) => JSON.stringify({
+  id: 30 - index,
+  label: `record-${String(index).padStart(2, '0')}`,
+  detail: { description: 'A-long-nested-memory-value-'.repeat(8) },
+})).join('\n');
+
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/memory/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -20,6 +26,7 @@ test.beforeEach(async ({ context, page }) => {
               { path: 'notes/deep/a-very-long-memory-file-name-that-must-truncate-instead-of-wrapping.json', oid: 'd'.repeat(40), size: 1024 },
               { path: 'notes/deep/settings.yaml', oid: 'e'.repeat(40), size: 8 },
               { path: 'notes/deep/plain.txt', oid: 'f'.repeat(40), size: 9 },
+              { path: 'records.jsonl', oid: '1'.repeat(40), size: jsonlContent.length },
             ],
             omitted: {},
           }],
@@ -29,6 +36,10 @@ test.beforeEach(async ({ context, page }) => {
     }
     if (path === '/memory/ambient-context/notes/deep/first.md') {
       await route.fulfill({ contentType: 'text/plain', body: '# First' });
+      return;
+    }
+    if (path === '/memory/ambient-context/records.jsonl') {
+      await route.fulfill({ contentType: 'text/plain', body: jsonlContent });
       return;
     }
     await route.fulfill({ status: 404 });
@@ -66,6 +77,49 @@ test.beforeEach(async ({ context, page }) => {
     </script>
   `);
 });
+
+for (const width of [1280, 390]) {
+  test(`JSONL memory reuses table controls and accessible tabs at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const tree = page.getByRole('tree', { name: 'Campaign memory files' });
+    await tree.getByRole('treeitem', { name: 'Ambient Context' }).click();
+    await page.evaluate(() => {
+      Reflect.set(window, 'memoryMainParseCount', 0);
+      const parse = JSON.parse;
+      JSON.parse = (text, reviver) => {
+        if (text.includes('record-07')) {
+          Reflect.set(window, 'memoryMainParseCount', Reflect.get(window, 'memoryMainParseCount') + 1);
+        }
+        return parse(text, reviver);
+      };
+    });
+    await tree.getByRole('treeitem', { name: /records\.jsonl/ }).click();
+    const content = page.locator('.cao-memory-file-content');
+    const raw = content.getByRole('tab', { name: 'Raw', exact: true });
+    const table = content.getByRole('tab', { name: 'Table', exact: true });
+    await expect(raw).toHaveAttribute('aria-selected', 'true');
+    await raw.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(table).toBeFocused();
+    await expect(table).toHaveAttribute('aria-selected', 'true');
+    await expect(content.locator('.table-filter-result')).toHaveText('Showing 25 of 30 records');
+    await expect(content.locator('thead th')).toHaveText(['Line', 'id', 'label', 'detail']);
+    await content.getByRole('button', { name: /^id / }).click();
+    await expect(content.locator('tbody tr:visible').first().locator('td').nth(1)).toHaveText('1');
+    const filter = content.getByRole('searchbox', { name: 'Filter JSONL records' });
+    await filter.fill('record-07');
+    await expect(content.locator('.table-filter-result')).toHaveText('Showing 1 of 1 record');
+    await expect(content.locator('tbody tr:visible')).toContainText('record-07');
+    await raw.click();
+    await expect(content.locator('pre')).toBeVisible();
+    await table.click();
+    await expect(filter).toHaveValue('record-07');
+    await expect.poll(() => content.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expect.poll(() => content.locator('.table-filter').evaluate((element) =>
+      element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(await page.evaluate(() => Reflect.get(window, 'memoryMainParseCount'))).toBe(0);
+  });
+}
 
 test('Memory tree keyboard navigation follows expanded folders', async ({ page }) => {
   const tree = page.getByRole('tree', { name: 'Campaign memory files' });

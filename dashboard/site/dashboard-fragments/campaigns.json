@@ -748,7 +748,8 @@
         {
           "id": "campaign-memory-browser",
           "title": "Campaign memory",
-          "subject": "Let operators browse published repository memory from every registered campaign in a compact file tree with expandable folders and file-type icons, without leaving this page.",
+          "subject": "Let operators browse published repository memory from every registered campaign in a compact file tree, with Raw and Table tabs for JSONL files using shared table controls.",
+          "description": "The file browser owns JSONL tabs because memory files have dynamic schemas outside canonical dashboard sources. The data worker parses records, and the shared table presents their fields.",
           "data": {
             "sources": [
               "campaign-memory-campaigns"

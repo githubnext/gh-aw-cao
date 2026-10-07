@@ -1,25 +1,29 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  formatMemoryFileContent,
   renderAllCampaignMemory,
   renderCampaignMemory,
 } from '../../src/components/campaign-memory.js';
 import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
 import { publishSource, resetSourceStore } from '../../src/source-store.js';
+import { DataRequestWorker } from '../data-request-worker.js';
 
 const memoryApi = vi.hoisted(() => ({
   list: vi.fn(),
   listAll: vi.fn(),
   read: vi.fn(),
 }));
-vi.mock('../../src/data-processor.js', () => ({
+vi.mock('../../src/data-processor.js', async (importOriginal) => ({
+  ...await importOriginal(),
   listRepositoryMemory: memoryApi.list,
   listRepositoryMemoryCampaigns: memoryApi.listAll,
   readRepositoryMemoryFile: memoryApi.read,
 }));
 
-beforeEach(resetSourceStore);
+beforeEach(() => {
+  resetSourceStore();
+  vi.stubGlobal('Worker', DataRequestWorker);
+});
 afterEach(() => {
   resetSourceStore();
   memoryApi.list.mockReset();
@@ -29,17 +33,6 @@ afterEach(() => {
 });
 
 describe('campaign repository memory', () => {
-  it('pretty-prints JSON and valid JSONL records while preserving other content', () => {
-    expect(formatMemoryFileContent('notes.json', '{"answer":42,"nested":{"ok":true}}\n'))
-      .toBe('{\n  "answer": 42,\n  "nested": {\n    "ok": true\n  }\n}\n');
-    expect(formatMemoryFileContent(
-      'transactions.jsonl',
-      '{"id":1}\r\nnot-json\r\n\r\n{"id":2,"ok":true}'
-    )).toBe('{\n  "id": 1\n}\r\nnot-json\r\n\r\n{\n  "id": 2,\n  "ok": true\n}');
-    expect(formatMemoryFileContent('notes.md', '{"answer":42}')).toBe('{"answer":42}');
-    expect(formatMemoryFileContent('broken.json', '{"answer":')).toBe('{"answer":');
-  });
-
   it('browses every campaign memory in place', async () => {
     memoryApi.listAll
       .mockResolvedValueOnce([{
@@ -129,6 +122,10 @@ describe('campaign repository memory', () => {
     /** @type {HTMLButtonElement} */ (secondCampaign.querySelectorAll('.campaign-memory-file')[1]).click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent)
       .toBe('{\n  "id": 1\n}\n{\n  "id": 2,\n  "ok": true\n}\n'));
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-tab-value="table"]')).click();
+    await vi.waitFor(() => expect([...rendered.querySelectorAll('table tbody tr')].map((row) => row.textContent))
+      .toEqual(['11', '22true']));
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-tab-value="raw"]')).click();
     expect(rendered.querySelector('.memory-mobile-back')).toBeNull();
     publishSource('campaign-memory-campaigns', {
       source: 'campaign-memory-campaigns',
@@ -503,6 +500,32 @@ describe('campaign repository memory', () => {
 
     expect(rendered.textContent).toBe('No campaigns are registered.');
     expect(memoryApi.list).not.toHaveBeenCalled();
+  });
+
+  it('shares JSONL tabs with the campaign viewer and preserves them across pane navigation', async () => {
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context', commit: 'a'.repeat(40), omitted: {},
+      files: [
+        { path: 'records.jsonl', oid: 'b'.repeat(40), size: 9 },
+        { path: 'notes.md', oid: 'c'.repeat(40), size: 7 },
+      ],
+    });
+    memoryApi.read.mockImplementation((_campaign, path) =>
+      Promise.resolve({ content: path === 'records.jsonl' ? '{"id":1}\n' : '# Notes' }));
+    const root = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.querySelector('[data-tab-value="table"]')).not.toBeNull());
+    /** @type {HTMLButtonElement} */ (root.querySelector('[data-tab-value="table"]')).click();
+    await vi.waitFor(() => expect(root.querySelector('table tbody')?.textContent).toBe('11'));
+    const viewer = root.querySelector('.memory-file-viewer');
+    /** @type {HTMLButtonElement} */ (root.querySelector('.campaign-memory-file')).click();
+    expect(root.querySelector('.memory-file-viewer')).toBe(viewer);
+    expect(root.querySelector('[data-tab-value="table"]')?.getAttribute('aria-selected')).toBe('true');
+    /** @type {HTMLButtonElement} */ (root.querySelector('[data-tab-value="raw"]')).click();
+    expect(root.querySelector('[data-tab-value="raw"]')?.getAttribute('aria-selected')).toBe('true');
+    /** @type {HTMLButtonElement} */ (root.querySelectorAll('.campaign-memory-file')[1]).click();
+    await vi.waitFor(() => expect(root.querySelector('pre')?.textContent).toBe('# Notes'));
+    expect(root.querySelector('[role="tablist"]')).toBeNull();
   });
 
   it('loads the static manifest and browses campaign files', async () => {

@@ -33,6 +33,7 @@ import { formatDataSize, publishWorkerLoadingProgress, startIngestionProgress } 
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugEagerIngest, debugShardLimit } from './debug.js';
 import { withRetries } from './retry.js';
+import { prepareMemoryFile } from './data/repository-memory-jsonl.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
@@ -757,11 +758,20 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'prepare-repository-memory-file') {
+    if (typeof request.content !== 'string') throw new TypeError('Memory file content must be text.');
+    const path = repositoryMemoryPath(request.path);
+    if (!path) throw new Error('Memory file path is invalid.');
+    if (new TextEncoder().encode(request.content).byteLength > REPOSITORY_MEMORY_MAX_FILE_SIZE) {
+      throw new Error('Memory file exceeds the published size limit.');
+    }
+    return prepareMemoryFile(path, request.content);
+  }
   if (request?.operation === 'read-dashboard-snapshot') {
     return readDashboardSnapshotMetadata().then((snapshot) => {
       hasCompleteDashboardSnapshot = snapshot !== null;
