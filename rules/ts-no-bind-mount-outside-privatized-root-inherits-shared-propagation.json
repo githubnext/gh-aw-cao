@@ -66,5 +66,17 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37662241728",
   "last_updated_target_repo": "github/gh-aw-firewall",
-  "last_seen_at": "2026-10-07T18:06:50Z"
+  "last_seen_at": "2026-10-07T19:05:20Z",
+  "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "First evaluation on this target: no mount-namespace bind/privatize code exists in githubnext/gh-aw-cao; the sole '--bind' hit is an unrelated network listener flag. Not applicable here, independent of needs-work readiness on github/gh-aw-firewall.",
+      "txn_id": "refiner-37671193744-3"
+    }
+  ]
 }

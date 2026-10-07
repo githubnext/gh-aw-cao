@@ -76,17 +76,17 @@
     "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history."
   },
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "4b1a19ed40a7261de8a55b4b23ce710a18d287fe",
-    "true_positive_count": 2,
-    "false_positive_count": 4,
+    "target_repo": "githubnext/gh-aw-cao",
+    "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
+    "true_positive_count": 0,
+    "false_positive_count": 1,
     "false_negative_count": 1,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 4b1a19e: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods) and same false negative (artifact-permissions.ts shell-string chmod -R) persist, no suppression mechanism.",
-    "txn_id": "refiner-37548458310-1"
+    "reason": "Re-confirmed unchanged on HEAD c6796f39: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a fresh mkdtemp directory remains a false positive against the naive recursive-chmod heuristic. No drift since refiner-37557116506-2.",
+    "txn_id": "refiner-37671193744-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37671193744",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
       "target_repo": "githubnext/gh-aw-cao",
@@ -159,6 +159,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-06T23:48:57Z",
+  "last_seen_at": "2026-10-07T19:05:10Z",
   "last_updated": "2026-10-07T02:14:05Z"
 }
