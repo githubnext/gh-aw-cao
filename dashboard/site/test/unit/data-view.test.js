@@ -523,13 +523,6 @@ describe('data view renderer', () => {
   it('renders declared conditional CLI actions on entity cards', () => {
     setDeclaredCliActions([
       {
-        id: 'update-campaign',
-        label: 'Update campaign',
-        icon: 'sync',
-        command: 'gh aw update {{campaign}}',
-        placement: 'row'
-      },
-      {
         id: 'enable-campaign',
         label: 'Activate campaign',
         icon: 'play',
@@ -538,9 +531,16 @@ describe('data view renderer', () => {
       },
       {
         id: 'disable-campaign',
-        label: 'Deactivate campaign',
+        label: 'Deactivate',
         icon: 'pause',
         command: './cao.sh disable {{campaign}}',
+        placement: 'row'
+      },
+      {
+        id: 'update-campaign',
+        label: 'Update',
+        icon: 'sync',
+        command: 'gh aw update {{campaign}}',
         placement: 'row'
       }
     ], { canExecute: false });
@@ -566,13 +566,13 @@ describe('data view renderer', () => {
           details: [{ field: 'campaign-update-state', title: 'Update confidence', display: 'status' }],
           timing: [{ field: 'campaign-observed-at', title: 'Observed', icon: 'calendar', type: 'temporal' }],
           actions: [{
-            action: 'update-campaign',
-            context: ['campaign'],
-            when: { field: 'campaign-update-state', equals: 'update-available' }
-          }, {
             action: 'disable-campaign',
             context: ['campaign'],
             when: { field: 'campaign-registration', equals: 'true' }
+          }, {
+            action: 'update-campaign',
+            context: ['campaign'],
+            when: { field: 'campaign-update-state', equals: 'update-available' }
           }, {
             action: 'enable-campaign',
             context: ['campaign'],
@@ -590,10 +590,11 @@ describe('data view renderer', () => {
     });
 
     const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
-    expect(cards[0]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Deactivate campaign');
-    expect(cards[1]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Activate campaign');
-    expect(cards[2]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Update campaign');
-    expect(cards[2]?.querySelector('.entity-card-list-actions')?.textContent).toContain('Deactivate campaign');
+    /** @param {Element | undefined} card */
+    const actionLabels = (card) => Array.from(card?.querySelectorAll('.entity-card-list-actions .table-cli-action-control > button') ?? [], (button) => button.textContent?.trim());
+    expect(actionLabels(cards[0])).toEqual(['Deactivate']);
+    expect(actionLabels(cards[1])).toEqual(['Activate campaign']);
+    expect(actionLabels(cards[2])).toEqual(['Deactivate', 'Update']);
     expect(rendered?.textContent).toContain('./cao.sh enable current');
     expect(rendered?.textContent).toContain('./cao.sh disable outdated');
     expect(cards[0]?.querySelector('.issue-list-labels .status-success')?.textContent).toBe('Active');

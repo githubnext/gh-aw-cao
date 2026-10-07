@@ -740,16 +740,6 @@
         ],
         "actions": [
           {
-            "action": "update-campaign",
-            "context": [
-              "campaign"
-            ],
-            "when": {
-              "field": "campaign-update-state",
-              "equals": "update-available"
-            }
-          },
-          {
             "action": "disable-campaign",
             "context": [
               "campaign"
@@ -757,6 +747,16 @@
             "when": {
               "field": "campaign-registration",
               "equals": "true"
+            }
+          },
+          {
+            "action": "update-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "campaign-update-state",
+              "equals": "update-available"
             }
           },
           {
@@ -890,7 +890,7 @@
       {
         "id": "update-campaign",
         "level": "operate",
-        "label": "Update campaign",
+        "label": "Update",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
         "command": "./cao.sh update {{campaign}}",
@@ -926,7 +926,7 @@
       {
         "id": "disable-campaign",
         "level": "operate",
-        "label": "Deactivate campaign",
+        "label": "Deactivate",
         "description": "Deactivate future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
         "icon": "pause",
         "command": "./cao.sh disable {{campaign}}",
