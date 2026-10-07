@@ -1,0 +1,7 @@
+{
+  "page": "campaigns",
+  "view": "campaigns-inventory",
+  "source": "campaign-inventory",
+  "partialSource": "campaign-inventory-preview",
+  "pendingFields": ["workflows", "roles", "modes", "registration", "runs", "dispatches", "covered-repositories", "aic"]
+}

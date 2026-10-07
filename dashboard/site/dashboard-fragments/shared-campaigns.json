@@ -1387,6 +1387,25 @@
       }
     },
     {
+      "name": "campaign-inventory-preview",
+      "subject": "Show declared campaigns before execution evidence is evaluated.",
+      "objective": "Expose campaign identities and navigation links while observed totals remain pending.",
+      "acceptance": "Preserve every declared campaign and its dashboard link without reporting missing execution totals as zero.",
+      "from": "campaigns",
+      "compute": [
+        { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "campaign" }] },
+        { "as": "campaign-dashboard-href", "function": "concat", "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }] },
+        { "as": "campaign-dashboard-label", "function": "concat", "args": [{ "value": "View " }, { "field": "campaign-name" }, { "value": " campaign dashboard" }] },
+        { "as": "campaign-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "campaign-dashboard-href" }, { "field": "campaign-dashboard-label" }, { "field": "campaign" }] }
+      ],
+      "select": [
+        { "field": "campaign" },
+        { "field": "campaign-name" },
+        { "field": "campaign-dashboard-link" }
+      ],
+      "order-by": [{ "field": "campaign-name", "direction": "asc" }]
+    },
+    {
       "name": "campaign-inventory",
       "subject": "List centrally managed campaigns with their observed workflow and execution totals.",
       "objective": "Compare declared campaigns with retained workflow composition, dispatches, target reach, runs, and AIC to choose an evidence-backed drill-down.",

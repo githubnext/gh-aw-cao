@@ -673,7 +673,8 @@
             "title": "Campaigns",
             "description": "Centrally managed campaign inventory and observed execution totals.",
             "data": {
-              "source": "campaign-inventory"
+              "source": "campaign-inventory",
+              "partial-source": "campaign-inventory-preview"
             },
             "mark": "table",
             "controls": "interactive",

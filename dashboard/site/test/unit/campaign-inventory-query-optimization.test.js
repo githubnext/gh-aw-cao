@@ -13,6 +13,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import previewContract from '../fixtures/campaign-inventory-preview-contract.json' with { type: 'json' };
 
 /** @typedef {import('../../src/data/queries/declarative.js').DashboardQuery} Query */
 /** @typedef {import('../../src/presenter.js').LogicalSourceInput} Source */
@@ -210,6 +211,28 @@ beforeEach(async () => {
 });
 
 describe('campaign inventory query optimization', () => {
+  it('projects campaign identities and navigation without execution inputs while totals are pending', async () => {
+    const page = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === previewContract.page);
+    const view = page?.definition?.views?.find((/** @type {{ id: string }} */ candidate) => candidate.id === previewContract.view);
+    expect(view?.data).toMatchObject({
+      source: previewContract.source, 'partial-source': previewContract.partialSource
+    });
+    const compiled = compileDashboardViewPayloadQueries(page, previewContract.page, {
+      queries, viewId: previewContract.view, partial: true
+    });
+    expect(resolveDashboardQuerySources([...queries, ...compiled.queries], compiled.aliases)
+      .filter((name) => !compiled.aliases.includes(name))).toEqual(['campaigns']);
+    const sources = await canonicalSources();
+    const preview = workerResults(/** @type {Query[]} */ ([...queries, ...compiled.queries]), sources, compiled.aliases)[compiled.aliases[0]];
+    const complete = workerResults(queries, sources, [previewContract.source])[previewContract.source];
+    expect(preview.rows.map((row) => row.campaign)).toEqual(complete.rows.map((row) => row.campaign));
+    for (const row of preview.rows) {
+      const final = complete.rows.find((candidate) => candidate.campaign === row.campaign);
+      expect(row['campaign-dashboard-link']).toEqual(final?.['campaign-dashboard-link']);
+      for (const field of previewContract.pendingFields) expect(row).not.toHaveProperty(field);
+    }
+  });
+
   it('preserves canonical declared inventory, attempt/AIC totals, inactive state, links, and stable ordering', async () => {
     const sources = await canonicalSources();
     const results = parity(sources);
