@@ -10,6 +10,11 @@ dashboard entity and query database; it MUST NOT acquire operational tables.
 `Store` exposes immutable per-feature capabilities, typed services, read-only
 health, one bounded cancellation-aware maintenance pass, and close. The
 application owns maintenance scheduling and MUST stop owned work before close.
+`OperationalServices` separates backend lifecycle, cache, request limiting,
+sessions, atomic session invalidation, revocations, leases, state, delivery
+deduplication, task queue, atomic delivery admission, collection metadata,
+GitHub quota, rate-limit state, health, and ingestion metrics. One backend MAY
+implement multiple services; the split does not relax atomic transitions.
 Consumers MUST depend on narrow cache, request-limit, OAuth, quota, collection,
 coordination, or diagnostic contracts. Raw Redis commands, physical keys,
 streams, scripts, adapter assertions, and backend-name decisions MUST remain

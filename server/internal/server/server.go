@@ -149,13 +149,17 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	services := store.Services()
 	capabilities := store.Capabilities()
-	if err := operational.Validate(capabilities, services, operational.Requirements{
+	requirements := operational.Requirements{
 		SingleProcess: (config.HostProfile.SingleProcess && config.SingleReplicaConfirmed) || config.HostProfile.IsolateProcessNamespace,
 		AllowVolatile: config.AllowVolatile || config.HostProfile.IsolateProcessNamespace,
 		OAuth:         config.HostProfile.Authentication == HostAuthenticationOAuth,
 		Collection:    config.Collector != nil,
-	}); err != nil {
+	}
+	if err := operational.Validate(capabilities, services, requirements); err != nil {
 		return nil, fmt.Errorf("operational guarantees: %w", err)
+	}
+	if err := operational.ValidateOperationalServices(capabilities, store.OperationalServices(), requirements); err != nil {
+		return nil, fmt.Errorf("operational services: %w", err)
 	}
 	if capabilities.Collection.Persistence == operational.PersistenceVolatile &&
 		capabilities.Collection.Scope != operational.ScopeUnsupported {

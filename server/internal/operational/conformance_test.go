@@ -63,6 +63,12 @@ func conformance(t *testing.T, store operational.Store) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	focused := store.OperationalServices()
+	if err := operational.ValidateOperationalServices(store.Capabilities(), focused, operational.Requirements{
+		SingleProcess: true, AllowVolatile: true, OAuth: true, Collection: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	t.Run("session-cas-and-logout", func(t *testing.T) {
 		oauth := services.OAuth
 		if err := oauth.PutSession(ctx, "session", "encrypted-original", time.Hour); err != nil {
@@ -274,5 +280,36 @@ func TestCapabilitiesRejectInvalidServices(t *testing.T) {
 	requirements.SingleProcess = true
 	if err := operational.Validate(store.Capabilities(), services, requirements); err == nil {
 		t.Fatal("typed-nil service accepted")
+	}
+	focused := store.OperationalServices()
+	if err := operational.ValidateOperationalServices(store.Capabilities(), focused, requirements); err != nil {
+		t.Fatal(err)
+	}
+	tests := map[string]func(*operational.OperationalServices){
+		"backend":             func(s *operational.OperationalServices) { s.Backend = absent },
+		"cache":               func(s *operational.OperationalServices) { s.Cache = absent },
+		"request limiter":     func(s *operational.OperationalServices) { s.RequestLimiter = absent },
+		"sessions":            func(s *operational.OperationalServices) { s.Sessions = absent },
+		"session invalidator": func(s *operational.OperationalServices) { s.SessionInvalidator = absent },
+		"revocations":         func(s *operational.OperationalServices) { s.Revocations = absent },
+		"leases":              func(s *operational.OperationalServices) { s.Leases = absent },
+		"state":               func(s *operational.OperationalServices) { s.State = absent },
+		"deliveries":          func(s *operational.OperationalServices) { s.Deliveries = absent },
+		"queue":               func(s *operational.OperationalServices) { s.Queue = absent },
+		"admission":           func(s *operational.OperationalServices) { s.Admission = absent },
+		"collection":          func(s *operational.OperationalServices) { s.Collection = absent },
+		"github quota":        func(s *operational.OperationalServices) { s.GitHubQuota = absent },
+		"rate limits":         func(s *operational.OperationalServices) { s.RateLimits = absent },
+		"health":              func(s *operational.OperationalServices) { s.Health = absent },
+		"ingestion metrics":   func(s *operational.OperationalServices) { s.IngestionMetrics = absent },
+	}
+	for name, omit := range tests {
+		t.Run(name, func(t *testing.T) {
+			incomplete := focused
+			omit(&incomplete)
+			if err := operational.ValidateOperationalServices(store.Capabilities(), incomplete, requirements); err == nil {
+				t.Fatal("missing advertised service accepted")
+			}
+		})
 	}
 }

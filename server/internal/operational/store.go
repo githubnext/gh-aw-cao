@@ -81,7 +81,7 @@ type Store interface {
 	Backend
 	Services() Services
 	OperationalServices() OperationalServices
-	HealthProbe
+	Health(context.Context) (Health, error)
 }
 
 // Backend owns the lifecycle and guarantees of one operational backend.
@@ -213,11 +213,11 @@ func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requir
 	// Reuse the existing scope, persistence and topology checks.
 	return Validate(c, Services{
 		Cache: s.Cache, RequestLimits: s.RequestLimiter,
-		OAuth: oauthServices{s.Sessions, s.SessionInvalidator, s.Revocations},
-		GitHubQuota: quotaServices{s.GitHubQuota, s.RateLimits, s.Collection},
-		Collection: collectionServices{s.Queue, s.Admission, s.Collection, s.Leases, s.State, s.Deliveries, s.Health, s.IngestionMetrics},
+		OAuth:        oauthServices{s.Sessions, s.SessionInvalidator, s.Revocations},
+		GitHubQuota:  quotaServices{s.GitHubQuota, s.RateLimits, s.Collection},
+		Collection:   collectionServices{s.Queue, s.Admission, s.Collection, s.Leases, s.State, s.Deliveries, s.Health, s.IngestionMetrics},
 		Coordination: coordinationServices{s.Leases, s.State, s.Deliveries},
-		Diagnostics: diagnosticsServices{s.Health, s.IngestionMetrics},
+		Diagnostics:  diagnosticsServices{s.Health, s.IngestionMetrics},
 	}, r)
 }
 
