@@ -6,6 +6,7 @@ import { octicon } from '../octicons.js';
 import { batch, effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { enableDetailsMenuDismissal, renderActionLabel } from './ui-primitives.js';
+import { actionPresentation, normalizeAction } from '../action-model.js';
 
 const debugAuth = createDebug('auth');
 
@@ -153,6 +154,14 @@ export function renderAccountMenu(options = {}) {
   // `createCopyControl` state/effect/createFactoryScope shape.
   const switchBusy = state(false);
   const logoutBusy = state(false);
+  const switchAction = normalizeAction({
+    level: 'ui', verb: 'switch-account', label: 'Use another GitHub account'
+  }, { id: 'switch-account', type: 'ui' });
+  const logoutAction = normalizeAction({
+    level: 'ui', verb: 'logout', label: 'Log out'
+  }, { id: 'logout', type: 'ui' });
+  const switchPresentation = actionPresentation(switchAction);
+  const logoutPresentation = actionPresentation(logoutAction);
 
   const loginLabel = h('strong', null, 'GitHub account');
   const avatarFallback = h('span', { className: 'account-menu-avatar-fallback' }, octicon('person'));
@@ -164,15 +173,15 @@ export function renderAccountMenu(options = {}) {
   }));
   const switchButton = /** @type {HTMLButtonElement} */ (h(
     'button',
-    { className: 'account-menu-action', type: 'button', 'data-switch-account': '' },
-    octicon('people'),
-    'Use another GitHub account'
+    { className: 'account-menu-action', type: 'button', 'data-switch-account': '', 'data-action-level': switchAction.level },
+    octicon(switchPresentation.icon),
+    switchPresentation.label
   ));
   const logoutButton = /** @type {HTMLButtonElement} */ (h(
     'button',
-    { className: 'account-menu-action', type: 'button', 'data-logout': '' },
-    octicon('sign-out'),
-    'Log out'
+    { className: 'account-menu-action', type: 'button', 'data-logout': '', 'data-action-level': logoutAction.level },
+    octicon(logoutPresentation.icon),
+    logoutPresentation.label
   ));
   const menu = /** @type {HTMLDetailsElement} */ (h(
     'details',

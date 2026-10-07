@@ -1102,6 +1102,20 @@ A table or list encoding may declare row `actions`. A `copy-prompt` action mater
 
 A custom page may also contain a non-empty `sections` sequence that groups its views for presentation. Each section contains a unique canonical `id`, optional `title` and `description`, one `layout` value of `full`, `wide`, `narrow`, or `horizontal`, and a non-empty `views` sequence. `horizontal` spans the available width and presents its views as adjacent boxes that wrap responsively while preserving source order. Section view references must name every view on the page exactly once and preserve view declaration order. An omitted section title defaults from its section ID. A section may pair `count-source` with a non-empty `count-label` to expose the effective source row count in its heading. Alternatively, `count-sources` pairs with `count-field` and `count-label` to sum the available numeric metric values into the heading; unavailable sources do not contribute a fabricated zero. A horizontal section presents this count summary as its primary heading.
 
+The shared action model has a separate `ui` level for native dashboard-local
+and account-session operations, such as resetting local storage, clearing the
+cached app, logging out, or switching accounts. These are `type: ui` actions,
+not read-only investigations, proposals, or control-plane operations. They
+never generate agent prompts or execute CLI commands. Account-session actions
+may call the dashboard's existing authenticated session endpoints; `ui` does
+not grant repository or operational authority. Native controls retain their
+browser/session lifecycle handling because those interactions cannot be
+expressed by a query or a prompt. Their labels and icons use the same normalized
+action presentation as other levels. UI actions do not require an agent preview
+or operational approval; destructive local actions still require their existing
+confirmation. CLI declarations, row prompt/CLI/external-link actions, and
+`prompt-level` must reject `ui` rather than treating it as another execution tier.
+
 #### 11.1.1 Route-Bound Page Templates
 
 A custom page may declare a constrained route binding, a navigation parent, or both:

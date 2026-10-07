@@ -7,6 +7,7 @@ import { state } from '../../src/reactive.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { normalizeAction } from '../../src/action-model.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -18,6 +19,13 @@ const metadata = {
 };
 
 describe('reactive prompt preview', () => {
+  it('does not turn a native UI action into an agent prompt', () => {
+    const getPrompt = vi.fn();
+    const action = normalizeAction({ label: 'Log out' }, { id: 'logout', type: 'ui' });
+    expect(() => renderPromptPreviewAction(action, getPrompt)).toThrow('reserved for native dashboard');
+    expect(getPrompt).not.toHaveBeenCalled();
+  });
+
   it('updates the open preview and copy from current state, then stops on detachment', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });

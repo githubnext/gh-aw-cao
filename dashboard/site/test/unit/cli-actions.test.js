@@ -14,6 +14,20 @@ afterEach(() => {
 });
 
 describe('CLI actions', () => {
+  it('rejects UI-only declarations and prompt execution without sending a request', () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const action = { id: 'invalid-ui', level: /** @type {const} */ ('ui'), label: 'Log out',
+      icon: 'sign-out', command: 'gh aw status', placement: /** @type {const} */ ('row') };
+    expect(() => setDeclaredCliActions([action])).toThrow('reserved for native dashboard');
+    expect(() => renderCliActions([action])).toThrow('reserved for native dashboard');
+    setDeclaredCliActions([{ ...action, level: 'explore' }]);
+    expect(() => renderRowCliAction(action.id, {}, { level: 'ui' })).toThrow('reserved for native dashboard');
+    expect(() => createPromptCliActionControl(action.id, () => 'Log out', { level: 'ui' }))
+      .toThrow('reserved for native dashboard');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('requires explicit confirmation for operate and retains readable row labels and decorative icons', async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,

@@ -1,13 +1,15 @@
-/** @typedef {'explore' | 'propose' | 'operate'} ActionLevel */
-/** @typedef {'prompt' | 'cli' | 'link'} ActionType */
+/** @typedef {'ui' | 'explore' | 'propose' | 'operate'} ActionLevel */
+/** @typedef {'ui' | 'prompt' | 'cli' | 'link'} ActionType */
 /** @typedef {'explicit' | 'view'} ActionSource */
 
-export const ACTION_LEVELS = /** @type {const} */ (['explore', 'propose', 'operate']);
+export const ACTION_LEVELS = /** @type {const} */ (['ui', 'explore', 'propose', 'operate']);
 
-const DEFAULT_ICONS = { explore: 'search', propose: 'git-pull-request', operate: 'zap' };
+const DEFAULT_ICONS = { ui: 'device-desktop', explore: 'search', propose: 'git-pull-request', operate: 'zap' };
+const DEFAULT_LABELS = { ui: 'UI action', explore: 'Investigate', propose: 'Propose fix', operate: 'Operate' };
 /** @type {Record<string, string>} */
 const VERB_ICONS = {
   refresh: 'sync', synchronize: 'sync', retry: 'play', execute: 'play',
+  clear: 'trash', reset: 'trash', logout: 'sign-out', 'switch-account': 'people',
   delete: 'trash', inspect: 'search', investigate: 'search',
   propose: 'git-pull-request'
 };
@@ -16,8 +18,16 @@ const VERB_ICONS = {
  * @typedef {{ id: string, level: ActionLevel, type: ActionType, source: ActionSource,
  * label: string, icon: string, verb?: string, subject?: string, objective?: string,
  * acceptance?: string, context?: unknown, viewTitle?: string, actionId?: string, command?: string,
- * intent?: string, presentation?: string }} Action
+ * intent?: string, presentation?: string, confirmation?: boolean }} Action
  */
+
+/** @param {ActionLevel} level @param {ActionType} type */
+export function assertActionLevel(level, type) {
+  if (!ACTION_LEVELS.includes(level)) throw new TypeError(`Unknown action level: ${level}`);
+  if ((level === 'ui') !== (type === 'ui')) {
+    throw new TypeError('The ui level is reserved for native dashboard and account-session controls.');
+  }
+}
 
 /** @param {ActionLevel} level @param {string} [verb] */
 export function actionIcon(level, verb) {
@@ -26,11 +36,12 @@ export function actionIcon(level, verb) {
 
 /** @param {Action} action */
 export function actionPresentation(action) {
+  assertActionLevel(action.level, action.type);
   return {
-    label: action.label || (action.level === 'explore' ? 'Investigate' : action.level === 'propose' ? 'Propose fix' : 'Operate'),
+    label: action.label || DEFAULT_LABELS[action.level],
     icon: action.icon || actionIcon(action.level, action.verb),
     preview: action.level === 'propose',
-    confirmation: action.level === 'operate'
+    confirmation: action.level === 'operate' || action.level === 'ui' && action.confirmation === true
   };
 }
 
@@ -42,11 +53,12 @@ export function actionPresentation(action) {
  */
 export function normalizeAction(declared, { type, id, source = 'explicit' }) {
   /** @type {ActionLevel} */
-  const level = declared.level ?? (type === 'cli' ? 'operate' : type === 'link' ? 'explore' : 'propose');
+  const level = declared.level ?? (type === 'ui' ? 'ui' : type === 'cli' ? 'operate' : type === 'link' ? 'explore' : 'propose');
+  assertActionLevel(level, type);
   const verb = declared.verb;
   return {
     ...declared, id, type, source, level, verb,
-    label: declared.label ?? (level === 'explore' ? 'Investigate' : level === 'propose' ? 'Propose fix' : ''),
+    label: declared.label ?? (level === 'operate' ? '' : DEFAULT_LABELS[level]),
     icon: declared.icon ?? actionIcon(level, verb)
   };
 }
@@ -63,6 +75,7 @@ export function normalizeViewAction(view, semantics) {
 
 /** @param {string} prompt @param {ActionLevel} level */
 export function constrainPrompt(prompt, level) {
+  assertActionLevel(level, 'prompt');
   return level === 'explore'
     ? `Read-only investigation. Do not modify repositories, create issues, patches, pull requests, change configuration, or perform operational side effects.\n\n${prompt}`
     : level === 'propose'

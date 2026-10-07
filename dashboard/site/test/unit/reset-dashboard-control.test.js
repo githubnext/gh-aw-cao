@@ -72,6 +72,8 @@ describe('dashboard local-data reset', () => {
     });
     document.body.append(control);
     expect(control.textContent).toContain('Clear app');
+    expect(control.querySelector('.reset-dashboard-trigger')?.getAttribute('data-action-level')).toBe('ui');
+    expect(control.querySelector('.reset-dashboard-trigger .octicon-trash')).not.toBeNull();
     /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
     /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-confirm')).click();
     await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
@@ -98,6 +100,8 @@ describe('dashboard local-data reset', () => {
     const control = renderResetDashboardControl({ storage: localStorage, indexedDB, reload });
     document.body.append(control);
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    expect(control.querySelector('.reset-dashboard-trigger')?.getAttribute('data-action-level')).toBe('ui');
+    expect(control.querySelector('.reset-dashboard-confirm')?.getAttribute('data-action-level')).toBe('ui');
 
     /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
     const dialog = /** @type {HTMLDialogElement} */ (control.querySelector('dialog'));

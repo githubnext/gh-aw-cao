@@ -62,6 +62,8 @@ describe('hosted GitHub account menu', () => {
     const switchButton = menu.querySelector('[data-switch-account]');
     expect(switchButton).toBeInstanceOf(HTMLButtonElement);
     if (!(switchButton instanceof HTMLButtonElement)) throw new Error('account switch button was not rendered');
+    expect(switchButton.dataset.actionLevel).toBe('ui');
+    expect(switchButton.querySelector('.octicon-people')).not.toBeNull();
     switchButton.click();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock).toHaveBeenLastCalledWith('/auth/switch-account', {
@@ -76,6 +78,8 @@ describe('hosted GitHub account menu', () => {
     const logoutButton = menu.querySelector('[data-logout]');
     expect(logoutButton).toBeInstanceOf(HTMLButtonElement);
     if (!(logoutButton instanceof HTMLButtonElement)) throw new Error('logout button was not rendered');
+    expect(logoutButton.dataset.actionLevel).toBe('ui');
+    expect(logoutButton.querySelector('.octicon-sign-out')).not.toBeNull();
     logoutButton.click();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(fetchMock).toHaveBeenLastCalledWith('/auth/logout', {

@@ -83,6 +83,61 @@ test('tiered actions keep visible labels and usable approval on portrait and lan
   }
 });
 
+test('native UI actions stay separate from agent operations and preserve local reset confirmation', async ({ page }) => {
+  await page.route('http://dashboard.test/api/auth/session', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ login: 'octocat' })
+  }));
+  await page.route('http://dashboard.test/auth/logout', (route) => route.fulfill({ status: 204 }));
+  await page.evaluate(async (moduleUrls) => {
+    const meta = document.createElement('meta');
+    meta.name = 'cao-auth-mode';
+    meta.content = 'github';
+    document.head.append(meta);
+    document.cookie = 'cao_csrf=test-csrf; Path=/';
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    const [{ getPrimerStyles }, { renderResetDashboardControl }, { renderAccountMenu }] = await Promise.all(
+      moduleUrls.map((url) => import(url))
+    );
+    const styles = document.createElement('style');
+    styles.textContent = getPrimerStyles();
+    document.head.append(styles);
+    const root = /** @type {HTMLElement} */ (document.querySelector('#root'));
+    root.append(renderResetDashboardControl({
+      reload: () => { root.dataset.reset = 'complete'; }
+    }));
+    const menu = renderAccountMenu({ navigate: (/** @type {string} */ url) => { root.dataset.navigation = url; } });
+    if (menu) root.append(menu);
+  }, [
+    'http://dashboard.test/src/styles.js',
+    'http://dashboard.test/src/components/reset-dashboard-control.js',
+    'http://dashboard.test/src/components/account-menu.js'
+  ]);
+  const clear = page.getByRole('button', { name: 'Reset local data', exact: true });
+  const logout = page.getByRole('button', { name: 'Log out', exact: true });
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await expect(clear).toHaveAttribute('data-action-level', 'ui');
+    await clear.click();
+    const dialog = page.locator('.reset-dashboard-dialog[open]');
+    await expect(dialog).toContainText('This action cannot be undone.');
+    expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('dark');
+    await expect(page.locator('.cli-action-dialog, .table-intent-dialog')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(clear).toBeFocused();
+  }
+  await clear.click();
+  await page.locator('.reset-dashboard-dialog[open]').getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.locator('#root')).toHaveAttribute('data-reset', 'complete');
+  expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBeNull();
+  await page.locator('.reset-dashboard-dialog-close').click();
+  await page.locator('.account-menu summary').click();
+  await expect(logout).toHaveAttribute('data-action-level', 'ui');
+  await expect(page.getByRole('button', { name: 'Use another GitHub account' })).toHaveAttribute('data-action-level', 'ui');
+  await logout.click();
+  await expect(page.locator('#root')).toHaveAttribute('data-navigation', '/auth/logged-out');
+  await expect(page.locator('.cli-action-dialog, .table-intent-dialog')).toHaveCount(0);
+});
+
 test('tooltips near the viewport edge stay visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 600 });
   await page.evaluate(async (moduleUrls) => {

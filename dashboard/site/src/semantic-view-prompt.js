@@ -1,4 +1,5 @@
 import { createDebug } from './debug.js';
+import { assertActionLevel } from './action-model.js';
 
 const debugViewSemantics = createDebug('view-semantics');
 
@@ -8,6 +9,7 @@ const debugViewSemantics = createDebug('view-semantics');
  */
 export function semanticViewPrompt(context) {
  const { pageId, viewId, queryId, title, semantics, queryParameters, filters, scope, sources, level = 'propose' } = context;
+  assertActionLevel(level, 'prompt');
   const evidence = Object.fromEntries(Object.entries(sources ?? {}).slice(0, 4).map(([name, source]) => {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
     return [name, {

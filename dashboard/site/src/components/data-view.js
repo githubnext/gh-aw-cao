@@ -21,7 +21,7 @@ import { createPromptCliActionControl, renderDeclaredCliAction, renderRowCliActi
 import { effect, onCleanup, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { createDebug } from '../debug.js';
-import { normalizeAction, actionPresentation, constrainPrompt } from '../action-model.js';
+import { assertActionLevel, normalizeAction, actionPresentation, constrainPrompt } from '../action-model.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -1611,6 +1611,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
   if (typeof action === 'string') action = normalizeAction({
     label: action, actionId, icon: iconName, presentation
   }, { id: action, type: 'prompt' });
+  assertActionLevel(action.level, 'prompt');
   const { label, icon } = actionPresentation(action);
   const scope = createFactoryScope();
   const content = state('');

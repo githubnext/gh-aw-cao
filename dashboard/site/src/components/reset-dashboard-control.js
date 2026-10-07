@@ -6,6 +6,7 @@ import { createDebug } from '../debug.js';
 import { effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
+import { actionPresentation, normalizeAction } from '../action-model.js';
 
 const debug = createDebug('data:reset');
 
@@ -80,6 +81,13 @@ export function renderResetDashboardControl(options = {}) {
   const indexedDB = options.indexedDB ?? globalThis.window?.indexedDB;
   const reload = options.reload ?? (() => globalThis.window?.location.reload());
   const clearApp = options.clearApp === true;
+  const action = normalizeAction({
+    level: 'ui',
+    verb: clearApp ? 'clear' : 'reset',
+    label: clearApp ? 'Clear app' : 'Reset local data',
+    confirmation: true
+  }, { id: clearApp ? 'clear-app' : 'reset-local-data', type: 'ui' });
+  const presentation = actionPresentation(action);
   const scope = createFactoryScope();
   /** @type {HTMLButtonElement} */
   let trigger;
@@ -103,6 +111,7 @@ export function renderResetDashboardControl(options = {}) {
   const confirm = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'reset-dashboard-confirm',
+    'data-action-level': action.level,
     onClick: async () => {
       if (!storage || !indexedDB) {
         statusMessage.set('Local browser storage is unavailable.');
@@ -135,11 +144,12 @@ export function renderResetDashboardControl(options = {}) {
   trigger = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'reset-dashboard-trigger',
+    'data-action-level': action.level,
     onClick: open
-  }, octicon('trash'), h('span', null, clearApp ? 'Clear app' : 'Reset local data')));
+  }, octicon(presentation.icon), h('span', null, presentation.label)));
   dialog.append(
     h('header', { className: 'reset-dashboard-dialog-header' },
-      h('h2', null, clearApp ? 'Clear app?' : 'Reset local data?'),
+      h('h2', null, `${presentation.label}?`),
       renderCloseButton({
         className: 'reset-dashboard-dialog-close',
         label: 'Close reset confirmation',

@@ -5,7 +5,7 @@ import { createCopyControl, createModalDialog, renderCloseButton, renderLiveRegi
 import { createDebug } from '../debug.js';
 import { createFactoryScope } from './factory-elements.js';
 import { effect, state } from '../reactive.js';
-import { normalizeAction, actionPresentation } from '../action-model.js';
+import { assertActionLevel, normalizeAction, actionPresentation } from '../action-model.js';
 
 const debugCliActions = createDebug('cli-actions');
 
@@ -99,6 +99,7 @@ function resultText(result) {
  * @param {{ level?: import('../action-model.js').ActionLevel, label?: string }} [options]
  */
 export function createPromptCliActionControl(actionId, getPrompt, options = {}) {
+  assertActionLevel(options.level ?? 'propose', 'prompt');
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!declaredCliActionsCanExecute || !action || action['copy-only'] === true) return null;
   const scope = createFactoryScope();
