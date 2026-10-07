@@ -103,7 +103,7 @@ describe('workflow list query contract', () => {
     const sources = await canonical();
     const preview = viewPayload(sources, {}, true);
     const complete = viewPayload(sources);
-    const identity = (/** @type {Record<string, unknown>} */ row) => `${row.organization}/${row.workflow}`;
+    const identity = (/** @type {Record<string, unknown>} */ row) => `${row.repository}:${row.workflow}`;
     expect(preview.rows.map(identity).toSorted()).toEqual(complete.rows.map(identity).toSorted());
     for (const row of preview.rows) {
       const final = complete.rows.find((candidate) => identity(candidate) === identity(row));
