@@ -4,7 +4,7 @@ import { getPrimerStyles } from '../../src/styles.js';
 registerSmokeRoutes();
 
 for (const theme of ['light', 'dark']) {
-  test(`run cards use semantic badges and hide view prompts in ${theme} theme`, async ({ page }) => {
+  test(`run cards use semantic badges and place view prompts in the toolbar in ${theme} theme`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.evaluate(async ({ documentModel, presenterUrl, theme }) => {
       const { renderDashboard } = await import(presenterUrl);
@@ -55,7 +55,8 @@ for (const theme of ['light', 'dark']) {
     const prompt = view.getByRole('button', { name: 'Propose fix: Runs', exact: true });
     await expect(prompt).toBeVisible();
     await page.getByRole('button', { name: 'Cards', exact: true }).click();
-    await expect(prompt).toBeHidden();
+    const cardPrompt = view.locator('.mobile-table-card-toolbar').getByRole('button', { name: 'Propose fix: Runs', exact: true });
+    await expect(cardPrompt).toBeVisible();
 
     const cards = view.locator('[data-mobile-card-list] .entity-card-list-card');
     await expect(cards).toHaveCount(3);
@@ -71,8 +72,8 @@ for (const theme of ['light', 'dark']) {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(cards.first()).toBeVisible();
-    await expect(prompt).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Propose fix: Runs', exact: true })).toHaveCount(0);
+    await expect(cardPrompt).toBeVisible();
+    await expect(view.getByRole('button', { name: 'Propose fix: Runs', exact: true })).toHaveCount(1);
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole('button', { name: 'Table', exact: true }).click();
