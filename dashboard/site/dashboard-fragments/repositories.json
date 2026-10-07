@@ -442,6 +442,8 @@
     {
       "name": "repository-activity-preview",
       "subject": "List repository identities before execution metrics are computed.",
+      "objective": "Show retained repository identities and drill links while activity metrics are pending.",
+      "acceptance": "List repositories by organization with repository drill links; this preview does not establish activity totals or outcomes.",
       "description": "Fast repository inventory with drill links; activity fields remain pending.",
       "from": "repositories",
       "compute": [

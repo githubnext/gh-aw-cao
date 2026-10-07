@@ -62,6 +62,14 @@ test("every agent-facing query defines its own objective and verifiable acceptan
   }
 });
 
+test("repository inventory preview is catalogued without claiming activity outcomes", async () => {
+  const { queries } = await readAgentCatalog();
+  const preview = queries.find((query) => query.id === "repository-activity-preview");
+  assert.ok(preview);
+  assert.deepEqual(preview.execution.requirements, ["repositories"]);
+  assert.match(preview.acceptance, /not.*activity|not.*outcomes/i);
+});
+
 test("cao queries prints a human readable catalog by default", async () => {
   const output = await runCao(["queries"]);
   assert.match(output, /campaign-runs/);

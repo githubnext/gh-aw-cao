@@ -615,7 +615,7 @@
     {
       "id": "marketplace-package",
       "title": "Package",
-      "description": "Review normalized package metadata and copy the canonical CAO add command.",
+      "description": "Review normalized package metadata and copy the canonical CAO add command. Installing packages with cao add or gh aw add does not use AI.",
       "experimental": false,
       "parameters": [
         {
@@ -2249,6 +2249,25 @@
           "issues",
           "runs",
           "tools"
+        ]
+      }
+    },
+    {
+      "id": "repository-activity-preview",
+      "subject": "List repository identities before execution metrics are computed.",
+      "objective": "Show retained repository identities and drill links while activity metrics are pending.",
+      "acceptance": "List repositories by organization with repository drill links; this preview does not establish activity totals or outcomes.",
+      "description": "Fast repository inventory with drill links; activity fields remain pending.",
+      "parameters": [],
+      "sources": [
+        "repositories"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories"
         ]
       }
     },
