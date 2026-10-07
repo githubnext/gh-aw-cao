@@ -2,6 +2,9 @@ import {
   ERROR_CODES, VIEW_FILTER_BAR_KEYS, VIEW_FILTER_CONTROL_KEYS, VIEW_FILTER_GROUP_KEYS
 } from './specification.js';
 import { viewDataSourceNames } from './view-filter-contract.js';
+import { createDebug } from './debug.js';
+
+const debugViewFilterValidator = createDebug('view-filter-validator');
 
 /**
  * @param {Record<string, unknown>} view
@@ -49,15 +52,18 @@ export function validateViewFilterBar(view, viewNode, path, sourceName, errors, 
     fail('View filter-bar is supported only on list and interactive table views.');
   }
   if (!isPlainObject(bar)) {
+    debugViewFilterValidator({ event: 'filter-bar-rejected', reason: 'not-a-mapping' });
     fail('View filter-bar must be a mapping.');
     return;
   }
   const barNode = getValueNodeByKey(viewNode, 'filter-bar');
   validateKeys(bar, barNode, VIEW_FILTER_BAR_KEYS, barPath);
   if (!Array.isArray(bar.filters) || bar.filters.length === 0) {
+    debugViewFilterValidator({ event: 'filter-bar-rejected', reason: 'empty-filters' });
     fail('filter-bar.filters must be a non-empty sequence.', `${barPath}.filters`);
     return;
   }
+  const errorCountBeforeFilterBar = errors.length;
   const ids = new Set();
   const fields = new Set();
   bar.filters.forEach((control, index) => {
@@ -105,5 +111,10 @@ export function validateViewFilterBar(view, viewNode, path, sourceName, errors, 
         }
       }
     });
+  });
+  debugViewFilterValidator({
+    event: 'filter-bar-validated',
+    controlCount: bar.filters.length,
+    status: errors.length === errorCountBeforeFilterBar ? 'ok' : 'invalid'
   });
 }
