@@ -3,8 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { normalizeAdmissionRecord } from "./admission-evidence.mjs";
+import { actionsLog as log } from "./actions-log.mjs";
 
 const WINDOW_MS = 30 * 60 * 1000;
+const SKIPPED_JOB_NAMES = new Map([
+  ["pre_activation", "Pre-activation"],
+  ["activation", "Activation"],
+  ["agent", "Agent"],
+  ["safe_outputs", "Safe outputs"],
+]);
 
 export function reconcileDispatchCycles(cycles, artifacts, workerRuns, repository) {
   const observations = new Map();
@@ -110,7 +117,8 @@ async function activationSkippedCycle(repository, cycle, token, request, readArt
     ["agent", "skipped"],
     ["safe_outputs", "skipped"],
   ]) {
-    const matches = jobs.filter((job) => job.name === name);
+    const matches = jobs.filter((job) => job.name === name || job.name === SKIPPED_JOB_NAMES.get(name));
+    log.info`Orchestrator ${cycle.id} ${name}: ${matches.length === 1 ? `${matches[0].status}/${matches[0].conclusion}` : `${matches.length} matching jobs`}; expected completed/${conclusion}`;
     if (matches.length !== 1 || matches[0].status !== "completed" || matches[0].conclusion !== conclusion) return false;
   }
   const output = await readArtifact(repository, cycle.id, "cao-admission", "admission.json", token);
@@ -119,6 +127,7 @@ async function activationSkippedCycle(repository, cycle, token, request, readArt
     runId: cycle.id,
     runAttempt: cycle.run_attempt,
   });
+  log.info`Orchestrator ${cycle.id} skipped activation admission: ${admission?.campaign === "cao-evolution" && admission?.role === "orchestrator" ? "verified" : "invalid or unexpected role"}`;
   return Boolean(admission && admission.campaign === "cao-evolution" && admission.role === "orchestrator");
 }
 
@@ -143,21 +152,25 @@ export async function checkDispatches({
   const cycles = recent.filter((run) => run.status === "completed"
     && Date.parse(run.updated_at) <= now - WINDOW_MS
     && ["schedule", "workflow_dispatch"].includes(run.event)).slice(0, 2);
+  log.info`CAO Evolution reconciliation: ${recent.length} recent runs, ${cycles.length} completed matured cycles`;
   if (cycles.length < 2) return { status: "incomplete", reason: "Fewer than two completed, matured orchestrator cycles in the last four hours" };
 
   const artifacts = new Map();
   for (const cycle of cycles) {
     const output = await readArtifact(repository, cycle.id, "agent-output-fallback", "agent_output.json", token, true);
     if (!output) {
+      log.info`Orchestrator ${cycle.id}: agent output absent; checking skipped activation and admission`;
       if (!await activationSkippedCycle(repository, cycle, token, request, readArtifact)) {
         throw new Error(`Missing agent-output-fallback for orchestrator run ${cycle.id}`);
       }
+      log.info`Orchestrator ${cycle.id}: verified no-dispatch cycle`;
       artifacts.set(cycle.id, { requests: [], manifest: [] });
       continue;
     }
     const requests = JSON.parse(output).items;
     const hasDispatch = !Array.isArray(requests) || requests.some((item) => item.type === "dispatch_workflow");
     const manifest = await readArtifact(repository, cycle.id, "safe-outputs-items", "safe-output-items.jsonl", token, !hasDispatch);
+    log.info`Orchestrator ${cycle.id}: ${Array.isArray(requests) ? requests.length : "invalid"} output items; ${manifest.split(/\r?\n/).filter(Boolean).length} accepted items`;
     artifacts.set(cycle.id, {
       requests,
       manifest: manifest.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)),
@@ -174,6 +187,7 @@ export async function checkDispatches({
       `repos/${repository}/actions/workflows/${name}.lock.yml/runs?event=workflow_dispatch&per_page=100&created=%3E%3D${encodeURIComponent(since)}`, token,
     )).json();
     if (!Array.isArray(runs) || runs.length === 100) throw new Error(`Incomplete run list for ${name}`);
+    log.info`Worker ${name}: ${runs.length} candidate runs`;
     workerRuns.set(name, runs);
   }
   return reconcileDispatchCycles(cycles, artifacts, workerRuns, repository);

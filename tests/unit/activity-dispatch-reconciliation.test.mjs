@@ -55,10 +55,10 @@ function skippedCycleFixture({ cycle = {}, jobOverrides = {}, admission = {}, to
   const repository = "githubnext/gh-aw-cao";
   const artifactReads = [];
   const jobs = [
-    { name: "pre_activation", conclusion: "success" },
-    { name: "activation", conclusion: "skipped" },
-    { name: "agent", conclusion: "skipped" },
-    { name: "safe_outputs", conclusion: "skipped" },
+    { name: "Pre-activation", conclusion: "success" },
+    { name: "Activation", conclusion: "skipped" },
+    { name: "Agent", conclusion: "skipped" },
+    { name: "Safe outputs", conclusion: "skipped" },
   ].map((job) => ({ status: "completed", ...job, ...jobOverrides[job.name] }));
   return {
     artifactReads,
@@ -121,16 +121,26 @@ test("capacity-blocked precompute after successful admission is also a no-dispat
   assert.deepEqual(await checkDispatches(fixture.options), { status: "healthy", workers: [] });
 });
 
+test("legacy job names remain valid for historical orchestrator cycles", async () => {
+  const fixture = skippedCycleFixture({ jobOverrides: {
+    "Pre-activation": { name: "pre_activation" },
+    Activation: { name: "activation" },
+    Agent: { name: "agent" },
+    "Safe outputs": { name: "safe_outputs" },
+  } });
+  assert.deepEqual(await checkDispatches(fixture.options), { status: "healthy", workers: [] });
+});
+
 test("missing agent output remains incomplete when the run or activation jobs did not skip successfully", async () => {
   for (const overrides of [
     { cycle: { conclusion: "failure" } },
     { cycle: { run_attempt: undefined } },
-    { jobOverrides: { pre_activation: { conclusion: "failure" } } },
-    { jobOverrides: { activation: { conclusion: "success" } } },
-    { jobOverrides: { agent: { conclusion: "success" } } },
-    { jobOverrides: { safe_outputs: { conclusion: "success" } } },
-    { jobOverrides: { agent: { status: "in_progress" } } },
-    { jobOverrides: { agent: { name: "other-job" } } },
+    { jobOverrides: { "Pre-activation": { conclusion: "failure" } } },
+    { jobOverrides: { Activation: { conclusion: "success" } } },
+    { jobOverrides: { Agent: { conclusion: "success" } } },
+    { jobOverrides: { "Safe outputs": { conclusion: "success" } } },
+    { jobOverrides: { Agent: { status: "in_progress" } } },
+    { jobOverrides: { Agent: { name: "other-job" } } },
   ]) {
     const fixture = skippedCycleFixture(overrides);
     await assert.rejects(checkDispatches(fixture.options), /Missing agent-output-fallback/);
