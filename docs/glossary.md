@@ -14,6 +14,10 @@ human operator
 		  └─ performs one bounded task using an AI agent and engine
 ```
 
+## Action level
+
+The shared `explore`, `propose`, or `operate` classification applied to every dashboard-declared action (CLI action, row action, or generated view prompt) independent of its presentation or executor. `explore` is a read-only investigation, `propose` previews a request such as a prompt that can produce a pull request, and `operate` shows the underlying command and requires explicit per-run confirmation. A separate `ui` level covers native dashboard-local and account-session controls (such as resetting local storage or logging out) that carry no operational or repository authority and never generate an agent prompt or CLI command. See the [Dashboard Language specification](dashboard-language-specification.md#111-syntax-and-view-classes).
+
 ## Agent catalog
 
 The protocol-independent listing of agent-facing dashboard pages and named Dashboard Language queries, derived once from the dashboard page definitions and shared by every agent transport (the `cao` CLI, the read-only CAO MCP server, and WebMCP) so none of them maintains a second catalog. See [Agent analysis](agent-analysis.md).
@@ -120,7 +124,7 @@ The run-scoped result produced by gh-aw's upstream `operational-value` grader pr
 
 ## Operational store
 
-The provider-neutral storage contract in `server/internal/operational/` that exposes immutable per-feature cache, request-limit, OAuth, quota, collection, coordination, and diagnostic capabilities. Redis is the default adapter; an explicit, acknowledged single-process in-memory adapter is a bounded, volatile alternative that loses all operational state on restart. PostgreSQL remains exclusively the dashboard entity and query database and never acquires operational tables. See [Server operational storage](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
+The provider-neutral storage contract in `server/internal/operational/` that exposes immutable per-feature cache, request-limit, OAuth, quota, collection, coordination, and diagnostic capabilities. PostgreSQL is the default adapter for a selector-free reviewed host, using only its own `cao_operational_*` tables and never the canonical dashboard entity/query schema; explicit Redis configuration remains supported, and an explicit, acknowledged single-process in-memory adapter is a bounded, volatile alternative that loses all operational state on restart. See [Server operational storage](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
 
 ## Public control repository
 
