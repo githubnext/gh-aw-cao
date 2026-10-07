@@ -1,11 +1,14 @@
 import { h } from '../dom.js';
 import { processRepositoryMemoryFile } from '../data-processor.js';
+import { createDebug } from '../debug.js';
 import { effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderFileContent } from './file-content.js';
 import { renderInteractiveTabs, updateInteractiveTabSelection } from './tab-nav.js';
 import { renderTableRegion } from './table-region.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+
+const debug = createDebug('memory-file-content');
 
 let nextViewerId = 0;
 
@@ -19,7 +22,15 @@ export async function renderMemoryFileContent(path, content, signal) {
   const prepared = await processRepositoryMemoryFile(path, content, signal);
   signal.throwIfAborted();
   const result = prepared.table;
-  if (!result) return renderFileContent(prepared.content);
+  if (!result) {
+    debug({ operation: 'prepare', status: 'raw-only' });
+    return renderFileContent(prepared.content);
+  }
+  debug({
+    operation: 'prepare',
+    status: result.error ? 'parse-error' : 'ok',
+    rowCount: result.error ? undefined : result.rows.length
+  });
   const scope = createFactoryScope({ signal });
   const selectedTab = state('raw');
   const id = `memory-file-${++nextViewerId}`;
@@ -36,6 +47,7 @@ export async function renderMemoryFileContent(path, content, signal) {
       selectedTab.set(value);
       if (value !== 'table' || tableRequested || scope.signal.aborted) return;
       tableRequested = true;
+      debug({ operation: 'render-table', status: result.error ? 'error' : 'ok' });
       table.replaceChildren(result.error
         ? renderEmptyMessage(`Unable to display this JSONL table. ${result.error}`, { role: 'alert' })
         : renderTableRegion({
