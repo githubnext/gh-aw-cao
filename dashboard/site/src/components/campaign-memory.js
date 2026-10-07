@@ -11,7 +11,7 @@ import { renderMemoryFileContent } from './memory-file-content.js';
 const debugCampaignMemory = createDebug('campaign-memory');
 const MOBILE_MEMORY_HISTORY_KEY = 'caoMemoryViewer';
 
-/** @typedef {{ campaign: string, campaignName: string }} Campaign */
+/** @typedef {{ campaign: string, 'campaign-name': string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
 /** @typedef {{ directories: Map<string, MemoryTreeNode>, files: { name: string, entry: MemoryFile }[] }} MemoryTreeNode */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
@@ -164,10 +164,7 @@ export function renderAllCampaignMemory(context) {
       root.replaceChildren(renderEmptyMessage('Campaign memory is unavailable.', { role: 'alert' }));
       return;
     }
-    const campaigns = source.rows().map((row) => ({
-      campaign: String(row.campaign),
-      campaignName: String(row['campaign-name']),
-    }));
+    const campaigns = /** @type {Campaign[]} */ (source.rows());
     const campaignSignature = JSON.stringify(campaigns);
     if (campaignSignature === renderedCampaigns) return;
     renderedCampaigns = campaignSignature;
@@ -217,10 +214,10 @@ function renderCampaignTree(campaigns, signal) {
       { className: 'cao-memory-campaign-branch' },
       h('summary', {
         className: 'cao-memory-campaign', role: 'treeitem', 'aria-expanded': 'false',
-        tabindex: '-1', title: campaign.campaignName
+        tabindex: '-1', title: campaign['campaign-name']
       },
         octicon('chevron-right', 'memory-tree-chevron'),
-        h('span', null, campaign.campaignName)
+        h('span', null, campaign['campaign-name'])
       ),
       files
     ));
@@ -229,7 +226,7 @@ function renderCampaignTree(campaigns, signal) {
       role: 'treeitem',
       'aria-disabled': 'true',
       title: 'No repository memory files are available for this campaign',
-    }, octicon('file-directory-fill'), h('span', null, campaign.campaignName));
+    }, octicon('file-directory-fill'), h('span', null, campaign['campaign-name']));
 
     showManifests.push((manifest) => {
       if (signal.aborted) return;
