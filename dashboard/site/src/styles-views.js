@@ -33,6 +33,24 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .semantic-prompt-view:has([aria-busy]:not([aria-busy="false"])) :is(.semantic-prompt-action, .chart-prompt-action) { display: none; }
 .view-description-tooltip { width: fit-content; margin: 0 0 8px auto; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.card-filter-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; position: relative; z-index: 5; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px 6px 0 0; background: var(--canvas-subtle); }
+.card-filter-menu { position: relative; }
+.card-filter-menu > summary { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; border-radius: 6px; color: var(--muted); font-weight: 600; list-style: none; cursor: pointer; }
+.card-filter-menu > summary::-webkit-details-marker { display: none; }
+.card-filter-menu > summary:hover, .card-filter-menu[open] > summary { background: var(--neutral-muted); color: var(--fg); }
+.card-filter-menu > summary .octicon { width: 12px; height: 12px; }
+.card-filter-popover { width: min(300px, calc(100vw - 64px)); max-height: min(480px, 65vh); overflow: auto; position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.card-filter-group { min-width: 0; margin: 0 0 12px; padding: 0; border: 0; }
+.card-filter-group legend { padding: 4px 0; color: var(--muted); font-size: .75rem; font-weight: 600; }
+.card-filter-group label { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px; overflow-wrap: anywhere; cursor: pointer; }
+.card-filter-group input { flex: none; }
+.card-filter-group p { margin: 4px 0; color: var(--muted); font-size: .8125rem; }
+.card-filter-bar button { min-height: 32px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; cursor: pointer; }
+.card-filter-bar button:hover { background: var(--neutral-muted); }
+.card-filter-bar :is(summary, button, input):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.card-filter-clear { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.card-filter-bar [hidden] { display: none; }
+.card-filter-bar + :is(.document-list, .table-region) { margin-top: 0; border-top: 0; border-radius: 0 0 6px 6px; }
 .custom-view { min-width: 0; grid-column: span 12; }
 .metric-card-widget { min-width: 0; min-height: 172px; display: grid; grid-template-rows: 2.5rem 2.7em 32px; align-content: center; justify-items: center; gap: 8px; padding: 24px 20px; background: var(--canvas-subtle); color: var(--fg); text-align: center; text-decoration: none; }
 .metric-card-widget-active { --metric-card-color: var(--accent); background: color-mix(in srgb, var(--metric-card-color) 7%, var(--canvas-subtle)); box-shadow: inset 0 3px var(--metric-card-color); }
@@ -93,6 +111,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
   border: 0;
   border-radius: 0;
 }
+.dashboard-full-view .card-filter-bar { border-inline: 0; border-radius: 0; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 /* Keep the search inside the table scroll surface without giving it a second horizontal scrollbar. */
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { width: 100%; max-width: 100%; box-sizing: border-box; position: sticky; left: 0; z-index: 2; flex: none; min-width: 0; overflow-x: visible; }

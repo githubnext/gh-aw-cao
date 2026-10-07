@@ -6,12 +6,14 @@
 import { createDebug } from '../../debug.js';
 import { viewBackendAvailable } from '../../view-availability.js';
 import { resolveDashboardQuerySources } from './declarative.js';
+import { dashboardViewSourceNames as getViewSources, viewFilterControls, viewFilterSourceNames } from '../../view-filter-contract.js';
 
 const debugViewPayloadCompiler = createDebug('view-payload-compiler');
 
 /**
  * @typedef {{
  *   filters?: Record<string, string[]>,
+ *   viewFilters?: import('../../view-filter-contract.js').ViewFilters,
  *   search?: { fields: string[], query: string },
  *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   timeWindow?: { start?: string, end?: string },
@@ -95,9 +97,19 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     const routeField = viewData && typeof viewData['route-field'] === 'string'
       ? viewData['route-field']
       : '';
+    const optionSources = new Set(viewFilterSourceNames(view));
 
     sources.forEach((sourceName, sourceIndex) => {
       if (requestedSources && !requestedSources.has(sourceName)) return;
+      const isOptions = optionSources.has(sourceName);
+      const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
+      const selected = options.queryContext?.viewFilters?.[viewId];
+      const localPredicates = isOptions ? [] : viewFilterControls(view).flatMap((control) => (
+        control.groups.flatMap((group) => {
+          const values = selected?.[group.field];
+          return values?.length ? [{ field: group.field, in: values }] : [];
+        })
+      ));
       const predicates = [
         ...compileScopePredicates(viewData?.scope),
         ...compileViewFilterPredicates(viewData?.filters),
@@ -105,12 +117,13 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileTimePredicates(viewData?.time),
         ...compileGlobalFilterPredicates(useQueryContext ? options.queryContext?.filters : undefined),
         ...compileTimePredicates(useQueryContext ? options.queryContext?.timeWindow : undefined),
-        ...compileRoutePredicates(routeField, routeValue)
+        ...compileRoutePredicates(routeField, routeValue),
+        ...localPredicates
       ];
       if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, useQueryContext ? options.queryContext?.search : undefined, useQueryContext ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries);
+      const compiled = compileAliasedQuery(sourceName, alias, predicates, useQueryContext && !isOptions ? options.queryContext?.search : undefined, useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries, isOptions);
       /** @type {Record<string, unknown>} */
       const query = compiled.query;
       if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {
@@ -265,8 +278,9 @@ function viewMatchesMode(view, mode) {
  * @param {GlobalQueryContext['orderBy']} orderBy
  * @param {string | undefined} evaluatedAt
  * @param {unknown} definitions
+ * @param {boolean} [scopeInput]
  */
-function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions) {
+function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions, scopeInput = false) {
   const declaredQueries = Array.isArray(definitions) ? definitions.filter(isPlainObject) : [];
   const declared = declaredQueries
     .find((definition) => definition.name === sourceName);
@@ -306,7 +320,8 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       search,
       orderBy,
       evaluatedAt,
-      declaredQueries
+      declaredQueries,
+      scopeInput
     );
   }
 
@@ -443,8 +458,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
  * @param {GlobalQueryContext['orderBy']} orderBy
  * @param {string | undefined} evaluatedAt
  * @param {Array<Record<string, unknown>>} definitions
+ * @param {boolean} [scopeInput]
  */
-function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions) {
+function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions, scopeInput = false) {
   const byName = new Map(definitions
     .filter((definition) => typeof definition.name === 'string')
     .map((definition) => [/** @type {string} */ (definition.name), definition]));
@@ -485,7 +501,10 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const scoped = allocateName(name);
     compiled.set(key, scoped);
     const from = definition.from;
-    const inputPredicates = predicatesBeforeQuery(definition, outputPredicates);
+    // Option queries scope their input rows before projecting distinct values.
+    const inputScoped = scopeInput && name === sourceName;
+    const inputPredicates = inputScoped ? outputPredicates : predicatesBeforeQuery(definition, outputPredicates);
+    const retainedPredicates = inputScoped ? [] : outputPredicates;
     /** @param {string} source @param {number} inputIndex */
     const compileInput = (source, inputIndex) => {
       if (byName.has(source)) return compile(source, inputPredicates);
@@ -528,30 +547,30 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     };
     const query = resolveQueryContext({
       ...definition,
-      name: outputPredicates.length > 0 ? `${scoped}:unscoped` : scoped,
+      name: retainedPredicates.length > 0 ? `${scoped}:unscoped` : scoped,
       from: compiledFrom,
       ...(compiledUnion ? { union: compiledUnion } : {}),
       ...(compiledJoins ? { joins: compiledJoins } : {}),
       ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined })
     }, queryTimeEnd(combinedPredicates) ?? evaluatedAt);
     dependencies.push(query);
-    if (outputPredicates.length > 0) {
+    if (retainedPredicates.length > 0) {
       dependencies.push({
         name: scoped,
         from: query.name,
-        filter: { predicates: outputPredicates }
+        filter: { predicates: retainedPredicates }
       });
     }
     return scoped;
   };
 
   const requestPredicates = predicates.filter((predicate) => predicate.field !== '@time');
-  const compiledRoot = compile(sourceName, requestPredicates);
+  const compiledRoot = compile(sourceName, scopeInput ? predicates : requestPredicates);
   const runtimeSearch = search && search.query.trim() && search.fields.length > 0
     ? { fields: search.fields, query: search.query.trim() }
     : undefined;
   const filter = {
-    ...(requestPredicates.length > 0 ? { predicates: requestPredicates } : {}),
+    ...(!scopeInput && requestPredicates.length > 0 ? { predicates: requestPredicates } : {}),
     ...(runtimeSearch ? { search: runtimeSearch } : {})
   };
   const query = {
@@ -767,18 +786,6 @@ function pagePayload(page, reusableViews) {
     route: isPlainObject(configured.route) ? configured.route : null,
     form: isPlainObject(configured.form) ? configured.form : null
   };
-}
-
-/** @param {unknown} view @returns {string[]} */
-function getViewSources(view) {
-  if (!isPlainObject(view)) return [];
-  const configured = /** @type {Record<string, unknown>} */ (view);
-  if (!isPlainObject(configured.data)) return [];
-  const data = /** @type {Record<string, unknown>} */ (configured.data);
-  if (Array.isArray(data.sources)) {
-    return data.sources.filter((source) => typeof source === 'string');
-  }
-  return typeof data.source === 'string' ? [data.source] : [];
 }
 
 /** @param {unknown} value */

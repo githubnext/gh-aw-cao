@@ -1,0 +1,59 @@
+{
+  "page": "issues",
+  "view": "issues-source",
+  "source": "issue-safe-outputs",
+  "filter-bar": {
+    "filters": [
+      {
+        "id": "labels",
+        "label": "Labels",
+        "groups": [
+          {
+            "label": "Safe output",
+            "field": "safe-output-type",
+            "source": "issue-safe-output-label-options",
+            "value-field": "safe-output-type"
+          },
+          {
+            "label": "Status",
+            "field": "issue-status-detail",
+            "source": "issue-status-label-options",
+            "value-field": "issue-status-detail"
+          }
+        ]
+      }
+    ]
+  },
+  "issues": [
+    {
+      "event": "one",
+      "event-type": "safe_output.created",
+      "event-timestamp": "2026-10-01T12:00:00Z",
+      "event-summary": "Open issue",
+      "safe-output-type": "create_issue",
+      "is-pull-request": false,
+      "issue-state": "OPEN",
+      "correlation-id": "https://github.com/octo/repo/issues/1"
+    },
+    {
+      "event": "two",
+      "event-type": "safe_output.created",
+      "event-timestamp": "2026-10-02T12:00:00Z",
+      "event-summary": "Closed issue",
+      "safe-output-type": "create_issue",
+      "is-pull-request": false,
+      "issue-state": "CLOSED",
+      "issue-state-reason": "COMPLETED",
+      "correlation-id": "https://github.com/octo/repo/issues/2"
+    },
+    {
+      "event": "three",
+      "event-type": "safe_output.created",
+      "event-timestamp": "2026-10-03T12:00:00Z",
+      "event-summary": "Unknown issue",
+      "safe-output-type": "update_issue",
+      "is-pull-request": false,
+      "correlation-id": "https://github.com/octo/repo/issues/3"
+    }
+  ]
+}

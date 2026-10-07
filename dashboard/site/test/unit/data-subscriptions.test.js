@@ -504,4 +504,18 @@ describe('canonical dashboard view subscriptions', () => {
     vi.advanceTimersByTime(180);
     expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
+  it('does not share subscriptions with different view-local filter selections', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    const context = { pages: [] };
+    const unsubscribe = subscribeCanonicalDashboardView('issue-filter', ['issues'], context, () => {}, undefined, {
+      queryContext: { viewFilters: { issues: { 'issue-state': ['OPEN'] } } }
+    });
+    expect(() => subscribeCanonicalDashboardView('issue-filter', ['issues'], context, () => {}, undefined, {
+      queryContext: { viewFilters: { issues: { 'issue-state': ['CLOSED'] } } }
+    })).toThrow('different query parameters');
+    expect(SubscriptionWorker.current?.messages.at(-1)).toMatchObject({
+      queryContext: { viewFilters: { issues: { 'issue-state': ['OPEN'] } } }
+    });
+    unsubscribe();
+  });
 });
