@@ -46,7 +46,7 @@ describe('marketplace discovery', () => {
     for (const description of [page.views[0].description, detail.description]) {
       expect(description).toContain('cao add');
       expect(description).toContain('gh aw add');
-      expect(description).toMatch(/does not use AI|uses AI/);
+      expect(description).toContain('does not use AI');
     }
   });
 

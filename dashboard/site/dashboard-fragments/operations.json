@@ -1331,7 +1331,7 @@
         {
           "id": "marketplace-packages",
           "title": "Campaign packages for agentic operations",
-          "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command. Neither cao add nor gh aw add uses AI; AI is used only when installed agentic workflows run.",
+          "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command. Installing packages with cao add or gh aw add does not use AI; AI is used only when installed agentic workflows run.",
           "data": {
             "source": "marketplace-packages",
             "query-context": false
@@ -1385,7 +1385,7 @@
       "title": "Package",
       "icon": "archive",
       "class-name": "marketplace-detail-page",
-      "description": "Review normalized package metadata and copy the canonical CAO add command. Neither cao add nor gh aw add uses AI.",
+      "description": "Review normalized package metadata and copy the canonical CAO add command. Installing packages with cao add or gh aw add does not use AI.",
       "route": {
         "hash-query-parameter": "package-source",
         "navigation-page": "marketplace",
