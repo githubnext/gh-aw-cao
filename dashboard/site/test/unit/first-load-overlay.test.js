@@ -18,6 +18,7 @@ afterEach(() => {
   browserFirstLoad.set({ status: 'inactive', dismissed: false });
   localStorage.removeItem(scopedStorageKey('central-agentic-ops.dashboard.theme'));
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -138,7 +139,7 @@ describe('browser first-load presentation', () => {
     if (!(browse instanceof HTMLButtonElement)) throw new Error('Browse button is missing.');
     expect(browse.textContent).toBe('Explore data');
     expect(dialog?.querySelector('.first-load-close')).toBeNull();
-    expect(dialog?.querySelectorAll('button')).toHaveLength(2);
+    expect(dialog?.querySelectorAll('button')).toHaveLength(3);
     expect(dialog?.textContent).toContain('The import continues as you explore.');
     browse.click();
     expect(dialog?.open).toBe(false);
@@ -157,7 +158,7 @@ describe('browser first-load presentation', () => {
   });
 
   it('explains a database upgrade without claiming this is a first visit', () => {
-    browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade' });
+    browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade', oldVersion: 36, newVersion: 37 });
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     const dialog = document.querySelector('dialog');
     expect(dialog?.open).toBe(true);
@@ -166,10 +167,46 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('.first-load-description')?.textContent).toContain('refreshing your browser copy');
     expect(dialog?.textContent).not.toContain('The first import can take');
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
+    expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('needs a newer browser database format');
     browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade', stage: 'files', completed: 1, total: 5 });
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Importing activity files');
     browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade' });
     expect(dialog?.querySelector('h2')?.textContent).toContain('dashboard update could not finish');
+  });
+
+  it('explains a missing snapshot and copies bounded preparation diagnostics', async () => {
+    browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'missing-snapshot', stage: 'files', completed: 2, total: 5 });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    const dialog = document.querySelector('dialog');
+    expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('no completed local copy yet');
+    const copy = /** @type {HTMLButtonElement | null} */ (dialog?.querySelector('.first-load-details'));
+    copy?.click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
+      event: 'dashboard-browser-database-repopulation',
+      reason: 'missing-snapshot',
+      status: 'loading',
+      stage: 'files',
+      completed: 2,
+      total: 5,
+      schemaVersionBefore: null,
+      schemaVersionAfter: null
+    });
+    await vi.waitFor(() => expect(dialog?.querySelector('.first-load-copy-status')?.textContent).toBe('Preparation details copied.'));
+    browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade', oldVersion: 36, newVersion: 37 });
+    copy?.click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(writeText.mock.calls[1][0])).toMatchObject({
+      reason: 'upgrade', status: 'failed', schemaVersionBefore: 36, schemaVersionAfter: 37
+    });
+  });
+
+  it('reports when copying diagnostics is unavailable', async () => {
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    /** @type {HTMLButtonElement | null} */ (document.querySelector('.first-load-details'))?.click();
+    await vi.waitFor(() => expect(document.querySelector('.first-load-copy-status')?.textContent).toBe('Could not copy preparation details.'));
   });
 
   it('supports Escape dismissal, honest failure output and retry', () => {

@@ -87,7 +87,7 @@ if (eagerIngest) debugIngestion('eager ingestion requested', { eagerIngest });
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
 if (typeof document === 'undefined' && workerScope) {
-  subscribeCanonicalDatabaseUpgrade(() => workerScope.postMessage({ type: 'database-upgrade' }));
+  subscribeCanonicalDatabaseUpgrade((versions) => workerScope.postMessage({ type: 'database-upgrade', versions }));
 }
 
 /** Returns one self-contained database diagnostics payload to the main thread. */

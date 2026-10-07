@@ -361,10 +361,10 @@ export async function startDashboardData(options) {
     overlayMounted = true;
     mountFirstLoadOverlay({ document, signal: cleanup.signal, retry: () => refreshSources() });
   };
-  const stopUpgrade = remoteDataBackend ? () => {} : subscribeDatabaseUpgrade(() => {
+  const stopUpgrade = remoteDataBackend ? () => {} : subscribeDatabaseUpgrade((versions) => {
     if (upgradeStarted || cleanup.signal.aborted) return;
     upgradeStarted = true;
-    browserFirstLoad.set({ status: "loading", dismissed: false, reason: "upgrade" });
+    browserFirstLoad.set({ status: "loading", dismissed: false, reason: "upgrade", ...versions });
     showFirstLoadOverlay();
   });
   /** @type {{ createdAt: string } | null} */
@@ -399,7 +399,9 @@ export async function startDashboardData(options) {
     browserFirstLoad.set({
       status: "loading",
       dismissed: upgradeStarted && browserFirstLoad.get().dismissed,
-      ...(upgradeStarted ? { reason: "upgrade" } : {})
+      ...(upgradeStarted
+        ? { reason: "upgrade", oldVersion: browserFirstLoad.get().oldVersion, newVersion: browserFirstLoad.get().newVersion }
+        : { reason: "missing-snapshot" })
     });
     stopFirstLoadProgress = subscribeWorkerLoadingProgress((progress) => {
       if (browserFirstLoad.get().status !== "loading" || progress.phase !== "update") return;

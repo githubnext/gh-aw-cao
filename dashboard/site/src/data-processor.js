@@ -61,7 +61,7 @@ const cancelledWorkerNotificationIds = new Set();
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
-/** @type {Set<() => void>} */
+/** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const databaseUpgradeListeners = new Set();
 
 /**
@@ -153,7 +153,7 @@ export function subscribeWorkerLoadingProgress(listener) {
   return () => workerLoadingProgressListeners.delete(listener);
 }
 
-/** @param {() => void} listener */
+/** @param {(versions: { oldVersion: number, newVersion: number }) => void} listener */
 export function subscribeDatabaseUpgrade(listener) {
   databaseUpgradeListeners.add(listener);
   return () => databaseUpgradeListeners.delete(listener);
@@ -801,7 +801,7 @@ function getWorker() {
   debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'database-upgrade') {
-      for (const listener of databaseUpgradeListeners) listener();
+      for (const listener of databaseUpgradeListeners) listener(event.data.versions);
       return;
     }
     if (event.data?.type === 'loading-progress') {
