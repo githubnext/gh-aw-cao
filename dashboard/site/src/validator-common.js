@@ -1,5 +1,7 @@
 import { DISPATCH_STATUS_VALUES, ERROR_CODES, LINK_OBJECT_KEYS, LINK_RELATION_VALUES, EVAL_RESULT_VALUES, DETECTION_STATE_VALUES, FINDING_SEVERITY_VALUES, FINDING_STATUS_VALUES, GRADER_STATUS_VALUES, IDENTIFIER_PATTERN, OUTCOME_STATE_VALUES, ROLLOUT_MODE_VALUES, RUN_CONCLUSION_VALUES, RUN_STATUS_VALUES, WORKFLOW_ACTIVE_VALUES, WORKFLOW_ROLE_VALUES } from './specification.js';
+import { createDebug } from './debug.js';
 
+const debugValidatorCommon = createDebug('validator-common');
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -65,43 +67,45 @@ export function validateEnumeratedMetadataValue(value, allowedValues, path, labe
  */
 export function validateLinkObject(value, path, fieldLabel, errors, options = {}) {
   const code = options.code ?? ERROR_CODES.invalidLinkReference;
+  const errorCountBeforeValidation = errors.length;
   if (!isPlainObject(value)) {
     errors.push(createError(
       code,
       `${fieldLabel} must be a Section 9.1 link object.`,
       path
     ));
-    return;
+  } else {
+    validateObjectKeys(value, LINK_OBJECT_KEYS, path, errors);
+    validateStringField(value.relation, `${path}.relation`, true, errors);
+    validateStringField(value.href, `${path}.href`, true, errors);
+    validateStringField(value.label, `${path}.label`, true, errors);
+
+    if (typeof value.relation === 'string' && !LINK_RELATION_VALUES.includes(value.relation)) {
+      errors.push(createError(
+        code,
+        'link relation must use one canonical Section 9.1 relation value.',
+        `${path}.relation`
+      ));
+    }
+
+    if (options.relation && typeof value.relation === 'string' && value.relation != options.relation) {
+      errors.push(createError(
+        code,
+        `${fieldLabel} relation must be exactly "${options.relation}".`,
+        `${path}.relation`
+      ));
+    }
+
+    if (typeof value.href === 'string' && !isSafeHttpsUrl(value.href)) {
+      errors.push(createError(
+        code,
+        'link href must be an absolute HTTPS URL without embedded credentials.',
+        `${path}.href`
+      ));
+    }
   }
 
-  validateObjectKeys(value, LINK_OBJECT_KEYS, path, errors);
-  validateStringField(value.relation, `${path}.relation`, true, errors);
-  validateStringField(value.href, `${path}.href`, true, errors);
-  validateStringField(value.label, `${path}.label`, true, errors);
-
-  if (typeof value.relation === 'string' && !LINK_RELATION_VALUES.includes(value.relation)) {
-    errors.push(createError(
-      code,
-      'link relation must use one canonical Section 9.1 relation value.',
-      `${path}.relation`
-    ));
-  }
-
-  if (options.relation && typeof value.relation === 'string' && value.relation != options.relation) {
-    errors.push(createError(
-      code,
-      `${fieldLabel} relation must be exactly "${options.relation}".`,
-      `${path}.relation`
-    ));
-  }
-
-  if (typeof value.href === 'string' && !isSafeHttpsUrl(value.href)) {
-    errors.push(createError(
-      code,
-      'link href must be an absolute HTTPS URL without embedded credentials.',
-      `${path}.href`
-    ));
-  }
+  debugValidatorCommon({ operation: 'validate-link-object', status: errors.length === errorCountBeforeValidation ? 'ok' : 'invalid' });
 }
 
 /**
@@ -142,21 +146,14 @@ const REPOSITORY_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
  * @returns {value is string}
  */
 export function isSafeRepositorySlug(value) {
-  if (typeof value !== 'string' || looksSensitive(value)) {
-    return false;
-  }
-
-  const segments = value.split('/');
-  if (segments.length !== 2) {
-    return false;
-  }
-
+  const segments = typeof value === 'string' && !looksSensitive(value) ? value.split('/') : [];
   const [owner, name] = segments;
-  return (
-    REPOSITORY_OWNER_PATTERN.test(owner) &&
-    REPOSITORY_NAME_PATTERN.test(name) &&
-    !name.includes('..')
-  );
+  const safe = segments.length === 2
+    && REPOSITORY_OWNER_PATTERN.test(owner)
+    && REPOSITORY_NAME_PATTERN.test(name)
+    && !name.includes('..');
+  debugValidatorCommon({ operation: 'validate-repository-slug', status: safe ? 'accepted' : 'rejected' });
+  return safe;
 }
 
 /**
@@ -165,6 +162,7 @@ export function isSafeRepositorySlug(value) {
  * @param {ValidationError[]} errors
  */
 export function rejectSensitiveStringsInObject(value, path, errors) {
+  let rejectedCount = 0;
   for (const [key, candidate] of Object.entries(value)) {
     if (typeof candidate !== 'string') {
       continue;
@@ -172,12 +170,14 @@ export function rejectSensitiveStringsInObject(value, path, errors) {
     if (!looksSensitive(candidate)) {
       continue;
     }
+    rejectedCount += 1;
     errors.push(createError(
       ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
       `${key} must not contain authentication credentials, secret tokens, or private keys.`,
       `${path}.${key}`
     ));
   }
+  debugValidatorCommon({ operation: 'reject-sensitive-strings', status: rejectedCount > 0 ? 'rejected' : 'ok', rejectedCount });
 }
 
 /**
