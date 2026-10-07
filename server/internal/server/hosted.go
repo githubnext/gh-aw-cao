@@ -39,8 +39,8 @@ func NewHostedAppFromEnv(
 	if len(requiredBackend) == 1 {
 		requested = requiredBackend[0]
 	}
-	if requested != "" && requested != "redis" && requested != "memory" {
-		return nil, errors.New("--operational-store must be redis or memory")
+	if requested != "" && requested != "redis" && requested != "memory" && requested != "postgres" {
+		return nil, errors.New("--operational-store must be redis, memory, or postgres")
 	}
 	host, err := loadHostPolicyFromEnv()
 	if err != nil {

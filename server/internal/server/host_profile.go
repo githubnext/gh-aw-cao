@@ -51,7 +51,7 @@ func localHostProfile() HostProfile {
 		Name:               "local",
 		Authentication:     HostAuthenticationBearer,
 		Listener:           HostListenerProcess,
-		RequiresRedis:      true,
+		RequiresRedis:      false,
 		RedisSession:       HostRedisPooled,
 		SupportsCollection: true,
 	}
@@ -63,7 +63,7 @@ func hostedHostProfile() HostProfile {
 		Authentication:     HostAuthenticationOAuth,
 		Listener:           HostListenerProcess,
 		RequiresHTTPS:      true,
-		RequiresRedis:      true,
+		RequiresRedis:      false,
 		RedisSession:       HostRedisPooled,
 		SupportsCollection: true,
 	}

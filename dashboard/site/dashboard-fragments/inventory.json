@@ -43,6 +43,7 @@
     {
       "name": "workflow-latest-runs",
       "subject": "Project the latest retained run attempt for each workflow.",
+      "objective": "Expose each workflow's latest observed execution state without implying aggregate outcomes.",
       "acceptance": "Select only the first chronologically ordered attempt per workflow; preserve queued and in-progress states instead of treating unknown conclusions as failures.",
       "from": "workflow-ordered-runs",
       "filter": { "predicates": [{ "field": "preceding-run-delta", "equals": "unknown" }] },

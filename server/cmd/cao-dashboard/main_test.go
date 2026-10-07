@@ -45,9 +45,9 @@ func TestServeHostedLoadsMaterializedDashboardQueriesByDefault(t *testing.T) {
 func TestServeHostedRejectsUnsupportedOperationalBackend(t *testing.T) {
 	t.Setenv("OTEL_SDK_DISABLED", "true")
 	cmd := newServeHostedCommand()
-	cmd.SetArgs([]string{"--operational-store", "postgres"})
+	cmd.SetArgs([]string{"--operational-store", "sqlite"})
 	err := cmd.Execute()
-	if err == nil || !strings.Contains(err.Error(), "must be redis or memory") {
+	if err == nil || !strings.Contains(err.Error(), "must be redis, memory, or postgres") {
 		t.Fatalf("error = %v, want unsupported operational backend", err)
 	}
 }

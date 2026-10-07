@@ -6,6 +6,7 @@ import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { state } from '../../src/reactive.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -367,25 +368,9 @@ describe('data view renderer', () => {
   });
 
   it('presents run entity cards with workflow identity, target repository, status labels, branch ref, and timing rail', () => {
-    const runCard = {
-      icon: 'play',
-      status: { field: 'run-conclusion', 'fallback-field': 'run-status', title: 'Status' },
-      title: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
-      subtitle: { field: 'target-repository', title: 'Target repository' },
-      labels: [
-        { field: 'run-status', title: 'Status', display: 'label' },
-        { field: 'run-conclusion', title: 'Outcome', display: 'label' },
-        { field: 'branch', title: 'Branch', display: 'ref' }
-      ],
-      details: [
-        { field: 'run-title', title: 'Run' },
-        { field: 'event', title: 'Event' }
-      ],
-      timing: [
-        { field: 'started-at', title: 'Started', icon: 'calendar', type: 'temporal', format: 'human-friendly-timestamp' },
-        { field: 'duration', title: 'Duration', icon: 'stopwatch' }
-      ]
-    };
+    const runCard = authoritativeDashboard.dashboard['card-templates'].find(
+      (/** @type {{ id: string }} */ template) => template.id === 'run'
+    );
     const render = (/** @type {Record<string, unknown>} */ row) => renderDataView('list', {
       pageId: 'runs',
       title: 'Runs',
@@ -438,6 +423,8 @@ describe('data view renderer', () => {
       'success',
       'copilot/add-desktop-tabs'
     ]);
+    expect([...completed?.querySelectorAll('.issue-list-labels .status-success') ?? []].map((label) => label.textContent)).toEqual(['completed', 'success']);
+    expect(running?.querySelector('.issue-list-labels .status-attention')?.textContent).toBe('in-progress');
     expect(running?.querySelector('.entity-card-list-status .sr-only')?.textContent).toBe('Status: In Progress');
     expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
     const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];

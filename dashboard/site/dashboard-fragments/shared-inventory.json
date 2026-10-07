@@ -1342,6 +1342,7 @@
       "id": "entity-runs",
       "title": "Runs",
       "description": "Select a run to inspect its events.",
+      "prompt": "none",
       "data": {
         "source": "entity-runs"
       },

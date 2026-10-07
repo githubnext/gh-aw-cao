@@ -157,8 +157,8 @@ describe('entity card templates', () => {
       title: { field: 'workflow', format: 'workflow-relative-path' },
       subtitle: { field: 'target-repository' },
       labels: [
-        { field: 'run-status', title: 'Status', display: 'label' },
-        { field: 'run-conclusion', title: 'Outcome', display: 'label' },
+        { field: 'run-status', title: 'Status', display: 'status' },
+        { field: 'run-conclusion', title: 'Outcome', display: 'status' },
         { field: 'branch', display: 'ref' }
       ],
       timing: [
@@ -169,6 +169,7 @@ describe('entity card templates', () => {
     const runQuery = dashboard.queries.find((/** @type {Record<string, any>} */ query) => query.name === 'entity-runs');
     const selected = runQuery.select.map((/** @type {Record<string, any>} */ field) => field.field);
     expect(selected).toEqual(expect.arrayContaining(['workflow', 'target-repository', 'run-title', 'run-status', 'run-conclusion', 'branch', 'event', 'duration', 'started-at']));
+    expect(views['entity-runs'].prompt).toBe('none');
   });
 
   it('presents the workflow list with latest execution status instead of aggregate counters', () => {

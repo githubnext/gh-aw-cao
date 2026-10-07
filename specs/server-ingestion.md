@@ -45,8 +45,9 @@ A **conforming server ingestion implementation** satisfies every MUST in this
 document. An implementation that does not implement this profile at all remains
 conforming to CAO; this profile is OPTIONAL.
 
-The default deployment uses Redis and preserves this document's durability and
-multi-process requirements. An explicitly acknowledged single-process memory
+The default deployment uses PostgreSQL operational storage and preserves this
+document's durability and multi-process requirements. Explicit Redis deployments
+preserve those same requirements. An explicitly acknowledged single-process memory
 deployment MAY use the volatile exception in
 [`server-operational-storage.md`](server-operational-storage.md). Only restart
 durability and deployment-wide coordination are relaxed: atomic webhook
@@ -196,8 +197,8 @@ dataset.
   already matches the current dataset. A collection re-enumerates a window and
   usually adds nothing, so rewriting an identical dataset would be the dominant
   steady-state cost. An explicit operator rebuild MAY bypass this short-circuit.
-- PostgreSQL MUST be the only dashboard entity and query store. Redis MAY hold
-  projection coordination and health state, but MUST NOT hold entity rows,
+- PostgreSQL MUST be the only dashboard entity and query store. Operational
+  adapters MAY hold projection coordination and health state, but MUST NOT hold entity rows,
   canonical source documents, query indexes, persistent query projections, or
   execute dashboard data queries.
 - Inventory discovery MUST NOT silently truncate the enrolled repository set. An
@@ -207,7 +208,7 @@ dataset.
   deterministically from the exact source revision during image build. Runtime
   inventory discovery MUST resolve the reviewed deployment policy, reject an
   unavailable policy resolution, replace only its repository scope with the
-  exact Redis enrollment set, and enrich the source-bound inventory with a
+  exact operational enrollment set, and enrich the source-bound inventory with a
   short-lived installation token for the control repository.
 - The first canonical activation MUST fail when it cannot produce valid inventory evidence
   with at least one campaign. After one valid inventory has been retained, a
@@ -289,7 +290,7 @@ per installation.
 
 - The GitHub App MUST be read-only. Ingestion MUST NOT write to any observed
   repository, and MUST NOT dispatch work.
-- The App private key, webhook secret, and Redis URL MUST be resolved from a
+- The App private key, webhook secret, and database URLs MUST be resolved from a
   platform secret manager and MUST NOT appear in configuration files, workflow
   inputs, commits, logs, telemetry, or chat.
 - A process that only admits deliveries MUST NOT be given the App private key.
@@ -361,13 +362,13 @@ governed property and not an accident of disk usage.
   completed merely because it was queued.
 - Collection MUST be at-least-once. Retry, deferral, blocked-repository requeue,
   malformed-entry handling, and dead-letter transitions MUST persist the
-  replacement before acknowledging the original in one atomic Redis operation.
+  replacement before acknowledging the original in one atomic storage operation.
 - Future retry and deferral work MUST be durably scheduled outside the ready
   stream, promoted only when due, and included in queue capacity and depth.
   Workers MUST NOT wait synchronously on a future task while ready work remains
   available.
 - A successful collection-webhook response MUST mean delivery deduplication and
-  durable admission were committed atomically. Redis failures MUST return a
+  durable admission were committed atomically. Operational storage failures MUST return a
   retriable non-success response without consuming the delivery identity.
 - A scope-withdrawal response MUST be sent only after each affected repository
   has either been erased or has a durable erasure task committed before its
@@ -392,14 +393,14 @@ count.
   the repository or delivery they concern. A deployment MUST route these records
   and the process's telemetry to a durable sink.
 - The server MUST provide a read-only check-up that reports the selected
-  profile, Redis connectivity and safety posture, PostgreSQL readiness and
+  profile, operational connectivity and guarantees, PostgreSQL readiness and
   revision state, canonical integrity, query-definition validity,
   and, when collection is configured, enrollment, queue, cold-start,
   rate-limit, evidence-lake, and tooling state.
 - Each check MUST have a stable machine-readable identifier, severity,
   human-readable summary, observed facts, and a remedy for non-passing states.
   The same observations MUST be available in a versioned structured format.
-- The check-up MUST NOT contact GitHub, mutate Redis, repair data, read secret
+- The check-up MUST NOT contact GitHub, mutate operational storage, repair data, read secret
   contents unnecessarily, or report tokens, passwords, private keys, webhook
   secrets, payload contents, or prompts. Dependency checks MUST be bounded so
   an unavailable surface cannot hang the full report.
@@ -413,7 +414,7 @@ validation tool for the collector profile. They MUST exercise the same GitHub
 webhook endpoint, signature verification, delivery deduplication, durable queue
 admission, worker coordination, collection runner, and projection code used in
 production. The simulator MUST NOT add a bypass path to production handlers or
-substitute an in-memory queue for Redis.
+substitute an in-memory queue for the selected durable operational backend.
 
 ### 13.1 Scenario contract
 

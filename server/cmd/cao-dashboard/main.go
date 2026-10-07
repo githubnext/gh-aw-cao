@@ -17,6 +17,8 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
@@ -135,12 +137,8 @@ const (
 	namespaceDefaultSourceCheckout namespaceDefaultSource = "checkout"
 )
 
-// resolveNamespaceDefault applies the standard priority for the doctor
-// command's default Redis namespace: an explicit CAO_REDIS_NAMESPACE
-// environment override, then checkoutDefault, which is normally derived from
-// the working directory by redisx.DefaultNamespace. It returns the resolved
-// default and which input supplied it, so callers can log the source without
-// exposing the namespace value.
+// resolveNamespaceDefault prioritizes an environment override without exposing
+// the namespace value in diagnostic logs.
 func resolveNamespaceDefault(envValue, checkoutDefault string) (string, namespaceDefaultSource) {
 	if namespace := strings.TrimSpace(envValue); namespace != "" {
 		return namespace, namespaceDefaultSourceEnv
@@ -415,7 +413,7 @@ func newDoctorCommand() *cobra.Command {
 			Version:             version,
 			Deep:                *deep,
 			Timeout:             *timeout,
-			Backend:             "redis",
+			Backend:             "postgres",
 		}
 		databaseNamespace := namespace
 		selected, selectionErr := server.OperationalPolicySelectedFromEnv()
@@ -425,7 +423,8 @@ func newDoctorCommand() *cobra.Command {
 		hasPolicy := selected ||
 			strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")) != "" ||
 			strings.TrimSpace(os.Getenv("CAO_MARKETPLACE_POLICY_PATH")) != ""
-		if hasPolicy {
+		switch {
+		case hasPolicy:
 			settings, provider, selectionErr := server.NewOperationalDiagnosticsFromEnv(ctx)
 			if selectionErr != nil && settings.Backend == "" {
 				return selectionErr
@@ -434,13 +433,20 @@ func newDoctorCommand() *cobra.Command {
 			check.Namespace = settings.Namespace
 			check.RedisURL = settings.RedisURL
 			databaseNamespace = settings.DatabaseNamespace
-			if check.Backend == "memory" && (cmd.Flags().Changed("redis-url") || cmd.Flags().Changed("redis-namespace")) {
-				return errors.New("memory operational-store cannot use Redis flags; diagnose live memory state in its owning process")
+			if check.Backend != "redis" && (cmd.Flags().Changed("redis-url") || cmd.Flags().Changed("redis-namespace")) {
+				if provider != nil {
+					_ = provider.Close()
+				}
+				return errors.New("non-Redis operational-store cannot use Redis flags; diagnose live memory state in its owning process")
 			}
 			if provider != nil {
-				check.Store, check.RedisStore = provider, server.NewRedisProviderDiagnostics(provider)
+				check.Store = provider
+				if redisStore, ok := provider.(*redisx.Store); ok {
+					check.RedisStore = server.NewRedisProviderDiagnostics(redisStore)
+				}
 			}
-		} else {
+		case cmd.Flags().Changed("redis-url") || strings.TrimSpace(os.Getenv("CAO_REDIS_URL")) != "":
+			check.Backend = "redis"
 			maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
 			if err != nil {
 				return err
@@ -451,6 +457,19 @@ func newDoctorCommand() *cobra.Command {
 					return err
 				}
 				check.Store, check.RedisStore = provider, server.NewRedisProviderDiagnostics(provider)
+			}
+		default:
+			check.RedisURL = ""
+			check.Namespace, _ = resolveNamespaceDefault(os.Getenv("CAO_OPERATIONAL_NAMESPACE"), namespace)
+			if dsn, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err == nil {
+				config, err := server.PostgresOperationalConfigFromEnv()
+				if err != nil {
+					return err
+				}
+				store, err := postgres.Open(ctx, dsn, check.Namespace, config)
+				if err == nil {
+					check.Store = store
+				}
 			}
 		}
 		if check.Store != nil {
@@ -534,7 +553,7 @@ func newServeHostedCommand() *cobra.Command {
 		Short: "serve the dashboard and admit webhook deliveries",
 	}
 	listen := cmd.Flags().String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
-	operationalStore := cmd.Flags().String("operational-store", "", "require redis or memory to match the reviewed host policy; does not override policy")
+	operationalStore := cmd.Flags().String("operational-store", "", "require redis, memory, or postgres to match the reviewed host policy; does not override policy")
 	cert := cmd.Flags().String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
 	key := cmd.Flags().String("key", "", "TLS private key PEM file required for a non-loopback listener")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
@@ -602,9 +621,9 @@ func (e actionsEnvironment) present() string {
 func newServeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "serve dashboard data from Postgres with Redis operational state",
+		Short: "serve dashboard data and operational state from Postgres",
 	}
-	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "explicitly opt in to Redis operational state instead of Postgres")
 	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
@@ -640,7 +659,21 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer closeTelemetry()
-		store, err := newRedisStore(*redisURL, *redisNamespace)
+		var store operational.Store
+		if cmd.Flags().Changed("redis-url") {
+			store, err = newRedisStore(*redisURL, *redisNamespace)
+		} else {
+			dsn, _, resolveErr := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL"))
+			if resolveErr != nil {
+				return resolveErr
+			}
+			config, configErr := server.PostgresOperationalConfigFromEnv()
+			if configErr != nil {
+				return configErr
+			}
+			namespace, _ := resolveNamespaceDefault(os.Getenv("CAO_OPERATIONAL_NAMESPACE"), *redisNamespace)
+			store, err = postgres.New(ctx, dsn, namespace, config)
+		}
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -80,7 +81,7 @@ func configureOperationalStore(_ context.Context, store operational.Store, confi
 }
 
 func newOperationalStore(ctx context.Context, host *resolvedHostPolicy) (operational.Store, string, error) {
-	backend := firstNonempty(host.OperationalBackend, "redis")
+	backend := firstNonempty(host.OperationalBackend, "postgres")
 	if backend == "memory" {
 		if !host.Profile.SingleProcess || !host.Profile.SingleReplica ||
 			!host.SingleReplicaConfirmed || !host.AllowVolatile ||
@@ -97,6 +98,18 @@ func newOperationalStore(ctx context.Context, host *resolvedHostPolicy) (operati
 			return nil, "", err
 		}
 		hostedLog.Printf("operational backend=memory scope=process persistence=volatile sessions=restart-invalidated revocations=best-effort accepted-work=lost-on-restart")
+		return store, "", nil
+	}
+	if backend == "postgres" {
+		config, err := PostgresOperationalConfigFromEnv()
+		if err != nil {
+			return nil, "", err
+		}
+		store, err := postgres.New(ctx, host.OperationalPostgresURL, host.OperationalNamespace, config)
+		if err != nil {
+			return nil, "", err
+		}
+		hostedLog.Printf("operational backend=postgres scope=deployment persistence=restart")
 		return store, "", nil
 	}
 	if backend != "redis" {
@@ -143,7 +156,7 @@ func newRedisOperationalStore(ctx context.Context, host *resolvedHostPolicy) (*r
 
 // NewOperationalDiagnosticsFromEnv never creates a fresh memory instance:
 // process-local live state can only be inspected inside its owning process.
-func NewOperationalDiagnosticsFromEnv(ctx context.Context) (OperationalEnvironment, *redisx.Store, error) {
+func NewOperationalDiagnosticsFromEnv(ctx context.Context) (OperationalEnvironment, operational.Store, error) {
 	host, err := loadHostPolicyFromEnv()
 	if err != nil {
 		return OperationalEnvironment{}, nil, err
@@ -152,8 +165,22 @@ func NewOperationalDiagnosticsFromEnv(ctx context.Context) (OperationalEnvironme
 	if settings.Backend == "memory" {
 		return settings, nil, nil
 	}
+	if settings.Backend == "postgres" {
+		config, err := PostgresOperationalConfigFromEnv()
+		if err != nil {
+			return settings, nil, err
+		}
+		store, err := postgres.Open(ctx, host.OperationalPostgresURL, host.OperationalNamespace, config)
+		if err != nil {
+			return settings, nil, err
+		}
+		return settings, store, nil
+	}
 	store, _, err := newRedisOperationalStore(ctx, host)
-	return settings, store, err
+	if err != nil {
+		return settings, nil, err
+	}
+	return settings, store, nil
 }
 
 func validateStandaloneOperational(host *resolvedHostPolicy) error {

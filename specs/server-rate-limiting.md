@@ -41,7 +41,9 @@ document. The loopback-only local development profile MAY omit the
 pre-authentication edge bucket because it admits requests only from the local
 operator.
 
-Redis remains the default distributed implementation. An explicitly acknowledged
+PostgreSQL is the default distributed implementation, enforcing atomic buckets
+under the database clock; explicitly selected Redis uses Redis server time.
+An explicitly acknowledged
 single-process memory deployment MAY enforce these same token-bucket semantics
 atomically under its process clock instead of Redis server time. Its active
 buckets MUST NOT be evicted to reset quotas; capacity failure MUST fail closed.
@@ -80,10 +82,10 @@ post-authentication policy.
 
 ## 3. Distributed token bucket
 
-Each bucket MUST be stored in the deployment Redis namespace and updated by one
-atomic Redis operation. The operation MUST:
+Each bucket MUST be stored in the deployment operational namespace and updated
+by one atomic storage operation. The operation MUST:
 
-1. use Redis server time so replicas share one clock;
+1. use the selected database's server time so replicas share one clock;
 2. refill continuously up to the configured capacity;
 3. consume exactly one token for an ordinary allowed request;
 4. for a completed query, atomically consume a total cost derived from the
@@ -95,7 +97,7 @@ atomic Redis operation. The operation MUST:
 6. retain fractional tokens;
 7. return the remaining whole-token count and durations until retry and reset;
 8. expire an idle bucket no earlier than two refill periods; and
-9. tolerate a Redis clock that moves backward without creating tokens.
+9. tolerate a server clock that moves backward without creating tokens.
 
 Bucket keys MUST contain a cryptographic digest of the subject and MUST NOT
 contain a GitHub login, client address, OAuth state, session identifier, or
@@ -159,8 +161,8 @@ returned. An exhausted bucket MUST return `429 Too Many Requests`, MUST include
 `Retry-After` as the positive number of seconds until one token is available,
 and MUST NOT invoke the protected handler.
 
-The Redis operation MUST have a deadline shorter than the server request
-timeout. If Redis cannot enforce the limit within that deadline, the request
+The storage operation MUST have a deadline shorter than the server request
+timeout. If storage cannot enforce the limit within that deadline, the request
 MUST fail closed with `503 Service Unavailable`. Logs MUST identify only the
 fixed policy name and MUST NOT include subjects, keys, headers, cookies, or
 credentials.
@@ -169,7 +171,7 @@ credentials.
 
 A conforming implementation MUST test:
 
-1. atomic Redis script arguments, result validation, and invalid configuration;
+1. atomic storage transitions, result validation, and invalid configuration;
 2. allowed and exhausted responses and all required headers;
 3. deterministic multi-factor query cost assignment and its capacity cap;
 4. authenticated identity hashing;
@@ -185,7 +187,7 @@ A conforming implementation MUST test:
 
 Rate-limit state MUST NOT be returned by health or diagnostic endpoints.
 Operational logging MUST NOT contain raw or hashed subjects, forwarding
-headers, cookies, Redis keys, or Redis error details. Implementations MUST
+headers, cookies, operational keys, or storage error details. Implementations MUST
 preserve the trusted-boundary checks in Section 4 when adding hosting profiles;
 enabling a forwarding header by name alone is not a trust boundary.
 

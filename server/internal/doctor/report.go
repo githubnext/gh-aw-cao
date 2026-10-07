@@ -1,7 +1,7 @@
 // Package doctor is the systematic diagnostic check-up for a CAO server
 // deployment.
 //
-// The doctor is read-only. It inspects operational Redis and canonical Postgres data, the
+// The doctor is read-only. It inspects the selected operational backend and canonical Postgres data, the
 // query definitions, the optional collection profile, and the process
 // environment, and reports what it found. It never writes to Redis or Postgres, never
 // contacts GitHub, and never reads or reports secret material: a credential is

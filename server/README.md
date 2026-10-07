@@ -9,17 +9,20 @@ same compacted data published with the deployed dashboard, stores current
 native entity rows in PostgreSQL and executes hosted Dashboard Language plans
 as SQL through the bounded PostgreSQL query engine,
 and serves the built dashboard either over loopback HTTP or through an
-authenticated host-neutral service profile. Redis is the default operational
-adapter; an explicitly acknowledged single-process memory adapter supports the
+authenticated host-neutral service profile. PostgreSQL is also the default
+operational adapter, so the default deployment requires no Redis service.
+Explicit Redis configuration remains supported; an acknowledged single-process memory adapter supports the
 same OAuth, signed-webhook, collection, quota, and backfill services with volatile
-state. Neither adapter holds or queries dashboard entities.
+state. The PostgreSQL operational adapter supports durable,
+deployment-scoped services in separate tables. No operational adapter holds or
+queries dashboard entities.
 
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
 ## Single-process memory operational storage
 
-Redis remains the default. To select memory in reviewed
+PostgreSQL remains the default. To select memory in reviewed
 `control-plane.web.host` configuration, replace legacy `host.redis` with:
 
 ```json
@@ -33,11 +36,12 @@ Redis remains the default. To select memory in reviewed
 }
 ```
 
-The local launcher supports either reviewed backend:
+The local launcher supports each reviewed backend:
 
 ```bash
 npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
 npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
+npm run dashboard:local -- --operational-store postgres --policy .github/workflows/cao.postgres.json
 ```
 
 Supply your existing reviewed policy/profile at `--policy` (the paths above are
@@ -86,6 +90,71 @@ Public health/readiness includes `operational.capabilities` and
 the selected operational dependency. A standalone `doctor` cannot inspect a
 different process's live memory state and reports that limitation rather than
 constructing an empty store. See the [normative operational contract](../specs/server-operational-storage.md).
+
+## PostgreSQL operational storage
+
+PostgreSQL is the default when a reviewed host has no backend selector or legacy
+`redis` configuration. Coolify selects it explicitly. No Redis connection or
+volatile-memory acknowledgement is required:
+
+```json
+{
+  "target": { "module": "container" },
+  "operational-store": {
+    "backend": "postgres",
+    "namespace-env": "CAO_OPERATIONAL_NAMESPACE",
+    "postgres": { "url-env": "CAO_OPERATIONAL_POSTGRES_URL" }
+  }
+}
+```
+
+Omit `postgres.url-env` to use `CAO_POSTGRES_URL`, allowing both adapters to use
+the same database without sharing tables or lifecycle. Keep connection strings
+in server-side secrets, not policy. TLS is required for non-loopback TCP
+connections, including every configured fallback. The canonical namespace
+remains the existing `REDIS_NAMESPACE`; changing the operational namespace
+does not move canonical data. Local bearer `serve` also defaults to PostgreSQL operational
+storage; supplying `--redis-url` explicitly opts in to Redis instead. Hosted
+`serve-hosted`, external/platform hosts, collection roles, and `doctor` resolve
+the reviewed policy; the presence of a Redis credential never overrides it.
+
+The adapter owns `cao_operational_namespaces`, `cao_operational_records`, and
+`cao_operational_cache`. These are separate from the TypeSpec-generated
+canonical entity schema. A namespace row lock serializes each bounded
+operational transaction across replicas: session CAS/logout, admission and
+deduplication, queue replacement, owner-checked locks, quota reservation, and
+protected-state accounting commit or roll back together. Queue waits release
+the transaction and poll every 50 ms with cancellation. Sessions, revocations,
+accepted tasks, enrollment, checkpoints, quota, and leases survive process
+restart; expired authority never becomes valid again. This is durability under
+the database's configured persistence guarantees, not a GitHub delivery journal.
+
+The PostgreSQL adapter uses the common `CAO_OPERATIONAL_CACHE_MAX_*` and
+`CAO_OPERATIONAL_PROTECTED_MAX_*` bounds above. It bounds protected records at
+1 MiB each; the memory-only task and limiter sub-budgets do not apply. Cache and
+protected accounting are independent, and session admission reserves space
+for atomic logout/revocation staging. All replicas of a namespace must use the
+same resolved bounds; startup rejects mismatches rather than letting one
+replica widen admission. Limits are logical accounting, not database disk,
+allocator, or RSS budgets. Maintenance reclaims up to 512 expired protected
+records and 512 cache entries per pass, never unfinished work.
+
+Standalone collector and backfill roles can share this deployment-scoped
+adapter. OAuth, HTTPS/proxy, authorization, signatures, quota governance, and
+campaign rollout authority remain unchanged. The default Coolify profile now
+selects PostgreSQL, but selection does not migrate
+Redis or memory state, enable collection, provide
+automatic fallback, or dual-write. Use a new operational namespace for a new
+configuration and plan an explicit cutover; changing namespaces invalidates
+existing CAO sessions and does not transfer unfinished work or token revocations.
+`doctor` opens only existing PostgreSQL operational state without creating
+tables or a namespace, and reports neutral health/capabilities rather than
+Redis-only provider probes.
+
+Run `POSTGRES_URL=... go -C server test -race ./internal/operational/...` against
+a disposable local PostgreSQL database for shared adapter conformance and
+cross-connection durability, isolation, cancellation, and capacity checks.
+Tests create random namespaces and remove their operational state afterward.
 
 ## Offline query validation
 
@@ -824,7 +893,7 @@ Collection separates three concerns that fail differently:
    and GitHub budget is reserved per installation before each collection.
 3. **Canonical ingestion.** Collected evidence is written to PostgreSQL by the existing
    `internal/ingest` package. Before finalizing the payload manifest, projection
-   resolves the reviewed deployment policy, overlays the exact Redis enrollment
+   resolves the reviewed deployment policy, overlays the exact operational enrollment
    set, and enriches the packaged source-bound inventory with a short-lived
    token for the control repository installation. The first activation fails
    without valid campaign inventory; later transient inventory refresh failures

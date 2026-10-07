@@ -88,7 +88,7 @@ flowchart LR
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
     Postgres["Postgres dashboard entities<br/>optional server profile"]
-    Redis["Operational caches, queues, sessions<br/>Redis default or bounded process memory"]
+    Redis["Operational caches, queues, sessions<br/>Postgres default, Redis opt-in, or process memory"]
     Query["Dashboard Language queries"]
     GoServer["Go HTTP(S) query server"]
     GitHub["GitHub / gh-aw<br/>authoritative state"]
@@ -130,10 +130,11 @@ compiles hosted Dashboard Language queries to parameterized SQL in the
 request's repeatable-read transaction, and returns
 only canonical or explicitly registered bounded runtime-source query payloads
 to the browser. Operational state is accessed through typed contracts in
-`server/internal/operational/`, with Redis as the default adapter and a bounded,
+`server/internal/operational/`, with PostgreSQL as the default adapter and a bounded,
 volatile memory adapter for an explicitly acknowledged single-process server.
-Neither adapter stores dashboard entities or executes dashboard queries.
-PostgreSQL is not an operational backend.
+The PostgreSQL operational adapter implements durable
+deployment-scoped services in separate `cao_operational_*` tables. Operational
+adapters never store dashboard entities or execute dashboard queries.
 The HTTP and MCP query boundary uses a disposable cache-aside layer for
 expensive queries with compact output. SHA-256 query identities include the
 definitions, parameters, pagination, schema, and current authorization class,
@@ -209,8 +210,25 @@ inference. Retained evidence is replayed through the existing projector, fresh
 quota observations fail closed, and backfill is rerun idempotently. The protected
 rebuild action also reruns backfill in this mode. Recovery repairs observable
 state and available history, not every missed event or expired artifact. There
-is no operational disk journal, PostgreSQL adapter, automatic failover, or
-dual-write path. `specs/server-operational-storage.md` specifies these guarantees.
+is no memory disk journal, automatic failover, or dual-write path.
+`specs/server-operational-storage.md` specifies these guarantees.
+
+The PostgreSQL operational adapter is independent of `postgresx` canonical
+storage and the TypeSpec-generated entity schema. It implements narrow cache,
+OAuth, request-limit, quota, collection, coordination, and diagnostic contracts.
+Each namespace has a row lock serializing atomic transitions and protected
+accounting across replicas. Cache bounds are independent, and session admission
+reserves logout/revocation capacity. All replicas must use identical capacity
+settings. Database time governs expiry; blocking queue reads release transactions
+between cancellation-aware polling attempts. Application-owned maintenance
+reclaims only bounded expired state. Sessions, accepted work, enrollment,
+checkpoints, and pending revocations survive process restart under the database's
+configured durability. Backend selection comes from reviewed host policy, with PostgreSQL as the
+selector-free default and explicit legacy Redis configuration preserved.
+The Coolify profile selects PostgreSQL for every role without Redis credentials.
+This is not an operational-state migration, fallback, or campaign rollout change.
+The read-only doctor opens existing
+operational state without initializing it.
 
 Hosted server observability uses the same vendor-neutral OTLP contract as
 agentic workflows. Standard `OTEL_*` runtime environment variables select the
@@ -232,7 +250,8 @@ The hosted dashboard has one strict storage split:
 
 | Store | Owns | Must not own |
 | --- | --- | --- |
-| PostgreSQL | Current dashboard entities, quality metadata, diagnostics, revision state, and Dashboard Language query execution | Sessions, rate-limit buckets, delivery queues, deduplication markers, or transient resolver caches |
+| PostgreSQL canonical adapter (`postgresx`) | Current dashboard entities, quality metadata, diagnostics, revision state, and Dashboard Language query execution | Operational records, sessions, queues, and transient resolver caches |
+| PostgreSQL operational adapter (default) | Deployment-scoped durable operational services in separate `cao_operational_*` tables and namespace | Canonical entities, canonical schema changes, Dashboard Language execution, automatic migration, or fallback |
 | Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
 | In-process memory (explicit opt-in) | The same operational contracts within one owning process, with bounded volatile state and restart recovery limitations | Dashboard entity storage, query execution, cross-process coordination, restart durability, or fallback for a failed Redis deployment |
 
@@ -353,7 +372,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage, typed Redis or single-process memory operational state, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
@@ -453,13 +472,13 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   public host allow-list and forwarded protocol must be HTTPS. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
   encrypted credentials only in the selected operational revocation queue
-  (restart-persistent with Redis, process-lifetime with opted-in memory), drained by a
+  (restart-persistent with Redis or PostgreSQL, process-lifetime with opted-in memory), drained by a
   bounded maintenance worker. Encrypted records identify their key so controlled
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
-- In the default Redis server-collection profile, delivery deduplication, repository debounce,
-  and task append are one durable Redis admission. Memory provides the same
+- In the durable PostgreSQL or Redis server-collection profiles, delivery deduplication, repository debounce,
+  and task append are one atomic admission. Memory provides the same
   atomic admission within one process lifetime, not restart durability. Queue transitions append
   replacements or dead letters before ACK in one operational operation; completed
   entries are ACKed and deleted atomically. The task stream applies backpressure
@@ -539,7 +558,7 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   packages only that inventory plus the shared policy resolver required at
   runtime; it does not restore a second editable campaign catalog. Before each
   canonical ingestion replacement, a private collection role resolves the reviewed deployment
-  policy, overlays the exact Redis enrollment set, and uses a short-lived
+  policy, overlays the exact operational enrollment set, and uses a short-lived
   installation token for the control repository to enrich and retain
   `control-settings.json`, `control-plane-inventory.json`, and
   `inventory-sources.json` in the evidence lake. The first activation fails
@@ -589,8 +608,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Postgres**
-  exclusively stores and queries current hosted dashboard sources; **Redis** is
-  the default operational adapter for caches, queues, coordination, rate limits,
+  stores and queries current hosted dashboard sources through the canonical
+  adapter and implements default durable operational services; **Redis** is
+  an explicit alternative operational adapter for caches, queues, coordination, rate limits,
   and sessions, with bounded volatile memory available only for an explicitly
   acknowledged single-process hosted deployment.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,

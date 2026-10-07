@@ -1377,8 +1377,8 @@ function parseArguments(arguments_) {
     else throw new Error(`unknown argument: ${argument}`);
   }
   if (options.operationalStore) {
-    if (!["redis", "memory"].includes(options.operationalStore)) {
-      throw new Error("--operational-store must be redis or memory");
+    if (!["redis", "memory", "postgres"].includes(options.operationalStore)) {
+      throw new Error("--operational-store must be redis, memory, or postgres");
     }
     for (const [flag, value] of [
       ["--canvas", options.canvas],
@@ -1392,7 +1392,7 @@ function parseArguments(arguments_) {
       throw new Error("--cert and --key must be provided together");
     }
   } else if (options.policyPath || options.siteRoot || options.certFile || options.keyFile) {
-    throw new Error("--policy, --site, --cert, and --key require --operational-store redis|memory");
+    throw new Error("--policy, --site, --cert, and --key require --operational-store redis|memory|postgres");
   }
   if (!options.host) options.host = "127.0.0.1";
   const port = options.port ?? (options.canvas ? 0 : 4173);
@@ -1412,7 +1412,7 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     console.log("usage: local-server.mjs [--canvas] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
-    console.log("       local-server.mjs --operational-store redis|memory [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
+    console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("Go mode requires a matching reviewed host policy, PostgreSQL, a built site, and hosted OAuth/HTTPS configuration.");
     return;
   }

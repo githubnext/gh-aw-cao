@@ -50,6 +50,27 @@ describe('badge', () => {
   });
 
   it.each([
+    ['completed', 'status-success'],
+    ['success', 'status-success'],
+    ['queued', 'status-attention'],
+    ['requested', 'status-attention'],
+    ['waiting', 'status-attention'],
+    ['in-progress', 'status-attention'],
+    ['action-required', 'status-attention'],
+    ['failure', 'status-danger'],
+    ['timed-out', 'status-danger'],
+    ['startup-failure', 'status-danger'],
+    ['cancelled', 'status-muted'],
+    ['skipped', 'status-muted'],
+    ['neutral', 'status-muted'],
+    ['unknown', 'status-muted']
+  ])('color-codes run state %s as %s', (state, expectedClass) => {
+    const badge = renderStatusBadge(state);
+    expect(badge.className).toBe(`status ${expectedClass}`);
+    expect(badge.textContent).toBe(state);
+  });
+
+  it.each([
     ['trusted', 'status-success'],
     ['degraded', 'status-attention'],
     ['insufficient', 'status-danger'],

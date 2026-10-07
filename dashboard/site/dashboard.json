@@ -112,12 +112,12 @@
           {
             "field": "run-status",
             "title": "Status",
-            "display": "label"
+            "display": "status"
           },
           {
             "field": "run-conclusion",
             "title": "Outcome",
-            "display": "label"
+            "display": "status"
           },
           {
             "field": "branch",

@@ -16,7 +16,6 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -255,26 +254,21 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if host.Profile.Listener != HostListenerPlatform {
 		return nil, fmt.Errorf("host target module %q does not delegate listener ownership", host.Profile.Name)
 	}
-	if err := validateHostedRedisURL(
-		host.RedisURL,
-		host.RedisOptions.AllowPrivatePlaintext,
-		host.RedisOptions.ForceTLS,
-	); err != nil {
-		return nil, err
+	if host.OperationalBackend == "redis" {
+		if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
+			return nil, err
+		}
 	}
-	if err := validateAzureRedisURL(host.RedisURL, localSimulation); err != nil {
-		return nil, err
-	}
-	client, err := redisx.NewWithOptions(host.RedisURL, host.RedisOptions)
+	store, revocationPrefix, err := newOperationalStore(ctx, host)
 	if err != nil {
 		return nil, err
 	}
-	store, err := storeFromClient(
-		ctx, client, host.RedisNamespace, host.Profile.IsolateProcessNamespace,
-	)
-	if err != nil {
-		return nil, err
-	}
+	initialized := false
+	defer func() {
+		if !initialized {
+			_ = store.Close()
+		}
+	}()
 	profile := azureLocalSimulationProfile(host.Profile, localSimulation)
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
@@ -326,6 +320,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
 			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:          splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
+			RevocationKeyPrefix:   revocationPrefix,
 		},
 		Logger: logger,
 	})
@@ -339,7 +334,10 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	}
 	maintenanceCtx, stopMaintenance := context.WithCancel(context.WithoutCancel(ctx))
 	app.startTask(func() { app.runRedisMaintenance(maintenanceCtx, redisMaintenanceInterval) })
-	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
+	app.startTask(func() { app.oauth.runRevocationWorker(maintenanceCtx) })
+	app.ownedDatabase = database
+	app.ownedOperational = store
+	initialized = true
 	return &azureFunctionsHandler{Handler: app.AzureFunctionsHandler(), app: app, stopMaintenance: stopMaintenance}, nil
 }
 

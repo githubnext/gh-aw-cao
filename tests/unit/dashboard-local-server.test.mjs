@@ -572,7 +572,7 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
 test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => {
   for (const [arguments_, message] of [
     [["--operational-store"], /requires a value/],
-    [["--operational-store", "postgres"], /must be redis or memory/],
+    [["--operational-store", "sqlite"], /must be redis, memory, or postgres/],
     [["--operational-store", "memory", "--policy", "--port", "8080"], /--policy requires a value/],
     [["--operational-store", "redis", "--canvas"], /--canvas cannot be used/],
     [["--operational-store", "memory", "--repo", "acme/control"], /--repo cannot be used/],
@@ -591,10 +591,10 @@ test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => 
   }
 });
 
-test("Go local launcher selects either backend without modifying policy or environment", async (t) => {
+test("Go local launcher selects each backend without modifying policy or environment", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-go-launcher-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const operationalStore of ["redis", "memory"]) {
+  for (const operationalStore of ["redis", "memory", "postgres"]) {
     const calls = [];
     const policyPath = path.join(root, `${operationalStore}.json`);
     const policy = JSON.stringify({ fixture: operationalStore });

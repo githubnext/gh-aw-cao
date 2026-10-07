@@ -557,7 +557,7 @@
       "parameters": [],
       "queries": [
         "workflow-aic-per-run",
-        "workflow-inventory"
+        "workflow-list"
       ]
     },
     {
@@ -1361,8 +1361,7 @@
         "workflows"
       ],
       "used-by-pages": [
-        "repository-workflow-inventory",
-        "workflows"
+        "repository-workflow-inventory"
       ],
       "execution": {
         "local": true,
@@ -3326,6 +3325,67 @@
           "audits",
           "operational-values",
           "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "workflow-ordered-runs",
+      "subject": "Order retained run attempts within each workflow by their observed start time.",
+      "objective": "Identify each workflow's latest execution without importing event coverage or outcome totals.",
+      "acceptance": "The first chronological attempt in each workflow partition has no preceding run delta; break timestamp ties by run ID and attempt, and use creation time for queued runs.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-latest-runs",
+      "subject": "Project the latest retained run attempt for each workflow.",
+      "objective": "Expose each workflow's latest observed execution state without implying aggregate outcomes.",
+      "acceptance": "Select only the first chronologically ordered attempt per workflow; preserve queued and in-progress states instead of treating unknown conclusions as failures.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflow-ordered-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "workflow-list",
+      "subject": "List declared workflows in latest observed run order.",
+      "objective": "Open a dedicated workflow page from a lightweight inventory with its latest execution status.",
+      "acceptance": "Keep unobserved workflows last with an explicit missing-run state; use only workflow declarations and retained runs, not event coverage or aggregate success/failure counters.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflow-latest-runs",
+        "workflows"
+      ],
+      "used-by-pages": [
+        "workflows"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs",
           "workflows"
         ]
       }
