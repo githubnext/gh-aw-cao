@@ -1,3 +1,7 @@
+import { createDebug } from '../debug.js';
+
+const debugMemoryJsonl = createDebug('repository-memory-jsonl');
+
 /**
  * @typedef {{ columns: string[], rows: { line: number, cells: string[] }[], error: string }} MemoryJsonlTable
  * @typedef {{ content: string, table?: MemoryJsonlTable }} MemoryFileContent
@@ -10,9 +14,11 @@
  * @returns {MemoryFileContent}
  */
 export function prepareMemoryFile(path, content) {
+  const isJsonl = /\.jsonl$/i.test(path);
+  debugMemoryJsonl('prepare-memory-file', { kind: isJsonl ? 'jsonl' : 'other', contentLength: content.length });
   return {
     content: formatMemoryFileContent(path, content),
-    ...(/\.jsonl$/i.test(path) ? { table: parseMemoryJsonl(content) } : {}),
+    ...(isJsonl ? { table: parseMemoryJsonl(content) } : {}),
   };
 }
 
@@ -35,6 +41,7 @@ function parseMemoryJsonl(content) {
     try {
       value = JSON.parse(line);
     } catch {
+      debugMemoryJsonl('parse-jsonl', { outcome: 'invalid-json', line: index + 1 });
       return { columns: [], rows: [], error: `Invalid JSON on line ${index + 1}. Use Raw to inspect the file.` };
     }
     /** @type {{ line: number, values: Map<number, string> }} */
@@ -51,6 +58,7 @@ function parseMemoryJsonl(content) {
       records.push({ ...record, value: typeof value === 'string' ? value : JSON.stringify(value) });
     }
   }
+  debugMemoryJsonl('parse-jsonl', { outcome: 'parsed', recordCount: records.length, columnCount: fields.size });
   return {
     columns: [...fields.keys(), ...(hasValues ? ['Value (non-object)'] : [])],
     rows: records.map((record) => ({
