@@ -178,6 +178,7 @@
       { "field": "resolvedCommit", "as": "resolved-commit" },
       { "field": "version", "as": "package-version" },
       { "field": "icon", "as": "package-icon" },
+      { "field": "iconImage", "as": "package-icon-image" },
       { "field": "artwork", "as": "package-artwork" },
       { "field": "readme", "as": "package-readme" },
       { "field": "readmePath", "as": "package-readme-path" },

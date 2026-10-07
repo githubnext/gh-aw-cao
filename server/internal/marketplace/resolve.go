@@ -107,11 +107,13 @@ type Coordinates struct {
 	ResolvedCommit string
 	Readme         string
 	ReadmePath     string
+	IconImage      string
 }
 
 var awManifestSuffix = regexp.MustCompile(`/?aw\.yml$`)
 
 var readmePattern = regexp.MustCompile(`(?i)^readme\.(?:md|markdown)$`)
+var svgStartPattern = regexp.MustCompile(`(?is)^\s*(?:<\?xml[^>]*\?>\s*)?<svg(?:\s|>)`)
 
 // ParsePackageManifest normalizes one aw.yml manifest's safe, publicly
 // documented fields into the shared Package DTO. It never reads any field
@@ -167,6 +169,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		ResolvedCommit:     coordinates.ResolvedCommit,
 		Version:            version,
 		Icon:               icon,
+		IconImage:          coordinates.IconImage,
 		Artwork:            scalar(source, "artwork"),
 		Contents:           contents,
 		Readme:             readme,
@@ -368,6 +371,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			registry.ID, maxPackagesPerRegistry)
 	}
 	readmes := readmeEntries(rawTree, prefix)
+	icons := iconEntries(rawTree, prefix)
 
 	stars, forks := repositoryCounts(ctx, opts, fmt.Sprintf("%s/repos/%s", base, repositoryPath), token)
 
@@ -394,6 +398,10 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 				readmePath = readmeEntry.path
 			}
 		}
+		iconImage := ""
+		if iconEntry, ok := icons[strings.TrimSuffix(entry.path, "aw.yml")]; ok {
+			iconImage = fetchIcon(ctx, opts, base, repositoryPath, token, iconEntry.sha)
+		}
 		pkg, err := ParsePackageManifest(manifest, Coordinates{
 			RegistryID:     registry.ID,
 			RegistryName:   registry.Name,
@@ -405,6 +413,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			ResolvedCommit: commit,
 			Readme:         readme,
 			ReadmePath:     readmePath,
+			IconImage:      iconImage,
 		})
 		if err != nil {
 			return nil, err
@@ -506,6 +515,41 @@ func fetchReadme(ctx context.Context, opts Options, base, repositoryPath, token,
 	if err != nil {
 		resolveLog.Printf("readme blob request failed")
 		return ""
+	}
+
+	func iconEntries(rawTree []any, prefix string) map[string]treeEntry {
+		entries := map[string]treeEntry{}
+		for _, raw := range rawTree {
+			entry, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			path, _ := entry["path"].(string)
+			if entry["type"] != "blob" || !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/icon.svg") {
+				continue
+			}
+			if size, ok := entry["size"].(float64); ok && size > maxIconBytes {
+				continue
+			}
+			sha, _ := entry["sha"].(string)
+			if sha != "" {
+				entries[strings.TrimSuffix(path, "icon.svg")] = treeEntry{path: path, sha: sha}
+			}
+		}
+		return entries
+	}
+
+	func fetchIcon(ctx context.Context, opts Options, base, repositoryPath, token, sha string) string {
+		blob, err := githubJSON(ctx, opts, http.MethodGet,
+			fmt.Sprintf("%s/repos/%s/git/blobs/%s", base, repositoryPath, sha), token)
+		if err != nil {
+			return ""
+		}
+		content, _, err := decodeBase64Blob(blob)
+		if err != nil || len(content) == 0 || len(content) > maxIconBytes || !svgStartPattern.MatchString(content) {
+			return ""
+		}
+		return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(content))
 	}
 	decoded, outcome, err := decodeBase64Blob(blobPayload)
 	if err == nil && len(decoded) > maxReadmeBytes {

@@ -31,6 +31,8 @@ function registryFetch({
   manifest = "name: Demo\ndescription: Example\nincludes:\n  - demo.md\n",
   readme = "# Demo\n\nExample package readme.\n",
   readmeUnavailable = false,
+  icon = null,
+  iconUnavailable = false,
   fail = false,
   repository = { private: false, visibility: "public", stargazers_count: 12, forks_count: 3 },
 } = {}) {
@@ -45,6 +47,7 @@ function registryFetch({
         tree: [
           { type: "blob", path: "demo/aw.yml", sha: "blob" },
           { type: "blob", path: "demo/README.md", sha: "readme", size: readme.length },
+          ...(icon === null ? [] : [{ type: "blob", path: "demo/icon.svg", sha: "icon", size: Buffer.byteLength(icon) }]),
         ],
       });
     }
@@ -52,6 +55,11 @@ function registryFetch({
       return readmeUnavailable
         ? response({}, 404)
         : response({ encoding: "base64", content: Buffer.from(readme).toString("base64") });
+    }
+    if (url.endsWith("/git/blobs/icon")) {
+      return iconUnavailable
+        ? response({}, 404)
+        : response({ encoding: "base64", content: Buffer.from(icon).toString("base64") });
     }
     if (url.includes("/git/blobs/")) {
       return response({ encoding: "base64", content: Buffer.from(manifest).toString("base64") });
@@ -101,6 +109,24 @@ test("packages carry the README preview published beside their manifest", async 
   const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
   assert.equal(result.packages[0].readme, "# Demo\n\nExample package readme.\n");
   assert.equal(result.packages[0]["readme-path"], "demo/README.md");
+});
+
+test("packages use a bundled icon.svg without replacing their fallback Octicon", async () => {
+  const icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>';
+  const fake = registryFetch({ icon });
+  const { packages } = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
+  assert.equal(packages[0].icon, "workflow");
+  assert.equal(packages[0]["icon-image"], `data:image/svg+xml;base64,${Buffer.from(icon).toString("base64")}`);
+  assert.ok(fake.calls.some(({ url }) => url.endsWith("/git/blobs/icon")));
+  for (const badIcon of ["<html>not svg</html>", "x".repeat(64 * 1024 + 1)]) {
+    const rejected = registryFetch({ icon: badIcon });
+    const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: rejected.fetchImpl });
+    assert.equal(result.packages[0]["icon-image"], "");
+    assert.equal(result.diagnostics[0].status, "available");
+  }
+  const unavailable = registryFetch({ icon, iconUnavailable: true });
+  const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: unavailable.fetchImpl });
+  assert.equal(result.packages[0]["icon-image"], "");
 });
 
 test("marketplace records include public GitHub repository counts but no inferred signals", async () => {

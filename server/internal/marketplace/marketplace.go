@@ -37,6 +37,7 @@ const (
 	maxPolicyBytes         = 4 << 20 // 4 MiB: cao.json is small; this bounds a misconfigured or hostile policy file.
 	maxManifestBytes       = 256 * 1024
 	maxReadmeBytes         = 256 * 1024
+	maxIconBytes           = 64 * 1024
 	maxPackagesPerRegistry = 500
 )
 
@@ -98,6 +99,7 @@ type Package struct {
 	ResolvedCommit     string          `json:"resolved-commit"`
 	Version            string          `json:"version"`
 	Icon               string          `json:"icon"`
+	IconImage          string          `json:"icon-image"`
 	Artwork            string          `json:"artwork"`
 	Contents           []string        `json:"contents"`
 	Readme             string          `json:"readme"`
@@ -136,6 +138,7 @@ func (p Package) Row() model.Row {
 		"resolved-commit":     p.ResolvedCommit,
 		"package-version":     p.Version,
 		"package-icon":        p.Icon,
+		"package-icon-image":  p.IconImage,
 		"package-artwork":     p.Artwork,
 		"package-contents":    contents,
 		"package-readme":      p.Readme,

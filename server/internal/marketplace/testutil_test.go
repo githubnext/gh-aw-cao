@@ -30,6 +30,9 @@ type fakeGitHubConfig struct {
 	readme string
 	// readmePaths lists README tree entries returned for git/trees requests.
 	readmePaths []string
+	icon       string
+	iconPaths  []string
+	iconStatus int
 	// failStatus, if non-zero, makes every request fail with that HTTP status.
 	failStatus int
 	// installationToken, if set, answers GitHub App installation token
@@ -98,14 +101,23 @@ func newFakeGitHubServer(t *testing.T, cfg fakeGitHubConfig) *fakeGitHubServer {
 				w.WriteHeader(http.StatusNotFound)
 			}
 		case strings.Contains(r.URL.Path, "/git/trees/"):
-			entries := make([]map[string]any, 0, len(paths)+len(cfg.readmePaths))
+			entries := make([]map[string]any, 0, len(paths)+len(cfg.readmePaths)+len(cfg.iconPaths))
 			for _, path := range paths {
 				entries = append(entries, map[string]any{"type": "blob", "path": path, "sha": "blob-" + path})
 			}
 			for _, path := range cfg.readmePaths {
 				entries = append(entries, map[string]any{"type": "blob", "path": path, "sha": "readme-" + path})
 			}
+			for _, path := range cfg.iconPaths {
+				entries = append(entries, map[string]any{"type": "blob", "path": path, "sha": "icon-" + path, "size": len(cfg.icon)})
+			}
 			writeJSON(w, map[string]any{"tree": entries})
+		case strings.Contains(r.URL.Path, "/git/blobs/icon-"):
+			if cfg.iconStatus != 0 {
+				w.WriteHeader(cfg.iconStatus)
+				return
+			}
+			writeJSON(w, map[string]any{"encoding": "base64", "content": base64.StdEncoding.EncodeToString([]byte(cfg.icon))})
 		case strings.Contains(r.URL.Path, "/git/blobs/readme-"):
 			writeJSON(w, map[string]any{
 				"encoding": "base64",

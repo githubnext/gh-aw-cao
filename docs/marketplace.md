@@ -12,6 +12,11 @@ coordinate, with an **Add** button above both.
 A package README is the `README.md` published beside its `aw.yml` manifest. A
 package without one simply shows no README preview.
 
+To customize a package's marketplace icon, place an `icon.svg` beside its
+`aw.yml`. The marketplace displays it as a square image on the list and detail
+cards. Icons over 64 KiB or unavailable at the resolved commit fall back to the
+package's configured Octicon (or the default icon).
+
 The dashboard does not contact registries or install packages. Its **Add**
 action only copies the canonical command:
 

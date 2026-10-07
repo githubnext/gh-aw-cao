@@ -161,6 +161,9 @@ function validateCardTemplates(templates, templatesNode, errors) {
     if (template['icon-field'] !== undefined) {
       validateRequiredIdentifier(template['icon-field'], `${path}.icon-field`, 'card template icon field', errors);
     }
+    if (template['image-field'] !== undefined) {
+      validateRequiredIdentifier(template['image-field'], `${path}.image-field`, 'card template image field', errors);
+    }
     if (typeof template.id === 'string') {
       if (ids.has(template.id)) errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'card template id must be unique.', `${path}.id`));
       ids.add(template.id);

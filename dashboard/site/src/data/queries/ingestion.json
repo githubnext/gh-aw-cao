@@ -217,6 +217,7 @@
         "resolvedCommit": { "field": "resolved-commit" },
         "version": { "field": "version" },
         "icon": { "field": "icon", "default": "workflow" },
+        "iconImage": { "field": "icon-image", "default": "" },
         "artwork": { "field": "artwork", "default": "" },
         "contents": { "field": "contents", "default": [] },
         "readme": { "field": "readme", "default": "" },

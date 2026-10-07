@@ -67,6 +67,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]):hover { border-color: var(--accent); background: var(--canvas-subtle); }
 .entity-card-list-marketplace .issue-list-card-icon { grid-row: 2; width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas-subtle); color: var(--fg); }
 .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 28px; height: 28px; }
+.entity-card-list-marketplace .issue-list-card-icon img { display: block; width: 100%; height: 100%; aspect-ratio: 1; object-fit: contain; border-radius: inherit; }
 .entity-card-list-marketplace .issue-list-card-content { grid-row: 3; display: grid; justify-items: center; gap: 6px; }
 .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1rem; }
 .entity-card-list-marketplace .issue-list-card-subtitle { max-width: 36ch; color: var(--muted); font-size: .875rem; line-height: 1.5; }

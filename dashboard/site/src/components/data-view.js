@@ -428,7 +428,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }> },
+ *   definition: { icon: string, 'icon-field'?: string, 'image-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }> },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number,
  *   chevron?: boolean
@@ -466,6 +466,10 @@ function renderEntityCardItems(rows, options) {
           ? resolveCardStatus(row[definition.status['fallback-field']])
           : null)
       : null;
+    const image = definition['image-field'] ? row[definition['image-field']] : null;
+    const imageSource = typeof image === 'string'
+      && image.length <= 100_000
+      && /^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+={0,2}$/.test(image) ? image : '';
     const badgeDisplays = ['active-state', 'status', 'mode', 'grader-status'];
     const labels = definition.labels.flatMap((column) => {
       const value = row[column.field];
@@ -538,7 +542,11 @@ function renderEntityCardItems(rows, options) {
         : h(
           'span',
           { className: 'issue-list-card-icon', 'aria-hidden': 'true' },
-          octicon(resolveEntityCardIcon(definition, row, toText))
+          imageSource
+            ? h('img', { src: imageSource, alt: '', width: 56, height: 56, onError: (event) => {
+              event.currentTarget.replaceWith(octicon(resolveEntityCardIcon(definition, row, toText)));
+            } })
+            : octicon(resolveEntityCardIcon(definition, row, toText))
         ),
       h(
         'div',

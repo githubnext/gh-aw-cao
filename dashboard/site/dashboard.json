@@ -493,6 +493,7 @@
         "id": "marketplace-package-summary",
         "icon": "archive",
         "icon-field": "package-icon",
+        "image-field": "package-icon-image",
         "title": {
           "field": "package-name",
           "title": "Package"
@@ -532,6 +533,7 @@
         "id": "marketplace-package",
         "icon": "archive",
         "icon-field": "package-icon",
+        "image-field": "package-icon-image",
         "title": {
           "field": "package-name",
           "title": "Package"

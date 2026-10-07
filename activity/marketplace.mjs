@@ -6,6 +6,7 @@ const SAFE_PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]*$/;
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_README_BYTES = 256 * 1024;
+const MAX_ICON_BYTES = 64 * 1024;
 const MAX_PACKAGES_PER_REGISTRY = 500;
 
 function base64url(value) {
@@ -133,6 +134,7 @@ export function parsePackageManifest(source, coordinates) {
     "resolved-commit": coordinates.resolvedCommit,
     version,
     icon: scalar(source, "icon") || "workflow",
+    "icon-image": typeof coordinates.iconImage === "string" ? coordinates.iconImage : "",
     artwork: scalar(source, "artwork") || "",
     contents,
     readme,
@@ -176,6 +178,31 @@ function readmeEntries(tree, prefix) {
     if (!/^readme\.(?:md|markdown)$/i.test(entry.path.slice(separator + 1))) continue;
     if (typeof entry.size === "number" && entry.size > MAX_README_BYTES) continue;
     if (!entries.has(directory)) entries.set(directory, entry);
+  }
+
+  function iconEntries(tree, prefix) {
+    const entries = new Map();
+    for (const entry of tree) {
+      if (entry?.type !== "blob" || typeof entry.path !== "string" || !entry.path.startsWith(prefix)) continue;
+      if (entry.path.slice(entry.path.lastIndexOf("/") + 1) !== "icon.svg") continue;
+      if (typeof entry.size === "number" && entry.size > MAX_ICON_BYTES) continue;
+      entries.set(entry.path.slice(0, -"icon.svg".length), entry);
+    }
+    return entries;
+  }
+
+  async function fetchIcon(entry, { base, repositoryPath, token, fetchImpl }) {
+    try {
+      const response = await githubRequest(fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
+      const blob = await response.json();
+      if (blob.encoding !== "base64" || typeof blob.content !== "string") return "";
+      const content = Buffer.from(blob.content.replace(/\s/g, ""), "base64");
+      if (!content.length || content.byteLength > MAX_ICON_BYTES
+        || !/^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(content.toString("utf8"))) return "";
+      return `data:image/svg+xml;base64,${content.toString("base64")}`;
+    } catch {
+      return "";
+    }
   }
   return entries;
 }
@@ -243,6 +270,7 @@ async function resolveRegistry(registry, precedence, options) {
     .filter((entry) => !INTERNAL_PACKAGES.has(entry.path.slice(prefix.length).split("/", 1)[0]))
     .slice(0, MAX_PACKAGES_PER_REGISTRY);
   const readmes = readmeEntries(treePayload.tree, prefix);
+  const icons = iconEntries(treePayload.tree, prefix);
   return Promise.all(manifests.map(async (entry) => {
     const blobResponse = await githubRequest(options.fetchImpl, `${base}/repos/${repositoryPath}/git/blobs/${entry.sha}`, token);
     const blob = await blobResponse.json();
@@ -252,6 +280,10 @@ async function resolveRegistry(registry, precedence, options) {
     const readmeEntry = readmes.get(entry.path.slice(0, -"aw.yml".length));
     const readme = readmeEntry
       ? await fetchReadme(readmeEntry, { base, repositoryPath, token, fetchImpl: options.fetchImpl })
+      : "";
+    const iconEntry = icons.get(entry.path.slice(0, -"aw.yml".length));
+    const iconImage = iconEntry
+      ? await fetchIcon(iconEntry, { base, repositoryPath, token, fetchImpl: options.fetchImpl })
       : "";
     return parsePackageManifest(manifest, {
       registryId: registry.id,
@@ -263,6 +295,7 @@ async function resolveRegistry(registry, precedence, options) {
       ref: registry.ref,
       resolvedCommit: commit,
       readme,
+      iconImage,
       readmePath: readme ? readmeEntry.path : "",
       repositoryCounts,
     });
