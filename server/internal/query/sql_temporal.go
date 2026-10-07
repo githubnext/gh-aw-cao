@@ -72,8 +72,8 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	link := "'{}'::jsonb"
 	if definition.Link != "" {
 		column := sqlField(input, definition.Link)
-		if column.Kind != SQLStructured && column.Kind != sqlNull {
-			return SQLRelation{}, errors.New("temporal link requires a structured field")
+		if column.Kind != SQLText && column.Kind != SQLStructured && column.Kind != sqlNull {
+			return SQLRelation{}, errors.New("temporal link requires a text or structured field")
 		}
 		link = "CASE WHEN " + column.Presence + " THEN jsonb_build_object('link', " +
 			column.Expression + ") ELSE '{}'::jsonb END"

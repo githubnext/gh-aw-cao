@@ -154,7 +154,7 @@ func TestTemporalSQLDeployedCampaignQuery(t *testing.T) {
 		}
 		input.Columns[series.Time] = SQLColumn{Expression: "observed_at", Presence: "observed_at_present", Kind: SQLTimestamp}
 		input.Columns[series.Series] = SQLColumn{Expression: "repository", Presence: "TRUE", Kind: SQLText}
-		input.Columns[series.Link] = SQLColumn{Expression: "run_link", Presence: "link_present", Kind: SQLStructured}
+		input.Columns[series.Link] = SQLColumn{Expression: "run_link", Presence: "link_present", Kind: SQLText}
 		for _, measure := range series.Measures {
 			input.Columns[measure.Field] = SQLColumn{Expression: "amount", Presence: "amount_present", Kind: SQLNumber}
 			input.Columns[measure.Key] = SQLColumn{Expression: "identity", Presence: "identity_present", Kind: SQLText}
@@ -308,6 +308,42 @@ func TestTemporalSQLPostgresPanels(t *testing.T) {
 		if link["href"] != "https://github.com/org/repo/actions/runs/"+strconv.Itoa(run) {
 			t.Fatalf("point order or provenance changed: %v", points)
 		}
+	}
+}
+
+func TestTemporalSQLPostgresPanelLinks(t *testing.T) {
+	connection := temporalTestConnection(t)
+	for _, testcase := range []struct {
+		name    string
+		column  SQLColumn
+		present bool
+		want    any
+	}{
+		{"text", SQLColumn{Expression: "'https://github.com/org/repo/actions/runs/1'::text", Presence: "TRUE", Kind: SQLText}, true, "https://github.com/org/repo/actions/runs/1"},
+		{"structured", SQLColumn{Expression: `jsonb_build_object('href','https://github.com/org/repo/actions/runs/1','label','Run 1')`, Presence: "TRUE", Kind: SQLStructured}, true, map[string]any{"href": "https://github.com/org/repo/actions/runs/1", "label": "Run 1"}},
+		{"null", SQLColumn{Expression: "NULL::text", Presence: "TRUE", Kind: SQLText}, true, nil},
+		{"missing", SQLColumn{Expression: "NULL::text", Presence: "FALSE", Kind: SQLText}, false, nil},
+	} {
+		t.Run(testcase.name, func(t *testing.T) {
+			input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
+			input.Columns["run-link"] = testcase.column
+			definition := TemporalSeries{
+				Time: "observed-at", Series: "repository", Shape: "panels", Link: "run-link",
+				Measures: []TemporalMeasure{{Field: "value", Kind: "primary"}},
+			}
+			rows, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != 1 {
+				t.Fatalf("expected one panel, got %v", rows)
+			}
+			point := rows[0]["series"].([]any)[0].(map[string]any)["points"].([]any)[0].(map[string]any)
+			link, present := point["link"]
+			if present != testcase.present || !reflect.DeepEqual(link, testcase.want) {
+				t.Fatalf("point link = %#v (present %v), want %#v (present %v)", link, present, testcase.want, testcase.present)
+			}
+		})
 	}
 }
 

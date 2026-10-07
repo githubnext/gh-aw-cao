@@ -52,10 +52,14 @@ test("deployed query cost uses Postgres and the production Go engine", async () 
   await writeFile(path.join(outputDirectory, "summary.md"), postgresQueryCostMarkdown(report, candidates));
 
   assert.equal(report.engine, "postgres-native-sql");
+  assert.ok(Number.isInteger(report["page-limit"]) && report["page-limit"] > 0 && report["page-limit"] <= 100_000);
   assert.ok(report.records >= positiveBudget("DASHBOARD_QUERY_COST_MIN_RECORDS", 1));
   assert.ok(report["source-counts"]["$runs"] > 0, "deployed runs are empty");
   assert.deepEqual(report.measurements.map(({ query }) => query), candidates.map(({ name }) => name));
   for (const entry of report.measurements) {
+    assert.ok(Number.isInteger(entry["total-rows"]) && entry["total-rows"] >= 0);
+    assert.equal(entry.rows, Math.min(entry["total-rows"], report["page-limit"]));
+    assert.equal(entry.metrics.outputRows, entry.rows);
     assert.ok(entry["duration-ms"] <= positiveBudget("DASHBOARD_QUERY_COST_MAX_DURATION_MS", 30_000),
       `${entry.query} exceeded the duration budget`);
     assert.ok(entry.metrics.operations <= positiveBudget("DASHBOARD_QUERY_COST_MAX_OPERATIONS", 50_000_000),
