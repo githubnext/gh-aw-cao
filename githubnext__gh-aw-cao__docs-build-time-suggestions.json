@@ -1,5 +1,5 @@
 {
-  "source_sha": "c0f58551f1032018ad9a923223d75675048e39df",
+  "source_sha": "b97e27a949a1d882f8aae713db8e43d41423c226",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -303,6 +303,34 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions API rate limit exceeded before evidence collection; unable to inspect latest docs.yml runs or job timings."
+    },
+    {
+      "evaluated_at": "2026-10-07T20:57:14Z",
+      "worker_run_id": 37685543673,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37685575505,
+        37685059299,
+        37685035476,
+        37685025478,
+        37684966274,
+        37684882443,
+        37684880235,
+        37684879724,
+        37684014938,
+        37683651531,
+        37682079672,
+        37681885692,
+        37678990361,
+        37678134853,
+        37678039065,
+        37677123855,
+        37676495766,
+        37675866553,
+        37675524583,
+        37675514178
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run, schedule, and push attempts on four recent source SHAs, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
     }
   ]
 }
