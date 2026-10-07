@@ -80,7 +80,7 @@
     "reason": "Re-confirmed unchanged on HEAD 4b1a19e: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods) and same false negative (artifact-permissions.ts shell-string chmod -R) persist, no suppression mechanism.",
     "txn_id": "refiner-37548458310-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37548458310",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37564278133",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
     {
@@ -152,8 +152,28 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD f1c3282: same false positives/negative persist, no suppression mechanism.",
       "txn_id": "refiner-37467185149-1"
+    },
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "15e1e96120b59b3b19a4c6ad1a164398910e639e",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 15e1e96120b59b3b19a4c6ad1a164398910e639e: tests/e2e/cao-mcp-container.mjs:89 still runs 'chmod -R a+rX' on a fresh mkdtemp()-scoped test fixture directory containing only a just-created SQLite snapshot copy, never any 0600-restricted audit/token/credential file -- remains a syntactic-only false positive with no sensitive co-located file at risk.",
+      "txn_id": "refiner-37557116506-2"
+    },
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "b3f1fa1a3445e3696ba970174aacbd6caa7190f6",
+      "true_positive_count": 2,
+      "false_positive_count": 4,
+      "false_negative_count": 1,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged at HEAD b3f1fa1a3445e3696ba970174aacbd6caa7190f6: the 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods) and the false negative (artifact-permissions.ts:158 shell-string chmod -R) persist, no suppression mechanism.",
+      "txn_id": "refiner-37560505197-1"
     }
   ],
-  "last_seen_at": "2026-10-06T23:48:57Z",
-  "last_updated": "2026-10-07T02:14:05Z"
+  "last_seen_at": "2026-10-07T02:14:00Z",
+  "last_updated": "2026-10-07T03:08:32Z"
 }
