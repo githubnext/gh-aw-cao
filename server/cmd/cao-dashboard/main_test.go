@@ -18,12 +18,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-func TestServeInitializesNativeSchemaBeforePostgresOperationalStore(t *testing.T) {
+func TestServeWithExistingPostgresOperationalTables(t *testing.T) {
 	endpoint := os.Getenv("POSTGRES_URL")
 	if endpoint == "" {
 		t.Skip("POSTGRES_URL is not set")
@@ -58,8 +59,17 @@ func TestServeInitializesNativeSchemaBeforePostgresOperationalStore(t *testing.T
 	parsed.RawQuery = query.Encode()
 	t.Setenv("CAO_POSTGRES_URL", parsed.String())
 	t.Setenv("OTEL_SDK_DISABLED", "true")
+	operational, err := postgres.New(t.Context(), parsed.String(), namespace, postgres.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := operational.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	cmd := newServeCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
 	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
 	err = cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "missing-dashboard-queries.json") {
