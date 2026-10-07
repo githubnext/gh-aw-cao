@@ -79,9 +79,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Verify activity snapshot[\s\S]*?Save activity cache/,
   );
-  assert.match(notifyFailureJob, /needs: \[plan, collect, index, cache, reconcile-dispatch\]/);
+  assert.match(notifyFailureJob, /needs: \[plan, collect, index, cache\]/);
   assert.match(notifyFailureJob, /permissions:\n\s+issues: write/);
-  assert.match(notifyFailureJob, /CAO_ACTIVITY_PLAN_FAILED[\s\S]*?CAO_ACTIVITY_COLLECTION_FAILED[\s\S]*?CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED[\s\S]*?CAO_DISPATCH_RECONCILIATION_FAILED/);
+  assert.match(notifyFailureJob, /CAO_ACTIVITY_PLAN_FAILED[\s\S]*?CAO_ACTIVITY_COLLECTION_FAILED[\s\S]*?CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
+  assert.doesNotMatch(workflow, /reconcile-dispatch|CAO_DISPATCH_RECONCILIATION_FAILED/);
   assert.match(notifyFailureJob, /Assign this issue to an agent/);
   assert.match(notifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
