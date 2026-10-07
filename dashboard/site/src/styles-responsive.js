@@ -8,6 +8,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
 }
 @media (max-width: 700px) {
   .semantic-prompt-action { position: static; margin: 8px 0; }
+  .mobile-table-card-toolbar > .semantic-prompt-action { margin: 0 0 0 auto; }
   .chart-prompt-heading { flex-wrap: wrap; gap: 8px; }
   :is(.semantic-prompt-action, .chart-prompt-action) .table-intent-button {
     width: auto; min-height: 44px; max-width: 100%; justify-content: flex-start; padding: 8px 12px;

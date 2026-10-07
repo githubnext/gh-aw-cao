@@ -93,6 +93,10 @@ for (const mobile of [false, true]) {
     }
     const summary = view.locator('.card-filter-menu > summary');
     await expect(view.locator('.mobile-table-card-list')).toBeVisible();
+    const cardList = view.locator('.mobile-table-card-list');
+    await expect(cardList).toHaveCSS('border-radius', '14px');
+    await expect(cardList.locator('.mobile-table-card-toolbar .card-filter-bar')).toBeVisible();
+    await expect(cardList.locator('.mobile-table-card-list-items > li[data-custom-row-key]').first()).toHaveCSS('border-top-width', '0px');
     await summary.focus();
     await page.keyboard.press('Enter');
     await expect(view.getByRole('checkbox', { name: 'Open', exact: true })).toBeVisible();

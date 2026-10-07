@@ -1069,7 +1069,8 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     'data-mobile-card-list': '',
     role: 'region',
     'aria-label': `${title}: card list`
-  }, list, empty);
+  }, h('div', { className: 'mobile-table-card-toolbar' },
+    h('span', { className: 'mobile-table-card-toolbar-title' }, title)), list, empty);
   if (!(boundary instanceof HTMLElement)) return region;
 
   const continuation = context.continuation;

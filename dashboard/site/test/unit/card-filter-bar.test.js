@@ -344,4 +344,28 @@ describe('card filter controls', () => {
     expect(root.querySelector('.card-filter-bar')).not.toBeNull();
     expect(root.textContent).toContain('No issue safe outputs were retained');
   });
+
+  it('places card filters and the prompt inside the card list toolbar', async () => {
+    const root = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'fixture', title: 'Issues', 'card-templates': dashboard['card-templates'],
+          pages: [{ id: 'issues', title: 'Issues', kind: 'custom', views: [{ ...view, prompt: 'always' }] }]
+        }
+      },
+      sources: payload()
+    });
+    document.body.append(root);
+    root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+      detail: { pageId: 'issues', queryContext: { viewMode: 'card' } }
+    }));
+    await vi.waitFor(() => expect(root.querySelector('[data-page-id="issues"]')?.getAttribute('data-view-mode')).toBe('card'));
+    const cardView = root.querySelector(`[data-view-id="${view.id}"]`);
+    const toolbar = cardView?.querySelector('.mobile-table-card-toolbar');
+    expect(toolbar?.querySelector('.card-filter-bar')).not.toBeNull();
+    expect(toolbar?.querySelector('.semantic-prompt-action .table-intent-button')).not.toBeNull();
+    expect(cardView?.querySelector(':scope > .semantic-prompt-action')).toBeNull();
+    expect(toolbar?.nextElementSibling?.classList.contains('mobile-table-card-list-items')).toBe(true);
+  });
 });

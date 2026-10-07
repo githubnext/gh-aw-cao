@@ -881,7 +881,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, name, sourceIndex)];
           return source ? [[name, source]] : [];
         }));
-        rendered.prepend(renderCardFilterBar({
+        const filterBar = renderCardFilterBar({
           pageId: page.id,
           viewId,
           controls: filterControls,
@@ -901,7 +901,13 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
               }
             }));
           }
-        }));
+        });
+        const cardToolbar = selectedViewMode === 'card'
+          ? rendered.querySelector('.mobile-table-card-toolbar') : null;
+        if (cardToolbar) {
+          cardToolbar.querySelector('.mobile-table-card-toolbar-title')?.remove();
+          cardToolbar.append(filterBar);
+        } else rendered.prepend(filterBar);
       }
       if ((!pending || isSelfBound) && isPlainObject(view) && viewBackendAvailable(view, dashboardDataBackend())) {
         const semantics = effectiveViewSemantics(view, queries);
@@ -941,7 +947,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           );
           prompt.classList.add(view.mark === 'chart' ? 'chart-prompt-action' : 'semantic-prompt-action');
           const section = rendered.matches('.page-section') ? rendered : null;
-          if (section) {
+          const cardToolbar = selectedViewMode === 'card'
+            ? section?.querySelector('.mobile-table-card-toolbar') : null;
+          if (section && cardToolbar) {
+            section.classList.add('semantic-prompt-view');
+            cardToolbar.append(prompt);
+          } else if (section) {
             section.classList.add('semantic-prompt-view');
             const heading = section.querySelector('h3, h4');
             if (heading && view.mark === 'chart') {
