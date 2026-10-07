@@ -207,10 +207,18 @@ func dependencyPlan(definitions []Definition, requested []string) ([]string, int
 			return nil, 0, 0, err
 		}
 	}
+	maxDepth, maxJoinDepth := computeDependencyDepths(result, index)
+	queryLog.Printf("dependency plan resolved requested=%d resolved=%d max_depth=%d max_join_depth=%d",
+		len(requested), len(result), maxDepth, maxJoinDepth)
+	return result, maxDepth, maxJoinDepth, nil
+}
+
+// computeDependencyDepths walks the already-resolved dependency order and
+// returns the deepest chained-query depth and the deepest accumulated join
+// count along any chain, used to size downstream SQL compilation limits.
+func computeDependencyDepths(result []string, index map[string]Definition) (maxDepth, maxJoinDepth int) {
 	depths := map[string]int{}
 	joinDepths := map[string]int{}
-	maxDepth = 0
-	maxJoinDepth := 0
 	for _, name := range result {
 		definition, isQuery := index[name]
 		if !isQuery {
@@ -231,7 +239,7 @@ func dependencyPlan(definitions []Definition, requested []string) ([]string, int
 		maxDepth = max(maxDepth, depth)
 		maxJoinDepth = max(maxJoinDepth, joinDepth)
 	}
-	return result, maxDepth, maxJoinDepth, nil
+	return maxDepth, maxJoinDepth
 }
 
 func estimateRowsBytes(rows []model.Row, remaining int64) int64 {
