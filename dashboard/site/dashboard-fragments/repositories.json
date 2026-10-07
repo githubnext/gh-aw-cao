@@ -996,6 +996,30 @@
           "direction": "asc"
         }
       ]
+    },
+    {
+      "name": "repository-organization-options",
+      "subject": "List organizations represented in the repository inventory.",
+      "objective": "Offer observed organization values for the repository filter.",
+      "acceptance": "Return distinct observed organizations without treating missing inventory as an empty scope.",
+      "from": "repositories",
+      "aggregate": {
+        "by": ["organization"],
+        "values": [{ "field": "repository", "as": "items", "reducer": "count" }]
+      },
+      "order-by": [{ "field": "organization", "direction": "asc" }]
+    },
+    {
+      "name": "repository-status-options",
+      "subject": "List statuses represented in the repository inventory.",
+      "objective": "Offer observed repository health values for the repository filter.",
+      "acceptance": "Return distinct statuses based on retained evidence without inferring fleet health.",
+      "from": "repository-activity",
+      "aggregate": {
+        "by": ["status"],
+        "values": [{ "field": "repository", "as": "items", "reducer": "count" }]
+      },
+      "order-by": [{ "field": "status", "direction": "asc" }]
     }
   ],
   "views": [
@@ -1134,6 +1158,29 @@
             "description": "Repository-local execution health and all attributed campaign or local-workflow outcomes.",
             "data": {
               "source": "repository-activity"
+            },
+            "prompt": "none",
+            "filter-bar": {
+              "filters": [
+                {
+                  "id": "repositories",
+                  "label": "Filter",
+                  "groups": [
+                    {
+                      "label": "Organization",
+                      "field": "organization",
+                      "source": "repository-organization-options",
+                      "value-field": "organization"
+                    },
+                    {
+                      "label": "Status",
+                      "field": "status",
+                      "source": "repository-status-options",
+                      "value-field": "status"
+                    }
+                  ]
+                }
+              ]
             },
             "mark": "table",
             "controls": "interactive",
