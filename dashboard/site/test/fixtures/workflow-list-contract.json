@@ -2,6 +2,7 @@
   "page": "workflows",
   "view": "workflows-inventory",
   "source": "workflow-list",
+  "partialSource": "workflow-list-preview",
   "fields": [
     "organization", "repository", "workflow", "workflow-name", "workflow-label",
     "workflow-role", "rollout-mode", "workflow-active", "latest-run",

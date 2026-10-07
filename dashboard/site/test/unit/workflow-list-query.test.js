@@ -70,10 +70,10 @@ async function canonical(history) {
   );
 }
 
-/** @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} sources @param {Record<string, unknown>} [queryContext] */
-function viewPayload(sources, queryContext = {}) {
+/** @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} sources @param {Record<string, unknown>} [queryContext] @param {boolean} [partial] */
+function viewPayload(sources, queryContext = {}, partial = false) {
   const compiled = compileDashboardViewPayloadQueries(page, contract.page, {
-    queries, viewId: contract.view, queryContext
+    queries, viewId: contract.view, queryContext, partial
   });
   const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
     operation: 'execute-dashboard-queries', sources,
@@ -91,6 +91,30 @@ beforeEach(async () => {
 });
 
 describe('workflow list query contract', () => {
+  it('publishes declared identities and drill links without reading runs in the preview', async () => {
+    const view = page?.definition?.views?.find((/** @type {{ id: string }} */ candidate) => candidate.id === contract.view);
+    expect(view?.data).toMatchObject({ source: contract.source, 'partial-source': contract.partialSource });
+    const compiled = compileDashboardViewPayloadQueries(page, contract.page, {
+      queries, viewId: contract.view, partial: true
+    });
+    expect(resolveDashboardQuerySources([...queries, ...compiled.queries], compiled.aliases)
+      .filter((name) => !compiled.aliases.includes(name))).toEqual(['workflows']);
+
+    const sources = await canonical();
+    const preview = viewPayload(sources, {}, true);
+    const complete = viewPayload(sources);
+    const identity = (/** @type {Record<string, unknown>} */ row) => `${row.organization}/${row.workflow}`;
+    expect(preview.rows.map(identity).toSorted()).toEqual(complete.rows.map(identity).toSorted());
+    for (const row of preview.rows) {
+      const final = complete.rows.find((candidate) => identity(candidate) === identity(row));
+      expect(row['workflow-link']).toEqual(final?.['workflow-link']);
+      expect(row['repository-link']).toEqual(final?.['repository-link']);
+      expect(row).not.toHaveProperty('latest-run');
+      expect(row).not.toHaveProperty('latest-run-status');
+      expect(row).not.toHaveProperty('has-observed-run');
+    }
+  });
+
   it('selects the latest chronological attempt, including older-run reruns and queued runs, through the canonical worker boundary', async () => {
     const payload = viewPayload(await canonical());
     expect(payload.metadata.availability).toBe('available');

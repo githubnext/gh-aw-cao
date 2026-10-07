@@ -76,6 +76,41 @@
       ]
     },
     {
+      "name": "workflow-list-preview",
+      "subject": "Show workflow declarations while latest-run evidence is still loading.",
+      "objective": "Make workflow identities and drill links available before retained runs are evaluated.",
+      "acceptance": "Preserve every declared workflow and its drill link; leave latest-run fields absent until the complete projection arrives.",
+      "from": "workflows",
+      "compute": [
+        { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+        { "as": "workflow-label", "function": "concat", "args": [{ "field": "repository-coordinate" }, { "value": ":" }, { "field": "workflow" }] },
+        { "as": "workflow-display-name", "function": "coalesce", "args": [{ "field": "workflow-name" }, { "field": "workflow" }] },
+        { "as": "declared-role", "function": "coalesce", "args": [{ "field": "workflow-role" }, { "value": "standalone" }] },
+        { "as": "declared-mode", "function": "coalesce", "args": [{ "field": "rollout-mode" }, { "value": "unknown" }] },
+        { "as": "declared-registration", "function": "coalesce", "args": [{ "field": "workflow-active" }, { "value": "unknown" }] },
+        { "as": "encoded-workflow", "function": "url-encode", "args": [{ "field": "workflow-label" }] },
+        { "as": "workflow-dashboard-href", "function": "concat", "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }] },
+        { "as": "workflow-dashboard-link", "function": "dashboard-link", "args": [{ "field": "workflow-link" }, { "field": "workflow-dashboard-href" }, { "field": "workflow-display-name" }, { "field": "workflow-label" }] }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository-coordinate", "as": "repository" },
+        { "field": "workflow" },
+        { "field": "workflow-display-name", "as": "workflow-name" },
+        { "field": "workflow-label" },
+        { "field": "campaign-name" },
+        { "field": "declared-role", "as": "workflow-role" },
+        { "field": "declared-mode", "as": "rollout-mode" },
+        { "field": "declared-registration", "as": "workflow-active" },
+        { "field": "repository-link" },
+        { "field": "workflow-dashboard-link", "as": "workflow-link" }
+      ],
+      "order-by": [
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow", "direction": "asc" }
+      ]
+    },
+    {
       "name": "workflow-list",
       "subject": "List declared workflows in latest observed run order.",
       "objective": "Open a dedicated workflow page from a lightweight inventory with its latest execution status.",
@@ -575,7 +610,8 @@
             "title": "Workflows",
             "description": "Declared workflows ordered by their latest retained run. Open a workflow for its runtime details.",
             "data": {
-              "source": "workflow-list"
+              "source": "workflow-list",
+              "partial-source": "workflow-list-preview"
             },
             "mark": "table",
             "prompt": "none",
