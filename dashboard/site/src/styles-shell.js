@@ -57,7 +57,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
 .marketplace-page > .page-chrome { margin-bottom: 8px; padding: 40px 32px; border: 1px solid var(--border); border-radius: 12px; background: radial-gradient(circle at top right, var(--accent-muted), transparent 44%), var(--canvas-subtle); }
 .marketplace-page > .page-chrome h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
-.marketplace-page > .page-chrome p { max-width: 640px; font-size: .9375rem; }
+.marketplace-page > .page-chrome p { max-width: 640px; font-size: 1rem; }
 .marketplace-page .custom-view-grid { max-width: 1012px; margin-inline: auto; }
 .marketplace-page .custom-view { border: 0; background: transparent; box-shadow: none; }
 .marketplace-page .custom-view > header { padding-inline: 0; }

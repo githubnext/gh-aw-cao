@@ -123,7 +123,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .value-history { display: grid; gap: 16px; margin-bottom: 16px; }
 .value-history-panel { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .value-history-panel > header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
-.value-history-panel > header h3 { margin: 0; font-size: .9375rem; }
+.value-history-panel > header h3 { margin: 0; font-size: 1rem; }
 .value-history-panel > header p { margin: 0; color: var(--muted); font-size: .75rem; text-align: right; }
 .value-history-panel > .chart-widget { min-height: 220px; margin: 0; border: 0; background: transparent; }
 .value-history-panel > .chart-widget svg { width: 100%; max-width: none; }

@@ -3,7 +3,7 @@ export const operationStyles = `.dashboard-next-work-page .custom-view-grid { di
 .insights-overview { display: grid; gap: 28px; }
 .insights-value-lead { min-width: 0; display: grid; gap: 14px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
 .insights-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; min-width: 0; }
-.insights-section-heading h2, .insights-plot-panel :is(h2, h3) { margin: 2px 0 4px; font-size: .9375rem; }
+.insights-section-heading h2, .insights-plot-panel :is(h2, h3) { margin: 2px 0 4px; font-size: 1rem; }
 .insights-section-heading p, .insights-plot-panel header p { max-width: 680px; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.45; }
 .operational-value-scope-control { min-width: min(320px, 100%); display: grid; gap: 6px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .operational-value-scope-select { min-height: 32px; width: 100%; padding: 5px 28px 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; }
@@ -249,7 +249,7 @@ export const operationStyles = `.dashboard-next-work-page .custom-view-grid { di
 .managed-campaign-card { overflow: hidden; border: 1px solid var(--border); border-radius: 0; background: var(--canvas); }
 .managed-campaign-card > header { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; }
 .managed-campaign-card > header > div { min-width: 0; display: flex; align-items: center; gap: 9px; }
-.managed-campaign-card h4 { margin: 0; overflow: hidden; font-size: .9375rem; text-overflow: ellipsis; white-space: nowrap; }
+.managed-campaign-card h4 { margin: 0; overflow: hidden; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
 .managed-campaign-icon { display: grid; color: var(--fg); }
 .managed-campaign-card .mode-badge { gap: 4px; padding-inline: 10px; font-size: .75rem; }
 .managed-campaign-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 8px 14px 14px; }

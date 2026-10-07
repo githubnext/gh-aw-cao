@@ -223,7 +223,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .home-catchup-mobile-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
   .home-catchup-mobile-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .home-catchup-classification { color: var(--muted); font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-  .home-catchup-mobile-link > strong { font-size: .9375rem; }
+  .home-catchup-mobile-link > strong { font-size: 1rem; }
   .home-catchup-mobile-link > p { margin: 0; color: var(--muted); font-size: .8125rem; }
   .home-catchup-mobile-link > small { color: var(--muted); font-size: .6875rem; }
   .home-catchup-mobile-hint { color: var(--muted); font-size: .6875rem; text-align: center; }
