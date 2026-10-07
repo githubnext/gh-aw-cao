@@ -659,6 +659,11 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer closeTelemetry()
+		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = database.Close() }()
 		var store operational.Store
 		if cmd.Flags().Changed("redis-url") {
 			store, err = newRedisStore(*redisURL, *redisNamespace)
@@ -678,11 +683,6 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer func() { _ = store.Close() }()
-		database, err := newPostgresStore(ctx, *postgresURL, *redisNamespace)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = database.Close() }()
 		definitions, err := server.ParseDashboardQueries(*dashboardQueries)
 		if err != nil {
 			return err

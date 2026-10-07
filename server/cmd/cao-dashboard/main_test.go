@@ -8,18 +8,64 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+func TestServeInitializesNativeSchemaBeforePostgresOperationalStore(t *testing.T) {
+	endpoint := os.Getenv("POSTGRES_URL")
+	if endpoint == "" {
+		t.Skip("POSTGRES_URL is not set")
+	}
+	if _, err := benchmarkPostgresConfig(endpoint); err != nil {
+		t.Skip("POSTGRES_URL is not a local test instance")
+	}
+	namespace, err := newBenchmarkNamespace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := "cao_serve_" + namespace
+	admin, err := pgx.Connect(t.Context(), endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close(context.Background()) }()
+	if _, err := admin.Exec(t.Context(), "CREATE SCHEMA "+pgx.Identifier{schema}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if _, err := admin.Exec(context.Background(), "DROP SCHEMA "+pgx.Identifier{schema}.Sanitize()+" CASCADE"); err != nil {
+			t.Errorf("remove isolated Postgres schema: %v", err)
+		}
+	}()
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := parsed.Query()
+	query.Set("search_path", schema)
+	parsed.RawQuery = query.Encode()
+	t.Setenv("CAO_POSTGRES_URL", parsed.String())
+	t.Setenv("OTEL_SDK_DISABLED", "true")
+
+	cmd := newServeCommand()
+	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "missing-dashboard-queries.json") {
+		t.Fatalf("serve must reach dashboard query loading after both stores initialize: %v", err)
+	}
+}
 
 func TestServeHostedLoadsMaterializedDashboardQueriesByDefault(t *testing.T) {
 	cmd := newServeHostedCommand()
