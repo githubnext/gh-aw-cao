@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/netip"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -19,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresconn"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
@@ -149,22 +148,7 @@ func runPartitionMaintenanceLoop(ctx context.Context, ticks <-chan time.Time, ru
 }
 
 func validateTransport(config *pgx.ConnConfig) error {
-	secure := func(host string, tlsEnabled bool) bool {
-		if tlsEnabled || filepath.IsAbs(host) || strings.EqualFold(host, "localhost") {
-			return true
-		}
-		address, err := netip.ParseAddr(host)
-		return err == nil && address.IsLoopback()
-	}
-	if !secure(config.Host, config.TLSConfig != nil) {
-		return errors.New("postgres TLS is required for non-loopback connections")
-	}
-	for _, fallback := range config.Fallbacks {
-		if fallback == nil || !secure(fallback.Host, fallback.TLSConfig != nil) {
-			return errors.New("postgres TLS is required for non-loopback fallback connections")
-		}
-	}
-	return nil
+	return postgresconn.ValidateTransport(config)
 }
 
 func (s *Store) Close() error {

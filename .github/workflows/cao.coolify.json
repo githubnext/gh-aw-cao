@@ -7,14 +7,8 @@
           "module": "container",
           "name": "coolify"
         },
-        "redis": {
-          "module": "local",
-          "url-env": "REDIS_URL",
-          "namespace-env": "REDIS_NAMESPACE",
-          "allow-private-plaintext": true,
-          "tls": {
-            "mode": "disabled"
-          }
+        "operational-store": {
+          "backend": "postgres"
         }
       }
     }

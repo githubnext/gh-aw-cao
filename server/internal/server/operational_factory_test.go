@@ -1,11 +1,113 @@
 package server
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+func TestOperationalPostgresPolicyAndFactory(t *testing.T) {
+	policy := hostPolicy{
+		Target:      targetPolicy{Module: "container", Replicas: 2},
+		Operational: &operationalPolicy{Backend: "postgres", Postgres: &postgresPolicy{URLEnv: "OPERATIONAL_POSTGRES_URL"}},
+	}
+
+	host, err := policy.resolve(mapLookup(map[string]string{
+		"OPERATIONAL_POSTGRES_URL": "postgres://127.0.0.1/example?sslmode=disable",
+		"REDIS_NAMESPACE":          "canonical", "CAO_OPERATIONAL_NAMESPACE": "operational",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if host.Profile.RequiresRedis || host.Profile.SingleProcess || host.AllowVolatile ||
+		!host.Profile.SupportsCollection || host.RedisNamespace != "canonical" ||
+		host.OperationalNamespace != "operational" || host.OperationalBackend != "postgres" {
+		t.Fatal("PostgreSQL resolution changed topology or namespace")
+	}
+	if err := validateStandaloneOperational(host); err != nil {
+		t.Fatal(err)
+	}
+	for name, change := range map[string]func(*operationalPolicy){
+		"redis":                 func(p *operationalPolicy) { p.Redis = &redisPolicy{Module: "generic"} },
+		"process":               func(p *operationalPolicy) { p.SingleProcess = true },
+		"volatile":              func(p *operationalPolicy) { p.AllowVolatile = true },
+		"secret instead of env": func(p *operationalPolicy) { p.Postgres = &postgresPolicy{URLEnv: "postgres://secret"} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := policy
+			selector := *policy.Operational
+			p.Operational = &selector
+			change(p.Operational)
+			if _, err := p.resolve(mapLookup(map[string]string{"OPERATIONAL_POSTGRES_URL": "configured"})); err == nil {
+				t.Fatal("unsafe PostgreSQL policy accepted")
+			}
+		})
+	}
+	if _, err := policy.resolve(mapLookup(nil)); err == nil {
+		t.Fatal("missing PostgreSQL credentials accepted")
+	}
+	dsn := os.Getenv("POSTGRES_URL")
+	if dsn == "" {
+		t.Skip("POSTGRES_URL is required for factory integration")
+	}
+	host.OperationalPostgresURL = dsn
+	host.OperationalNamespace = "operational-factory-" + t.Name()
+	store, _, err := newOperationalStore(t.Context(), host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	if err := operational.Validate(store.Capabilities(), store.Services(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
+		t.Fatal(err)
+	}
+	health, err := store.Health(t.Context())
+	if err != nil || !health.Ready {
+		t.Fatalf("PostgreSQL health: %+v %v", health, err)
+	}
+	if cleaner, ok := store.(interface{ DeleteNamespace(context.Context) error }); ok {
+		if err := cleaner.DeleteNamespace(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestOperationalDefaultIsPostgresWithoutRedis(t *testing.T) {
+	policy := hostPolicy{Target: targetPolicy{Module: "container"}}
+	resolved, err := policy.resolve(mapLookup(map[string]string{"CAO_POSTGRES_URL": "postgres://127.0.0.1/db?sslmode=disable"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.OperationalBackend != "postgres" || resolved.RedisURL != "" || resolved.Profile.RequiresRedis {
+		t.Fatal("default hosting still requires Redis")
+	}
+	if _, err := policy.resolve(mapLookup(map[string]string{"REDIS_URL": "redis://127.0.0.1"})); err == nil {
+		t.Fatal("Redis credentials implicitly selected a backend")
+	}
+}
+
+func TestOperationalPostgresRejectsMalformedURLReferences(t *testing.T) {
+	for name, value := range map[string]string{
+		"null": "null", "empty": `""`, "oversized": `"` + strings.Repeat("A", 129) + `"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "cao.json")
+			document := `{"control-plane":{"web":{"host":{"target":{"module":"container"},"operational-store":{"backend":"postgres","postgres":{"url-env":` + value + `}}}}}}`
+			if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("CAO_POLICY_PATH", path)
+			t.Setenv("CAO_POSTGRES_URL", "postgres://127.0.0.1/db?sslmode=disable")
+			if _, err := loadHostPolicyFromEnv(); err == nil || !strings.Contains(err.Error(), "url-env") {
+				t.Fatalf("malformed reference was not rejected: %v", err)
+			}
+		})
+	}
+}
 
 func memoryHostPolicy() hostPolicy {
 	return hostPolicy{
@@ -42,7 +144,7 @@ func TestOperationalSelectionRejectsAmbiguityAndUnsafeTopology(t *testing.T) {
 		"missing replica confirmation":     func(p *hostPolicy) { p.Target.Replicas = 0 },
 		"multiple replicas":                func(p *hostPolicy) { p.Target.Replicas = 2 },
 		"platform scaling":                 func(p *hostPolicy) { p.Target.Module = "azure-functions" },
-		"unknown backend":                  func(p *hostPolicy) { p.Operational.Backend = "postgres" },
+		"unknown backend":                  func(p *hostPolicy) { p.Operational.Backend = "sqlite" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			policy := memoryHostPolicy()

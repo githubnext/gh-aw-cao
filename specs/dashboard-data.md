@@ -58,14 +58,18 @@ Go server profile SHALL transactionally replace current dashboard sources in
 Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
 hold only operational caches, queues, and sessions, not dashboard entities.
 
-Redis is the default operational adapter, not a mandatory dashboard data store.
+PostgreSQL is the default operational adapter in a PostgreSQL-only deployment.
+Redis remains an explicit alternative, not a mandatory dashboard data store.
 The typed operational interface MAY use bounded volatile memory under the
-explicit single-process exception in
-[`server-operational-storage.md`](server-operational-storage.md). PostgreSQL
-MUST NOT gain operational tables. Dashboard storage, SQL execution, query-cache
+explicit single-process exception,
+as defined in [`server-operational-storage.md`](server-operational-storage.md).
+The PostgreSQL operational adapter MUST own separate `cao_operational_*` tables
+and MUST NOT extend the canonical entity/query adapter or its generated schema.
+Dashboard storage, SQL execution, query-cache
 identity, fixed expiry, and canonical ingestion remain unchanged.
 
-The Go query boundary MAY cache expensive queries with compact output in Redis
+The Go query boundary MAY cache expensive queries with compact output through
+the selected operational adapter
 using cache-aside lookup by a query ETag (SHA-256 of the query contract, parameters,
 pagination, schema version, and current authorization class). It MUST NOT key
 these results by ingestion revision or invalidate them on ingestion or data
@@ -73,7 +77,7 @@ egress. Results SHALL expire five minutes after admission, without sliding
 renewal; their original evidence revision and evaluation time MUST remain
 visible. Cache hits MUST NOT imply newly evaluated evidence or charge the
 original execution's query-plan work. Admission MUST bound each encoded result,
-total Redis result/index memory, and entry count, retiring expired and then
+total adapter-specific result/index accounting bytes, and entry count, retiring expired and then
 oldest entries atomically. Current authentication and authorization MUST still
 be enforced before cache lookup. Canonical entity APIs and readiness probes
 MUST NOT use this result cache. Query ETags identify internal cache entries;

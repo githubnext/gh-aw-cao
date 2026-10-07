@@ -77,7 +77,7 @@ func TestClassifyMissingConfigReportsEachBlankFieldInPrecedenceOrder(t *testing.
 
 func TestNewRejectsProcessOwnedHostPolicy(t *testing.T) {
 	t.Setenv("CAO_POLICY_PATH", "../../.github/workflows/cao.coolify.json")
-	t.Setenv("REDIS_URL", "redis://redis:6379")
+	t.Setenv("CAO_POSTGRES_URL", "postgres://127.0.0.1/example?sslmode=disable")
 	if _, err := New(t.Context(), Config{
 		SiteDirectory:        t.TempDir(),
 		DashboardQueriesPath: "../../dashboard/site/dashboard.json",

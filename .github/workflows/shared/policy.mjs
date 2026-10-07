@@ -10,7 +10,7 @@ const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
 const HOST_KEYS = ["target", "redis", "operational-store", "cors"];
-const OPERATIONAL_STORE_KEYS = ["backend", "single-process", "allow-volatile", "namespace-env", "redis"];
+const OPERATIONAL_STORE_KEYS = ["backend", "single-process", "allow-volatile", "namespace-env", "redis", "postgres"];
 const CORS_KEYS = ["allowed-origins", "max-age"];
 const CORS_ORIGIN_PATTERN =
   /^(?:https:\/\/(?:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])|http:\/\/(?:localhost|127(?:\.[0-9]{1,3}){3}|\[::1\]))(?::[0-9]{1,5})?\/?$/;
@@ -371,7 +371,7 @@ function validateHost(host, path) {
     const operationalPath = `${path}.operational-store`;
     assertMapping(operational, operationalPath);
     assertKeys(operational, OPERATIONAL_STORE_KEYS, operationalPath);
-    assertOneOf(operational.backend, `${operationalPath}.backend`, ["redis", "memory"]);
+    assertOneOf(operational.backend, `${operationalPath}.backend`, ["redis", "memory", "postgres"]);
     if ("redis" in host) {
       throw new PolicyError(`${path}.redis and operational-store cannot both select an operational backend`);
     }
@@ -380,6 +380,16 @@ function validateHost(host, path) {
     }
     if ("namespace-env" in operational) {
       assertString(operational["namespace-env"], `${operationalPath}.namespace-env`, SECRET_REFERENCE_PATTERN);
+    }
+    if ("postgres" in operational) {
+      if (operational.backend !== "postgres") {
+        throw new PolicyError(`${operationalPath}.postgres requires the postgres backend`);
+      }
+      assertMapping(operational.postgres, `${operationalPath}.postgres`);
+      assertKeys(operational.postgres, ["url-env"], `${operationalPath}.postgres`);
+      if ("url-env" in operational.postgres) {
+        assertString(operational.postgres["url-env"], `${operationalPath}.postgres.url-env`, /^[A-Z][A-Z0-9_]{0,127}$/);
+      }
     }
     if (operational.backend === "memory") {
       if ("redis" in operational) throw new PolicyError(`${operationalPath} memory cannot configure Redis`);
@@ -394,11 +404,15 @@ function validateHost(host, path) {
       return;
     }
     if (operational["single-process"] === true || operational["allow-volatile"] === true) {
-      throw new PolicyError(`${operationalPath} redis does not accept memory topology or volatile-state options`);
+      throw new PolicyError(`${operationalPath} ${operational.backend} does not accept memory topology or volatile-state options`);
+    }
+    if (operational.backend === "postgres") {
+      if ("redis" in operational) throw new PolicyError(`${operationalPath} postgres cannot configure Redis`);
+      return;
     }
     redis = "redis" in operational ? operational.redis : { module: "generic" };
   }
-  if (!redis) throw new PolicyError(`${path}.redis is required when operational-store is absent`);
+  if (!redis && !("redis" in host) && !("operational-store" in host)) return;
   validateRedis(redis, `${path}.redis`);
   if (redis.module === "generic" &&
       redis["single-replica"] === true && redis.session !== "serialized") {

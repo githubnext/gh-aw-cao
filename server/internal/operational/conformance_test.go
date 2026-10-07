@@ -13,6 +13,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -25,6 +26,30 @@ func TestAdapters(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = store.Close() })
+			return store
+		},
+		"postgres": func(t *testing.T) operational.Store {
+			t.Helper()
+			url := os.Getenv("POSTGRES_URL")
+			if url == "" {
+				t.Skip("POSTGRES_URL is required for real PostgreSQL conformance")
+			}
+			var nonce [16]byte
+			if _, err := rand.Read(nonce[:]); err != nil {
+				t.Fatal(err)
+			}
+			store, err := postgres.New(t.Context(), url, "operational-conformance-"+hex.EncodeToString(nonce[:]), postgres.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := store.DeleteNamespace(ctx); err != nil {
+					t.Error(err)
+				}
+				_ = store.Close()
+			})
 			return store
 		},
 		"redis": func(t *testing.T) operational.Store {

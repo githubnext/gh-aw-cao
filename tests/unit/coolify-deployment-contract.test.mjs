@@ -79,8 +79,19 @@ test("Coolify Compose builds the checked-out source with admission-only public s
   const compose = parse(source);
   const dashboard = compose.services.dashboard;
   for (const role of ["dashboard", "collector", "backfill"]) {
-    assert.equal(compose.services[role].environment.CAO_REDIS_MAX_BYTES, "${CAO_REDIS_MAX_BYTES:-200000000}");
+    const environment = compose.services[role].environment;
+    assert.equal(environment.REDIS_URL, undefined);
+    assert.equal(environment.CAO_REDIS_MAX_BYTES, undefined);
+    assert.equal(environment.CAO_OPERATIONAL_NAMESPACE, "${CAO_OPERATIONAL_NAMESPACE:-}");
+    assert.equal(environment.CAO_OPERATIONAL_CACHE_MAX_BYTES, "${CAO_OPERATIONAL_CACHE_MAX_BYTES:-33554432}");
+    assert.equal(environment.CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES, "${CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES:-4194304}");
+    assert.equal(environment.CAO_OPERATIONAL_CACHE_MAX_ENTRIES, "${CAO_OPERATIONAL_CACHE_MAX_ENTRIES:-1024}");
+    assert.equal(environment.CAO_OPERATIONAL_PROTECTED_MAX_BYTES, "${CAO_OPERATIONAL_PROTECTED_MAX_BYTES:-134217728}");
+    assert.equal(environment.CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES, "${CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES:-200000}");
   }
+  const host = JSON.parse(await text(".github/workflows/cao.coolify.json"))["control-plane"].web.host;
+  assert.equal(host.redis, undefined);
+  assert.deepEqual(host["operational-store"], { backend: "postgres" });
 
   assert.equal(dashboard.image, undefined);
   assert.deepEqual(dashboard.build, {

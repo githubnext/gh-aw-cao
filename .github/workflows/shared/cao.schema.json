@@ -253,10 +253,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["target"],
-      "oneOf": [
-        { "required": ["redis"], "not": { "required": ["operational-store"] } },
-        { "required": ["operational-store"], "not": { "required": ["redis"] } }
-      ],
+      "not": { "required": ["redis", "operational-store"] },
       "properties": {
         "target": { "$ref": "#/$defs/hostTarget" },
         "redis": { "$ref": "#/$defs/redisModule" },
@@ -296,11 +293,18 @@
       "additionalProperties": false,
       "required": ["backend"],
       "properties": {
-        "backend": { "enum": ["redis", "memory"] },
+        "backend": { "enum": ["redis", "memory", "postgres"] },
         "single-process": { "type": "boolean" },
         "allow-volatile": { "type": "boolean" },
         "namespace-env": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
-        "redis": { "$ref": "#/$defs/redisModule" }
+        "redis": { "$ref": "#/$defs/redisModule" },
+        "postgres": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url-env": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        }
       },
       "allOf": [{
         "if": { "properties": { "backend": { "const": "memory" } } },
@@ -318,6 +322,10 @@
             "allow-volatile": { "const": false }
           }
         }
+      }, {
+        "if": { "properties": { "backend": { "const": "postgres" } } },
+        "then": { "not": { "required": ["redis"] } },
+        "else": { "not": { "required": ["postgres"] } }
       }]
     },
     "hostCORS": {

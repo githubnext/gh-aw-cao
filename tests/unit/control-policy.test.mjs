@@ -293,6 +293,39 @@ test("control policy preserves Redis selection and provider restrictions", () =>
   assert.notEqual(validate(JSON.stringify(policy)).status, 0);
 });
 
+test("control policy accepts explicit PostgreSQL operational storage without Redis or volatile topology", () => {
+  const policy = JSON.parse(minimalPolicy);
+  const operational = {
+    backend: "postgres",
+    "namespace-env": "CAO_OPERATIONAL_NAMESPACE",
+    postgres: { "url-env": "CAO_OPERATIONAL_POSTGRES_URL" },
+  };
+  policy["control-plane"].web = {
+    host: { target: { module: "container" }, "operational-store": operational },
+  };
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.deepEqual(controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").web.host["operational-store"], operational);
+  const defaultPolicy = structuredClone(policy);
+  delete defaultPolicy["control-plane"].web.host["operational-store"];
+  assert.equal(validate(JSON.stringify(defaultPolicy)).status, 0);
+  for (const invalid of [
+    { ...operational, redis: { module: "generic" } },
+    { ...operational, "single-process": true },
+    { ...operational, "allow-volatile": true },
+    { ...operational, postgres: null },
+    { ...operational, postgres: { url: "postgres://secret" } },
+    { ...operational, postgres: { "url-env": "postgres://secret" } },
+    { ...operational, postgres: { "url-env": "" } },
+    { ...operational, postgres: { "url-env": null } },
+    { ...operational, postgres: { "url-env": "A".repeat(129) } },
+    { ...operational, backend: "redis" },
+    { ...operational, backend: "memory", "single-process": true, "allow-volatile": true },
+  ]) {
+    policy["control-plane"].web.host["operational-store"] = invalid;
+    assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  }
+});
+
 test("control policy validates host CORS configuration", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {

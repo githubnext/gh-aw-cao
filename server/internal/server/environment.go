@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 )
 
 // OperationalEnvironment describes reviewed storage selection without opening
@@ -102,4 +103,30 @@ func operationalEnvironment(host *resolvedHostPolicy) OperationalEnvironment {
 		DatabaseNamespace: host.RedisNamespace, SingleProcess: host.Profile.SingleProcess,
 		AllowVolatile: host.AllowVolatile,
 	}
+}
+
+func PostgresOperationalConfigFromEnv() (postgres.Config, error) {
+	config := postgres.Config{}
+	for _, setting := range []struct {
+		name string
+		dest *int64
+	}{
+		{"CAO_OPERATIONAL_CACHE_MAX_BYTES", &config.MaxCacheBytes},
+		{"CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES", &config.MaxCacheValueBytes},
+		{"CAO_OPERATIONAL_CACHE_MAX_ENTRIES", &config.MaxCacheEntries},
+		{"CAO_OPERATIONAL_PROTECTED_MAX_BYTES", &config.MaxProtectedBytes},
+		{"CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES", &config.MaxProtectedEntries},
+	} {
+		if value := strings.TrimSpace(os.Getenv(setting.name)); value != "" {
+			n, err := strconv.ParseInt(value, 10, 64)
+			if err != nil || n <= 0 {
+				return config, fmt.Errorf("%s must be a positive integer", setting.name)
+			}
+			*setting.dest = n
+		}
+	}
+	if config.MaxCacheBytes > 0 && config.MaxCacheValueBytes == 0 {
+		config.MaxCacheValueBytes = min(config.MaxCacheBytes, 4<<20)
+	}
+	return config, nil
 }

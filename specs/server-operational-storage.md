@@ -1,9 +1,11 @@
 # Server operational storage
 
 `server/internal/operational/` owns the provider-neutral operational contracts.
-Redis is the default implementation. Bounded in-process memory is an explicit,
-volatile, single-process alternative. PostgreSQL remains exclusively the
-dashboard entity and query database; it MUST NOT acquire operational tables.
+PostgreSQL is the default implementation, providing deployment-scoped
+restart-persistent operational services without requiring Redis.
+Redis and bounded volatile single-process memory remain explicit alternatives.
+Its operational adapter MUST remain separate from the canonical dashboard
+entity/query adapter, tables, namespace, schema generation, and lifecycle.
 
 ## Contracts and composition
 
@@ -22,6 +24,40 @@ serving. Atomicity, compare-and-swap, owner-checked leases, isolation, context
 cancellation, and explicit errors are required semantics, not optional flags.
 A future backend MUST implement these contracts and their conformance tests;
 it MUST NOT add backend branches to request, OAuth, quota, or collection logic.
+
+### PostgreSQL operational adapter
+
+`server/internal/operational/postgres/` implements every typed service. It owns
+only `cao_operational_*` tables, not canonical entities or query execution.
+Reviewed `operational-store.backend: "postgres"` selects it explicitly, and a
+reviewed host with neither a selector nor legacy Redis configuration defaults
+to PostgreSQL. An existing explicit Redis configuration MUST remain Redis;
+credentials alone MUST NOT change selection.
+`postgres.url-env` MAY reference a server-side connection secret; omission uses
+`CAO_POSTGRES_URL`. Redis configuration and volatile-memory options MUST NOT
+be combined with this backend. Non-loopback PostgreSQL TCP transport and all
+fallbacks MUST use TLS. Selection MUST NOT change scope, enable collection,
+move the canonical namespace, migrate existing operational state, provide
+automatic fallback, or dual-write.
+
+Transactions MUST use database time and serialize multi-record transitions and
+accounting through the namespace row. Protected records and disposable caches
+MUST have independent byte/entry bounds. Replica capacity configurations MUST
+match the existing namespace; mismatch MUST fail startup. Session admission
+MUST reserve capacity for atomic invalidation/revocation staging. Capacity
+failures MUST roll back delivery identity, task append, and replacement
+together. Expired sessions and leases MUST never grant authority. Accepted work,
+enrollment, checkpoints, and pending revocations MUST NOT be evicted by cache
+pressure or maintenance.
+
+Blocking queue reads MUST release their transaction between bounded polling
+attempts and honor cancellation. Maintenance MUST be application-owned and
+bounded to at most 512 expired protected records and 512 expired cache records
+per pass. Operational durability depends on the database's persistence
+configuration; it does not reconstruct every external GitHub delivery.
+Diagnostics MUST open existing state without creating tables or namespaces.
+The shared conformance suite and real PostgreSQL cross-connection tests MUST
+cover atomicity, isolation, capacity rollback, restart, and cancellation.
 
 OAuth logout MUST remove active authority and stage encrypted credentials
 atomically. Refresh MUST compare the encrypted session version and MUST NOT
@@ -57,7 +93,7 @@ it does **not** expire or revoke GitHub-issued tokens. GitHub revocation is
 best-effort while the process lives and pending retries are lost on restart.
 
 This is an explicit exception to restart durability and deployment-wide
-coordination requirements in the default Redis ingestion and rate-limit
+coordination requirements in the durable ingestion and rate-limit
 contracts. At-least-once admission/processing applies only within one process
 lifetime. It is not a distributed or durable deployment. The evidence lake
 remains persistent authoritative evidence, not an operational journal.
@@ -78,13 +114,15 @@ Exhausted capacity MUST fail explicitly rather than silently discard work.
 | No `--operational-store` | Existing Node.js static/browser preview | No operational adapter, OAuth session store, collection worker, or server-owned canonical database |
 | `--operational-store redis` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting Redis |
 | `--operational-store memory` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
+| `--operational-store postgres` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting the durable PostgreSQL operational adapter |
 
 The selector MUST NOT rewrite, synthesize, or override rollout policy. The
 requested backend MUST match the backend resolved by the production Go policy
 loader, including deployment-profile imports. A mismatch, invalid backend,
 missing policy, invalid topology, or missing required credentials MUST fail
-closed. The legacy default of Redis applies only where the reviewed host
-configuration permits it; memory MUST NOT become an automatic fallback.
+closed. Legacy `host.redis` remains an explicit Redis selection;
+neither Redis nor memory may become an
+automatic fallback. PostgreSQL is the default for selector-free reviewed hosts.
 
 `--policy PATH` selects an existing reviewed policy/profile and takes precedence
 over `CAO_POLICY_PATH`, then `CAO_MARKETPLACE_POLICY_PATH`; the default is the
@@ -94,7 +132,7 @@ passed as `CAO_POLICY_PATH` to the child without mutating the parent's
 environment. The Go loader remains the sole authority for profile composition
 and configuration validation.
 
-Both Go modes require PostgreSQL for canonical entities and query execution,
+All Go modes require PostgreSQL for canonical entities and query execution,
 the built dashboard, and the ordinary hosted OAuth and HTTPS/proxy protections.
 The launcher MUST NOT substitute the legacy local bearer-capability profile
 for hosted authentication. `--site`, `--host`, `--port`, and paired
@@ -142,8 +180,8 @@ report incomplete work, never successful truncation.
 Recovery repairs current observable state and available workflow-run history.
 It cannot recreate every historical webhook ordering, expired artifact,
 lost revocation, or unavailable GitHub observation. Operators accepting memory
-MUST accept these limitations. There is no disk journal, PostgreSQL operational
-adapter, Azure orchestration, automatic fallback, or dual writing.
+MUST accept these limitations. Memory has no disk journal, Azure orchestration,
+automatic fallback, dual writing, or hidden PostgreSQL persistence.
 
 Public health/readiness MAY expose provider-neutral capabilities and bootstrap
 readiness, never keys, record values, credentials, or endpoints. The legacy
@@ -164,5 +202,7 @@ session authority when memory closes or restarts.
 The bounded model is an abstraction, not a proof of the implementation or of
 external GitHub availability, signature verification, encryption, TLS, storage
 durability, complete historical replay, or retained-shard identity validation.
+The PostgreSQL adapter is covered by implementation/conformance tests, not by
+the Redis/memory selection model.
 See [`tla/README.md`](tla/README.md) for bounds, assumptions, commands, and the
 implementation/test correspondence.

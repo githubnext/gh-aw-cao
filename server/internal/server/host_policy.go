@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,8 @@ const (
 	maxHostPolicyBytes    = 4 << 20
 	maxHostProfileDepth   = 8
 )
+
+var environmentVariablePattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,127}$`)
 
 type redisTLSMode string
 
@@ -69,6 +72,7 @@ type resolvedHostPolicy struct {
 	OperationalBackend     string
 	OperationalNamespace   string
 	AllowVolatile          bool
+	OperationalPostgresURL string
 	RedisURL               string
 	RedisNamespace         string
 	RedisOptions           redisx.Options
@@ -91,11 +95,16 @@ type hostPolicy struct {
 }
 
 type operationalPolicy struct {
-	Backend       string       `json:"backend"`
-	SingleProcess bool         `json:"single-process"`
-	AllowVolatile bool         `json:"allow-volatile"`
-	NamespaceEnv  string       `json:"namespace-env"`
-	Redis         *redisPolicy `json:"redis"`
+	Backend       string          `json:"backend"`
+	SingleProcess bool            `json:"single-process"`
+	AllowVolatile bool            `json:"allow-volatile"`
+	NamespaceEnv  string          `json:"namespace-env"`
+	Redis         *redisPolicy    `json:"redis"`
+	Postgres      *postgresPolicy `json:"postgres"`
+}
+
+type postgresPolicy struct {
+	URLEnv string `json:"url-env"`
 }
 
 type targetPolicy struct {
@@ -182,11 +191,26 @@ func loadHostPolicyFromEnv() (*resolvedHostPolicy, error) {
 		if nestedRedis, exists := fields["redis"]; exists && string(nestedRedis) == "null" {
 			return nil, errors.New("operational-store.redis must be an object")
 		}
+		if nestedPostgres, exists := fields["postgres"]; exists {
+			var postgresFields map[string]json.RawMessage
+			if string(nestedPostgres) == "null" || json.Unmarshal(nestedPostgres, &postgresFields) != nil {
+				return nil, errors.New("operational-store.postgres must be an object")
+			}
+			if reference, exists := postgresFields["url-env"]; exists {
+				var name string
+				if json.Unmarshal(reference, &name) != nil || !environmentVariablePattern.MatchString(name) {
+					return nil, errors.New("postgres url-env must name an environment variable")
+				}
+			}
+		}
 	}
 	hostDecoder := json.NewDecoder(strings.NewReader(string(policyDocument.ControlPlane.Web.Host)))
 	hostDecoder.DisallowUnknownFields()
 	if err := hostDecoder.Decode(&policy); err != nil {
 		return nil, errors.New("parse CAO host policy")
+	}
+	if _, legacyRedis := hostFields["redis"]; legacyRedis && policy.Redis.Module == "" {
+		return nil, errors.New("host.redis requires an explicit provider module")
 	}
 	return policy.resolve(os.LookupEnv)
 }
@@ -397,7 +421,13 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 	if err != nil {
 		return nil, err
 	}
-	backend := "redis"
+	backend := "postgres"
+	if policy.Redis != (redisPolicy{}) {
+		backend = "redis"
+	}
+	if policy.Operational == nil && backend == "postgres" {
+		policy.Operational = &operationalPolicy{Backend: "postgres"}
+	}
 	if policy.Operational != nil {
 		if policy.Redis != (redisPolicy{}) {
 			return nil, errors.New("host.redis and host.operational-store cannot both select an operational backend")
@@ -405,6 +435,9 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 		backend = policy.Operational.Backend
 		switch backend {
 		case "redis":
+			if policy.Operational.Postgres != nil {
+				return nil, errors.New("redis operational-store cannot configure PostgreSQL")
+			}
 			if policy.Operational.SingleProcess || policy.Operational.AllowVolatile {
 				return nil, errors.New("redis operational-store does not accept memory topology or volatile-state options")
 			}
@@ -413,8 +446,8 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 				policy.Redis = *policy.Operational.Redis
 			}
 		case "memory":
-			if policy.Operational.Redis != nil {
-				return nil, errors.New("memory operational-store cannot configure Redis")
+			if policy.Operational.Redis != nil || policy.Operational.Postgres != nil {
+				return nil, errors.New("memory operational-store cannot configure Redis or PostgreSQL")
 			}
 			if !policy.Operational.SingleProcess || !policy.Operational.AllowVolatile {
 				return nil, errors.New("memory operational-store requires single-process and allow-volatile acknowledgements")
@@ -424,6 +457,11 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 			}
 			profile.SingleProcess = true
 			profile.SingleReplica = true
+			profile.SupportsCollection = true
+		case "postgres":
+			if policy.Operational.Redis != nil || policy.Operational.SingleProcess || policy.Operational.AllowVolatile {
+				return nil, errors.New("postgres operational-store cannot configure Redis or memory topology")
+			}
 			profile.SupportsCollection = true
 		default:
 			return nil, fmt.Errorf("unsupported operational-store backend %q", backend)
@@ -453,6 +491,27 @@ func (policy hostPolicy) resolve(lookup func(string) (string, bool)) (*resolvedH
 			Profile: profile, SingleReplicaConfirmed: true,
 			OperationalBackend: backend, OperationalNamespace: operationalNamespace,
 			AllowVolatile: true, RedisNamespace: namespace, CORS: cors,
+		}, nil
+	}
+	if backend == "postgres" {
+		if err := profile.validate(); err != nil {
+			return nil, err
+		}
+		urlEnv := "CAO_POSTGRES_URL"
+		if policy.Operational.Postgres != nil && policy.Operational.Postgres.URLEnv != "" {
+			urlEnv = policy.Operational.Postgres.URLEnv
+		}
+		if !environmentVariablePattern.MatchString(urlEnv) {
+			return nil, errors.New("postgres url-env must name an environment variable")
+		}
+		dsn := envValue(lookup, urlEnv)
+		if dsn == "" {
+			return nil, fmt.Errorf("postgres operational connection requires environment variable %s", urlEnv)
+		}
+		return &resolvedHostPolicy{
+			Profile: profile, SingleReplicaConfirmed: true,
+			OperationalBackend: backend, OperationalNamespace: operationalNamespace,
+			OperationalPostgresURL: dsn, RedisNamespace: namespace, CORS: cors,
 		}, nil
 	}
 	provider, err := resolveRedisProviderModule(policy.Redis)

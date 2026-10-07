@@ -32,7 +32,7 @@ type Doctor struct {
 	// RedisURL is the configured endpoint. It is redacted before it reaches
 	// the report, so a URL carrying a password never appears in output.
 	RedisURL string
-	// Namespace is the normalized Redis namespace.
+	// Namespace identifies the selected operational state.
 	Namespace string
 	// DatabaseQueriesPath is the canonical entity query document.
 	DatabaseQueriesPath string
