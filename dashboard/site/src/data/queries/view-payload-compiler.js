@@ -62,8 +62,8 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
   const relevantSources = activeViews.flatMap((view) => getViewSources(view)
     .filter((source) => !requestedSources || requestedSources.has(source))
-    .map((source) => options.partial && isPlainObject(view.data) && view.data.source === source
-      ? view.data['partial-source'] ?? source
+    .map((source) => options.partial && isPlainObject(view) && isPlainObject(view.data) && view.data.source === source
+      ? typeof view.data['partial-source'] === 'string' ? view.data['partial-source'] : source
       : source));
   const required = new Set(resolveDashboardQuerySources(options.queries, relevantSources));
   const scopedDefinitions = Array.isArray(options.queries)
@@ -105,7 +105,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     sources.forEach((sourceName, sourceIndex) => {
       if (requestedSources && !requestedSources.has(sourceName)) return;
       const querySource = options.partial && viewData?.source === sourceName
-        ? viewData['partial-source'] ?? sourceName
+        ? typeof viewData['partial-source'] === 'string' ? viewData['partial-source'] : sourceName
         : sourceName;
       const isOptions = optionSources.has(sourceName);
       const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;

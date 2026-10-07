@@ -157,6 +157,34 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it('projects repository identities and drill links without loading activity tables before enrichment', async () => {
+    const sources = await canonicalSources();
+    const view = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'repositories')?.definition?.views
+      ?.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'repositories-activity');
+    expect(view?.data).toMatchObject({
+      source: 'repository-activity',
+      'partial-source': 'repository-activity-preview'
+    });
+    const page = { views: [view] };
+    const preview = compileDashboardViewPayloadQueries(page, 'repositories', {
+      queries,
+      viewId: 'repositories-activity',
+      sourceNames: ['repository-activity'],
+      partial: true
+    });
+    const alias = preview.aliases[0];
+    expect(resolveDashboardQuerySources([...queries, ...preview.queries], [alias]).filter((name) => name !== alias))
+      .toEqual(['repositories']);
+    const rows = workerQuery([...queries, ...preview.queries], sources, [alias])[alias].rows;
+    expect(rows).toHaveLength(sources.repositories.rows.length);
+    expect(rows[0]).toMatchObject({
+      repository: 'org/alpha',
+      'repository-link': { 'dashboard-href': '#page-repository-detail?repository=org%2Falpha' }
+    });
+    expect(rows[0]).not.toHaveProperty('runs');
+    expect(rows[0]).not.toHaveProperty('status');
+  });
+
   it('preserves every existing repository output and metadata through canonical ingestion and the worker boundary', async () => {
     const sources = await canonicalSources();
     const optimized = workerQuery(queries, sources);

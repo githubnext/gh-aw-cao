@@ -89,6 +89,32 @@ describe('data view renderer', () => {
     vi.unstubAllGlobals();
   });
 
+  it('shows pending computed cells without implying zero activity', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'repositories',
+      title: 'Repositories',
+      view: {
+        mark: 'table',
+        data: { source: 'repository-activity', 'partial-source': 'repository-activity-preview' },
+        encoding: { columns: [
+          { field: 'repository', type: 'nominal', title: 'Repository' },
+          { field: 'runs', type: 'quantitative', title: 'Runs' }
+        ] }
+      },
+      sourceName: 'repository-activity',
+      rows: [{ repository: 'org/one' }],
+      metadata: { ...metadata, 'projection-state': 'pending' },
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+    expect(rendered?.querySelector('[data-field="repository"]')?.textContent).toBe('org/one');
+    expect(rendered?.querySelector('[data-field="runs"] [aria-label="Runs is being calculated"]')?.textContent).toBe('…');
+  });
+
   it('renders a unit-bearing metric selected by the JSON mark', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

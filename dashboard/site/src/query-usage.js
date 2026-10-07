@@ -201,6 +201,7 @@ function queryInputNames(query) {
 /** @param {Record<string, unknown>} view */
 function viewQueryNames(view) {
   const names = dashboardViewSourceNames(view);
+  if (isRecord(view.data)) names.push(view.data['partial-source']);
   if (isRecord(view.list) && isRecord(view.list.drill)) names.push(view.list.drill.query);
   return names;
 }

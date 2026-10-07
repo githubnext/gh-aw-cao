@@ -823,7 +823,9 @@ function renderTableView(context) {
           : {})
       };
       let value;
-      if (outputField === 'status-detail') {
+      if (metadata['projection-state'] === 'pending' && row[outputField] == null) {
+          value = h('span', { 'aria-label': `${fieldTitle(column)} is being calculated` }, '…');
+      } else if (outputField === 'status-detail') {
           value = renderStatusDetail(row, view, toText);
       } else if (column.aggregate) {
           value = renderCellValue(column, row[outputField], row);

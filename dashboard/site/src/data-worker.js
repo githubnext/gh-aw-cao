@@ -393,26 +393,48 @@ const RUN_PHASE_DATABASE_SOURCES = new Set([
   'runs'
 ]);
 
-/** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
-function subscriptionDatabaseSources(subscription) {
+/** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription @param {string[]} [sourceNames] */
+function subscriptionDatabaseSources(subscription, sourceNames = subscription.sourceNames) {
   const queryNames = new Set(subscription.context.queries
     .filter((definition) => definition && typeof definition === 'object' && !Array.isArray(definition))
     .map((definition) => /** @type {{ name?: unknown }} */ (definition).name)
     .filter((name) => typeof name === 'string'));
-  return resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
+  return resolveDashboardQuerySources(subscription.context.queries, sourceNames)
     .filter((name) => !queryNames.has(name));
 }
 
+/** @param {DashboardSubscription} subscription */
+function subscriptionPartialSource(subscription) {
+  if (subscription.sourceNames.length !== 1) return null;
+  const page = /** @type {{ kind?: string, definition?: { views?: unknown[] }, views?: unknown[] } | undefined} */ (
+    subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId)
+  );
+  const views = page?.kind === 'built-in' ? page.definition?.views : page?.views;
+  const candidate = Array.isArray(views) ? views.find((view) => view && typeof view === 'object'
+    && 'id' in view && view.id === subscription.viewId) : undefined;
+  const view = /** @type {{ data?: { source?: string, ['partial-source']?: string } } | undefined} */ (candidate);
+  const partialSource = view?.data?.['partial-source'];
+  if (view?.data?.source !== subscription.sourceNames[0] || typeof partialSource !== 'string') return null;
+  const interactive = subscription.queryContext;
+  return !Object.keys(interactive?.filters ?? {}).length
+    && !Object.keys(interactive?.viewFilters ?? {}).length
+    && !interactive?.search?.query
+    && !interactive?.orderBy?.length
+    && !subscription.routeParameters
+    ? partialSource : null;
+}
+
 /**
- * @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription
+ * @param {DashboardSubscription} subscription
  * @param {'inventory' | 'runs' | 'complete'} phase
+ * @param {string[]} [sourceNames]
  */
-function isPhaseSubscription(subscription, phase) {
+function isPhaseSubscription(subscription, phase, sourceNames) {
   if (phase === 'complete') return true;
   const available = phase === 'inventory'
     ? INVENTORY_PHASE_DATABASE_SOURCES
     : RUN_PHASE_DATABASE_SOURCES;
-  return subscriptionDatabaseSources(subscription).every((name) => available.has(name));
+  return subscriptionDatabaseSources(subscription, sourceNames).every((name) => available.has(name));
 }
 
 /**
@@ -472,7 +494,7 @@ async function executeLiveDashboardQuery(
         name, { ...source, rows: [] }
       ]));
       evaluatedAt = latestCanonicalInstant(metadataSources);
-      if (!evaluatedAt) {
+      if (!evaluatedAt && !partial) {
         evaluatedAt = latestCanonicalInstant(await queryDatabaseSources(indexedDB, dashboard.logicalSources, ['runs']));
       }
     }
@@ -626,20 +648,8 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
-          const page = subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId);
-          const views = page?.kind === 'built-in' ? page.definition?.views : page?.views;
-          const view = Array.isArray(views) && views.find((candidate) => candidate?.id === subscription.viewId);
-          const hasPartialSource = subscription.sourceNames.length === 1
-            && typeof view?.data?.['partial-source'] === 'string'
-            && view.data.source === subscription.sourceNames[0];
-          const interactive = subscription.queryContext;
-          const canPreview = hasPartialSource
-            && !Object.keys(interactive?.filters ?? {}).length
-            && !Object.keys(interactive?.viewFilters ?? {}).length
-            && !interactive?.search?.query
-            && !interactive?.orderBy?.length
-            && !subscription.routeParameters;
-          if (canPreview) {
+          const partialSource = subscriptionPartialSource(subscription);
+          if (partialSource && isPhaseSubscription(subscription, publicationPhase, [partialSource])) {
             const partial = await queryLiveDashboard(
               new Set(subscription.sourceNames),
               subscription.context,
@@ -655,7 +665,13 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             );
             if (dashboardSubscriptions.get(id) !== subscription || liveDashboard !== dashboard) continue;
             workerScope?.postMessage({ subscriptionId: id, revision: dashboard.revision, data: partial, partial: true });
+            if (!isPhaseSubscription(subscription, publicationPhase)) {
+              subscription.emitted = true;
+              subscription.revision = dashboard.revision;
+              continue;
+            }
           }
+          if (!isPhaseSubscription(subscription, publicationPhase)) continue;
           const data = await queryLiveDashboard(
             new Set(subscription.sourceNames),
             subscription.context,
@@ -731,7 +747,11 @@ function refreshDashboardSubscriptions(logicalSources, phase) {
   const published = publication === 'complete'
     ? [...dashboardSubscriptions.keys()]
     : [...dashboardSubscriptions]
-      .filter(([, subscription]) => isPhaseSubscription(subscription, publication))
+      .filter(([, subscription]) => {
+        const partialSource = subscriptionPartialSource(subscription);
+        return isPhaseSubscription(subscription, publication)
+          || (partialSource !== null && isPhaseSubscription(subscription, publication, [partialSource]));
+      })
       .map(([id]) => id);
   debugIngestion('publishing canonical phase', {
     phase: publication,

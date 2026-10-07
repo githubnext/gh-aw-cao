@@ -175,6 +175,29 @@ describe('canonical dashboard view subscriptions', () => {
     renderEffect.stop();
   });
 
+  it('replaces a pending projection with enriched rows at the same revision', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    /** @type {FrameRequestCallback[]} */
+    const frames = [];
+    vi.stubGlobal('requestAnimationFrame', (/** @type {FrameRequestCallback} */ callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const listener = vi.fn();
+    const stop = subscribeCanonicalDashboardView('progressive-table', ['activity'], { pages: [] }, listener);
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    const partial = { activity: { rows: [{ repository: 'org/one' }], metadata: { 'projection-state': 'pending' } } };
+    const full = { activity: { rows: [{ repository: 'org/one', runs: 3 }] } };
+    worker.emit({ subscriptionId: 'progressive-table', revision: 1, partial: true, data: partial });
+    frames.shift()?.(0);
+    worker.emit({ subscriptionId: 'progressive-table', revision: 1, data: full });
+    frames.shift()?.(0);
+    worker.emit({ subscriptionId: 'progressive-table', revision: 1, partial: true, data: partial });
+    expect(listener.mock.calls.map(([result]) => result)).toEqual([partial, full]);
+    stop();
+  });
+
   it('replays the current snapshot to listeners joining a live view', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     /** @type {FrameRequestCallback[]} */
