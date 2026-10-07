@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -16,11 +15,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresconn"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
+
+var storeLog = logger.New("cao:postgresx:store")
 
 type State struct {
 	Ready        bool
@@ -116,6 +118,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("maintain existing native audits: %w", err)
 	}
+	storeLog.Printf("store opened retention_days=%d", retention)
 	maintenanceCtx, stop := context.WithCancel(context.WithoutCancel(ctx))
 	store.stopMaintenance = stop
 	store.maintenanceDone.Add(1)
@@ -130,6 +133,34 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 	return store, nil
 }
 
+// maintenanceTickOutcome classifies how one partition-maintenance tick
+// ended, stable across log wording changes so it is useful to log without
+// exposing the underlying Postgres error text.
+type maintenanceTickOutcome string
+
+const (
+	maintenanceTickOutcomeSucceeded    maintenanceTickOutcome = "succeeded"
+	maintenanceTickOutcomeFailed       maintenanceTickOutcome = "failed"
+	maintenanceTickOutcomeShuttingDown maintenanceTickOutcome = "shutting-down"
+)
+
+// classifyMaintenanceTick decides whether a completed run's error (if any)
+// is worth logging as a genuine failure, applying the same "a later tick
+// retries, so a shutdown-time error is not a failure" rule
+// runPartitionMaintenanceLoop previously applied inline. It is a pure
+// function so each outcome is independently testable without a real ticker
+// channel or Postgres connection.
+func classifyMaintenanceTick(runErr, ctxErr error) maintenanceTickOutcome {
+	switch {
+	case runErr == nil:
+		return maintenanceTickOutcomeSucceeded
+	case ctxErr != nil:
+		return maintenanceTickOutcomeShuttingDown
+	default:
+		return maintenanceTickOutcomeFailed
+	}
+}
+
 func runPartitionMaintenanceLoop(ctx context.Context, ticks <-chan time.Time, run func(context.Context, time.Time) error) {
 	for {
 		select {
@@ -139,9 +170,10 @@ func runPartitionMaintenanceLoop(ctx context.Context, ticks <-chan time.Time, ru
 			if !ok {
 				return
 			}
-			if err := run(ctx, now); err != nil && ctx.Err() == nil {
+			outcome := classifyMaintenanceTick(run(ctx, now), ctx.Err())
+			if outcome == maintenanceTickOutcomeFailed {
 				// A later maintenance tick retries; ingestion never creates partitions.
-				log.Printf("postgres partition maintenance failed")
+				storeLog.Printf("partition maintenance tick outcome=%s", outcome)
 			}
 		}
 	}

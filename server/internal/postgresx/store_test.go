@@ -3,12 +3,38 @@ package postgresx
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
+
+func TestClassifyMaintenanceTickSucceeded(t *testing.T) {
+	if got := classifyMaintenanceTick(nil, nil); got != maintenanceTickOutcomeSucceeded {
+		t.Fatalf("classifyMaintenanceTick(nil, nil) = %q, want %q", got, maintenanceTickOutcomeSucceeded)
+	}
+	if got := classifyMaintenanceTick(nil, context.Canceled); got != maintenanceTickOutcomeSucceeded {
+		t.Fatalf("classifyMaintenanceTick(nil, cancelled) = %q, want %q", got, maintenanceTickOutcomeSucceeded)
+	}
+}
+
+func TestClassifyMaintenanceTickShuttingDown(t *testing.T) {
+	runErr := errors.New("run failed")
+	if got := classifyMaintenanceTick(runErr, context.Canceled); got != maintenanceTickOutcomeShuttingDown {
+		t.Fatalf("classifyMaintenanceTick(err, cancelled) = %q, want %q", got, maintenanceTickOutcomeShuttingDown)
+	}
+	if got := classifyMaintenanceTick(runErr, context.DeadlineExceeded); got != maintenanceTickOutcomeShuttingDown {
+		t.Fatalf("classifyMaintenanceTick(err, deadline) = %q, want %q", got, maintenanceTickOutcomeShuttingDown)
+	}
+}
+
+func TestClassifyMaintenanceTickFailed(t *testing.T) {
+	if got := classifyMaintenanceTick(errors.New("run failed"), nil); got != maintenanceTickOutcomeFailed {
+		t.Fatalf("classifyMaintenanceTick(err, nil) = %q, want %q", got, maintenanceTickOutcomeFailed)
+	}
+}
 
 func TestDecodeJSONPreservesNumbers(t *testing.T) {
 	var row map[string]any
