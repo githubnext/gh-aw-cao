@@ -48,6 +48,19 @@ func (s *Store) Services() operational.Services {
 	return services
 }
 
+func (s *Store) OperationalServices() operational.OperationalServices {
+	services := operational.OperationalServices{
+		Backend: s, Cache: s, RequestLimiter: s, Sessions: s,
+		SessionInvalidator: s, Revocations: s, Leases: s, State: s,
+		Deliveries: s, GitHubQuota: s, RateLimits: s, Health: s,
+		IngestionMetrics: s,
+	}
+	if !s.ProcessIsolated() {
+		services.Queue, services.Admission, services.Collection = s, s, s
+	}
+	return services
+}
+
 func (s *Store) Health(ctx context.Context) (operational.Health, error) {
 	err := s.Ping(ctx)
 	return operational.Health{

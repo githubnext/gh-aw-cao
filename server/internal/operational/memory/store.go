@@ -315,6 +315,15 @@ func (s *Store) Services() operational.Services {
 		Collection: s, Coordination: s, Diagnostics: s}
 }
 
+func (s *Store) OperationalServices() operational.OperationalServices {
+	return operational.OperationalServices{
+		Backend: s, Cache: s, RequestLimiter: s, Sessions: s,
+		SessionInvalidator: s, Revocations: s, Leases: s, State: s,
+		Deliveries: s, Queue: s, Admission: s, Collection: s,
+		GitHubQuota: s, RateLimits: s, Health: s, IngestionMetrics: s,
+	}
+}
+
 func (s *Store) Health(ctx context.Context) (operational.Health, error) {
 	if err := s.enter(ctx); err != nil {
 		return operational.Health{Capabilities: s.Capabilities()}, err

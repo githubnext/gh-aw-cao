@@ -78,11 +78,43 @@ func CheckStore(store Store) error {
 }
 
 type Store interface {
-	Capabilities() Capabilities
+	Backend
 	Services() Services
-	Health(context.Context) (Health, error)
+	OperationalServices() OperationalServices
+	HealthProbe
+}
+
+// Backend owns the lifecycle and guarantees of one operational backend.
+type Backend interface {
+	Capabilities() Capabilities
 	Maintain(context.Context) error
 	Close() error
+}
+
+type HealthProbe interface {
+	Health(context.Context) (Health, error)
+	Ping(context.Context) error
+}
+
+// OperationalServices exposes independent contracts without requiring each
+// service to be backed by a different connection or storage instance.
+type OperationalServices struct {
+	Backend            Backend
+	Cache              Cache
+	RequestLimiter     RequestLimiter
+	Sessions           SessionStore
+	SessionInvalidator SessionInvalidator
+	Revocations        RevocationQueue
+	Leases             LeaseStore
+	State              StateStore
+	Deliveries         DeliveryDeduplicator
+	Queue              TaskQueue
+	Admission          DeliveryAdmissionStore
+	Collection         CollectionMetadata
+	GitHubQuota        GitHubQuotaStore
+	RateLimits         RateLimitStateStore
+	Health             HealthProbe
+	IngestionMetrics   IngestionMetrics
 }
 
 type Services struct {
@@ -145,6 +177,80 @@ func Validate(c Capabilities, s Services, r Requirements) error {
 	return nil
 }
 
+// ValidateOperationalServices checks every advertised service independently,
+// including the components of optional collection and OAuth profiles.
+func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requirements) error {
+	features := []struct {
+		name string
+		cap  Capability
+		svc  any
+	}{
+		{"backend", c.Coordination, s.Backend},
+		{"cache", c.Cache, s.Cache},
+		{"request limits", c.RequestLimits, s.RequestLimiter},
+		{"sessions", c.Sessions, s.Sessions},
+		{"session invalidator", c.Sessions, s.SessionInvalidator},
+		{"revocations", c.Revocations, s.Revocations},
+		{"leases", c.Coordination, s.Leases},
+		{"state", c.Coordination, s.State},
+		{"deliveries", c.Coordination, s.Deliveries},
+		{"queue", c.Collection, s.Queue},
+		{"admission", c.Collection, s.Admission},
+		{"collection metadata", c.Collection, s.Collection},
+		{"github quota", c.GitHubQuota, s.GitHubQuota},
+		{"rate limits", c.GitHubQuota, s.RateLimits},
+		{"health", c.Diagnostics, s.Health},
+		{"ingestion metrics", c.Diagnostics, s.IngestionMetrics},
+	}
+	if nilService(s.Backend) {
+		return fmt.Errorf("backend: %w", ErrUnsupported)
+	}
+	for _, f := range features[1:] {
+		if f.cap.Scope != ScopeUnsupported && nilService(f.svc) {
+			return fmt.Errorf("%s advertised without a service: %w", f.name, ErrUnsupported)
+		}
+	}
+	// Reuse the existing scope, persistence and topology checks.
+	return Validate(c, Services{
+		Cache: s.Cache, RequestLimits: s.RequestLimiter,
+		OAuth: oauthServices{s.Sessions, s.SessionInvalidator, s.Revocations},
+		GitHubQuota: quotaServices{s.GitHubQuota, s.RateLimits, s.Collection},
+		Collection: collectionServices{s.Queue, s.Admission, s.Collection, s.Leases, s.State, s.Deliveries, s.Health, s.IngestionMetrics},
+		Coordination: coordinationServices{s.Leases, s.State, s.Deliveries},
+		Diagnostics: diagnosticsServices{s.Health, s.IngestionMetrics},
+	}, r)
+}
+
+type oauthServices struct {
+	SessionStore
+	SessionInvalidator
+	RevocationQueue
+}
+type quotaServices struct {
+	GitHubQuotaStore
+	RateLimitStateStore
+	CollectionMetadata
+}
+type coordinationServices struct {
+	LeaseStore
+	StateStore
+	DeliveryDeduplicator
+}
+type diagnosticsServices struct {
+	HealthProbe
+	IngestionMetrics
+}
+type collectionServices struct {
+	TaskQueue
+	DeliveryAdmissionStore
+	CollectionMetadata
+	LeaseStore
+	StateStore
+	DeliveryDeduplicator
+	HealthProbe
+	IngestionMetrics
+}
+
 type QueryCacheStats struct {
 	MemoryBytes, Entries, Expired, Evicted int64
 }
@@ -185,11 +291,24 @@ type RequestLimiter interface {
 // OAuth records are opaque encrypted values. Invalidating a session and
 // staging its revocation must be one atomic transition.
 type OAuthStore interface {
+	SessionStore
+	SessionInvalidator
+	RevocationQueue
+}
+
+type SessionStore interface {
 	SessionRecord(context.Context, string) (string, error)
 	PutSession(context.Context, string, string, time.Duration) error
 	CompareSession(context.Context, string, string, string, time.Duration) (bool, error)
 	DeleteSession(context.Context, string) error
+}
+
+// Invalidation atomically removes session authority and stages revocation.
+type SessionInvalidator interface {
 	InvalidateSession(context.Context, string, string, string) (string, error)
+}
+
+type RevocationQueue interface {
 	QueueRevocation(context.Context, string, string, string) error
 	PendingRevocation(context.Context, string) (Revocation, error)
 	CompleteRevocation(context.Context, string, string, string) error
@@ -207,18 +326,36 @@ type IssueUpdate struct {
 }
 
 type Coordination interface {
+	LeaseStore
+	StateStore
+	DeliveryDeduplicator
+}
+
+type LeaseStore interface {
 	TryLock(context.Context, string, string, time.Duration) (bool, error)
 	RenewLock(context.Context, string, string, time.Duration) (bool, error)
 	Unlock(context.Context, string, string) error
 	LockHeld(context.Context, string) (bool, error)
+}
+
+type StateStore interface {
 	SetOperationalState(context.Context, string, []byte) error
 	OperationalState(context.Context, string) ([]byte, error)
+}
+
+type DeliveryDeduplicator interface {
 	RememberDelivery(context.Context, string, time.Duration) (bool, error)
 	ForgetDelivery(context.Context, string) error
+	ReserveDelivery(context.Context, string, time.Duration) (DeliveryReservation, error)
+	ReleaseDeliveryReservation(context.Context, string) error
 }
 
 type Diagnostics interface {
+	IngestionMetrics
 	Ping(context.Context) error
+}
+
+type IngestionMetrics interface {
 	IncrementIngestionCounter(context.Context, string) error
 	RecordIngestionHealthEvent(context.Context, string, string, time.Time) error
 	IngestionHealth(context.Context) (map[string]int64, map[string]string, error)
@@ -290,7 +427,6 @@ type TaskQueue interface {
 	EnsureQueue(context.Context, string, string) error
 	EnqueueTask(context.Context, EnqueueRequest) (bool, error)
 	EnqueueUniqueTask(context.Context, string, string, int64, TaskFields) (bool, error)
-	AdmitDelivery(context.Context, DeliveryRequest) (DeliveryAdmission, error)
 	ReadTasks(context.Context, QueueRead) ([]TaskMessage, error)
 	ClaimTasks(context.Context, QueueRead, time.Duration) ([]TaskMessage, error)
 	ReplaceTask(context.Context, Replacement) error
@@ -298,6 +434,10 @@ type TaskQueue interface {
 	PromoteTasks(context.Context, string, string, time.Time, int) (int64, error)
 	DelayedDepth(context.Context, string) (int64, error)
 	QueueStats(context.Context, string, string) (QueueStats, error)
+}
+
+type DeliveryAdmissionStore interface {
+	AdmitDelivery(context.Context, DeliveryRequest) (DeliveryAdmission, error)
 }
 
 // CollectionMetadata owns logical enrollment indexes and checkpoint attributes.
@@ -317,13 +457,10 @@ type CollectionMetadata interface {
 
 type CollectionStore interface {
 	TaskQueue
+	DeliveryAdmissionStore
 	CollectionMetadata
 	Coordination
 	Diagnostics
-	ReserveDelivery(context.Context, string, time.Duration) (DeliveryReservation, error)
-	ReleaseDeliveryReservation(context.Context, string) error
-	RememberDelivery(context.Context, string, time.Duration) (bool, error)
-	ForgetDelivery(context.Context, string) error
 }
 
 type GitHubQuotaState struct {
@@ -364,6 +501,12 @@ type GitHubQuotaUsageSample struct {
 }
 
 type QuotaStore interface {
+	GitHubQuotaStore
+	RateLimitStateStore
+	ReadAttribute(context.Context, string, string) (string, error)
+}
+
+type GitHubQuotaStore interface {
 	GitHubQuotaSnapshot(context.Context, string) (GitHubQuotaState, error)
 	ObserveGitHubQuota(context.Context, string, GitHubQuotaObservation, string) (GitHubQuotaObserveOutcome, bool, GitHubQuotaState, error)
 	ReserveGitHubQuota(context.Context, string, string, int64, int64, time.Duration) (GitHubQuotaAdmission, time.Time, GitHubQuotaState, error)
@@ -372,7 +515,9 @@ type QuotaStore interface {
 	UnparkGitHubQuota(context.Context, string) (GitHubQuotaState, error)
 	RecordGitHubQuotaUsage(context.Context, string, time.Time, int64, int64, int64) (bool, error)
 	GitHubQuotaUsage(context.Context) ([]GitHubQuotaUsageSample, time.Time, error)
-	ReadAttribute(context.Context, string, string) (string, error)
+}
+
+type RateLimitStateStore interface {
 	ReserveRateLimit(context.Context, string, string, int, int, int64) (int, error)
 	ObserveRateLimit(context.Context, string, string, int, int64) error
 	ParkRateLimit(context.Context, string, string, int64) error
