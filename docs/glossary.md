@@ -62,6 +62,10 @@ The declarative YAML vocabulary used to define dashboard queries, pages, views, 
 
 An authoring-time partial `dashboard` JSON document, listed in a root document's top-level `fragments` array, whose array fields (such as `queries`, `views`, and `pages`) are appended in declaration order to keep a coherent feature slice together. Fragments cannot include other fragments and are fully composed into the single deployed `dashboard.json` and `dashboard-pages/*.json` runtime format before validation and page chunking; a fragment is an authoring convenience, not a distinct runtime artifact. See the [dashboard README](https://github.com/githubnext/gh-aw-cao/blob/main/dashboard/site/README.md).
 
+## Debug mode
+
+A `safe_output_mode: debug` request for exactly one manually launched `workflow_dispatch` worker run, never a persistent policy value, campaign mode, or orchestrator mode. Admission requires the authoritative dispatch event, a matching target and output repository, and a human actor with current write, maintain, or admin access to the control repository; it carries no dispatcher correlation fields and cannot be synthesized. Compiled shared control forces global gh-aw safe-output staging and suppresses automatic activation and failure issues for the run. See [Local Worker Debugging](local-debugging.md) and the control architecture specification's run-scoped debug request definition.
+
 ## Declarative query
 
 A reusable result declared in `dashboard.queries` as a closed, structured projection over database tables or earlier queries, using only named clauses (`from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit`) rather than SQL text, scripts, callbacks, or templates. Dashboard views must derive their data through declarative queries executed by the canonical data model's query engine and Web Worker; JavaScript-based dashboard views are not permitted. See the Dashboard Language Specification, Section 5.5.
@@ -113,6 +117,10 @@ A campaign-defined, timestamped numeric metric for one repository and campaign. 
 ## Operational grader
 
 The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with campaign-defined repository operational value.
+
+## Operational store
+
+The provider-neutral storage contract in `server/internal/operational/` that exposes immutable per-feature cache, request-limit, OAuth, quota, collection, coordination, and diagnostic capabilities. Redis is the default adapter; an explicit, acknowledged single-process in-memory adapter is a bounded, volatile alternative that loses all operational state on restart. PostgreSQL remains exclusively the dashboard entity and query database and never acquires operational tables. See [Server operational storage](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
 
 ## Public control repository
 
