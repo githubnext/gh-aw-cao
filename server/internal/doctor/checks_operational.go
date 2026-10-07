@@ -62,7 +62,7 @@ func (d Doctor) checkOperationalCapabilities(context.Context) Check {
 // the feature classification is independently testable against a
 // constructed operational.Capabilities value, without a Doctor or a store.
 func summarizeOperationalCapabilities(caps operational.Capabilities) ([]Detail, bool) {
-	details := []Detail{}
+	details := make([]Detail, 0, 8)
 	volatile := false
 	for _, feature := range []struct {
 		name string
