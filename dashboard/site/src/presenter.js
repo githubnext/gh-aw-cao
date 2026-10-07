@@ -42,6 +42,8 @@ import { resolveModeIndicator } from './components/mode-indicator.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 import { dashboardDataBackend, viewBackendAvailable, viewBackendUnavailableMessage } from './view-availability.js';
+import { dashboardViewSourceNames as getViewSources, normalizeViewFilters, viewDataSourceNames, viewFilterControls, viewFilterSourceNames } from './view-filter-contract.js';
+import { captureCardFilterState, renderCardFilterBar, restoreCardFilterState } from './components/card-filter-bar.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
@@ -99,7 +101,7 @@ import {
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} PageSourceLoadOptions
  */
 
 /**
@@ -174,7 +176,7 @@ export function dashboardPagePaginatedSourceBindings(document, pageId) {
         || (view['lazy-list'] !== true && !supportsIncrementalChartContinuation(view))) {
       return [];
     }
-    return getViewSources(view).map((sourceName, sourceIndex) => [
+    return viewDataSourceNames(view).map((sourceName, sourceIndex) => [
       dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex),
       { sourceName, viewId: view.id }
     ]);
@@ -871,6 +873,35 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
       if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
+      const filterControls = viewFilterControls(view);
+      if (filterControls.length > 0 && viewBackendAvailable(view, dashboardDataBackend())) {
+        const filterSources = Object.fromEntries(viewFilterSourceNames(view).flatMap((name) => {
+          const sourceIndex = viewSourceNames.indexOf(name);
+          const source = viewSources[resolveViewSourceName(viewSources, page.id, view, index, name, sourceIndex)];
+          return source ? [[name, source]] : [];
+        }));
+        rendered.prepend(renderCardFilterBar({
+          pageId: page.id,
+          viewId,
+          controls: filterControls,
+          sources: filterSources,
+          selected: queryContext?.viewFilters?.[viewId],
+          pending,
+          onChange: (filters) => {
+            root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+              bubbles: true,
+              detail: {
+                pageId: page.id,
+                queryContext: {
+                  ...queryContext,
+                  viewMode: selectedViewMode,
+                  viewFilters: { ...queryContext?.viewFilters, [viewId]: filters }
+                }
+              }
+            }));
+          }
+        }));
+      }
       if ((!pending || isSelfBound) && isPlainObject(view) && viewBackendAvailable(view, dashboardDataBackend())) {
         const semantics = effectiveViewSemantics(view, queries);
         if (view.prompt === 'always' || (view.prompt !== 'none'
@@ -1031,6 +1062,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           ? rendered.querySelector(':scope > :not(summary)')
           : rendered;
         if (!(target instanceof HTMLElement) || !changed || target.hasAttribute('data-lazy-view')) return;
+        const filterState = captureCardFilterState(target);
         const replacement = render(current, pending);
         for (const attribute of ['data-view-id', 'data-view-layout', 'data-disclosure', 'data-view-mode-content', 'data-view-lazy-list', 'data-section-id', 'data-section-layout']) {
           if (target.hasAttribute(attribute)) replacement.setAttribute(attribute, target.getAttribute(attribute) ?? '');
@@ -1039,6 +1071,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         const active = target.ownerDocument.activeElement;
         const focusedId = active instanceof HTMLElement && target.contains(active) ? active.id : '';
         if (target.parentNode) target.replaceWith(replacement);
+        restoreCardFilterState(replacement, filterState);
         if (disclosure !== 'supplemental') rendered = replacement;
         if (focusedId) {
           const focusTarget = [...replacement.querySelectorAll('[id]')].find((node) => node.id === focusedId);
@@ -1129,6 +1162,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
               ? {}
               : { timeWindow: { start: timeWindow.start, end: timeWindow.end } }),
             ...(viewMode ? { viewMode } : {}),
+            ...(queryContext?.viewFilters ? { viewFilters: queryContext.viewFilters } : {}),
             ...(queryContext?.formValues ? { formValues: queryContext.formValues } : {})
           }
         }
@@ -1405,6 +1439,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   /** @type {Map<string, NonNullable<PageSourceLoadOptions['queryContext']>>} */
   const pageQueryContext = new Map();
+  let pendingQueryFocusId = '';
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
   const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
     .filter((link) => link instanceof HTMLAnchorElement);
@@ -1665,14 +1700,24 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         const replacePage = (renderedPage) => {
           if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
           const routeInitialized = currentPage.hasAttribute('data-route-value');
+          const filterState = captureCardFilterState(currentPage);
           const detailsState = pageState.get(pageId)?.details ?? [];
           [...renderedPage.querySelectorAll('details')].forEach((details, index) => {
             if (detailsState[index] !== undefined) details.open = detailsState[index];
           });
+          const active = currentPage.ownerDocument.activeElement;
+          const focusedId = pendingQueryFocusId
+            || (active instanceof HTMLElement && currentPage.contains(active) ? active.id : '');
+          pendingQueryFocusId = '';
           renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
           currentPage.replaceWith(renderedPage);
+          restoreCardFilterState(renderedPage, filterState);
           pages[pageIndex] = renderedPage;
           currentPage = renderedPage;
+          if (focusedId) {
+            const focusTarget = [...renderedPage.querySelectorAll('[id]')].find((node) => node.id === focusedId);
+            if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
+          }
           enableLazyViews(renderedPage);
           emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
             kind: 'page',
@@ -1953,6 +1998,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!pageId || pageId !== activePageId || !availableIds.has(pageId)) return;
     const nextContext = normalizeDashboardQueryContext(detail.queryContext);
     if (sameDashboardQueryContext(pageQueryContext.get(pageId), nextContext)) return;
+    const focused = root.ownerDocument.activeElement;
+    pendingQueryFocusId = focused instanceof HTMLElement && root.contains(focused) ? focused.id : '';
     if (nextContext) pageQueryContext.set(pageId, nextContext);
     else pageQueryContext.delete(pageId);
     pages.find((page) => page.dataset.pageId === pageId)?.setAttribute('data-page-pending', '');
@@ -2134,20 +2181,6 @@ function renderPageMode(pageMode, mode) {
 }
 
 /**
- * @param {unknown} view
- * @returns {string[]}
- */
-function getViewSources(view) {
-  if (!isPlainObject(view) || !isPlainObject(view.data)) {
-    return [];
-  }
-  if (Array.isArray(view.data.sources)) {
-    return view.data.sources.filter((source) => typeof source === 'string');
-  }
-  return typeof view.data.source === 'string' ? [view.data.source] : [];
-}
-
-/**
  * Resolves the worker-produced payload for one authored view source.
  * Raw sources remain a fixture-only fallback for direct presenter tests.
  * @param {Record<string, LogicalSourceInput>} sources
@@ -2203,12 +2236,14 @@ function normalizeDashboardQueryContext(value) {
         && (typeof entry !== 'number' || Number.isFinite(entry))
       )))
     : undefined;
+  const viewFilters = normalizeViewFilters(value.viewFilters);
   return {
     ...(filters && Object.keys(filters).length > 0 ? { filters } : {}),
     ...(search && search.fields.length > 0 && search.query ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
     ...(viewMode ? { viewMode } : {}),
+    ...(viewFilters ? { viewFilters } : {}),
     ...(formValues && Object.keys(formValues).length > 0 ? { formValues } : {})
   };
 }

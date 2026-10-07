@@ -25,17 +25,21 @@ import (
 
 var benchmarkLog = debuglogger.New("cao:dashboard:benchmark")
 
+const benchmarkPageLimit = 500
+
 type benchmarkMeasurement struct {
 	Query      string        `json:"query"`
 	DurationMS float64       `json:"duration-ms"`
 	Metrics    model.Metrics `json:"metrics"`
 	Rows       int           `json:"rows"`
+	TotalRows  int           `json:"total-rows"`
 }
 
 type benchmarkReport struct {
 	Engine       string                 `json:"engine"`
 	SourceCounts map[string]int         `json:"source-counts"`
 	Records      int                    `json:"records"`
+	PageLimit    int                    `json:"page-limit"`
 	Measurements []benchmarkMeasurement `json:"measurements"`
 }
 
@@ -129,7 +133,7 @@ func validateBenchmarkCandidates(candidates []string, defined map[string]bool) e
 }
 
 func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, databasePath, dashboardPath string, candidates []string) (benchmarkReport, error) {
-	report := benchmarkReport{Engine: "postgres-native-sql", Measurements: []benchmarkMeasurement{}}
+	report := benchmarkReport{Engine: "postgres-native-sql", PageLimit: benchmarkPageLimit, Measurements: []benchmarkMeasurement{}}
 	if len(candidates) == 0 {
 		return report, errors.New("no query candidates selected")
 	}
@@ -158,7 +162,20 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	benchmarkLog.Printf("benchmark starting candidates=%d records=%d", len(candidates), report.Records)
 	for _, name := range candidates {
 		started := time.Now()
-		sources, metrics, err := store.ExecuteSQLPlan(ctx, definitions, []string{name})
+		var sources map[string]model.Source
+		var metrics model.Metrics
+		err := store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
+			var err error
+			sources, metrics, err = reader.ExecuteSQLPlanWithOptions(ctx, definitions, []string{name}, postgresx.SQLExecutionOptions{
+				Pages: map[string]postgresx.SQLPage{name: {Limit: benchmarkPageLimit}},
+				ResourceLimits: &postgresx.SQLResourceLimits{
+					MaxInputRows:    query.MaxWorkingRows,
+					MaxOperations:   10 * query.MaxOperations,
+					MaxWorkingBytes: 4 * query.MaxWorkingBytes,
+				},
+			})
+			return err
+		})
 		if err != nil {
 			return report, fmt.Errorf("query %q failed: %w", name, err)
 		}
@@ -166,9 +183,13 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 		if !ok || source.Metadata["availability"] == "unavailable" {
 			return report, fmt.Errorf("query %q unavailable", name)
 		}
+		totalRows, ok := source.Metadata["total-row-count"].(int)
+		if !ok || totalRows < len(source.Rows) {
+			return report, fmt.Errorf("query %q has invalid page cardinality", name)
+		}
 		report.Measurements = append(report.Measurements, benchmarkMeasurement{
 			Query: name, DurationMS: float64(time.Since(started).Microseconds()) / 1000,
-			Metrics: metrics, Rows: len(source.Rows),
+			Metrics: metrics, Rows: len(source.Rows), TotalRows: totalRows,
 		})
 	}
 	benchmarkLog.Printf("benchmark completed measurements=%d", len(report.Measurements))

@@ -240,6 +240,30 @@
       ]
     },
     {
+      "name": "issue-safe-output-label-options",
+      "subject": "List observed safe-output badges for the issue list Labels filter.",
+      "objective": "Choose retained safe-output types without scanning or filtering presented cards.",
+      "acceptance": "Return distinct observed badge values in ascending order; missing evidence is not an empty label inventory.",
+      "from": "issue-safe-outputs",
+      "aggregate": {
+        "by": ["safe-output-type"],
+        "values": [{ "field": "entity-url", "as": "items", "reducer": "count" }]
+      },
+      "order-by": [{ "field": "safe-output-type", "direction": "asc" }]
+    },
+    {
+      "name": "issue-status-label-options",
+      "subject": "List observed status badges for the issue list Labels filter.",
+      "objective": "Choose retained issue states and closing reasons without inferring resolution.",
+      "acceptance": "Return distinct observed status details in ascending order; Unknown remains distinct from Open and Closed.",
+      "from": "issue-safe-outputs",
+      "aggregate": {
+        "by": ["issue-status-detail"],
+        "values": [{ "field": "entity-url", "as": "items", "reducer": "count" }]
+      },
+      "order-by": [{ "field": "issue-status-detail", "direction": "asc" }]
+    },
+    {
       "name": "issue-repository-totals",
       "subject": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
       "objective": "Locate repositories with the largest observed issue-safe-output volume for a bounded review of linked records.",
@@ -1521,6 +1545,28 @@
           {
             "field": "observed-at",
             "direction": "desc"
+          }
+        ]
+      },
+      "filter-bar": {
+        "filters": [
+          {
+            "id": "labels",
+            "label": "Labels",
+            "groups": [
+              {
+                "label": "Safe output",
+                "field": "safe-output-type",
+                "source": "issue-safe-output-label-options",
+                "value-field": "safe-output-type"
+              },
+              {
+                "label": "Status",
+                "field": "issue-status-detail",
+                "source": "issue-status-label-options",
+                "value-field": "issue-status-detail"
+              }
+            ]
           }
         ]
       },

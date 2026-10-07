@@ -251,7 +251,10 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View `filter-bar` | `filters` |
+| View filter control | `id`, `label`, `groups` |
+| View filter group | `label`, `field`, `source`, `value-field`, `label-field` |
 | View `requires` | `backend`, `message` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
@@ -1180,6 +1183,40 @@ The dashboard may declare reusable `card-templates` and reusable `views`. Each c
 An entity-card list declares `list.style: entity-cards` and references one declared template through `list.card`. It may define explicit `list.drill` behavior. Optional `list.layout` is `rows` or `grid` and defaults to `rows`; `grid` changes responsive placement only and preserves card content and drill semantics. Optional `list.appearance` is `grouped` or `marketplace`. `grouped` renders the list as a single rounded, bordered container with hairline row separators and a trailing disclosure chevron on each drillable row, matching a native grouped list presentation. `marketplace` renders a bordered package directory with prominent row icons, descriptions, publisher metadata, labels, actions, and disclosure chevrons. Both appearances change container and row chrome only and preserve card content and drill semantics. An `external` drill names the safe HTTPS, `#page-` dashboard route, or dashboard-link field opened by the card. A `query` drill names a declared destination page and query, a scalar `title-field`, and one or more name/field argument bindings. The presenter places the query, row-derived title, and arguments in the hash route, so each destination remains reloadable and browser history can continue through an arbitrary number of declared query drills. A destination view binds those named route values to query fields with `data.arguments`; every declared argument becomes an equality predicate in the data worker, and a missing value fails closed to an empty match. The destination title is accepted only when the query is declared; otherwise the page keeps its configured title. Optional `list.view-all` declares a trailing navigation footer with a required `page` that must reference a declared dashboard page and an optional `label` that defaults to `View all`; it adds one declared dashboard route link beneath the list and changes neither card content nor drill semantics.
 
 The `link-button-list` element presents one declared source as an inset grouped list of navigation rows, matching a native mobile settings list: an uppercase section caption, a rounded container, one tinted Octicon badge per row, hairline separators inset to the label, and a trailing disclosure chevron. Its config declares `label-field`, `link-field`, `fallback-icon`, an optional `icon-field`, optional `label-badge-field`, optional `indicator-field` and `indicator-label-field`, and an optional `empty-message`; link values use the same safe dashboard-link or HTTPS-link contract as other dashboard links. A non-empty `label-badge-field` row value appears as a neutral text badge beside the row label. When an indicator is present, it is rendered as an accessible trailing status cue without changing the declared link target.
+
+A list or interactive table view may declare a `filter-bar` top row. This is distinct from the page-level Boolean `filter-bar`. Its non-empty `filters` sequence defines dropdown controls in display order. Each control has a unique canonical `id`, a human-readable `label`, and non-empty `groups`. Each group declares its caption (`label`), the exact view-source `field` to filter, a separate option `source`, its string `value-field`, and an optional string `label-field` (defaulting to `value-field`). Filter fields must be unique within a view. Option sources must be registered canonical sources or declarative queries, never values discovered from rendered cards.
+
+The Issues view declares the following JSON configuration. These are existing card badges, **not GitHub issue labels**, which are not retained in the canonical issue evidence:
+
+```json
+{
+  "filter-bar": {
+    "filters": [{
+      "id": "labels",
+      "label": "Labels",
+      "groups": [
+        {
+          "label": "Safe output",
+          "field": "safe-output-type",
+          "source": "issue-safe-output-label-options",
+          "value-field": "safe-output-type"
+        },
+        {
+          "label": "Status",
+          "field": "issue-status-detail",
+          "source": "issue-status-label-options",
+          "value-field": "issue-status-detail"
+        }
+      ]
+    }]
+  }
+}
+```
+
+- **DLS-VIEW-031:** A view filter row **MUST** be configured exclusively by `filter-bar.filters` and **MUST NOT** infer behavior from a page, view, source, or card-template identifier.
+- **DLS-VIEW-032:** Option selection, distinctness, ordering, and source derivation **MUST** be declared in Dashboard Language queries and executed through the production query boundary. Option sources **MUST** retain the view's declared scope, route arguments, global filters, and time window, but **MUST NOT** be narrowed by local selections, result search, result ordering, or card pagination.
+- **DLS-VIEW-033:** Applying selected values **MUST** compile exact `in` predicates for the declared fields, with OR within each field and AND between fields. Local filters **MUST** affect only the owning view, apply before limiting or pagination, and fail closed for missing row fields. Clearing a field removes its local predicate; clearing the row **MUST NOT** clear page-wide filters or another view's selection.
+- **DLS-VIEW-034:** Presenters **MUST** provide labeled, keyboard-operable grouped checkboxes, an explicit apply action, selected counts, a clear action, Escape dismissal, and honest loading, empty, partial, invalid, and unavailable option states. The row and clear action **MUST** remain available when no cards match. Local selections **MUST** survive worker refreshes and view-mode changes; active results and option sources **MUST** remain subscribed for the active page's abort-scoped lifetime.
 
 The `all-campaign-memory` element presents the repository-memory branches for every campaign in one page. Its declared source supplies `campaign` and `campaign-name`; selecting a campaign updates the existing repository-memory file browser in place and does not navigate to a campaign route.
 

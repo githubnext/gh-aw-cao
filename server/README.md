@@ -188,6 +188,17 @@ domain records. The benchmark reports
 and p50/p95; it asserts zero canonical scalar copies in generic value storage.
 These synthetic measurements do not establish production traffic coverage.
 
+The loopback-only `benchmark-queries` command measures downloaded deployed
+artifacts in a disposable namespace. Its execution limits admit up to 500,000
+input rows, 50 million operations, and 1 GiB of intermediate SQL working data;
+hosted queries retain their production limits. Each query measures its first
+500-row result page, retaining the full plan's cardinality and cost checks and
+reporting page rows and total result rows separately. Output and retained-data
+limits remain unchanged. The query-cost test independently enforces its
+duration, operation, and retained-byte thresholds. Before ingestion, set
+`CAO_POSTGRES_RUN_RETENTION_DAYS` to cover the artifact timestamps; deployed
+query-cost CI provisions a 90-day window without changing hosted retention.
+
 ### Redis memory budget
 
 Every Redis server profile has a whole-node Redis cache-pressure budget of

@@ -305,6 +305,7 @@
         {
           "id": "campaign-baseline-outcomes",
           "title": "Concluded run outcomes",
+          "disclosure": "supplemental",
           "subject": "Selected-horizon distribution of successful and other concluded campaign attempts.",
           "objective": "Spot run reliability that merits inspection alongside operational-value evidence.",
           "acceptance": "Each slice is a count of retained concluded attempts; the total reconciles to concluded runs, and run success is not verified operational value.",

@@ -850,6 +850,28 @@
                 }
               ]
             },
+            "filter-bar": {
+              "filters": [
+                {
+                  "id": "labels",
+                  "label": "Labels",
+                  "groups": [
+                    {
+                      "label": "Safe output",
+                      "field": "safe-output-type",
+                      "source": "issue-safe-output-label-options",
+                      "value-field": "safe-output-type"
+                    },
+                    {
+                      "label": "Status",
+                      "field": "issue-status-detail",
+                      "source": "issue-status-label-options",
+                      "value-field": "issue-status-detail"
+                    }
+                  ]
+                }
+              ]
+            },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,

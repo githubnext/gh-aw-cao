@@ -7,6 +7,10 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
+  .card-filter-bar { padding: 6px 12px; }
+  .card-filter-menu > summary, .card-filter-bar button, .card-filter-group label { min-height: 44px; }
+  .card-filter-menu { position: static; }
+  .card-filter-popover { top: 100%; left: 12px; width: min(300px, calc(100% - 24px)); }
   .dashboard-page > .page-chrome { display: none; }
   .view-mode-control { display: none; }
   body, .dashboard-root { font-size: 1rem; }

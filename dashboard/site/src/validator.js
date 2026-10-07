@@ -167,6 +167,8 @@ import { executeDashboardQueries, resolveDashboardQuerySources } from './data/qu
 import { SIMULATION_DAYS, simulationDaysSource } from './data/queries/simulation-days.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { validateQueryWindow } from './query-window-validator.js';
+import { dashboardViewSourceNames } from './view-filter-contract.js';
+import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
 
 const debugValidator = createDebug('validator');
 
@@ -1893,6 +1895,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       ));
       continue;
     }
+    validateViewFilterBar(view, undefined, viewPath, typeof data.source === 'string' ? data.source : null, errors);
 
     if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
       if (typeof view.list.card !== 'string' || !declaredCardTemplates.has(view.list.card)) {
@@ -3272,6 +3275,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     ));
   }
   validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors);
+  validateViewFilterBar(view, viewNode, path, sourceName, errors);
   validateTableActions(
     view.encoding,
     getValueNodeByKey(viewNode, 'encoding'),
@@ -3280,6 +3284,21 @@ function validateView(view, viewNode, path, viewIds, errors) {
     `${path}.encoding.actions`,
     errors
   );
+}
+
+/**
+ * @param {Record<string, unknown>} view
+ * @param {unknown} viewNode
+ * @param {string} path
+ * @param {string | null} sourceName
+ * @param {ValidationError[]} errors
+ */
+function validateViewFilterBar(view, viewNode, path, sourceName, errors) {
+  validateViewFilterBarContract(view, viewNode, path, sourceName, errors, {
+    isPlainObject, getValueNodeByKey, getSequenceItemNode, getMappingItems,
+    validateObjectKeys, validateRequiredIdentifier, validateStringField,
+    validateSource, sourceFieldNames, createError
+  });
 }
 
 /**
@@ -4932,10 +4951,7 @@ function validateViewQueryMaterialization(dashboard, errors) {
       if (!Array.isArray(views)) return;
       const requested = [...new Set(views.flatMap((view) => {
         if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
-        if (typeof view.data.source === 'string') return [view.data.source];
-        return Array.isArray(view.data.sources)
-          ? view.data.sources.filter((name) => typeof name === 'string')
-          : [];
+        return dashboardViewSourceNames(view);
       }))].filter((name) => declaredQueries.has(name));
       if (requested.length === 0) return;
 

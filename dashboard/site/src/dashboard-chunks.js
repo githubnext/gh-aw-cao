@@ -3,6 +3,7 @@ import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 import { createDebug } from './debug.js';
 import { dashboardDataBackend, viewBackendAvailable } from './view-availability.js';
+import { dashboardViewSourceNames as getViewSources, viewDataSourceNames } from './view-filter-contract.js';
 
 const debugDashboardChunks = createDebug('dashboard-chunks');
 
@@ -129,18 +130,6 @@ export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = 
 }
 
 /**
- * @param {unknown} view
- * @returns {string[]}
- */
-function getViewSources(view) {
-  if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
-  if (Array.isArray(view.data.sources)) {
-    return view.data.sources.filter((source) => typeof source === 'string');
-  }
-  return typeof view.data.source === 'string' ? [view.data.source] : [];
-}
-
-/**
  * @param {DashboardDocument} document
  * @param {string} pageId
  * @param {'chart'|'table'|'card'} [viewMode]
@@ -219,7 +208,7 @@ export function dashboardPageLazySourceNames(document, pageId, backend = dashboa
   const payload = dashboardPagePayload(page, document.dashboard.views);
   return [...new Set((payload.views ?? []).flatMap((view) =>
     isPlainObject(view) && view['lazy-list'] === true
-      && (backend === 'all' || viewBackendAvailable(view, backend)) ? getViewSources(view) : []
+      && (backend === 'all' || viewBackendAvailable(view, backend)) ? viewDataSourceNames(view) : []
   ))];
 }
 
@@ -238,7 +227,7 @@ export function dashboardTableSourceNames(document, pageId, backend = dashboardD
     const payload = dashboardPagePayload(page, document.dashboard.views);
     return [...new Set((payload.views ?? []).flatMap((view) =>
       isPlainObject(view) && view.mark === 'table'
-        && (backend === 'all' || viewBackendAvailable(view, backend)) ? getViewSources(view) : []
+        && (backend === 'all' || viewBackendAvailable(view, backend)) ? viewDataSourceNames(view) : []
     ))];
   }
   return [...new Set((document.dashboard.pages ?? []).flatMap((page) => dashboardTableSourceNames(document, page.id, backend)))];

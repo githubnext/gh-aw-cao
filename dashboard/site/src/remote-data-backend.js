@@ -48,6 +48,7 @@ let stopRemoteRevisionStream;
 /**
  * @typedef {{
  *   filters?: Record<string, string[]>,
+ *   viewFilters?: import('./view-filter-contract.js').ViewFilters,
  *   search?: { fields: string[], query: string },
  *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   timeWindow?: { start?: string, end?: string },

@@ -36,7 +36,7 @@ const pending = new Map();
  *   pageId?: string,
  *   viewId?: string,
  *   routeParameters?: Record<string, string>,
- *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> },
+ *   queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext,
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
@@ -662,6 +662,7 @@ function sameQueryContext(left, right) {
     && left?.timeWindow?.start === right?.timeWindow?.start
     && left?.timeWindow?.end === right?.timeWindow?.end
     && left?.viewMode === right?.viewMode
+    && JSON.stringify(left?.viewFilters ?? {}) === JSON.stringify(right?.viewFilters ?? {})
     && sameScalarMap(left?.formValues, right?.formValues);
 }
 

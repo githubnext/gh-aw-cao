@@ -314,6 +314,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
               'operational-value-name': 'Repository value',
+              'operational-value-unit': 'value',
+              'operational-value-direction': 'increase',
               'rollup-numerator': 1,
               'rollup-denominator': 2,
               'maturity-status': 'matured',
@@ -324,6 +326,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
               'operational-value-name': 'Repository value',
+              'operational-value-unit': 'value',
+              'operational-value-direction': 'increase',
               'maturity-status': 'matured',
               'observed-at': '2026-09-15T14:00:00Z'
             }
@@ -516,6 +520,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(performanceBaseline).toContainText('Run success');
   await expect(performanceBaseline).toContainText('Produced outputs');
   await expect(performanceBaseline).toContainText('Average AIC / successful run');
+  const outcomeDistribution = campaignInsights.locator('[data-view-id="campaign-baseline-outcomes"]');
+  await expect(outcomeDistribution).not.toBeVisible();
+  await campaignInsights.locator('details')
+    .filter({ has: page.locator('[data-view-id="campaign-baseline-outcomes"]') })
+    .locator(':scope > summary').click();
+  await expect(outcomeDistribution).toBeVisible();
+  await expect(performanceBaseline).toBeVisible();
   const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
   await expect(operationalValueHistory).toContainText('Repository value');
   await expect(operationalValueHistory).toContainText('Higher is better');

@@ -323,7 +323,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   if (shardLimit !== undefined) parameters.set("debug-shard-limit", String(shardLimit));
   await page.goto(`${preview.url}/?${parameters}`, { waitUntil: "domcontentloaded" });
   const dashboard = page.locator(".dashboard-root");
-  await expect(dashboard).toBeVisible();
+  await expect(dashboard).toBeVisible({ timeout: networkIsConstrained ? 60_000 : 5_000 });
   await memoryInvestigation.mark("dashboard-visible");
   // The shell can be visible and not busy before canonical ingestion starts.
   await page.waitForFunction(() =>

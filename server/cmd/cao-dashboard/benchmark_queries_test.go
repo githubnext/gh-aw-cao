@@ -188,6 +188,9 @@ func TestBenchmarkQueriesWithDeployedSubset(t *testing.T) {
 		report.Measurements[0].DurationMS < 0 || report.Measurements[0].Metrics.QueryCount == 0 {
 		t.Fatalf("missing production Go query metrics: %+v", report.Measurements)
 	}
+	if report.PageLimit != benchmarkPageLimit || report.Measurements[0].Rows != min(report.Measurements[0].TotalRows, report.PageLimit) {
+		t.Fatalf("benchmark must report bounded page and total rows: %+v", report)
+	}
 	if _, err := benchmarkQueries(ctx, store, source, databasePath, dashboardPath, []string{"not-a-dashboard-query"}); err == nil {
 		t.Fatal("unknown candidate must fail closed")
 	}

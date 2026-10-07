@@ -573,6 +573,7 @@ describe('dashboard view query contracts', () => {
 
     expect(viewsOf(insights)[2]).toMatchObject({
       id: 'campaign-baseline-outcomes',
+      disclosure: 'supplemental',
       data: { source: 'campaign-baseline-outcome-distribution', 'route-field': 'campaign' },
       mark: 'chart',
       chart: 'pie',

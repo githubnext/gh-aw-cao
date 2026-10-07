@@ -1,5 +1,6 @@
 import { navigationIndicatorSourceNamesForPage } from './navigation-indicator.js';
 import { createDebug } from './debug.js';
+import { dashboardViewSourceNames } from './view-filter-contract.js';
 
 const debugQueryUsage = createDebug('query-usage');
 
@@ -199,11 +200,7 @@ function queryInputNames(query) {
 
 /** @param {Record<string, unknown>} view */
 function viewQueryNames(view) {
-  const names = [];
-  if (isRecord(view.data)) {
-    names.push(view.data.source);
-    if (Array.isArray(view.data.sources)) names.push(...view.data.sources);
-  }
+  const names = dashboardViewSourceNames(view);
   if (isRecord(view.list) && isRecord(view.list.drill)) names.push(view.list.drill.query);
   return names;
 }

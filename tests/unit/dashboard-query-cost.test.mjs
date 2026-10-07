@@ -46,6 +46,7 @@ test("deployed integration runs both SQLite and Postgres query cost benchmarks",
   assert.match(workflow, /run: npm run test:performance:dashboard-query-cost/);
   assert.match(workflow, /run: npm run test:performance:dashboard-query-cost-postgres/);
   assert.match(workflow, /image: postgres:16-alpine/);
+  assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_RUN_RETENTION_DAYS, "90");
   assert.match(workflow, /go -C server build -o \.\.\/\.tmp\/cao-dashboard/);
   assert.match(workflow, /name: dashboard-query-cost\n/);
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
@@ -62,14 +63,16 @@ test("deployed integration runs both SQLite and Postgres query cost benchmarks",
 test("Postgres query cost report includes Go measurements", () => {
   const report = {
     records: 42,
+    "page-limit": 500,
     measurements: [{
-      query: "test-query", rows: 2, "duration-ms": 1.25,
+      query: "test-query", rows: 2, "total-rows": 900, "duration-ms": 1.25,
       metrics: { operations: 12, peakWorkingRows: 7, retainedBytes: 128 },
     }],
   };
   const markdown = postgresQueryCostMarkdown(report, [{ name: "test-query", rank: 1 }]);
   assert.match(markdown, /Postgres \+ Go/);
-  assert.match(markdown, /\| `test-query` \| 1 \| 2 \| 12 \| 1\.25 \| 7 \| 128 \|/);
+  assert.match(markdown, /first \*\*500 result rows\*\*/);
+  assert.match(markdown, /\| `test-query` \| 1 \| 2 \| 900 \| 12 \| 1\.25 \| 7 \| 128 \|/);
 });
 
 test("deployed integration reports the query cost report in a pull request comment", async () => {

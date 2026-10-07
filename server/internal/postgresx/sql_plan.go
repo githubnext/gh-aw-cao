@@ -16,9 +16,32 @@ import (
 )
 
 type SQLPage struct{ Offset, Limit int }
+type SQLResourceLimits struct {
+	MaxInputRows    int
+	MaxOperations   int
+	MaxWorkingBytes int64
+}
+
 type SQLExecutionOptions struct {
-	Runtime func(context.Context, string) (model.Source, error)
-	Pages   map[string]SQLPage
+	Runtime        func(context.Context, string) (model.Source, error)
+	Pages          map[string]SQLPage
+	ResourceLimits *SQLResourceLimits
+}
+
+func sqlResourceLimits(override *SQLResourceLimits) (SQLResourceLimits, error) {
+	limits := SQLResourceLimits{
+		MaxInputRows:  query.MaxInputRows,
+		MaxOperations: query.MaxOperations, MaxWorkingBytes: query.MaxWorkingBytes,
+	}
+	if override == nil {
+		return limits, nil
+	}
+	if override.MaxInputRows <= 0 || override.MaxInputRows > query.MaxWorkingRows ||
+		override.MaxOperations <= 0 || override.MaxOperations > 10*query.MaxOperations ||
+		override.MaxWorkingBytes <= 0 || override.MaxWorkingBytes > 4*query.MaxWorkingBytes {
+		return SQLResourceLimits{}, errors.New("invalid SQL resource limits")
+	}
+	return *override, nil
 }
 
 func (r *readTransaction) ExecuteSQLPlan(ctx context.Context, definitions []query.Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
@@ -26,6 +49,10 @@ func (r *readTransaction) ExecuteSQLPlan(ctx context.Context, definitions []quer
 }
 
 func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []query.Definition, requested []string, options SQLExecutionOptions) (map[string]model.Source, model.Metrics, error) {
+	limits, err := sqlResourceLimits(options.ResourceLimits)
+	if err != nil {
+		return nil, model.Metrics{}, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	definitions = collectionDefinitions(definitions)
@@ -108,16 +135,16 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 		if !exists {
 			return nil, metrics, errors.New("SQL resource statistics are incomplete")
 		}
-		if size.rows > query.MaxInputRows {
+		if size.rows > limits.MaxInputRows {
 			return nil, metrics, fmt.Errorf("query %q exceeds max input rows", step.Query)
 		}
 		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, size.rows)
 		metrics.PeakWorkingBytes = max(metrics.PeakWorkingBytes, size.bytes)
-		if size.bytes > query.MaxWorkingBytes {
+		if size.bytes > limits.MaxWorkingBytes {
 			return nil, metrics, fmt.Errorf("query %q exceeds max working bytes", step.Query)
 		}
 		metrics.Operations += size.rows * step.Weight
-		if metrics.Operations > query.MaxOperations {
+		if metrics.Operations > limits.MaxOperations {
 			return nil, metrics, fmt.Errorf("query %q exceeds max operations", step.Query)
 		}
 		switch step.Operation {

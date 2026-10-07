@@ -26,6 +26,7 @@ import {
   subscribeCanonicalDatabaseUpgrade
 } from './data/storage/indexeddb.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
+import { normalizeViewFilters } from './view-filter-contract.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { formatDataSize, publishWorkerLoadingProgress, startIngestionProgress } from './ingestion-progress.js';
@@ -134,7 +135,7 @@ let hasCompleteDashboardSnapshot = false;
  */
 let publicationPhase = 'complete';
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -1337,7 +1338,7 @@ function routeParameters(value) {
 /** @param {unknown} value @returns {DashboardSubscription['queryContext']} */
 function queryContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown, viewMode?: unknown, formValues?: unknown }} */ (value);
+  const context = /** @type {{ filters?: unknown, viewFilters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown, viewMode?: unknown, formValues?: unknown }} */ (value);
   const filters = context.filters && typeof context.filters === 'object' && !Array.isArray(context.filters)
     ? Object.fromEntries(Object.entries(context.filters)
       .map(([field, candidates]) => [field, Array.isArray(candidates)
@@ -1381,12 +1382,14 @@ function queryContext(value) {
       .filter(([, entry]) => typeof entry === 'string' || typeof entry === 'boolean'
         || (typeof entry === 'number' && Number.isFinite(entry))))
     : undefined;
+  const viewFilters = normalizeViewFilters(context.viewFilters);
   return {
     ...(filters ? { filters } : {}),
     ...(search ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
     ...(viewMode ? { viewMode } : {}),
+    ...(viewFilters ? { viewFilters } : {}),
     ...(formValues ? { formValues } : {})
   };
 }
