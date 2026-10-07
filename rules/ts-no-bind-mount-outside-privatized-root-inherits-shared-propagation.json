@@ -53,5 +53,18 @@
   "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
-  "status": "candidate"
+  "status": "needs-work",
+  "evaluation": {
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "02b881e12b1f2c3208306bfd85b7d5f2c4b7fc35",
+    "true_positive_count": 1,
+    "false_positive_count": 3,
+    "false_negative_count": 0,
+    "readiness_for_target": "needs-work",
+    "reason": "First evaluation: found a confirmed true positive (virtiofsd.ts readonlyBindPath bind with no --make-private/--make-rprivate follow-up) and 3 false positives against a naive heuristic (self-bind-onto-self calls in trusted-enclave-storage.ts already nested inside a privatized root).",
+    "txn_id": "refiner-37662241728-1"
+  },
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37662241728",
+  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_seen_at": "2026-10-07T18:06:50Z"
 }
