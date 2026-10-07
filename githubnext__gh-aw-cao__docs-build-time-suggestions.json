@@ -1,5 +1,5 @@
 {
-  "source_sha": "b97e27a949a1d882f8aae713db8e43d41423c226",
+  "source_sha": "faa0ff641571ee64663ce56075f5f1556be6ae4f",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -331,6 +331,34 @@
         37675514178
       ],
       "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run, schedule, and push attempts on four recent source SHAs, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-07T21:56:45Z",
+      "worker_run_id": 37692484733,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37692810207,
+        37692805140,
+        37691916692,
+        37690598784,
+        37690596968,
+        37690540169,
+        37690336201,
+        37690255592,
+        37690229669,
+        37690136729,
+        37689153948,
+        37688966429,
+        37687115353,
+        37686758604,
+        37686433271,
+        37686312149,
+        37685766547,
+        37685575505,
+        37685059299,
+        37685035476
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run, schedule, and push attempts across recent source SHAs, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
     }
   ]
 }
