@@ -34,15 +34,15 @@ test.beforeEach(async ({ page, context }) => {
 });
 
 test('mobile footer hides update details and keeps versions within the viewport', async ({ page }) => {
-  await page.evaluate(async () => {
+  await page.evaluate(async ([stylesUrl, footerUrl]) => {
     const [{ getPrimerStyles }, { renderDashboardFooter }] = await Promise.all([
-      import('/src/styles.js'),
-      import('/src/components/dashboard-footer.js')
+      import(stylesUrl),
+      import(footerUrl)
     ]);
     const styles = document.createElement('style');
     styles.textContent = getPrimerStyles();
     document.head.append(styles);
-    document.querySelector('#root').append(renderDashboardFooter({
+    /** @type {HTMLElement} */ (document.querySelector('#root')).append(renderDashboardFooter({
       evaluatedAt: '2026-10-07T21:47:00Z',
       caoVersion: '0.0.0-main.a7a23e16c68c',
       ghAwVersion: 'v0.91.1',
@@ -50,7 +50,7 @@ test('mobile footer hides update details and keeps versions within the viewport'
       githubUrlBase: 'https://github.com',
       dashboardRepository: 'githubnext/gh-aw-cao'
     }));
-  });
+  }, ['http://dashboard.test/src/styles.js', 'http://dashboard.test/src/components/dashboard-footer.js']);
 
   const footer = page.locator('.report-footer');
   const status = footer.locator('.report-footer-status');
@@ -69,6 +69,7 @@ test('mobile footer hides update details and keeps versions within the viewport'
     await expect(versions).toContainText('Dashboard a7a23e1');
     const versionBox = await versions.boundingBox();
     expect(versionBox).not.toBeNull();
+    if (!versionBox) throw new Error('Expected footer versions to have a layout box');
     expect(versionBox.x).toBeGreaterThanOrEqual(0);
     expect(versionBox.x + versionBox.width).toBeLessThanOrEqual(width);
   }
