@@ -3,6 +3,7 @@
 package operationalvalue
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -39,7 +40,10 @@ func TestTerminateProcessTreeHandlesNilProcess(t *testing.T) {
 // call against the now-exited process reports os.ErrProcessDone instead of a
 // raw ESRCH, matching classifyProcessGroupKillError's translation.
 func TestTerminateProcessTreeKillsRealProcessGroup(t *testing.T) {
-	command := exec.Command("sleep", "5")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	command := exec.CommandContext(ctx, "sleep", "5")
 	configureProcessTree(command)
 	if err := command.Start(); err != nil {
 		t.Fatalf("start sleep: %v", err)
