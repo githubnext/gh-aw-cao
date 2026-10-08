@@ -3,23 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T17:24:00Z",
-      "worker_run_id": 37348059728,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37348062285,
-        37345336006,
-        37343385434,
-        37341211968,
-        37337620014,
-        37336211753,
-        37334897381,
-        37332989570
-      ],
-      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days yielded 8 comparable successful runs, all recent schedule-triggered successes on the same source SHA. This was sufficient for bounded timing review, but not to establish a new non-duplicate threshold-meeting recommendation in the next rotation category. Existing open issue #16054 already captures the previously actionable docs-side optimization, and the current bounded window did not show a fresh reusable-dashboard-generation change with trusted evidence for >=60s or >=15% median savings beyond already implemented cache reuse. Cache syntax alone was not used as evidence; no new trusted hit/miss or artifact-transfer pattern justified another issue.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T17:39:00Z",
       "worker_run_id": 37349721076,
       "category": "Astro documentation generation",
@@ -759,6 +742,34 @@
         37733402875
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: evaluated the latest 20 completed docs.yml runs from the last 14 days for artifact transfer and Pages packaging. The bounded window contained 6 successful runs overall, but only 3 comparable build-bearing successes (37734716675, 37733857728, 37733404070) that executed the packaging path, below the required minimum of 5 comparable successful runs. The remaining successful runs were freshness skips after the current skip logic prevented redundant builds, and the latest 20-run sample also included skipped and action_required outcomes. No fresh threshold-backed recommendation could be validated safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T07:51:00Z",
+      "worker_run_id": 37745701485,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37745311433,
+        37744470183,
+        37741745801,
+        37741448739,
+        37739110146,
+        37738891866,
+        37736402303,
+        37736253412,
+        37735634847,
+        37735489476,
+        37735405414,
+        37735013924,
+        37734716675,
+        37734298228,
+        37734297231,
+        37734180833,
+        37734063823,
+        37733942264,
+        37733857728,
+        37733404070
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: evaluated the latest 20 completed docs.yml runs from the last 14 days for artifact transfer and Pages packaging. The bounded window contained 7 successful runs overall, but only 3 comparable build-bearing successes (37734716675, 37733857728, 37733404070) that executed the packaging path, below the required minimum of 5 comparable successful runs. The remaining successful runs were freshness skips after the current skip logic prevented redundant builds, so no fresh threshold-backed recommendation could be validated safely in this cycle."
     }
   ]
 }
