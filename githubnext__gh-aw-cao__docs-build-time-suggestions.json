@@ -3,13 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T23:52:48Z",
-      "worker_run_id": "37390716197",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions API rate limit exceeded before evidence collection; unable to inspect latest docs.yml runs or job timings."
-    },
-    {
       "evaluated_at": "2026-10-07T20:57:14Z",
       "worker_run_id": 37685543673,
       "category": "dependency installation and caching",
@@ -833,6 +826,34 @@
         37759773384
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T09:53:31Z through 2026-10-08T12:40:18Z, 12 runs concluded success but 10 were freshness-only schedule passes with build and deploy skipped. Only 2 runs (37768339711 and 37778314251) executed both build and deploy successfully. The relevant producer sample is also too small: the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained only 2 successful full builds (37766230957 and 37747029010). That leaves fewer than 5 comparable successful runs for the artifact transfer and Pages packaging category, so trusted Actions metadata cannot support median/p90 transfer timings or a threshold-meeting recommendation in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T13:09:27Z",
+      "worker_run_id": 37781618987,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37781083055,
+        37780803597,
+        37780014134,
+        37780011425,
+        37778314251,
+        37778177147,
+        37778119736,
+        37774099789,
+        37773443442,
+        37772685592,
+        37772174247,
+        37771254350,
+        37769964157,
+        37769640439,
+        37768339711,
+        37767354938,
+        37766421316,
+        37765800699,
+        37765341322,
+        37763659759
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T10:28:08Z through 2026-10-08T13:01:02Z, but only 2 runs (37778314251 and 37768339711) completed the build and deploy jobs successfully. The remaining 18 runs were freshness-skip schedule successes or skipped workflow_run triggers, so the sample does not meet the minimum of 5 comparable successful runs required for trusted build-time analysis of artifact transfer and Pages packaging."
     }
   ]
 }
