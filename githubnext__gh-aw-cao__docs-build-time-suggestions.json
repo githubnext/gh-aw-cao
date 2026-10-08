@@ -527,6 +527,34 @@
         37702872795
       ],
       "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-07T23:32:37Z through 2026-10-08T01:42:03Z and was entirely cancelled workflow_run and schedule attempts on source SHAs bf2e1c826793bdeea788555d64ff68a83890e261, 04d36fd794fe564d33dc80a7168ea3d19536c964, 179ccfd46d3383a6f29b13094dd8ffa0ebc58a44, 12b140b1e48e1e5b3591b4168e0d1b6071aadd81, 3c1975a44529d72e5f3185e216223e09db93316f, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-08T02:14:49Z",
+      "worker_run_id": 37716622596,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37716273921,
+        37716166002,
+        37716007399,
+        37715820775,
+        37714408833,
+        37714226098,
+        37714026671,
+        37714027113,
+        37713543937,
+        37713376520,
+        37712611853,
+        37710971688,
+        37710255085,
+        37709896696,
+        37709440076,
+        37705768862,
+        37704882383,
+        37704741180,
+        37704512495,
+        37704240299
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-07T23:47:30Z through 2026-10-08T02:06:55Z and was entirely cancelled schedule and workflow_run executions on source SHAs d9d427b9d69190983beca0d94a4f09d6373b27ab, 3c1975a44529d72e5f3185e216223e09db93316f, 12b140b1e48e1e5b3591b4168e0d1b6071aadd81, 179ccfd46d3383a6f29b13094dd8ffa0ebc58a44, and 04d36fd794fe564d33dc80a7168ea3d19536c964, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
     }
   ]
 }
