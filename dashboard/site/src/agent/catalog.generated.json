@@ -1249,7 +1249,7 @@
     },
     {
       "id": "issue-status-label-options",
-      "subject": "List observed status badges for the issue list Labels filter.",
+      "subject": "List observed status badges for the issue list Status filter.",
       "objective": "Choose retained issue states and closing reasons without inferring resolution.",
       "acceptance": "Return distinct observed status details in ascending order; Unknown remains distinct from Open and Closed.",
       "description": "",
