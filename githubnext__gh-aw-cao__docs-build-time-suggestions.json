@@ -1,5 +1,5 @@
 {
-  "source_sha": "3aaca4989badc3c798269470725030cb977dbc54",
+  "source_sha": "3bb87bdecb41935e2e0e966126d97d959970dcb7",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -639,6 +639,34 @@
         37716273921
       ],
       "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 1 successful run (37725240976), below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-08T02:06:55Z through 2026-10-08T03:58:21Z and was dominated by 18 cancelled runs plus 1 action_required run across source SHAs 3aaca4989badc3c798269470725030cb977dbc54, 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, fa22e47bdb019d5742e1c2695836c142a198c6e0, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be validated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-08T04:32:45Z",
+      "worker_run_id": 37727735663,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37727692898,
+        37727521286,
+        37727128943,
+        37726584908,
+        37726584338,
+        37725747540,
+        37725240976,
+        37724857759,
+        37724850552,
+        37724304174,
+        37724108945,
+        37722204715,
+        37721895830,
+        37720832297,
+        37720401950,
+        37719586994,
+        37719585540,
+        37719364858,
+        37719315177,
+        37719133607
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 3 successful runs (37727521286, 37727128943, 37725240976), below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-08T02:41:52Z through 2026-10-08T04:29:04Z and was dominated by 12 cancelled runs, 4 freshness skips, and 1 action_required run across source SHAs 3bb87bdecb41935e2e0e966126d97d959970dcb7, d8b28b433047f7eb516c8814abae40bea412c2fe, 3aaca4989badc3c798269470725030cb977dbc54, 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, and fa22e47bdb019d5742e1c2695836c142a198c6e0, so no trusted timing or cache-effectiveness recommendation could be validated safely in this run."
     }
   ]
 }
