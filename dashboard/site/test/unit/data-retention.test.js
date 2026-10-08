@@ -110,6 +110,37 @@ describe('canonical retention merge', () => {
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
   });
 
+  it('expires every run-linked store after seven days but retains independent operational values', () => {
+      const incoming = batch([]);
+      const runId = incoming.runs[0].id;
+      const stores = /** @type {const} */ ([
+        'domains', 'tools', 'skills', 'friction', 'audits', 'issues',
+        'experimentAssignments', 'graderObservations', 'evalObservations'
+      ]);
+      for (const store of stores) {
+        incoming[store] = [
+          { id: `${store}:expired`, runId, timestamp: '2026-09-01T04:00:00Z' },
+          { id: `${store}:retained`, runId, timestamp: '2026-09-03T04:00:00Z' }
+        ];
+      }
+      incoming.experiments = [{ id: 'experiment:1', workflowId: 'workflow:1' }];
+      incoming.graders = [{ id: 'grader:1', workflowId: 'workflow:1' }];
+      incoming.evals = [{ id: 'eval:1', workflowId: 'workflow:1' }];
+      for (const item of incoming.experimentAssignments ?? []) item.experimentId = 'experiment:1';
+      for (const item of incoming.graderObservations ?? []) item.graderId = 'grader:1';
+      for (const item of incoming.evalObservations ?? []) item.evalId = 'eval:1';
+      incoming.operationalValues = [{
+        id: 'value:older', repositoryId: 'repository:1', timestamp: '2026-09-01T04:00:00Z'
+      }];
+      const retained = mergeRetainedRecords(normalize([]), incoming, { now: NOW });
+      for (const store of stores) {
+        expect(retained[store]?.map(({ id }) => id)).toEqual([`${store}:retained`]);
+      }
+      expect(retained.operationalValues.map(({ id }) => id)).toEqual(['value:older']);
+      expect(retained.runs).toHaveLength(1);
+      expect(relationshipErrors(retained)).toEqual([]);
+  });
+
   it('drops retained records whose parents no longer survive', () => {
     const previous = batch([
       { eventId: 'event:orphan', timestamp: '2026-09-01T04:00:00Z' }

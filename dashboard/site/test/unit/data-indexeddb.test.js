@@ -87,6 +87,25 @@ afterEach(() => {
 });
 
 describe('canonical IndexedDB', () => {
+  it('expires run-linked detail after seven days without removing run summaries', async () => {
+    const now = Date.parse('2026-09-10T00:00:00Z');
+    await writeRecords('runs', [{ id: 'run:old', observedAt: '2026-08-30T00:00:00Z' }]);
+    for (const store of /** @type {const} */ (['tools', 'audits'])) {
+      await writeRecords(store, [
+        { id: `${store}:old`, runId: 'run:old', timestamp: '2026-09-02T23:59:59Z' },
+        { id: `${store}:recent`, runId: 'run:old', timestamp: '2026-09-03T00:00:00Z' }
+      ]);
+    }
+    await maintainCanonicalDatabase(indexedDB, {
+      now, retentionWindowMsByStore: { runs: Number.MAX_SAFE_INTEGER },
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+    expect((await readCollection(indexedDB, 'runs')).map(({ id }) => id)).toEqual(['run:old']);
+    for (const store of /** @type {const} */ (['tools', 'audits'])) {
+      expect((await readCollection(indexedDB, store)).map(({ id }) => id)).toEqual([`${store}:recent`]);
+    }
+  });
+
   it('maintains retention and size limits without loading whole stores', async () => {
     await writeRecords('repositories', [{ id: 'repository:1' }]);
     await writeRecords('runs', [

@@ -68,6 +68,32 @@ afterEach(() => {
 });
 
 describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
+  it('expires run-linked SQLite records at seven days unless an archive TTL is explicit', async () => {
+    for (const ttlDays of [undefined, 30]) {
+      const filename = temporaryDatabase();
+      const indexedDB = installSqliteIndexedDB(filename);
+      const records = batch();
+      records.runs[0].observedAt = '2026-09-01T00:00:00Z';
+      records.audits = [{ id: 'audit:old', runId: 'run:1', timestamp: '2026-09-01T00:00:00Z' }];
+      records.tools = [{ id: 'tool:old', runId: 'run:1', timestamp: '2026-09-01T00:00:00Z' }];
+      await upsertCanonicalBatch(indexedDB, records);
+      const result = await doctorSqliteDatabase(filename, {
+        now: Date.parse('2026-09-10T00:00:00Z'),
+        ...(ttlDays === undefined ? {} : { ttlDays })
+      });
+      expect(result.after?.counts).toMatchObject({
+        runs: 1,
+        audits: ttlDays === undefined ? 0 : 1,
+        tools: ttlDays === undefined ? 0 : 1
+      });
+      expect((await readCollection(indexedDB, 'runs')).map(({ id }) => id)).toEqual(['run:1']);
+      const connection = new DatabaseSync(filename);
+      expect(connection.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name = 'audits'").get())
+        .toMatchObject({ count: ttlDays === undefined ? 0 : 1 });
+      connection.close();
+    }
+  });
+
   it('persists canonical records and supports compound index queries', async () => {
     const filename = temporaryDatabase();
     const indexedDB = installSqliteIndexedDB(filename);
