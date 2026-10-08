@@ -10,8 +10,11 @@ import { validateView, validateListDrill, validateQueryDrillReferences } from '.
 import { validateQueries, validateSource, validateViewQueryMaterialization, sourceFieldNames, validateContext } from './validator-queries.js';
 import { isSafeGithubUrlBase, isSafeRepositorySlug, validateRequiredIdentifier, validateStringField, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
+import { createDebug } from './debug.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
+
+const debugValidatorDashboard = createDebug('validator-dashboard');
 
 
 /**
@@ -20,6 +23,10 @@ import { resolveReusablePageViews } from './validator-state.js';
  * @returns {import('yaml').Document.Parsed[] | null}
  */
 export function parseDocuments(source, errors) {
+  /** @param {'ok' | 'yaml-syntax' | 'document-count' | 'exception'} status @param {number} [documentCount] */
+  const report = (status, documentCount) => {
+    debugValidatorDashboard({ operation: 'parse-documents', status, ...(documentCount !== undefined ? { documentCount } : {}) });
+  };
   try {
     const documents = parseAllDocuments(source, {
       uniqueKeys: false,
@@ -31,6 +38,7 @@ export function parseDocuments(source, errors) {
         'Dashboard document must be valid YAML 1.2.',
         '$'
       ));
+      report('yaml-syntax');
       return null;
     }
 
@@ -40,9 +48,11 @@ export function parseDocuments(source, errors) {
         'Dashboard document must contain exactly one YAML document.',
         '$'
       ));
+      report('document-count', documents.length);
       return null;
     }
 
+    report('ok');
     return documents;
   } catch {
     errors.push(createError(
@@ -50,6 +60,7 @@ export function parseDocuments(source, errors) {
       'Dashboard document must be valid YAML 1.2.',
       '$'
     ));
+    report('exception');
     return null;
   }
 }
@@ -311,6 +322,7 @@ function validateReusableViews(views, viewsNode, errors) {
  * @param {ValidationError[]} errors
  */
 export function validateDashboard(dashboard, dashboardNode, errors) {
+  const errorCountBeforeDashboard = errors.length;
   validateObjectKeys(dashboardNode, DASHBOARD_KEYS, '$.dashboard', errors);
 
   validateRequiredIdentifier(dashboard.id, '$.dashboard.id', 'dashboard id', errors);
@@ -418,6 +430,12 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
       'pages must be a non-empty sequence.',
       '$.dashboard.pages'
     ));
+    debugValidatorDashboard({
+      operation: 'validate-dashboard',
+      status: 'invalid',
+      reason: 'missing-pages',
+      errorCount: errors.length - errorCountBeforeDashboard
+    });
     return;
   }
 
@@ -826,6 +844,13 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
   if (dashboard.navigation !== undefined) {
     validateNavigation(dashboard.navigation, getValueNodeByKey(dashboardNode, 'navigation'), pageIds, errors);
   }
+
+  debugValidatorDashboard({
+    operation: 'validate-dashboard',
+    status: errors.length === errorCountBeforeDashboard ? 'ok' : 'invalid',
+    pageCount: dashboard.pages.length,
+    errorCount: errors.length - errorCountBeforeDashboard
+  });
 
   /**
    * @param {unknown} callouts
