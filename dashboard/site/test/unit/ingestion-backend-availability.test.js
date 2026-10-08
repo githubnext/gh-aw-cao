@@ -90,6 +90,8 @@ describe('Ingestion backend contract', () => {
     document.body.append(root);
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(contract.staticSources.length));
     for (const viewId of contract.hostedViews) {
+      expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === viewId)?.requires?.['on-unavailable'])
+        .toBe(contract.staticHostedViewBehavior);
       expect(root.querySelector(`[data-view-id="${viewId}"]`)).toBeNull();
     }
     expect(subscribe.mock.calls.flatMap((call) => call[2])).not.toEqual(expect.arrayContaining(contract.hostedSources));

@@ -216,11 +216,11 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
   const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
-  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(7);
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(4);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
   await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
-  await expect(transactionsPage.locator('[data-view-id="ingestion-queue-sizes"] [data-view-availability="unavailable"]')).toBeVisible();
+  await expect(transactionsPage.locator('[data-view-id="ingestion-queue-sizes"]')).toHaveCount(0);
   await transactionsPage.getByRole('button', { name: 'Cards' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('.entity-card-list-card')).toHaveCount(100);

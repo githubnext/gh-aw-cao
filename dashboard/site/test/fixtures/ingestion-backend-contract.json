@@ -8,6 +8,7 @@
   ],
   "hostedSources": ["ingestion-queue-sizes", "ingestion-health", "github-api-usage"],
   "hostedViews": ["ingestion-queue-sizes", "ingestion-health-status", "github-api-usage"],
+  "staticHostedViewBehavior": "hide",
   "runtimeInputs": {
     "collection-health": [{
       "configured": true,
