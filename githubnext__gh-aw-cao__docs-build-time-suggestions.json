@@ -3,29 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T21:59:00Z",
-      "worker_run_id": 37378926118,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        37378351433,
-        37377523180,
-        37376805851,
-        37375568697,
-        37373328255,
-        37356703467,
-        37352936883,
-        37352687504,
-        37351273809,
-        37350395830,
-        37349524863,
-        37343385434,
-        37341211968,
-        37336211753
-      ],
-      "outcome": "no_actionable_improvement: evaluated the next rotation category with 14 comparable successful docs.yml runs from the last 14 days, including 12 schedule or workflow_run deployments and 2 push-only builds on matching source revisions. Trusted Actions metadata showed queue median/p90 0s/0s, full workflow median/p90 89.5s/763.2s with two clear deployment outliers, build median/p90 50.5s/62.6s, deploy median/p90 11s/28.8s, schedule-freshness median/p90 8s/10s, Build documentation median/p90 13s/14s, Upload Pages artifact median/p90 10.5s/12s, Restore node_modules median/p90 5s/7s, and Restore cached CAO Dashboard median/p90 2s/3.7s. Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in every sampled build because trusted cache metadata showed hits. The Astro documentation generation step itself is consistently small at about 13s and accounts for about 26% of the median build job, so even eliminating it entirely would save well under the required 60s threshold and only borderline 15% of median end-to-end execution while adding complexity or staleness risk. Existing open issue #16054 still covers the only threshold-meeting docs-side optimization in this workflow, and the latest 20 cao-dashboard.yml runs did not provide five successful producer runs for a fresh reusable-dashboard-generation recommendation.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T22:28:27Z",
       "worker_run_id": 37382250394,
       "category": "reusable dashboard generation",
@@ -809,6 +786,34 @@
         37736402303
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T06:13:06Z through 2026-10-08T10:00:02Z and yielded 11 successful runs, but only 1 comparable build-bearing success (37748728913). The other 10 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. No new non-duplicate actionable recommendation can be justified safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T10:31:23Z",
+      "worker_run_id": 37763664697,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37763659759,
+        37763417424,
+        37760829188,
+        37760514832,
+        37759773384,
+        37759332466,
+        37758227457,
+        37756854202,
+        37755874498,
+        37753355309,
+        37753044172,
+        37751475386,
+        37748728913,
+        37748544843,
+        37747030324,
+        37746580698,
+        37745311433,
+        37744470183,
+        37741745801,
+        37741448739
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T07:06:45Z through 2026-10-08T10:28:08Z and contained only 1 comparable successful build-bearing docs run (37748728913), below the required minimum of 5. The bounded sample otherwise comprised 10 successful schedule freshness checks that skipped build/deploy and 9 skipped workflow_run attempts, so no trusted timing, cache-effectiveness, or dashboard-generation recommendation could be revalidated safely in this run."
     }
   ]
 }
