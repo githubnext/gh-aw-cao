@@ -7,6 +7,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
+  html { font-size: 112.5%; }
   .semantic-prompt-action { position: static; margin: 8px 0; }
   .mobile-table-card-toolbar > .semantic-prompt-action { margin: 0 0 0 auto; }
   .chart-prompt-heading { flex-wrap: wrap; gap: 8px; }

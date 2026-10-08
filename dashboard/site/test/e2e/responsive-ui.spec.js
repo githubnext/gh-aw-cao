@@ -33,6 +33,22 @@ test.beforeEach(async ({ page, context }) => {
   await page.goto('http://dashboard.test/');
 });
 
+test('mobile typography uses a larger base font size without changing desktop sizing', async ({ page }) => {
+  await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    const styles = document.createElement('style');
+    styles.textContent = getPrimerStyles();
+    document.head.append(styles);
+  }, 'http://dashboard.test/src/styles.js');
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('16px');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('18px');
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('18px');
+});
+
 test('mobile footer hides update details and keeps versions within the viewport', async ({ page }) => {
   await page.evaluate(async ([stylesUrl, footerUrl]) => {
     const [{ getPrimerStyles }, { renderDashboardFooter }] = await Promise.all([
