@@ -3,35 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T21:42:01Z",
-      "worker_run_id": 37377358461,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37377547214,
-        37377521128,
-        37377521045,
-        37377520298,
-        37377520279,
-        37377520032,
-        37377519678,
-        37377519377,
-        37377518949,
-        37377518554,
-        37377517722,
-        37377087903,
-        37376904232,
-        37376805851,
-        37376078161,
-        37375818787,
-        37375568697,
-        37375394690,
-        37374496109,
-        37373328255
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: latest 20 completed docs.yml runs in the last 14 days contained only 3 successful runs (37376805851, 37375568697, 37373328255), below the required minimum of 5 comparable successful runs. Trusted step metadata for those 3 successes still showed Restore node_modules succeeded every time with Install dependencies and Save node_modules skipped every time, Restore cached CAO Dashboard succeeded every time with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped every time, Build documentation median 14s, Upload Pages artifact median 10s, build job median 49s, deploy job median 18s, full workflow median 81s, and queue median 0s. However, the current sample is dominated by non-comparable action_required/cancelled/skipped workflow_run events immediately after the docs.yml source changed, so no new threshold-meeting recommendation can be validated safely. Open issue #16054 already covers the prior actionable duplicate-rebuild optimization, and current docs.yml now contains that freshness logic.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T21:59:00Z",
       "worker_run_id": 37378926118,
       "category": "Astro documentation generation",
@@ -810,6 +781,34 @@
         37735405414
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T06:01:54Z through 2026-10-08T09:28:08Z and yielded 10 successful runs, but only 1 comparable build-bearing success (37748728913). The other 9 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. The lone build-bearing run showed Upload Pages artifact at 12s and deploy at 10s, which is insufficient evidence for a threshold-backed recommendation."
+    },
+    {
+      "evaluated_at": "2026-10-08T10:00:56Z",
+      "worker_run_id": 37760237106,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37760514832,
+        37759773384,
+        37759332466,
+        37758227457,
+        37756854202,
+        37755874498,
+        37753355309,
+        37753044172,
+        37751475386,
+        37748728913,
+        37748544843,
+        37747030324,
+        37746580698,
+        37745311433,
+        37744470183,
+        37741745801,
+        37741448739,
+        37739110146,
+        37738891866,
+        37736402303
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T06:13:06Z through 2026-10-08T10:00:02Z and yielded 11 successful runs, but only 1 comparable build-bearing success (37748728913). The other 10 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. No new non-duplicate actionable recommendation can be justified safely in this cycle."
     }
   ]
 }
