@@ -3,14 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T17:39:00Z",
-      "worker_run_id": 37349721076,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [],
-      "outcome": "incomplete_due_to_rate_limit: GitHub Actions API rate limiting blocked trusted collection of the latest 20 completed docs.yml runs and related job/step metadata before a fresh comparable sample of at least five successful runs could be verified. Current docs.yml source shows docs build work is already narrowly scoped to `npm run docs:build`, but cache-hit and timing conclusions for this category could not be revalidated from trusted run metadata in this run. Existing open issue #16054 already covers the prior threshold-meeting docs-side optimization; no new actionable non-duplicate recommendation was safe to emit without refreshed evidence.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T18:35:00Z",
       "worker_run_id": 37356596465,
       "category": "artifact transfer and Pages packaging",
@@ -770,6 +762,34 @@
         37733404070
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: evaluated the latest 20 completed docs.yml runs from the last 14 days for artifact transfer and Pages packaging. The bounded window contained 7 successful runs overall, but only 3 comparable build-bearing successes (37734716675, 37733857728, 37733404070) that executed the packaging path, below the required minimum of 5 comparable successful runs. The remaining successful runs were freshness skips after the current skip logic prevented redundant builds, so no fresh threshold-backed recommendation could be validated safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T08:39:19Z",
+      "worker_run_id": 37750787245,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37748728913,
+        37748544843,
+        37747030324,
+        37746580698,
+        37745311433,
+        37744470183,
+        37741745801,
+        37741448739,
+        37739110146,
+        37738891866,
+        37736402303,
+        37736253412,
+        37735634847,
+        37735489476,
+        37735405414,
+        37735013924,
+        37734716675,
+        37734298228,
+        37734297231,
+        37734180833
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 8 successful runs, but only 2 comparable build-bearing successes (37748728913 workflow_run and 37734716675 schedule); the other 6 successes were freshness-gated skips with no build or deploy timings. This category requires at least 5 comparable successful runs to revalidate artifact-transfer and Pages-packaging costs. Within the same bounded window, the latest 20 completed cao-dashboard.yml runs contained only 1 successful run (37747029010), so upstream reusable-dashboard evidence is also below the minimum sample. Trusted metadata from the two build-bearing docs runs still showed node_modules and dashboard cache hits with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped, while Upload Pages artifact took 12s and 10s and Deploy Pages took 7s and 28s, but that sample is too small for a new evidence-backed recommendation."
     }
   ]
 }
