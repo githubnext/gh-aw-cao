@@ -140,5 +140,10 @@
       "reason": "No .astro files, themed UI components, or color-mix()/hex-literal test assertions exist anywhere in this infrastructure/CLI-firewall repository; the rule's unsafe pattern cannot occur here.",
       "txn_id": "refiner-37156057344-2"
     }
-  ]
+  ],
+  "normalization": {
+    "relationship": "deprecated",
+    "txn_id": "librarian-37712915920-1",
+    "reason": "9 refiner evaluations since 2026-10-01 on githubnext/gh-aw-cao (TP=1 flat, FP rising 11->15 then flat at 15 with zero narrowing) and 1 not-applicable finding on github/gh-aw-firewall support deprecation; zero adoption requests. Status repeatedly drifted back to needs-work via refiner rule-outcome writes (repaired twice: librarian-37151593787-1, librarian-37162088113-1); this normalization object is added for in-file traceability to reduce further silent reverts."
+  }
 }
