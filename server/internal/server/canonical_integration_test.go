@@ -125,10 +125,13 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if err != nil || status != http.StatusOK {
 		t.Fatalf("Postgres dashboard query failed: status=%d error=%v", status, err)
 	}
-	for _, name := range []string{"runs", "overview-runs", "outcomes", "mcp-calls", "domains", "issues"} {
+	for _, name := range []string{"runs", "overview-runs", "outcomes", "domains", "issues"} {
 		if len(response.Sources[name].Rows) != 1 {
 			t.Errorf("Postgres dashboard source %q has %d rows, want 1", name, len(response.Sources[name].Rows))
 		}
+	}
+	if len(response.Sources["mcp-calls"].Rows) != 0 {
+		t.Error("expired tool calls were not removed from the dashboard")
 	}
 	if rows := response.Sources["outcomes"].Rows; len(rows) == 1 {
 		outcome := rows[0]

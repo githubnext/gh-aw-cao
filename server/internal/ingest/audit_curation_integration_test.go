@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/stdlib"
 
@@ -20,7 +21,35 @@ import (
 func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 	ctx, store, config := ingestTestStoreConfig(t)
 	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
-	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	directory := scratchDirectory(t)
+	manifest := Manifest{}
+	runs, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-runs/subset.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	records, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-records/subset.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string][]byte{
+		"gh-aw-logs-runs/subset.jsonl": runs, "gh-aw-logs-records/subset.jsonl": records,
+	} {
+		content = bytes.ReplaceAll(content, []byte("2026-09-23"), []byte(time.Now().UTC().Format("2006-01-02")))
+		writeTestFile(t, filepath.Join(directory, name), content)
+		sum := sha256.Sum256(content)
+		manifest[name] = hex.EncodeToString(sum[:])
+	}
+	hashes, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(directory, "payload-hashes.json"), hashes)
+	inventory, err := os.ReadFile("../../testdata/deployed-subset/inventory-sources.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(directory, "inventory-sources.json"), inventory)
+	first, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,14 +60,14 @@ func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 		FROM audits WHERE id='audit:424242:complete'`); err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	second, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if second.Revision != first.Revision+1 || second.DataRevision != first.DataRevision || second.EvaluatedAt != first.EvaluatedAt || !reflect.DeepEqual(second.Counts, first.Counts) {
 		t.Fatalf("unchanged input did not publish cleanup: before=%+v after=%+v", first, second)
 	}
-	third, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	third, err := Run(ctx, store, directory, options)
 	if err != nil || !reflect.DeepEqual(third, second) {
 		t.Fatalf("repeat cleanup was not idempotent: %+v %v", third, err)
 	}

@@ -1174,16 +1174,22 @@ strings. Nested scalar values are represented by generated columns in their
 owning entity tables. No canonical JSON/JSONB or serialized documents are
 stored, and canonical scalar rows are not copied into generic source/value
 tables.
-`runs` and its run-owned records (including sessions and their events) use
-matching UTC Monday-to-Monday PostgreSQL RANGE partitions. `run_at` uses the
+`runs` and most run-owned records use matching UTC Monday-to-Monday PostgreSQL
+RANGE partitions. Audits and tools instead use UTC midnight-to-midnight shards
+and retain seven calendar days (today and the previous six), independent of
+run retention. `run_at` uses the
 run's `createdAt`, then `startedAt`, `completedAt`, or `updatedAt`; records
 without any of these use ingestion time. Linked records inherit their run's
-partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
+partition timestamp. Audits and tools for runs outside the provisioned daily
+window are omitted during ingestion; the runs themselves remain available
+until run retention expires.
+PostgreSQL routes parent-table inserts; missing partitions
 fail closed rather than creating partitions during ingestion. At startup and
 every 24 hours while the process is running, maintenance checks existing
-partitions, creates any missing current and four future weeks first, and removes complete
+partitions, creates missing daily shards through tomorrow and the current and
+four future weeks, and removes expired daily shards and complete
 weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
-Retention detaches and drops events, sessions, other run-owned tables, then
+Retention detaches and drops run-owned tables, then
 runs together, updating affected source counts and revisions. Repeated maintenance
 is a no-op when partitions are already present and none have expired; a restart
 reruns maintenance to catch up after downtime. Choose a window

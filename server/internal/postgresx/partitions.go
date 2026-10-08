@@ -19,6 +19,7 @@ const defaultRunRetentionDays = 30
 const futureRunWeeks = 4
 const dailyRetentionDays = 7
 const partitionMaintenanceInterval = 24 * time.Hour
+
 var dailyTables = []string{"audits", "tools"}
 
 var partitionsLog = logger.New("cao:postgresx:partitions")
@@ -61,7 +62,7 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	start := weekStart(cutoff)
 	current := weekStart(now)
 	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
-	existing, expired, expiredDays, err := s.existingPartitions(ctx, cutoff, dayStart(now).AddDate(0, 0, -(dailyRetentionDays - 1)))
+	existing, expired, expiredDays, err := s.existingPartitions(ctx, cutoff, dayStart(now).AddDate(0, 0, -(dailyRetentionDays-1)))
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ const tables = new Map();
 const documentation = new Map();
 const parents = new Map();
 const partitioned = new Set();
+const daily = new Set();
 navigateProgram(program, {
   model(model) {
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres') {
@@ -19,6 +20,7 @@ navigateProgram(program, {
       tables.set(`$${model.name}`, new Set(model.properties.keys()));
       documentation.set(model.name, getDoc(program, model));
       if (program.stateSet(Symbol.for('cao-postgres.run-partition')).has(model)) partitioned.add(model.name);
+      if (program.stateSet(Symbol.for('cao-postgres.daily-partition')).has(model)) daily.add(model.name);
       parents.set(model.name, [...model.properties.values()]
         .map((property) => program.stateMap(Symbol.for('cao-postgres.parent')).get(property)?.entity)
         .filter(Boolean));
@@ -53,7 +55,7 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
   ].sort());
 });
 
-test('all run-owned tables share weekly partitions and maintenance coverage', () => {
+test('run-owned tables use weekly or seven-day partitions with maintenance coverage', () => {
   const runOwned = new Set(['runs']);
   let size;
   do {
@@ -73,9 +75,11 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
   const registered = maintenance.match(/tables := \[\]string\{([^}]+)\}/);
   assert.ok(registered, 'weekly maintenance must declare its partitioned tables');
   const dropOrder = [...registered[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual([...dropOrder].sort(), names);
+  const weekly = names.filter((name) => !daily.has([...runOwned].find((model) => model.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`) === name)));
+  assert.deepEqual([...daily].sort(), ['audits', 'tools']);
+  assert.deepEqual([...dropOrder].sort(), weekly);
   for (const [child, relationships] of parents) {
-    if (!runOwned.has(child)) continue;
+    if (!runOwned.has(child) || daily.has(child)) continue;
     for (const parent of relationships.filter((name) => runOwned.has(name))) {
       const childTable = child.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
       const parentTable = parent.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -86,6 +90,11 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
   const discovered = maintenance.match(/p\.relname IN\s*\(([^)]+)\)/);
   assert.ok(discovered, 'weekly maintenance must discover every partitioned table');
   assert.deepEqual([...discovered[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort(), names);
+  assert.match(maintenance, /dailyRetentionDays = 7/);
+  assert.match(maintenance, /dailyTables = \[\]string\{"audits", "tools"\}/);
+  for (const name of daily) {
+    assert.match(sql, new RegExp(`-- ${name}: seven UTC daily run_at partitions`));
+  }
 });
 
 test('TypeSpec Audit storage describes curation without speculative duplicate Run columns', () => {

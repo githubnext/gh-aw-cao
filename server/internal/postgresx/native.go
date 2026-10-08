@@ -431,11 +431,11 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			query.SQLIdentifier(name), strings.Join(columns, ","), strings.Join(quoted, ","),
 			query.SQLIdentifier(name+"_stage"))
 		if table.daily {
-			statement += " WHERE p.run_at >= $1"
+			statement += " WHERE p.run_at >= $1 AND p.run_at < $2"
 		}
 		args := []any{}
 		if table.daily {
-			args = append(args, dayStart(w.ingestedAt).AddDate(0, 0, -(dailyRetentionDays - 1)))
+			args = append(args, dayStart(w.ingestedAt).AddDate(0, 0, -(dailyRetentionDays-1)), dayStart(w.ingestedAt).AddDate(0, 0, 1))
 		}
 		tag, err := w.tx.Exec(ctx, statement, args...)
 		if err != nil {

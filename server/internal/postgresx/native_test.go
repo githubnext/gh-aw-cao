@@ -391,9 +391,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if repeat, err := store.State(t.Context()); err != nil || repeat.Revision != state.Revision || repeat.Counts["$runs"] != 1 {
 		t.Fatalf("repeated maintenance changed logical state: %+v %v", repeat, err)
 	}
-	missingWeek := now.AddDate(0, 0, 7*futureRunWeeks)
-	missingWeek = missingWeek.AddDate(0, 0, -((int(missingWeek.Weekday()) + 6) % 7))
-	missingName := "tools_w" + missingWeek.Format("20060102")
+	missingName := "tools_d" + dayStart(now).AddDate(0, 0, 1).Format("20060102")
 	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE "+missingName); err != nil {
 		t.Fatal(err)
 	}
@@ -410,10 +408,71 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if err := store.RunPartitionMaintenance(t.Context(), later, 14); err != nil {
 		t.Fatal(err)
 	}
+
 	futureWeek := later.AddDate(0, 0, 7*futureRunWeeks)
 	futureWeek = futureWeek.AddDate(0, 0, -((int(futureWeek.Weekday()) + 6) % 7))
 	var ready bool
 	if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", "runs_w"+futureWeek.Format("20060102")).Scan(&ready); err != nil || !ready {
 		t.Fatalf("weekly rollover did not pre-create the next future partition: %v %v", ready, err)
+	}
+}
+
+func TestDailyAuditAndToolRetention(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	today := dayStart(time.Now())
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	for _, item := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$repositories", model.Row{"id": "repository"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repository"}},
+	} {
+		if err := writer.Append(t.Context(), item.source, item.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, offset := range []int{-7, -6, 0, 2} {
+		id := fmt.Sprintf("run%d", offset)
+		if err := writer.Append(t.Context(), "$runs", model.Row{"id": id, "repositoryId": "repository", "workflowId": "workflow", "createdAt": today.AddDate(0, 0, offset).Format(time.RFC3339)}); err != nil {
+			t.Fatal(err)
+		}
+		for _, source := range []string{"$audits", "$tools"} {
+			if err := writer.Append(t.Context(), source, model.Row{"id": source + id, "runId": id}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := writer.Publish(t.Context(), "daily"); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"audits", "tools"} {
+		var count, partitions int
+		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*), count(DISTINCT tableoid) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count, &partitions); err != nil || count != 2 || partitions != 2 {
+			t.Fatalf("%s retained %d rows across %d days: %v", table, count, partitions, err)
+		}
+	}
+	before, err := store.State(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RunPartitionMaintenance(t.Context(), today.AddDate(0, 0, 1), 30); err != nil {
+		t.Fatal(err)
+	}
+	after, err := store.State(t.Context())
+	if err != nil || after.Revision <= before.Revision || after.Counts["$runs"] != 4 || after.Counts["$audits"] != 1 || after.Counts["$tools"] != 1 {
+		t.Fatalf("daily retention affected run history or failed to publish: %+v %v", after, err)
+	}
+	for _, table := range []string{"audits", "tools"} {
+		var expired, future bool
+		if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NULL, to_regclass($2) IS NOT NULL",
+			table+"_d"+today.AddDate(0, 0, -6).Format("20060102"),
+			table+"_d"+today.AddDate(0, 0, 2).Format("20060102")).Scan(&expired, &future); err != nil || !expired || !future {
+			t.Fatalf("%s rollover did not replace expired shard: expired=%v future=%v err=%v", table, expired, future, err)
+		}
 	}
 }

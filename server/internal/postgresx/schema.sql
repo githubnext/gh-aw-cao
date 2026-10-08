@@ -259,6 +259,8 @@ CREATE INDEX IF NOT EXISTS runs_workflow_id ON runs (namespace, workflow_id, ord
 
 CREATE INDEX IF NOT EXISTS runs_identity ON runs (namespace, id);
 
+-- audits: seven UTC daily run_at partitions, maintained independently of runs.
+
 CREATE TABLE IF NOT EXISTS audits (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
@@ -837,6 +839,8 @@ CREATE TABLE IF NOT EXISTS skills (
 CREATE INDEX IF NOT EXISTS skills_run_id ON skills (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS skills_identity ON skills (namespace, id);
+
+-- tools: seven UTC daily run_at partitions, maintained independently of runs.
 
 CREATE TABLE IF NOT EXISTS tools (
   namespace TEXT NOT NULL,
