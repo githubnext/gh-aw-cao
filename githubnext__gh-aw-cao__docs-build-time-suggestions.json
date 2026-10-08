@@ -3,44 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T06:02:00Z",
-      "worker_run_id": 37734878773,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37735013924,
-        37734716675,
-        37734298228,
-        37734297231,
-        37734180833,
-        37734063823,
-        37733942264,
-        37733857728,
-        37733404070,
-        37733402887,
-        37733402875,
-        37733389876,
-        37733094287,
-        37733092792,
-        37732976966,
-        37732924239,
-        37732524394,
-        37732310820,
-        37731294092,
-        37730400751,
-        37730045129,
-        37726721769,
-        37721052798,
-        37716988626,
-        37712654857,
-        37709368540,
-        37703216748,
-        37700462461,
-        37698114059,
-        37696643240
-      ],
-      "outcome": "incomplete_due_to_rate_limit: the latest 20 completed docs.yml runs in the last 14 days yielded 7 successful runs, including 5 comparable build-bearing successes (37734716675, 37733857728, 37733404070, 37732976966, 37731294092) and 2 freshness skips (37732524394, 37730400751). Trusted Actions metadata showed 100% CAO Dashboard cache hits in all 5 build-bearing docs runs, so Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped every time; docs queue median/p90 was 0s/0s, full workflow 82s/93.6s, build 53s/57s, deploy 26s/30.8s on the 3 deployed runs, Build documentation 12s/13s, Restore cached CAO Dashboard 3s/3.6s, and Upload Pages artifact 12s/14s. Relevant successful cao-dashboard.yml runs in the same 14-day window still showed dashboard generation as the dominant upstream cost: full workflow median/p90 438.5s/649.8s, dashboard build job 395.5s/632.7s, Restore collected activity data 41s/81.6s, Upgrade fallback activity data 298s/509.3s, Assemble Dashboard Language site 7s/9s, and Upload dashboard artifact 11s/12.1s. Bounded logs confirmed repeated reuse of the same activity cache key across multiple successful push-triggered dashboard builds (37696643240, 37698114059, 37700462461, 37703216748, and 37709368540 all restored cao-activity-v5-37691694017-1; 37712654857 and 37716988626 both restored cao-activity-v5-37698136052-1; 37721052798 and 37726721769 both restored cao-activity-v5-37704871035-1), yet each reran Upgrade fallback activity data for 175-218s, 378-397s, and 473-491s respectively. This supports a likely threshold-meeting reusable-dashboard-generation recommendation to cache or otherwise reuse the upgraded activity snapshot across push-triggered CAO Dashboard rebuilds keyed by the restored activity snapshot and activity-ingestion sources. However, a GitHub API rate limit was hit before the required all-open-issues duplicate scan for this worker could be completed, so no new issue could be emitted safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-08T06:49:34Z",
       "worker_run_id": 37739056820,
       "category": "reusable dashboard generation",
@@ -852,6 +814,34 @@
         37811803743
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T16:49:35Z through 2026-10-08T19:24:00Z and contained 10 successful schedule runs, but all 10 were freshness-only passes with build and deploy skipped. The other 10 runs were skipped workflow_run entries. That leaves 0 comparable build-bearing successful docs runs, below the required minimum of 5 for dependency installation and caching. The same bounded check of the latest 20 completed cao-dashboard.yml runs yielded 0 successful runs (17 skipped, 2 cancelled, 1 failed), so upstream cache timing could not be revalidated safely either. No evidence-backed recommendation can be made in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T19:42:57Z",
+      "worker_run_id": 37833535488,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37833111436,
+        37832937262,
+        37831646623,
+        37831315374,
+        37828963289,
+        37828764238,
+        37827847262,
+        37827544394,
+        37824955752,
+        37824589778,
+        37821163655,
+        37820370700,
+        37819530284,
+        37819170486,
+        37817729084,
+        37817563564,
+        37816220255,
+        37815934507,
+        37813421963,
+        37813110563
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T16:59:45Z through 2026-10-08T19:35:52Z and contained 10 successful schedule runs, but all 10 were freshness-only passes where schedule-freshness succeeded and build and deploy were skipped. The other 10 runs were skipped workflow_run entries for the same source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. That leaves 0 comparable build-bearing successful docs runs, below the required minimum of 5 for dependency installation and caching. The related latest 20 completed cao-dashboard.yml runs in the same window contained 17 skipped workflow_run runs, 2 cancelled runs, and 1 failed push run, with 0 successful dashboard builds available for trusted cache-hit or install-time comparison."
     }
   ]
 }
