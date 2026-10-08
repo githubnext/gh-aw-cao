@@ -1,6 +1,10 @@
+import { createDebug } from './debug.js';
+
 /** @typedef {{ label: string, field: string, source: string, 'value-field': string, 'label-field'?: string }} ViewFilterGroup */
 /** @typedef {{ id: string, label: string, groups: ViewFilterGroup[] }} ViewFilterControl */
 /** @typedef {Record<string, Record<string, string[]>>} ViewFilters */
+
+const debugViewFilterContract = createDebug('view-filter-contract');
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
@@ -35,7 +39,12 @@ export function dashboardViewSourceNames(view) {
 
 /** @param {unknown} value @returns {ViewFilters | undefined} */
 export function normalizeViewFilters(value) {
+  if (value !== undefined && !isRecord(value)) {
+    debugViewFilterContract({ event: 'view-filters-rejected', reason: 'not-a-mapping' });
+    return undefined;
+  }
   if (!isRecord(value)) return undefined;
+  const viewCount = Object.keys(value).length;
   const entries = Object.entries(value).flatMap(([viewId, filters]) => {
     if (!isRecord(filters)) return [];
     const fields = Object.entries(filters).flatMap(([field, values]) => {
@@ -45,6 +54,11 @@ export function normalizeViewFilters(value) {
       return selected.length ? [[field, selected]] : [];
     });
     return fields.length ? [[viewId, Object.fromEntries(fields)]] : [];
+  });
+  debugViewFilterContract({
+    event: 'view-filters-normalized',
+    viewCount,
+    retainedViewCount: entries.length
   });
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
