@@ -132,6 +132,30 @@ func validateBenchmarkCandidates(candidates []string, defined map[string]bool) e
 	return nil
 }
 
+// loadBenchmarkDefinitions parses the canonical database queries and the
+// dashboard's declared queries, merges them, binds the ingestion evaluation
+// time, and validates every candidate against the dashboard-declared set. It
+// is extracted from benchmarkQueries so this read-merge-validate boundary is
+// independently testable against real query-definition files, without
+// executing any Postgres query.
+func loadBenchmarkDefinitions(databasePath, dashboardPath, evaluatedAt string, candidates []string) ([]query.Definition, error) {
+	database, err := server.ParseDashboardQueries(databasePath)
+	if err != nil {
+		return nil, fmt.Errorf("parse database queries: %w", err)
+	}
+	dashboard, err := server.ParseDashboardQueries(dashboardPath)
+	if err != nil {
+		return nil, fmt.Errorf("parse dashboard queries: %w", err)
+	}
+	definitions, defined := mergeBenchmarkDefinitions(database, dashboard)
+	server.ResolveQueryContext(definitions, evaluatedAt)
+	if err := validateBenchmarkCandidates(candidates, defined); err != nil {
+		benchmarkLog.Printf("benchmark definitions rejected candidate database=%d dashboard=%d", len(database), len(dashboard))
+		return nil, err
+	}
+	return definitions, nil
+}
+
 func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, databasePath, dashboardPath string, candidates []string) (benchmarkReport, error) {
 	report := benchmarkReport{Engine: "postgres-native-sql", PageLimit: benchmarkPageLimit, Measurements: []benchmarkMeasurement{}}
 	if len(candidates) == 0 {
@@ -146,17 +170,8 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	if err != nil {
 		return report, err
 	}
-	database, err := server.ParseDashboardQueries(databasePath)
+	definitions, err := loadBenchmarkDefinitions(databasePath, dashboardPath, result.EvaluatedAt, candidates)
 	if err != nil {
-		return report, fmt.Errorf("parse database queries: %w", err)
-	}
-	dashboard, err := server.ParseDashboardQueries(dashboardPath)
-	if err != nil {
-		return report, fmt.Errorf("parse dashboard queries: %w", err)
-	}
-	definitions, defined := mergeBenchmarkDefinitions(database, dashboard)
-	server.ResolveQueryContext(definitions, result.EvaluatedAt)
-	if err := validateBenchmarkCandidates(candidates, defined); err != nil {
 		return report, err
 	}
 	benchmarkLog.Printf("benchmark starting candidates=%d records=%d", len(candidates), report.Records)

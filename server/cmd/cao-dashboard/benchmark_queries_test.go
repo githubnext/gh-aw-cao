@@ -45,6 +45,36 @@ func TestValidateBenchmarkCandidatesRejectsUndeclared(t *testing.T) {
 	}
 }
 
+func TestLoadBenchmarkDefinitionsMergesAndValidatesCandidates(t *testing.T) {
+	directory := t.TempDir()
+	databasePath := filepath.Join(directory, "database.json")
+	dashboardPath := filepath.Join(directory, "dashboard.json")
+	if err := os.WriteFile(databasePath, []byte(`[{"name":"runs-base","from":"$runs","select":[{"field":"id"}]}]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dashboardPath, []byte(`[{"name":"overview","from":"runs-base","select":[{"field":"id"}]}]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	definitions, err := loadBenchmarkDefinitions(databasePath, dashboardPath, "2024-01-01T00:00:00Z", []string{"overview"})
+	if err != nil {
+		t.Fatalf("expected a declared candidate to load, got %v", err)
+	}
+	if len(definitions) != 2 {
+		t.Fatalf("expected the merged database and dashboard definitions, got %d", len(definitions))
+	}
+
+	if _, err := loadBenchmarkDefinitions(databasePath, dashboardPath, "2024-01-01T00:00:00Z", []string{"runs-base"}); err == nil {
+		t.Fatal("a database-only query must not be a usable candidate")
+	}
+	if _, err := loadBenchmarkDefinitions(filepath.Join(directory, "missing.json"), dashboardPath, "", []string{"overview"}); err == nil {
+		t.Fatal("a missing database-queries file must fail closed")
+	}
+	if _, err := loadBenchmarkDefinitions(databasePath, filepath.Join(directory, "missing.json"), "", []string{"overview"}); err == nil {
+		t.Fatal("a missing dashboard-queries file must fail closed")
+	}
+}
+
 func TestBenchmarkPostgresConfigLocalOnly(t *testing.T) {
 	for _, tc := range []struct {
 		name, endpoint string
