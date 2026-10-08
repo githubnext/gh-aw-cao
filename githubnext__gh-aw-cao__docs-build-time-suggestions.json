@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T11:27:45Z",
-      "worker_run_id": 37769778469,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37769964157,
-        37769640439,
-        37768339711,
-        37767354938,
-        37766421316,
-        37765800699,
-        37765341322,
-        37763659759,
-        37763417424,
-        37760829188,
-        37760514832,
-        37759773384,
-        37759332466,
-        37758227457,
-        37756854202,
-        37755874498,
-        37753355309,
-        37753044172,
-        37751475386,
-        37748728913
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T08:16:17Z through 2026-10-08T11:25:39Z and contained 13 successful runs, but only 2 comparable build-bearing successes (37768339711 and 37748728913). The other 11 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. Upstream comparison is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same window contained only 2 successful runs (37766230957 and 37747029010). No safe evidence-backed recommendation can be made in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-08T11:42:52Z",
       "worker_run_id": 37771473014,
       "category": "artifact transfer and Pages packaging",
@@ -846,6 +818,34 @@
         37839590657
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T20:27:31Z through 2026-10-08T22:56:19Z. Within that bounded sample, 12 runs concluded success but every success was a schedule freshness pass with build and deploy skipped; the remaining 8 runs were skipped workflow_run attempts. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5, so no trusted median/p90 Astro build-time evaluation or actionable recommendation could be made in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T23:27:30Z",
+      "worker_run_id": 37859168117,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37859196214,
+        37858977704,
+        37857086761,
+        37856544752,
+        37855862451,
+        37855445318,
+        37854500905,
+        37853319314,
+        37853069623,
+        37850822943,
+        37850199522,
+        37849436737,
+        37849106613,
+        37847904951,
+        37847756334,
+        37846551954,
+        37846239020,
+        37843846400,
+        37843247798,
+        37842661494
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T20:52:18Z through 2026-10-08T23:23:51Z. Within that bounded sample, 11 runs concluded success but every success was a schedule freshness pass with build and deploy skipped; the remaining 9 runs were skipped workflow_run attempts. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5, so no trusted median/p90 Astro build-time evaluation or actionable recommendation could be made in this cycle."
     }
   ]
 }
