@@ -140,22 +140,6 @@ async function loadRequestedSource(bindingKey) {
   }
 }
 
-/**
- * Forgets the state bound to the named sources so a new render starts from the
- * queries again.
- * @param {Iterable<string>} names
- */
-export function clearSources(names) {
-  for (const name of names) {
-    entries.delete(name);
-    requested.delete(name);
-    requestOptions.delete(name);
-    requestKeys.delete(name);
-    requestNames.delete(name);
-    generations.delete(name);
-  }
-}
-
 /** Releases every bound source and the configured loader. */
 export function resetSourceStore() {
   entries.clear();
