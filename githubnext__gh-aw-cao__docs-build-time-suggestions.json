@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T08:39:19Z",
-      "worker_run_id": 37750787245,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37748728913,
-        37748544843,
-        37747030324,
-        37746580698,
-        37745311433,
-        37744470183,
-        37741745801,
-        37741448739,
-        37739110146,
-        37738891866,
-        37736402303,
-        37736253412,
-        37735634847,
-        37735489476,
-        37735405414,
-        37735013924,
-        37734716675,
-        37734298228,
-        37734297231,
-        37734180833
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 8 successful runs, but only 2 comparable build-bearing successes (37748728913 workflow_run and 37734716675 schedule); the other 6 successes were freshness-gated skips with no build or deploy timings. This category requires at least 5 comparable successful runs to revalidate artifact-transfer and Pages-packaging costs. Within the same bounded window, the latest 20 completed cao-dashboard.yml runs contained only 1 successful run (37747029010), so upstream reusable-dashboard evidence is also below the minimum sample. Trusted metadata from the two build-bearing docs runs still showed node_modules and dashboard cache hits with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped, while Upload Pages artifact took 12s and 10s and Deploy Pages took 7s and 28s, but that sample is too small for a new evidence-backed recommendation."
-    },
-    {
       "evaluated_at": "2026-10-08T09:08:10Z",
       "worker_run_id": 37753980172,
       "category": "artifact transfer and Pages packaging",
@@ -846,6 +818,35 @@
         37824589778
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T18:28:48Z through 2026-10-08T20:57:06Z and all used source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. Ten runs concluded success, but every success was a schedule freshness pass with build and deploy skipped; the other ten runs were skipped workflow_run triggers. That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for the dependency installation and caching category. The latest 20 completed cao-dashboard.yml runs in the same window also contained 0 successful full builds, so no trusted cache-hit or dependency-install timing sample was available for a safe threshold-backed recommendation."
+    },
+    {
+      "evaluated_at": "2026-10-08T21:27:12Z",
+      "worker_run_id": 37846433761,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37846551954,
+        37846239020,
+        37843846400,
+        37843247798,
+        37842661494,
+        37841378564,
+        37839991393,
+        37839590657,
+        37839269857,
+        37836389054,
+        37835705192,
+        37834847191,
+        37834469714,
+        37833111436,
+        37832937262,
+        37831646623,
+        37831315374,
+        37828963289,
+        37828764238,
+        37827847262
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T18:54:07Z through 2026-10-08T21:24:30Z and all used source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. Eleven runs concluded success, but every success was a schedule freshness pass with schedule-freshness successful and build and deploy skipped; the other nine runs were skipped workflow_run triggers. That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for the Astro documentation generation category. Queue median/p90 across the successful schedule passes was 0s/0s, full workflow median/p90 was 16s/18s, and schedule-freshness job median/p90 was 11s/13s. The latest 20 completed cao-dashboard.yml runs in the same window also contained 0 successful full builds (18 skipped, 1 cancelled, 1 skipped push), so no trusted upstream dashboard-generation sample was available either.",
+      "suggestion_fingerprint": null
     }
   ]
 }
