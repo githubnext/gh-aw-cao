@@ -60,7 +60,9 @@ describe('view formatter helpers', () => {
     expect(toNumber(12)).toBe(12);
     expect(toNumber('12')).toBe(0);
     expect(formatNumber(2)).toBe('2');
-    expect(formatNumber(2.5)).toBe('2.50');
+    expect(formatNumber(2.5)).toBe('2.5');
+    expect(formatNumber(11648.874562937062)).toBe('11648.875');
+    expect(formatNumber(-1.23456)).toBe('-1.235');
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('3 AIC');
     expect(formatNumber(-2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('-3 AIC');
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1, format: 'number' })).toBe('3');

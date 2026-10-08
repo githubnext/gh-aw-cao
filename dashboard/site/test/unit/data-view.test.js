@@ -471,6 +471,53 @@ describe('data view renderer', () => {
     expect(running?.querySelectorAll('.entity-card-list-timing-item')).toHaveLength(1);
   });
 
+  it('limits card label and metric pills to four while retaining card details', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'models',
+      title: 'Models',
+      sourceName: 'models',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'model' },
+        encoding: { columns: [{ field: 'name' }] }
+      },
+      rows: [{
+        name: 'Model A',
+        tags: ['one', 'two'],
+        runs: 100,
+        average: 1.23456,
+        maximum: 200,
+        minimum: 1,
+        description: 'Observed model'
+      }],
+      cardTemplates: {
+        model: {
+          icon: 'table',
+          title: { field: 'name' },
+          labels: [{ field: 'tags', display: 'label' }],
+          details: [{ field: 'description', title: 'Description' }],
+          metrics: [
+            { field: 'runs', title: 'Runs' },
+            { field: 'average', title: 'Average' },
+            { field: 'maximum', title: 'Maximum' },
+            { field: 'minimum', title: 'Minimum' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect([...rendered?.querySelectorAll('.issue-list-labels li') ?? []].map((item) => item.textContent))
+      .toEqual(['one', 'two', '100Runs', '1.235Average']);
+    expect(rendered?.querySelector('.issue-list-card-meta')?.textContent).toContain('Observed model');
+  });
+
   it('renders reusable entity cards with external and query drill behavior', () => {
     const baseContext = {
       pageId: 'items',
