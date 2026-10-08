@@ -11,12 +11,25 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
 
 const defaultRunRetentionDays = 30
 const futureRunWeeks = 4
 const partitionMaintenanceInterval = 24 * time.Hour
+
+var partitionsLog = logger.New("cao:postgresx:partitions")
+
+// weekStart truncates t (interpreted in UTC) to the Monday 00:00:00 that
+// begins its partition week. It is extracted from RunPartitionMaintenance so
+// the week-boundary computation is a single, independently testable pure
+// function, separate from the maintenance transaction it drives.
+func weekStart(t time.Time) time.Time {
+	t = t.UTC()
+	day := (int(t.Weekday()) + 6) % 7
+	return time.Date(t.Year(), t.Month(), t.Day()-day, 0, 0, 0, 0, time.UTC)
+}
 
 // RunPartitionMaintenance is an administrative operation, never part of
 // ingestion. Only whole weeks strictly older than the retention cutoff go.
@@ -38,18 +51,17 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	}
 	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
-	week := func(t time.Time) time.Time {
-		t = t.UTC()
-		day := (int(t.Weekday()) + 6) % 7
-		return time.Date(t.Year(), t.Month(), t.Day()-day, 0, 0, 0, 0, time.UTC)
-	}
-	start := week(cutoff)
-	current := week(now)
+	start := weekStart(cutoff)
+	current := weekStart(now)
 	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
 	existing, expired, err := s.existingPartitions(ctx, cutoff)
 	if err != nil {
 		return err
 	}
+	partitionsLog.Printf("partition maintenance started namespace=%s retention_days=%d expired_weeks=%d", s.namespace, retentionDays, len(expired))
+	defer func() {
+		partitionsLog.Printf("partition maintenance finished namespace=%s window_start=%s window_end=%s", s.namespace, start.Format("20060102"), end.Format("20060102"))
+	}()
 	// Provision the current and upcoming weeks before any historical backlog.
 	for at := current; at.Before(end); at = at.AddDate(0, 0, 7) {
 		if err := s.createWeek(ctx, tables, at, existing); err != nil {
