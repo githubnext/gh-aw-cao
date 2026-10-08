@@ -3,23 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T23:28:00Z",
-      "worker_run_id": 37388194827,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        37388116297,
-        37386095629,
-        37385532062,
-        37384577079,
-        37383273165,
-        37382193010,
-        37379912162,
-        37385120925
-      ],
-      "outcome": "no_actionable_improvement_duplicate_open_issue: latest 20 completed docs.yml runs in the last 14 days yielded 7 successful runs, meeting the minimum sample with 4 build-bearing successes (37385532062, 37383273165, 37382193010, 37379912162) and 3 freshness skips (37388116297, 37386095629, 37384577079). Trusted Actions metadata showed docs queue median/p90 0s/0s, full workflow 48s/104s, build 43s/50s, deploy 30s/46.8s, and schedule-freshness 7.5s/9.5s. Restore node_modules hit in all 4 build-bearing runs with 5.5s median; Install dependencies and Save node_modules were skipped every time. Restore cached CAO Dashboard also hit in all 4 builds with 2.0s median; Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped every time. Build documentation remained 12s median and Upload Pages artifact 10s median. Recent schedule runs 37388116297, 37386095629, and 37384577079 skipped build entirely, confirming the current freshness gate is preventing avoidable rebuilds. The latest successful producer run 37385120925 still spends about 169s in Upgrade fallback activity data inside cao-dashboard.yml, but that producer-side cost cannot be recommended safely in this cycle because the next category remained scheduling and avoidable rebuilds, and the only threshold-meeting docs-side recommendation for this category is already represented by open issue #16054 and implemented in current source.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T23:40:00Z",
       "worker_run_id": 37389327619,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -822,6 +805,34 @@
         37751475386
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T08:41:09Z through 2026-10-08T11:37:25Z, 13 runs concluded success but 12 were freshness-only schedule skips and only 1 run (37768339711) executed both build and deploy. The relevant producer sample is also too small: the latest 20 completed cao-dashboard.yml runs in the same window contained only 2 successful full builds (37766230957 and 37747029010). That leaves fewer than 5 comparable successful runs for the artifact transfer and Pages packaging category, so median and p90 timings for dashboard/build/deploy transfer work and cache-transfer behavior cannot be evaluated reliably."
+    },
+    {
+      "evaluated_at": "2026-10-08T12:00:00Z",
+      "worker_run_id": 37773221025,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37773443442,
+        37772685592,
+        37772174247,
+        37771254350,
+        37769964157,
+        37769640439,
+        37768339711,
+        37767354938,
+        37766421316,
+        37765800699,
+        37765341322,
+        37763659759,
+        37763417424,
+        37760829188,
+        37760514832,
+        37759773384,
+        37759332466,
+        37758227457,
+        37756854202,
+        37755874498
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T09:19:43Z through 2026-10-08T11:56:51Z, 12 runs concluded success but 11 were freshness-only schedule passes with build and deploy skipped; only run 37768339711 executed both build and deploy successfully. The remaining 8 runs were skipped workflow_run attempts. That leaves fewer than 5 comparable successful build-bearing docs runs for the artifact transfer and Pages packaging category, so trusted Actions metadata cannot support median/p90 measurements or a safe threshold-meeting recommendation in this cycle."
     }
   ]
 }
