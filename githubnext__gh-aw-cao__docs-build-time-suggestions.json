@@ -3,33 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T22:28:27Z",
-      "worker_run_id": 37382250394,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37382193010,
-        37379912162,
-        37379774741,
-        37378351433,
-        37377523180,
-        37376805851,
-        37375568697,
-        37373328255,
-        37360669971,
-        37359561696,
-        37356703467,
-        37353153123,
-        37352936883,
-        37352687504,
-        37351273809,
-        37350395830,
-        37349524863,
-        37348062285
-      ],
-      "outcome": "no_actionable_improvement: evaluated reusable dashboard generation using the latest 18 successful completed docs.yml runs in the last 14 days because only 18 such runs were available in the bounded window. This yielded 13 comparable build-bearing successes and 5 trusted freshness skips. Queue median/p90 was 0s/0s; full workflow median/p90 was 89s/355.8s including two deploy outliers; build median/p90 was 49s/62.2s; deploy median/p90 was 24s/30.1s; schedule-freshness median/p90 was 8s/10s. Trusted step metadata showed Restore node_modules median 5s and Restore cached CAO Dashboard median 2s, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in all 13 build-bearing runs, confirming repeated cache hits from metadata rather than syntax inference. Build documentation itself stayed small at 13s median. Freshness gating already skipped workflow_run 37353153123 and recent schedule runs 37379774741, 37360669971, 37359561696, and 37348062285, so duplicate consumer-side docs rebuilds are already addressed by the current source and open issue #16054. Within the allowed evidence scope, there were not five successful cao-dashboard.yml runs to support a fresh producer-side reusable-dashboard-generation recommendation, so no new non-duplicate actionable change meeting the >=60s or >=15% threshold could be justified safely.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T22:39:00Z",
       "worker_run_id": 37383640301,
       "category": "artifact transfer and Pages packaging",
@@ -814,6 +787,34 @@
         37741448739
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T07:06:45Z through 2026-10-08T10:28:08Z and contained only 1 comparable successful build-bearing docs run (37748728913), below the required minimum of 5. The bounded sample otherwise comprised 10 successful schedule freshness checks that skipped build/deploy and 9 skipped workflow_run attempts, so no trusted timing, cache-effectiveness, or dashboard-generation recommendation could be revalidated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-08T10:58:00Z",
+      "worker_run_id": 37766607646,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37766421316,
+        37765800699,
+        37765341322,
+        37763659759,
+        37763417424,
+        37760829188,
+        37760514832,
+        37759773384,
+        37759332466,
+        37758227457,
+        37756854202,
+        37755874498,
+        37753355309,
+        37753044172,
+        37751475386,
+        37748728913,
+        37748544843,
+        37747030324,
+        37746580698,
+        37745311433
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T07:44:30Z through 2026-10-08T10:53:12Z and contained 12 successful runs, but only 1 comparable build-bearing success (37748728913). The other 11 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. No safe evidence-backed recommendation can be made in this cycle."
     }
   ]
 }
