@@ -76,18 +76,28 @@
     "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history."
   },
   "evaluation": {
-    "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
+    "target_repo": "github/gh-aw",
+    "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
     "true_positive_count": 0,
-    "false_positive_count": 1,
-    "false_negative_count": 1,
-    "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 3d42b1d: tests/e2e/cao-mcp-container.mjs:89 still runs chmod -R a+rX on a fresh mkdtemp directory before reading it read-only into a docker volume (false positive against a naive recursive-chmod heuristic: the directory is freshly created and exclusively owned, not a widening of pre-existing restricted files). No drift since refiner-37557116506-2.",
-    "txn_id": "refiner-37812883520-2"
+    "false_positive_count": 0,
+    "false_negative_count": 0,
+    "readiness_for_target": "not-applicable",
+    "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
+    "txn_id": "refiner-37835259305-5"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37812883520",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37835259305",
+  "last_updated_target_repo": "github/gh-aw",
   "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 1,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 3d42b1d: tests/e2e/cao-mcp-container.mjs:89 still runs chmod -R a+rX on a fresh mkdtemp directory before reading it read-only into a docker volume (false positive against a naive recursive-chmod heuristic: the directory is freshly created and exclusively owned, not a widening of pre-existing restricted files). No drift since refiner-37557116506-2.",
+      "txn_id": "refiner-37812883520-2"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
@@ -159,6 +169,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-08T17:03:52Z",
-  "last_updated": "2026-10-08T17:03:52Z"
+  "last_seen_at": "2026-10-08T20:02:40Z",
+  "last_updated": "2026-10-08T20:02:40Z"
 }
