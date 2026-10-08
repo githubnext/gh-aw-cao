@@ -110,6 +110,52 @@ func TestSQLCompilationTreatsUndeclaredFieldsAsMissing(t *testing.T) {
 	}
 }
 
+func TestComputeReferencesBatchField(t *testing.T) {
+	field := "double"
+	other := "owner"
+	computed := ComputedField{As: "triple", Function: "product", Args: []Argument{{Field: &field}, {Value: 3}}}
+
+	if computeReferencesBatchField(computed, map[string]bool{}) {
+		t.Fatal("expected no batch reference for an empty batch")
+	}
+	if computeReferencesBatchField(computed, map[string]bool{other: true}) {
+		t.Fatal("expected no batch reference when the batch holds an unrelated field")
+	}
+	if !computeReferencesBatchField(computed, map[string]bool{field: true}) {
+		t.Fatal("expected a batch reference when the batch holds the argument field")
+	}
+
+	literalOnly := ComputedField{As: "constant", Function: "literal", Args: []Argument{{Value: 1}}}
+	if computeReferencesBatchField(literalOnly, map[string]bool{field: true}) {
+		t.Fatal("a literal-only argument must never report a batch reference")
+	}
+}
+
+func TestCompileSQLSplitsComputeBatchOnSelfReference(t *testing.T) {
+	valueField := "value"
+	doubleField := "double"
+	definitions := []Definition{
+		{Name: "chained", From: "facts",
+			Compute: []ComputedField{
+				{As: "double", Function: "product", Args: []Argument{{Field: &valueField}, {Value: 2}}},
+				{As: "quadruple", Function: "product", Args: []Argument{{Field: &doubleField}, {Value: 2}}},
+			}},
+	}
+	plan, err := CompileSQL(definitions, []string{"chained"}, sqlTestResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	computeOutputs := 0
+	for _, step := range plan.Steps {
+		if step.Operation == "compute-output" {
+			computeOutputs++
+		}
+	}
+	if computeOutputs == 0 {
+		t.Fatalf("expected the compute batch to materialize once the second compute read the first's output: %+v", plan.Steps)
+	}
+}
+
 func TestSQLBindsNULStringsAsNonMatchingText(t *testing.T) {
 	compiler := &sqlCompiler{}
 	if placeholder := compiler.bind("a\x00b"); placeholder != "$1" {

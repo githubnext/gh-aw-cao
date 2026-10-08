@@ -193,6 +193,20 @@ func qualifyRelation(relation SQLRelation, alias string) SQLRelation {
 	return SQLRelation{SQL: relation.SQL + " AS " + alias, Columns: columns, Order: alias + "." + relation.Order}
 }
 
+// computeReferencesBatchField reports whether computed reads a field
+// produced earlier in the same uncommitted compute batch. It is extracted
+// from the inline loop in definition so the batch-split boundary is
+// independently testable against plain field names, without constructing a
+// SQLRelation or running the compiler.
+func computeReferencesBatchField(computed ComputedField, batch map[string]bool) bool {
+	for _, argument := range computed.Args {
+		if argument.Field != nil && batch[*argument.Field] {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *sqlCompiler) definition(definition Definition, relations map[string]SQLRelation) (SQLRelation, error) {
 	relation := relations[definition.From]
 	if relation.SQL == "" {
@@ -239,12 +253,10 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 	// re-projected once per field.
 	batch := map[string]bool{}
 	for _, computed := range definition.Compute {
-		for _, argument := range computed.Args {
-			if argument.Field != nil && batch[*argument.Field] {
-				relation = c.materialize(relation, definition.Name, "compute-output", 0)
-				batch = map[string]bool{}
-				break
-			}
+		if computeReferencesBatchField(computed, batch) {
+			queryLog.Printf("compute batch materialized query=%s batch_size=%d", definition.Name, len(batch))
+			relation = c.materialize(relation, definition.Name, "compute-output", 0)
+			batch = map[string]bool{}
 		}
 		c.steps = append(c.steps, SQLStep{Query: definition.Name, Relation: strings.Trim(relation.SQL, `"`), Operation: "compute", Weight: 1})
 		column, err := c.compute(relation, computed)
