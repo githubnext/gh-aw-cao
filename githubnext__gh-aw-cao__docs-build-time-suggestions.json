@@ -3,34 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T01:05:52Z",
-      "worker_run_id": 37710872476,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37710255085,
-        37709896696,
-        37709440076,
-        37705768862,
-        37704882383,
-        37704741180,
-        37704512495,
-        37704240299,
-        37703914720,
-        37703691947,
-        37703134868,
-        37702980335,
-        37702872795,
-        37702872393,
-        37702487133,
-        37702470976,
-        37702458270,
-        37701889335,
-        37701617992,
-        37700921282
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-07T23:12:36Z through 2026-10-08T00:55:14Z and was dominated by 19 cancelled runs plus 1 action_required run across recent source SHAs 179ccfd46d3383a6f29b13094dd8ffa0ebc58a44, 04d36fd794fe564d33dc80a7168ea3d19536c964, bf2e1c826793bdeea788555d64ff68a83890e261, e1c62ae91594ceee9a96cb08ac78f36ae689fa90, and c33caa02c92511e18124fb0b732bea196bc27e7c, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-08T01:48:08Z",
       "worker_run_id": 37714443685,
       "category": "dependency installation and caching",
@@ -854,6 +826,34 @@
         37787589536
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T13:50:41Z through 2026-10-08T15:40:56Z, 8 runs concluded success but only 1 run (37792819686) completed the comparable schedule-freshness + build + deploy path. The other successful runs comprised 6 freshness-only schedule passes with build and deploy skipped (37802710234, 37800797116, 37797356316, 37795226883, 37789144789, 37787631283) and 1 push-triggered build-only success with deploy skipped (37790351319); the remaining sample contained 10 skipped workflow_run runs and 2 action_required workflow_run runs. The relevant producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds. That leaves fewer than 5 comparable successful runs for the artifact transfer and Pages packaging category, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T16:00:53Z",
+      "worker_run_id": 37805007139,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37804974563,
+        37804274542,
+        37803726329,
+        37803716106,
+        37802710234,
+        37800797116,
+        37797356316,
+        37796870536,
+        37795548047,
+        37795226883,
+        37794805297,
+        37793869432,
+        37792819686,
+        37792649619,
+        37792646499,
+        37791083560,
+        37790722447,
+        37790716821,
+        37790351319,
+        37790350473
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T14:10:52Z through 2026-10-08T15:57:32Z, 7 runs concluded success but only 1 run (37792819686) completed the comparable schedule-freshness + build + deploy path for category \"artifact transfer and Pages packaging\". The other successful runs comprised 5 freshness-only schedule passes with build and deploy skipped (37804274542, 37802710234, 37800797116, 37797356316, 37795226883) and 1 push-triggered build-only success with deploy skipped (37790351319); the remaining sample contained 11 skipped workflow_run runs and 2 action_required workflow_run runs. The relevant producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds. That leaves fewer than 5 comparable successful runs for artifact transfer and Pages packaging, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle."
     }
   ]
 }
