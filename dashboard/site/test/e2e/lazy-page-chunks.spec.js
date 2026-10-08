@@ -187,7 +187,9 @@ test.beforeEach(async ({ context }) => {
     if (pathname === '/') filePath = join(buildRoot, 'index.html');
     else if (pathname.endsWith('/')) filePath = join(buildRoot, pathname, 'index.html');
     if (existsSync(filePath)) {
-      const contentType = pathname.endsWith('.json')
+      const contentType = pathname.endsWith('.css')
+        ? 'text/css'
+        : pathname.endsWith('.json')
         ? 'application/json'
         : pathname.endsWith('.svg')
           ? 'image/svg+xml'
@@ -250,6 +252,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
       return nativeFetch(input, init);
     };
   });
+
   await page.goto(`${origin}/#page-repositories`);
 
   const core = await page.evaluate(async () => {
@@ -292,6 +295,46 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
     )
   );
   expect(configurationFetch?.cache).toBe('reload');
+});
+
+test('built inventory tables resolve partial-source queries through the production worker', async ({ page }) => {
+  await page.addInitScript(() => {
+    Reflect.set(window, '__dashboardImportComplete', false);
+    document.addEventListener('dashboard-data', (event) => {
+      if (event instanceof CustomEvent && event.detail?.kind === 'refresh' && event.detail.status === 'completed') {
+        Reflect.set(window, '__dashboardImportComplete', true);
+      }
+    });
+  });
+  await page.goto(`${origin}/?debug-eager-ingest=1#page-campaigns`);
+  await page.waitForFunction(() => Reflect.get(window, '__dashboardImportComplete') === true);
+  for (const [pageId, identity] of [['campaigns', 'Dependabot'], ['repositories', 'gh-aw-cao']]) {
+    await navigateToPage(page, pageId);
+    await page.getByRole('button', { name: 'Table', exact: true }).click();
+    const active = page.locator(`[data-page-id="${pageId}"]`);
+    await expect(active.locator('table')).toContainText(identity);
+    await expect(active.locator('[data-view-state="unavailable"]')).toHaveCount(0);
+    await expect(active.locator('[aria-busy="true"]')).toHaveCount(0);
+  }
+});
+
+test('built dashboard preserves supported campaign icons outside its inline core', async ({ context, page }) => {
+  await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      ...inventory,
+      campaigns: { ...inventory.campaigns, rows: inventory.campaigns.rows.map((row) => ({
+        ...row, 'campaign-icon': 'feed-trophy'
+      })) }
+    })
+  }));
+  const spriteLoaded = page.waitForResponse((response) => response.url() === `${origin}/src/octicons.svg`);
+  await page.goto(`${origin}/#page-overview`);
+  await spriteLoaded;
+  const icon = page.locator('.link-button-list-item .octicon-feed-trophy');
+  await expect(icon).toHaveAttribute('data-icon-state', 'available');
+  await expect(icon.locator('path')).not.toHaveCount(0);
+  await expect(icon.locator('use')).toHaveCount(0);
 });
 
 test('async Factory Overview elements receive their chunked query definitions', async ({ page }) => {

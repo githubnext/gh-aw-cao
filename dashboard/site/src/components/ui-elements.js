@@ -3,7 +3,6 @@
  */
 
 import { renderAllCampaignMemory } from './campaign-memory.js';
-import { renderCampaignRouteView } from './campaign-route-view.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderEntityRoute } from './entity-route.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
@@ -14,7 +13,9 @@ import { renderBoundMeasureHistory } from './measure-history.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
-import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { renderLazyView } from './lazy-view.js';
+import { createFactoryScope } from './factory-elements.js';
+import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 
 const debugUiElements = createDebug('ui-elements');
@@ -38,15 +39,13 @@ const debugUiElements = createDebug('ui-elements');
  *   viewIndex?: number,
  *   sourcesSubscribed?: boolean,
  *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
- *   headingTag: 'h3'|'h4'
+ *   headingTag: 'h2'|'h3'|'h4'
  * }} ElementRenderContext
  */
 export {};
 
 /** @type {Map<string, (context: ElementRenderContext) => HTMLElement | null>} */
 const ELEMENT_RENDERERS = new Map([
-  ['campaign-route', renderCampaignRouteView],
-  ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['problem-detail', renderProblemDetail],
@@ -104,13 +103,19 @@ const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-det
  * @template {Record<string, unknown>} Module
  * @param {() => Promise<Module>} importModule
  * @param {(module: Module, context: ElementRenderContext) => HTMLElement | null} render
- * @returns {(context: ElementRenderContext) => Promise<HTMLElement | null>}
+ * @returns {(context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>}
  */
 function lazyElementRenderer(importModule, render) {
-  return async (context) => render(await importModule(), context);
+  /** @type {Promise<Module> | undefined} */
+  let module;
+  return async (context, signal) => {
+    const loaded = await (module ??= importModule());
+    signal?.throwIfAborted();
+    return render(loaded, context);
+  };
 }
 
-/** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
+/** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
   ['campaign-route-lazy', lazyElementRenderer(
     () => import('./campaign-route-view.js'),
@@ -128,6 +133,21 @@ const LAZY_ELEMENT_RENDERERS = new Map([
  * @returns {HTMLElement | null}
  */
 export function renderUiElement(name, context) {
+  const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
+  if (lazyRenderer) {
+    const scope = createFactoryScope();
+    const root = h('div', { className: 'dashboard-lazy-element' }, renderLazyView({
+      label: context.title,
+      headingLevel: context.headingTag,
+      render: async () => {
+        const element = await renderUiElementAsync(name, context, scope.signal);
+        if (!element) throw new Error(`UI element "${name}" could not be rendered.`);
+        return element;
+      }
+    }));
+    scope.bind(root);
+    return root;
+  }
   const renderer = ELEMENT_RENDERERS.get(name);
   if (!renderer) {
     debugUiElements({ event: 'unregistered-element', name });
@@ -139,14 +159,15 @@ export function renderUiElement(name, context) {
 /**
  * @param {string} name
  * @param {ElementRenderContext} context
+ * @param {AbortSignal} [signal]
  * @returns {Promise<HTMLElement | null>}
  */
-export async function renderUiElementAsync(name, context) {
+export async function renderUiElementAsync(name, context, signal) {
   const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
   if (lazyRenderer) {
     debugUiElements({ event: 'lazy-render-started', name });
     const started = globalThis.performance?.now() ?? Date.now();
-    const element = await lazyRenderer({ ...context, element: name });
+    const element = await lazyRenderer({ ...context, element: name }, signal);
     const durationMs = Math.round((globalThis.performance?.now() ?? Date.now()) - started);
     debugUiElements({ event: 'lazy-render-completed', name, durationMs, rendered: element != null });
     return element;

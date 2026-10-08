@@ -544,7 +544,7 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
-test('repository inventory subscription publishes identity rows before computed run counts', async ({ page }) => {
+test('complete repository inventory subscriptions omit the redundant identity preview', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processor = await import(`${location.origin}/src/data-processor.js`);
     const dashboard = (await fetch(`${location.origin}/dashboard.json`).then((response) => response.json())).dashboard;
@@ -575,9 +575,8 @@ test('repository inventory subscription publishes identity rows before computed 
       lifetime.abort();
     }
   });
-  expect(result[0]).toMatchObject({ repository: 'githubnext/gh-aw-cao', pending: 'pending' });
-  expect(result[0].runs).toBeUndefined();
-  expect(result.at(-1)).toMatchObject({ repository: 'githubnext/gh-aw-cao', runs: 1 });
+  expect(result).toHaveLength(1);
+  expect(result[0]).toMatchObject({ repository: 'githubnext/gh-aw-cao', runs: 1, pending: undefined });
 });
 
 test('workflow route queries return bounded records and subscribed aggregates through the real worker', async ({ page, context }) => {

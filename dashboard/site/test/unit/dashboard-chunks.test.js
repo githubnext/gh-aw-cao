@@ -211,6 +211,31 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
     }
   });
 
+  it.each([false, true])('preserves partial-source dependency closures without requesting previews as full sources (reusable: %s)', (reusable) => {
+    const document = sampleDocument();
+    document.dashboard.queries?.push(
+      { name: 'alpha-preview', from: 'preview-identities' },
+      { name: 'preview-identities', from: 'repositories' }
+    );
+    const page = document.dashboard.pages[0];
+    if (page.kind !== 'custom') throw new Error('Expected a custom test page');
+    const view = { id: 'inventory', mark: 'table', data: { source: 'alpha-source', 'partial-source': 'alpha-preview' } };
+    if (reusable) {
+      document.dashboard.views = [view];
+      page.views = ['inventory'];
+    } else {
+      page.views = [view];
+    }
+    const { core, pageChunks } = splitDashboardDocument(document);
+    const chunk = pageChunks.get('alpha-page');
+    expect(chunk?.queries.map((query) => query.name)).toEqual(expect.arrayContaining([
+      'alpha-source', 'alpha-preview', 'preview-identities'
+    ]));
+    expect(dashboardPageSourceNames({ ...core, languageVersion: document.languageVersion }, 'alpha-page'))
+      .toEqual(['alpha-source', 'callout-source']);
+    expect(pageChunks.get('beta-page')?.queries.map((query) => query.name)).not.toContain('alpha-preview');
+  });
+
   it('keeps navigation-indicator sources out of UI-bound page requests', () => {
     const document = sampleDocument();
     document.dashboard.queries?.push({ name: 'indicator-source', source: 'indicator' });

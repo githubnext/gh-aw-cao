@@ -1,242 +1,275 @@
-import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { chromium } from '@playwright/test';
+import lighthouse from 'lighthouse';
+import desktopConfig from 'lighthouse/core/config/desktop-config.js';
+import puppeteer from 'puppeteer-core';
+import {
+  scrollRenderedViewsIntoView
+} from '../../../../tests/e2e/dashboard-deployed-refresh-helpers.mjs';
+import {
+  visibleBusyViewSelector
+} from '../../../../tests/e2e/dashboard-view-assessment.mjs';
+import {
+  canonicalCounts, instrumentPerformancePage, preparePerformanceData
+} from './lighthouse-support.mjs';
+import { assertCanonicalCounts, median, performanceFailures } from './lighthouse-contract.js';
 
 const sourceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const siteRoot = resolve(process.env.DASHBOARD_PERFORMANCE_SITE_ROOT || join(sourceRoot, 'dist'));
-const lighthouseCli = join(sourceRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
-const outputRoot = resolve(
-  process.env.DASHBOARD_PERFORMANCE_OUTPUT_DIR
-    || join(sourceRoot, 'test-results', 'lighthouse')
-);
-
-// Allows small run-to-run variance while retaining a high Lighthouse score.
-const scoreThreshold = 0.88;
-const metricBudgets = {
+const outputRoot = resolve(process.env.DASHBOARD_PERFORMANCE_OUTPUT_DIR || join(sourceRoot, 'test-results/lighthouse'));
+const temporaryRoot = join(sourceRoot, '.tmp');
+const fullRoot = resolve(process.env.DASHBOARD_PERFORMANCE_DATA_ROOT || join(temporaryRoot, 'lighthouse-data/full'));
+const emptyRoot = join(temporaryRoot, 'lighthouse-data/empty');
+const dataUrl = process.env.DASHBOARD_DATA_URL || 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
+const repeats = Number(process.env.DASHBOARD_PERFORMANCE_REPEATS || 3);
+const networkModes = (process.env.DASHBOARD_PERFORMANCE_NETWORK_MODES || 'cold,pwa').split(',');
+const threshold = 0.88;
+const budgets = {
   'cumulative-layout-shift': 0.1,
   'first-contentful-paint': 1800,
   'largest-contentful-paint': 2500,
   'speed-index': 3400,
   'total-blocking-time': 200
 };
-
 const scenarios = [
-  {
-    id: 'cfo',
-    persona: 'Chief Financial Officer',
-    question: 'Where is AI Credit usage concentrated, and is it producing operational value?',
-    routes: ['cost', 'campaigns', 'repositories']
-  },
-  {
-    id: 'cto',
-    persona: 'Chief Technology Officer',
-    question: 'Which automation bottleneck most threatens control-plane reliability?',
-    routes: ['overview', 'runs', 'workflows']
-  },
-  {
-    id: 'cso',
-    persona: 'Chief Security Officer',
-    question: 'Which assurance gap requires immediate action?',
-    routes: ['firewall', 'overview-security-findings', 'mcps']
-  }
+  { id: 'cfo', persona: 'Chief Financial Officer', question: 'Where is AI Credit usage concentrated?', routes: ['cost', 'campaigns', 'repositories'] },
+  { id: 'cto', persona: 'Chief Technology Officer', question: 'Which automation bottleneck threatens reliability?', routes: ['overview', 'runs', 'workflows'] },
+  { id: 'cso', persona: 'Chief Security Officer', question: 'Which assurance gap needs attention?', routes: ['firewall', 'overview-security-findings', 'mcps'] }
 ];
-
-const contentTypes = new Map([
-  ['.html', 'text/html; charset=utf-8'],
-  ['.js', 'text/javascript; charset=utf-8'],
-  ['.json', 'application/json; charset=utf-8'],
-  ['.svg', 'image/svg+xml']
-]);
-
-function run(command, args, options = {}) {
-  return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { stdio: 'inherit', ...options });
-    child.once('error', reject);
-    child.once('exit', (code, signal) => {
-      if (code === 0) {
-        resolvePromise();
-        return;
-      }
-      reject(new Error(`${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}`));
-    });
-  });
-}
-
-async function serveFile(request, response) {
-  const url = new URL(request.url || '/', 'http://127.0.0.1');
-  const pathname = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
-  const path = resolve(siteRoot, `.${pathname}`);
-  if (path !== siteRoot && !path.startsWith(`${siteRoot}${sep}`)) {
-    response.writeHead(403).end();
-    return;
-  }
-
-  try {
-    const details = await stat(path);
-    if (!details.isFile()) throw new Error('Not a file');
-    response.writeHead(200, {
-      'cache-control': 'no-store',
-      'content-type': contentTypes.get(extname(path)) || 'application/octet-stream'
-    });
-    response.end(await readFile(path));
-  } catch {
-    response.writeHead(404).end();
-  }
-}
+const mime = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json', '.jsonl': 'application/x-ndjson',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json',
+  '.txt': 'text/plain; charset=utf-8'
+};
 
 async function startServer() {
-  const server = createServer((request, response) => {
-    void serveFile(request, response);
+  const compressed = new Map();
+  const server = createServer(async (request, response) => {
+    try {
+      const url = new URL(request.url || '/', 'http://127.0.0.1');
+      const [, state, ...segments] = decodeURIComponent(url.pathname).split('/');
+      if (!['empty', 'full'].includes(state)) { response.writeHead(404).end(); return; }
+      const relative = segments.join('/') || 'index.html';
+      const isData = relative === 'payload-hashes.json' || relative === 'inventory-sources.json'
+        || relative.startsWith('gh-aw-logs-')
+        || relative.startsWith('memory/') && relative !== 'memory/index.html';
+      const root = isData ? state === 'full' ? fullRoot : emptyRoot : siteRoot;
+      const path = resolve(root, relative);
+      if (!path.startsWith(`${root}${sep}`)) { response.writeHead(403).end(); return; }
+      const details = await stat(path);
+      if (!details.isFile()) { response.writeHead(404).end(); return; }
+      const headers = {
+        'content-type': mime[extname(path)] || 'application/octet-stream',
+        'cache-control': 'no-store', 'content-length': details.size, vary: 'Accept-Encoding'
+      };
+      if (request.method === 'HEAD') { response.writeHead(200, headers).end(); return; }
+      let body;
+      if (/\bgzip\b/.test(request.headers['accept-encoding'] || '')
+          && ['.js', '.css', '.json', '.jsonl', '.svg', '.html'].includes(extname(path))) {
+        body = compressed.get(path);
+        if (!body) { body = gzipSync(await readFile(path)); compressed.set(path, body); }
+        headers['content-encoding'] = 'gzip';
+      } else {
+        body = await readFile(path);
+      }
+      headers['content-length'] = body.length;
+      response.writeHead(200, headers).end(body);
+    } catch (error) {
+      if (error.code === 'ENOENT') response.writeHead(404).end();
+      else { console.error(error); response.writeHead(500).end(); }
+    }
   });
   await new Promise((resolvePromise, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolvePromise);
   });
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Unable to resolve dashboard server port');
-  return { server, origin: `http://127.0.0.1:${address.port}` };
+  const { port } = server.address();
+  return { server, origin: `http://127.0.0.1:${port}` };
 }
 
-function routeUrl(origin, route) {
-  return `${origin}/?fixtures=1#page-${route}`;
-}
-
-async function recordJourney(browser, origin, scenario, directory) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await context.tracing.start({ screenshots: true, snapshots: true });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-
-  try {
-    await page.goto(routeUrl(origin, scenario.routes[0]), { waitUntil: 'networkidle' });
-    for (const route of scenario.routes) {
-      if (route !== scenario.routes[0]) {
-        await page.evaluate((pageId) => {
-          window.location.hash = `#page-${pageId}`;
-        }, route);
-      }
-      await page.locator(`[data-page-id="${route}"]`).waitFor({ state: 'visible' });
-    }
-    if (errors.length > 0) throw new Error(`${scenario.id} journey page errors: ${errors.join('; ')}`);
-  } finally {
-    await context.tracing.stop({ path: join(directory, 'playwright-trace.zip') });
-    await context.close();
-  }
-}
-
-function auditValue(lhr, auditId) {
-  const value = lhr.audits?.[auditId]?.numericValue;
-  if (typeof value !== 'number') throw new Error(`Lighthouse report omitted ${auditId}`);
-  return value;
-}
-
-async function auditScenario(origin, scenario, directory, chromePath) {
-  const reportPath = join(directory, 'lighthouse');
-  await run(process.execPath, [
-    lighthouseCli,
-    routeUrl(origin, scenario.routes[0]),
-    '--quiet',
-    '--preset=desktop',
-    '--only-categories=performance',
-    '--output=json',
-    '--output=html',
-    `--output-path=${reportPath}`,
-    '--save-assets',
-    '--disable-full-page-screenshot',
-    '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'
-  ], {
-    env: { ...process.env, CHROME_PATH: chromePath }
+async function unusedPort() {
+  const server = createServer();
+  await new Promise((resolvePromise, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolvePromise);
   });
+  const { port } = server.address();
+  await new Promise((resolvePromise) => server.close(resolvePromise));
+  return port;
+}
 
-  const lhr = JSON.parse(await readFile(`${reportPath}.report.json`, 'utf8'));
-  const score = lhr.categories?.performance?.score;
-  if (typeof score !== 'number') throw new Error(`${scenario.id} Lighthouse report omitted its performance score`);
+const routeUrl = (origin, state, route, eager = false) => (
+  `${origin}/${state}/?online=1${eager ? '&debug-eager-ingest=1' : ''}#page-${route}`
+);
 
-  const metrics = Object.fromEntries(
-    Object.keys(metricBudgets).map((auditId) => [auditId, auditValue(lhr, auditId)])
-  );
-  const failures = [];
-  if (score < scoreThreshold) failures.push(`score ${score.toFixed(2)} is below ${scoreThreshold.toFixed(2)}`);
-  for (const [auditId, budget] of Object.entries(metricBudgets)) {
-    if (metrics[auditId] > budget) {
-      failures.push(`${auditId} ${metrics[auditId].toFixed(2)} exceeds ${budget}`);
-    }
+async function ready(page, route) {
+  const active = page.locator(`[data-page-id="${route}"]`);
+  await active.waitFor({ state: 'visible', timeout: 180_000 });
+  await active.locator('[data-view-id]').first().waitFor({ state: 'attached' });
+  await scrollRenderedViewsIntoView(active);
+  await page.waitForFunction((selector) => {
+    const active = document.querySelector(selector);
+    return active && active.getAttribute('aria-busy') !== 'true';
+  }, `[data-page-id="${route}"]`, { timeout: 180_000 });
+  await active.locator(visibleBusyViewSelector).first().waitFor({ state: 'hidden', timeout: 180_000 });
+  const unavailable = await active.locator('[data-view-state="unavailable"]:visible').allTextContents();
+  if (unavailable.length) throw new Error(`${route} rendered unavailable data: ${unavailable.join('; ')}`);
+  await page.evaluate(() => {
+    const main = document.querySelector('main.dashboard-prototype');
+    if (main) main.scrollTop = 0;
+    window.scrollTo(0, 0);
+  });
+}
+
+async function audit(page, auditPage, origin, state, profile, network, scenario, directory, port) {
+  const samples = [];
+  for (let repeat = 1; repeat <= repeats; repeat++) {
+    const session = await page.context().newCDPSession(page);
+    try { await session.send('Network.clearBrowserCache'); } finally { await session.detach(); }
+    await auditPage.setBypassServiceWorker(network === 'cold');
+    const result = await lighthouse(routeUrl(origin, state, scenario.routes[0]), {
+      port, logLevel: 'error', output: ['json', 'html'], disableStorageReset: true,
+      onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
+      maxWaitForLoad: 180_000,
+      ...(profile === 'mobile' ? {
+        formFactor: 'mobile',
+        screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 3, disabled: false }
+      } : {})
+    }, profile === 'desktop' ? desktopConfig : undefined, auditPage);
+    if (!result || result.lhr.runtimeError) throw new Error(`Lighthouse failed: ${JSON.stringify(result?.lhr.runtimeError)}`);
+    if (result.lhr.configSettings.formFactor !== profile) throw new Error('Lighthouse used the wrong device profile.');
+    if (network === 'cold' && !result.lhr.audits['network-requests'].details.items.some((item) => (
+      item.url.includes('/src/main.js') && item.transferSize > 0
+    ))) throw new Error('The cold audit did not measure an uncached application transfer.');
+    await ready(page, scenario.routes[0]);
+    const repeatRoot = join(directory, String(repeat));
+    await mkdir(repeatRoot, { recursive: true });
+    await Promise.all([
+      writeFile(join(repeatRoot, 'lighthouse.report.json'), JSON.stringify(result.lhr, null, 2)),
+      writeFile(join(repeatRoot, 'lighthouse.report.html'), result.report[1]),
+      writeFile(join(repeatRoot, 'trace.json'), JSON.stringify(result.artifacts.Trace)),
+      writeFile(join(repeatRoot, 'devtoolslog.json'), JSON.stringify(result.artifacts.DevtoolsLog))
+    ]);
+    samples.push({
+      scores: Object.fromEntries(Object.entries(result.lhr.categories).map(([name, category]) => [name, category.score])),
+      metrics: Object.fromEntries(Object.keys(budgets).map((name) => [name, result.lhr.audits[name].numericValue]))
+    });
   }
-
+  const metrics = Object.fromEntries(Object.keys(budgets).map((name) => [name, median(samples.map((sample) => sample.metrics[name]))]));
+  const score = median(samples.map((sample) => sample.scores.performance));
   return {
-    id: scenario.id,
-    persona: scenario.persona,
-    question: scenario.question,
-    routes: scenario.routes,
-    score,
-    aspirationalScore: 1,
-    passingScore: scoreThreshold,
-    metrics,
-    budgets: metricBudgets,
-    failures
+    ...scenario, id: `${scenario.id}-${state}-${profile}-${network}`, state, profile, network,
+    score, passingScore: threshold, aspirationalScore: 1, samples, metrics, budgets,
+    failures: performanceFailures(score, metrics, threshold, budgets)
   };
 }
 
 async function main() {
-  await access(lighthouseCli);
-  await rm(outputRoot, { force: true, recursive: true });
+  if (!Number.isSafeInteger(repeats) || repeats < 1) throw new Error('DASHBOARD_PERFORMANCE_REPEATS must be a positive integer.');
+  if (!networkModes.length || new Set(networkModes).size !== networkModes.length
+      || networkModes.some((mode) => !['cold', 'pwa'].includes(mode))) throw new Error('Invalid performance network modes.');
+  await access(join(siteRoot, 'index.html'));
   await mkdir(outputRoot, { recursive: true });
-
-  const chromePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath();
-  await access(chromePath);
+  await mkdir(temporaryRoot, { recursive: true });
+  const dataset = await preparePerformanceData(fullRoot, emptyRoot, dataUrl, Boolean(process.env.DASHBOARD_PERFORMANCE_DATA_ROOT));
+  await writeFile(join(outputRoot, 'dataset.json'), JSON.stringify(dataset, null, 2));
   const { server, origin } = await startServer();
-  const browser = await chromium.launch({
-    executablePath: chromePath,
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage']
-  });
   const results = [];
-
+  const states = {};
+  const writeSummary = (status, error) => writeFile(join(outputRoot, 'summary.json'), JSON.stringify({
+    generatedAt: new Date().toISOString(), status, ...(error ? { error } : {}),
+    methodology: 'Gzip production site; verified empty and fully ingested canonical databases; repeated desktop/mobile medians; cold HTTP with service-worker bypass and separate PWA navigation.',
+    dataset, states, results
+  }, null, 2));
   try {
-    for (const scenario of scenarios) {
-      const directory = join(outputRoot, scenario.id);
-      await mkdir(directory, { recursive: true });
-      await recordJourney(browser, origin, scenario, directory);
-      results.push(await auditScenario(origin, scenario, directory, chromePath));
+    for (const state of ['empty', 'full']) {
+      const profileRoot = await mkdtemp(join(temporaryRoot, 'lighthouse-profile-'));
+      const port = await unusedPort();
+      let context;
+      let browser;
+      try {
+        context = await chromium.launchPersistentContext(profileRoot, {
+          headless: true, viewport: { width: 1440, height: 900 },
+          executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath(),
+          args: [`--remote-debugging-port=${port}`, '--no-sandbox', '--disable-dev-shm-usage']
+        });
+        browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${port}` });
+        const page = context.pages()[0] || await context.newPage();
+        await page.addInitScript(instrumentPerformancePage);
+        const errors = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const started = performance.now();
+        await page.goto(routeUrl(origin, state, 'overview', true), { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => ['completed', 'failed'].includes(
+          Reflect.get(window, '__dashboardPerformanceRefresh')?.status
+        ), null, { timeout: 900_000 });
+        const refresh = await page.evaluate(() => Reflect.get(window, '__dashboardPerformanceRefresh'));
+        if (refresh.status !== 'completed') throw new Error(`${state} ingestion failed: ${JSON.stringify(refresh)}`);
+        const counts = await canonicalCounts(page);
+        assertCanonicalCounts(state, counts, state === 'full' ? dataset.shards : 2);
+        states[state] = { ingestionMs: performance.now() - started, counts, refresh, journeys: [] };
+        await page.evaluate(() => navigator.serviceWorker.ready);
+        for (const profile of ['desktop', 'mobile']) {
+          await page.setViewportSize(profile === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 });
+          for (const scenario of scenarios) {
+            const directory = join(outputRoot, scenario.id, state, profile);
+            await mkdir(directory, { recursive: true });
+            await context.tracing.start({ screenshots: true, snapshots: true });
+            try {
+              await page.goto(routeUrl(origin, state, scenario.routes[0]), { waitUntil: 'domcontentloaded' });
+              for (const route of scenario.routes) {
+                const started = performance.now();
+                await page.evaluate((route) => { location.hash = `page-${route}`; }, route);
+                await ready(page, route);
+                states[state].journeys.push({ profile, route, durationMs: performance.now() - started });
+                const table = page.locator(`[data-page-id="${route}"] [data-view-mode-value="table"]`);
+                if (await table.isVisible()) { await table.click(); await ready(page, route); }
+              }
+            } finally {
+              await context.tracing.stop({ path: join(directory, 'playwright-trace.zip') });
+            }
+            await page.goto(routeUrl(origin, state, scenario.routes[0]), { waitUntil: 'domcontentloaded' });
+            await ready(page, scenario.routes[0]);
+            await page.screenshot({ path: join(directory, 'dashboard.png'), fullPage: true });
+            const auditPage = (await browser.pages()).find((candidate) => candidate.url() === page.url());
+            if (!auditPage) throw new Error('The Lighthouse audit page was not found.');
+            for (const network of networkModes) {
+              const result = await audit(page, auditPage, origin, state, profile, network, scenario, join(directory, network), port);
+              results.push(result);
+              await writeSummary('running');
+              console.log(`${result.id}: performance ${Math.round(result.score * 100)}, CLS ${result.metrics['cumulative-layout-shift'].toFixed(3)}`);
+            }
+          }
+        }
+        const after = await canonicalCounts(page);
+        if (JSON.stringify(after) !== JSON.stringify(counts)) throw new Error(`${state} canonical counts changed during the audits.`);
+        if (errors.length) throw new Error(`${state} page errors: ${errors.join('; ')}`);
+      } catch (error) {
+        await writeSummary('failed', error instanceof Error ? error.message : String(error));
+        throw error;
+      } finally {
+        await browser?.disconnect();
+        await context?.close();
+        await rm(profileRoot, { recursive: true, force: true });
+      }
     }
   } finally {
-    await browser.close();
-    await new Promise((resolvePromise, reject) => {
-      server.close((error) => error ? reject(error) : resolvePromise());
-    });
+    await new Promise((resolvePromise, reject) => server.close((error) => error ? reject(error) : resolvePromise()));
   }
-
-  const summary = {
-    generatedAt: new Date().toISOString(),
-    methodology: 'Lighthouse desktop cold navigation plus Playwright traced persona journey',
-    results
-  };
-  await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
-
-  const failures = results.flatMap((result) =>
-    result.failures.map((failure) => `${result.id}: ${failure}`)
-  );
-  if (failures.length > 0) {
-    for (const failure of failures) {
-      console.log(`::warning title=Lighthouse budget exceeded::${failure}`);
-    }
-    console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`);
-  }
-
-  for (const result of results) {
-    console.log(`${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`);
-  }
+  await writeSummary('complete');
+  const failures = results.flatMap((result) => result.failures.map((failure) => `${result.id}: ${failure}`));
+  for (const failure of failures) console.error(`::error title=Lighthouse budget exceeded::${failure}`);
   console.log(`Performance evidence: ${outputRoot}`);
-  return failures.length > 0 ? 42 : 0;
+  return failures.length ? 42 : 0;
 }
 
 try {
-  const exitCode = await main();
-  if (exitCode !== 0) process.exitCode = exitCode;
+  process.exitCode = await main();
 } catch (error) {
   console.error(error instanceof Error ? error.stack : error);
   process.exitCode = 1;

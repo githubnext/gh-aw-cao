@@ -8,11 +8,10 @@ import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.j
 import { createDebug, diagnosticErrorName } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
 import { publishNotification } from "./notification-service.js";
+export { disableRemoteDashboardPwa, usesRemoteDataBackend } from "./backend-mode.js";
 
 const debugRemoteBackend = createDebug("remote-data-backend");
 
-const BACKEND_META_NAME = "dashboard-data-backend";
-const REMOTE_BACKEND = "server-http";
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 
 export class DashboardServerError extends Error {
@@ -67,31 +66,11 @@ let stopRemoteRevisionStream;
  * }} RemoteQueryOptions
  */
 
-export function usesRemoteDataBackend(document = globalThis.document) {
-  return document?.querySelector?.(`meta[name="${BACKEND_META_NAME}"]`)?.getAttribute("content") === REMOTE_BACKEND;
-}
-
 /** @param {AbortSignal} [signal] */
 export function fetchServerLogs(signal) {
   return apiRequest("/api/admin/logs", {}, signal);
 }
 
-/**
- * Removes static-dashboard PWA state from the server-backed origin. A worker
- * controlling the current page remains until navigation, but unregistering it
- * prevents update-driven controller changes and reload loops.
- * @param {{ serviceWorkers?: ServiceWorkerContainer, cacheStorage?: CacheStorage }} [dependencies]
- */
-export async function disableRemoteDashboardPwa(dependencies = {}) {
-  const serviceWorkers = dependencies.serviceWorkers ?? globalThis.navigator?.serviceWorker;
-  const cacheStorage = dependencies.cacheStorage ?? globalThis.caches;
-  const registrations = await serviceWorkers?.getRegistrations?.().catch(() => []) ?? [];
-  await Promise.allSettled(registrations.map((registration) => registration.unregister()));
-  const keys = await cacheStorage?.keys?.().catch(() => []) ?? [];
-  await Promise.allSettled(keys
-    .filter((key) => key.startsWith("central-agentic-ops-dashboard-"))
-    .map((key) => cacheStorage.delete(key)));
-}
 
 /** @param {string} path */
 function apiUrl(path) {

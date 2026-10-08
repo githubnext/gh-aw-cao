@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { configureSourceLoader, publishSource, resetSourceStore } from '../../src/source-store.js';
 import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
+import { bindFactorySources } from '../../src/components/factory-elements.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -52,6 +53,18 @@ function context(element, sources, elementConfig) {
     headingTag: /** @type {const} */ ('h3')
   };
 }
+
+it('preserves newer subscribed data when a lazy element binds an older snapshot', () => {
+  const name = 'workflows';
+  const request = { pageId: 'campaign', viewId: 'campaign-route', viewIndex: 0, sourceNames: [name] };
+  const bindingKey = dashboardViewAliasName(request.pageId, { id: request.viewId }, 0, name, 0);
+  const newer = source(name, [{ workflow: 'newer' }]);
+  publishSource(name, newer, bindingKey);
+  const bindings = bindFactorySources({ [name]: source(name, [{ workflow: 'older' }]) }, [name],
+    request, { requestMissingSources: false, preserveSubscribedSources: true });
+  expect(bindings[name].source()).toBe(newer);
+  expect(bindings[name].rows()).toEqual([{ workflow: 'newer' }]);
+});
 
 it('renders campaign shortcuts through the reusable link button list', () => {
   const rendered = renderUiElement('link-button-list', {

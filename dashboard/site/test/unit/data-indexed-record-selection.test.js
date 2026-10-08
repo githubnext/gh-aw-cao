@@ -134,6 +134,33 @@ describe('indexed nullable record selection with declarative graph fusion', () =
     }
   });
 
+  it('shares tuple dictionaries and run reads only within one request', async () => {
+    await put('tools', [
+      { id: 'a', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'a' },
+      { id: 'b', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'b' }
+    ]);
+    const keyReads = vi.spyOn(IDBIndex.prototype, 'openKeyCursor');
+    const runReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const queries = [
+      labels,
+      { ...selection('server/a'), name: 'selected-a' },
+      { ...selection('server/b'), name: 'selected-b' }
+    ];
+    const result = await queryIndexedDatabaseSources(indexedDB, sources, queries, ['selected-a', 'selected-b']);
+    expect(result['selected-a'].rows.map((row) => row['mcp-observation'])).toEqual(['a']);
+    expect(result['selected-b'].rows.map((row) => row['mcp-observation'])).toEqual(['b']);
+    expect(keyReads).toHaveBeenCalledTimes(1);
+    expect(runReads.mock.contexts.filter((store) => store instanceof IDBObjectStore && store.name === 'runs')).toHaveLength(1);
+
+    await put('tools', [{ id: 'c', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'a' }]);
+    keyReads.mockClear();
+    runReads.mockClear();
+    const updated = await queryIndexedDatabaseSources(indexedDB, sources, queries, ['selected-a', 'selected-b']);
+    expect(updated['selected-a'].rows.map((row) => row['mcp-observation'])).toEqual(['a', 'c']);
+    expect(keyReads).toHaveBeenCalledTimes(1);
+    expect(runReads.mock.contexts.filter((store) => store instanceof IDBObjectStore && store.name === 'runs')).toHaveLength(1);
+  });
+
   it('does not trust incomplete tuple indexes or fabricate available data from an unavailable source', async () => {
     await put('tools', [{ id: 'a', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'tool' }]);
     const queries = [labels, selection('server/tool')];

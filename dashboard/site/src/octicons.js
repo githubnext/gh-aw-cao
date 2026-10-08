@@ -4,17 +4,17 @@
 
 import { h } from './dom.js';
 import { OCTICON_SPRITE } from './octicon-sprite.js';
-import { createDebug } from './debug.js';
+import octiconNames from './octicon-names.json' with { type: 'json' };
+import { createFactoryScope } from './components/factory-elements.js';
+import { createDebug, diagnosticErrorName } from './debug.js';
 
 const debugOcticons = createDebug('octicons');
 
-/** @type {Map<string, Element> | undefined} */
-let symbols;
-
-function octiconSymbols() {
-  if (symbols) return symbols;
-  const sprite = new DOMParser().parseFromString(OCTICON_SPRITE, 'image/svg+xml');
-  symbols = new Map([...sprite.querySelectorAll('symbol')].map((symbol) => [
+/** @param {string} content */
+function parseSymbols(content) {
+  const sprite = new DOMParser().parseFromString(content, 'image/svg+xml');
+  if (sprite.querySelector('parsererror')) throw new Error('The Octicon sprite is invalid.');
+  const symbols = new Map([...sprite.querySelectorAll('symbol')].map((symbol) => [
     symbol.id.replace(/^octicon-/, ''),
     symbol
   ]));
@@ -23,34 +23,84 @@ function octiconSymbols() {
 }
 
 /**
- * @param {string} name
- * @param {string} [className]
- * @returns {SVGElement}
+ * @param {{ sprite: string, names: string[], loadSprite: () => Promise<string>, onError: (error: unknown) => void }} options
  */
-export function octicon(name, className = '') {
-  let glyphs;
-  if (name === 'issue') {
-    glyphs = [h('path', {
-      d: 'M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm-.75-9.25a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0ZM8 9.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'
-    })];
-  } else {
-    const resolved = octiconSymbols().get(name);
-    const symbol = resolved ?? octiconSymbols().get('question');
-    if (!symbol) throw new Error('The fallback Octicon is missing.');
-    if (!resolved) debugOcticons({ event: 'fallback-used', requestedName: name });
-    glyphs = [...symbol.childNodes].map((node) => document.importNode(node, true));
-  }
-  return /** @type {SVGElement} */ (/** @type {unknown} */ (h(
-    'svg',
-    {
-      className: `octicon octicon-${name}${className ? ` ${className}` : ''}`,
-      viewBox: '0 0 16 16',
-      'aria-hidden': 'true',
-      focusable: 'false'
-    },
-    ...glyphs
-  )));
+export function createOcticonRenderer({ sprite, names, loadSprite, onError }) {
+  /** @type {Map<string, Element> | undefined} */
+  let symbols;
+  /** @type {Promise<Map<string, Element>> | undefined} */
+  let loading;
+  const supported = new Set(names);
+  /** @param {string} name @param {string} [className] @returns {SVGElement} */
+  return (name, className = '') => {
+    if (name !== 'issue') symbols ??= parseSymbols(sprite);
+    const resolved = symbols?.get(name);
+    let glyphs;
+    if (name === 'issue') {
+      glyphs = [h('path', {
+        d: 'M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm-.75-9.25a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0ZM8 9.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'
+      })];
+    } else {
+      const symbol = resolved ?? symbols?.get('question');
+      if (!symbol) throw new Error('The fallback Octicon is missing.');
+      if (!resolved && !supported.has(name)) debugOcticons({ event: 'fallback-used', requestedName: name });
+      glyphs = [...symbol.childNodes].map((node) => document.importNode(node, true));
+    }
+    const rendered = /** @type {SVGElement} */ (/** @type {unknown} */ (h(
+      'svg',
+      {
+        className: `octicon octicon-${name}${className ? ` ${className}` : ''}`,
+        viewBox: '0 0 16 16',
+        'aria-hidden': 'true',
+        focusable: 'false'
+      },
+      ...glyphs
+    )));
+    if (!resolved && name !== 'issue' && supported.has(name)) {
+      const lifetime = new AbortController();
+      const scope = createFactoryScope({ signal: lifetime.signal });
+      scope.bind(rendered);
+      rendered.dataset.iconState = 'loading';
+      loading ??= loadSprite().then((content) => {
+        const complete = parseSymbols(content);
+        if ([...supported].some((name) => !complete.has(name))) throw new Error('The Octicon sprite is incomplete.');
+        symbols = complete;
+        return complete;
+      }).catch((error) => {
+        onError(error);
+        throw error;
+      });
+      void loading.then((complete) => {
+        if (scope.signal.aborted) return;
+        const symbol = complete.get(name);
+        if (!symbol) throw new Error('The requested Octicon is missing.');
+        rendered.replaceChildren(...[...symbol.childNodes].map((node) => rendered.ownerDocument.importNode(node, true)));
+        rendered.dataset.iconState = 'available';
+      }, () => {
+        if (!scope.signal.aborted) rendered.dataset.iconState = 'unavailable';
+      }).finally(() => lifetime.abort());
+    }
+    return rendered;
+  };
 }
+
+export const octicon = createOcticonRenderer({
+  sprite: OCTICON_SPRITE,
+  names: octiconNames,
+  loadSprite: async () => {
+    const response = await fetch(new URL(/* @vite-ignore */ './octicons.svg', import.meta.url), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`Octicon sprite request failed: HTTP ${response.status}.`);
+    return response.text();
+  },
+  onError: (error) => {
+    debugOcticons({ event: 'sprite-load-failed', errorName: diagnosticErrorName(error) });
+    void import('./notification-service.js').then(({ publishNotification }) => {
+      publishNotification({ message: 'Some dashboard icons could not be loaded. Reload to retry.', tone: 'warning' });
+    }, (error) => {
+      console.error('Dashboard icon notification failed.', { errorName: diagnosticErrorName(error) });
+    });
+  }
+});
 
 /**
  * @returns {SVGElement}

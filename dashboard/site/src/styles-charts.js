@@ -298,9 +298,9 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .pie-chart-card { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); align-items: center; gap: 4px 24px; padding: 20px 24px; }
 .layout-section .pie-chart-card { padding: 0; border: 0; }
 #page-preview .pie-chart-card { padding: 0; border: 0; }
-.pie-chart-card > h3, .pie-chart-card > h4 { align-self: end; margin: 0; font-size: 1.25rem; }
+.pie-chart-card > :is(h2, h3, h4) { align-self: end; margin: 0; font-size: 1.25rem; }
 .pie-chart-card > .chart-prompt-heading { align-self: end; }
-.pie-chart-card > .chart-prompt-heading > :is(h3, h4) { font-size: 1.25rem; }
+.pie-chart-card > .chart-prompt-heading > :is(h2, h3, h4) { font-size: 1.25rem; }
 .pie-chart-card > .view-description { align-self: start; }
 .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; margin: 0; font-size: .6875rem; }
 .pie-chart-layout { min-width: 0; display: grid; grid-column: 2; grid-row: 1 / span 6; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); align-items: center; gap: 20px; }
@@ -315,8 +315,8 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .pie-chart-layout .chart-legend-pie span { min-width: 0; overflow-wrap: anywhere; }
 .pie-chart-layout .chart-legend-pie strong, .pie-chart-layout .chart-legend-pie small { font-variant-numeric: tabular-nums; text-align: right; }
 .chart-horizontal-card { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); align-items: start; gap: 24px; padding: 20px 24px; }
-.chart-horizontal-copy > h3, .chart-horizontal-copy > h4 { margin: 0; font-size: 1.25rem; }
-.chart-horizontal-copy > .chart-prompt-heading > :is(h3, h4) { font-size: 1.25rem; }
+.chart-horizontal-copy > :is(h2, h3, h4) { margin: 0; font-size: 1.25rem; }
+.chart-horizontal-copy > .chart-prompt-heading > :is(h2, h3, h4) { font-size: 1.25rem; }
 .chart-horizontal-copy > .view-description { margin-top: 3px; }
 .chart-horizontal-copy > .view-source, .chart-horizontal-copy > .view-metadata, .chart-horizontal-copy > .view-context { margin: 0; font-size: .6875rem; }
 .chart-horizontal-layout { min-width: 0; }

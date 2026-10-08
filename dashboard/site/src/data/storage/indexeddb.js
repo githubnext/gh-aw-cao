@@ -1143,13 +1143,36 @@ export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
     let requestCount = 3;
     let recordsScanned = 0;
     /**
-     * Queue every count and cursor continuation synchronously in each callback,
-     * keeping the readonly transaction alive for the entire snapshot.
+     * Finish the unique-key scan before counting so other requests do not
+     * invalidate cursor prefetch. Keep count requests bounded and the same
+     * readonly transaction alive throughout.
      * @param {IDBIndex} index
      * @param {(key: IDBValidKey[], count: number, firstKey: IDBValidKey) => void} receive
      */
     const countKeys = (index, receive) => new Promise((resolve, reject) => {
       const fields = Array.isArray(index.keyPath) ? index.keyPath : [index.keyPath];
+      /** @type {{ key: IDBValidKey, values: IDBValidKey[], firstKey: IDBValidKey }[]} */
+      const keys = [];
+      let nextKey = 0;
+      let remaining = 0;
+      const queueCount = () => {
+        const group = keys[nextKey++];
+        const count = index.count(group.key);
+        requestCount += 1;
+        remaining += 1;
+        count.onerror = () => reject(count.error ?? new Error('IndexedDB group count failed'));
+        count.onsuccess = () => {
+          try {
+            plan.checkpoint?.();
+            receive(group.values, count.result, group.firstKey);
+            remaining -= 1;
+            if (nextKey < keys.length) queueCount();
+            else if (remaining === 0) resolve(undefined);
+          } catch (error) {
+            reject(error);
+          }
+        };
+      };
       const cursorRequest = index.openKeyCursor(null, 'nextunique');
       requestCount += 1;
       cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB count cursor failed'));
@@ -1157,7 +1180,14 @@ export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
         try { plan.checkpoint?.(); } catch (error) { reject(error); return; }
         const cursor = cursorRequest.result;
         if (!cursor) {
-          resolve(undefined);
+          if (keys.length === 0) resolve(undefined);
+          else {
+            try {
+              for (let i = 0; i < Math.min(keys.length, 32); i += 1) queueCount();
+            } catch (error) {
+              reject(error);
+            }
+          }
           return;
         }
         const key = Array.isArray(cursor.key) ? cursor.key : [cursor.key];
@@ -1166,17 +1196,12 @@ export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
           cursor.continue();
           return;
         }
-        const count = index.count(cursor.key);
-        requestCount += 1;
-        count.onerror = () => reject(count.error ?? new Error('IndexedDB group count failed'));
-        count.onsuccess = () => {
-          try {
-            receive(key, count.result, cursor.primaryKey);
-            cursor.continue();
-          } catch (error) {
-            reject(error);
-          }
-        };
+        if (keys.length >= plan.maxGroups) {
+          reject(new Error(`IndexedDB aggregate exceeded max-input-rows of ${plan.maxGroups}`));
+          return;
+        }
+        keys.push({ key: cursor.key, values: key, firstKey: cursor.primaryKey });
+        cursor.continue();
       };
     });
     const fields = Array.isArray(base.keyPath) ? base.keyPath : [base.keyPath];

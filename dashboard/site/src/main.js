@@ -1,7 +1,5 @@
-import { renderIndexedDBUnsupported } from "./components/browser-support.js";
-import { disableRemoteDashboardPwa, usesRemoteDataBackend } from "./remote-data-backend.js";
+import { disableRemoteDashboardPwa, usesRemoteDataBackend } from "./backend-mode.js";
 import { createDebug } from "./debug.js";
-import { clearBrowserDashboardApp } from "./components/reset-dashboard-control.js";
 
 const debugMain = createDebug("main");
 
@@ -10,6 +8,7 @@ if (!(root instanceof HTMLElement)) throw new Error("Dashboard root element is m
 
 if (new URL(location.href).searchParams.get("clear-app") === "1") {
   try {
+    const { clearBrowserDashboardApp } = await import("./components/reset-dashboard-control.js");
     await clearBrowserDashboardApp();
     const url = new URL(location.href);
     url.searchParams.delete("clear-app");
@@ -22,6 +21,7 @@ const remoteBackend = usesRemoteDataBackend(document);
 debugMain({ event: "backend-detected", remoteBackend, indexedDbAvailable: Boolean(window.indexedDB) });
 if (!window.indexedDB && !remoteBackend) {
   debugMain({ event: "unsupported-browser-shown" });
+  const { renderIndexedDBUnsupported } = await import("./components/browser-support.js");
   root.replaceChildren(renderIndexedDBUnsupported());
 } else {
   if (remoteBackend) await disableRemoteDashboardPwa();

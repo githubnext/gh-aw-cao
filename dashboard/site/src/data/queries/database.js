@@ -210,6 +210,14 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   budget.checkpoint();
   const index = dashboardQueryIndex(definitions);
   const defects = dashboardQueryDefects(definitions);
+  /** @type {Promise<Record<string, Record<string, unknown>[]>> | undefined} */
+  let runRead;
+  const readRuns = async () => {
+    runRead ??= readCollections(indexedDB, ['runs']);
+    return (await runRead).runs ?? [];
+  };
+  /** @type {Map<string, ReturnType<typeof readCollectionQueryKeys>>} */
+  const keyReads = new Map();
   const keySelectionPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     if (!definition || defects.has(name)) return [];
@@ -224,9 +232,15 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     if (unavailable) {
       return [name, executeRowLocalRecordGraph(plan.queries, { [source]: unavailable }, name, budget)];
     }
-    const keys = await readCollectionQueryKeys(indexedDB, plan.store, plan.indexName, {
-      maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1)
-    });
+    const keyReadId = `${plan.store}:${plan.indexName}`;
+    let keyRead = keyReads.get(keyReadId);
+    if (!keyRead) {
+      keyRead = readCollectionQueryKeys(indexedDB, plan.store, plan.indexName, {
+        maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1)
+      });
+      keyReads.set(keyReadId, keyRead);
+    }
+    const keys = await keyRead;
     if (!keys) return null;
     /** @type {string[]} */
     const selectedKeys = [];
@@ -251,7 +265,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const records = await readCollectionQueryKeyRecords(indexedDB, plan.store, plan.indexName, selectedKeys, {
       maxRows: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.checkpoint()
     });
-    const runs = (await readCollections(indexedDB, ['runs'])).runs ?? [];
+    const runs = await readRuns();
     const projected = executeRunRecordsQuery(source, records, runs, logicalSources);
     const actual = plan.projection
       ? executeDatabaseQuery(source, { 'run-records': projected }, logicalSources, plan.store)
@@ -280,7 +294,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const inputs = await queryDatabaseSources(indexedDB, logicalSources, [
       ...(definition.joins ?? []).map((join) => join.source)
     ]);
-    const runs = (await readCollections(indexedDB, ['runs'])).runs ?? [];
+    const runs = await readRuns();
     for (const source of [definition.from, ...(definition.union ?? [])]) {
       const unavailable = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (logicalSources[source]);
       if (unavailable?.metadata?.availability === 'unavailable') {
@@ -327,7 +341,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     return [{ name, definition: flattened, predicates }];
   });
   const recordSelections = await Promise.all(recordSelectionPlans.map(async ({ name, definition, predicates }) => {
-    const runs = (await readCollections(indexedDB, ['runs'])).runs ?? [];
+    const runs = await readRuns();
     const identities = executeRunRecordsQuery(definition.from, runs.map((run) => ({
       id: run.id, runId: run.id
     })), runs, logicalSources);
@@ -913,6 +927,17 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const sources = namedSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const result = {};
+  /** @type {Map<string, import('../../presenter.js').LogicalSourceInput>} */
+  const recordProjections = new Map();
+  /** @param {string} store */
+  const projectRecords = (store) => {
+    let projection = recordProjections.get(store);
+    if (!projection) {
+      projection = executeRunRecordsQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
+      if (requested.has(store)) recordProjections.set(store, projection);
+    }
+    return projection;
+  };
   for (const name of requested) {
     if (name === SIMULATION_DAYS) {
       result[name] = simulationDaysSource();
@@ -937,19 +962,19 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       continue;
     }
     if (RUN_RECORD_STORES.has(name)) {
-      result[name] = executeRunRecordsQuery(name, collections[name] ?? [], collections.runs ?? [], sources);
+      result[name] = projectRecords(name);
       continue;
     }
     if (name === 'mcp-calls' || name === 'findings' || name === 'firewall-observations') {
       const store = name === 'mcp-calls' ? 'tools' : name === 'findings' ? 'audits' : 'domains';
-      const records = executeRunRecordsQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
+      const records = projectRecords(store);
       result[name] = executeDatabaseQuery(name, {
         'run-records': records
       }, sources, store);
       continue;
     }
     if (name === 'outcomes') {
-      const records = executeRunRecordsQuery('issues', collections.issues ?? [], collections.runs ?? [], sources);
+      const records = projectRecords('issues');
       const workflowRows = executeDatabaseQuery('workflows', {
         $workflows: {
           source: '$workflows',

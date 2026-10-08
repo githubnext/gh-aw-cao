@@ -172,6 +172,35 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(posted.some(({ subscriptionId }) => subscriptionId === 'runs')).toBe(false);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
 
+  const previewContext = {
+    ...context,
+    pages: [{
+      id: 'inventory-preview', kind: 'custom',
+      views: [{ id: 'package-table', mark: 'table', data: {
+        source: 'package-execution-summary', 'partial-source': 'marketplace-package-summary'
+      } }]
+    }],
+    queries: [...context.queries, {
+      name: 'package-execution-summary', from: 'marketplace-package-summary',
+      joins: [{
+        source: 'run-summary', type: 'left',
+        on: [{ left: 'id', right: 'run' }], fields: [{ field: 'run', as: 'latest-run' }]
+      }],
+      select: [{ field: 'id' }, { field: 'package-name' }]
+    }]
+  };
+  listeners.get('message')?.({ data: {
+    operation: 'subscribe-canonical-dashboard', subscriptionId: 'late-preview',
+    sourceNames: ['package-execution-summary'], pageId: 'inventory-preview', viewId: 'package-table',
+    context: previewContext
+  } });
+  await waitFor('a newly subscribed partial view', () => posted.some(({ subscriptionId }) => subscriptionId === 'late-preview'));
+  const preview = posted.find(({ subscriptionId }) => subscriptionId === 'late-preview');
+  expect(preview?.partial).toBe(true);
+  expect(Object.values(/** @type {Record<string, { rows: unknown[] }>} */ (preview?.data))
+    .some((source) => JSON.stringify(source.rows).includes('Self Care'))).toBe(true);
+  expect(posted.some(({ id }) => id === 1)).toBe(false);
+
   releaseShards();
   await waitFor('the ingestion request to complete', () => posted.some(({ id }) => id === 1));
   expect(posted.find(({ id }) => id === 1)?.error).toBeUndefined();
@@ -180,4 +209,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'runs')).toMatchObject({
     data: { 'run-summary': { rows: [{ run: '404' }] } }
   });
+  await waitFor('the completed preview subscription', () => posted.some(
+    ({ subscriptionId, partial }) => subscriptionId === 'late-preview' && partial !== true
+  ));
 }, 30_000);

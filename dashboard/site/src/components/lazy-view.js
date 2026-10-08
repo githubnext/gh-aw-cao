@@ -2,6 +2,7 @@ import { createDebug } from '../debug.js';
 import { h } from '../dom.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from '../debug-events.js';
 import { renderSkeletonBars } from './ui-primitives.js';
+import { dispatchPageRoute } from './page-route.js';
 
 const debugLazyView = createDebug('lazy-view');
 
@@ -53,7 +54,7 @@ function isSkippedTransitionError(error) {
 }
 
 /**
- * @param {{ label: string, headingLevel?: 'h3'|'h4', minHeight?: number, render: () => HTMLElement | Promise<HTMLElement> }} options
+ * @param {{ label: string, headingLevel?: 'h2'|'h3'|'h4', minHeight?: number, render: () => HTMLElement | Promise<HTMLElement> }} options
  * @returns {HTMLElement}
  */
 export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, render }) {
@@ -324,12 +325,23 @@ function yieldBetweenHydrations(ownerDocument) {
  */
 function replaceLazyView(element, rendered) {
   if (!element.parentNode) return;
+  const page = element.closest('.dashboard-page');
   const restoreFocus = element.ownerDocument.activeElement === element;
   const viewId = element.getAttribute('data-view-id');
   if (viewId && !rendered.hasAttribute('data-view-id')) {
     rendered.setAttribute('data-view-id', viewId);
   }
+  for (const attribute of element.getAttributeNames()) {
+    if ((attribute.startsWith('data-view-') || attribute.startsWith('data-section-') || attribute === 'data-disclosure')
+        && !rendered.hasAttribute(attribute)) {
+      rendered.setAttribute(attribute, element.getAttribute(attribute) ?? '');
+    }
+  }
+  if (element.classList.contains('custom-view')) rendered.classList.add('custom-view');
   element.replaceWith(rendered);
+  if (page instanceof HTMLElement && page.dataset.routeParameter) {
+    dispatchPageRoute(rendered, page.dataset.routeParameter, page.dataset.routeValue ?? '');
+  }
   if (restoreFocus) {
     if (!rendered.hasAttribute('tabindex') && rendered.tabIndex < 0) {
       rendered.tabIndex = -1;
@@ -343,6 +355,7 @@ function replaceLazyView(element, rendered) {
  * @param {unknown} error
  */
 function reportHydrationError(element, error) {
+  if (error instanceof Error && error.name === 'AbortError' && !element.isConnected) return;
   console.error(error);
   if (!element.parentNode) return;
   element.setAttribute('aria-busy', 'false');

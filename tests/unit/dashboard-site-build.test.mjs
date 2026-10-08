@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -208,6 +208,11 @@ test("docs dashboard installs renderer assets without experimental campaign page
     assert.match(llms, /\[Agent summary\]\(\.\/agent-summary\.json\)/);
     const mainHash = builtIndex.match(/script\.src = '\.\/src\/main\.js\?sha=([a-f0-9]{64})'/)?.[1];
     assert.ok(mainHash, "entry module includes the site content SHA");
+    assert.ok(builtIndex.includes(`rel="modulepreload" href="./src/main.js?sha=${mainHash}"`));
+    assert.ok(builtIndex.includes(`rel="stylesheet" href="./styles.css?sha=${mainHash}"`));
+    const stylesheet = await readFile(new URL("styles.css", destination), "utf8");
+    assert.ok(stylesheet.includes(".sidebar") && stylesheet.includes(".dashboard-notifications"),
+      "compiled stylesheet preserves the dashboard and notification styles");
     assert.match(
       builtIndex,
       new RegExp(`script\\.src = './src/main\\.js\\?sha=${mainHash}'`),
@@ -222,15 +227,43 @@ test("docs dashboard installs renderer assets without experimental campaign page
     );
     const mainSourceMap = JSON.parse(await readFile(new URL("src/main.js.map", destination), "utf8"));
     const workerSourceMap = JSON.parse(await readFile(new URL("src/data-worker.js.map", destination), "utf8"));
-    assert.ok(mainSourceMap.sources.some((source) => source.endsWith("/src/dashboard-app.js")));
+    assert.ok(!mainSourceMap.sources.some((source) => source.endsWith("/src/dashboard-app.js")));
+    const chunkFiles = (await readdir(new URL("src/", destination)))
+      .filter((file) => file.startsWith("chunk-") && file.endsWith(".js"));
+    assert.ok(chunkFiles.length > 0, "dynamic imports emit separate JavaScript chunks");
+    const chunkMaps = await Promise.all(chunkFiles.map(async (file) => (
+      JSON.parse(await readFile(new URL(`src/${file}.map`, destination), "utf8"))
+    )));
+    assert.ok(chunkMaps.some((map) => map.sources.some((source) => source.endsWith("/src/dashboard-app.js"))));
+    const preloadedChunks = [...builtIndex.matchAll(/<link rel="modulepreload" href="\.\/src\/([^"]+)">/g)]
+      .map((match) => match[1]).filter((file) => file.startsWith("chunk-"));
+    assert.ok(preloadedChunks.some((file) => chunkMaps[chunkFiles.indexOf(file)].sources
+      .some((source) => source.endsWith("/src/dashboard-app.js"))), "application startup is preloaded");
+    for (const file of preloadedChunks) {
+      assert.ok(chunkFiles.includes(file), `preloaded chunk exists: ${file}`);
+      const map = chunkMaps[chunkFiles.indexOf(file)];
+      assert.ok(!map.sources.some((source) => /\/(campaign-route-view|workflow-route-page)\.js$/.test(source)),
+        "route modules remain deferred");
+      assert.ok(!/^chunk-(reset-dashboard-control|browser-support)-/.test(file),
+        "recovery and unsupported-browser entry points remain deferred");
+    }
+    const serviceWorker = await readFile(new URL("service-worker.js", destination), "utf8");
+    for (const file of chunkFiles) {
+      assert.ok(serviceWorker.includes(`src/${file}`), `precache includes ${file}`);
+      assert.ok(!serviceWorker.includes(`src/${file}.map`), "precache excludes source maps");
+    }
     assert.ok(workerSourceMap.sources.some((source) => source.endsWith("/src/data-worker.js")));
+    assert.ok(workerSourceMap.sources.some((source) => source.endsWith("/src/data/storage/indexeddb.js")),
+      "worker dependencies are bundled without main-thread chunk discovery");
     assert.equal(mainSourceMap.sources.length, mainSourceMap.sourcesContent.length);
     assert.equal(workerSourceMap.sources.length, workerSourceMap.sourcesContent.length);
     await assert.rejects(readFile(new URL("src/presenter.js", destination), "utf8"), { code: "ENOENT" });
-    await assert.rejects(readFile(new URL("src/octicons.svg", destination), "utf8"), { code: "ENOENT" });
+    const completeSprite = await readFile(new URL("src/octicons.svg", destination), "utf8");
+    assert.ok(completeSprite.includes("octicon-feed-trophy"));
+    assert.ok(serviceWorker.includes("src/octicons.svg"), "the complete icon set remains available offline");
     assert.match(
-      await readFile(new URL("src/main.js", destination), "utf8"),
-      /octicon-rocket/,
+      (await Promise.all(chunkFiles.map((file) => readFile(new URL(`src/${file}`, destination), "utf8")))).join("\n"),
+      /octicon-question/,
       "bundled JavaScript includes Octicon glyphs",
     );
     await assert.rejects(readFile(new URL("uk-ai-advisory-dashboard/index.html", destination), "utf8"), { code: "ENOENT" });

@@ -2,13 +2,18 @@ import { createHash } from "node:crypto";
 import { access, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
+import { rollup } from "rollup";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 import { loadPolicyFile } from "../../../.github/workflows/shared/policy.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
 import { generateDashboardLlms } from "./llms.mjs";
 import { agentCatalog } from "../src/agent/catalog.js";
+import { primerStyles } from "../src/styles-primer.js";
+import { notificationStyles } from "../src/styles-notifications.js";
+import { OCTICON_SPRITE } from "../src/octicon-sprite.js";
+import octiconNames from "../src/octicon-names.json" with { type: "json" };
 
 const siteRoot = new URL("../", import.meta.url);
 
@@ -201,15 +206,33 @@ async function findCampaignDashboards(repositoryPath, controlSettings) {
 
 async function bundleSiteJavascript(destinationPath) {
   const bundlePath = join(destinationPath, ".bundle");
+  const clientBundlePath = join(destinationPath, ".bundle-client");
   try {
-    await build({
+    const stylesheet = await transform(`${primerStyles}\n${notificationStyles}`, {
+      loader: "css", minify: true, legalComments: "none", target: "es2022",
+    });
+    await writeFile(join(destinationPath, "styles.css"), stylesheet.code);
+    const supportedIcons = new Set(octiconNames);
+    const inlineIcons = new Set(["question"]);
+    for (const file of await listFiles(destinationPath)) {
+      if (!/\.(js|json)$/.test(file) || file.endsWith("octicon-sprite.js") || file.endsWith("octicon-names.json")) continue;
+      const source = await readFile(join(destinationPath, file), "utf8");
+      for (const match of source.matchAll(/(['"])([a-z][a-z0-9-]*)\1/g)) {
+        if (supportedIcons.has(match[2])) inlineIcons.add(match[2]);
+      }
+    }
+    const iconLicense = OCTICON_SPRITE.match(/<!--[\s\S]*?-->/)?.[0];
+    if (!iconLicense) throw new Error("The Octicon license is missing.");
+    const inlineSprite = '<svg xmlns="http://www.w3.org/2000/svg"><defs>' + iconLicense
+      + [...OCTICON_SPRITE.matchAll(/<symbol\b[^>]*id="octicon-([^"]+)"[^>]*>[\s\S]*?<\/symbol>/g)]
+        .filter((symbol) => inlineIcons.has(symbol[1])).map((symbol) => symbol[0]).join("")
+      + "</defs></svg>";
+    await writeFile(join(destinationPath, "src/octicons.svg"), OCTICON_SPRITE);
+    const bundleOptions = {
       absWorkingDir: destinationPath,
       bundle: true,
-      entryPoints: {
-        main: "src/main.js",
-        "data-worker": "src/data-worker.js",
-      },
       entryNames: "[name]",
+      chunkNames: "chunk-[name]-[hash]",
       format: "esm",
       legalComments: "none",
       minify: true,
@@ -217,20 +240,100 @@ async function bundleSiteJavascript(destinationPath) {
       platform: "browser",
       sourcemap: true,
       target: "es2022",
-    });
+    };
+    const [result] = await Promise.all([
+      build({
+        ...bundleOptions,
+        entryPoints: { main: "src/main.js" },
+        metafile: true,
+        splitting: true,
+        plugins: [{
+          name: "linked-dashboard-styles",
+          setup(builder) {
+            builder.onLoad({ filter: /[/\\]src[/\\]styles\.js$/ }, () => ({
+              contents: 'export function primerStylesheet() { return ""; } export function notificationStylesheet() { return ""; } export const getPrimerStyles = primerStylesheet;',
+              loader: "js",
+            }));
+            builder.onLoad({ filter: /[/\\]src[/\\]octicon-sprite\.js$/ }, () => ({
+              contents: `export const OCTICON_SPRITE = ${JSON.stringify(inlineSprite)};`,
+              loader: "js",
+            }));
+          },
+        }],
+      }),
+      build({ ...bundleOptions, entryPoints: { "data-worker": "src/data-worker.js" } }),
+    ]);
 
+    const startupOutput = Object.entries(result.metafile.outputs)
+      .find(([, output]) => output.entryPoint === "src/dashboard-app.js")?.[0];
+    if (!startupOutput) throw new Error("Dashboard application startup chunk is missing.");
+    const client = await rollup({
+      input: { main: join(bundlePath, "main.js") },
+      plugins: [{
+        name: "esbuild-source-maps",
+        async load(id) {
+          if (!id.startsWith(`${bundlePath}/`) || !id.endsWith(".js")) return null;
+          return {
+            code: await readFile(id, "utf8"),
+            map: JSON.parse(await readFile(`${id}.map`, "utf8")),
+          };
+        },
+      }],
+    });
+    let output;
+    try {
+      ({ output } = await client.write({
+        dir: clientBundlePath,
+        format: "esm",
+        sourcemap: true,
+        entryFileNames: "[name].js",
+        chunkFileNames: "chunk-[name]-[hash].js",
+        onlyExplicitManualChunks: true,
+        manualChunks(id) {
+          return relative(bundlePath, id).startsWith("chunk-chunk-") ? "shared" : undefined;
+        },
+      }));
+    } finally {
+      await client.close();
+    }
     for (const sourceFile of (await listFiles(join(destinationPath, "src")))
       .filter((file) => file.endsWith(".js"))) {
       await rm(join(destinationPath, "src", sourceFile));
     }
-    await Promise.all([
-      cp(join(bundlePath, "main.js"), join(destinationPath, "src", "main.js")),
-      cp(join(bundlePath, "main.js.map"), join(destinationPath, "src", "main.js.map")),
-      cp(join(bundlePath, "data-worker.js"), join(destinationPath, "src", "data-worker.js")),
-      cp(join(bundlePath, "data-worker.js.map"), join(destinationPath, "src", "data-worker.js.map")),
-    ]);
+    await cp(clientBundlePath, join(destinationPath, "src"), { recursive: true });
+    for (const file of ["data-worker.js", "data-worker.js.map"]) {
+      await cp(join(bundlePath, file), join(destinationPath, "src", file));
+    }
+    const chunks = new Map(output.filter((file) => file.type === "chunk").map((file) => [file.fileName, file]));
+    const applicationChunk = [...chunks.values()].find((file) => (
+      file.facadeModuleId === resolve(destinationPath, startupOutput)
+    ));
+    if (!applicationChunk) throw new Error("Repacked dashboard application startup chunk is missing.");
+    const startupModules = new Set();
+    const collectStartupModules = (outputPath) => {
+      if (startupModules.has(outputPath)) return;
+      const output = chunks.get(outputPath);
+      if (!output) throw new Error(`Dashboard startup dependency is missing: ${outputPath}`);
+      startupModules.add(outputPath);
+      for (const dependency of output.imports) {
+        collectStartupModules(dependency);
+      }
+    };
+    collectStartupModules(applicationChunk.fileName);
+    const preloads = [
+      '    <link rel="stylesheet" href="./styles.css">',
+      '    <link rel="modulepreload" href="./src/main.js">',
+      ...[...startupModules].map((outputPath) => (
+        `    <link rel="modulepreload" href="./src/${outputPath}">`
+      )),
+    ];
+    const indexPath = join(destinationPath, "index.html");
+    const index = await readFile(indexPath, "utf8");
+    if (!index.includes("  </head>")) throw new Error("Dashboard document head is missing.");
+    await writeFile(indexPath, index.replace("  </head>", `${preloads.join("\n")}\n  </head>`));
   } finally {
     await rm(bundlePath, { force: true, recursive: true });
+    await rm(clientBundlePath, { force: true, recursive: true });
   }
 }
 
@@ -249,10 +352,10 @@ async function cacheBustSiteImports(destinationPath) {
   const index = await readFile(indexPath, "utf8");
   const serviceWorker = await readFile(serviceWorkerPath, "utf8");
   await Promise.all([
-    writeFile(indexPath, index.replace(
-      /(script\.src = ["'])(\.\/src\/main\.js)(["'];)/,
-      `$1$2?sha=${sha}$3`,
-    )),
+    writeFile(indexPath, index
+      .replace(/(script\.src = ["'])(\.\/src\/main\.js)(["'];)/, `$1$2?sha=${sha}$3`)
+      .replace('href="./src/main.js"', `href="./src/main.js?sha=${sha}"`)
+      .replace('href="./styles.css"', `href="./styles.css?sha=${sha}"`)),
     writeFile(
       serviceWorkerPath,
       serviceWorker.replace("const VERSION = 'development';", `const VERSION = '${sha}';`),

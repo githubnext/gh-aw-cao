@@ -136,7 +136,7 @@ let hasCompleteDashboardSnapshot = false;
  */
 let publicationPhase = 'complete';
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, controller?: AbortController, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -644,18 +644,20 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
+        const controller = new AbortController();
+        subscription.controller = controller;
         try {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
           const partialSource = subscriptionPartialSource(subscription);
-          if (partialSource && !subscription.emitted
+          if (partialSource && !subscription.emitted && publicationPhase !== 'complete'
               && isPhaseSubscription(subscription, publicationPhase, [partialSource])) {
             const partial = await queryLiveDashboard(
               new Set(subscription.sourceNames),
               subscription.context,
               subscription.requestContext,
-              undefined,
+              controller.signal,
               pagination,
               subscription.pageId,
               subscription.routeParameters,
@@ -677,7 +679,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             new Set(subscription.sourceNames),
             subscription.context,
             subscription.requestContext,
-            undefined,
+            controller.signal,
             pagination,
             subscription.pageId,
             subscription.routeParameters,
@@ -698,6 +700,8 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
               error: error instanceof Error ? error.message : String(error)
             });
           }
+        } finally {
+          if (subscription.controller === controller) delete subscription.controller;
         }
 
       }
@@ -1308,9 +1312,12 @@ if (typeof document === 'undefined' && workerScope) {
           revision: liveDashboard?.revision ?? null,
           emitted: false
         };
+        dashboardSubscriptions.get(subscriptionId)?.controller?.abort();
         dashboardSubscriptions.set(subscriptionId, subscription);
         if (liveDashboard && event.data.emitCurrent !== false) {
-          if (isPhaseSubscription(subscription, publicationPhase)) {
+          const partialSource = subscriptionPartialSource(subscription);
+          if (isPhaseSubscription(subscription, publicationPhase)
+              || (partialSource && isPhaseSubscription(subscription, publicationPhase, [partialSource]))) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }
         }
@@ -1328,6 +1335,7 @@ if (typeof document === 'undefined' && workerScope) {
       return;
     }
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
+      dashboardSubscriptions.get(event.data.subscriptionId)?.controller?.abort();
       dashboardSubscriptions.delete(event.data.subscriptionId);
       dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
       if (dirtyDashboardSubscriptions.size === 0 && subscriptionFlushTimer !== null) {

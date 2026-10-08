@@ -218,6 +218,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
   await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(7);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
+  await transactionsPage.locator('[data-view-id="indexing-workflow-runs"]').scrollIntoViewIfNeeded();
   await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
   await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
   await expect(transactionsPage.locator('[data-view-id="ingestion-queue-sizes"] [data-view-availability="unavailable"]')).toBeVisible();

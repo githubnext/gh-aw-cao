@@ -25,6 +25,7 @@ import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView } from './components/lazy-view.js';
+import { dispatchPageRoute } from './components/page-route.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardFormDefaultValues, dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
@@ -846,7 +847,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         || current[resolveViewSourceName(current, page.id, view, index, name, sourceIndex)]?.metadata?.availability === 'unavailable'
       ));
     const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
-    const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
+    const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h3' : 'h2';
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     const isRouteView = Boolean(
@@ -954,7 +955,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             cardToolbar.append(prompt);
           } else if (section) {
             section.classList.add('semantic-prompt-view');
-            const heading = section.querySelector('h3, h4');
+            const heading = section.querySelector('h2, h3, h4');
             if (heading && view.mark === 'chart') {
               const titleRow = h('div', { className: 'chart-prompt-heading' });
               heading.before(titleRow);
@@ -974,22 +975,22 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view) && view['show-title'] === false) {
         const headings = rendered.matches('.page-section')
           ? rendered.querySelectorAll(
-            ':scope > h3, :scope > h4, :scope > .chart-prompt-heading > h3,'
+            ':scope > :is(h2, h3, h4), :scope > .chart-prompt-heading > :is(h2, h3, h4),'
             + ' :scope > .chart-prompt-heading > h4,'
-            + ' :scope > .pie-chart-card > h3, :scope > .pie-chart-card > h4,'
-            + ' :scope > .pie-chart-card > .chart-prompt-heading > h3,'
+            + ' :scope > .pie-chart-card > :is(h2, h3, h4),'
+            + ' :scope > .pie-chart-card > .chart-prompt-heading > :is(h2, h3, h4),'
             + ' :scope > .pie-chart-card > .chart-prompt-heading > h4,'
-            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > :is(h2, h3, h4),'
             + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > h4,'
-            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h3,'
+            + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > :is(h2, h3, h4),'
             + ' :scope > .chart-horizontal-card > .chart-horizontal-copy > .chart-prompt-heading > h4'
           )
           : rendered.querySelectorAll(
-            ':scope > .semantic-prompt-heading > h3, :scope > .semantic-prompt-heading > h4,'
-            + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > h3,'
+            ':scope > .semantic-prompt-heading > :is(h2, h3, h4),'
+            + ' :scope > .metric-card-widget-label, :scope > .dashboard-callout-heading > div > :is(h2, h3, h4),'
             + ' :scope > .dashboard-callout-heading > div > h4,'
             + ' :scope > .metric-card-widget > .metric-card-widget-label,'
-            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h3,'
+            + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > :is(h2, h3, h4),'
             + ' :scope > .dashboard-callout > .dashboard-callout-heading > div > h4'
           );
         for (const heading of headings) {
@@ -1010,6 +1011,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         rendered.setAttribute('data-view-layout', layout);
       }
       rendered.setAttribute('data-disclosure', disclosure);
+      if (isPlainObject(view) && typeof view.mark === 'string') rendered.setAttribute('data-view-mark', view.mark);
       if (isPlainObject(view) && view['lazy-list'] === true) {
         rendered.setAttribute('data-view-lazy-list', '');
       }
@@ -1027,7 +1029,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       : renderLazyView({
         label: getViewTitle(view, index),
         headingLevel: headingTag,
-        minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
+        minHeight: isPlainObject(view) && view.mark === 'chart' ? 280
+          : layout === 'half' || layout === 'third' ? 180 : 280,
         render: () => {
           const current = binding?.sources.get() ?? sources;
           const next = render(current, viewIsPending(current));
@@ -1091,6 +1094,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
         }
         const owningPage = replacement.closest('.dashboard-page');
+        if (owningPage instanceof HTMLElement) enableLazyViews(owningPage);
         if (isRouteView && owningPage instanceof HTMLElement && routeParameter) {
           dispatchPageRoute(replacement, routeParameter, owningPage.dataset.routeValue ?? '');
         }
@@ -1098,6 +1102,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     }
     rendered.classList.add('custom-view');
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
+    if (isPlainObject(view) && typeof view.mark === 'string') rendered.setAttribute('data-view-mark', view.mark);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (isPlainObject(view) && view['lazy-list'] === true) {
@@ -2101,21 +2106,6 @@ export function resolveQueryDrillPageTitle(parameters, knownQueries) {
 }
 
 /**
- * @param {HTMLElement} page
- * @param {string} parameter
- * @param {string} value
- */
-function dispatchPageRoute(page, parameter, value) {
-  const routeViews = [...page.querySelectorAll('[data-route-view]')];
-  if (page.matches('[data-route-view]')) routeViews.unshift(page);
-  for (const routeView of routeViews) {
-    routeView.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter, value }
-    }));
-  }
-}
-
-/**
  * @param {Document} ownerDocument
  * @param {string} pageTitle
  * @param {string} dashboardTitle
@@ -2311,7 +2301,7 @@ function summarizeDataState(pageSources) {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
- * @param {'h3'|'h4'} [headingTag]
+ * @param {'h2'|'h3'|'h4'} [headingTag]
  * @param {string} [routeParameter]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
@@ -2421,7 +2411,7 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
  * @param {string} pageId
  * @param {Record<string, unknown>} view
  * @param {string} title
- * @param {'h3'|'h4'} headingTag
+ * @param {'h2'|'h3'|'h4'} headingTag
  * @returns {HTMLElement}
  */
 function renderCalloutView(pageId, view, title, headingTag) {
@@ -2492,7 +2482,7 @@ function suppressSupplementalTableHeading(rendered, view, index) {
  * @param {number} viewIndex
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {string[]} contextDetails
- * @param {'h3'|'h4'} headingTag
+ * @param {'h2'|'h3'|'h4'} headingTag
  * @param {string} [routeParameter]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
@@ -2607,7 +2597,7 @@ function renderPageTitleLink(target, candidate) {
  * @param {string | null} sourceName
  * @param {'available'|'empty'|'unavailable'} availability
  * @param {string[]} contextDetails
- * @param {'h3'|'h4'} [headingTag]
+ * @param {'h2'|'h3'|'h4'} [headingTag]
  * @param {string} [message]
  * @param {unknown} [queryError]
  * @param {unknown} [queryDiagnostic]

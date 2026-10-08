@@ -399,14 +399,7 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           npx playwright install --with-deps chromium
       - name: Run performance scenarios
-        run: |
-          status=0
-          npm run test:performance || status=$?
-          if [ "$status" -eq 42 ]; then
-            echo "Lighthouse budget thresholds exceeded; continuing without blocking CI."
-            exit 0
-          fi
-          exit "$status"
+        run: npm run test:performance
       - name: Upload performance traces
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -458,7 +451,7 @@ jobs:
               core.warning(`Could not read the Lighthouse summary; skipping PR feedback: ${message}`)
               return
             }
-            if (!summary || !Array.isArray(summary.results)) {
+            if (!summary || summary.status !== 'complete' || !Array.isArray(summary.results)) {
               core.warning('Lighthouse summary has an unexpected shape; skipping PR feedback')
               return
             }

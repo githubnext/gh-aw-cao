@@ -134,11 +134,11 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   const action = page.locator('[data-view-id="cost-by-campaign"] .table-intent-button');
   await expect(action).toBeVisible();
   const titleRow = page.locator('[data-view-id="cost-by-campaign"] .chart-prompt-heading');
-  await expect(titleRow.locator('h3, h4')).toBeVisible();
+  await expect(titleRow.getByRole('heading', { level: 2 })).toBeVisible();
   await expect(action.locator('.octicon')).toBeVisible();
   await expect(action).toHaveAttribute('aria-label', /Propose fix: /);
   await expect(action.locator('span')).toBeHidden();
-  const titleBox = await titleRow.locator('h3, h4').boundingBox();
+  const titleBox = await titleRow.getByRole('heading', { level: 2 }).boundingBox();
   const buttonBox = await action.boundingBox();
   if (!titleBox || !buttonBox) throw new Error('Chart title and prompt button must be visible.');
   expect(buttonBox.x).toBeGreaterThan(titleBox.x + titleBox.width);

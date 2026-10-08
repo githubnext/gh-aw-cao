@@ -382,6 +382,11 @@ export function splitDashboardDocument(source, options = {}) {
       // requested separately so they never delay the active page.
       ...navigationIndicatorSourceNames(document.dashboard.pages ?? []),
       ...(payload.views ?? []).flatMap(getViewSources),
+      ...(payload.views ?? []).flatMap((view) => (
+        isPlainObject(view) && isPlainObject(view.data) && typeof view.data['partial-source'] === 'string'
+          ? [view.data['partial-source']]
+          : []
+      )),
     ]);
     const requiredQueryNames = new Set(resolveDashboardQuerySources(queryDefinitions, querySourceNames));
     const queries = queryDefinitions.filter((query) => (

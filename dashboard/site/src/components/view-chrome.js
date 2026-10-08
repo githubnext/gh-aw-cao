@@ -14,7 +14,7 @@ const debugViewChrome = createDebug('view-chrome');
  * @param {string} pageId
  * @param {string} title
  * @param {HTMLElement[]} content
- * @param {'h3'|'h4'} [headingTag]
+ * @param {'h2'|'h3'|'h4'} [headingTag]
  * @param {string} [description]
  * @returns {HTMLElement}
  */
@@ -286,13 +286,14 @@ export function renderLayoutSectionChrome(pageId, section, count) {
     return h(
       'header',
       { className: 'layout-section-header layout-section-header-summary' },
-      h('h3', { id: headingId }, countTitle)
+      h('h2', { id: headingId }, countTitle)
     );
   }
   const sectionHeading = renderSectionHeading({
     kicker: titleCase(section.id),
     id: headingId,
     title,
+    headingTag: 'h2',
     description: section.description
   });
   return h(

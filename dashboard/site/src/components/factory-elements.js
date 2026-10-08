@@ -36,7 +36,7 @@ export function resolveFactorySourceNames(defaults, config) {
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
  * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], routeParameters?: Record<string, string>, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
- * @param {{ refreshViewSources?: boolean, requestMissingSources?: boolean, bindingScope?: string }} [options]
+ * @param {{ refreshViewSources?: boolean, requestMissingSources?: boolean, preserveSubscribedSources?: boolean, bindingScope?: string }} [options]
  * @returns {SourceBindings}
  */
 export function bindFactorySources(sources, names, request, options) {
@@ -50,9 +50,12 @@ export function bindFactorySources(sources, names, request, options) {
         ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
         : name;
       const bindingKey = options?.bindingScope ? `${viewKey}:${encodeURIComponent(options.bindingScope)}` : viewKey;
-      if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
+      const entry = sourceState(bindingKey);
+      const status = entry.get().status;
+      const settledSubscription = options?.preserveSubscribedSources === true && (status === 'ready' || status === 'failed');
+      if (source && Array.isArray(source.rows) && !settledSubscription) publishSource(name, source, bindingKey);
       if (!source && options?.requestMissingSources === false) {
-        sourceState(bindingKey).set({ status: 'loading', origin: 'view', source: null });
+        if (entry.get().status === 'idle') entry.set({ status: 'loading', origin: 'view', source: null });
       } else if (!source || options?.refreshViewSources === true) {
         requestedCount += 1;
         requestSource(name, {
@@ -133,7 +136,7 @@ export function createFactoryScope({ signal } = {}) {
   }
   return {
     signal: lifetime.signal,
-    /** @param {HTMLElement} element */
+    /** @param {Element} element */
     bind(element) {
       if (typeof MutationObserver !== 'function') return;
       let wasConnected = element.isConnected;

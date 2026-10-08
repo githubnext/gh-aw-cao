@@ -45,7 +45,8 @@ const debugCampaignRouteShell = createDebug('campaign-route-shell');
  * @returns {HTMLElement}
  */
 export function renderCampaignRouteShell(context, config) {
-  const bindingOptions = context.sourcesSubscribed ? { requestMissingSources: false } : undefined;
+  const bindingOptions = context.sourcesSubscribed
+    ? { requestMissingSources: false, preserveSubscribedSources: true } : undefined;
   const workflowBindings = bindFactorySources(context.sources, ['workflows'], context, bindingOptions);
   const declaredCounts = Object.values(CAMPAIGN_TAB_COUNT_SOURCES)
     .filter((name) => context.sourceNames.includes(name));

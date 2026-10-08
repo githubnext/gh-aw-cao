@@ -159,6 +159,45 @@ Before ingestion, the browser inspects its storage estimate and requests persist
 
 IndexedDB is disposable derived state. Clearing browser storage reconstructs it from authorized published inputs; it does not delete authoritative information.
 
+## Validate browser performance
+
+Run `npm --prefix dashboard/site run test:performance` to audit the production
+build in two states: an empty canonical database and a completely ingested
+published Activity snapshot. The runner downloads every normalized JSONL shard,
+verifies its manifest hash, waits for successful ingestion, and records canonical
+store counts before and after the audits. Its empty snapshot uses valid
+zero-record shards and empty inventory, not fixture-mode presenter data.
+
+The CFO, CTO, and CSO journeys check that visible views finish loading without
+unavailable-data cards, including the inventory table modes. Lighthouse measures
+desktop and mobile separately and reports three-run medians. Cold-network audits
+clear HTTP cache and bypass the audit page's service worker while retaining
+IndexedDB; separate PWA audits use normal service-worker responses. PWA transfer
+sizes do not represent uncached network bytes.
+
+Production builds compile the shared styles into a native linked stylesheet,
+preload the entry and application modules, and keep route modules deferred.
+The worker is bundled independently so its startup does not repeat discovery
+of the application's shared chunks. Source-mode previews retain the same
+shared styles and rendering contracts.
+Production keeps source-declared glyphs in a small inline icon core and loads
+the complete sprite only for other supported campaign icons. The complete
+sprite is precached for offline use; unknown names retain the question glyph.
+
+To compare revisions against the same downloaded evidence, set
+`DASHBOARD_PERFORMANCE_DATA_ROOT` to a directory containing
+`payload-hashes.json`, `inventory-sources.json`, `memory/`, and all declared
+normalized shards. `DASHBOARD_DATA_URL` selects a different published manifest
+when downloading. `DASHBOARD_PERFORMANCE_REPEATS` changes the repetition count,
+and `DASHBOARD_PERFORMANCE_NETWORK_MODES=cold` runs only the cold cohort.
+
+Reports, browser traces, desktop/mobile screenshots, ingestion timings, and
+persona-journey timings are written under
+`dashboard/site/test-results/lighthouse/`. A missing shard, failed query, invalid
+state, or breached performance budget fails the command and the CI job.
+Complete eager-ingestion time is recorded separately from page readiness: normal
+first visits can still explore partial data while import continues.
+
 ## SQL interchange
 
 SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Database owners map their schema to the contract and export static JSON before deployment. Local and deployed environments use the same contract, validator, adapter, and canonical queries; the static dashboard never opens a database connection.

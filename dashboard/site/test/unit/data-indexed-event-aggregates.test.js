@@ -156,6 +156,7 @@ describe('indexed run-owned event aggregates at the production worker boundary',
         ]
       }
     });
+
     const attributions = {
       source: 'attributions', metadata,
       rows: [{ ...identity, campaign: 'activity' }, { ...identity, campaign: 'activity' }]
@@ -208,6 +209,40 @@ describe('indexed run-owned event aggregates at the production worker boundary',
       ...distinctEvents, select: [{ field: 'campaign' }, { field: 'events' }], 'order-by': undefined
     }], unique, ['distinct-events'])['distinct-events'].rows)
       .toEqual([{ campaign: 'activity', events: 39 }]);
+  });
+
+  it('scans unique keys before bounded count batches while preserving representatives', async () => {
+    const rows = Array.from({ length: 140 }, (_, position) => ({
+      id: `tool:${String(position).padStart(4, '0')}`,
+      runId: `run:${String(position % 70).padStart(3, '0')}`
+    }));
+    await put({ tools: rows });
+    let scanComplete = false;
+    let outstanding = 0;
+    let peak = 0;
+    const openKeyCursor = IDBIndex.prototype.openKeyCursor;
+    vi.spyOn(IDBIndex.prototype, 'openKeyCursor').mockImplementation(/** @this {IDBIndex} */ function (...args) {
+      const request = openKeyCursor.apply(this, args);
+      request.addEventListener('success', () => {
+        if (!request.result) scanComplete = true;
+      });
+      return request;
+    });
+    const count = IDBIndex.prototype.count;
+    vi.spyOn(IDBIndex.prototype, 'count').mockImplementation(/** @this {IDBIndex} */ function (...args) {
+      if (args[0] !== undefined) {
+        expect(scanComplete).toBe(true);
+        outstanding += 1;
+        peak = Math.max(peak, outstanding);
+      }
+      const request = count.apply(this, args);
+      if (args[0] !== undefined) request.addEventListener('success', () => { outstanding -= 1; });
+      return request;
+    });
+    const actual = await queryCollectionCountGroups(indexedDB, 'tools', { index: 'byRun', maxGroups: 100 });
+    expect(actual).toEqual(rows.slice(0, 70).map((row) => ({ ...row, count: 2 })));
+    expect(peak).toBe(32);
+    expect(outstanding).toBe(0);
   });
 
   it('keeps empty, unavailable, missing dimensions, and optional union semantics honest', async () => {

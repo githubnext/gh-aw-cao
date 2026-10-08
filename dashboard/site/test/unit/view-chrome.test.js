@@ -277,8 +277,8 @@ describe('view chrome component helpers', () => {
 
     expect(header.className).toBe('layout-section-header');
     expect(header.querySelector('.section-heading .scope-kicker')?.textContent).toBe('Run Trend');
-    expect(header.querySelector('h3')?.id).toBe('campaigns-run-trend-layout-heading');
-    expect(header.querySelector('h3')?.textContent).toBe('Campaign run trend');
+    expect(header.querySelector('h2')?.id).toBe('campaigns-run-trend-layout-heading');
+    expect(header.querySelector('h2')?.textContent).toBe('Campaign run trend');
     expect(header.querySelector('.section-heading p')?.textContent).toBe('Thirty-day retained campaign run totals.');
     expect(header.querySelector('.layout-section-header > strong')?.textContent).toBe('12 records');
   });
@@ -295,6 +295,6 @@ describe('view chrome component helpers', () => {
 
     expect(header.className).toBe('layout-section-header layout-section-header-summary');
     expect(header.querySelector('.scope-kicker')).toBeNull();
-    expect(header.querySelector('h3')?.textContent).toBe('80 items need your attention');
+    expect(header.querySelector('h2')?.textContent).toBe('80 items need your attention');
   });
 });

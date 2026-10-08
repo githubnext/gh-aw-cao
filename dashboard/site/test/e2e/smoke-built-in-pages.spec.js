@@ -426,7 +426,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   });
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Table' }).click();
-  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 2 })).toBeVisible();
   const campaignWorkflowRows = page.locator('[data-page-id="campaign-workflows"] .custom-table tbody tr');
   await expect(campaignWorkflowRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="campaign-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([

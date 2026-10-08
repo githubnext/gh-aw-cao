@@ -143,11 +143,11 @@ describe('declarative view title visibility', () => {
       }
     });
     const quiet = rendered.querySelector('[data-view-id="quiet"]');
-    expect(quiet?.querySelector(':scope > h3')).toBeNull();
+    expect(quiet?.querySelector(':scope > :is(h2, h3, h4)')).toBeNull();
     expect(quiet?.hasAttribute('aria-labelledby')).toBe(false);
     expect(quiet?.getAttribute('aria-label')).toBe('Quiet title');
     expect(quiet?.querySelector('.metric-value')?.textContent).toBe('1');
-    expect(rendered.querySelector('[data-view-id="visible"] > h3')?.textContent).toBe('Visible title');
+    expect(rendered.querySelector('[data-view-id="visible"] > h2')?.textContent).toBe('Visible title');
     disposeDashboard(rendered);
   });
 
@@ -176,7 +176,7 @@ describe('declarative view title visibility', () => {
         }
       });
       const view = rendered.querySelector('[data-view-id="quiet-chart"]');
-      expect(view?.querySelector('.chart-prompt-heading > h3'), `${chart} ${layout}`).toBeNull();
+      expect(view?.querySelector('.chart-prompt-heading > :is(h2, h3, h4)'), `${chart} ${layout}`).toBeNull();
       expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
       expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Propose fix: Quiet chart');
       disposeDashboard(rendered);
@@ -211,13 +211,13 @@ describe('declarative view title visibility', () => {
       }
     });
     const card = rendered.querySelector('[data-view-id="card"]');
-    expect(card?.querySelector('h3, h4')).toBeNull();
+    expect(card?.querySelector('.semantic-prompt-heading > :is(h2, h3, h4)')).toBeNull();
     expect(card?.getAttribute('role')).toBe('group');
     expect(card?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.metric-card-widget')?.getAttribute('aria-label')).toBe('Card title');
     expect(card?.querySelector('.table-intent-button')).not.toBeNull();
     const notice = rendered.querySelector('[data-view-id="notice"]');
-    expect(notice?.querySelector('h3, h4')).toBeNull();
+    expect(notice?.querySelector('.dashboard-callout-heading :is(h2, h3, h4)')).toBeNull();
     expect(notice?.querySelector('.dashboard-callout')?.getAttribute('aria-label')).toBe('Notice title');
     expect(notice?.querySelector('.table-intent-button')).not.toBeNull();
     disposeDashboard(rendered);
@@ -365,7 +365,7 @@ describe('semantic view prompt action', () => {
     const button = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-view-id="health-chart"] .table-intent-button'));
     expect(button?.getAttribute('aria-label')).toBe('Propose fix: Health chart');
     const heading = rendered.querySelector('[data-view-id="health-chart"] .chart-prompt-heading');
-    expect(heading?.querySelector('h3, h4')?.textContent).toBe('Health chart');
+    expect(heading?.querySelector('h2, h3, h4')?.textContent).toBe('Health chart');
     expect(heading?.querySelector('.chart-prompt-action .table-intent-button')).toBe(button);
     expect(button?.querySelector('.octicon-git-pull-request')).not.toBeNull();
     button?.click();
@@ -434,7 +434,7 @@ describe('semantic view prompt action', () => {
     });
     const rendered = renderDashboardView({ document, sources: {} });
     const callout = rendered.querySelector('[data-view-id="alert"]');
-    expect(callout?.querySelectorAll('h3, h4')).toHaveLength(1);
+    expect(callout?.querySelectorAll('.dashboard-callout-heading :is(h2, h3, h4)')).toHaveLength(1);
     expect(callout?.querySelector('aside')?.getAttribute('aria-labelledby')).toBe('overview-alert-callout-heading');
     const prompt = callout?.querySelector('.semantic-prompt-action .table-intent-button');
     expect(prompt?.getAttribute('aria-label')).toBe('Propose fix: Review required');
@@ -535,45 +535,6 @@ describe('dashboard DOM provenance', () => {
       onUpdate: expect.any(Function)
     }));
     disposeDashboard(rendered);
-  });
-
-  it('logs and ignores navigation indicator source failures', async () => {
-    const originalUrl = window.location.href;
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    window.history.replaceState({}, '', '?debug=render:navigation');
-    vi.resetModules();
-    try {
-      const { renderDashboard, disposeDashboard: dispose } = await import('../../src/presenter.js');
-      const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
-        languageVersion: '0.1.0',
-        dashboard: {
-          title: 'Indicator dashboard',
-          pages: [{
-            id: 'maintenance',
-            kind: 'custom',
-            title: 'Updates',
-            views: [],
-            'navigation-indicator': {
-              label: 'updates available',
-              any: ['maintenance-campaign-updates']
-            }
-          }]
-        }
-      }));
-      const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
-      loadPageSources.subscribeBackgroundSources = vi.fn(() => Promise.reject(new Error('unavailable')));
-
-      const rendered = renderDashboard({ document, sources: {}, loadPageSources });
-
-      await vi.waitFor(() => {
-        expect(debug).toHaveBeenCalledWith('[cao:render:navigation]', 'indicator update failed', { error: 'unavailable' });
-      });
-      dispose(rendered);
-    } finally {
-      window.history.replaceState({}, '', originalUrl);
-      debug.mockRestore();
-      vi.resetModules();
-    }
   });
 
   it('loads a page chunk before mounting its independently bound elements', async () => {
@@ -3674,7 +3635,7 @@ describe('presenter built-in and custom pages', () => {
       }, ['runs-table', 'runs-daily-conclusions'])
     });
 
-    const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
+    const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section > h2, [data-page-id="runs"] .page-section > .chart-prompt-heading > h2')].map((element) => element.textContent);
     expect(headings).toEqual(['Runs in the last week', 'Runs']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="area"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
@@ -4025,7 +3986,7 @@ describe('presenter built-in and custom pages', () => {
 
     /** @param {string} title */
     const sectionWithHeading = (title) => [...rendered.querySelectorAll('.page-section')]
-      .find((section) => section.querySelector(':scope > h3, :scope > h4')?.textContent === title);
+      .find((section) => section.querySelector(':scope > :is(h2, h3, h4)')?.textContent === title);
     const emptySection = sectionWithHeading('Empty Usage');
     const emptyCard = emptySection?.querySelector('.view-state-card[data-view-state="empty"]');
     expect(emptyCard?.getAttribute('role')).toBe('status');

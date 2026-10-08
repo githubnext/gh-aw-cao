@@ -26,8 +26,8 @@ test('the footer shows an app download before offering the user a reload', async
       response.end(workerSource
         .replace("const VERSION = 'development';", `const VERSION = '${version}';`)
         .replace('const APP_ASSETS = [];', version === 'second' ? "const APP_ASSETS = ['/update-asset.js'];" : 'const APP_ASSETS = [];'));
-    } else if (pathname.startsWith('/src/') && /^\/src\/[a-z/-]+\.js$/.test(pathname)) {
-      response.writeHead(200, { 'Content-Type': 'text/javascript' });
+    } else if (pathname.startsWith('/src/') && /^\/src\/[a-z/-]+\.(js|json)$/.test(pathname)) {
+      response.writeHead(200, { 'Content-Type': pathname.endsWith('.json') ? 'application/json' : 'text/javascript' });
       response.end(readFileSync(new URL(`../..${pathname}`, import.meta.url)));
     } else if (pathname === '/') {
       response.writeHead(200, { 'Content-Type': 'text/html' });
