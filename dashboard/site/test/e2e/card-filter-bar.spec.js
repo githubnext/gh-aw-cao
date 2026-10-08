@@ -121,6 +121,14 @@ for (const mobile of [false, true]) {
     await expect(cardList).toHaveCSS('border-radius', '14px');
     await expect(cardList.locator('.mobile-table-card-toolbar .card-filter-bar')).toBeVisible();
     await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+    await expect(view).toHaveCSS('padding-left', '0px');
+    await expect(view).toHaveCSS('padding-right', '0px');
+    await expect(view).toHaveCSS('padding-top', '16px');
+    const viewBox = await view.boundingBox();
+    const listBox = await cardList.boundingBox();
+    expect(listBox?.x).toBe(viewBox?.x);
+    expect(listBox?.width).toBe(viewBox?.width);
+    expect((listBox?.y ?? 0) - (viewBox?.y ?? 0)).toBe(16);
     await expect(summary).toHaveCSS('border-radius', mobile ? '22px' : '6px');
     await expect(summary).toHaveCSS('border-top-width', '1px');
     if (mobile) expect((await summary.boundingBox())?.height).toBeGreaterThanOrEqual(44);
