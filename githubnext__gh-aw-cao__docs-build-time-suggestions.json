@@ -1,5 +1,5 @@
 {
-  "source_sha": "60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035",
+  "source_sha": "3aaca4989badc3c798269470725030cb977dbc54",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -611,6 +611,34 @@
         37714027113
       ],
       "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run and schedule attempts across recent source SHAs 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, fa22e47bdb019d5742e1c2695836c142a198c6e0, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
+    },
+    {
+      "evaluated_at": "2026-10-08T04:03:00Z",
+      "worker_run_id": 37725312001,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37725240976,
+        37724857759,
+        37724850552,
+        37724304174,
+        37724108945,
+        37722204715,
+        37721895830,
+        37720832297,
+        37720401950,
+        37719586994,
+        37719585540,
+        37719364858,
+        37719315177,
+        37719133607,
+        37719003613,
+        37718915373,
+        37717682972,
+        37716988743,
+        37716461895,
+        37716273921
+      ],
+      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 1 successful run (37725240976), below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-08T02:06:55Z through 2026-10-08T03:58:21Z and was dominated by 18 cancelled runs plus 1 action_required run across source SHAs 3aaca4989badc3c798269470725030cb977dbc54, 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, fa22e47bdb019d5742e1c2695836c142a198c6e0, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be validated safely in this run."
     }
   ]
 }
