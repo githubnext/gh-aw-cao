@@ -6,11 +6,15 @@ export const $lib = createTypeSpecLibrary({ name: 'cao-postgres', diagnostics: {
 export const namespace = 'Cao.Postgres';
 const parentKey = Symbol.for('cao-postgres.parent');
 const partitionKey = Symbol.for('cao-postgres.run-partition');
+const dailyPartitionKey = Symbol.for('cao-postgres.daily-partition');
 export function $parent(context, target, entity, required = true) {
   context.program.stateMap(parentKey).set(target, { entity, required });
 }
 export function $runPartition(context, target) {
   context.program.stateSet(partitionKey).add(target);
+}
+export function $dailyPartition(context, target) {
+  context.program.stateSet(dailyPartitionKey).add(target);
 }
 
 const snake = (field) => field.replace(/-/g, '_').replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -58,7 +62,8 @@ export async function $onEmit(context) {
         if (!kind) throw new Error(`Storage requires an explicit native type: ${model.name}.${property.name}`);
         columns.push({ field: property.name, name: snake(property.name), kind: kind[0], sql: kind[1], required: !property.optional });
       }
-      const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model) };
+      const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model), daily: context.program.stateSet(dailyPartitionKey).has(model) };
+      if (table.daily && !table.partitioned) throw new Error(`${model.name} must be run-partitioned to use daily shards`);
       if (namespace === 'Cao.Postgres.Storage') systems.push(table);
       else {
         table.runtime = namespace === 'Cao.Postgres.Runtime' || model.name === 'marketplacePackages';
@@ -115,6 +120,7 @@ export async function $onEmit(context) {
         const parentPartitioned = tables.find((candidate) => candidate.collection === parent)?.partitioned;
         constraints.push(`FOREIGN KEY (namespace, ${snake(field)}${parentPartitioned ? ', run_at' : ''}) REFERENCES ${snake(parent)}(namespace, id${parentPartitioned ? ', run_at' : ''}) DEFERRABLE INITIALLY DEFERRED`);
       }
+      if (table.daily) statements.push(`-- ${table.name}: seven UTC daily run_at partitions, maintained independently of runs.`);
       statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
@@ -128,7 +134,7 @@ ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
       }
       if (table.partitioned) statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
     }
-    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned}, columns: []entityColumn{`);
+    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned}, daily: ${table.daily}, columns: []entityColumn{`);
     for (const column of table.columns) {
       go.push(`\t\t{field: "${column.field}", name: "${column.name}", kind: "${column.kind}", sql: "${column.sql}"},`);
     }

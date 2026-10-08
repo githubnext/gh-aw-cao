@@ -17,7 +17,9 @@ import (
 
 const defaultRunRetentionDays = 30
 const futureRunWeeks = 4
+const dailyRetentionDays = 7
 const partitionMaintenanceInterval = 24 * time.Hour
+var dailyTables = []string{"audits", "tools"}
 
 var partitionsLog = logger.New("cao:postgresx:partitions")
 
@@ -29,6 +31,11 @@ func weekStart(t time.Time) time.Time {
 	t = t.UTC()
 	day := (int(t.Weekday()) + 6) % 7
 	return time.Date(t.Year(), t.Month(), t.Day()-day, 0, 0, 0, 0, time.UTC)
+}
+
+func dayStart(t time.Time) time.Time {
+	t = t.UTC()
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // RunPartitionMaintenance is an administrative operation, never part of
@@ -49,12 +56,12 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	if _, err := lock.Exec(ctx, "SELECT pg_advisory_lock(712083241, 17484)"); err != nil {
 		return err
 	}
-	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
+	tables := []string{"domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "runs"}
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
 	start := weekStart(cutoff)
 	current := weekStart(now)
 	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
-	existing, expired, err := s.existingPartitions(ctx, cutoff)
+	existing, expired, expiredDays, err := s.existingPartitions(ctx, cutoff, dayStart(now).AddDate(0, 0, -(dailyRetentionDays - 1)))
 	if err != nil {
 		return err
 	}
@@ -62,6 +69,23 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	defer func() {
 		partitionsLog.Printf("partition maintenance finished namespace=%s window_start=%s window_end=%s", s.namespace, start.Format("20060102"), end.Format("20060102"))
 	}()
+	// Provision today's and tomorrow's shards before ingestion can cross midnight.
+	for at := dayStart(now).AddDate(0, 0, -(dailyRetentionDays - 1)); !at.After(dayStart(now).AddDate(0, 0, 1)); at = at.AddDate(0, 0, 1) {
+		for _, table := range dailyTables {
+			name := table + "_d" + at.Format("20060102")
+			if existing[name] {
+				continue
+			}
+			if err := s.createPartition(ctx, table, name, at, at.AddDate(0, 0, 1)); err != nil {
+				return err
+			}
+		}
+	}
+	for _, name := range expiredDays {
+		if err := s.dropDailyPartition(ctx, name); err != nil {
+			return err
+		}
+	}
 	// Provision the current and upcoming weeks before any historical backlog.
 	for at := current; at.Before(end); at = at.AddDate(0, 0, 7) {
 		if err := s.createWeek(ctx, tables, at, existing); err != nil {
@@ -131,42 +155,106 @@ func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time)
 	return tx.Commit()
 }
 
-func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[string]bool, []time.Time, error) {
+func (s *Store) existingPartitions(ctx context.Context, cutoff, dailyCutoff time.Time) (map[string]bool, []time.Time, []string, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT c.relname,p.relname FROM pg_inherits i
 		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
 		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
 		('audits','domains','eval_observations','experiment_assignments',
 		 'friction','grader_observations','issues','skills','tools','runs')`)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	existing := make(map[string]bool)
 	var expired []time.Time
+	var expiredDays []string
 	for rows.Next() {
 		var name, table string
 		if err := rows.Scan(&name, &table); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		existing[name] = true
+		if table == "audits" || table == "tools" {
+			if !strings.HasPrefix(name, table+"_d") || len(name) != len(table+"_d")+8 {
+				return nil, nil, nil, fmt.Errorf("unexpected %s partition", table)
+			}
+			date, err := time.Parse("20060102", strings.TrimPrefix(name, table+"_d"))
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if !date.AddDate(0, 0, 1).After(dailyCutoff) {
+				expiredDays = append(expiredDays, name)
+			}
+			continue
+		}
 		if table != "runs" {
 			continue
 		}
 		if !strings.HasPrefix(name, "runs_w") || len(name) != len("runs_w")+8 {
-			return nil, nil, fmt.Errorf("unexpected runs partition")
+			return nil, nil, nil, fmt.Errorf("unexpected runs partition")
 		}
 		date, err := time.Parse("20060102", strings.TrimPrefix(name, "runs_w"))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		if !date.AddDate(0, 0, 7).After(cutoff) {
 			expired = append(expired, date)
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return existing, expired, nil
+	return existing, expired, expiredDays, nil
+}
+
+func (s *Store) createPartition(ctx context.Context, table, name string, start, end time.Time) error {
+	statement, _, err := sqlbuilder.Build("CREATE TABLE {} PARTITION OF {} FOR VALUES FROM ({}) TO ({})",
+		sqlbuilder.Identifier(name), sqlbuilder.Identifier(table),
+		sqlbuilder.Fragment("'"+start.Format(time.RFC3339)+"'"),
+		sqlbuilder.Fragment("'"+end.Format(time.RFC3339)+"'"))
+	if err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx, statement)
+	return err
+}
+
+func (s *Store) dropDailyPartition(ctx context.Context, name string) error {
+	table := strings.SplitN(name, "_d", 2)[0]
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	namespaces, err := partitionNamespaces(ctx, tx, name)
+	if err != nil {
+		return err
+	}
+	for _, namespace := range namespaces {
+		if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, namespace); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, "ALTER TABLE "+table+" DETACH PARTITION "+name); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "DROP TABLE "+name); err != nil {
+		return err
+	}
+	for _, namespace := range namespaces {
+		var count int
+		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM "+table+" WHERE namespace=$1", namespace).Scan(&count); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE cao_quality SET availability=CASE WHEN availability='unavailable' THEN 'unavailable' ELSE $1 END WHERE namespace=$2 AND collection=$3`,
+			map[bool]string{true: "empty", false: "available"}[count == 0], namespace, "$"+table); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE cao_state SET revision=revision+1 WHERE namespace=$1", namespace); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) createWeek(ctx context.Context, tables []string, at time.Time, existing map[string]bool) error {

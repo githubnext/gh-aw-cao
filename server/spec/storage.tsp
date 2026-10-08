@@ -5,6 +5,7 @@ namespace Cao.Postgres;
 
 extern dec parent(target: ModelProperty, entity: valueof string, required?: valueof boolean);
 extern dec runPartition(target: Model);
+extern dec dailyPartition(target: Model);
 
 model campaigns {
   aiCreditAllowance?: decimal;
@@ -163,6 +164,7 @@ model domains {
 
 /** Run-linked tool events, including separate call/outcome records; not configured tool definitions. */
 @runPartition
+@dailyPartition
 model tools {
   correlationId?: string;
   failedCount?: int64;
@@ -268,6 +270,7 @@ model friction {
  * and use at most three exponent digits; larger or malformed summaries remain.
  */
 @runPartition
+@dailyPartition
 model audits {
   acceptedAt?: utcDateTime;
   activationSource?: string;

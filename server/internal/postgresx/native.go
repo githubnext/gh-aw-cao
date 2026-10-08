@@ -23,6 +23,7 @@ type entityTable struct {
 	runtime     bool
 	canonical   bool
 	partitioned bool
+	daily       bool
 	columns     []entityColumn
 }
 
@@ -429,12 +430,28 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id",
 			query.SQLIdentifier(name), strings.Join(columns, ","), strings.Join(quoted, ","),
 			query.SQLIdentifier(name+"_stage"))
-		tag, err := w.tx.Exec(ctx, statement)
+		if table.daily {
+			statement += " WHERE p.run_at >= $1"
+		}
+		args := []any{}
+		if table.daily {
+			args = append(args, dayStart(w.ingestedAt).AddDate(0, 0, -(dailyRetentionDays - 1)))
+		}
+		tag, err := w.tx.Exec(ctx, statement, args...)
 		if err != nil {
 			return State{}, fmt.Errorf("publish run-owned %s: %w", name, err)
 		}
-		if tag.RowsAffected() != w.ordinals[source] {
+		if !table.daily && tag.RowsAffected() != w.ordinals[source] {
 			return State{}, fmt.Errorf("run-owned %s references a missing or ambiguous parent", name)
+		}
+		if table.daily {
+			var matched int64
+			if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+query.SQLIdentifier(name+"_stage")+" s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id").Scan(&matched); err != nil {
+				return State{}, err
+			}
+			if matched != w.ordinals[source] {
+				return State{}, fmt.Errorf("run-owned %s references a missing or ambiguous parent", name)
+			}
 		}
 		if err := w.tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM "+query.SQLIdentifier(name)+" WHERE namespace=$1 GROUP BY id HAVING count(*)>1)", w.store.namespace).Scan(&duplicate); err != nil {
 			return State{}, err
