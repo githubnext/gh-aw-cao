@@ -24,6 +24,64 @@ const (
 // ingest at least daily when healthy.
 const staleDataAge = 24 * time.Hour
 
+// activeDataReason names why classifyActiveData reached its status, stable
+// across summary wording changes so it is useful to log without exposing
+// revision numbers or evaluation timestamps.
+type activeDataReason string
+
+const (
+	activeDataReasonNotReady      activeDataReason = "not-ready"
+	activeDataReasonNoEvaluatedAt activeDataReason = "no-evaluated-at"
+	activeDataReasonStale         activeDataReason = "stale"
+	activeDataReasonFresh         activeDataReason = "fresh"
+)
+
+// activeDataClassification is the status, summary, and remedy
+// classifyActiveData derives from stored canonical data state.
+type activeDataClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  activeDataReason
+}
+
+// classifyActiveData decides the data.active check's outcome from the
+// stored canonical data's readiness, evaluation time, and age against
+// staleDataAge alone. It is a pure function so the not-ready, missing
+// evaluation time, stale, and fresh outcomes are each testable without a
+// Postgres-backed state read.
+func classifyActiveData(ready, evaluatedAtZero bool, age time.Duration, revision int64) activeDataClassification {
+	if !ready {
+		return activeDataClassification{
+			status:  StatusFail,
+			summary: "no canonical data is available; the dashboard has no data to serve",
+			remedy:  "run `cao-dashboard ingest --source DIRECTORY`, or `cao-dashboard backfill` in the collection profile",
+			reason:  activeDataReasonNotReady,
+		}
+	}
+	if evaluatedAtZero {
+		return activeDataClassification{
+			status:  StatusFail,
+			summary: "current Postgres data has no evaluation time",
+			remedy:  "reingest from the dashboard artifact",
+			reason:  activeDataReasonNoEvaluatedAt,
+		}
+	}
+	if age > staleDataAge {
+		return activeDataClassification{
+			status:  StatusWarn,
+			summary: fmt.Sprintf("canonical data was evaluated %s ago", humanDuration(age)),
+			remedy:  "check that ingestion is still running; the dashboard is serving data that is no longer current",
+			reason:  activeDataReasonStale,
+		}
+	}
+	return activeDataClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("revision %d evaluated %s ago", revision, humanDuration(age)),
+		reason:  activeDataReasonFresh,
+	}
+}
+
 func (d Doctor) checkActiveData(ctx context.Context) Check {
 	const id, title = "data.active", "Canonical data state"
 	if skip, ok := d.postgresUnavailable(id, areaData, title); ok {
@@ -33,39 +91,62 @@ func (d Doctor) checkActiveData(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaData, title, err)
 	}
-	if !active.Ready {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: "no canonical data is available; the dashboard has no data to serve",
-			Remedy:  "run `cao-dashboard ingest --source DIRECTORY`, or `cao-dashboard backfill` in the collection profile",
-		}
-	}
-	if active.EvaluatedAt.IsZero() {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: "current Postgres data has no evaluation time",
-			Remedy:  "reingest from the dashboard artifact",
-		}
-	}
 	age := d.now().Sub(active.EvaluatedAt)
-	details := []Detail{
-		detail("revision", fmt.Sprint(active.Revision)),
-		detail("dataRevision", active.DataRevision),
-		detail("evaluatedAt", formatTime(active.EvaluatedAt)),
-		detail("age", humanDuration(age)),
-	}
-	if age > staleDataAge {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusWarn,
-			Summary: fmt.Sprintf("canonical data was evaluated %s ago", humanDuration(age)),
-			Details: details,
-			Remedy:  "check that ingestion is still running; the dashboard is serving data that is no longer current",
+	classification := classifyActiveData(active.Ready, active.EvaluatedAt.IsZero(), age, active.Revision)
+	doctorLog.Printf("canonical data state classified status=%s reason=%s", classification.status, classification.reason)
+	var details []Detail
+	if classification.reason != activeDataReasonNotReady && classification.reason != activeDataReasonNoEvaluatedAt {
+		details = []Detail{
+			detail("revision", fmt.Sprint(active.Revision)),
+			detail("dataRevision", active.DataRevision),
+			detail("evaluatedAt", formatTime(active.EvaluatedAt)),
+			detail("age", humanDuration(age)),
 		}
 	}
 	return Check{
-		ID: id, Area: areaData, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("revision %d evaluated %s ago", active.Revision, humanDuration(age)),
-		Details: details,
+		ID: id, Area: areaData, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
+	}
+}
+
+// schemaVersionReason names why classifySchemaVersion reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the stored or expected version numbers.
+type schemaVersionReason string
+
+const (
+	schemaVersionReasonMismatch schemaVersionReason = "mismatch"
+	schemaVersionReasonMatch    schemaVersionReason = "match"
+)
+
+// schemaVersionClassification is the status, summary, and remedy
+// classifySchemaVersion derives from the stored and expected schema
+// versions.
+type schemaVersionClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  schemaVersionReason
+}
+
+// classifySchemaVersion decides the data.schema check's outcome from the
+// stored and expected schema versions alone. It is a pure function so the
+// mismatch and match outcomes are each testable without a Postgres-backed
+// diagnostics read.
+func classifySchemaVersion(stored, expected int) schemaVersionClassification {
+	if stored != expected {
+		return schemaVersionClassification{
+			status: StatusFail,
+			summary: fmt.Sprintf("stored schema version %d does not match this build's %d",
+				stored, expected),
+			remedy: "reingest with this build so the stored data matches the reader",
+			reason: schemaVersionReasonMismatch,
+		}
+	}
+	return schemaVersionClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("stored data is at schema version %d, matching this build", stored),
+		reason:  schemaVersionReasonMatch,
 	}
 }
 
@@ -91,23 +172,15 @@ func (d Doctor) checkSchemaVersion(ctx context.Context) Check {
 			Remedy:  "reingest the dashboard data and check the Postgres connection",
 		}
 	}
+	classification := classifySchemaVersion(diagnostics.SchemaVersion, model.SchemaVersion)
+	doctorLog.Printf("canonical schema version classified status=%s reason=%s", classification.status, classification.reason)
 	details := []Detail{
 		detail("stored", fmt.Sprint(diagnostics.SchemaVersion)),
 		detail("expected", fmt.Sprint(model.SchemaVersion)),
 	}
-	if diagnostics.SchemaVersion != model.SchemaVersion {
-		return Check{
-			ID: id, Area: areaData, Title: title, Status: StatusFail,
-			Summary: fmt.Sprintf("stored schema version %d does not match this build's %d",
-				diagnostics.SchemaVersion, model.SchemaVersion),
-			Details: details,
-			Remedy:  "reingest with this build so the stored data matches the reader",
-		}
-	}
 	return Check{
-		ID: id, Area: areaData, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("stored data is at schema version %d, matching this build", diagnostics.SchemaVersion),
-		Details: details,
+		ID: id, Area: areaData, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 

@@ -2,9 +2,73 @@ package doctor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
+
+func TestClassifyActiveDataFailsWhenNotReady(t *testing.T) {
+	classification := classifyActiveData(false, true, 0, 0)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %s, want fail: %+v", classification.status, classification)
+	}
+	if classification.reason != activeDataReasonNotReady {
+		t.Fatalf("reason = %s, want %s", classification.reason, activeDataReasonNotReady)
+	}
+}
+
+func TestClassifyActiveDataFailsWhenEvaluatedAtIsZero(t *testing.T) {
+	classification := classifyActiveData(true, true, 0, 1)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %s, want fail: %+v", classification.status, classification)
+	}
+	if classification.reason != activeDataReasonNoEvaluatedAt {
+		t.Fatalf("reason = %s, want %s", classification.reason, activeDataReasonNoEvaluatedAt)
+	}
+}
+
+func TestClassifyActiveDataWarnsWhenDataIsStale(t *testing.T) {
+	classification := classifyActiveData(true, false, staleDataAge+time.Minute, 1)
+	if classification.status != StatusWarn {
+		t.Fatalf("status = %s, want warn: %+v", classification.status, classification)
+	}
+	if classification.reason != activeDataReasonStale {
+		t.Fatalf("reason = %s, want %s", classification.reason, activeDataReasonStale)
+	}
+}
+
+func TestClassifyActiveDataPassesWhenDataIsFresh(t *testing.T) {
+	classification := classifyActiveData(true, false, time.Minute, 7)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %s, want pass: %+v", classification.status, classification)
+	}
+	if classification.reason != activeDataReasonFresh {
+		t.Fatalf("reason = %s, want %s", classification.reason, activeDataReasonFresh)
+	}
+	if want := "revision 7 evaluated 1m ago"; classification.summary != want {
+		t.Fatalf("summary = %q, want %q", classification.summary, want)
+	}
+}
+
+func TestClassifySchemaVersionFailsOnMismatch(t *testing.T) {
+	classification := classifySchemaVersion(3, 17)
+	if classification.status != StatusFail {
+		t.Fatalf("status = %s, want fail: %+v", classification.status, classification)
+	}
+	if classification.reason != schemaVersionReasonMismatch {
+		t.Fatalf("reason = %s, want %s", classification.reason, schemaVersionReasonMismatch)
+	}
+}
+
+func TestClassifySchemaVersionPassesOnMatch(t *testing.T) {
+	classification := classifySchemaVersion(17, 17)
+	if classification.status != StatusPass {
+		t.Fatalf("status = %s, want pass: %+v", classification.status, classification)
+	}
+	if classification.reason != schemaVersionReasonMatch {
+		t.Fatalf("reason = %s, want %s", classification.reason, schemaVersionReasonMatch)
+	}
+}
 
 func TestClassifyQueryDefinitionNamesReportsNoDefectsWhenAllNamesAreUniqueAndPresent(t *testing.T) {
 	names := classifyQueryDefinitionNames([]query.Definition{
