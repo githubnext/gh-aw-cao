@@ -13,7 +13,13 @@
             "field": "safe-output-type",
             "source": "issue-safe-output-label-options",
             "value-field": "safe-output-type"
-          },
+          }
+        ]
+      },
+      {
+        "id": "status",
+        "label": "Status",
+        "groups": [
           {
             "label": "Status",
             "field": "issue-status-detail",

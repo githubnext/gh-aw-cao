@@ -1200,7 +1200,9 @@ The `link-button-list` element presents one declared source as an inset grouped 
 
 A list or interactive table view may declare a `filter-bar` top row. This is distinct from the page-level Boolean `filter-bar`. Its non-empty `filters` sequence defines dropdown controls in display order. Each control has a unique canonical `id`, a human-readable `label`, and non-empty `groups`. Each group declares its caption (`label`), the exact view-source `field` to filter, a separate option `source`, its string `value-field`, and an optional string `label-field` (defaulting to `value-field`). Filter fields must be unique within a view. Option sources must be registered canonical sources or declarative queries, never values discovered from rendered cards.
 
-The Issues view declares the following JSON configuration. These are existing card badges, **not GitHub issue labels**, which are not retained in the canonical issue evidence:
+The Issues view declares separate Labels and Status dropdowns in the declarative filter bar. Status filters by the observed open state or closing reason, including Unknown when status evidence is missing. Labels filters existing safe-output card badges, **not GitHub issue labels**, which are not retained in the canonical issue evidence:
+
+In full-view card mode, the shared filter row stays above the independently scrolling cards. Desktop uses compact Primer dropdown buttons; mobile uses touch-sized rounded controls and grouped options with explicit apply and clear actions.
 
 ```json
 {
@@ -1214,7 +1216,12 @@ The Issues view declares the following JSON configuration. These are existing ca
           "field": "safe-output-type",
           "source": "issue-safe-output-label-options",
           "value-field": "safe-output-type"
-        },
+        }
+      ]
+    }, {
+      "id": "status",
+      "label": "Status",
+      "groups": [
         {
           "label": "Status",
           "field": "issue-status-detail",

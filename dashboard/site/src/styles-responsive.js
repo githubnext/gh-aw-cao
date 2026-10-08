@@ -25,8 +25,14 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .cli-action-dialog-body { overflow: auto; }
   .card-filter-bar { padding: 6px 12px; }
   .card-filter-menu > summary, .card-filter-bar button, .card-filter-group label { min-height: 44px; }
+  .card-filter-menu > summary { border-radius: 22px; padding-inline: 14px; background: var(--canvas); }
+  .card-filter-menu > summary:has(.count-badge:not([hidden])) { border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
   .card-filter-menu { position: static; }
-  .card-filter-popover { top: 100%; left: 12px; width: min(300px, calc(100% - 24px)); }
+  .card-filter-popover { top: calc(100% + 6px); left: 0; width: 100%; max-height: min(480px, 55dvh); box-sizing: border-box; border-radius: 12px; }
+  .card-filter-group legend { text-transform: uppercase; letter-spacing: .04em; }
+  .card-filter-group label + label { border-top: 1px solid var(--border-muted); }
+  .card-filter-group input { width: 18px; height: 18px; }
+  .mobile-table-card-toolbar { padding: 8px 12px; background: var(--canvas); }
   .dashboard-page > .page-chrome { display: none; }
   .view-mode-control { display: none; }
   body, .dashboard-root { font-size: 1rem; }

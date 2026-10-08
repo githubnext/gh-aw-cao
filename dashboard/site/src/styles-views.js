@@ -38,7 +38,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .card-filter-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; position: relative; z-index: 5; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px 6px 0 0; background: var(--canvas-subtle); }
 .card-filter-menu { position: relative; }
-.card-filter-menu > summary { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; border-radius: 6px; color: var(--muted); font-weight: 600; list-style: none; cursor: pointer; }
+.card-filter-menu > summary { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .875rem; font-weight: 600; list-style: none; cursor: pointer; }
 .card-filter-menu > summary::-webkit-details-marker { display: none; }
 .card-filter-menu > summary:hover, .card-filter-menu[open] > summary { background: var(--neutral-muted); color: var(--fg); }
 .card-filter-menu > summary .octicon { width: 12px; height: 12px; }
@@ -46,7 +46,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .card-filter-group { min-width: 0; margin: 0 0 12px; padding: 0; border: 0; }
 .card-filter-group legend { padding: 4px 0; color: var(--muted); font-size: .75rem; font-weight: 600; }
 .card-filter-group label { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px; overflow-wrap: anywhere; cursor: pointer; }
-.card-filter-group input { flex: none; }
+.card-filter-group input { flex: none; accent-color: var(--accent); }
 .card-filter-group p { margin: 4px 0; color: var(--muted); font-size: .8125rem; }
 .card-filter-bar button { min-height: 32px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; cursor: pointer; }
 .card-filter-bar button:hover { background: var(--neutral-muted); }

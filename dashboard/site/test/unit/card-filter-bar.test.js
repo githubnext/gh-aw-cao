@@ -151,9 +151,10 @@ describe('declarative card filters', () => {
         { source: 'missing-source' }, { field: 'missing-field' },
         { 'value-field': 'missing-field' }, { field: 'issue-status-detail' }
       ].map((invalid) => ({
-        filters: [{ ...bar.filters[0], groups: [
-          { ...bar.filters[0].groups[0], ...invalid }, bar.filters[0].groups[1]
-        ] }]
+        filters: [
+          { ...bar.filters[0], groups: [{ ...bar.filters[0].groups[0], ...invalid }] },
+          bar.filters[1]
+        ]
       }))
     ];
     for (const invalid of variants) {
@@ -187,13 +188,17 @@ describe('card filter controls', () => {
   it('renders grouped accessible options, applies selections, and clears only local filters', () => {
     const { root, onChange } = render();
     expect([...root.querySelectorAll('legend')].map((node) => node.textContent)).toEqual(['Safe output', 'Status']);
+    const statusMenu = /** @type {HTMLDetailsElement} */ (root.querySelectorAll('details')[1]);
+    const summary = statusMenu.querySelector('summary');
+    expect(summary?.textContent).toContain('Status');
     const label = [...root.querySelectorAll('label')].find((node) => node.textContent === 'Open');
     label?.querySelector('input')?.click();
     expect(onChange).not.toHaveBeenCalled();
-    expect(root.querySelector('summary')?.getAttribute('aria-label')).toBe('Labels, 1 selected');
-    root.querySelector('.card-filter-popover button')?.dispatchEvent(new MouseEvent('click'));
+    expect(summary?.getAttribute('aria-label')).toBe('Status, 1 selected');
+    expect(root.querySelector('summary')?.getAttribute('aria-label')).toBe('Labels');
+    statusMenu.querySelector('button')?.dispatchEvent(new MouseEvent('click'));
     expect(onChange).toHaveBeenCalledWith({ 'issue-status-detail': ['Open'] });
-    expect(document.activeElement).toBe(root.querySelector('summary'));
+    expect(document.activeElement).toBe(summary);
     root.querySelector('.card-filter-clear')?.dispatchEvent(new MouseEvent('click'));
     expect(onChange).toHaveBeenLastCalledWith({});
     expect([...root.querySelectorAll('input')].every((input) => !input.checked)).toBe(true);
@@ -273,15 +278,15 @@ describe('card filter controls', () => {
 
     const label = [...root.querySelectorAll('label')].find((node) => node.textContent === 'Open');
     label?.querySelector('input')?.click();
-    const details = /** @type {HTMLDetailsElement} */ (root.querySelector('details'));
+    const details = /** @type {HTMLDetailsElement} */ (root.querySelectorAll('details')[1]);
     details.open = true;
     details.dispatchEvent(new Event('toggle'));
-    root.querySelector('.card-filter-popover button')?.dispatchEvent(new MouseEvent('click'));
+    details.querySelector('button')?.dispatchEvent(new MouseEvent('click'));
     root.querySelector('.card-filter-clear')?.dispatchEvent(new MouseEvent('click'));
 
-    expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]', { event: 'menu-opened', viewId: view.id, controlId: 'labels' });
+    expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]', { event: 'menu-opened', viewId: view.id, controlId: 'status' });
     expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]',
-      { event: 'filters-applied', viewId: view.id, controlId: 'labels', count: 1 });
+      { event: 'filters-applied', viewId: view.id, controlId: 'status', count: 1 });
     expect(output.debug).toHaveBeenCalledWith('[cao:card-filter-bar]', { event: 'filters-cleared', viewId: view.id });
 
     for (const call of output.debug.mock.calls) {

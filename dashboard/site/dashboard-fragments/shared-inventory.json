@@ -253,7 +253,7 @@
     },
     {
       "name": "issue-status-label-options",
-      "subject": "List observed status badges for the issue list Labels filter.",
+      "subject": "List observed status badges for the issue list Status filter.",
       "objective": "Choose retained issue states and closing reasons without inferring resolution.",
       "acceptance": "Return distinct observed status details in ascending order; Unknown remains distinct from Open and Closed.",
       "from": "issue-safe-outputs",
@@ -1559,7 +1559,13 @@
                 "field": "safe-output-type",
                 "source": "issue-safe-output-label-options",
                 "value-field": "safe-output-type"
-              },
+              }
+            ]
+          },
+          {
+            "id": "status",
+            "label": "Status",
+            "groups": [
               {
                 "label": "Status",
                 "field": "issue-status-detail",

@@ -21,11 +21,11 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .dashboard-page[data-view-mode="card"] [data-view-mode-content="table"] > .table-region { display: none; }
 .mobile-table-card-list { display: none; }
 .dashboard-page[data-view-mode="card"] [data-mobile-card-list] { display: flex; flex-direction: column; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }
-.mobile-table-card-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
+.mobile-table-card-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; position: relative; z-index: 6; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .mobile-table-card-toolbar-title { color: var(--muted); font-size: .875rem; font-weight: 600; }
 .mobile-table-card-toolbar > .card-filter-bar { flex: 1; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .mobile-table-card-toolbar > .semantic-prompt-action { position: static; flex: none; margin: 0 0 0 auto; }
-.dashboard-full-view .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { min-height: 0; flex: 1; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { min-height: 0; flex: 1; overflow: hidden; }
 .dashboard-full-view .mobile-table-card-list-items { min-height: 0; flex: 1; overflow-y: auto; }
 .mobile-table-card-list-items { display: block; min-height: 0; overflow-y: auto; border: 0; background: transparent; }
 .mobile-table-card-list-boundary { min-height: 1px; list-style: none; }
