@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var quotaLog = logger.New("cao:operational:memory:quota")
 
 const maxQuotaValue = int64(1 << 40)
 
@@ -42,6 +45,42 @@ func (s *Store) quotaName(bucket string) error {
 
 func quotaSize(bucket string, state operational.GitHubQuotaState) int64 {
 	return charge(bucket, state.ParkReason) + 256
+}
+
+// quotaObservationOutcomeName converts a GitHubQuotaObserveOutcome into the
+// stable diagnostic label ObserveGitHubQuota logs, so the three-way
+// stale/replaced/reconciled decision is independently testable without
+// constructing a *Store or invoking ObserveGitHubQuota.
+func quotaObservationOutcomeName(outcome operational.GitHubQuotaObserveOutcome) string {
+	switch outcome {
+	case operational.GitHubQuotaObservationReplaced:
+		return "replaced"
+	case operational.GitHubQuotaObservationReconciled:
+		return "reconciled"
+	default:
+		return "stale"
+	}
+}
+
+// quotaAdmissionName converts a GitHubQuotaAdmission into the stable
+// diagnostic label ReserveGitHubQuota logs, so each admission branch is
+// independently testable without constructing a *Store or invoking
+// ReserveGitHubQuota.
+func quotaAdmissionName(code operational.GitHubQuotaAdmission) string {
+	switch code {
+	case operational.GitHubQuotaAdmitted:
+		return "admitted"
+	case operational.GitHubQuotaParked:
+		return "parked"
+	case operational.GitHubQuotaExhausted:
+		return "exhausted"
+	case operational.GitHubQuotaUnknown:
+		return "unknown"
+	case operational.GitHubQuotaDuplicateReservation:
+		return "duplicate-reservation"
+	default:
+		return "unrecognized"
+	}
 }
 
 func (s *Store) pruneQuotas(now time.Time) {
@@ -178,6 +217,7 @@ func (s *Store) ObserveGitHubQuota(ctx context.Context, bucket string, observati
 	q = s.createQuota(bucket)
 	q.state = next
 	released := s.removeQuotaReservation(bucket, q, releaseID)
+	quotaLog.Printf("quota observation outcome=%s released=%t", quotaObservationOutcomeName(outcome), released)
 	return outcome, released, quotaState(q, now), nil
 }
 
@@ -212,6 +252,7 @@ func (s *Store) ReserveGitHubQuota(ctx context.Context, bucket, id string, cost,
 		code = operational.GitHubQuotaExhausted
 	}
 	if code != operational.GitHubQuotaAdmitted {
+		quotaLog.Printf("quota reservation denied outcome=%s", quotaAdmissionName(code))
 		return code, time.Time{}, state, nil
 	}
 	if s.quotaReservations >= s.config.MaxQuotaReservations {
@@ -223,6 +264,7 @@ func (s *Store) ReserveGitHubQuota(ctx context.Context, bucket, id string, cost,
 	expires := now.Add(time.Duration(ttl.Milliseconds()) * time.Millisecond)
 	q.reservations[strings.Clone(id)] = quotaReservation{cost, expires}
 	s.quotaReservations++
+	quotaLog.Printf("quota reservation outcome=%s", quotaAdmissionName(code))
 	return code, expires, quotaState(q, now), nil
 }
 
