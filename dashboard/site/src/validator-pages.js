@@ -3,8 +3,11 @@ import { BUILT_IN_PAGE_KEYS, BUILT_IN_PAGE_VALUES, CUSTOM_PAGE_KEYS, BUILT_IN_PA
 import { validateView, validateViewFilterBar, validateViewDataArguments, validateListDrill, validateTableActions, validateProgressiveDisclosure, validateGraphicalLayout, validatePageForm } from './validator-views.js';
 import { validateSource, sourceFieldNames, validateSourceSequence } from './validator-queries.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
+import { createDebug } from './debug.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
+
+const debugValidatorPages = createDebug('validator-pages');
 
 
 /**
@@ -225,16 +228,29 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
   }
   if (page.kind === 'built-in') {
     validateObjectKeys(pageNode, BUILT_IN_PAGE_KEYS, path, errors);
+    const errorCountBeforePage = errors.length;
     validateBuiltInPage(page, path, errors);
+    debugValidatorPages({
+      operation: 'validate-page',
+      kind: 'built-in',
+      status: errors.length === errorCountBeforePage ? 'ok' : 'invalid'
+    });
     return;
   }
 
   if (page.kind === 'custom') {
     validateObjectKeys(pageNode, CUSTOM_PAGE_KEYS, path, errors);
+    const errorCountBeforePage = errors.length;
     validateCustomPage(page, pageNode, path, errors);
+    debugValidatorPages({
+      operation: 'validate-page',
+      kind: 'custom',
+      status: errors.length === errorCountBeforePage ? 'ok' : 'invalid'
+    });
     return;
   }
 
+  debugValidatorPages({ operation: 'validate-page', kind: 'unknown', status: 'invalid' });
   validateObjectKeys(pageNode, [...BUILT_IN_PAGE_KEYS, ...CUSTOM_PAGE_KEYS], path, errors);
 }
 
