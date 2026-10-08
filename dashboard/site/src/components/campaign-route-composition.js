@@ -7,17 +7,12 @@ import { createRouteBodyConfig } from './route-body-config.js';
 import {
   CAMPAIGN_ROUTE_ALIASES,
   CAMPAIGN_ROUTE_BODY_VALUES,
-  CAMPAIGN_ROUTE_DEFAULT_BODY,
-  CAMPAIGN_ROUTE_VARIANT_VALUES
+  CAMPAIGN_ROUTE_DEFAULT_BODY
 } from './route-body-specification.js';
 import { renderCampaignMemory } from './campaign-memory.js';
 import { createDebug } from '../debug.js';
 
 const debugCampaignRouteComposition = createDebug('campaign-route-composition');
-
-/**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory'|'dispatches'} CampaignRouteBody
- */
 
 /**
  * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory'} CampaignRouteTab
@@ -129,25 +124,6 @@ export function campaignRouteComposition(body) {
     fellBackToDefault: resolved.currentTab !== selected
   });
   return resolved;
-}
-
-/**
- * @param {unknown} body
- * @returns {CampaignRouteBody}
- */
-export function campaignRouteVariant(body) {
-  const selected = typeof body === 'string' && Object.hasOwn(CAMPAIGN_ROUTE_ALIASES, body)
-    ? CAMPAIGN_ROUTE_ALIASES[/** @type {keyof typeof CAMPAIGN_ROUTE_ALIASES} */ (body)]
-    : body;
-  return CAMPAIGN_ROUTE_BODY_CONFIG.body(selected);
-}
-
-/**
- * @param {unknown} body
- * @returns {body is CampaignRouteBody}
- */
-export function isCampaignRouteVariant(body) {
-  return typeof body === 'string' && CAMPAIGN_ROUTE_VARIANT_VALUES.includes(/** @type {CampaignRouteBody} */ (body));
 }
 
 /**
