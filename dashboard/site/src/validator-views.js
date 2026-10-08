@@ -8,8 +8,11 @@ import { validateSource, sourceFieldNames, validateSourceSequence, validateSeman
 import { validateEncoding } from './validator-encoding.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getMappingItems, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
+import { createDebug } from './debug.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
+
+const debugValidatorViews = createDebug('validator-views');
 
 /**
  * @param {unknown} labels
@@ -73,8 +76,11 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       'view must be a mapping.',
       path
     ));
+    debugValidatorViews({ operation: 'validate-view', mark: null, status: 'invalid' });
     return;
   }
+
+  const errorCountBeforeView = errors.length;
 
   if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
     errors.push(createError(
@@ -850,6 +856,11 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     `${path}.encoding.actions`,
     errors
   );
+  debugValidatorViews({
+    operation: 'validate-view',
+    mark: typeof view.mark === 'string' ? view.mark : null,
+    status: errors.length === errorCountBeforeView ? 'ok' : 'invalid'
+  });
 }
 
 /**
@@ -1370,6 +1381,12 @@ export function validateProgressiveDisclosure(views, path, errors) {
       path
     ));
   }
+  debugValidatorViews({
+    operation: 'validate-progressive-disclosure',
+    essentialCount,
+    viewCount: validViews.length,
+    status: essentialCount < 1 || essentialCount > MAX_ESSENTIAL_VIEWS_PER_PAGE ? 'invalid' : 'ok'
+  });
 }
 
 /**
