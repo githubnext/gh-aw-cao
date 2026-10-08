@@ -3,34 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-07T20:57:14Z",
-      "worker_run_id": 37685543673,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37685575505,
-        37685059299,
-        37685035476,
-        37685025478,
-        37684966274,
-        37684882443,
-        37684880235,
-        37684879724,
-        37684014938,
-        37683651531,
-        37682079672,
-        37681885692,
-        37678990361,
-        37678134853,
-        37678039065,
-        37677123855,
-        37676495766,
-        37675866553,
-        37675524583,
-        37675514178
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run, schedule, and push attempts on four recent source SHAs, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-07T21:56:45Z",
       "worker_run_id": 37692484733,
       "category": "dependency installation and caching",
@@ -854,6 +826,34 @@
         37763659759
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T10:28:08Z through 2026-10-08T13:01:02Z, but only 2 runs (37778314251 and 37768339711) completed the build and deploy jobs successfully. The remaining 18 runs were freshness-skip schedule successes or skipped workflow_run triggers, so the sample does not meet the minimum of 5 comparable successful runs required for trusted build-time analysis of artifact transfer and Pages packaging."
+    },
+    {
+      "evaluated_at": "2026-10-08T13:37:12Z",
+      "worker_run_id": 37785252041,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37784986879,
+        37784554578,
+        37781083055,
+        37780803597,
+        37780014134,
+        37780011425,
+        37778314251,
+        37778177147,
+        37778119736,
+        37774099789,
+        37773443442,
+        37772685592,
+        37772174247,
+        37771254350,
+        37769964157,
+        37769640439,
+        37768339711,
+        37767354938,
+        37766421316,
+        37765800699
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T10:47:33Z through 2026-10-08T13:31:14Z, 10 runs concluded success, but only 2 runs (37778314251 and 37768339711) completed the comparable build+deploy path; the other 8 successful runs were freshness-only schedule passes with build and deploy skipped. This is below the required minimum of 5 comparable successful runs for a trusted artifact-transfer and Pages-packaging evaluation, so no actionable recommendation could be made safely in this run."
     }
   ]
 }
