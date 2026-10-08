@@ -404,7 +404,7 @@ describe('campaign inventory query optimization', () => {
   it('keeps the public workflow inventory schema while isolating lean campaign dependencies', () => {
     const publicQuery = queries.find((query) => query.name === 'workflow-inventory');
     expect(publicQuery?.from).toBe('workflows');
-    expect(publicQuery?.joins?.map((join) => join.source)).toEqual(['workflow-run-totals', 'workflow-aic-totals']);
+    expect(publicQuery?.joins?.map((join) => join.source)).toEqual(['workflow-run-totals', 'workflow-aic-detail-totals']);
     expect(publicQuery && dashboardQueryOutputFields(publicQuery, (name) => tableFields[name])).toEqual([
       'campaign', 'campaign-name', 'organization', 'repository', 'workflow', 'workflow-name',
       'workflow-label', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs',

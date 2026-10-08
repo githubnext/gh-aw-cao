@@ -1,4 +1,5 @@
 import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { recentFixtureDates } from './recent-fixture-dates.js';
 
 registerSmokeRoutes();
 
@@ -22,7 +23,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   assert(campaignIssuesPage, 'Missing campaign issues page');
   assert(campaignMemoryPage, 'Missing campaign memory page');
 
-  await page.setContent(`
+  await page.setContent(recentFixtureDates('2026-09-14T16:00:00Z').text(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
@@ -356,7 +357,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
         loadPageSources
       }));
     </script>
-  `);
+  `.replaceAll('2026-08-28', '2026-09-12').replaceAll('2026-08-29', '2026-09-13')));
 
   await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible();
   const dispatchChart = page.locator('[data-view-id="campaigns-dispatches"]');

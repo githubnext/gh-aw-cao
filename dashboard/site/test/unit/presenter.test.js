@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataRequestWorker } from '../data-request-worker.js';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -114,6 +114,7 @@ async function activatePage(rendered, pageId) {
 beforeEach(() => {
   vi.stubGlobal('Worker', DataRequestWorker);
 });
+afterEach(() => vi.useRealTimers());
 
 describe('declarative view title visibility', () => {
   it('keeps the view and its accessible title without rendering its title heading', () => {
@@ -3412,6 +3413,8 @@ describe('presenter built-in and custom pages', () => {
 
 
   it('DLS-PAGE-014 DLS-PAGE-015 renders mode-filtered campaign AIC utilization and campaign-run trends', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-30T00:00:00Z'));
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -3519,6 +3522,8 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('DLS-SEM-022 DLS-SEM-023 DLS-PAGE-014 DLS-PAGE-015 keeps campaigns repository-scoped and distinguishes unknown or unavailable telemetry', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-30T00:00:00Z'));
     const document = {
       languageVersion: '0.1.0',
       dashboard: {

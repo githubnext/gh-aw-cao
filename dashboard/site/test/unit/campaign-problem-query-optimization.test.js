@@ -174,6 +174,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -235,6 +236,8 @@ describe('campaign problem query optimization', () => {
   });
 
   it('preserves selected-horizon and route/filter semantics before dependent aggregates', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-30T12:00:00Z'));
     const page = {
       id: 'problem-contract',
       kind: 'custom',

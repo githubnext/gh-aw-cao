@@ -32,6 +32,23 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it('accepts retained-detail anchors only on relative query ranges', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const index = document.dashboard.queries.findIndex(
+      (/** @type {{ name: string }} */ query) => query.name === 'run-import-status'
+    );
+    const query = document.dashboard.queries[index];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    query.time = { anchor: 'retained-detail', start: '2026-09-01T00:00:00Z' };
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: `$.dashboard.queries[${index}].time.anchor` })
+    ]));
+    query.time = { anchor: 'historical', range: '7d' };
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: `$.dashboard.queries[${index}].time.anchor` })
+    ]));
+  });
+
   it('accepts the authoritative built-in overview view definition', () => {
     const accepted = validateDashboardDocument(authoritativeDashboardSource);
     expect(accepted.ok).toBe(true);

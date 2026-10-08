@@ -327,7 +327,7 @@
     },
     {
       "name": "campaign-workflow-execution-base",
-      "time": { "range": "7d" },
+      "time": { "range": "7d", "anchor": "retained-detail" },
       "subject": "Summarize retained run attempts and AI Credits before campaign workflow enrichment.",
       "objective": "Read run identity and recorded AI Credits together instead of enriching every run with import status.",
       "acceptance": "Count distinct run-attempt identities and sum aic-total per organization, repository, and workflow; missing retained evidence is not proof of no execution or cost.",
@@ -493,7 +493,7 @@
           ]
         },
         {
-          "source": "workflow-aic-totals",
+          "source": "workflow-aic-detail-totals",
           "type": "left",
           "on": [
             {

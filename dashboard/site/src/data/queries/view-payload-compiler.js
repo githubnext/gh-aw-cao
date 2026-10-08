@@ -620,18 +620,21 @@ function predicatesBeforeQuery(definition, predicates) {
 /** @param {Array<Record<string, unknown>>} predicates @param {unknown} time @param {string | undefined} evaluatedAt */
 function applyQueryTime(predicates, time, evaluatedAt) {
   if (!isPlainObject(time) || typeof time.range !== 'string') return predicates;
-  const end = queryTimeEnd(predicates) ?? evaluatedAt;
+  const retainedDetail = time.anchor === 'retained-detail';
+  const end = retainedDetail ? new Date().toISOString() : queryTimeEnd(predicates) ?? evaluatedAt;
   const match = /^([1-9][0-9]*)(h|d|w)$/.exec(time.range);
   if (!end || !match) return predicates;
   const unitHours = { h: 1, d: 24, w: 168 }[match[2]];
   const endMs = Date.parse(end);
   if (!unitHours || !Number.isFinite(endMs)) return predicates;
   const start = new Date(endMs - Number(match[1]) * unitHours * 3_600_000).toISOString();
-  return [
-    ...predicates.filter((predicate) => predicate.field !== '@time'),
-    { field: '@time', gte: start },
-    { field: '@time', lt: end }
-  ];
+  return retainedDetail
+    ? [...predicates, { field: '@time', gte: start }, { field: '@time', lt: end }]
+    : [
+        ...predicates.filter((predicate) => predicate.field !== '@time'),
+        { field: '@time', gte: start },
+        { field: '@time', lt: end }
+      ];
 }
 
 /** @param {Array<Record<string, unknown>>} predicates */

@@ -127,28 +127,31 @@ describe('dashboard view query contracts', () => {
       'campaign-dispatch-inventory', 'campaign-runs', 'repository-run-totals', 'run-import-status'
     ]);
     for (const query of [...runQueries, queriesByName.get('campaign-workflow-execution-base'),
-      queriesByName.get('workflow-aic-totals')]) {
-      expect(query?.time, query?.name).toEqual({ range: '7d' });
+      queriesByName.get('workflow-aic-detail-totals')]) {
+      expect(query?.time, query?.name).toEqual({ range: '7d', anchor: 'retained-detail' });
     }
+    expect(queriesByName.get('workflow-aic-totals')?.time).toBeUndefined();
 
+    const now = Date.now();
+    const timestamp = (/** @type {number} */ daysAgo) => new Date(now - daysAgo * 86_400_000).toISOString();
     const page = { views: [{ id: 'coverage', mark: 'table', data: { source: 'repository-run-totals' } }] };
     const compiled = compileDashboardViewPayloadQueries(page, 'repositories', {
-      evaluatedAt: '2026-10-08T12:00:00Z', queries
+      evaluatedAt: timestamp(0), queries
     });
     const result = executeDashboardQueries(compiled.queries, {
       runs: {
         source: 'runs', metadata, rows: [
           { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'old',
-            'run-attempt': 1, 'started-at': '2026-09-20T12:00:00Z',
-            'observed-at': '2026-10-08T11:00:00Z', 'run-conclusion': 'success' },
+            'run-attempt': 1, 'started-at': timestamp(18),
+            'observed-at': timestamp(0.1), 'run-conclusion': 'success' },
           { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'recent',
-            'run-attempt': 1, 'started-at': '2026-10-07T12:00:00Z',
-            'observed-at': '2026-10-08T11:00:00Z', 'run-conclusion': 'success' }
+            'run-attempt': 1, 'started-at': timestamp(1),
+            'observed-at': timestamp(0.1), 'run-conclusion': 'success' }
         ]
       },
       audits: { source: 'audits', metadata, rows: [
         { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'recent',
-          'run-attempt': 1, event: 'audit-1', 'observed-at': '2026-10-07T13:00:00Z' }
+          'run-attempt': 1, event: 'audit-1', 'observed-at': timestamp(0.9) }
       ] },
       domains: { source: 'domains', metadata, rows: [] },
       tools: { source: 'tools', metadata, rows: [] },
@@ -157,6 +160,39 @@ describe('dashboard view query contracts', () => {
     expect(result[compiled.aliases[0]].rows).toMatchObject([
       { organization: 'octo', repository: 'repo', runs: 1, 'imported-runs': 1 }
     ]);
+    const historical = compileDashboardViewPayloadQueries(page, 'repositories', {
+      evaluatedAt: timestamp(0),
+      queryContext: { timeWindow: { start: timestamp(20), end: timestamp(14) } },
+      queries
+    });
+    expect(historical.queries.some((query) => (/** @type {{ predicates?: Array<{ field: string, gte?: string }> }} */ (query.filter ?? {})).predicates?.some(
+      (/** @type {{ field: string, gte?: string }} */ predicate) =>
+        predicate.field === '@time' && predicate.gte === timestamp(20)
+    ))).toBe(true);
+    expect(executeDashboardQueries(historical.queries, {
+      runs: { source: 'runs', metadata, rows: [
+        { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'old',
+          'run-attempt': 1, 'started-at': timestamp(18), 'observed-at': timestamp(0.1) }
+      ] },
+      audits: { source: 'audits', metadata, rows: [] },
+      domains: { source: 'domains', metadata, rows: [] },
+      tools: { source: 'tools', metadata, rows: [] },
+      issues: { source: 'issues', metadata, rows: [] }
+    })[historical.aliases[0]].rows).toEqual([]);
+
+    const cost = compileDashboardViewPayloadQueries({
+      views: [{ id: 'cost', mark: 'table', data: { source: 'workflow-aic-totals' } }]
+    }, 'overview', {
+      evaluatedAt: timestamp(0),
+      queryContext: { timeWindow: { start: timestamp(20), end: timestamp(0) } },
+      queries
+    });
+    expect(executeDashboardQueries(cost.queries, {
+      runs: { source: 'runs', metadata, rows: [
+        { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'old',
+          'started-at': timestamp(18), 'aic-total': 5 }
+      ] }
+    })[cost.aliases[0]].rows).toMatchObject([{ aic: 5 }]);
   });
 
   it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
@@ -842,18 +878,7 @@ describe('dashboard view query contracts', () => {
     const baselineAlias = payload.aliases.find((alias) => alias.includes('campaign-performance-baseline'));
 
     expect(baselineAlias).toBeDefined();
-    expect(result[baselineAlias ?? ''].rows).toEqual([{
-      campaign: 'optimization',
-      'concluded-runs': 1,
-      'successful-runs': 0,
-      'success-rate': 0,
-      'success-rate-display': '0%',
-      'success-rate-percent': 0,
-      'reliability-signal': 'Unsuccessful runs observed',
-      'produced-outputs': 0,
-      'production-signal': 'Output evidence unavailable',
-      'aic-per-successful-run': null
-    }]);
+    expect(result[baselineAlias ?? ''].rows).toEqual([]);
   });
 
   it('projects the baseline into honest successful and other concluded run slices', () => {

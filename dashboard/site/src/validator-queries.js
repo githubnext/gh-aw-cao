@@ -150,7 +150,7 @@ export function validateQueries(queries, queriesNode, errors) {
       errors
     );
     if (query.time !== undefined) {
-      validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
+      validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors, true);
     }
     const name = typeof query.name === 'string' ? query.name : null;
     if (name && (QUERY_SOURCE_VALUES.includes(name) || declared.has(name))) {
@@ -1148,8 +1148,9 @@ function validateScope(scopeNode, scope, path, errors) {
  * @param {unknown} time
  * @param {string} path
  * @param {ValidationError[]} errors
+ * @param {boolean} [queryTime]
  */
-function validateTime(timeNode, time, path, errors) {
+function validateTime(timeNode, time, path, errors, queryTime = false) {
   if (time === undefined) {
     return;
   }
@@ -1163,11 +1164,19 @@ function validateTime(timeNode, time, path, errors) {
     return;
   }
 
-  validateObjectKeys(timeNode, TIME_KEYS, path, errors);
+  validateObjectKeys(timeNode, queryTime ? [...TIME_KEYS, 'anchor'] : TIME_KEYS, path, errors);
 
   const range = time.range;
   const start = time.start;
   const end = time.end;
+  if (queryTime && time.anchor !== undefined &&
+    (time.anchor !== 'retained-detail' || range === undefined)) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'query time.anchor requires a relative range and the retained-detail value.',
+      `${path}.anchor`
+    ));
+  }
 
   if (range !== undefined) {
     if (typeof range !== 'string' || !/^[1-9][0-9]*(h|d|w)$/.test(range)) {

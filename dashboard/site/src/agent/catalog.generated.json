@@ -1141,6 +1141,25 @@
       }
     },
     {
+      "id": "workflow-aic-detail-totals",
+      "subject": "Summarize workflow AI Credit usage over the retained detail horizon.",
+      "objective": "Align run usage totals with the retained evidence window when reporting import coverage.",
+      "acceptance": "Count only runs within the seven-day detail horizon; older run usage remains available in cost-only views.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
       "id": "workflow-aic-totals",
       "subject": "Summarize observed AI Credit usage by declared workflow.",
       "objective": "Expose retained AI Credit consumption per workflow for bounded cost review alongside observed execution.",
@@ -1396,7 +1415,7 @@
         }
       ],
       "sources": [
-        "workflow-aic-totals",
+        "workflow-aic-detail-totals",
         "workflow-run-totals",
         "workflows"
       ],

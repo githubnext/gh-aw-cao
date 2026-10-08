@@ -102,7 +102,7 @@
     },
     {
       "name": "run-import-status",
-      "time": { "range": "7d" },
+      "time": { "range": "7d", "anchor": "retained-detail" },
       "subject": "Identify observed runs that have one or more imported run-owned records.",
       "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
       "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
@@ -245,8 +245,19 @@
       }
     },
     {
+      "name": "workflow-aic-detail-totals",
+      "subject": "Summarize workflow AI Credit usage over the retained detail horizon.",
+      "objective": "Align run usage totals with the retained evidence window when reporting import coverage.",
+      "acceptance": "Count only runs within the seven-day detail horizon; older run usage remains available in cost-only views.",
+      "from": "runs",
+      "time": { "range": "7d", "anchor": "retained-detail" },
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [{ "field": "aic-total", "as": "aic", "reducer": "sum" }]
+      }
+    },
+    {
       "name": "workflow-aic-totals",
-      "time": { "range": "7d" },
       "subject": "Summarize observed AI Credit usage by declared workflow.",
       "objective": "Expose retained AI Credit consumption per workflow for bounded cost review alongside observed execution.",
       "acceptance": "Return the sum of recorded aic-total by organization, repository, and workflow; missing usage or runs is not evidence of zero actual cost.",
