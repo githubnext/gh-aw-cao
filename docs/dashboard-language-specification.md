@@ -255,7 +255,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View `filter-bar` | `filters` |
 | View filter control | `id`, `label`, `groups` |
 | View filter group | `label`, `field`, `source`, `value-field`, `label-field` |
-| View `requires` | `backend`, `message` |
+| View `requires` | `backend`, `message`, `on-unavailable` |
 | View `data` | `source` or `sources`, `partial-source`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
@@ -1089,11 +1089,14 @@ A custom page contains a non-empty `views` sequence. Each view has one `data` ma
 
 Any view may include the optional Boolean `locked` authoring hint. When `true`, an agent evolving the dashboard should preserve the view and modify it only to correct bugs. `locked` does not affect presentation, accessibility, data processing, or validation of the view's other fields.
 
-Any view may declare `requires` with a `backend` of `static` or `hosted` and a
-non-empty `message`. This is a prerequisite on the configured data backend,
-not on source contents or authorization. When it is unmet, the presenter shows
-the explanatory message instead of loading the view, and the page loader,
-worker compiler, and view subscriptions exclude that view's query dependencies.
+Any view may declare `requires` with a `backend` of `static` or `hosted`.
+This is a prerequisite on the configured data backend, not on source contents
+or authorization. When it is unmet, the presenter shows the required non-empty
+`message` instead of loading the view by default. Setting `on-unavailable` to
+`hide` omits the view entirely (and `message` may be omitted); `message` is
+required for the default `message` behavior. Empty sections containing only
+hidden views are omitted. In either case, the page loader, worker compiler,
+and view subscriptions exclude that view's query dependencies.
 An enabled view sharing a source still loads its own dependencies. A satisfied
 hosted prerequisite does not grant permissions: unauthorized or unavailable
 runtime sources retain their normal explicit failure states.
@@ -1389,7 +1392,7 @@ The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt
 - **DLS-VIEW-040:** A supplemental `table` view **MUST NOT** declare `title`. It **MAY** declare a non-empty `disclosure-label`; otherwise, its presenter **MUST** derive the disclosure label from the view identifier. The presenter **MUST NOT** repeat that label as a visible heading inside the expanded table. Other views **MUST NOT** declare `disclosure-label`.
 - **DLS-VIEW-041:** An `element` view **MAY** declare `config.labels` for an element that presents counted summary boxes. Each entry **MUST** be keyed by a canonical kebab-case identifier and **MUST** be a plural text variable containing exactly the non-empty strings `singular` and `plural`. A presenter **MUST** present `singular` when the accompanying count has an absolute value of one and `plural` otherwise, **MUST** apply the same selection to the accessible name of that box, and **MUST** fall back to the element's declared default text for an undeclared label. Plural text selection **MUST** affect presentation only.
 - **DLS-VIEW-042:** `show-title`, when present, **MUST** be Boolean and defaults to `true`. When `false`, the presenter **MUST** omit the view title heading from the rendered view without hiding the view or removing its accessible name. This does not omit data-derived headings inside named UI elements or supplemental disclosure labels.
-- **DLS-VIEW-043:** `requires`, when present, **MUST** contain exactly `backend` and `message`. `backend` **MUST** be `static` or `hosted`, and `message` **MUST** be a non-empty string. Runtime view eligibility **MUST** use the configured backend rather than page identifiers, source names, query results, or credential reach. An unmet prerequisite **MUST** render its explanatory message and **MUST NOT** initiate query execution, alias materialization, pagination, or subscriptions for that view. Eligibility **MUST** be evaluated independently for views sharing a source. A met prerequisite **MUST NOT** suppress authorization errors or replace missing telemetry with zero.
+- **DLS-VIEW-043:** `requires`, when present, **MUST** contain `backend` and **MAY** contain `message` and `on-unavailable`, with no other keys. `backend` **MUST** be `static` or `hosted`; `on-unavailable` **MUST** be `hide` or `message` and defaults to `message`. For `message` behavior, `message` **MUST** be a non-empty string; when present for `hide` behavior, it **MUST** also be non-empty. Runtime view eligibility **MUST** use the configured backend rather than page identifiers, source names, query results, or credential reach. An unmet prerequisite **MUST** render its explanatory message for `message` behavior, or **MUST** omit the view and any section left empty by its omission for `hide` behavior, and **MUST NOT** initiate query execution, alias materialization, pagination, or subscriptions for that view. Eligibility **MUST** be evaluated independently for views sharing a source. A met prerequisite **MUST NOT** suppress authorization errors or replace missing telemetry with zero.
 
 ---
 

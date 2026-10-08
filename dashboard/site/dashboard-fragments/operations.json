@@ -1548,7 +1548,7 @@
           "title": "Server collection workload (administrators)",
           "requires": {
             "backend": "hosted",
-            "message": "Live collection workload requires the hosted CAO backend and administrator authorization. Static dashboards do not contain this telemetry."
+            "on-unavailable": "hide"
           },
           "subject": "Compare the current shared collection queue and in-flight work with cumulative historical backfill admissions.",
           "objective": "Detect a collection backlog while distinguishing the historical volume of backfill work.",
@@ -1569,7 +1569,7 @@
           "title": "Collection health",
           "requires": {
             "backend": "hosted",
-            "message": "Live collection health requires the hosted CAO backend and administrator authorization. Static dashboards do not contain this telemetry."
+            "on-unavailable": "hide"
           },
           "description": "Live webhook admission, queue, retry, and collection health from the server-side collection profile.",
           "data": {
@@ -1611,7 +1611,7 @@
           "title": "GitHub API usage",
           "requires": {
             "backend": "hosted",
-            "message": "GitHub API quota observations require the hosted CAO backend and administrator authorization. Static dashboards do not contain this telemetry."
+            "on-unavailable": "hide"
           },
           "subject": "Track the share of GitHub API quota consumed by each CAO bucket over the last 24 hours.",
           "objective": "Spot GitHub App installations approaching their rate limit before collection or other GitHub-backed work is throttled.",

@@ -94,7 +94,9 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       if (typeof view.requires.backend !== 'string' || !VIEW_BACKEND_VALUES.includes(view.requires.backend)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'requires backend must be static or hosted.', `${requiresPath}.backend`));
       }
-      if (view.requires['on-unavailable'] !== undefined && !['hide', 'message'].includes(view.requires['on-unavailable'])) {
+      if (view.requires['on-unavailable'] !== undefined
+        && view.requires['on-unavailable'] !== 'hide'
+        && view.requires['on-unavailable'] !== 'message') {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
           'requires on-unavailable must be hide or message.', `${requiresPath}.on-unavailable`));
       }

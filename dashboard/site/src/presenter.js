@@ -1122,10 +1122,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     rendered = renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
     return rendered;
   });
-  const renderedViewsById = new Map(views.map((view, index) => [
-    isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
-    renderedViews[index]
-  ]).filter(([, rendered]) => rendered !== null));
+  const renderedViewsById = new Map(views.flatMap((view, index) => renderedViews[index]
+    ? [[isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`, renderedViews[index]]]
+    : []));
   const renderedContent = sections.length > 0
     ? h(
       'div',

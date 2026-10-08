@@ -99,10 +99,7 @@ test('static Ingestion queries retained canonical evidence but not hosted teleme
   await page.goto(`${origin}/#page-indexing`);
   await expect(page.locator('[data-view-id="indexing-database-table-counts"] [data-chart-widget="horizontal-bar"]')).toBeVisible();
   for (const id of contract.hostedViews) {
-    const view = page.locator(`[data-view-id="${id}"]`);
-    await expect(view).toHaveAttribute('data-view-backend-unavailable', '');
-    await expect(view.locator('[data-view-availability="unavailable"]')).toContainText('hosted CAO backend');
-    await expect(view.locator('[data-view-state]')).toHaveAttribute('role', 'alert');
+    await expect(page.locator(`[data-view-id="${id}"]`)).toHaveCount(0);
   }
   const requests = await page.evaluate(() => /** @type {Window & { dashboardWorkerRequests?: Array<{ sourceNames?: string[] }> }} */ (window).dashboardWorkerRequests ?? []);
   const sources = requests.flatMap((request) => request.sourceNames ?? []);
