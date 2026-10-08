@@ -10,7 +10,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var proxyLog = logger.New("cao:simulator:proxy")
 
 // APIFault affects exactly Count matching requests, then lets recovery traffic
 // reach the synthetic upstream. No request bodies or credentials are recorded.
@@ -96,25 +100,37 @@ func (p *FaultProxy) RequestCount(path string, page int) int {
 	return p.counts[path+":"+strconv.Itoa(page)]
 }
 
+// selectFault finds the first fault in faults matching path and page with
+// remaining count, decrements its count, and reports whether a match was
+// found. It is a pure function extracted from ServeHTTP's inline
+// lock-protected loop so the first-match-wins and count-decrement behavior
+// is independently testable against a plain []APIFault, without an HTTP
+// request, response recorder, or the proxy's mutex.
+func selectFault(faults []APIFault, path string, page int) (APIFault, bool) {
+	for index := range faults {
+		fault := &faults[index]
+		if fault.Count > 0 && fault.Path == path && (fault.Page == 0 || fault.Page == page) {
+			selected := *fault
+			fault.Count--
+			return selected, true
+		}
+	}
+	return APIFault{}, false
+}
+
 func (p *FaultProxy) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	path := strings.TrimPrefix(request.URL.Path, "/api/v3")
 	page, _ := strconv.Atoi(request.URL.Query().Get("page"))
 	p.mu.Lock()
 	p.counts[path+":"+strconv.Itoa(page)]++
-	var selected APIFault
-	for index := range p.faults {
-		fault := &p.faults[index]
-		if fault.Count > 0 && fault.Path == path && (fault.Page == 0 || fault.Page == page) {
-			selected = *fault
-			fault.Count--
-			break
-		}
-	}
+	selected, matched := selectFault(p.faults, path, page)
 	p.mu.Unlock()
-	if selected.Mode == "" {
+	if !matched {
+		proxyLog.Printf("proxy request passthrough page=%d", page)
 		p.proxy.ServeHTTP(writer, request)
 		return
 	}
+	proxyLog.Printf("proxy fault injected mode=%s page=%d", selected.Mode, page)
 	if selected.ResetAt != "" {
 		reset, _ := time.Parse(time.RFC3339, selected.ResetAt)
 		writer.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))

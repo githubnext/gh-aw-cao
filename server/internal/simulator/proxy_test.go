@@ -45,6 +45,41 @@ func TestFaultProxyInjectsBoundedFaultsThenRecovers(t *testing.T) {
 	}
 }
 
+func TestSelectFaultMatchesPathAndPageAndDecrementsCount(t *testing.T) {
+	faults := []APIFault{
+		{Path: "/runs", Page: 2, Count: 2, Mode: "service-unavailable"},
+		{Path: "/other", Count: 1, Mode: "timeout"},
+	}
+	selected, matched := selectFault(faults, "/runs", 2)
+	if !matched || selected.Mode != "service-unavailable" {
+		t.Fatalf("expected a matching service-unavailable fault, got matched=%v selected=%+v", matched, selected)
+	}
+	if faults[0].Count != 1 {
+		t.Fatalf("expected matched fault's count to be decremented to 1, got %d", faults[0].Count)
+	}
+	if faults[1].Count != 1 {
+		t.Fatalf("expected the unrelated fault's count to be untouched, got %d", faults[1].Count)
+	}
+}
+
+func TestSelectFaultMatchesAnyPageWhenPageIsZero(t *testing.T) {
+	faults := []APIFault{{Path: "/runs", Page: 0, Count: 1, Mode: "timeout"}}
+	selected, matched := selectFault(faults, "/runs", 7)
+	if !matched || selected.Mode != "timeout" {
+		t.Fatalf("expected a page-agnostic fault to match any page, got matched=%v selected=%+v", matched, selected)
+	}
+}
+
+func TestSelectFaultSkipsExhaustedAndMismatchedFaults(t *testing.T) {
+	faults := []APIFault{
+		{Path: "/runs", Page: 2, Count: 0, Mode: "timeout"},
+		{Path: "/other", Page: 2, Count: 1, Mode: "timeout"},
+	}
+	if _, matched := selectFault(faults, "/runs", 2); matched {
+		t.Fatal("expected no match when the only candidates are exhausted or path-mismatched")
+	}
+}
+
 func TestFaultProxyRejectsInvalidFaults(t *testing.T) {
 	for _, fault := range []APIFault{
 		{Path: "https://api.github.com", Mode: "internal-error", Count: 1},
