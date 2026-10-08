@@ -1,6 +1,45 @@
 package postgresx
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestWeekStart(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		at   time.Time
+		want time.Time
+	}{
+		{
+			name: "monday unchanged",
+			at:   time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "mid-week truncates to preceding monday",
+			at:   time.Date(2024, time.January, 3, 15, 30, 0, 0, time.UTC),
+			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "sunday belongs to the prior monday's week",
+			at:   time.Date(2024, time.January, 7, 23, 59, 59, 0, time.UTC),
+			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "non-UTC input is normalized before truncation",
+			at:   time.Date(2024, time.January, 2, 1, 0, 0, 0, time.FixedZone("UTC-5", -5*60*60)),
+			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := weekStart(tt.at)
+			if !got.Equal(tt.want) || got.Location() != time.UTC {
+				t.Fatalf("weekStart(%v) = %v, want %v", tt.at, got, tt.want)
+			}
+		})
+	}
+}
 
 func TestConfiguredRetentionDays(t *testing.T) {
 	for _, tt := range []struct {

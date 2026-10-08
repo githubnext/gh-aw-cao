@@ -59,3 +59,64 @@ func TestNormalizeProjectedFactsRejectsConflictingEvidence(t *testing.T) {
 		}
 	}
 }
+
+func TestTargetCoordinateFields(t *testing.T) {
+	for _, test := range []struct {
+		source, field, owner, repository string
+	}{
+		{"$audits", "targetRepo", "targetOrganization", "targetRepository"},
+		{"$repositories", "fullName", "owner", "name"},
+		{"$runs", "repositoryFullName", "owner", "repository"},
+	} {
+		field, owner, repository := targetCoordinateFields(test.source)
+		if field != test.field || owner != test.owner || repository != test.repository {
+			t.Fatalf("targetCoordinateFields(%q) = (%q, %q, %q), want (%q, %q, %q)",
+				test.source, field, owner, repository, test.field, test.owner, test.repository)
+		}
+	}
+}
+
+func TestResolveTargetCoordinateFacts(t *testing.T) {
+	t.Run("absent field is not an error", func(t *testing.T) {
+		facts, stage, err := resolveTargetCoordinateFacts(model.Row{}, "targetRepo", "targetOrganization", "targetRepository")
+		if err != nil || stage != "" || facts != nil {
+			t.Fatalf("got (%#v, %q, %v), want (nil, \"\", nil)", facts, stage, err)
+		}
+	})
+	t.Run("valid coordinate resolves owner and repository", func(t *testing.T) {
+		facts, stage, err := resolveTargetCoordinateFacts(
+			model.Row{"targetRepo": "octo/api"}, "targetRepo", "targetOrganization", "targetRepository")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if stage != "" {
+			t.Fatalf("stage = %q, want empty", stage)
+		}
+		want := map[string]string{"targetOrganization": "octo", "targetRepository": "api"}
+		if !reflect.DeepEqual(facts, want) {
+			t.Fatalf("facts = %#v, want %#v", facts, want)
+		}
+	})
+	t.Run("non-string coordinate is rejected", func(t *testing.T) {
+		_, stage, err := resolveTargetCoordinateFacts(
+			model.Row{"targetRepo": 42}, "targetRepo", "targetOrganization", "targetRepository")
+		if err == nil || stage != projectedFactsRejectionStageCoordinateType {
+			t.Fatalf("got stage=%q err=%v, want stage=%q and an error", stage, err, projectedFactsRejectionStageCoordinateType)
+		}
+	})
+	t.Run("malformed coordinate is rejected", func(t *testing.T) {
+		_, stage, err := resolveTargetCoordinateFacts(
+			model.Row{"targetRepo": "invalid"}, "targetRepo", "targetOrganization", "targetRepository")
+		if err == nil || stage != projectedFactsRejectionStageCoordinateForm {
+			t.Fatalf("got stage=%q err=%v, want stage=%q and an error", stage, err, projectedFactsRejectionStageCoordinateForm)
+		}
+	})
+	t.Run("conflicting recomputable fact is rejected", func(t *testing.T) {
+		_, stage, err := resolveTargetCoordinateFacts(
+			model.Row{"targetRepo": "octo/api", "targetOrganization": "different"},
+			"targetRepo", "targetOrganization", "targetRepository")
+		if err == nil || stage != projectedFactsRejectionStageCoordinateFact {
+			t.Fatalf("got stage=%q err=%v, want stage=%q and an error", stage, err, projectedFactsRejectionStageCoordinateFact)
+		}
+	})
+}

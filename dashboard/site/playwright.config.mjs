@@ -26,7 +26,7 @@ export default defineConfig({
     },
     {
       name: 'desktop-edge',
-      testMatch: ['**/pwa-compatibility.spec.js'],
+      testMatch: ['**/pwa-compatibility.spec.js', '**/service-worker-app-mode.spec.js'],
       use: {
         ...devices['Desktop Edge'],
         launchOptions: {
@@ -37,7 +37,7 @@ export default defineConfig({
     },
     {
       name: 'desktop-safari',
-      testMatch: ['**/pwa-compatibility.spec.js', '**/indexeddb-stress.spec.js'],
+      testMatch: ['**/pwa-compatibility.spec.js', '**/indexeddb-stress.spec.js', '**/service-worker-app-mode.spec.js'],
       use: devices['Desktop Safari']
     },
     {

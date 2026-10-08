@@ -80,6 +80,28 @@ test("package manifests normalize immutable coordinates and the canonical add co
     label: "Open example/packages on GitHub",
   });
   assert.deepEqual(normalized.contents, ["workflow.md"]);
+  assert.equal(normalized.icon, "workflow");
+});
+
+test("package manifest icons normalize gh-aw Octicons without changing other values", () => {
+  for (const [icon, expected] of [
+    ['":shield:"', "shield"],
+    ["':meter:'", "meter"],
+    ["codescan", "codescan"],
+    ["icons/logo.svg", "icons/logo.svg"],
+    ['""', "workflow"],
+  ]) {
+    const normalized = parsePackageManifest(`name: Demo\nicon: ${icon}\n`, {
+      registryId: "official",
+      registryName: "Official",
+      precedence: 0,
+      repository: "example/packages",
+      path: "demo/aw.yml",
+      ref: "main",
+      resolvedCommit: SHA,
+    });
+    assert.equal(normalized.icon, expected, `icon: ${icon}`);
+  }
 });
 
 test("marketplace repository links use the configured GitHub Enterprise host", () => {

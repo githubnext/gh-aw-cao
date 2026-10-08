@@ -11,6 +11,33 @@ const DEBUG_PREFIX = 'cao';
 const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/[^/]+\.jsonl$/i;
 const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/[^/]+\.jsonl$/i;
 const APP_ASSETS = [];
+const APP_MODE_TIMEOUT_MS = 1000;
+
+function isAppScriptUrl(value) {
+  return /\.[cm]?js$/i.test(new URL(value, self.registration.scope).pathname);
+}
+
+// Ask the window on every check: app mode is per client and workers can restart.
+async function clientAppMode(client) {
+  if (client?.type !== 'window' || !client.url.startsWith(self.registration.scope)) return false;
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const finish = (appMode) => {
+      clearTimeout(timeout);
+      channel.port1.close();
+      channel.port2.close();
+      resolve(appMode);
+    };
+    const timeout = setTimeout(() => {
+      debugLog(undefined, 'data:ingestion:sw', 'app mode response timed out');
+      finish(false);
+    }, APP_MODE_TIMEOUT_MS);
+    channel.port1.onmessage = (event) => {
+      finish(event.data?.type === 'DASHBOARD_APP_MODE' && event.data.appMode === true);
+    };
+    client.postMessage({ type: 'REQUEST_DASHBOARD_APP_MODE' }, [channel.port2]);
+  });
+}
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -224,9 +251,14 @@ async function storeDataUrls(urls) {
   return config;
 }
 
-async function cacheAppAssets(urls) {
+async function cacheAppAssets(urls, client) {
+  const appMode = await clientAppMode(client);
   const cache = await caches.open(APP_CACHE);
-  await Promise.allSettled([...new Set(urls)].filter(isAppAssetUrl).map(async (url) => {
+  const bundled = new Set(APP_ASSETS.map((path) => new URL(path, self.registration.scope).href));
+  const assets = appMode ? [...bundled, ...urls] : urls;
+  await Promise.allSettled([...new Set(assets)]
+    .filter((url) => isAppAssetUrl(url) && (appMode || !isAppScriptUrl(url))).map(async (url) => {
+    if (bundled.has(url) && await cache.match(url)) return;
     const response = await fetch(url, {
       credentials: 'same-origin',
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
@@ -286,9 +318,14 @@ async function downloadConfiguredData(force = false, fallbackUrls = [], debug = 
 self.addEventListener('install', (event) => {
   // Updated workers wait until the page canaries them before activation.
   if (APP_ASSETS.length) event.waitUntil((async () => {
+    const clients = APP_ASSETS.some(isAppScriptUrl)
+      ? await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      : [];
+    const appMode = (await Promise.all(clients.map(clientAppMode))).some(Boolean);
+    const assets = APP_ASSETS.filter((path) => appMode || !isAppScriptUrl(path));
     const cache = await caches.open(APP_CACHE);
-    for (let index = 0; index < APP_ASSETS.length; index += 2) {
-      await Promise.all(APP_ASSETS.slice(index, index + 2).map(async (path) => {
+    for (let index = 0; index < assets.length; index += 2) {
+      await Promise.all(assets.slice(index, index + 2).map(async (path) => {
         const url = new URL(path, self.registration.scope).href;
         const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to cache dashboard application.');
@@ -320,6 +357,11 @@ self.addEventListener('fetch', (event) => {
     if (!isAppAssetUrl(event.request.url)) return;
     event.respondWith((async () => {
       const online = await onlineRequest(event);
+      const script = isAppScriptUrl(event.request.url)
+        || ['script', 'worker', 'sharedworker'].includes(event.request.destination);
+      if (script && !await clientAppMode(event.clientId ? await self.clients.get(event.clientId) : undefined)) {
+        return fetch(online ? new Request(event.request, { cache: 'no-store' }) : event.request);
+      }
       if (!online && lowDataConnection()) {
         const cached = await cachedAppResponse(event.request);
         if (cached) return cached;
@@ -391,7 +433,7 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (event.data?.type === 'CACHE_APP_ASSETS' && Array.isArray(event.data.urls)) {
-    event.waitUntil(cacheAppAssets(event.data.urls));
+    event.waitUntil(cacheAppAssets(event.data.urls, event.source));
     return;
   }
   if (event.data?.type === 'CLEAR_BACKGROUND_DATA') {
@@ -414,7 +456,7 @@ self.addEventListener('message', (event) => {
         message: error instanceof Error ? error.message : String(error)
       })
     );
-    event.waitUntil(Promise.allSettled([configure, cacheAppAssets(assets)]));
+    event.waitUntil(Promise.allSettled([configure, cacheAppAssets(assets, event.source)]));
     return;
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;

@@ -1,4 +1,5 @@
 name: CAO Evolution
+icon: ":gear:"
 description: Control-plane and agentic-workflow health, security maintenance, and evidence-backed operation discovery.
 min-version: v0.91.5
 experimental: true

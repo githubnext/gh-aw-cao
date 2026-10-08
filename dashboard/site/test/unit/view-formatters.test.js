@@ -40,7 +40,7 @@ describe('view formatter helpers', () => {
     expect(formatAggregateValue(rows, 'aic', 'count', toText)).toBe('2');
     expect(formatAggregateValue(rows, 'repository', 'distinct-count', toText)).toBe('2');
     expect(formatAggregateValue(rows, 'aic', 'sum', toText)).toBe('30');
-    expect(formatAggregateValue(rows, 'score', 'mean', toText)).toBe('2.33');
+    expect(formatAggregateValue(rows, 'score', 'mean', toText)).toBe('2.333');
     expect(formatAggregateValue(rows, 'score', 'min', toText)).toBe('1.50');
     expect(formatAggregateValue(rows, 'score', 'max', toText)).toBe('3');
     expect(formatAggregateValue(rows, 'repository', 'none', toText)).toBe('repo-a');
@@ -61,6 +61,8 @@ describe('view formatter helpers', () => {
     expect(toNumber('12')).toBe(0);
     expect(formatNumber(2)).toBe('2');
     expect(formatNumber(2.5)).toBe('2.50');
+    expect(formatNumber(11648.874562937062)).toBe('11648.875');
+    expect(formatNumber(-1.23456)).toBe('-1.235');
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('3 AIC');
     expect(formatNumber(-2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('-3 AIC');
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1, format: 'number' })).toBe('3');

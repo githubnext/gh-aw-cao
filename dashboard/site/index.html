@@ -39,6 +39,17 @@
       <p><a href="./llms.txt">Agent access guide</a></p>
     </noscript>
     <div id="root"></div>
+    <!-- Answer before main.js loads so installed apps can bootstrap from the worker's offline cache. -->
+    <script>
+      navigator.serviceWorker?.addEventListener('message', (event) => {
+        if (event.data?.type !== 'REQUEST_DASHBOARD_APP_MODE') return;
+        event.ports[0]?.postMessage({
+          type: 'DASHBOARD_APP_MODE',
+          appMode: matchMedia('(display-mode: standalone), (display-mode: minimal-ui)').matches
+            || navigator.standalone === true
+        });
+      });
+    </script>
     <!-- Keep recovery inline in the cached HTML: a broken service worker or dashboard module may prevent external scripts from loading.
          While online, open this dashboard with ?force-update=1 to check the worker script, unregister this site's worker,
          clear cached app files (not downloaded data), and reload with ?online=1. Normal startup loads main.js only otherwise. -->

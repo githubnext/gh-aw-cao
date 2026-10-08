@@ -26,6 +26,9 @@ describe('table cell display helper', () => {
     expect(renderCellDisplay('label', 'matured', toText)).toBe('Mature');
     expect(renderCellDisplay(undefined, null, toText, null, 'quantitative')).toBe('');
     expect(renderCellDisplay(undefined, 0, toText, null, 'quantitative')).toBe('0');
+    expect(renderCellDisplay(undefined, 11648.874562937062, toText, null, 'quantitative')).toBe('11648.875');
+    expect(renderCellDisplay(undefined, 11648.874562937062, toText, null, 'nominal')).toBe('11648.875');
+    expect(renderCellDisplay(undefined, '11648.874562937062', toText, null, 'nominal')).toBe('11648.874562937062');
     expect(/** @type {HTMLElement} */ (renderCellDisplay('digest', '1234567890abcdef', toText)).textContent).toBe('1234567890ab');
     expect(renderCellDisplay(undefined, 'plain', toText)).toBe('plain');
     expect(renderCellDisplay(undefined, '.github/workflows/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('daily.md');

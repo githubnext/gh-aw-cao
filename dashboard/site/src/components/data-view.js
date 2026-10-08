@@ -482,7 +482,7 @@ function renderEntityCardItems(rows, options) {
           column.display === 'ref' ? { className: 'entity-card-list-ref' } : null,
           text
         )];
-      });
+      }).slice(0, 4);
     });
     const timing = (definition.timing ?? []).flatMap((column) => {
       const value = row[column.field];
@@ -503,7 +503,7 @@ function renderEntityCardItems(rows, options) {
         h('strong', null, renderValue(column, rawValue, row)),
         h('span', null, fieldTitle(column))
       )];
-    });
+    }).slice(0, 4 - labels.length);
     const actions = (definition.actions ?? []).flatMap((action) => {
       if (!actionMatches(action, row)) return [];
       const values = Object.fromEntries(action.context.flatMap((field) => {

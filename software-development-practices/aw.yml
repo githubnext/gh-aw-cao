@@ -1,4 +1,5 @@
 name: Dev Practices
+icon: ":code:"
 description: Evidence-led repository guidance based on GitHub Well-Architected and the NIST Secure Software Development Framework.
 min-version: v0.91.5
 private: true

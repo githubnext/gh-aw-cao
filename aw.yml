@@ -1,4 +1,5 @@
 name: Central Agentic Ops
+icon: ":workflow:"
 description: Central agentic workflow control plane for reusable campaigns at the organization level
 min-version: v0.91.5
 experimental: true

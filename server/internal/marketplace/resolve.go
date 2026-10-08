@@ -113,6 +113,8 @@ var awManifestSuffix = regexp.MustCompile(`/?aw\.yml$`)
 
 var readmePattern = regexp.MustCompile(`(?i)^readme\.(?:md|markdown)$`)
 
+var octiconPattern = regexp.MustCompile(`^:([a-z0-9]+(?:-[a-z0-9]+)*):$`)
+
 // ParsePackageManifest normalizes one aw.yml manifest's safe, publicly
 // documented fields into the shared Package DTO. It never reads any field
 // activity/marketplace.mjs does not also read.
@@ -140,7 +142,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		sourceCoordinate += "/" + packagePath
 	}
 	sourceCoordinate += "@" + coordinates.ResolvedCommit
-	icon := scalar(source, "icon")
+	icon := octiconPattern.ReplaceAllString(scalar(source, "icon"), "${1}")
 	if icon == "" {
 		icon = "workflow"
 	}

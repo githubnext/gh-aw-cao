@@ -16,6 +16,5 @@ export const CAMPAIGN_ROUTE_BODY_VALUES = Object.freeze([
   ...Object.keys(CAMPAIGN_ROUTE_ALIASES)
 ]);
 export const OUTCOME_DETAIL_SECTION_BODY_VALUES = ['discussion', 'metadata'];
-export const CAMPAIGN_ROUTE_VARIANT_VALUES = CAMPAIGN_ROUTE_BODY_VALUES;
 export const WORK_VIEW_BODY_VALUES = ['board', 'tasks', 'roadmap'];
 export const WORK_VIEW_SECTION_KEYS = ['board', 'tasks', 'roadmap'];

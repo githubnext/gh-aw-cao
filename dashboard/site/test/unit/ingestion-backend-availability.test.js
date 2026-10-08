@@ -79,7 +79,7 @@ describe('Ingestion backend contract', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('does not independently subscribe to unavailable views and displays honest unavailable notices', async () => {
+  it('does not subscribe to or render hosted-only views on a static dashboard', async () => {
     const subscribe = vi.fn(async (pageId, viewId, sourceNames, options) => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
       operation: 'query-canonical-dashboard', pageId, viewId, sourceNames,
       context: documentInput.dashboard
@@ -90,11 +90,9 @@ describe('Ingestion backend contract', () => {
     document.body.append(root);
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(contract.staticSources.length));
     for (const viewId of contract.hostedViews) {
-      const view = root.querySelector(`[data-view-id="${viewId}"]`);
-      expect(view?.hasAttribute('data-view-backend-unavailable')).toBe(true);
-      expect(view?.querySelector('[data-view-availability="unavailable"]')?.textContent).toContain('hosted CAO backend');
-      expect(view?.querySelector('[data-view-state]')?.getAttribute('role')).toBe('alert');
-      expect(view?.querySelector('[aria-busy]')).toBeNull();
+      expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === viewId)?.requires?.['on-unavailable'])
+        .toBe(contract.staticHostedViewBehavior);
+      expect(root.querySelector(`[data-view-id="${viewId}"]`)).toBeNull();
     }
     expect(subscribe.mock.calls.flatMap((call) => call[2])).not.toEqual(expect.arrayContaining(contract.hostedSources));
     expect(subscribe.mock.calls.every((call) => call[3].signal instanceof AbortSignal)).toBe(true);
@@ -222,8 +220,18 @@ describe('generic view backend requirements', () => {
     expect(validateDashboardDocument(sourceDocument({ backend, message: 'This backend is required.' })).ok).toBe(true);
   });
 
+  it('accepts a hidden prerequisite without a message and an explicit message fallback', () => {
+    expect(validateDashboardDocument(sourceDocument({ backend: 'hosted', 'on-unavailable': 'hide' })).ok).toBe(true);
+    expect(validateDashboardDocument(sourceDocument({
+      backend: 'hosted', 'on-unavailable': 'message', message: 'Hosted only.'
+    })).ok).toBe(true);
+  });
+
   it.each([null, {}, { backend: 'server-http', message: 'Required.' }, { backend: 'hosted' },
-    { backend: 'hosted', message: '' }, { backend: 'hosted', message: 'Required.', authorization: 'admin' }
+    { backend: 'hosted', message: '' }, { backend: 'hosted', 'on-unavailable': 'message' },
+    { backend: 'hosted', 'on-unavailable': 'hide', message: '' },
+    { backend: 'hosted', 'on-unavailable': 'unknown' },
+    { backend: 'hosted', message: 'Required.', authorization: 'admin' }
   ])('rejects invalid or authority-widening requirements %j', (requires) => {
     expect(validateDashboardDocument(sourceDocument(requires)).ok).toBe(false);
   });
@@ -238,6 +246,36 @@ describe('generic view backend requirements', () => {
     }, 'generic', { backend: 'static', sourceNames: ['runs'] });
     expect(payload.aliases.join(',')).toContain('enabled');
     expect(payload.aliases.join(',')).not.toContain('gated');
+  });
+
+  it('hides a gated shared-source view without shifting later query aliases or leaving empty sections', () => {
+    const views = [
+      { id: 'hidden', mark: 'table', requires: { backend: 'hosted', 'on-unavailable': 'hide' },
+        data: { source: 'runs' }, encoding: { columns: [{ field: 'run' }] } },
+      { id: 'visible', mark: 'table', data: { source: 'runs' }, encoding: { columns: [{ field: 'run' }] } }
+    ];
+    const dashboard = {
+      languageVersion: '0.1.0',
+      dashboard: { id: 'generic', title: 'Generic', pages: [{ id: 'generic', kind: /** @type {const} */ ('custom'), views,
+        sections: [
+          { id: 'hidden-section', layout: /** @type {const} */ ('full'), views: ['hidden'] },
+          { id: 'visible-section', layout: /** @type {const} */ ('full'), views: ['visible'] }
+        ] }] }
+    };
+    const alias = dashboardViewAliasName('generic', views[1], 1, 'runs', 0);
+    const payload = compileDashboardViewPayloadQueries(dashboard.dashboard.pages[0], 'generic',
+      { backend: 'static', sourceNames: ['runs'] });
+    expect(payload.aliases).toContain(alias);
+    expect(payload.aliases.join(',')).not.toContain('hidden');
+    const root = renderDashboard({ document: dashboard, sources: {
+      runs: { source: 'runs', rows: [{ run: 'run-1' }], metadata: /** @type {import('../../src/presenter.js').SourceMetadata} */ (metadata) }
+    } });
+    roots.push(root);
+    document.body.append(root);
+    expect(root.querySelector('[data-view-id="hidden"]')).toBeNull();
+    expect(root.querySelector('[data-section-id="hidden-section"]')).toBeNull();
+    expect(root.querySelector('[data-view-id="visible"]')?.textContent).toContain('run-1');
+    expect(root.querySelector('[data-section-id="visible-section"]')).not.toBeNull();
   });
 
   it('does not execute a gated shared-source view at the production static worker boundary', async () => {

@@ -132,7 +132,7 @@ export function parsePackageManifest(source, coordinates) {
     ref: coordinates.ref,
     "resolved-commit": coordinates.resolvedCommit,
     version,
-    icon: scalar(source, "icon") || "workflow",
+    icon: scalar(source, "icon").replace(/^:([a-z0-9]+(?:-[a-z0-9]+)*):$/, "$1") || "workflow",
     artwork: scalar(source, "artwork") || "",
     contents,
     readme,

@@ -381,6 +381,19 @@ describe('automatic dashboard data updates', () => {
     )).toBeNull();
   });
 
+  it('recognizes minimal-ui app windows alongside standalone windows', () => {
+    const matchMedia = vi.fn().mockReturnValue(
+      /** @type {MediaQueryList} */ ({ matches: true })
+    );
+    vi.stubGlobal('matchMedia', matchMedia);
+    try {
+      expect(dashboardInstalled()).toBe(true);
+      expect(matchMedia).toHaveBeenCalledWith('(display-mode: standalone), (display-mode: minimal-ui)');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('blocks downloads on metered connections and low battery', () => {
     expect(dashboardDataUpdateBlockedReason({ saveData: true }, undefined)).toBe('metered connection');
     expect(dashboardDataUpdateBlockedReason({ metered: true }, undefined)).toBe('metered connection');
