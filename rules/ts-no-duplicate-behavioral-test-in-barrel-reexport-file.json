@@ -68,9 +68,14 @@
   "likely_false_positives": "A barrel test file without an explicit 'shape-only, no duplication' scope comment is not a violation; adding the first behavioral test for a function that has no dedicated module test file elsewhere is legitimate and should not be flagged.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
-  "status": "needs-work",
-  "last_seen_at": "2026-10-08T17:54:00Z",
-  "last_updated": "2026-10-08T17:54:00Z",
+  "status": "deprecated",
+  "normalization": {
+    "relationship": "deprecated",
+    "txn_id": "librarian-37819777303-1",
+    "reason": "7 refiner evaluations of github/gh-aw-firewall (2026-10-03 to 2026-10-07) stayed flat at TP=2/FP=2 with the same false-positive shape-only assertion sites every time and no suppression mechanism ever added; 4 parallel evaluations of githubnext/gh-aw-cao all found the rule not-applicable. Zero adoption requests across the full history. Matches the deprecation criteria already applied to js-no-literal-color-value-in-test-assertion and ts-no-recursive-chmod-widens-restricted-files."
+  },
+  "last_seen_at": "2026-10-08T15:00:22Z",
+  "last_updated": "2026-10-08T15:00:22Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37796381362",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
   "evaluation": {
@@ -133,16 +138,6 @@
       "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged; no drift since refiner-37560505197-2.",
       "txn_id": "refiner-37662241728-2"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "812d1a84b7224bb282af5c064ae7188331618751",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Searched all *.test.ts/*.test.js/*.test.mjs files for 're-export'/'barrel'/'does not duplicate' header-comment conventions and for a src/index.ts-style barrel with a corresponding smoke-test file: no barrel re-export smoke-test file with a symbol-shape-only scope comment exists anywhere in github/gh-aw. Not applicable here regardless of the rule's needs-work status on github/gh-aw-firewall.",
-      "txn_id": "refiner-37819791317-3"
     }
   ]
 }

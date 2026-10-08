@@ -100,8 +100,8 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37812883520",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-08T17:54:00Z",
-  "last_updated": "2026-10-08T17:54:00Z",
+  "last_seen_at": "2026-10-08T17:03:52Z",
+  "last_updated": "2026-10-08T17:03:52Z",
   "additional_target_evaluations": [
     {
       "target_repo": "githubnext/gh-aw-cao",
@@ -142,16 +142,6 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
       "txn_id": "refiner-37662241728-3"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "812d1a84b7224bb282af5c064ae7188331618751",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Searched all .ts/.js/.mjs sources under github/gh-aw for the rule's reactive.js/createFactoryScope()/state()/effect() convention: zero hits anywhere in the repository (no dashboard/site directory exists here). The unsafe pattern requires this component idiom, which does not occur in github/gh-aw regardless of the rule's ready status on githubnext/gh-aw-cao.",
-      "txn_id": "refiner-37819791317-1"
     }
   ]
 }
