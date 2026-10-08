@@ -1,6 +1,12 @@
+import { createDebug } from './debug.js';
+
+const debugBackendMode = createDebug('backend-mode');
+
 /** @param {Document} [document] */
 export function usesRemoteDataBackend(document = globalThis.document) {
-  return document?.querySelector?.('meta[name="dashboard-data-backend"]')?.getAttribute("content") === "server-http";
+  const remote = document?.querySelector?.('meta[name="dashboard-data-backend"]')?.getAttribute("content") === "server-http";
+  debugBackendMode({ operation: 'uses-remote-data-backend', remote });
+  return remote;
 }
 
 /**
@@ -11,9 +17,18 @@ export async function disableRemoteDashboardPwa(dependencies = {}) {
   const serviceWorkers = dependencies.serviceWorkers ?? globalThis.navigator?.serviceWorker;
   const cacheStorage = dependencies.cacheStorage ?? globalThis.caches;
   const registrations = await serviceWorkers?.getRegistrations?.().catch(() => []) ?? [];
-  await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+  const unregisterResults = await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+  debugBackendMode({
+    operation: 'disable-remote-pwa',
+    status: 'service-workers-unregistered',
+    count: unregisterResults.length
+  });
   const keys = await cacheStorage?.keys?.().catch(() => []) ?? [];
-  await Promise.allSettled(keys
-    .filter((key) => key.startsWith("central-agentic-ops-dashboard-"))
-    .map((key) => cacheStorage.delete(key)));
+  const matchingKeys = keys.filter((key) => key.startsWith("central-agentic-ops-dashboard-"));
+  await Promise.allSettled(matchingKeys.map((key) => cacheStorage.delete(key)));
+  debugBackendMode({
+    operation: 'disable-remote-pwa',
+    status: 'caches-deleted',
+    count: matchingKeys.length
+  });
 }
