@@ -1,6 +1,7 @@
 import { scopedStorageKey } from './storage-scope.js';
 import { createDebug, debugParameter } from './debug.js';
 import { publishNotification } from './notification-service.js';
+import { dashboardAppUpdateDownloading } from './dashboard-app-update-state.js';
 
 const debugServiceWorker = createDebug('data:ingestion:sw-client');
 
@@ -320,11 +321,13 @@ function waitForActivation(worker) {
  * worker cannot answer the canary.
  * @param {ServiceWorkerContainer} serviceWorkers
  * @param {URL} scriptUrl
+ * @param {(registration: ServiceWorkerRegistration) => void} [onRegistration]
  */
-export async function ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl) {
+export async function ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl, onRegistration) {
   const options = { scope: new URL('./', scriptUrl).pathname, updateViaCache: /** @type {ServiceWorkerUpdateViaCache} */ ('none') };
   debugServiceWorker('registering service worker', { scriptUrl: scriptUrl.href, scope: options.scope });
   let registration = await serviceWorkers.register(scriptUrl, options);
+  onRegistration?.(registration);
   if (registration.active) await registration.update();
 
   const candidate = await waitForWorker(registration.waiting ?? registration.installing);
@@ -362,6 +365,7 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
   const recoveryUrl = new URL(scriptUrl);
   recoveryUrl.searchParams.set('force-update', String(Date.now()));
   registration = await serviceWorkers.register(recoveryUrl, options);
+  onRegistration?.(registration);
   const recovered = await waitForWorker(registration.active ?? registration.waiting ?? registration.installing);
   if (!recovered || !await canaryWorker(recovered)) {
     await registration.unregister();
@@ -372,8 +376,8 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
 }
 
 /**
- * Keeps the application worker current, activates verified updates, and offers
- * an already-controlled page the choice to reload after the replacement takes control.
+ * Keeps the application worker current, reports update installation to the
+ * reactive footer, and offers a reload after a verified replacement takes control.
  * @param {{
  *   serviceWorkers?: ServiceWorkerContainer,
  *   scriptUrl?: URL,
@@ -398,6 +402,28 @@ export function startDashboardAppUpdates(dependencies = {}) {
   let checking = false;
   /** @type {number | undefined} */
   let timer;
+  /** @type {ServiceWorkerRegistration | undefined} */
+  let observedRegistration;
+  /** @type {ServiceWorker | null} */
+  let installingWorker = null;
+
+  const syncDownloading = () => {
+    dashboardAppUpdateDownloading.set(!stopped && controlled && installingWorker?.state === 'installing');
+  };
+  const onUpdateFound = () => {
+    installingWorker?.removeEventListener('statechange', syncDownloading);
+    installingWorker = observedRegistration?.installing ?? null;
+    installingWorker?.addEventListener('statechange', syncDownloading);
+    syncDownloading();
+  };
+  /** @param {ServiceWorkerRegistration} registration */
+  const observeRegistration = (registration) => {
+    if (stopped || observedRegistration === registration) return;
+    observedRegistration?.removeEventListener('updatefound', onUpdateFound);
+    observedRegistration = registration;
+    registration.addEventListener('updatefound', onUpdateFound);
+    onUpdateFound();
+  };
 
   const offerUpdate = () => {
     if (stopped || notified || !controlled) return;
@@ -419,6 +445,7 @@ export function startDashboardAppUpdates(dependencies = {}) {
       offerUpdate();
     }
     controlled = true;
+    syncDownloading();
   };
   /** @param {MessageEvent} event */
   const onWorkerMessage = (event) => {
@@ -440,7 +467,8 @@ export function startDashboardAppUpdates(dependencies = {}) {
     if (checking || stopped) return;
     checking = true;
     try {
-      const { worker } = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
+      const { worker } = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl, observeRegistration);
+      if (stopped) return;
       worker.postMessage({
         type: 'CACHE_APP_ASSETS',
         urls: [
@@ -463,6 +491,9 @@ export function startDashboardAppUpdates(dependencies = {}) {
 
   return () => {
     stopped = true;
+    observedRegistration?.removeEventListener('updatefound', onUpdateFound);
+    installingWorker?.removeEventListener('statechange', syncDownloading);
+    syncDownloading();
     if (timer !== undefined) clearTimer(timer);
     serviceWorkers.removeEventListener?.('controllerchange', onControllerChange);
     serviceWorkers.removeEventListener?.('message', onWorkerMessage);

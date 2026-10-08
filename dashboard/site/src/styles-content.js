@@ -132,6 +132,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
 .report-footer-versions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
 .report-footer-versions > span { white-space: nowrap; }
+.report-footer-app-update { display: inline-flex; margin-inline-start: 6px; vertical-align: middle; color: var(--accent); }
+.report-footer-app-update:empty { display: none; }
+.report-footer-app-update > span { display: inline-flex; }
 .empty, .page-placeholder { margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
 .page-load-error { display: flex; align-items: flex-start; gap: 12px; width: min(100% - 32px, 560px); margin: 32px auto; padding: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); }
 .page-load-error > .octicon { flex: none; color: var(--attention); }

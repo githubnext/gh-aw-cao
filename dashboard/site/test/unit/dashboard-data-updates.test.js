@@ -14,6 +14,7 @@ import {
   startDashboardAppUpdates,
   startAutomaticDashboardDataUpdates
 } from '../../src/dashboard-data-updates.js';
+import { dashboardAppUpdateDownloading } from '../../src/dashboard-app-update-state.js';
 
 class FakeWorker extends EventTarget {
   /** @param {boolean} healthy */
@@ -31,6 +32,10 @@ class FakeWorker extends EventTarget {
     if (message.type === 'CANARY' && this.healthy) {
       ports[0]?.postMessage({ type: 'CANARY_OK', version: 'test' });
     }
+    if (message.type === 'ACTIVATE') {
+      this.state = 'activated';
+      this.dispatchEvent(new Event('statechange'));
+    }
     if (message.type === 'DOWNLOAD_DATA') {
       ports[0]?.postMessage({ type: 'DOWNLOAD_COMPLETE', version: 'test' });
     }
@@ -45,10 +50,10 @@ class FakeWorker extends EventTarget {
 
 /** @param {FakeWorker} worker */
 function registration(worker) {
-  return {
+  return Object.assign(new EventTarget(), {
     active: worker,
     waiting: null,
-    installing: null,
+    installing: /** @type {FakeWorker | null} */ (null),
     update: vi.fn().mockResolvedValue(undefined),
     unregister: vi.fn().mockResolvedValue(true),
     periodicSync: {
@@ -56,7 +61,7 @@ function registration(worker) {
       getTags: vi.fn().mockResolvedValue(['central-agentic-ops-dashboard-data']),
       unregister: vi.fn().mockResolvedValue(undefined)
     }
-  };
+  });
 }
 
 const grantedPermissions = /** @type {Permissions} */ (/** @type {unknown} */ ({
@@ -70,6 +75,87 @@ describe('automatic dashboard data updates', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    dashboardAppUpdateDownloading.set(false);
+  });
+
+  it.each(['installed', 'redundant'])('tracks update downloads until the worker is %s and removes listeners on stop', async (state) => {
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = Object.assign(new EventTarget(), {
+      controller: worker,
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    });
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (vi.fn()))
+    });
+    await vi.waitFor(() => expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' })));
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+
+    const candidate = new FakeWorker();
+    candidate.state = 'installing';
+    Object.assign(currentRegistration, { installing: candidate });
+    currentRegistration.dispatchEvent(new Event('updatefound'));
+    expect(dashboardAppUpdateDownloading.get()).toBe(true);
+
+    candidate.state = state;
+    candidate.dispatchEvent(new Event('statechange'));
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+
+    candidate.state = 'installing';
+    candidate.dispatchEvent(new Event('statechange'));
+    expect(dashboardAppUpdateDownloading.get()).toBe(true);
+    stop();
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+    candidate.dispatchEvent(new Event('statechange'));
+    currentRegistration.dispatchEvent(new Event('updatefound'));
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+  });
+
+  it.each([true, false])('observes an existing installation, with controlled=%s', async (controlled) => {
+    const worker = new FakeWorker();
+    const candidate = new FakeWorker();
+    candidate.state = 'installing';
+    const currentRegistration = Object.assign(registration(worker), { installing: candidate });
+    const serviceWorkers = Object.assign(new EventTarget(), {
+      controller: controlled ? worker : null,
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    });
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (vi.fn()))
+    });
+    await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledOnce());
+    expect(dashboardAppUpdateDownloading.get()).toBe(controlled);
+    candidate.state = 'redundant';
+    candidate.dispatchEvent(new Event('statechange'));
+    await vi.waitFor(() => expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' })));
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+    stop();
+  });
+
+  it('does not start observing a registration that resolves after shutdown', async () => {
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    /** @type {(value: typeof currentRegistration) => void} */
+    let resolveRegistration = () => {};
+    const registered = new Promise((resolve) => { resolveRegistration = resolve; });
+    const serviceWorkers = Object.assign(new EventTarget(), {
+      controller: worker,
+      register: vi.fn().mockReturnValue(registered)
+    });
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers))
+    });
+    stop();
+    resolveRegistration(currentRegistration);
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CANARY' }));
+    const candidate = new FakeWorker();
+    candidate.state = 'installing';
+    Object.assign(currentRegistration, { installing: candidate });
+    currentRegistration.dispatchEvent(new Event('updatefound'));
+    expect(dashboardAppUpdateDownloading.get()).toBe(false);
+    expect(worker.messages).not.toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' }));
   });
 
   it('is off by default and persists explicit opt-in', () => {

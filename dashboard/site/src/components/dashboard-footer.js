@@ -1,8 +1,24 @@
 import { h } from '../dom.js';
 import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { dashboardAppUpdateDownloading } from '../dashboard-app-update-state.js';
+import { octicon } from '../octicons.js';
+import { render } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 
 const debugDashboardFooter = createDebug('dashboard-footer');
+
+function renderAppUpdateIndicator() {
+  const scope = createFactoryScope();
+  const root = h('span', { className: 'report-footer-app-update', role: 'status' });
+  render(root, () => dashboardAppUpdateDownloading.get()
+    ? h('span', { title: 'Downloading app update' },
+        octicon('download'),
+        h('span', { className: 'sr-only' }, 'Downloading app update'))
+    : null, { signal: scope.signal });
+  scope.bind(root);
+  return root;
+}
 
 /** @param {{ evaluatedAt: string, commitSha?: string | null, caoVersion?: string | null, ghAwVersion?: string | null, githubUrlBase: string, dashboardRepository: string | null }} options */
 export function renderDashboardFooter({ evaluatedAt, commitSha, caoVersion, ghAwVersion, githubUrlBase, dashboardRepository }) {
@@ -38,7 +54,8 @@ export function renderDashboardFooter({ evaluatedAt, commitSha, caoVersion, ghAw
             'Dashboard ',
             linked
               ? h('a', { href: `${githubUrlBase}/${dashboardRepository}/commit/${commitSha}`, 'aria-label': `View commit ${commitSha} on GitHub` }, h('code', null, /** @type {string} */ (commitSha).slice(0, 7)))
-              : h('code', null, /** @type {string} */ (commitSha).slice(0, 7))
+              : h('code', null, /** @type {string} */ (commitSha).slice(0, 7)),
+            renderAppUpdateIndicator()
           )
         : null
     )

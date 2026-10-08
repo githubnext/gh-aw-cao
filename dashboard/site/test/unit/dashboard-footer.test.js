@@ -1,12 +1,57 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { renderDashboardFooter } from '../../src/components/dashboard-footer.js';
+import { dashboardAppUpdateDownloading } from '../../src/dashboard-app-update-state.js';
 
 const evaluatedAt = '2026-09-30T00:00:00Z';
 const githubUrlBase = 'https://github.example.com';
 const dashboardRepository = 'octo-org/agentic-operations';
 
+afterEach(() => {
+  document.body.replaceChildren();
+  dashboardAppUpdateDownloading.set(false);
+});
+
 describe('dashboard footer version', () => {
+  it('reactively shows an accessible download icon beside the existing version link', () => {
+    const footer = renderDashboardFooter({
+      evaluatedAt, commitSha: '0123456789abcdef0123456789abcdef01234567', githubUrlBase, dashboardRepository
+    });
+    document.body.append(footer);
+    const link = footer.querySelector('.report-footer-version a');
+    const status = footer.querySelector('.report-footer-app-update');
+    expect(status?.textContent).toBe('');
+    expect(status?.querySelector('svg')).toBeNull();
+
+    dashboardAppUpdateDownloading.set(true);
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.textContent).toBe('Downloading app update');
+    expect(status?.querySelector('.octicon-download')?.getAttribute('aria-hidden')).toBe('true');
+    expect(status?.parentElement?.className).toBe('report-footer-version');
+    expect(footer.querySelector('.report-footer-version a')).toBe(link);
+
+    dashboardAppUpdateDownloading.set(false);
+    expect(status?.textContent).toBe('');
+    expect(status?.querySelector('svg')).toBeNull();
+    expect(footer.querySelector('.report-footer-version a')).toBe(link);
+  });
+
+  it('renders an update already in progress and stops reacting after removal', async () => {
+    dashboardAppUpdateDownloading.set(true);
+    const footer = renderDashboardFooter({
+      evaluatedAt, commitSha: '0123456789abcdef0123456789abcdef01234567', githubUrlBase, dashboardRepository
+    });
+    document.body.append(footer);
+    const status = footer.querySelector('.report-footer-app-update');
+    expect(status?.querySelector('.octicon-download')).not.toBeNull();
+    await Promise.resolve();
+    footer.remove();
+    await Promise.resolve();
+
+    dashboardAppUpdateDownloading.set(false);
+    expect(status?.querySelector('.octicon-download')).not.toBeNull();
+  });
+
   it('links a commit SHA to the configured repository on the configured GitHub server', () => {
     const commitSha = '0123456789abcdef0123456789abcdef01234567';
     const footer = renderDashboardFooter({ evaluatedAt, commitSha, githubUrlBase, dashboardRepository });
@@ -23,6 +68,7 @@ describe('dashboard footer version', () => {
     for (const commitSha of [undefined, 'development']) {
       const footer = renderDashboardFooter({ evaluatedAt, commitSha, githubUrlBase, dashboardRepository });
       expect(footer.querySelector('.report-footer-version')).toBeNull();
+      expect(footer.querySelector('.report-footer-app-update')).toBeNull();
     }
   });
 
