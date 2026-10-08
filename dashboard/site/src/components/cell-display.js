@@ -56,6 +56,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
   if (format === 'workflow-run-url') return renderWorkflowRunUrl(value) ?? toText(value);
   if (format === 'shortened-url') return renderShortenedUrl(value) ?? toText(value);
   if (format !== undefined) return formatString(value, format);
+  if (typeof value === 'number' && Number.isFinite(value)) return formatNumber(value);
   return toText(value);
 }
 
