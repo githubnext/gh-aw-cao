@@ -1,35 +1,7 @@
 {
-  "source_sha": "53e35ac5e39d531545118d554bcaa1021566592c",
+  "source_sha": "58f18c122d32b87e5110609414d5275a1c38a402",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-05T23:40:00Z",
-      "worker_run_id": 37389327619,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        37389054979,
-        37388116297,
-        37386095629,
-        37385532062,
-        37384577079,
-        37383273165,
-        37382193010,
-        37379912162,
-        37379774741,
-        37378351433,
-        37377523180,
-        37376805851,
-        37375568697,
-        37373328255,
-        37360669971,
-        37359561696,
-        37356703467,
-        37353153123,
-        37352936883
-      ],
-      "outcome": "no_actionable_improvement_duplicate_open_issue: evaluated the latest 19 successful completed docs.yml runs from the last 14 days, including 11 build-bearing successes and 8 trusted freshness skips. Trusted Actions metadata showed queue median/p90 4s/305s, full workflow median/p90 96s/416s, build 49s/63s, deploy 27s/31s, and schedule-freshness 8s/10s. Cache effectiveness was verified from run metadata: Restore node_modules succeeded in all 11 build-bearing runs while Install dependencies and Save node_modules were skipped in all 11; Restore cached CAO Dashboard succeeded in all 11 while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in all 11. Build documentation remained 13s median and Upload Pages artifact 11s median. Recent schedule and workflow_run runs on already-deployed SHAs now skip builds consistently, so the previously actionable avoidable-rebuild fix is both implemented in `.github/workflows/docs.yml` and already represented by open issue #16054. Within the allowed evidence scope, only 3 successful `cao-dashboard.yml` runs were available in the same 14-day window, below the required minimum of five comparable producer runs needed to safely justify a new reusable-dashboard-generation recommendation about the upstream dashboard bottleneck (whose latest successful build still spent about 169s in Upgrade fallback activity data). No new non-duplicate recommendation meets the >=60s or >=15% threshold in this cycle.",
-      "suggestion_fingerprint": null
-    },
     {
       "evaluated_at": "2026-10-05T23:52:48Z",
       "worker_run_id": "37390716197",
@@ -833,6 +805,34 @@
         37755874498
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T09:19:43Z through 2026-10-08T11:56:51Z, 12 runs concluded success but 11 were freshness-only schedule passes with build and deploy skipped; only run 37768339711 executed both build and deploy successfully. The remaining 8 runs were skipped workflow_run attempts. That leaves fewer than 5 comparable successful build-bearing docs runs for the artifact transfer and Pages packaging category, so trusted Actions metadata cannot support median/p90 measurements or a safe threshold-meeting recommendation in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T12:42:08Z",
+      "worker_run_id": 37778286840,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37778314251,
+        37778177147,
+        37778119736,
+        37774099789,
+        37773443442,
+        37772685592,
+        37772174247,
+        37771254350,
+        37769964157,
+        37769640439,
+        37768339711,
+        37767354938,
+        37766421316,
+        37765800699,
+        37765341322,
+        37763659759,
+        37763417424,
+        37760829188,
+        37760514832,
+        37759773384
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T09:53:31Z through 2026-10-08T12:40:18Z, 12 runs concluded success but 10 were freshness-only schedule passes with build and deploy skipped. Only 2 runs (37768339711 and 37778314251) executed both build and deploy successfully. The relevant producer sample is also too small: the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained only 2 successful full builds (37766230957 and 37747029010). That leaves fewer than 5 comparable successful runs for the artifact transfer and Pages packaging category, so trusted Actions metadata cannot support median/p90 transfer timings or a threshold-meeting recommendation in this cycle."
     }
   ]
 }
