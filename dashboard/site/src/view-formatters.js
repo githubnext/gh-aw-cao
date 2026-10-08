@@ -175,7 +175,7 @@ export function formatNumber(value, unit = null, includeUnit = true) {
     }
     return `${rounded.toFixed(fractionDigits(unit.significant))}${includeUnit && unit.format !== 'number' ? ` ${unit.symbol}` : ''}`;
   }
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+  return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0$/, '');
 }
 
 /**
