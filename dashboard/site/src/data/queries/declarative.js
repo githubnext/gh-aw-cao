@@ -259,9 +259,6 @@ export function createDashboardQueryBudget(options = {}) {
   };
 }
 
-/** Supported join types. */
-export const DASHBOARD_QUERY_JOIN_TYPES = ['inner', 'left'];
-
 /**
  * Indexes declared queries by name, preserving declaration order.
  * @param {unknown} definitions
