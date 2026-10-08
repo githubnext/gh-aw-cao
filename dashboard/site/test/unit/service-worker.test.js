@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
+import { MessageChannel } from 'node:worker_threads';
 import { describe, expect, it, vi } from 'vitest';
 import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-/** @param {string[]} [cacheKeys] @param {{ search?: string, clientUrl?: string, appAssets?: string[] }} [options] */
+/** @param {string[]} [cacheKeys] @param {{ search?: string, clientUrl?: string, appAssets?: string[], appMode?: boolean }} [options] */
 function serviceWorkerHarness(cacheKeys = [], options = {}) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
@@ -30,6 +31,15 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     return true;
   });
   const debugConsole = { debug: vi.fn() };
+  const client = {
+    type: 'window',
+    url: options.clientUrl ?? 'https://example.test/dashboard/',
+    postMessage: vi.fn((message, ports) => {
+      if (message.type === 'REQUEST_DASHBOARD_APP_MODE') {
+        ports[0].postMessage({ type: 'DASHBOARD_APP_MODE', appMode: options.appMode === true });
+      }
+    })
+  };
   const worker = {
     location: {
       href: `https://example.test/dashboard/service-worker.js${options.search ?? ''}`,
@@ -42,8 +52,8 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     },
     clients: {
       claim: vi.fn().mockResolvedValue(undefined),
-      matchAll: vi.fn().mockResolvedValue([]),
-      get: vi.fn().mockResolvedValue(options.clientUrl ? { url: options.clientUrl } : undefined)
+      matchAll: vi.fn().mockResolvedValue([client]),
+      get: vi.fn().mockResolvedValue(client)
     },
     skipWaiting: vi.fn().mockResolvedValue(undefined),
     /** @param {string} type @param {(event: any) => void} listener */
@@ -65,6 +75,9 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     Response,
     AbortSignal,
     Request,
+    MessageChannel,
+    setTimeout,
+    clearTimeout,
     Set,
     Error,
     Promise,
@@ -73,9 +86,14 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
   };
   vm.runInNewContext(source.replace('const APP_ASSETS = [];',
     `const APP_ASSETS = ${JSON.stringify(options.appAssets ?? [])};`), sandbox);
+  const fetchListener = listeners.fetch;
+  listeners.fetch = (event) => fetchListener({ clientId: 'dashboard-client', ...event });
+  const messageListener = listeners.message;
+  listeners.message = (event) => messageListener({ source: client, ...event });
   return {
     listeners,
     worker,
+    client,
     fetch,
     cache,
     entries,
@@ -94,6 +112,159 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
+  it.each([false, true])('precaches JavaScript only in app mode, with appMode=%s', async (appMode) => {
+    const { listeners, entries, fetch } = serviceWorkerHarness([], {
+      appMode,
+      appAssets: ['./', 'src/main.js', 'src/data-worker.js', 'dashboard-pages/overview.json']
+    });
+    await dispatchExtendedEvent(listeners.install, {});
+    expect(entries.has('https://example.test/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/dashboard-pages/overview.json')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(appMode);
+    expect(entries.has('https://example.test/dashboard/src/data-worker.js')).toBe(appMode);
+    expect(fetch).toHaveBeenCalledTimes(appMode ? 4 : 2);
+  });
+
+  it('does not precache scripts when installation has no window client', async () => {
+    const { listeners, worker, entries } = serviceWorkerHarness([], {
+      appAssets: ['./', 'src/main.js']
+    });
+    worker.clients.matchAll.mockResolvedValue([]);
+    await dispatchExtendedEvent(listeners.install, {});
+    expect(entries.has('https://example.test/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(false);
+  });
+
+  it('ignores installed windows outside this dashboard scope', async () => {
+    const { listeners, entries, client } = serviceWorkerHarness([], {
+      appMode: true,
+      clientUrl: 'https://example.test/another-app/',
+      appAssets: ['./', 'src/main.js']
+    });
+    await dispatchExtendedEvent(listeners.install, {});
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(false);
+    expect(client.postMessage).not.toHaveBeenCalled();
+  });
+
+  it.each(['src/main.js?sha=abc', 'src/data-worker.mjs', 'scripts/bootstrap.cjs', 'module'])(
+    'does not cache or serve cached browser-tab scripts at %s',
+    async (path) => {
+      const { listeners, worker, fetch, entries } = serviceWorkerHarness();
+      const request = new Request(`https://example.test/dashboard/${path}`);
+      const script = { method: request.method, url: request.url, destination: 'script' };
+      entries.set(request.url, new Response('cached app script'));
+      worker.navigator.connection.effectiveType = '2g';
+      /** @type {Promise<Response> | undefined} */
+      let response;
+      listeners.fetch({
+        request: script,
+        respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+      });
+      await expect((await response)?.text()).resolves.toBe('updated data');
+      await expect(entries.get(request.url)?.clone().text()).resolves.toBe('cached app script');
+      fetch.mockRejectedValueOnce(new TypeError('offline'));
+      listeners.fetch({
+        request: script,
+        respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+      });
+      await expect(response).rejects.toThrow('offline');
+    }
+  );
+
+  it('does not cache scripts from unidentified clients', async () => {
+    const { listeners, entries, client } = serviceWorkerHarness([], { appMode: true });
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      clientId: '',
+      request: new Request('https://example.test/dashboard/src/main.js'),
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await response;
+    expect(entries.size).toBe(0);
+    expect(client.postMessage).not.toHaveBeenCalled();
+  });
+
+  it.each(['CACHE_APP_ASSETS', 'CONFIGURE_BACKGROUND_DATA'])(
+    'excludes browser-tab JavaScript from %s without changing data configuration',
+    async (type) => {
+      const { listeners, entries, fetch } = serviceWorkerHarness();
+      const scripts = ['https://example.test/dashboard/src/main.js', 'https://example.test/dashboard/src/data-worker.js'];
+      await dispatchExtendedEvent(listeners.message, {
+        data: {
+          type,
+          urls: type === 'CACHE_APP_ASSETS' ? scripts : ['https://example.test/dashboard/payload-hashes.json'],
+          assets: scripts
+        },
+        ports: [{ postMessage: vi.fn() }]
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      for (const script of scripts) expect(entries.has(script)).toBe(false);
+      expect(entries.has('https://example.test/dashboard/.dashboard-data-update-config'))
+        .toBe(type === 'CONFIGURE_BACKGROUND_DATA');
+    }
+  );
+
+  it('fills the complete script cache when a previously unpinned dashboard opens in app mode', async () => {
+    const { listeners, entries } = serviceWorkerHarness([], {
+      appMode: true,
+      appAssets: ['./', 'src/main.js', 'src/data-worker.js']
+    });
+    await dispatchExtendedEvent(listeners.message, {
+      data: { type: 'CACHE_APP_ASSETS', urls: ['https://example.test/dashboard/'] }
+    });
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/src/data-worker.js')).toBe(true);
+  });
+
+  it('fails closed when a window cannot report app mode', async () => {
+    vi.useFakeTimers();
+    try {
+      const { listeners, client, fetch, entries, debugConsole } = serviceWorkerHarness([], {
+        search: '?debug=data:ingestion:sw'
+      });
+      client.postMessage.mockImplementation(() => {});
+      const task = dispatchExtendedEvent(listeners.message, {
+        data: { type: 'CACHE_APP_ASSETS', urls: ['https://example.test/dashboard/src/main.js'] }
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      await task;
+      expect(fetch).not.toHaveBeenCalled();
+      expect(entries.size).toBe(0);
+      expect(debugConsole.debug).toHaveBeenCalledWith(
+        '[cao:data:ingestion:sw]', 'app mode response timed out'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('checks app mode per requesting window rather than reusing another window permission', async () => {
+    const { listeners, client, worker, entries, fetch } = serviceWorkerHarness([], { appMode: true });
+    const request = new Request('https://example.test/dashboard/src/main.js');
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    const fetchScript = () => listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    fetchScript();
+    await response;
+    expect(entries.size).toBe(1);
+    const browserClient = {
+      ...client,
+      postMessage: vi.fn((_message, ports) => {
+        ports[0].postMessage({ type: 'DASHBOARD_APP_MODE', appMode: false });
+      })
+    };
+    worker.clients.get.mockResolvedValue(browserClient);
+    fetch.mockResolvedValueOnce(new Response('browser script'));
+    fetchScript();
+    await expect((await response)?.text()).resolves.toBe('browser script');
+    await expect(entries.get(String(request))?.text()).resolves.toBe('updated data');
+    expect(browserClient.postMessage).toHaveBeenCalledOnce();
+  });
+
   it('prepares the shell and lazy page chunks before installation completes', async () => {
     const { listeners, entries, fetch } = serviceWorkerHarness([], {
       appAssets: ['./', 'dashboard.json', 'dashboard-pages/overview.json']
@@ -118,7 +289,7 @@ describe('dashboard service worker', () => {
   });
 
   it('uses the precached script when its versioned URL cannot be fetched offline', async () => {
-    const { listeners, entries, fetch } = serviceWorkerHarness();
+    const { listeners, entries, fetch } = serviceWorkerHarness([], { appMode: true });
     const script = new Request('https://example.test/dashboard/src/main.js?sha=abc');
     entries.set('https://example.test/dashboard/src/main.js', new Response('cached script'));
     fetch.mockRejectedValueOnce(new TypeError('offline'));
@@ -132,7 +303,7 @@ describe('dashboard service worker', () => {
   });
 
   it('loads the precached data worker when offline debugging parameters are set', async () => {
-    const { listeners, entries, fetch } = serviceWorkerHarness();
+    const { listeners, entries, fetch } = serviceWorkerHarness([], { appMode: true });
     const script = new Request('https://example.test/dashboard/src/data-worker.js?debug=1&debug-shard-limit=2&debug-eager-ingest=1');
     entries.set('https://example.test/dashboard/src/data-worker.js', new Response('cached worker'));
     fetch.mockRejectedValueOnce(new TypeError('offline'));
@@ -359,7 +530,7 @@ describe('dashboard service worker', () => {
   });
 
   it('serves cached dashboard assets and data while offline', async () => {
-    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const { listeners, fetch, entries } = serviceWorkerHarness([], { appMode: true });
     const request = new Request('https://example.test/dashboard/src/main.js');
     fetch.mockResolvedValueOnce(new Response('online'));
     /** @type {Promise<Response> | undefined} */
@@ -393,7 +564,8 @@ describe('dashboard service worker', () => {
 
   it('fetches the online dashboard shell and its assets without HTTP or offline cache reuse', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness([], {
-      clientUrl: 'https://example.test/dashboard/?online=1'
+      clientUrl: 'https://example.test/dashboard/?online=1',
+      appMode: true
     });
     const shell = new Request('https://example.test/dashboard/?online=1');
     const asset = new Request('https://example.test/dashboard/src/main.js');
@@ -521,7 +693,7 @@ describe('dashboard service worker', () => {
   });
 
   it('caches application assets independently of background data updates', async () => {
-    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const { listeners, fetch, entries } = serviceWorkerHarness([], { appMode: true });
 
     await dispatchExtendedEvent(listeners.message, {
       data: {
@@ -540,7 +712,7 @@ describe('dashboard service worker', () => {
   });
 
   it('keeps successful assets when the connection drops part way through caching', async () => {
-    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const { listeners, fetch, entries } = serviceWorkerHarness([], { appMode: true });
     fetch.mockImplementation(async (url) => {
       if (String(url).endsWith('/src/main.js')) throw new TypeError('connection lost');
       return new Response(`cached ${url}`);
@@ -564,7 +736,7 @@ describe('dashboard service worker', () => {
   });
 
   it('preserves a cached asset when its network refresh is interrupted', async () => {
-    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const { listeners, fetch, entries } = serviceWorkerHarness([], { appMode: true });
     const request = new Request('https://example.test/dashboard/src/main.js');
     entries.set(String(request), new Response('previous version'));
     fetch.mockRejectedValueOnce(new TypeError('connection lost'));

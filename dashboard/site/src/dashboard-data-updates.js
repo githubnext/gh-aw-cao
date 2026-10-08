@@ -70,7 +70,7 @@ export function periodicBackgroundSyncSupported(
  * @param {boolean | undefined} [navigatorStandalone]
  */
 export function dashboardInstalled(
-  standaloneDisplayMode = window.matchMedia?.('(display-mode: standalone)'),
+  standaloneDisplayMode = window.matchMedia?.('(display-mode: standalone), (display-mode: minimal-ui)'),
   navigatorStandalone = /** @type {Navigator & { standalone?: boolean }} */ (navigator).standalone
 ) {
   return standaloneDisplayMode?.matches === true || navigatorStandalone === true;

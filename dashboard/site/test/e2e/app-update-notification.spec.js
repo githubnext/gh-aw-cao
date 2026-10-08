@@ -15,17 +15,17 @@ test('the footer shows an app download before offering the user a reload', async
       response.writeHead(200);
       response.end();
     } else if (pathname === '/finish-download') {
-      download?.end('/* Download complete. */');
+      download?.end('{}');
       response.writeHead(200);
       response.end();
-    } else if (pathname === '/update-asset.js') {
+    } else if (pathname === '/update-asset.json') {
       download = response;
-      response.writeHead(200, { 'Content-Type': 'text/javascript' });
+      response.writeHead(200, { 'Content-Type': 'application/json' });
     } else if (pathname === '/service-worker.js') {
       response.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'no-store' });
       response.end(workerSource
         .replace("const VERSION = 'development';", `const VERSION = '${version}';`)
-        .replace('const APP_ASSETS = [];', version === 'second' ? "const APP_ASSETS = ['/update-asset.js'];" : 'const APP_ASSETS = [];'));
+        .replace('const APP_ASSETS = [];', version === 'second' ? "const APP_ASSETS = ['/update-asset.json'];" : 'const APP_ASSETS = [];'));
     } else if (pathname.startsWith('/src/') && /^\/src\/[a-z/-]+\.js$/.test(pathname)) {
       response.writeHead(200, { 'Content-Type': 'text/javascript' });
       response.end(readFileSync(new URL(`../..${pathname}`, import.meta.url)));
