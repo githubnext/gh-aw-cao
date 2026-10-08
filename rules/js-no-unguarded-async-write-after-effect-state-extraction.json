@@ -90,19 +90,29 @@
   "status": "ready",
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "58f18c122d32b87e5110609414d5275a1c38a402",
+    "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
     "true_positive_count": 7,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "readiness_for_target": "ready",
-    "reason": "Re-confirmed on HEAD 58f18c1: 7 unguarded post-await .set() writes across 4 files in dashboard/site/src/components/ (cli-actions.js:121,275; reset-dashboard-control.js x2 overlapping matches; configuration-view.js; data-view.js) still lack the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (ui-primitives.js:184,1025, data-view.js:1689). Pattern unchanged since last evaluation.",
-    "txn_id": "refiner-37781498008-2"
+    "reason": "Re-confirmed on HEAD d00b985: the same 7 unguarded post-await .set() writes remain in dashboard/site/src/components/ (cli-actions.js:130-135 x2 call sites, reset-dashboard-control.js:128-134, configuration-view.js:311-317), still lacking the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (data-view.js:1689). No drift since last evaluation.",
+    "txn_id": "refiner-37796381362-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37781498008",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37796381362",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-08T13:08:28Z",
-  "last_updated": "2026-10-08T13:08:28Z",
+  "last_seen_at": "2026-10-08T15:00:22Z",
+  "last_updated": "2026-10-08T15:00:22Z",
   "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "58f18c122d32b87e5110609414d5275a1c38a402",
+      "true_positive_count": 7,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed on HEAD 58f18c1: 7 unguarded post-await .set() writes across 4 files in dashboard/site/src/components/ (cli-actions.js:121,275; reset-dashboard-control.js x2 overlapping matches; configuration-view.js; data-view.js) still lack the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (ui-primitives.js:184,1025, data-view.js:1689). Pattern unchanged since last evaluation.",
+      "txn_id": "refiner-37781498008-2"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
