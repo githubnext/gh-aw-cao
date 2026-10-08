@@ -1,8 +1,6 @@
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
-import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
 import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
@@ -237,15 +235,6 @@ export function processScatterPoints(points, limit) {
     { operation: 'cluster-scatter-points', data: points, limit },
     () => clusterScatterPoints(points, limit)
   );
-}
-
-/**
- * Adapts and normalizes published dashboard sources in a Web Worker when supported.
- * @param {Record<string, unknown>} sources
- * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
- */
-export function processCanonicalDashboardSources(sources) {
-  return normalize(queryDashboardSourceObservations(sources).observations);
 }
 
 /**
