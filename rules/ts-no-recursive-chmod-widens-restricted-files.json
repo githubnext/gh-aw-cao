@@ -77,15 +77,15 @@
   },
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
+    "target_commit": "58f18c122d32b87e5110609414d5275a1c38a402",
     "true_positive_count": 0,
     "false_positive_count": 1,
     "false_negative_count": 1,
     "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD c6796f39: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a fresh mkdtemp directory remains a false positive against the naive recursive-chmod heuristic. No drift since refiner-37557116506-2.",
-    "txn_id": "refiner-37671193744-2"
+    "reason": "Re-confirmed unchanged on HEAD 58f18c1: tests/e2e/cao-mcp-container.mjs:89 still runs chmod -R a+rX on a fresh mkdtemp directory before reading it read-only into a docker volume (false positive against a naive recursive-chmod heuristic: the directory is freshly created and exclusively owned, not a widening of pre-existing restricted files). No drift since refiner-37557116506-2.",
+    "txn_id": "refiner-37781498008-3"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37671193744",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37781498008",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
@@ -159,6 +159,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-07T19:05:10Z",
-  "last_updated": "2026-10-07T02:14:05Z"
+  "last_seen_at": "2026-10-08T13:08:28Z",
+  "last_updated": "2026-10-08T13:08:28Z"
 }
