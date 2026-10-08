@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T04:03:00Z",
-      "worker_run_id": 37725312001,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37725240976,
-        37724857759,
-        37724850552,
-        37724304174,
-        37724108945,
-        37722204715,
-        37721895830,
-        37720832297,
-        37720401950,
-        37719586994,
-        37719585540,
-        37719364858,
-        37719315177,
-        37719133607,
-        37719003613,
-        37718915373,
-        37717682972,
-        37716988743,
-        37716461895,
-        37716273921
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 1 successful run (37725240976), below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-08T02:06:55Z through 2026-10-08T03:58:21Z and was dominated by 18 cancelled runs plus 1 action_required run across source SHAs 3aaca4989badc3c798269470725030cb977dbc54, 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, fa22e47bdb019d5742e1c2695836c142a198c6e0, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be validated safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-08T04:32:45Z",
       "worker_run_id": 37727735663,
       "category": "dependency installation and caching",
@@ -856,6 +828,35 @@
         37803726329
       ],
       "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the cycle's next category (artifact transfer and Pages packaging) still lacks the required 5 comparable build-bearing docs successes in the latest 20 completed docs.yml runs. The latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T15:48:08Z through 2026-10-08T17:35:34Z and yielded 7 successful schedule runs, 9 skipped workflow_run runs, and 4 action_required workflow_run outliers with no jobs; queue median/p90 was 0s/0s and full successful-workflow median/p90 was 14s/61.4s. Trusted Actions metadata showed schedule-freshness ran in all 7 successful runs at 9s median / 10s p90, while only 1 run (37809367639) executed build and deploy after a new default-branch SHA; its build and deploy jobs took 61s and 49s with node_modules and CAO Dashboard cache hits, Build documentation 14s, and Upload Pages artifact 15s. Source inspection of .github/workflows/docs.yml confirms the freshness gate now covers both schedule and successful default-branch workflow_run events, and the bounded run sample matches that behavior: every completed workflow_run docs invocation in the sample either skipped cleanly or was an action_required outlier rather than performing a duplicate rebuild. Relevant cao-dashboard evidence in the same repository showed the latest 20 completed cao-dashboard.yml runs contained 0 successful runs (14 skipped, 4 cancelled, 2 failed), so no new dashboard-generation optimization can be revalidated safely in this cycle; the standing threshold-meeting dashboard-side improvement is already tracked by open issue #16825, while open issue #16054 already represents the earlier workflow_run duplicate-build subject. No additional non-duplicate scheduling/concurrency change currently meets the >=60s or >=15% threshold without weakening freshness or correctness.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-08T18:05:00Z",
+      "worker_run_id": 37820653229,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37820370700,
+        37819530284,
+        37819170486,
+        37817729084,
+        37817563564,
+        37816220255,
+        37815934507,
+        37813421963,
+        37813110563,
+        37812197656,
+        37811803743,
+        37811094278,
+        37809367639,
+        37809022764,
+        37809017428,
+        37806255715,
+        37806255813,
+        37806253789,
+        37805620432,
+        37804974563
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the cycle wraps back to dependency installation and caching, but the latest 20 completed docs.yml runs still provide only 1 comparable build-bearing success for the earlier build-focused categories. Within the latest 20 completed docs.yml runs from 2026-10-08T16:02:17Z through 2026-10-08T17:55:58Z, 7 runs concluded success and all 7 were schedule-triggered on the same default-branch SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243; queue median/p90 was 0s/0s, successful workflow execution median/p90 was 14s/62s, and schedule-freshness job median/p90 was 9s/10s. Trusted Actions metadata showed only 1 run (37809367639) executed the full schedule-freshness + build + deploy path after a new default-branch SHA, with build 61s, deploy 49s, Restore node_modules 8s, Build documentation 14s, Restore cached CAO Dashboard 3s, and Upload Pages artifact 15s; the other 6 successful schedule runs skipped build and deploy because the deployed docs and dashboard were already current. Trusted metadata and bounded logs also showed 9 workflow_run invocations were skipped cleanly and 4 workflow_run outliers concluded action_required with no jobs. Source inspection of .github/workflows/docs.yml plus logs from 37819530284 confirm the freshness gate now suppresses redundant rebuilds after successful default-branch CAO Dashboard completions, so the earlier duplicate-build subject remains represented by open issue #16054. The latest 20 completed cao-dashboard.yml runs in the same 14-day window yielded 0 successful runs (15 skipped, 3 cancelled, 2 failed), so reusable-dashboard generation cannot be revalidated further in this cycle and the standing dashboard-side recommendation remains represented by open issue #16825. No additional non-duplicate scheduling, concurrency, or avoidable-rebuild change currently meets the >=60s or >=15% threshold without weakening freshness, correctness, or deployment safety.",
       "suggestion_fingerprint": null
     }
   ]
