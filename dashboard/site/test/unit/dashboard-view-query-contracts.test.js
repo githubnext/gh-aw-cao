@@ -106,6 +106,59 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('bounds run populations joined with seven-day detail before computing coverage', () => {
+    const linked = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues',
+      'experimentAssignments', 'graderObservations', 'evalObservations']);
+    /** @param {string} name @param {Set<string>} [seen] @returns {boolean} */
+    const usesDetail = (name, seen = new Set()) => {
+      if (linked.has(name)) return true;
+      if (seen.has(name)) return false;
+      seen.add(name);
+      const query = queriesByName.get(name);
+      return query ? [
+        query.from,
+        ...(query.union ?? []),
+        ...(query.joins ?? []).map((/** @type {{ source: string }} */ join) => join.source)
+      ].some((source) => typeof source === 'string' && usesDetail(source, seen)) : false;
+    };
+    const runQueries = queries.filter((/** @type {{ from: string, joins?: Array<{ source: string }> }} */ query) =>
+      query.from === 'runs' && query.joins?.some((join) => usesDetail(join.source)));
+    expect(runQueries.map((/** @type {{ name: string }} */ query) => query.name).sort()).toEqual([
+      'campaign-dispatch-inventory', 'campaign-runs', 'repository-run-totals', 'run-import-status'
+    ]);
+    for (const query of [...runQueries, queriesByName.get('campaign-workflow-execution-base'),
+      queriesByName.get('workflow-aic-totals')]) {
+      expect(query?.time, query?.name).toEqual({ range: '7d' });
+    }
+
+    const page = { views: [{ id: 'coverage', mark: 'table', data: { source: 'repository-run-totals' } }] };
+    const compiled = compileDashboardViewPayloadQueries(page, 'repositories', {
+      evaluatedAt: '2026-10-08T12:00:00Z', queries
+    });
+    const result = executeDashboardQueries(compiled.queries, {
+      runs: {
+        source: 'runs', metadata, rows: [
+          { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'old',
+            'run-attempt': 1, 'started-at': '2026-09-20T12:00:00Z',
+            'observed-at': '2026-10-08T11:00:00Z', 'run-conclusion': 'success' },
+          { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'recent',
+            'run-attempt': 1, 'started-at': '2026-10-07T12:00:00Z',
+            'observed-at': '2026-10-08T11:00:00Z', 'run-conclusion': 'success' }
+        ]
+      },
+      audits: { source: 'audits', metadata, rows: [
+        { organization: 'octo', repository: 'repo', workflow: 'worker', run: 'recent',
+          'run-attempt': 1, event: 'audit-1', 'observed-at': '2026-10-07T13:00:00Z' }
+      ] },
+      domains: { source: 'domains', metadata, rows: [] },
+      tools: { source: 'tools', metadata, rows: [] },
+      issues: { source: 'issues', metadata, rows: [] }
+    });
+    expect(result[compiled.aliases[0]].rows).toMatchObject([
+      { organization: 'octo', repository: 'repo', runs: 1, 'imported-runs': 1 }
+    ]);
+  });
+
   it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
     const evolutionSection = dashboard.navigation.find(
       (/** @type {{ label?: string }} */ section) => section.label === 'Evolution'
@@ -791,15 +844,15 @@ describe('dashboard view query contracts', () => {
     expect(baselineAlias).toBeDefined();
     expect(result[baselineAlias ?? ''].rows).toEqual([{
       campaign: 'optimization',
-      'concluded-runs': 3,
-      'successful-runs': 2,
-      'success-rate': 2 / 3,
-      'success-rate-display': '66.7%',
-      'success-rate-percent': (2 / 3) * 100,
+      'concluded-runs': 1,
+      'successful-runs': 0,
+      'success-rate': 0,
+      'success-rate-display': '0%',
+      'success-rate-percent': 0,
       'reliability-signal': 'Unsuccessful runs observed',
-      'produced-outputs': 2,
-      'production-signal': 'Outputs produced; acceptance unverified',
-      'aic-per-successful-run': 5
+      'produced-outputs': 0,
+      'production-signal': 'Output evidence unavailable',
+      'aic-per-successful-run': null
     }]);
   });
 

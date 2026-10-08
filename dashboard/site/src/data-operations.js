@@ -556,7 +556,7 @@ function matchesTemporalBounds(valueMs, predicate) {
 
 /** @param {Row} row @returns {number | null} */
 function pickRowTimeValue(row) {
-  for (const field of ['observed-at', 'started-at', 'ended-at']) {
+  for (const field of ['started-at', 'ended-at', 'observed-at']) {
     if (typeof row[field] !== 'string') continue;
     const value = parseTimestamp(row[field]);
     return value;

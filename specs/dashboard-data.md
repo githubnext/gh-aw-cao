@@ -393,6 +393,11 @@ Value records for the separate 30-day operational window. Explicitly configured
 historical SQLite archives MAY retain detail longer.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
+Queries that compare or join retained run-linked detail with Run summaries
+MUST limit their Run population to the same seven-day detail horizon before
+computing coverage, counts, or ratios. Historical Run-only views MAY continue
+to include older summaries; missing expired detail MUST NOT be counted as
+missing evidence for an older Run.
 
 ## 5.1 Implemented storage profile
 

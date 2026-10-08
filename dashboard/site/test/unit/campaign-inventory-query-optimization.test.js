@@ -272,7 +272,7 @@ describe('campaign inventory query optimization', () => {
       expect(optimized).toEqual(original);
       expect(optimized[after.aliases[0]].rows.length).toBeGreaterThan(0);
       if (name !== 'campaign-workflows') {
-        expect(optimized[after.aliases[0]].rows.find((row) => row.campaign === 'alpha')).toMatchObject({ runs: 4, aic: 2.5 });
+        expect(optimized[after.aliases[0]].rows.find((row) => row.campaign === 'alpha')).toMatchObject({ runs: 0, aic: 0 });
       }
     }
   });

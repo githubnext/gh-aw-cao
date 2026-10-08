@@ -47,6 +47,7 @@
     },
     {
       "name": "campaign-runs",
+      "time": { "range": "7d" },
       "subject": "Project workflow runs with campaign attribution and retained failure evidence.",
       "objective": "Connect retained run status and failure details to declared campaign/workflow identity for run-level diagnosis.",
       "acceptance": "Expose run and attempt identity, declared attribution, runtime and target repositories, status, failure and incomplete-outcome evidence, timestamps, and drill-down links; do not infer an outcome from runtime success or missing details.",
@@ -1189,6 +1190,7 @@
     },
     {
       "name": "campaign-dispatch-inventory",
+      "time": { "range": "7d" },
       "subject": "Project retained dispatch identity and campaign attribution before campaign counting.",
       "objective": "Count dispatches without materializing run diagnoses and presentation links.",
       "acceptance": "Keep workflow_dispatch runs in timestamp order with declared campaign attribution; preserve workflow and incomplete-outcome join quality and duplicate-key failure behavior.",

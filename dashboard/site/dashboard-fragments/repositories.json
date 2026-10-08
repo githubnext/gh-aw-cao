@@ -359,6 +359,7 @@
     },
     {
       "name": "repository-run-totals",
+      "time": { "range": "7d" },
       "subject": "Summarize distinct runs, failures, and approval-required runs by repository.",
       "objective": "Aggregate retained run volume, conclusions, and import coverage without materializing enriched run rows.",
       "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
