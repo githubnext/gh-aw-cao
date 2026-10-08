@@ -1,6 +1,6 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
@@ -62,12 +62,14 @@ function stubFetch(sources) {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse(metadata['as-of']));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
 });
+afterEach(() => { vi.mocked(Date.now).mockRestore(); });
 
 describe('canonical dashboard worker retention updates', () => {
   it('publishes retained tools to subscribers after a partial collection', async () => {

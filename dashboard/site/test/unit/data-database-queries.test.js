@@ -169,6 +169,7 @@ function collection(generation, auditRows) {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse(metadata['as-of']));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);

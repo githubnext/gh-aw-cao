@@ -8,6 +8,9 @@ import test from 'node:test';
 
 const execFileAsync = promisify(execFile);
 const cao = path.resolve('activity/cao.mjs');
+const runDay = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+const closedAt = `${new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)}T12:00:00Z`;
+const resetAt = `${new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}T13:00:00Z`;
 
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cao-issue-status-'));
@@ -30,9 +33,9 @@ async function fixture() {
         workflow_path: '.github/workflows/dashboard.lock.yml',
         status: 'completed',
         conclusion: 'success',
-        created_at: '2026-09-09T03:59:00Z',
-        started_at: '2026-09-09T04:00:00Z',
-        updated_at: '2026-09-09T04:01:00Z'
+        created_at: `${runDay}T03:59:00Z`,
+        started_at: `${runDay}T04:00:00Z`,
+        updated_at: `${runDay}T04:01:00Z`
       }
     },
     {
@@ -40,7 +43,7 @@ async function fixture() {
       kind: 'safe_output_item',
       safe_output: {
         run_id: 303,
-        timestamp: '2026-09-09T04:00:30Z',
+        timestamp: `${runDay}T04:00:30Z`,
         type: 'create_issue',
         provider: 'github',
         url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
@@ -51,7 +54,7 @@ async function fixture() {
       kind: 'safe_output_item',
       safe_output: {
         run_id: 303,
-        timestamp: '2026-09-09T04:00:31Z',
+        timestamp: `${runDay}T04:00:31Z`,
         type: 'create_issue',
         provider: 'github',
         url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
@@ -81,14 +84,14 @@ if (queryArgument.includes('repository(')) {
       number,
       state: 'CLOSED',
       stateReason: 'COMPLETED',
-      closedAt: '2026-09-20T12:00:00Z',
+      closedAt: '${closedAt}',
       url: 'https://github.com/githubnext/gh-aw-cao/issues/' + number
     } },
-    rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
+    rateLimit: { cost: 1, remaining: 998, resetAt: '${resetAt}' }
   } }));
 } else {
   process.stdout.write(JSON.stringify({ data: {
-    rateLimit: { cost: 1, remaining: 999, resetAt: '2026-09-20T13:00:00Z' }
+    rateLimit: { cost: 1, remaining: 999, resetAt: '${resetAt}' }
   } }));
 }
 `);
@@ -131,7 +134,7 @@ test('issue-status enriches issues through one-item GraphQL batches within a sma
         state: 'CLOSED',
         closed: true,
         state_reason: 'COMPLETED',
-        closed_at: '2026-09-20T12:00:00Z',
+        closed_at: closedAt,
         observed_at: record.safe_output.github_issue_status.observed_at
       });
       assert.ok(Number.isFinite(Date.parse(record.safe_output.github_issue_status.observed_at)));
@@ -162,7 +165,7 @@ test('issue-status enriches issues through one-item GraphQL batches within a sma
       closed: true,
       state: 'CLOSED',
       stateReason: 'COMPLETED',
-      closedAt: '2026-09-20T12:00:00Z'
+      closedAt
     })));
 
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
@@ -196,11 +199,11 @@ process.stdout.write(JSON.stringify(query.includes('repository(') ? {
         url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
       }
     },
-    rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
+    rateLimit: { cost: 1, remaining: 998, resetAt: '${resetAt}' }
   }
 } : {
   data: {
-    rateLimit: { cost: 1, remaining: 999, resetAt: '2026-09-20T13:00:00Z' }
+    rateLimit: { cost: 1, remaining: 999, resetAt: '${resetAt}' }
   }
 }));
 `);
@@ -311,9 +314,9 @@ if (args[0] === 'aw' && args[1] === 'logs') {
         workflow_path: '.github/workflows/dashboard.lock.yml',
         status: 'completed',
         conclusion: 'success',
-        created_at: '2026-09-09T03:59:00Z',
-        started_at: '2026-09-09T04:00:00Z',
-        updated_at: '2026-09-09T04:01:00Z'
+        created_at: `${runDay}T03:59:00Z`,
+        started_at: `${runDay}T04:00:00Z`,
+        updated_at: `${runDay}T04:01:00Z`
       }
     }))},
     ${JSON.stringify(JSON.stringify({
@@ -321,7 +324,7 @@ if (args[0] === 'aw' && args[1] === 'logs') {
       kind: 'safe_output_item',
       safe_output: {
         run_id: 303,
-        timestamp: '2026-09-09T04:00:30Z',
+        timestamp: `${runDay}T04:00:30Z`,
         type: 'create_issue',
         provider: 'github',
         url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
@@ -339,14 +342,14 @@ if (args[0] === 'api' && args[1] === 'graphql') {
         number: 42,
         state: 'CLOSED',
         stateReason: 'COMPLETED',
-        closedAt: '2026-09-20T12:00:00Z',
+        closedAt: '${closedAt}',
         url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
       } },
-      rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
+      rateLimit: { cost: 1, remaining: 998, resetAt: '${resetAt}' }
     } }));
   } else {
     process.stdout.write(JSON.stringify({ data: {
-      rateLimit: { cost: 1, remaining: 999, resetAt: '2026-09-20T13:00:00Z' }
+      rateLimit: { cost: 1, remaining: 999, resetAt: '${resetAt}' }
     } }));
   }
   process.exit(0);
@@ -403,7 +406,7 @@ process.exit(1);
       state: 'CLOSED',
       closed: true,
       stateReason: 'COMPLETED',
-      closedAt: '2026-09-20T12:00:00Z'
+      closedAt
     }]);
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
     const graphqlCalls = calls.filter((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql');

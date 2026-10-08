@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/card-filter-contract.json' with { type: 'json' };
+import { recentFixtureDates } from './recent-fixture-dates.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+const recent = recentFixtureDates('2026-10-04T00:00:00Z');
 const origin = 'http://card-filters.dashboard.test';
 const dashboard = authoritativeDashboard.dashboard;
 const issuesPage = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
@@ -24,7 +26,7 @@ const documentModel = {
 /** @param {boolean} [updated] @param {boolean} [expanded] */
 function sources(updated = false, expanded = false) {
   const metadata = { 'as-of': '2026-10-04T00:00:00Z', 'artifact-generation': updated ? 'updated' : 'initial' };
-  return {
+  return recent.data({
     repositories: { rows: [{ organization: 'octo', repository: 'repo' }], metadata },
     workflows: { rows: [{ organization: 'octo', repository: 'repo', workflow: 'worker.md' }], metadata },
     runs: { rows: [{
@@ -45,7 +47,7 @@ function sources(updated = false, expanded = false) {
       ...row, organization: 'octo', repository: 'repo', workflow: 'worker.md', run: '1',
       'run-attempt': 1, 'event-source': 'safe-output'
     })), metadata }
-  };
+  });
 }
 
 /** @param {import('@playwright/test').Page} page */

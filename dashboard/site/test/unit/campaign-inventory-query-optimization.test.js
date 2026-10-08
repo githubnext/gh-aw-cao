@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import {
   createDashboardQueryBudget,
@@ -203,12 +203,14 @@ function parity(sources) {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-09T05:00:00Z'));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
 });
+afterEach(() => { vi.mocked(Date.now).mockRestore(); });
 
 describe('campaign inventory query optimization', () => {
   it('projects campaign identities and navigation without execution inputs while totals are pending', async () => {

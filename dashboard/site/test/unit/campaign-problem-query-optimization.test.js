@@ -151,6 +151,7 @@ function evidence() {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-09T05:00:00Z'));
   vi.spyOn(console, 'debug').mockImplementation(() => {});
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(databaseName);

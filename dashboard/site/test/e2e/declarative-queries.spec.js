@@ -3,10 +3,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { recentFixtureDates } from './recent-fixture-dates.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 const generation = 'query-scenarios';
+const recent = recentFixtureDates('2026-09-09T05:00:00Z');
 const asOf = '2026-09-09T05:00:00Z';
 
 /**
@@ -40,7 +42,7 @@ const idleWorkflow = { repository: 'control-plane', workflow: '.github/workflows
  */
 function queryScenarioSources() {
   const metadata = { 'as-of': asOf, 'artifact-generation': generation };
-  return {
+  return recent.data({
     campaigns: {
       rows: [{
         campaign: 'dashboard',
@@ -176,7 +178,7 @@ function queryScenarioSources() {
       ],
       metadata
     }
-  };
+  });
 }
 
 test.beforeEach(async ({ context, page }) => {
@@ -379,13 +381,13 @@ test('scenario 1: projects, renames, orders, and limits a single source', async 
   }], ['recent-runs']);
 
   expect(payload['recent-runs'].rows).toEqual([
-    { 'run-id': '1005', outcome: 'success', 'started-at': '2026-09-09T04:30:00Z' },
-    { 'run-id': '1004', outcome: 'success', 'started-at': '2026-09-09T04:00:00Z' }
+    { 'run-id': '1005', outcome: 'success', 'started-at': recent.timestamp('2026-09-09T04:30:00Z') },
+    { 'run-id': '1004', outcome: 'success', 'started-at': recent.timestamp('2026-09-09T04:00:00Z') }
   ]);
   expect(payload['recent-runs'].metadata).toMatchObject({
     'source-kind': 'derived',
     'query-name': 'recent-runs',
-    'as-of': asOf,
+    'as-of': recent.timestamp(asOf),
     availability: 'available'
   });
 });

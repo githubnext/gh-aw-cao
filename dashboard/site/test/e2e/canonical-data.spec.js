@@ -1,18 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coordinator.js';
 import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { normalizedActivityShards } from './normalized-shard.js';
+import { recentFixtureDates } from './recent-fixture-dates.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
+const recent = recentFixtureDates('2026-09-09T05:00:00Z');
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'evalObservations', 'evals', 'experimentAssignments',
   'experiments', 'friction', 'graderObservations', 'graders', 'issues', 'marketplacePackages',
@@ -28,13 +29,13 @@ function ghAwLogInput() {
     'run-303/sandbox/agent/logs/copilot-session-state/session-505/events.jsonl'
   ];
   return {
-    ...context,
-    files: paths.map((path) => ({ path, content: readFileSync(join(fixtureRoot, path), 'utf8') }))
+    ...recent.data(context),
+    files: paths.map((path) => ({ path, content: recent.text(readFileSync(join(fixtureRoot, path), 'utf8')) }))
   };
 }
 
 function databaseTables(generation = 'browser-generation', run = '12345') {
-  return {
+  return recent.data({
     campaigns: {
       rows: [{
         campaign: 'dashboard',
@@ -229,7 +230,7 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'operational-value': 1 }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
-  };
+  });
 }
 
 function canonicalWarningSources() {
@@ -258,7 +259,7 @@ function canonicalWarningSources() {
       'run-attempt': 2,
       session: 'session-12345',
       event: 'safe-output-12345',
-      'event-timestamp': '2026-09-09T04:03:00Z',
+      'event-timestamp': recent.timestamp('2026-09-09T04:03:00Z'),
       'event-source': 'safe-output',
       'event-type': 'safe_output.created',
       'event-summary': 'Created issue',
@@ -267,7 +268,7 @@ function canonicalWarningSources() {
       'safe-output-type': 'create_issue',
       'github-entity-type': 'issue',
       'is-pull-request': false,
-      'observed-at': '2026-09-09T05:00:00Z'
+      'observed-at': recent.timestamp('2026-09-09T05:00:00Z')
     }
   );
   const auditRows = /** @type {Array<Record<string, unknown>>} */ (sources.audits.rows);
@@ -279,12 +280,12 @@ function canonicalWarningSources() {
       'run-attempt': 2,
       session: 'session-12345',
       event: 'finding-12345',
-      'event-timestamp': '2026-09-09T04:04:00Z',
+      'event-timestamp': recent.timestamp('2026-09-09T04:04:00Z'),
       'event-source': 'audit',
       'event-type': 'audit.finding',
       'event-summary': 'Prompt injection detected',
       'event-status': 'high',
-      'observed-at': '2026-09-09T05:00:00Z'
+      'observed-at': recent.timestamp('2026-09-09T05:00:00Z')
   });
   return sources;
 }
@@ -316,7 +317,7 @@ test.beforeEach(async ({ context, page }) => {
         'campaign-worker-count': 4,
         'campaign-min-version': 'v0.89.17',
         'campaign-experimental': true,
-        'observed-at': '2026-09-09T05:00:00Z'
+        'observed-at': recent.timestamp('2026-09-09T05:00:00Z')
       });
       await route.fulfill({
         contentType: 'application/json',
@@ -341,7 +342,7 @@ test.beforeEach(async ({ context, page }) => {
     if (pathname === `/${shardName}` || pathname === `/${recordShardName}`) {
       await route.fulfill({
         contentType: 'application/x-ndjson',
-        body: normalizedActivityShards(`${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+        body: normalizedActivityShards(recent.text(`${JSON.stringify({ schema_version: 2, kind: 'run', run: {
           run_id: 12345,
           run_attempt: 1,
           organization: 'githubnext',
@@ -397,7 +398,7 @@ test.beforeEach(async ({ context, page }) => {
               }
             }
           }
-        } })}\n`)[pathname === `/${shardName}` ? 'runs' : 'records']
+        } })}\n`))[pathname === `/${shardName}` ? 'runs' : 'records']
       });
       return;
     }
@@ -1117,7 +1118,7 @@ test('gh-aw logs audit populates the firewall domain query from canonical events
 });
 
 test('data worker computes repository and campaign pages with request-scoped dashboard queries', async ({ page }) => {
-  const result = await page.evaluate(async () => {
+  const result = await page.evaluate(async ({ start, end }) => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
@@ -1140,14 +1141,17 @@ test('data worker computes repository and campaign pages with request-scoped das
         pageId: 'repositories',
         queryContext: {
           timeWindow: {
-            start: '2026-09-10T00:00:00Z',
-            end: '2026-10-01T00:00:00Z'
+            start,
+            end
           }
         }
       }
     );
     const navigated = await loadCanonicalDashboardPage(['campaign-inventory'], context);
     return { initial, horizon, navigated };
+  }, {
+    start: recent.timestamp('2026-09-10T00:00:00Z'),
+    end: recent.timestamp('2026-10-01T00:00:00Z')
   });
 
   expect(Object.keys(result.initial)).toEqual(['repository-activity']);
@@ -1287,7 +1291,7 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
 
 test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }) => {
   const input = ghAwLogInput();
-  const directory = mkdtempSync(join(tmpdir(), 'cao-ingestion-compliance-'));
+  const directory = mkdtempSync(join(siteRoot, '.cao-ingestion-compliance-'));
   try {
     const sqliteIndexedDB = createSqliteIndexedDB(join(directory, 'dashboard.sqlite'));
     await ingestNodeGhAwLogs(sqliteIndexedDB, input);
