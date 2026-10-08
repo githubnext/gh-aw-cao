@@ -3,34 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T02:14:49Z",
-      "worker_run_id": 37716622596,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37716273921,
-        37716166002,
-        37716007399,
-        37715820775,
-        37714408833,
-        37714226098,
-        37714026671,
-        37714027113,
-        37713543937,
-        37713376520,
-        37712611853,
-        37710971688,
-        37710255085,
-        37709896696,
-        37709440076,
-        37705768862,
-        37704882383,
-        37704741180,
-        37704512495,
-        37704240299
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample covered 2026-10-07T23:47:30Z through 2026-10-08T02:06:55Z and was entirely cancelled schedule and workflow_run executions on source SHAs d9d427b9d69190983beca0d94a4f09d6373b27ab, 3c1975a44529d72e5f3185e216223e09db93316f, 12b140b1e48e1e5b3591b4168e0d1b6071aadd81, 179ccfd46d3383a6f29b13094dd8ffa0ebc58a44, and 04d36fd794fe564d33dc80a7168ea3d19536c964, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-08T02:55:12Z",
       "worker_run_id": 37719917566,
       "category": "dependency installation and caching",
@@ -854,6 +826,35 @@
         37792819686
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T14:28:59Z through 2026-10-08T16:28:13Z, 7 runs concluded success but only 1 run (37792819686) completed the comparable schedule-freshness + build + deploy path for category \"artifact transfer and Pages packaging\". The other successful runs were 6 freshness-only schedule passes with build and deploy skipped (37805620432, 37804274542, 37802710234, 37800797116, 37797356316, 37795226883); the remaining sample contained 9 skipped workflow_run runs and 4 action_required workflow_run runs. The relevant producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds. That leaves fewer than 5 comparable successful runs for artifact transfer and Pages packaging, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T17:00:46Z",
+      "worker_run_id": 37812771736,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37813110563,
+        37812197656,
+        37811803743,
+        37811094278,
+        37809367639,
+        37809022764,
+        37809017428,
+        37806255813,
+        37806255715,
+        37806254570,
+        37806253789,
+        37805620432,
+        37804974563,
+        37804274542,
+        37803726329,
+        37803716106,
+        37802710234,
+        37800797116,
+        37797356316,
+        37796870536
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T14:58:25Z through 2026-10-08T16:59:45Z, 7 runs concluded success but only 1 run (37809367639) completed the comparable schedule-freshness + build + deploy path for category \"artifact transfer and Pages packaging\". The other successful runs were 6 freshness-only schedule passes with build and deploy skipped (37812197656, 37805620432, 37804274542, 37802710234, 37800797116, 37797356316); the remaining sample contained 8 skipped workflow_run runs and 4 action_required workflow_run runs. That leaves fewer than the required 5 comparable successful runs, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle.",
+      "suggestion_fingerprint": null
     }
   ]
 }
