@@ -1,8 +1,11 @@
 import { ADDITIVE_MEASURE_FIELDS, AGGREGATE_VALUES, DASHBOARD_LINK_FIELD_NAMES, ERROR_CODES, LINK_FIELD_NAMES, FIELD_DEFINITION_KEYS, FIELD_DISPLAY_VALUES, FIELD_FORMAT_VALUES, FIELD_TYPE_VALUES, NON_ADDITIVE_MEASURE_FIELDS, SOURCE_ENTITY_IDENTIFIER_FIELDS, TEMPORAL_FIELD_NAMES, TIME_UNIT_VALUES, VIEW_ENCODING_KEYS } from './specification.js';
 import { sourceFieldNames } from './validator-queries.js';
 import { validateStringField, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
+import { createDebug } from './debug.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
+
+const debugValidatorEncoding = createDebug('validator-encoding');
 
 
 /**
@@ -16,6 +19,9 @@ import { validateStringField, validateOptionalStringField, validateObjectKeys, c
  * @param {ValidationError[]} errors
  */
 export function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors) {
+  const errorCountBeforeValidation = errors.length;
+  const markValue = typeof mark === 'string' ? mark : null;
+
   if (mark === 'element' || mark === 'callout') {
     if (encoding !== undefined) {
       errors.push(createError(
@@ -24,6 +30,7 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
         `${viewPath}.encoding`
       ));
     }
+    debugValidatorEncoding({ operation: 'validate-encoding', mark: markValue, status: errors.length === errorCountBeforeValidation ? 'ok' : 'invalid' });
     return;
   }
 
@@ -33,6 +40,7 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
       'encoding must be a mapping.',
       `${viewPath}.encoding`
     ));
+    debugValidatorEncoding({ operation: 'validate-encoding', mark: markValue, status: 'invalid' });
     return;
   }
 
@@ -40,7 +48,6 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
 
   /** @type {Map<string, string>} */
   const aggregateOutputIds = new Map();
-  const markValue = typeof mark === 'string' ? mark : null;
   if (markValue !== 'chart' && encoding.weight !== undefined) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
@@ -85,6 +92,8 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
   }
 
   validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors);
+
+  debugValidatorEncoding({ operation: 'validate-encoding', mark: markValue, status: errors.length === errorCountBeforeValidation ? 'ok' : 'invalid' });
 }
 
 /**
