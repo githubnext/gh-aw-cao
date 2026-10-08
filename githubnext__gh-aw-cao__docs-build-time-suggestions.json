@@ -3,35 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T09:08:10Z",
-      "worker_run_id": 37753980172,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37753355309,
-        37753044172,
-        37751475386,
-        37748728913,
-        37748544843,
-        37747030324,
-        37746580698,
-        37745311433,
-        37744470183,
-        37741745801,
-        37741448739,
-        37739110146,
-        37738891866,
-        37736402303,
-        37736253412,
-        37735634847,
-        37735489476,
-        37735405414,
-        37735013924,
-        37734716675,
-        37747029010
-      ],
-      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T06:39:53Z through 2026-10-08T08:57:51Z and contained 10 successful runs, but only 2 comparable build-bearing successes (37748728913 workflow_run and 37734716675 schedule); the other 8 successes were freshness-gated skips with build and deploy skipped. This is below the required minimum of 5 comparable successful runs for the artifact transfer and Pages packaging category. Within the same bounded window, the latest 20 completed cao-dashboard.yml runs contained only 1 successful run (37747029010), so upstream comparison is also below the minimum sample. Trusted metadata and bounded logs still showed node_modules and CAO Dashboard cache hits on the two build-bearing docs runs, while representative dashboard logs showed a 68.8 MB reusable dashboard artifact uploaded after copying a 777.7 MiB SQLite file and 458.6 MiB of activity shards, but the sample is too small for a fresh threshold-backed recommendation."
-    },
-    {
       "evaluated_at": "2026-10-08T09:36:16Z",
       "worker_run_id": 37757115771,
       "category": "artifact transfer and Pages packaging",
@@ -847,6 +818,34 @@
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T18:54:07Z through 2026-10-08T21:24:30Z and all used source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. Eleven runs concluded success, but every success was a schedule freshness pass with schedule-freshness successful and build and deploy skipped; the other nine runs were skipped workflow_run triggers. That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for the Astro documentation generation category. Queue median/p90 across the successful schedule passes was 0s/0s, full workflow median/p90 was 16s/18s, and schedule-freshness job median/p90 was 11s/13s. The latest 20 completed cao-dashboard.yml runs in the same window also contained 0 successful full builds (18 skipped, 1 cancelled, 1 skipped push), so no trusted upstream dashboard-generation sample was available either.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-08T21:43:59Z",
+      "worker_run_id": 37848347862,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37847904951,
+        37847756334,
+        37846551954,
+        37846239020,
+        37843846400,
+        37843247798,
+        37842661494,
+        37841378564,
+        37839991393,
+        37839590657,
+        37839269857,
+        37836389054,
+        37835705192,
+        37834847191,
+        37834469714,
+        37833111436,
+        37832937262,
+        37831646623,
+        37831315374,
+        37828963289
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T19:02:44Z through 2026-10-08T21:35:56Z, 10 runs concluded success but every success was a schedule-freshness pass with build and deploy skipped, while the other 10 runs were skipped workflow_run attempts. That leaves 0 comparable successful build-bearing docs runs for the Astro documentation generation category, below the required minimum of 5. Trusted Actions job metadata therefore cannot support median/p90 Build documentation timings, queue-vs-execution separation for the build path, or a threshold-backed recommendation in this cycle."
     }
   ]
 }
