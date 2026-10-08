@@ -1,4 +1,5 @@
 name: AW Optimization
+icon: ":meter:"
 description: Organization-wide workflows for optimizing GitHub Agentic Workflow AI credit usage, cost, and ambient context.
 min-version: v0.91.5
 experimental: true

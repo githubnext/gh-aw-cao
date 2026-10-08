@@ -1,4 +1,5 @@
 name: Repo Assist
+icon: ":gear:"
 description: Review-first issue triage, issue fixes, repository maintenance, and owned pull request upkeep.
 min-version: v0.91.5
 experimental: true

@@ -51,6 +51,31 @@ func TestParsePackageManifestDefaultsVersionToRef(t *testing.T) {
 	}
 }
 
+func TestParsePackageManifestNormalizesOcticons(t *testing.T) {
+	for _, tc := range []struct {
+		icon string
+		want string
+	}{
+		{`":shield:"`, "shield"},
+		{"':meter:'", "meter"},
+		{"codescan", "codescan"},
+		{"icons/logo.svg", "icons/logo.svg"},
+		{`""`, "workflow"},
+	} {
+		t.Run(tc.icon, func(t *testing.T) {
+			pkg, err := ParsePackageManifest("name: Demo\nicon: "+tc.icon+"\n", Coordinates{
+				Repository: "example/packages", Path: "demo/aw.yml", Ref: "main", ResolvedCommit: fakeCommitSHA,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if pkg.Icon != tc.want {
+				t.Fatalf("expected icon %q, got %q", tc.want, pkg.Icon)
+			}
+		})
+	}
+}
+
 func TestParsePackageManifestRequiresAName(t *testing.T) {
 	if _, err := ParsePackageManifest("description: no name here\n", Coordinates{}); err == nil {
 		t.Fatal("expected a manifest without a name to be rejected")

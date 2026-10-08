@@ -1,4 +1,5 @@
 name: Dreaming
+icon: ":beaker:"
 description: Evidence-bounded curation of AGENTS.md and other ambient agentic context, and future skill extraction and refinement.
 min-version: v0.91.5
 experimental: true

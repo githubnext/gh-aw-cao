@@ -27,6 +27,13 @@ not start those workflows.
 The marketplace presents a declarative list of package cards from the
 resolved marketplace table, without search, filters, or ranking controls.
 
+Each package declares an `icon` in its `aw.yml` using a supported Primer
+Octicon in gh-aw's quoted, colon-wrapped syntax, such as `icon: ":dependabot:"`,
+`icon: ":shield:"`, or `icon: ":meter:"`. Both resolvers normalize these to bare
+Octicon names for the package card and detail page. Official campaign packages
+use the same icon as their configured dashboard navigation entry. Packages
+without an explicit icon retain the default `workflow` icon.
+
 Public stars and forks are shown only when GitHub confirms public visibility.
 Missing repository data does not imply zero stars or forks.
 

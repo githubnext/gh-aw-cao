@@ -55,6 +55,11 @@ README resolves to empty content and never fails its registry. The command is ge
 the resolver from normalized package coordinates as
 `./cao.sh add REPOSITORY[/PATH]@RESOLVED_COMMIT`.
 
+Both resolvers normalize gh-aw's colon-wrapped Octicon metadata (for example,
+`icon: ":shield:"`) to the bare name (`shield`) used by the dashboard renderer.
+Already bare names and other icon values are preserved; an omitted or empty
+icon defaults to `workflow`.
+
 Registry failures are isolated and reported as credential-free diagnostics.
 Repository lookup failures do not hide usable packages. Private repository
 counts and token-derived details are never published, even to authenticated
