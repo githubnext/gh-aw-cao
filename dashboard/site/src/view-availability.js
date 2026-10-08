@@ -25,6 +25,12 @@ export function viewBackendAvailable(view, backend) {
   return /** @type {Record<string, unknown>} */ (requirement).backend === backend;
 }
 
+/** @param {unknown} view @param {DashboardDataBackend} backend */
+export function viewBackendHidden(view, backend) {
+  return !viewBackendAvailable(view, backend)
+    && /** @type {{ requires?: { ['on-unavailable']?: unknown } }} */ (view)?.requires?.['on-unavailable'] === 'hide';
+}
+
 /** @param {unknown} view @param {DashboardDataBackend} backend @returns {string | undefined} */
 export function viewBackendUnavailableMessage(view, backend) {
   if (viewBackendAvailable(view, backend)) return undefined;

@@ -42,7 +42,7 @@ import { enablePullRefresh } from './components/pull-refresh.js';
 import { resolveModeIndicator } from './components/mode-indicator.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
-import { dashboardDataBackend, viewBackendAvailable, viewBackendUnavailableMessage } from './view-availability.js';
+import { dashboardDataBackend, viewBackendAvailable, viewBackendHidden, viewBackendUnavailableMessage } from './view-availability.js';
 import { dashboardViewSourceNames as getViewSources, normalizeViewFilters, viewDataSourceNames, viewFilterControls, viewFilterSourceNames } from './view-filter-contract.js';
 import { captureCardFilterState, renderCardFilterBar, restoreCardFilterState } from './components/card-filter-bar.js';
 
@@ -812,14 +812,22 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
     ? page.route['navigation-page']
     : undefined;
-  const viewModes = availableViewModes(views);
+  const hiddenViewIds = new Set(views.flatMap((view) =>
+    viewBackendHidden(view, dashboardDataBackend()) && isPlainObject(view) && typeof view.id === 'string'
+      ? [view.id] : []));
+  const visibleViews = views.filter((view) => !viewBackendHidden(view, dashboardDataBackend()));
+  const viewModes = availableViewModes(visibleViews);
   const viewModeControlEnabled = page['view-mode-control'] !== false;
   const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (
     viewModes.includes(viewModeControlEnabled ? queryContext?.viewMode ?? 'chart' : 'chart')
       ? viewModeControlEnabled ? queryContext?.viewMode ?? 'chart' : 'chart'
-      : defaultViewMode(views)
+      : defaultViewMode(visibleViews)
   );
-  const sections = Array.isArray(page.sections) ? page.sections : [];
+  const sections = Array.isArray(page.sections)
+    ? page.sections.map((section) => ({
+      ...section, views: section.views.filter((id) => !hiddenViewIds.has(id))
+    })).filter((section) => section.views.length > 0)
+    : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
     const viewId = section.views[0];
@@ -836,6 +844,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     }
   }
   const renderedViews = views.map((view, index) => {
+    if (viewBackendHidden(view, dashboardDataBackend())) return null;
     const viewSourceNames = getViewSources(view);
     const isPageBound = isPlainObject(view) && typeof view.element === 'string' && elementBindsPageSources(view.element);
     const isSelfBound = isPageBound || (isPlainObject(view) && typeof view.element === 'string' && elementLoadsSourcesAsync(view.element));
@@ -1116,14 +1125,14 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const renderedViewsById = new Map(views.map((view, index) => [
     isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
     renderedViews[index]
-  ]));
+  ]).filter(([, rendered]) => rendered !== null));
   const renderedContent = sections.length > 0
     ? h(
       'div',
       { className: 'page-layout-grid' },
       ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources))
     )
-    : h('div', { className: 'custom-view-grid' }, ...renderedViews);
+    : h('div', { className: 'custom-view-grid' }, ...renderedViews.filter((view) => view !== null));
   if (binding) {
     for (const section of sections) {
       if (!section['count-source'] && !section['count-sources']?.length) continue;
@@ -1238,7 +1247,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     renderedRouteTabs,
     pageChrome,
     parameterForm,
-    ...(renderedViews.length > 0
+    ...(visibleViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
   );

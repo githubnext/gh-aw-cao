@@ -94,7 +94,13 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       if (typeof view.requires.backend !== 'string' || !VIEW_BACKEND_VALUES.includes(view.requires.backend)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'requires backend must be static or hosted.', `${requiresPath}.backend`));
       }
-      validateStringField(view.requires.message, `${requiresPath}.message`, true, errors);
+      if (view.requires['on-unavailable'] !== undefined && !['hide', 'message'].includes(view.requires['on-unavailable'])) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          'requires on-unavailable must be hide or message.', `${requiresPath}.on-unavailable`));
+      }
+      if (view.requires.message !== undefined || view.requires['on-unavailable'] !== 'hide') {
+        validateStringField(view.requires.message, `${requiresPath}.message`, true, errors);
+      }
     }
   }
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors);
