@@ -3066,7 +3066,33 @@ describe('presenter built-in and custom pages', () => {
 
 
 
-  it('uses browser navigation entries to show back only when the previous page is in the dashboard', () => {
+  it('returns directly loaded primary pages to Overview without the Navigation API', () => {
+    window.history.replaceState(null, '', '/#page-cost');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const back = /** @type {HTMLButtonElement} */ (rendered.querySelector('.mobile-history-back'));
+    expect(back.hidden).toBe(false);
+    expect(back.getAttribute('aria-label')).toBe('Back to Overview');
+    back.click();
+    expect(window.location.hash).toBe('#page-overview');
+    expect(rendered.querySelector('[data-page-id="overview"]')?.hasAttribute('hidden')).toBe(false);
+    expect(back.hidden).toBe(true);
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('hides back on Overview even when dashboard history exists', () => {
+    window.history.replaceState({ centralAgenticOpsNavigationIndex: 2 }, '', '/#page-overview');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    expect(rendered.querySelector('.mobile-history-back')?.hasAttribute('hidden')).toBe(true);
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('keeps back visible without dashboard history and falls back to Overview', () => {
     window.history.replaceState(null, '', '/#page-cost');
     let currentIndex = 1;
     const entries = [
@@ -3088,12 +3114,20 @@ describe('presenter built-in and custom pages', () => {
       });
       const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
 
-      expect(back?.hidden).toBe(true);
+      expect(back?.hidden).toBe(false);
+      expect(back?.getAttribute('aria-label')).toBe('Back to Overview');
       currentIndex = 2;
       navigation.dispatchEvent(new Event('currententrychange'));
       expect(back?.hidden).toBe(false);
+      expect(back?.getAttribute('aria-label')).toBe('Go back');
       currentIndex = 1;
       navigation.dispatchEvent(new Event('currententrychange'));
+      expect(back?.hidden).toBe(false);
+      const historyBack = vi.spyOn(window.history, 'back');
+      back?.click();
+      expect(historyBack).not.toHaveBeenCalled();
+      historyBack.mockRestore();
+      expect(window.location.hash).toBe('#page-overview');
       expect(back?.hidden).toBe(true);
     } finally {
       delete /** @type {Window & { navigation?: unknown }} */ (window).navigation;
@@ -3102,7 +3136,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('lets full-screen child views delegate back navigation to the app chrome', () => {
-    window.history.replaceState(null, '', '/');
+    window.history.replaceState(null, '', '/#page-runs');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}
@@ -3122,12 +3156,13 @@ describe('presenter built-in and custom pages', () => {
       bubbles: true,
       detail: { navigationPage: '' }
     }));
-    expect(back.hidden).toBe(true);
+    expect(back.hidden).toBe(false);
+    expect(back.getAttribute('aria-label')).toBe('Back to Overview');
     window.history.replaceState(null, '', '/');
   });
 
   it('registers full-screen child history with app navigation', () => {
-    window.history.replaceState(null, '', '/');
+    window.history.replaceState(null, '', '/#page-runs');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}

@@ -6,7 +6,8 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .sidebar-brand { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .sidebar-brand-mark { width: 24px; height: 24px; flex: 0 0 24px; overflow: visible; }
 .sidebar-brand > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.mobile-history-back { display: none; }
+.mobile-history-back:not([hidden]) { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
+.mobile-history-back:hover { background: var(--neutral-muted); }
 .mobile-view-mode-toggle { display: none; }
 .sidebar-toggle { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
@@ -131,7 +132,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
-.sidebar-collapsed .sidebar-header { justify-content: center; gap: 0; margin-left: 0; }
+.sidebar-collapsed .sidebar-header { flex-wrap: wrap; justify-content: center; gap: 0; margin-left: 0; }
 .sidebar-collapsed .sidebar-brand { display: none; }
 .sidebar-collapsed .sidebar-toggle { width: 32px; flex-basis: 32px; }
 .sidebar-collapsed .nav-label, .sidebar-collapsed .nav-section-toggle, .sidebar-collapsed .experimental-page-label { display: none; }

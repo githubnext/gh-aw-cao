@@ -2,6 +2,47 @@ import { authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, r
 
 registerSmokeRoutes();
 
+for (const width of [1200, 390]) {
+  test(`back navigation stays visible on directly loaded pages at ${width}px and falls back to Overview`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => { window.history.replaceState(null, '', '#page-runs'); });
+    await page.setContent(`
+      <div id="root"></div>
+      <script type="module">
+        import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+        document.querySelector('#root').append(renderDashboard({
+          document: {
+            languageVersion: '0.1.0',
+            dashboard: {
+              id: 'back-navigation-dashboard',
+              title: 'Back Navigation',
+              pages: [
+                { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+                { id: 'runs', kind: 'custom', title: 'Runs', views: [] },
+                { id: 'cost', kind: 'custom', title: 'Cost', views: [] }
+              ]
+            }
+          },
+          sources: {}
+        }));
+      </script>
+    `);
+    const back = page.locator('.mobile-history-back');
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAccessibleName('Back to Overview');
+    await back.click();
+    await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+    await expect(back).toBeHidden();
+
+    await page.evaluate(() => { window.location.hash = '#page-cost'; });
+    await expect(page.getByRole('heading', { name: 'Cost', level: 1 })).toBeVisible();
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+    await expect(back).toBeHidden();
+  });
+}
+
 test('DLS-SAFE-004 runtime links with embedded credentials, ftp schemes, and blank labels are not exposed in browser output', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
 

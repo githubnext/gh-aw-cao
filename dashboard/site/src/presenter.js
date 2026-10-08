@@ -1900,14 +1900,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   };
   const logicalParentPageId = () => {
-    const parentPageId = pages.find((page) => page.dataset.pageId === activePageId)
+    const pageId = routeFromHash()?.pageId ?? activePageId;
+    const parentPageId = pages.find((page) => page.dataset.pageId === pageId)
       ?.dataset.routeNavigationPage;
     return parentPageId && availableIds.has(parentPageId) ? parentPageId : undefined;
   };
   const syncHistoryBack = () => {
     if (!(historyBack instanceof HTMLButtonElement)) return;
-    const parentPageId = logicalParentPageId();
-    historyBack.hidden = !parentPageId && !previousEntryIsDashboard();
+    const parentPageId = logicalParentPageId()
+      ?? (!previousEntryIsDashboard() ? initialPageId : undefined);
+    historyBack.hidden = (routeFromHash()?.pageId ?? activePageId) === initialPageId;
     const parentLink = parentPageId
       ? links.find((link) => getNavigationPageId(link) === parentPageId)
       : undefined;
@@ -1955,7 +1957,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   }
   syncHistoryBack();
   historyBack?.addEventListener('click', () => {
-    const parentPageId = logicalParentPageId();
+    const parentPageId = logicalParentPageId()
+      ?? (!previousEntryIsDashboard() ? initialPageId : undefined);
     if (!parentPageId) {
       defaultView?.history.back();
       return;
@@ -1967,8 +1970,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       '',
       `#page-${parentPageId}`
     );
-    syncHistoryBack();
     activate(parentPageId, new URLSearchParams(), true);
+    syncHistoryBack();
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
   root.addEventListener('click', (event) => {
