@@ -158,27 +158,6 @@ export function campaignNameForRoute(campaignId, workflows) {
   return String(workflows.find((workflow) => typeof workflow['campaign-name'] === 'string')?.['campaign-name'] ?? titleCase(campaignId));
 }
 
-/** @param {Array<Record<string, unknown>>} workflows */
-export function campaignModeForRoute(workflows) {
-  const targetModes = workflows.flatMap((workflow) => {
-    const repository = [workflow.organization, workflow.repository].filter(Boolean).join('/').toLowerCase();
-    return (Array.isArray(workflow['campaign-targets']) ? workflow['campaign-targets'] : [])
-      .filter((target) => String(target?.repository ?? '').toLowerCase() === repository)
-      .map((target) => String(target?.mode ?? '').toLowerCase());
-  });
-  const resolved = targetModes.includes('live')
-    ? 'live'
-    : targetModes.includes('review')
-      ? 'review'
-      : (() => {
-        const orchestrator = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator');
-        const mode = String(orchestrator?.['rollout-mode'] ?? workflows[0]?.['rollout-mode'] ?? '');
-        return mode === 'review' || mode === 'live' ? mode : '';
-      })();
-  debugCampaignRouteComposition({ event: 'mode-resolved', mode: resolved || 'unknown', workflowCount: workflows.length });
-  return resolved;
-}
-
 /**
  * @param {unknown} value
  */

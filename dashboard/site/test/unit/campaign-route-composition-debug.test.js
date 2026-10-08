@@ -18,11 +18,10 @@ describe('campaign route composition debug logging', () => {
       };
     });
     vi.resetModules();
-    const { campaignRouteComposition, campaignModeForRoute, normalizeCampaignRoute } =
+    const { campaignRouteComposition, normalizeCampaignRoute } =
       await import('../../src/components/campaign-route-composition.js');
 
     campaignRouteComposition('overview');
-    campaignModeForRoute([]);
     normalizeCampaignRoute('not a valid campaign id!');
 
     expect(output.debug).not.toHaveBeenCalled();
@@ -61,42 +60,6 @@ describe('campaign route composition debug logging', () => {
       const [, payload] = call;
       expect(JSON.stringify(payload)).not.toContain('sensitive-text');
     }
-  });
-
-  it('logs predictable mode-resolution metadata without workflow contents', async () => {
-    const output = { debug: vi.fn() };
-    vi.doMock('../../src/debug.js', async () => {
-      const actual = /** @type {typeof import('../../src/debug.js')} */ (
-        await vi.importActual('../../src/debug.js')
-      );
-      return {
-        ...actual,
-        createDebug: (/** @type {string} */ category) =>
-          actual.createDebug(category, { search: () => '?debug=campaign-route-composition', output })
-      };
-    });
-    vi.resetModules();
-    const { campaignModeForRoute } = await import('../../src/components/campaign-route-composition.js');
-
-    const mode = campaignModeForRoute([{
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }]
-    }]);
-
-    expect(mode).toBe('live');
-    expect(output.debug).toHaveBeenCalledWith(
-      '[cao:campaign-route-composition]',
-      { event: 'mode-resolved', mode: 'live', workflowCount: 1 }
-    );
-
-    output.debug.mockClear();
-    const unknownMode = campaignModeForRoute([]);
-    expect(unknownMode).toBe('');
-    expect(output.debug).toHaveBeenCalledWith(
-      '[cao:campaign-route-composition]',
-      { event: 'mode-resolved', mode: 'unknown', workflowCount: 0 }
-    );
   });
 
   it('logs a rejected route outcome without the raw campaign id value', async () => {
