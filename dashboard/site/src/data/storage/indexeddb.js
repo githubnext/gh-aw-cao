@@ -1,6 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
-import { recordTimestamp } from './retention.js';
+import { recordTimestamp, RETENTION_WINDOW_MS, RUN_DETAIL_RETENTION_MS, RUN_LINKED_STORES } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
@@ -163,14 +163,6 @@ const RETENTION_TIMESTAMPS = new Set([
   'issues',
   'operationalValues',
   'experimentAssignments', 'graderObservations', 'evalObservations'
-]);
-const RUN_LINKED_STORES = /** @type {const} */ ([
-  'domains',
-  'tools',
-  'skills',
-  'friction',
-  'audits',
-  'issues', 'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
@@ -664,7 +656,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     const now = options.now ?? Date.now();
     const defaultWindow = Number.isFinite(options.retentionWindowMs)
       ? Math.max(0, Number(options.retentionWindowMs))
-      : 30 * 24 * 60 * 60 * 1000;
+      : RETENTION_WINDOW_MS;
     const targetBytes = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
     let estimatedBytes = 0;
     let deletedRecords = 0;
@@ -773,7 +765,9 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           const configuredWindow = options.retentionWindowMsByStore?.[storeName];
           const windowMs = Number.isFinite(configuredWindow)
             ? Math.max(0, Number(configuredWindow))
-            : defaultWindow;
+            : options.retentionWindowMs === undefined && RUN_LINKED_STORES.includes(
+              /** @type {typeof RUN_LINKED_STORES[number]} */ (storeName)
+            ) ? RUN_DETAIL_RETENTION_MS : defaultWindow;
           const timestamp = recordTimestamp(storeName, record);
           if (RETENTION_TIMESTAMPS.has(storeName)
               && (timestamp === null || timestamp < now - windowMs)) {

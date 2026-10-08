@@ -5,7 +5,7 @@ import {
   capCanonicalBatchSize,
   estimateCanonicalBatchBytes,
   mergeRetainedRecords,
-  RETENTION_WINDOW_DAYS
+  RUN_DETAIL_RETENTION_DAYS
 } from '../../src/data/storage/retention.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 
@@ -63,7 +63,7 @@ function batch(events) {
 describe('canonical retention merge', () => {
   it('upserts a partial collection onto retained events', () => {
     const previous = batch([
-      { eventId: 'event:1', timestamp: '2026-09-01T04:00:00Z' },
+      { eventId: 'event:1', timestamp: '2026-09-03T04:00:00Z' },
       { eventId: 'event:2', timestamp: '2026-09-05T04:00:00Z' }
     ]);
     const incoming = batch([
@@ -78,10 +78,10 @@ describe('canonical retention merge', () => {
     expect(merged.audits[0]).toBe(previous.audits[0]);
   });
 
-  it(`prunes retained events observed before the ${RETENTION_WINDOW_DAYS}-day window`, () => {
+  it(`prunes run-linked events observed before the ${RUN_DETAIL_RETENTION_DAYS}-day window`, () => {
     const previous = batch([
       { eventId: 'event:expired', timestamp: '2026-07-01T04:00:00Z' },
-      { eventId: 'event:retained', timestamp: '2026-08-20T04:00:00Z' }
+      { eventId: 'event:retained', timestamp: '2026-09-03T04:00:00Z' }
     ]);
     const incoming = batch([
       { eventId: 'event:current', timestamp: '2026-09-09T04:00:00Z' }
@@ -210,7 +210,7 @@ describe('canonical retention merge', () => {
 
   it('keeps retained runs whose workflow is missing from a partial collection', () => {
     const previous = batch([
-      { eventId: 'event:1', timestamp: '2026-09-01T04:00:00Z' }
+      { eventId: 'event:1', timestamp: '2026-09-03T04:00:00Z' }
     ]);
     const incoming = normalize([]);
 

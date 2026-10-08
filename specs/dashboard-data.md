@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.8.2
+version: 1.8.3
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.8.2
+**Version:** 1.8.3
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
@@ -20,13 +20,15 @@ should read `docs/dashboard-data-model.md` first, then this specification and
 the production boundary under `dashboard/site/src/data/`. Computation changes
 must also follow `specs/computations.md`.
 
-| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
+| Browser storage | IndexedDB keeps all available run summaries and expires run-linked detail after seven days. |
 | --- | --- |
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
 summaries so dashboard trends and run history can cover the complete published
-source. It SHALL retain detailed Domain, Tool, Audit, and Issue records for the
-bounded 30-day operational window. Expiring run-linked records MUST NOT remove
+source. It SHALL retain run-linked Domain, Tool, Skill, Friction, Audit, Issue, Experiment
+Assignment, Grader Observation, and Eval Observation records for a rolling
+seven-day window based on their timestamp or observation time. Operational
+Values retain the separate 30-day operational window. Expiring run-linked records MUST NOT remove
 their retained Run or the Run's structural parents.
 
 ---
@@ -384,8 +386,11 @@ to JSON and adapted before canonical normalization. The SQL export contract
 MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
-Repository, Workflow, and Run summaries. They SHALL retain detailed Domain,
-Tool, Audit, Issue, and Operational Value records for the bounded 30-day operational window.
+Repository, Workflow, and Run summaries. They SHALL retain run-linked Domain,
+Tool, Skill, Friction, Audit, Issue, Experiment Assignment, Grader Observation,
+and Eval Observation records for a rolling seven-day window, and Operational
+Value records for the separate 30-day operational window. Explicitly configured
+historical SQLite archives MAY retain detail longer.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
@@ -398,7 +403,7 @@ The implementation profile defined by this specification is:
 | Canonical model | 28 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
 | Browser IndexedDB | 37 | Eighteen canonical entity stores and `transactions` |
 | Local SQLite projection | IndexedDB 37 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -998,13 +1003,11 @@ rebuild MUST NOT create a successful ingestion receipt or publish a compatible
 derived projection. A historical SQLite archive MAY use longer retention but
 MUST apply the same adapter and normalization rules.
 
-The browser SHALL retain active interventions until they reach a terminal state
-and SHALL retain the resulting compact comparison for at least the existing
-30-day operational window. To remain bounded, a non-terminal intervention with
-no authoritative observation for 90 days SHALL become `inconclusive` with
-`evidence-state=incomplete`; the browser MAY then prune it under normal
-relationship-safe retention. Historical backfills belong in a separate SQLite
-archive, not browser IndexedDB.
+Run-linked intervention Audit evidence follows the seven-day detail TTL.
+Compact comparisons carried by Operational Values remain subject to the
+30-day operational window. Long-running interventions requiring older
+run-linked evidence and historical backfills belong in an explicitly configured
+SQLite archive, not browser IndexedDB.
 
 Dashboard Language SHALL expose `token-efficiency-opportunities`,
 `token-efficiency-interventions`, and `token-efficiency-comparisons`. All

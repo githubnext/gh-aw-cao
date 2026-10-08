@@ -6,6 +6,8 @@ const debugRetention = createDebug('retention');
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+export const RUN_DETAIL_RETENTION_DAYS = 7;
+export const RUN_DETAIL_RETENTION_MS = RUN_DETAIL_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
   runs: Number.MAX_SAFE_INTEGER
 });
@@ -45,7 +47,7 @@ const STORES = /** @type {const} */ ([
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
-const RUN_LINKED_STORES = /** @type {const} */ ([
+export const RUN_LINKED_STORES = /** @type {const} */ ([
   'domains',
   'tools',
   'skills',
@@ -377,7 +379,12 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
     incoming,
     reference,
     retentionWindowMs,
-    options.retentionWindowMsByStore ?? {},
+    {
+      ...(options.retentionWindowMs === undefined
+        ? Object.fromEntries(RUN_LINKED_STORES.map((store) => [store, RUN_DETAIL_RETENTION_MS]))
+        : {}),
+      ...options.retentionWindowMsByStore
+    },
     options.preserveWorkflowCampaignMappings === true,
     options.preserveRepositoryRecords === true
   );

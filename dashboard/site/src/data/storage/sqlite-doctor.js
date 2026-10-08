@@ -11,7 +11,7 @@ import {
   DATABASE_VERSION,
   ENTITY_STORES
 } from './indexeddb.js';
-import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
+import { mergeRetainedRecords, RETENTION_WINDOW_DAYS, RUN_DETAIL_RETENTION_MS, RUN_LINKED_STORES } from './retention.js';
 import {
   createSqliteRelationalTables,
   SQLITE_INDEXEDDB_METADATA_SCHEMA,
@@ -365,8 +365,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
  * @param {number} now
  * @param {number} retentionWindowMs
  * @param {number | undefined} runRetentionWindowMs
+ * @param {boolean} defaultDetailWindow
  */
-async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs, runRetentionWindowMs) {
+async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs, runRetentionWindowMs, defaultDetailWindow) {
   const connection = openConnection(filename);
   let backupPath = null;
   let candidateBackupPath = null;
@@ -400,7 +401,12 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
     const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
       now,
       retentionWindowMs,
-      retentionWindowMsByStore: { runs: runRetentionWindowMs },
+      retentionWindowMsByStore: {
+        ...(defaultDetailWindow
+          ? Object.fromEntries(RUN_LINKED_STORES.map((store) => [store, RUN_DETAIL_RETENTION_MS]))
+          : {}),
+        runs: runRetentionWindowMs
+      },
       includePreviousInReference: true,
       preserveUnreferencedParents: true
     });
@@ -488,6 +494,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const runRetentionWindowMs = retainAllRuns
     ? Number.MAX_SAFE_INTEGER
     : runTtlDays === undefined ? undefined : Number(runTtlDays) * DAY_MS;
+  const defaultDetailWindow = options.ttlDays === undefined;
   if (!retainAllRuns && runTtlDays !== undefined
     && (Number(runTtlDays) <= 0 || !Number.isFinite(runRetentionWindowMs))) {
     throw new TypeError('Run TTL days must produce a finite window greater than zero');
@@ -575,7 +582,12 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
     now,
     retentionWindowMs,
-    retentionWindowMsByStore: { runs: runRetentionWindowMs },
+    retentionWindowMsByStore: {
+      ...(defaultDetailWindow
+        ? Object.fromEntries(RUN_LINKED_STORES.map((store) => [store, RUN_DETAIL_RETENTION_MS]))
+        : {}),
+      runs: runRetentionWindowMs
+    },
     includePreviousInReference: true,
     preserveUnreferencedParents: true
   });
@@ -613,7 +625,8 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         checkedAt,
         now,
         retentionWindowMs,
-        runRetentionWindowMs
+        runRetentionWindowMs,
+        defaultDetailWindow
       );
       backupPath = repair.backupPath;
     } catch (error) {

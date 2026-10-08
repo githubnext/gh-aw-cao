@@ -343,6 +343,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       script,
       'ingest',
       '--database', filename,
+      '--retention-days', '36500',
       '--context', context,
       '--logs', logs
     ], { encoding: 'utf8' }));
@@ -389,6 +390,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       script,
       'ingest-jsonl',
       '--database', filename,
+      '--retention-days', '36500',
       '--input-dir', shardDirectory,
       '--context', context
     ], { encoding: 'utf8' }));
