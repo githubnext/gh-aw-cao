@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T10:00:56Z",
-      "worker_run_id": 37760237106,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37760514832,
-        37759773384,
-        37759332466,
-        37758227457,
-        37756854202,
-        37755874498,
-        37753355309,
-        37753044172,
-        37751475386,
-        37748728913,
-        37748544843,
-        37747030324,
-        37746580698,
-        37745311433,
-        37744470183,
-        37741745801,
-        37741448739,
-        37739110146,
-        37738891866,
-        37736402303
-      ],
-      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T06:13:06Z through 2026-10-08T10:00:02Z and yielded 11 successful runs, but only 1 comparable build-bearing success (37748728913). The other 10 successful runs were freshness-only schedule passes with build and deploy skipped, so trusted Actions metadata cannot support median/p90 artifact-transfer or Pages-packaging measurements across the required minimum of five comparable successful runs. No new non-duplicate actionable recommendation can be justified safely in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-08T10:31:23Z",
       "worker_run_id": 37763664697,
       "category": "artifact transfer and Pages packaging",
@@ -846,6 +818,34 @@
         37832937262
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T19:34:14Z through 2026-10-08T21:56:17Z, 10 runs concluded success but all 10 were schedule freshness checks with build and deploy skipped, while the remaining 10 workflow_run-triggered attempts were skipped. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5, so trusted Actions metadata cannot support median/p90 execution measurements or a safe threshold-backed recommendation in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-08T22:29:03Z",
+      "worker_run_id": 37853426970,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37853319314,
+        37853069623,
+        37850822943,
+        37850199522,
+        37849436737,
+        37849106613,
+        37847904951,
+        37847756334,
+        37846551954,
+        37846239020,
+        37843846400,
+        37843247798,
+        37842661494,
+        37841378564,
+        37839991393,
+        37839590657,
+        37839269857,
+        37836389054,
+        37835705192,
+        37834847191
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T19:49:39Z through 2026-10-08T22:24:58Z, 11 runs concluded success but all 11 were schedule freshness checks with build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. All 20 runs used source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5, so trusted Actions metadata cannot support median/p90 execution measurements or a safe threshold-backed recommendation in this cycle."
     }
   ]
 }
