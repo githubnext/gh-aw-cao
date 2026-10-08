@@ -3,34 +3,6 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T12:00:00Z",
-      "worker_run_id": 37773221025,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37773443442,
-        37772685592,
-        37772174247,
-        37771254350,
-        37769964157,
-        37769640439,
-        37768339711,
-        37767354938,
-        37766421316,
-        37765800699,
-        37765341322,
-        37763659759,
-        37763417424,
-        37760829188,
-        37760514832,
-        37759773384,
-        37759332466,
-        37758227457,
-        37756854202,
-        37755874498
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T09:19:43Z through 2026-10-08T11:56:51Z, 12 runs concluded success but 11 were freshness-only schedule passes with build and deploy skipped; only run 37768339711 executed both build and deploy successfully. The remaining 8 runs were skipped workflow_run attempts. That leaves fewer than 5 comparable successful build-bearing docs runs for the artifact transfer and Pages packaging category, so trusted Actions metadata cannot support median/p90 measurements or a safe threshold-meeting recommendation in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-08T12:42:08Z",
       "worker_run_id": 37778286840,
       "category": "artifact transfer and Pages packaging",
@@ -847,6 +819,34 @@
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T21:01:56Z through 2026-10-08T23:35:14Z, all 20 runs used the same source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243, but 11 schedule successes were freshness-only passes with build and deploy skipped and 9 workflow_run attempts were skipped before execution. That left 0 comparable successful runs with the build job executed for category \"Astro documentation generation\", below the required minimum of 5 for trusted median/p90 build-time analysis or an evidence-backed recommendation.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-08T23:56:54.404Z",
+      "worker_run_id": 37861842004,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37862083137,
+        37861467278,
+        37861188915,
+        37860257805,
+        37860135214,
+        37859196214,
+        37858977704,
+        37857086761,
+        37856544752,
+        37855862451,
+        37855445318,
+        37854500905,
+        37853319314,
+        37853069623,
+        37850822943,
+        37850199522,
+        37849436737,
+        37849106613,
+        37847904951,
+        37847756334
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T16:58:58Z through 2026-10-08T18:50:39Z, 10 runs concluded success but 0 runs executed the comparable build-bearing path needed for category \"reusable dashboard generation\". All 10 successful docs runs were schedule freshness checks that skipped build and deploy on the same default-branch SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243, while the other 10 runs were skipped workflow_run invocations. The latest 20 completed cao-dashboard.yml runs in the same 14-day window were also all skipped, so there is no trusted producer sample to measure dashboard-generation work or validate a >=60s or >=15% optimization safely in this cycle."
     }
   ]
 }
