@@ -351,7 +351,7 @@ describe('campaign inventory query optimization', () => {
     expect(results['campaign-inventory']).toEqual(original['campaign-inventory']);
   });
 
-  it('preserves duplicate incomplete-outcome join failures instead of counting unvalidated dispatches', async () => {
+  it('keeps canonical terminal state independent of repeated residual action occurrences', async () => {
     const sources = await canonicalSources();
     const diagnosis = sources.audits.rows.find((row) => row['safe-output-type'] === 'report_incomplete');
     if (!diagnosis) throw new Error('The canonical fixture must contain an incomplete outcome.');
@@ -362,8 +362,8 @@ describe('campaign inventory query optimization', () => {
         rows: [...sources.audits.rows, { ...diagnosis, event: 'duplicate-incomplete-outcome' }]
       }
     });
-    for (const row of results['campaign-inventory'].rows) expect(row.dispatches).toBe(0);
-    expect(results['campaign-inventory'].metadata.completeness).toBe('partial');
+    expect(results['campaign-inventory'].rows.find((row) => row.campaign === 'alpha')?.dispatches).toBe(6);
+    expect(results['campaign-inventory'].metadata.completeness).toBe('complete');
     expect(results['campaign-workflow-totals'].rows.find((row) => row.campaign === 'alpha'))
       .toMatchObject({ runs: 8, aic: 5 });
   });
@@ -373,9 +373,9 @@ describe('campaign inventory query optimization', () => {
     const beforeAnalysis = analyzeDashboardComplexity({ dashboard: { queries: baseline } });
     const afterAnalysis = analyzeDashboardComplexity({ dashboard: { queries } });
     const expected = {
-      'campaign-inventory': [80, 250, 66, 95],
-      'campaign-workflows': [48, 154, 38, 76],
-      'campaign-workflow-totals': [47, 148, 36, 70]
+      'campaign-inventory': [80, 273, 66, 95],
+      'campaign-workflows': [48, 177, 38, 76],
+      'campaign-workflow-totals': [47, 171, 36, 70]
     };
     for (const name of names) {
       const before = beforeAnalysis.inventory.find((query) => query.name === name);

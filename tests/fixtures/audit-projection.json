@@ -1,0 +1,21 @@
+{
+  "clock": "2026-10-07T12:00:00.000Z",
+  "run": { "id": "r", "repositoryId": "repo", "workflowId": "w", "attempt": 1, "status": "completed", "conclusion": "failure", "taskDomainLabel": "Code Fix", "title": "Build", "completedAt": "2026-10-07T12:00:00.000Z" },
+  "grader": { "id": "g", "workflowId": "w", "sourceGraderId": "availability", "unit": "new-unit", "direction": "lower_is_better" },
+  "result": { "id": "result", "runId": "r", "graderId": "g", "status": "unavailable", "value": null, "timestamp": "2026-10-07T11:59:00.000Z", "auditId": "grader" },
+  "audits": [
+    { "id": "behavior", "source": "gh-aw-logs", "type": "workflow_run_behavior", "status": "observed", "summary": "Code Fix" },
+    { "id": "session", "source": "agent", "type": "agent.session", "status": "completed", "summary": "Pi/copilot/gpt-5.4" },
+    { "id": "grader", "source": "grader", "type": "workflow_run_grader", "status": "unavailable", "summary": "Availability", "grader": "availability", "graderName": "Availability", "value": null, "unit": "historical-unit", "direction": null, "error": "Missing runtime helper", "message": null },
+    { "id": "recommendation", "source": "audit", "type": "audit.recommendation", "status": "high", "summary": "Review error logs to identify root cause of failure" },
+    { "id": "assessment", "source": "gh-aw-logs", "type": "workflow_run_assessment", "status": "medium", "summary": "This Code Fix run consumed a heavy execution profile for its task shape." },
+    { "id": "network-comment", "source": "audit", "type": "audit.observability", "status": "medium", "summary": "Network friction detected" },
+    { "id": "finding", "source": "audit", "type": "audit.finding", "status": "high", "summary": "Network blocked" },
+    { "id": "failure-finding", "source": "audit", "type": "audit.finding", "status": "critical", "summary": "Workflow Failed", "code": "workflow_failed" },
+    { "id": "info", "source": "audit", "type": "audit.noop", "status": "info", "summary": "Independent information" },
+    { "id": "unknown", "source": "audit", "type": "audit.recommendation", "status": "high", "summary": "New advice" },
+    { "id": "working-set", "source": "gh-aw-logs", "type": "workflow_run_working_set", "status": "observed", "summary": "Working set measured" }
+  ],
+  "represented": ["assessment", "behavior", "grader", "network-comment", "recommendation", "session"],
+  "residual": ["failure-finding", "finding", "info", "unknown", "working-set"]
+}

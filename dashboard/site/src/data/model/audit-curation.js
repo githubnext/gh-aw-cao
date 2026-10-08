@@ -1,13 +1,13 @@
 import { createDebug } from '../../debug.js';
 
-export const AUDIT_CURATION_VERSION = 1;
+export const AUDIT_CURATION_VERSION = 2;
 export const AUDIT_CURATION_TRANSACTION_ID = 'maintenance:audit-curation';
 
 const debugAuditCuration = createDebug('audit-curation');
 
 const SHARED_FIELDS = new Set([
   'id', 'runId', 'timestamp', 'source', 'type', 'summary', 'status',
-  'observedAt', 'provenance', 'sequence', 'sourceSequence', 'payloadRef'
+  'observedAt', 'provenance', 'sequence', 'sourceSequence', 'payloadRef', 'attempt'
 ]);
 const NUMBER = '(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:e[+-]?[0-9]{1,3})?';
 const NUMERIC_SUMMARY_LIMIT = 1024;
@@ -46,8 +46,7 @@ function nonemptyText(value) {
 }
 
 /**
- * First-pass policy shared by canonical normalization and persisted maintenance.
- * Missing comparison facts and additional evidence always retain the Audit.
+ * Exact Run-summary comparison used by complete-generation information projection.
  * @param {Record<string, unknown>} audit
  * @param {Record<string, unknown> | null | undefined} [run]
  * @returns {boolean}
@@ -58,20 +57,8 @@ export function discardAudit(audit, run) {
       && !SHARED_FIELDS.has(field)
       && !(field === 'code' && audit.type === 'audit.finding' && value === 'workflow_failed'))) return false;
   const { source, type, status, summary } = audit;
-  if (source === 'gh-aw-logs') {
-    if (type === 'workflow_run_comparison' && status === 'unavailable' && summary === 'No baseline comparison') return true;
-    if (type === 'workflow_run_working_set' && status === 'observed' && summary === 'Working set measured') return true;
-  }
-  if (source === 'agent' && type === 'agent.session' && status === 'completed' && summary === '') return true;
-  if (source === 'audit' && status === 'low') {
-    if (type === 'audit.observability' && summary === '1 anomalous event pattern(s) detected') return true;
-    if (type === 'audit.recommendation' && summary === 'Monitor workflow performance over time') return true;
-  }
   if (!run || run.id !== audit.runId) return false;
-  if (source === 'audit') {
-    return type === 'audit.finding' && status === 'critical' && summary === 'Workflow Failed'
-      && audit.code === 'workflow_failed' && run.conclusion === 'failure';
-  }
+  if (source === 'audit') return false;
   if (source !== 'gh-aw-logs') return false;
   switch (type) {
     case 'workflow_run_started':

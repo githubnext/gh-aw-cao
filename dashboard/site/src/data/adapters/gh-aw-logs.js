@@ -1377,7 +1377,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         reasoningTokens: metadata.reasoningTokens,
         githubApiCalls: finiteNumber(enrichedValue.github_api_calls),
         safeItemsCount: finiteNumber(enrichedValue.safe_items_count),
-        errorCount: finiteNumber(enrichedValue.error_count)
+        errorCount: finiteNumber(enrichedValue.error_count),
+        taskDomainLabel: enrichedValue.task_domain && typeof enrichedValue.task_domain === 'object'
+          ? optionalString(Reflect.get(enrichedValue.task_domain, 'label')) : undefined
       })
     });
     if (enriched) {
@@ -1452,6 +1454,10 @@ function createCachedGhAwJsonlAccumulator(options) {
             exclusionReason: optionalString(record.exclusionReason ?? record.exclusion_reason),
             evaluatorDigest: optionalString(record.evaluatorDigest ?? record.evaluator_digest),
             graderSource: optionalString(record.source),
+            ...Object.fromEntries([
+              ['name', 'observedName'], ['unit', 'observedUnit'], ['direction', 'observedDirection'],
+              ['message', 'message'], ['error', 'error']
+            ].filter(([field]) => Object.hasOwn(record, field)).map(([from, to]) => [to, record[from]])),
             metrics: Array.isArray(record.metrics) ? record.metrics : undefined,
             auditId: sourceId('audit', OBSERVATION_SOURCE,
               `${runKey}:agentic:workflow_run_grader:${stableDigest({ type: 'grader', index, record })}`),
@@ -1526,6 +1532,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         observedAt: enriched.observedAt,
         data: withoutUndefined({
           runId: id,
+          attempt: kind === 'audit' && run.run_attempt !== undefined ? Number(run.run_attempt) : undefined,
           timestamp: eventTimestamp,
           source: fields.source ?? 'gh-aw-logs',
           type,

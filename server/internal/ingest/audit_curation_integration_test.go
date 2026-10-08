@@ -17,7 +17,21 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
+func currentResidualTestHeader(t *testing.T, runContent []byte) []byte {
+	t.Helper()
+	var header map[string]any
+	if err := json.Unmarshal(bytes.SplitN(runContent, []byte("\n"), 2)[0], &header); err != nil {
+		t.Fatal(err)
+	}
+	header["phase"], header["records"] = "records", 1
+	content, err := json.Marshal(header)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return append(content, '\n')
+}
+
+func TestUnchangedArtifactRevisionDoesNotCurateExistingAudits(t *testing.T) {
 	ctx, store, config := ingestTestStoreConfig(t)
 	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
 	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
@@ -35,8 +49,9 @@ func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.Revision != first.Revision+1 || second.DataRevision != first.DataRevision || second.EvaluatedAt != first.EvaluatedAt || !reflect.DeepEqual(second.Counts, first.Counts) {
-		t.Fatalf("unchanged input did not publish cleanup: before=%+v after=%+v", first, second)
+	if second.Revision != first.Revision || second.DataRevision != first.DataRevision ||
+		second.EvaluatedAt != first.EvaluatedAt || second.Counts["$audits"] != 2 {
+		t.Fatalf("unchanged input unexpectedly changed publication: before=%+v after=%+v", first, second)
 	}
 	third, err := Run(ctx, store, "../../testdata/deployed-subset", options)
 	if err != nil || !reflect.DeepEqual(third, second) {
@@ -51,8 +66,8 @@ func TestAuditCurationValidatesEveryTransportedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordContent := []byte("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1}\n" +
-		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"curate\",\"runId\":\"run:424242\",\"source\":\"agent\",\"type\":\"agent.session\",\"status\":\"completed\",\"summary\":\"\",\"timestamp\":\"2026-01-01T00:00:00Z\"}}\n")
+	recordContent := append(currentResidualTestHeader(t, runContent), []byte(
+		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"curate\",\"runId\":\"run:424242\",\"source\":\"agent\",\"type\":\"agent.session\",\"status\":\"completed\",\"summary\":\"\",\"timestamp\":\"2026-01-01T00:00:00Z\"}}\n")...)
 	manifest := Manifest{}
 	for name, content := range map[string][]byte{"gh-aw-logs-runs/subset.jsonl": runContent, "gh-aw-logs-records/subset.jsonl": recordContent} {
 		writeTestFile(t, filepath.Join(directory, name), content)
@@ -67,8 +82,8 @@ func TestAuditCurationValidatesEveryTransportedRecord(t *testing.T) {
 	writeTestFile(t, filepath.Join(directory, "inventory-sources.json"), []byte("{}"))
 	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
 	first, err := Run(ctx, store, directory, options)
-	if err != nil || first.Counts["$audits"] != 0 {
-		t.Fatalf("curated ingestion failed: %+v %v", first, err)
+	if err != nil || first.Counts["$audits"] != 1 {
+		t.Fatalf("residual ingestion failed: %+v %v", first, err)
 	}
 	sources, _, err := store.ExecuteSQLPlan(ctx, []query.Definition{{Name: "transport", From: "$transactions", Select: []query.SelectedField{
 		{Field: "kind"}, {Field: "records"}, {Field: "committedRecords"},
@@ -140,8 +155,8 @@ func TestAuditCurationDoesNotHideTransportedOrphan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordContent := []byte("{\"kind\":\"metadata\",\"phase\":\"records\",\"records\":1}\n" +
-		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"eligible-orphan\",\"runId\":\"run:missing\",\"timestamp\":\"2026-01-01T00:00:00Z\",\"source\":\"gh-aw-logs\",\"type\":\"workflow_run_working_set\",\"status\":\"observed\",\"summary\":\"Working set measured\"}}\n")
+	recordContent := append(currentResidualTestHeader(t, runContent), []byte(
+		"{\"kind\":\"record\",\"collection\":\"audits\",\"record\":{\"id\":\"eligible-orphan\",\"runId\":\"run:missing\",\"timestamp\":\"2026-01-01T00:00:00Z\",\"source\":\"gh-aw-logs\",\"type\":\"workflow_run_working_set\",\"status\":\"observed\",\"summary\":\"Working set measured\"}}\n")...)
 	manifest := Manifest{}
 	for name, content := range map[string][]byte{"gh-aw-logs-runs/subset.jsonl": runContent, "gh-aw-logs-records/subset.jsonl": recordContent} {
 		writeTestFile(t, filepath.Join(directory, name), content)

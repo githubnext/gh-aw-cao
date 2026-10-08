@@ -77,6 +77,28 @@ model workflows {
 /** Run facts and scalar metrics; nested context, usage, and assessment payloads remain upstream. */
 @runPartition
 model runs {
+  taskDomainLabel?: string;
+  sessionLabel?: string;
+  behaviorEvidence?: Values.AuditEvidence;
+  sessionEvidence?: Values.AuditEvidence;
+  startedEvidence?: Values.AuditEvidence;
+  completedEvidence?: Values.AuditEvidence;
+  failureEvidence?: Values.AuditEvidence;
+  usageEvidence?: Values.AuditEvidence;
+  safeOutputCountEvidence?: Values.AuditEvidence;
+  assessmentHeavyExecution?: Values.AuditEvidence;
+  assessmentSmallerModel?: Values.AuditEvidence;
+  assessmentDeterministic?: Values.AuditEvidence;
+  recommendationReviewErrors?: Values.AuditEvidence;
+  recommendationTrimExecution?: Values.AuditEvidence;
+  recommendationSmallerModel?: Values.AuditEvidence;
+  recommendationAllowDomains?: Values.AuditEvidence;
+  recommendationDeterministic?: Values.AuditEvidence;
+  recommendationStrongerEvidence?: Values.AuditEvidence;
+  recommendationMonitor?: Values.AuditEvidence;
+  observabilityNetworkFriction?: Values.AuditEvidence;
+  observabilityExploratory?: Values.AuditEvidence;
+  observabilityAnomaly?: Values.AuditEvidence;
   actionMinutes?: decimal;
   admissionReason?: string;
   admissionStatus?: string;
@@ -254,21 +276,34 @@ model friction {
 }
 
 /**
- * Curated Run-owned evidence, governed by dashboard-data.md section 11.1.
- * JavaScript and Go ingestion and existing-database maintenance discard only
- * the exact low-information comparison, working-set, empty-session, and
- * low-priority generic advice tuples, or started/completed/failed/usage/
- * safe-output-count/failure-finding copies whose nonnull owning Run facts agree.
- * Additional nonnull evidence, conflicting attempts, missing Run facts, and
- * invalid comparison values retain the Audit. Grader/eval identities,
- * safe-output actions, behavior/assessment evidence, and specific diagnostics
- * are not eligible. Cleanup precedes size eviction; retained row counts and
- * changed revisions are published without adding duplicate Run storage.
- * Numeric summaries must match in full, be at most 1,024 ASCII characters,
- * and use at most three exponent digits; larger or malformed summaries remain.
+ * Residual independent Run-owned evidence, governed by dashboard-data.md section 11.1.
+ * Complete-generation JavaScript publication first extracts typed owner facts,
+ * preserving diagnostics, historical metadata, source attribution, and null presence.
+ * Only fully represented observations leave this table. Unknown details, missing
+ * Run facts, conflicting attempts, independent findings, and action occurrences remain.
+ * Grader/eval identities survive backlink rewrites. Native ingestion validates
+ * the versioned projection and rejects unsupported evidence before binding.
+ * Existing-database cleanup and compatibility migrations are not ingestion paths.
  */
 @runPartition
 model audits {
+  attempt?: int64;
+  sequence?: int64;
+  provenance?: Values.Provenance;
+  grader?: string;
+  graderName?: string;
+  graderSource?: string;
+  value?: decimal;
+  unit?: string;
+  direction?: string;
+  message?: string;
+  error?: string;
+  baselineValue?: decimal;
+  deltaFromBaseline?: decimal;
+  evalId?: string;
+  answer?: string;
+  safeOutputType?: string;
+  githubEntityType?: string;
   acceptedAt?: utcDateTime;
   activationSource?: string;
   actor?: string;
@@ -341,6 +376,7 @@ model audits {
 
 @runPartition
 model issues {
+  auditEvidence?: Values.AuditEvidence;
   closed?: boolean;
   closedAt?: utcDateTime;
   correlationId?: string;
@@ -427,6 +463,7 @@ model experiments {
 
 @runPartition
 model experimentAssignments {
+  auditId?: string;
   artifactLink?: string;
   campaign?: string;
   exclusionReason?: string;
@@ -461,6 +498,13 @@ model graders {
 
 @runPartition
 model graderObservations {
+  observedName?: string;
+  observedUnit?: string;
+  observedDirection?: string;
+  graderSource?: string;
+  message?: string;
+  error?: string;
+  auditEvidence?: Values.AuditEvidence;
   auditId?: string;
   baselineValue?: decimal;
   deltaFromBaseline?: decimal;
@@ -504,6 +548,8 @@ model evals {
 
 @runPartition
 model evalObservations {
+  auditId?: string;
+  auditEvidence?: Values.AuditEvidence;
   direction?: string;
   @parent("evals")
   evalId: string;
@@ -549,6 +595,22 @@ model marketplacePackages {
 }
 
 namespace Values {
+  /** Attribution of an absorbed observation; originId is not a live Audit foreign key. */
+  model AuditEvidence {
+    originId?: string;
+    source?: string;
+    status?: string;
+    timestamp?: utcDateTime;
+    observedAt?: utcDateTime;
+    sequence?: int64;
+    sourceSequence?: int64;
+    payloadRef?: string;
+    attempt?: int64;
+    provenanceSource?: string;
+    provenanceSourceId?: string;
+    provenanceObservedAt?: utcDateTime;
+    templateVersion?: int64;
+  }
   /** Intrinsic relation-specific link from Dashboard Language section 9.1. */
   model Link {
     relation?: string;
@@ -568,6 +630,7 @@ namespace Inputs {
       id: string;
       kind?: string;
       createdAt?: utcDateTime;
+      sourceClock?: utcDateTime;
       payloadScope?: string;
       payloadHash?: string;
       payloadEtag?: string;

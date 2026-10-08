@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -146,8 +147,51 @@ type Writer struct {
 	revision             int64
 	PreviousDataRevision string
 	evaluatedAt          time.Time
+	sourceClock          time.Time
+	projection           *AuditProjectionReceipt
 	ingestedAt           time.Time
 	staged               map[string]bool
+}
+
+type AuditProjectionReceipt struct {
+	Version           int              `json:"version"`
+	InputAudits       int64            `json:"inputAudits"`
+	RepresentedAudits int64            `json:"representedAudits"`
+	ResidualAudits    int64            `json:"residualAudits"`
+	SourceClock       string           `json:"sourceClock"`
+	Families          map[string]int64 `json:"families"`
+	RetainedReasons   map[string]int64 `json:"retainedReasons"`
+}
+
+func (w *Writer) ObserveAuditProjection(receipt *AuditProjectionReceipt) error {
+	if receipt == nil || receipt.Version != 1 || receipt.InputAudits < 0 ||
+		receipt.InputAudits > 9007199254740991 || receipt.RepresentedAudits < 0 ||
+		receipt.ResidualAudits < 0 || receipt.InputAudits-receipt.RepresentedAudits != receipt.ResidualAudits {
+		return errors.New("normalized shard requires the current information projection")
+	}
+	if w.projection != nil && !reflect.DeepEqual(w.projection, receipt) {
+		return errors.New("normalized shards disagree about the information projection generation")
+	}
+	if err := w.ObserveSourceClock(receipt.SourceClock); err != nil {
+		return err
+	}
+	w.projection = receipt
+	return nil
+}
+
+// ObserveSourceClock preserves the pre-projection clock without storing raw rows.
+func (w *Writer) ObserveSourceClock(value string) error {
+	if value == "" {
+		return nil
+	}
+	instant, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return errors.New("projection source clock must be an RFC3339 timestamp")
+	}
+	if instant.After(w.sourceClock) {
+		w.sourceClock = instant
+	}
+	return nil
 }
 
 func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
@@ -242,6 +286,9 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	}
 	if source == "$audits" {
 		if err := validateAuditProjection(row); err != nil {
+			return err
+		}
+		if err := validateInformationObjects(source, row); err != nil {
 			return err
 		}
 	}
@@ -444,6 +491,35 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		}
 		w.staged[source] = false
 	}
+	if w.projection != nil && w.ordinals["$audits"] != w.projection.ResidualAudits {
+		return State{}, errors.New("published Audit count does not match the information projection receipt")
+	}
+	for _, source := range []string{"$graderObservations", "$evalObservations", "$experimentAssignments"} {
+		name := query.SQLIdentifier(entityTables[source].name)
+		var invalid bool
+		statement := "SELECT EXISTS(SELECT 1 FROM " + name + " r LEFT JOIN audits a ON a.namespace=r.namespace AND a.id=r.audit_id WHERE r.namespace=$1 AND r.audit_id IS NOT NULL AND (a.id IS NULL OR a.run_id<>r.run_id))"
+		if err := w.tx.QueryRow(ctx, statement, w.store.namespace).Scan(&invalid); err != nil {
+			return State{}, err
+		}
+		if invalid {
+			return State{}, fmt.Errorf("%s has an unresolved or cross-Run live Audit reference", source)
+		}
+	}
+	for _, relationship := range []struct{ observations, definition, key string }{
+		{"grader_observations", "graders", "grader_id"},
+		{"eval_observations", "evals", "eval_id"},
+		{"experiment_assignments", "experiments", "experiment_id"},
+	} {
+		var invalid bool
+		statement := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id JOIN %s d ON d.namespace=o.namespace AND d.id=o.%s WHERE o.namespace=$1 AND r.workflow_id<>d.workflow_id)",
+			query.SQLIdentifier(relationship.observations), query.SQLIdentifier(relationship.definition), query.SQLIdentifier(relationship.key))
+		if err := w.tx.QueryRow(ctx, statement, w.store.namespace).Scan(&invalid); err != nil {
+			return State{}, err
+		}
+		if invalid {
+			return State{}, fmt.Errorf("%s references a definition owned by a different workflow", relationship.observations)
+		}
+	}
 	for source := range w.inventoryTables {
 		table := entityTables[source]
 		columns := []string{"namespace", "ordinal", "present_fields"}
@@ -542,9 +618,8 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.tx.QueryRow(ctx, "SELECT coalesce(max(instant),'epoch'::timestamptz) FROM ("+strings.Join(clockSources, " UNION ALL ")+") AS clocks", w.store.namespace).Scan(&w.evaluatedAt); err != nil {
 		return State{}, err
 	}
-	// Keep the source clock even when its latest event is a discarded copy.
-	if _, err := w.tx.Exec(ctx, auditCurationStatement(), w.store.namespace); err != nil {
-		return State{}, fmt.Errorf("curate native audits before publication: %w", err)
+	if w.sourceClock.After(w.evaluatedAt) {
+		w.evaluatedAt = w.sourceClock
 	}
 	state := State{Ready: true, DataRevision: dataRevision, EvaluatedAt: w.evaluatedAt.UTC(), Counts: map[string]int{}}
 	for _, source := range tableNames() {

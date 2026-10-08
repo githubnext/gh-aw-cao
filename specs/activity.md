@@ -115,8 +115,10 @@ for the completed run and attempt rather than an unspecified latest snapshot.
 
 The snapshot consists of the JSONL produced by `gh aw logs`, compact
 run-information shards, detailed record shards, and rebuildable projections.
-Run-information shards MUST contain only Campaign, Repository, Workflow, and Run
-records. Record shards MUST contain only Domain, Tool, Audit, and Issue records.
+Run-information shards contain Campaign, Repository, Workflow, Run, Experiment,
+and ExperimentAssignment records. Record shards contain Domain, Tool, Skill,
+Friction, residual Audit, Issue, OperationalValue, Grader/GraderObservation,
+and Eval/EvalObservation records.
 Every record-shard transport record MUST carry its canonical Run identity.
 
 Normalized run-information and record shards MUST use JSONL files with a
@@ -133,16 +135,19 @@ memory independently of snapshot size for browsers with constrained heaps,
 including iOS WebKit. A missing response stream MUST fail closed rather than
 fall back to full-file parsing.
 
-The two phases MUST be a complete partition of the source records. Publishers
-MUST omit a phase shard when it contains no records, so the run-information and
-record shard sets MAY contain different filename stems. Consumers MUST validate
-the phase labels before phased ingestion and MUST fall back to a complete
-compatible transport or fail closed when the phased set is invalid.
+The two phases MUST partition the projected generation. Before either phase is
+emitted, publishers globally resolve source precedence, deduplicate entities,
+extract typed Audit owner facts, select residual Audits, and validate rewritten
+relationships under dashboard-data.md section 11.1. Private source caches retain
+complete input rather than filtering each source shard independently.
+Normalized unphased exports, phased shards and SQLite use that same generation.
+All normalized metadata carries its projection receipt and pre-filter source
+clock; raw archives are not advertised as compatibility exports.
 
-Phase filenames MUST preserve the source-shard ordering prefix before their
-content and normalization hashes. Publishers and consumers MUST process both
-phases in that order so a later observation of the same canonical entity wins
-over an earlier observation; content-hash order MUST NOT determine precedence.
+An empty phase publishes one header-only JSONL shard. Consolidated phase
+filenames use deterministic day buckets, partition order, and content hashes;
+canonical precedence is resolved before sorting. Consumers validate counts,
+checksums, versions and phase labels, and fail closed for invalid phased sets.
 
 A consumer MUST load all run-information shards before record shards and MAY
 expose the resulting Run queries while record ingestion continues. This

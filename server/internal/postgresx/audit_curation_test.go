@@ -15,14 +15,14 @@ import (
 )
 
 func TestAuditProjectionProtectsUnsupportedEvidence(t *testing.T) {
-	for _, field := range []string{"runAttempt", "attempt", "unexpected"} {
+	for _, field := range []string{"runAttempt", "unexpected"} {
 		row := model.Row{"source": "gh-aw-logs", "type": "workflow_run_usage", "status": "observed", "timestamp": "2026-01-01T00:00:00Z", field: false}
 		if err := validateAuditProjection(row); err == nil || !strings.Contains(err.Error(), field) {
 			t.Fatalf("unsupported nonnull %s was silently projected: %v", field, err)
 		}
 		row[field] = nil
-		if err := validateAuditProjection(row); err != nil {
-			t.Fatal(err)
+		if err := validateAuditProjection(row); err == nil {
+			t.Fatal("unknown explicit null evidence must not disappear")
 		}
 	}
 	for _, field := range []string{"opportunityId", "correlationId", "claimRunAttempt", "code", "provenance", "sequence"} {
@@ -31,17 +31,17 @@ func TestAuditProjectionProtectsUnsupportedEvidence(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := validateAuditProjection(model.Row{"source": "gh-aw-logs", "type": "workflow_run_behavior", "comparison": true}); err != nil {
-		t.Fatal("behavior is outside first-pass curation", err)
+	if err := validateAuditProjection(model.Row{"source": "gh-aw-logs", "type": "workflow_run_behavior", "comparison": true}); err == nil {
+		t.Fatal("unknown behavior evidence must not disappear")
 	}
-	if err := validateAuditProjection(model.Row{"source": "audit", "type": "audit.finding", "status": "critical", "summary": "Specific diagnostic", "details": true}); err != nil {
-		t.Fatal("specific diagnostics are outside first-pass curation", err)
+	if err := validateAuditProjection(model.Row{"source": "audit", "type": "audit.finding", "status": "critical", "summary": "Specific diagnostic", "details": true}); err == nil {
+		t.Fatal("unknown finding evidence must not disappear")
 	}
 	if err := validateAuditProjection(model.Row{"source": "gh-aw-logs", "type": "workflow_run_usage", "status": "observed", "inputTokens": 0, "attempt": 2}); err != nil {
 		t.Fatal("stored additional evidence already prevents curation", err)
 	}
-	if err := validateAuditProjection(model.Row{"source": "gh-aw-logs", "type": "workflow_run_usage", "status": "observed", "timestamp": "2026-01-01T00:00:00Z", "inputTokens": (*int)(nil), "attempt": 2}); err == nil {
-		t.Fatal("a typed null cannot protect unsupported nonnull evidence")
+	if err := validateAuditProjection(model.Row{"source": "gh-aw-logs", "type": "workflow_run_usage", "status": "observed", "timestamp": "2026-01-01T00:00:00Z", "inputTokens": (*int)(nil), "attempt": 2}); err != nil {
+		t.Fatal("registered fresh-schema facts must survive", err)
 	}
 }
 
@@ -175,7 +175,7 @@ func auditRow(id, source, kind, status, summary string, extra model.Row) model.R
 	return row
 }
 
-func TestAuditCurationPublish(t *testing.T) {
+func TestPublicationDoesNotCurateIncomingAuditRows(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	writer, err := store.BeginIngestion(t.Context())
 	if err != nil {
@@ -191,9 +191,7 @@ func TestAuditCurationPublish(t *testing.T) {
 			t.Fatal(err)
 		}
 		transported++
-		if keep {
-			retained = append(retained, id)
-		}
+		retained = append(retained, id)
 	}
 	appendAudit("comparison", "gh-aw-logs", "workflow_run_comparison", "unavailable", "No baseline comparison", nil, false)
 	appendAudit("working-set", "gh-aw-logs", "workflow_run_working_set", "observed", "Working set measured", nil, false)
@@ -413,8 +411,8 @@ func TestAuditCurationExistingNamespaceAndIdempotence(t *testing.T) {
 	}
 	defer func() { _ = reopened.Close() }()
 	bootstrapped, err := reopened.State(t.Context())
-	if err != nil || bootstrapped.Counts["$audits"] != 0 || bootstrapped.Revision != otherBefore.Revision+1 {
-		t.Fatalf("existing-data bootstrap skipped cleanup: %+v %v", bootstrapped, err)
+	if err != nil || !reflect.DeepEqual(bootstrapped, otherBefore) {
+		t.Fatalf("opening a namespace unexpectedly curated evidence: %+v %v", bootstrapped, err)
 	}
 }
 

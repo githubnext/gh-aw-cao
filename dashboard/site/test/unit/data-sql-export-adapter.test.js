@@ -4,12 +4,68 @@ import { describe, expect, it } from 'vitest';
 import { adaptSqlExport } from '../../src/data/adapters/sql-export.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
+import { IDBFactory } from 'fake-indexeddb';
+import { ingestSqlExport } from '../../src/data/ingest/coordinator.js';
+import { queryDatabaseSources } from '../../src/data/queries/database.js';
+import { queryDashboardSourceObservations } from '../../src/data/queries/ingestion.js';
 
 function fixture() {
-  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v3.json'), 'utf8'));
+  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v4.json'), 'utf8'));
 }
 
 describe('SQL export adapter', () => {
+  it('round-trips projected owner attribution and historical diagnostics through canonical queries', async () => {
+    const input = fixture();
+    const clock = '2026-09-09T04:00:00.000Z';
+    const attribution = { originId: 'absorbed-grader', source: 'grader', status: 'unavailable',
+      timestamp: clock, observedAt: clock, attempt: 1, templateVersion: 1 };
+    Object.assign(input.rows.find((/** @type {Record<string, unknown>} */ row) => row.entity_kind === 'run'), {
+      run_task_domain_label: 'Research', run_session_label: 'Pi/copilot/gpt-5.4',
+      run_behavior_evidence: { ...attribution, originId: 'absorbed-behavior' }
+    });
+    input.rows.push(
+      { entity_kind: 'grader', source_id: 'grader:quality', observed_at: clock,
+        github_workflow_id: '202', source_grader_id: 'quality', name: 'quality',
+        unit: 'new-unit', direction: 'maximize' },
+      { entity_kind: 'grader-observation', source_id: 'result:quality', observed_at: clock,
+        github_run_id: '303', grader_id: 'grader:quality', value: null, status: 'unavailable',
+        timestamp: clock, observed_name: null, observed_unit: 'historical-unit',
+        observed_direction: null, message: null, error: 'Missing runtime helper',
+        audit_evidence: attribution }
+    );
+    const indexedDB = new IDBFactory();
+    await ingestSqlExport(indexedDB, input, {
+      now: Date.parse(clock), maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+    const sources = await queryDatabaseSources(indexedDB, {}, ['runs', 'grader-observations']);
+    expect(sources.runs.rows[0]).toMatchObject({
+      'task-domain-label': 'Research', 'session-label': 'Pi/copilot/gpt-5.4',
+      'behavior-evidence': { originId: 'absorbed-behavior' }
+    });
+    expect(sources['grader-observations'].rows[0]).toMatchObject({
+      value: null, status: 'unavailable', unit: 'historical-unit', direction: null,
+      'grader-name': null, message: null, error: 'Missing runtime helper',
+      'audit-evidence': attribution, 'current-definition-unit': 'new-unit'
+    });
+    expect(sources.runs.metadata['as-of']).not.toBe('');
+  });
+
+  it('preserves recorded null and absence in declarative result import mappings', () => {
+    const { observations } = queryDashboardSourceObservations({
+      'grader-observations': {
+        rows: [{ id: 'result', 'run-id': 'run', 'grader-id': 'grader',
+          'result-timestamp': '2026-09-09T04:00:00Z', value: null,
+          unit: null, direction: null, error: null }],
+        metadata: { 'as-of': '2026-09-09T04:00:00Z' }
+      }
+    });
+    expect(observations[0].data).toMatchObject({
+      value: null, observedUnit: null, observedDirection: null, error: null
+    });
+    expect(observations[0].data).not.toHaveProperty('observedName');
+    expect(observations[0].data).not.toHaveProperty('message');
+  });
+
   it('converts a versioned static export into a complete ordered canonical graph', () => {
     const adapted = adaptSqlExport(fixture());
     const batch = normalize(adapted.observations);

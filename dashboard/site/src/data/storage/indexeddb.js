@@ -6,15 +6,13 @@ import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
 import {
   AUDIT_CURATION_TRANSACTION_ID,
-  AUDIT_CURATION_VERSION,
-  auditCurationRunFacts,
-  discardAudit
+  AUDIT_CURATION_VERSION
 } from '../model/audit-curation.js';
 
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 37;
+export const DATABASE_VERSION = 38;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 
@@ -669,9 +667,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     let estimatedBytes = 0;
     let deletedRecords = 0;
     let retainedRecords = 0;
-    let prunedAudits = 0;
-    /** @type {Map<string, Record<string, unknown>>} */
-    const auditRunFacts = new Map();
+    const prunedAudits = 0;
     /** @type {{ id: string, timestamp: number, bytes: number }[]} */
     const runs = [];
     /** @type {string[]} */
@@ -690,31 +686,6 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     const referencedRepositoryIds = new Set();
     const database = await openCanonicalDatabase(indexedDB);
     try {
-      const referencedAudits = new Set();
-      for (const storeName of ['graderObservations', 'evalObservations', 'experimentAssignments']) {
-        options.signal?.throwIfAborted();
-        const transaction = database.transaction(storeName);
-        const done = transactionDone(transaction);
-        const store = transaction.objectStore(storeName);
-        if (typeof store.openCursor !== 'function') {
-          for (const record of await requestResult(store.getAll())) {
-            if (typeof record.auditId === 'string') referencedAudits.add(record.auditId);
-          }
-        } else {
-          const request = store.openCursor();
-          request.onsuccess = () => {
-            if (options.signal?.aborted) {
-              transaction.abort();
-              return;
-            }
-            const cursor = request.result;
-            if (!cursor) return;
-            if (typeof cursor.value.auditId === 'string') referencedAudits.add(cursor.value.auditId);
-            cursor.continue();
-          };
-        }
-        await done;
-      }
       for (const storeName of ENTITY_STORES) {
         options.signal?.throwIfAborted();
         const transaction = readwriteTransaction(database, storeName);
@@ -723,14 +694,6 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
         /** @param {Record<string, unknown>} record @param {() => void} remove */
         const visit = (record, remove) => {
           const id = String(record.id);
-          if (storeName === 'runs') auditRunFacts.set(id, auditCurationRunFacts(record));
-          if (storeName === 'audits' && !referencedAudits.has(id)
-              && discardAudit(canonicalRecord({ ...record }), auditRunFacts.get(String(record.runId)))) {
-            remove();
-            deletedRecords += 1;
-            prunedAudits += 1;
-            return;
-          }
           if (options.reconcileRelationships) {
             if (storeName === 'campaigns') {
               campaignIds.add(id);
@@ -1385,7 +1348,7 @@ function indexedQueryPlan(store, operators) {
  * instead of reopened for each read.
  *
  * @param {IDBDatabase} database
- * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {typeof ENTITY_STORES[number] | 'transactions'} storeName
  * @param {string} id
  */
 export async function readRecordWithConnection(database, storeName, id) {
@@ -1395,7 +1358,7 @@ export async function readRecordWithConnection(database, storeName, id) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {typeof ENTITY_STORES[number] | 'transactions'} storeName
  * @param {string} id
  */
 export async function readRecord(indexedDB, storeName, id) {

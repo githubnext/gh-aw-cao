@@ -73,8 +73,8 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		}
 		// The deployed subset predates normalized evidence schema 17. Retain
 		// its actual canonical records while updating the test shard envelope.
-		header["schemaVersion"] = 23
-		header["ingestionVersion"] = 4
+		header["schemaVersion"] = 29
+		header["ingestionVersion"] = 5
 		header["records"] = len(lines) - 1 + len(phase.evidence)
 		metadata, err := json.Marshal(header)
 		if err != nil {

@@ -177,6 +177,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       observedAt: timestamp, provenance
     });
     evidence.evals?.push({ id: 'eval:1', workflowId: 'workflow:1', observedAt: timestamp, provenance });
+    evidence.audits.push({ id: 'audit:eval', runId: 'run:1', timestamp, source: 'audit', type: 'workflow_run_eval', observedAt: timestamp });
     evidence.evalObservations?.push({
       id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1', evalResult: 'YES',
       experimentId: 'experiment:1', variant: 'candidate',
@@ -408,23 +409,25 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
 
     const normalizedDirectory = join(filename, '..', 'normalized');
     const manifestPath = join(filename, '..', 'payload-hashes.json');
+    expect(() => execFileSync(process.execPath, [
+      script, 'hash-payloads', '--database', filename,
+      '--shard-dir', shardDirectory, '--normalized-dir', normalizedDirectory
+    ], { encoding: 'utf8', stdio: 'pipe' })).toThrow(/has not ingested the projected artifact/);
     const hashes = JSON.parse(execFileSync(process.execPath, [
       script,
       'hash-payloads',
-      '--database', filename,
       '--shard-dir', shardDirectory,
       '--normalized-dir', normalizedDirectory,
       '--output', manifestPath
     ], { encoding: 'utf8' }));
     const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.jsonl'));
     if (!normalizedName) throw new Error('Normalized payload was not generated');
-    expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/);
+    expect(normalizedName).toMatch(/^\d{4}-\d{2}-\d{2}-\d{4}-[a-f0-9]{16}\.jsonl$/);
     expect(readdirSync(normalizedDirectory).some((name) => name.endsWith('.json'))).toBe(false);
     expect(hashes).toMatchObject({
-      'dashboard.sqlite': expect.stringMatching(/^[a-f0-9]{64}$/),
-      'shards/cached-v2.jsonl': expect.stringMatching(/^[a-f0-9]{64}$/),
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
+    expect(hashes).not.toHaveProperty('dashboard.sqlite');
     const [normalizedMetadata, ...normalizedRecords] = readFileSync(
       join(normalizedDirectory, normalizedName),
       'utf8'
@@ -432,8 +435,9 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(normalizedMetadata).toMatchObject({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 4,
-      sourceRecords: 3,
+      ingestionVersion: 5,
+      projection: expect.objectContaining({ version: 1 }),
+      sourceRecords: normalizedRecords.length,
       phase: 'all',
       records: normalizedRecords.length
     });
@@ -610,7 +614,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       kind: 'ingest-normalized-jsonl',
       createdAt: '2020-01-01T00:00:00Z',
       payloadHash: 'stable',
-      ingestionVersion: 4
+      ingestionVersion: 5, projection: { version: 1, inputAudits: 0, representedAudits: 0, residualAudits: 0, sourceClock: null }
     }));
     const malformed = connection.prepare(`
       SELECT record_key FROM __idb_records

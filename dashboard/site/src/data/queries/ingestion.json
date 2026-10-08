@@ -10,9 +10,39 @@
     { "name": "$friction", "sources": ["friction"] },
     { "name": "$audits", "sources": ["audits"] },
     { "name": "$issues", "sources": ["issues"] },
-    { "name": "$marketplace-packages", "sources": ["marketplace-packages"] }
+    { "name": "$marketplace-packages", "sources": ["marketplace-packages"] },
+    { "name": "$experiments", "sources": ["experiments"] },
+    { "name": "$experiment-assignments", "sources": ["experiment-assignments"] },
+    { "name": "$graders", "sources": ["graders"] },
+    { "name": "$grader-observations", "sources": ["grader-observations"] },
+    { "name": "$evals", "sources": ["evals"] },
+    { "name": "$eval-observations", "sources": ["eval-observations"] }
   ],
   "queries": [
+    {
+      "name": "experiment-evidence-records", "from": "$experiments",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "assignment-evidence-records", "from": "$experiment-assignments",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "grader-evidence-records", "from": "$graders",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "grader-result-evidence-records", "from": "$grader-observations",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "eval-evidence-records", "from": "$evals",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
+    {
+      "name": "eval-result-evidence-records", "from": "$eval-observations",
+      "compute": [{ "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "__source-observed-at" }] }]
+    },
     {
       "name": "marketplace-package-records",
       "from": "$marketplace-packages",
@@ -196,6 +226,89 @@
   ],
   "observations": [
     {
+      "query": "experiment-evidence-records", "input": "$experiments", "kind": "experiment",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "workflow-id"],
+      "data": {
+        "id": { "field": "id" }, "workflowId": { "field": "workflow-id" },
+        "name": { "field": "experiment-name" }, "campaign": { "field": "campaign" },
+        "controlVariant": { "field": "control-variant" }, "candidateVariant": { "field": "candidate-variant" },
+        "primaryMetric": { "field": "primary-metric" }, "primarySource": { "field": "primary-source" },
+        "state": { "field": "state" }, "readiness": { "field": "readiness" }, "decision": { "field": "decision" },
+        "normalizedEffect": { "field": "normalized-effect", "preserveNull": true },
+        "evidenceStrength": { "field": "evidence-strength", "preserveNull": true },
+        "timestamp": { "field": "observed-at" }
+      }
+    },
+    {
+      "query": "assignment-evidence-records", "input": "$experiment-assignments", "kind": "experiment-assignment",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "experiment-id"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "run-id" }, "experimentId": { "field": "experiment-id" },
+        "variant": { "field": "variant" }, "campaign": { "field": "campaign" },
+        "included": { "field": "included", "preserveNull": true }, "exclusionReason": { "field": "exclusion-reason" },
+        "artifactLink": { "field": "artifact-link" }, "traceLink": { "field": "trace-link" },
+        "auditId": { "field": "audit-id", "preserveNull": true }, "timestamp": { "field": "assignment-at", "preserveNull": true }
+      }
+    },
+    {
+      "query": "grader-evidence-records", "input": "$graders", "kind": "grader",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "workflow-id"],
+      "data": {
+        "id": { "field": "id" }, "workflowId": { "field": "workflow-id" },
+        "sourceGraderId": { "field": "source-grader-id" }, "name": { "field": "grader" },
+        "displayName": { "field": "grader-name", "preserveNull": true }, "role": { "field": "role" },
+        "unit": { "field": "unit", "preserveNull": true }, "direction": { "field": "direction", "preserveNull": true },
+        "threshold": { "field": "threshold", "preserveNull": true }, "timestamp": { "field": "observed-at" }
+      }
+    },
+    {
+      "query": "grader-result-evidence-records", "input": "$grader-observations", "kind": "grader-observation",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "grader-id"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "run-id" }, "graderId": { "field": "grader-id" },
+        "experimentId": { "field": "experiment-id" }, "variant": { "field": "variant" },
+        "included": { "field": "included", "preserveNull": true }, "exclusionReason": { "field": "exclusion-reason" },
+        "role": { "field": "role" }, "maturityStatus": { "field": "maturity-status" },
+        "baselineValue": { "field": "baseline-value", "preserveNull": true },
+        "deltaFromBaseline": { "field": "delta-from-baseline", "preserveNull": true },
+        "evaluatorDigest": { "field": "evaluator-digest" }, "evidenceLink": { "field": "evidence-link" },
+        "graderLink": { "field": "grader-link" }, "auditId": { "field": "audit-id", "preserveNull": true },
+        "observedName": { "field": "grader-name", "preserveNull": true },
+        "observedUnit": { "field": "unit", "preserveNull": true },
+        "observedDirection": { "field": "direction", "preserveNull": true },
+        "graderSource": { "field": "grader-source", "preserveNull": true },
+        "message": { "field": "message", "preserveNull": true }, "error": { "field": "error", "preserveNull": true },
+        "auditEvidence": { "field": "audit-evidence", "preserveNull": true },
+        "value": { "field": "value", "preserveNull": true }, "status": { "field": "status", "preserveNull": true },
+        "timestamp": { "field": "result-timestamp", "preserveNull": true }
+      }
+    },
+    {
+      "query": "eval-evidence-records", "input": "$evals", "kind": "eval",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "workflow-id"],
+      "data": {
+        "id": { "field": "id" }, "workflowId": { "field": "workflow-id" },
+        "sourceEvalId": { "field": "source-eval-id" }, "name": { "field": "eval" },
+        "displayName": { "field": "eval-name" }, "question": { "field": "eval-question" },
+        "requestedModel": { "field": "requested-model" }, "role": { "field": "role" },
+        "direction": { "field": "direction", "preserveNull": true }, "timestamp": { "field": "observed-at" }
+      }
+    },
+    {
+      "query": "eval-result-evidence-records", "input": "$eval-observations", "kind": "eval-observation",
+      "sourceId": "id", "observedAt": "_observed-at", "required": ["id", "run-id", "eval-id"],
+      "data": {
+        "id": { "field": "id" }, "runId": { "field": "run-id" }, "evalId": { "field": "eval-id" },
+        "experimentId": { "field": "experiment-id" }, "variant": { "field": "variant" },
+        "included": { "field": "included", "preserveNull": true }, "exclusionReason": { "field": "exclusion-reason" },
+        "role": { "field": "role" }, "direction": { "field": "direction", "preserveNull": true },
+        "evalLink": { "field": "eval-link" }, "auditId": { "field": "audit-id", "preserveNull": true },
+        "auditEvidence": { "field": "audit-evidence", "preserveNull": true },
+        "evalResult": { "field": "eval-result", "preserveNull": true },
+        "status": { "field": "status", "preserveNull": true }, "timestamp": { "field": "result-timestamp", "preserveNull": true }
+      }
+    },
+    {
       "query": "marketplace-package-records",
       "input": "$marketplace-packages",
       "kind": "marketplace-package",
@@ -284,6 +397,30 @@
     {
       "query": "run-records", "input": "$runs", "publishAs": "$published-runs", "kind": "run", "sourceId": "_source-id", "observedAt": "_observed-at", "required": ["_owner", "_repository", "_path", "_github-run-id"],
       "data": {
+        "taskDomainLabel": { "field": "task-domain-label" },
+        "sessionLabel": { "field": "session-label" },
+        "terminalOutcome": { "field": "terminal-outcome" },
+        "terminalOutcomeDetail": { "field": "terminal-outcome-detail" },
+        "behaviorEvidence": { "field": "behavior-evidence" },
+        "sessionEvidence": { "field": "session-evidence" },
+        "startedEvidence": { "field": "started-evidence" },
+        "completedEvidence": { "field": "completed-evidence" },
+        "failureEvidence": { "field": "failure-evidence" },
+        "usageEvidence": { "field": "usage-evidence" },
+        "safeOutputCountEvidence": { "field": "safe-output-count-evidence" },
+        "assessmentHeavyExecution": { "field": "assessment-heavy-execution" },
+        "assessmentSmallerModel": { "field": "assessment-smaller-model" },
+        "assessmentDeterministic": { "field": "assessment-deterministic" },
+        "recommendationReviewErrors": { "field": "recommendation-review-errors" },
+        "recommendationTrimExecution": { "field": "recommendation-trim-execution" },
+        "recommendationSmallerModel": { "field": "recommendation-smaller-model" },
+        "recommendationAllowDomains": { "field": "recommendation-allow-domains" },
+        "recommendationDeterministic": { "field": "recommendation-deterministic" },
+        "recommendationStrongerEvidence": { "field": "recommendation-stronger-evidence" },
+        "recommendationMonitor": { "field": "recommendation-monitor" },
+        "observabilityNetworkFriction": { "field": "observability-network-friction" },
+        "observabilityExploratory": { "field": "observability-exploratory" },
+        "observabilityAnomaly": { "field": "observability-anomaly" },
         "id": { "field": "_id" }, "repositoryId": { "field": "_repository-id" }, "workflowId": { "field": "_workflow-id" },
         "owner": { "field": "_owner" }, "repository": { "field": "_repository" }, "repositoryFullName": { "field": "_full-name" },
         "workflowPath": { "field": "_path" }, "githubRunId": { "field": "_github-run-id" }, "attempt": { "field": "_attempt" },
@@ -337,6 +474,16 @@
     }
   ],
   "runLinkedData": {
+    "grader": { "field": "grader" }, "graderName": { "field": "grader-name", "preserveNull": true },
+    "graderSource": { "field": "grader-source", "preserveNull": true },
+    "value": { "field": "value", "preserveNull": true }, "unit": { "field": "unit", "preserveNull": true },
+    "direction": { "field": "direction", "preserveNull": true },
+    "message": { "field": "message", "preserveNull": true }, "error": { "field": "error", "preserveNull": true },
+    "baselineValue": { "field": "baseline-value", "preserveNull": true },
+    "deltaFromBaseline": { "field": "delta-from-baseline", "preserveNull": true },
+    "evalId": { "field": "eval-id" }, "answer": { "field": "answer", "preserveNull": true },
+    "attempt": { "field": "run-attempt" },
+    "auditEvidence": { "field": "audit-evidence" },
     "id": { "field": "event" }, "runId": { "field": "_run-id" }, "timestamp": { "field": "event-timestamp" },
     "source": { "field": "event-source" }, "type": { "field": "event-type" }, "summary": { "field": "event-summary" },
     "status": { "field": "event-status" }, "requestCount": { "field": "request-count" }, "correlationId": { "field": "correlation-id" },

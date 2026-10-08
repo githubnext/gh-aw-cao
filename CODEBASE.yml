@@ -103,6 +103,9 @@ components:
   dashboard_data:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker, including separately keyed run-linked experiment assignments, grader observations, and eval observations
+  audit_information_projection:
+    path: dashboard/site/src/data/model/audit-projection.js
+    responsibility: resolve complete incoming generations before either publication phase, extract typed Run/result facts with source attribution, preserve independent findings/actions and unsupported/conflicting evidence, rewrite absorbed optional Audit backlinks, and publish residual Audits with a coherent versioned receipt/source clock without raw archive mutation or existing-row cleanup
   marketplace_registry_policy:
     path: .github/workflows/cao.json
     responsibility: define ordered campaign package registries, resolver cache policy, and secret references without secret values

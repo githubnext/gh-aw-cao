@@ -3,18 +3,14 @@
     {
       "name": "run-incomplete-outcomes",
       "subject": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
-      "objective": "Find retained report_incomplete safe outputs that can explain a specific run's incomplete reporting.",
-      "acceptance": "Include only matching audit safe_output.created records with run-attempt identity, outcome kind, and recorded diagnosis; absence is not proof that reporting completed.",
+      "objective": "Find explicitly recorded canonical Run terminal outcomes explaining incomplete reporting.",
+      "acceptance": "Include only Runs whose recorded terminal outcome is report_incomplete, preserving attempt and diagnosis. Absence does not prove reporting completed; individual safe-output occurrences remain independently retained.",
       "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
-      "from": "audits",
+      "from": "runs",
       "filter": {
         "predicates": [
           {
-            "field": "event-type",
-            "equals": "safe_output.created"
-          },
-          {
-            "field": "safe-output-type",
+            "field": "terminal-outcome",
             "equals": "report_incomplete"
           }
         ]
@@ -36,11 +32,11 @@
           "field": "run-attempt"
         },
         {
-          "field": "safe-output-type",
+          "field": "terminal-outcome",
           "as": "outcome-kind"
         },
         {
-          "field": "event-summary",
+          "field": "terminal-outcome-detail",
           "as": "outcome-diagnosis"
         }
       ]

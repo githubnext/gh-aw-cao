@@ -10,6 +10,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import {
@@ -25,7 +26,7 @@ import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
-import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
+import { DATABASE_NAME, DATABASE_VERSION, readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
@@ -74,9 +75,10 @@ import {
   USAGE
 } from './cli-usage.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
-import { consolidationBucket, normalizedPhaseBatch, relationshipSafeEvidenceBatch, STRUCTURAL_CONSOLIDATION_BUCKET } from './normalized-phase.mjs';
+import { consolidationBucket, normalizedPhaseBatch, STRUCTURAL_CONSOLIDATION_BUCKET } from './normalized-phase.mjs';
 import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from './normalized-shards.mjs';
-import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../dashboard/site/src/data/model/audit-curation.js';
+import { AUDIT_CURATION_VERSION } from '../dashboard/site/src/data/model/audit-curation.js';
+import { AUDIT_PROJECTION_VERSION, projectAuditEvidence } from '../dashboard/site/src/data/model/audit-projection.js';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
 import { parseUpdateArguments, resolveUpdateCommit } from './commands/update.mjs';
@@ -1848,29 +1850,35 @@ function workflowHintsFromInventory(input) {
 }
 
 /**
- * Collapses every per-shard payload for one phase into deduplicated, day-bucketed
- * shards. Source payloads may repeat canonical records; keying on (collection, id)
- * keeps exactly one winning copy before ordering and byte-bounded publication.
+ * Resolves all source payloads before either publication phase is emitted.
  *
- * @param {string} phase
  * @param {string[]} cachePaths per-shard payloads in ingestion order
- * @param {string} outputDirectory
- * @param {number} maxBytes
  */
-async function consolidatePhasePayloads(
-  phase, cachePaths, outputDirectory, maxBytes, {
-    runWorkflowIds = new Map(), runFacts = new Map(), referencedAuditIds = new Set()
-  } = {}
-) {
+async function consolidateActivityPayloads(cachePaths) {
   /** @type {Map<string, Map<string, Record<string, unknown>>>} */
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
   let sourceRecords = 0;
   for (const cachePath of cachePaths) {
+    let header = null;
+    let count = 0;
     for await (const line of jsonlLines([cachePath])) {
       const entry = JSON.parse(line);
-      if (entry?.kind !== 'record') continue;
+      if (!header) {
+        if (entry?.kind !== 'metadata' || entry.schemaVersion !== CANONICAL_SCHEMA_VERSION
+            || entry.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION
+            || entry.phase !== 'all' || !Number.isSafeInteger(entry.records) || entry.records < 0) {
+          throw new TypeError('Information projection requires a complete current-format source cache');
+        }
+        header = entry;
+        continue;
+      }
       const records = deduped.get(entry.collection);
-      if (!records) continue;
+      if (entry?.kind !== 'record' || !records || !entry.record
+          || typeof entry.record !== 'object' || Array.isArray(entry.record)
+          || typeof entry.record.id !== 'string' || !entry.record.id) {
+        throw new TypeError('Invalid canonical source cache record');
+      }
+      count += 1;
       const record = entry.record;
       const id = String(record.id);
       sourceRecords += 1;
@@ -1887,50 +1895,35 @@ async function consolidatePhasePayloads(
       }
       records.set(id, record);
     }
-  }
-  if (phase === 'records' && runWorkflowIds.size > 0) {
-    const batch = Object.fromEntries(
-      NORMALIZED_COLLECTIONS.map((collection) =>
-        [collection, [...deduped.get(collection).values()]])
-    );
-    const safe = relationshipSafeEvidenceBatch(batch, runWorkflowIds);
-    for (const collection of ['experimentAssignments', 'graderObservations', 'evalObservations']) {
-      deduped.set(collection, new Map(safe[collection].map((record) => [String(record.id), record])));
+    if (!header || header.records !== count) {
+      throw new TypeError('Canonical source cache record count does not match its metadata');
     }
   }
-  const consolidatedRunWorkflowIds = phase === 'runs'
-    ? new Map([...deduped.get('runs').values()].map((run) =>
-      [String(run.id), String(run.workflowId)]))
-    : runWorkflowIds;
-  if (phase === 'runs') {
-    runFacts = new Map([...deduped.get('runs').values()].map((run) =>
-      [String(run.id), auditCurationRunFacts(run)]));
-  }
-  for (const collection of ['experimentAssignments', 'graderObservations', 'evalObservations']) {
-    for (const record of deduped.get(collection).values()) {
-      if (typeof record.auditId === 'string') referencedAuditIds.add(record.auditId);
-    }
-  }
+  const batch = Object.fromEntries(NORMALIZED_COLLECTIONS.map((collection) =>
+    [collection, [...deduped.get(collection).values()]]));
+  debugHash('consolidated sourceRecords=%d', sourceRecords);
+  return projectAuditEvidence(batch);
+}
+
+async function publishActivityPhase(phase, batch, receipt, outputDirectory, maxBytes) {
+  await mkdir(outputDirectory, { recursive: true });
+  const selected = phase === 'all' ? batch : normalizedPhaseBatch(batch, phase);
   /** @type {Map<string, string[]>} */
   const buckets = new Map();
   let uniqueRecords = 0;
   for (const collection of NORMALIZED_COLLECTIONS) {
-    const records = deduped.get(collection);
-    for (const record of [...records.values()].sort((left, right) =>
+    for (const record of [...selected[collection]].sort((left, right) =>
       String(left.id) < String(right.id) ? -1 : String(left.id) > String(right.id) ? 1 : 0)) {
-      if (collection === 'audits' && !referencedAuditIds.has(String(record.id))
-          && discardAudit(record, runFacts.get(String(record.runId)))) continue;
       const bucket = consolidationBucket(collection, record);
       const lines = buckets.get(bucket) ?? buckets.set(bucket, []).get(bucket);
       lines.push(`${JSON.stringify({ kind: 'record', collection, record })}\n`);
       uniqueRecords += 1;
     }
-    records.clear();
   }
   debugHash(
     'consolidating phase=%s sourceRecords=%d uniqueRecords=%d buckets=%d',
     phase,
-    sourceRecords,
+    receipt.inputAudits,
     uniqueRecords,
     buckets.size
   );
@@ -1938,7 +1931,7 @@ async function consolidatePhasePayloads(
   const written = [];
   for (const bucket of [...buckets.keys()].sort()) {
     written.push(...await writeNormalizedShardBucket(
-      phase, bucket, buckets.get(bucket), outputDirectory, maxBytes
+      phase, bucket, buckets.get(bucket), outputDirectory, maxBytes, receipt
     ));
     buckets.delete(bucket);
   }
@@ -1946,10 +1939,10 @@ async function consolidatePhasePayloads(
   // collection is explicit rather than indistinguishable from missing output.
   if (written.length === 0) {
     written.push(...await writeNormalizedShardBucket(
-      phase, STRUCTURAL_CONSOLIDATION_BUCKET, [], outputDirectory, maxBytes
+      phase, STRUCTURAL_CONSOLIDATION_BUCKET, [], outputDirectory, maxBytes, receipt
     ));
   }
-  return { names: written, runWorkflowIds: consolidatedRunWorkflowIds, runFacts, referencedAuditIds };
+  return written;
 }
 
 async function hashActivityPayloads({
@@ -1961,6 +1954,9 @@ async function hashActivityPayloads({
   inventoryPath,
   maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES
 }) {
+  if (shardDirectory && !normalizedDirectory && !runsDirectory && !recordsDirectory) {
+    throw new TypeError('Authoritative cached JSONL is private; publication requires normalized output directories');
+  }
   const hashFile = async (filePath) => {
     const digest = await hashFileContents(filePath);
     debugHash('hashed %s -> %s', filePath, digest);
@@ -1975,7 +1971,6 @@ async function hashActivityPayloads({
     return false;
   };
   const hashes = {};
-  if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
   if (shardDirectory) {
     let shardNames = [];
     try {
@@ -1987,7 +1982,7 @@ async function hashActivityPayloads({
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${AUDIT_CURATION_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${AUDIT_CURATION_VERSION}\0${AUDIT_PROJECTION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = {
@@ -1996,36 +1991,28 @@ async function hashActivityPayloads({
       records: new Set()
     };
     const retainedCachePayloads = {
+      normalized: new Set(),
       runs: new Set(),
       records: new Set()
     };
-    const cachePaths = { runs: [], records: [] };
+    const cachePaths = { normalized: [], runs: [], records: [] };
     const cacheDirectories = {
+      normalized: normalizedDirectory || runsDirectory || recordsDirectory
+        ? path.join(normalizedDirectory ?? runsDirectory ?? recordsDirectory, PAYLOAD_CACHE_DIRECTORY) : null,
       runs: runsDirectory ? path.join(runsDirectory, PAYLOAD_CACHE_DIRECTORY) : null,
       records: recordsDirectory ? path.join(recordsDirectory, PAYLOAD_CACHE_DIRECTORY) : null
     };
-    if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
-    if (runsDirectory) await mkdir(cacheDirectories.runs, { recursive: true });
-    if (recordsDirectory) await mkdir(cacheDirectories.records, { recursive: true });
+    if (cacheDirectories.normalized) await mkdir(cacheDirectories.normalized, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       if ((await stat(shardPath)).size === 0) {
-        await rm(shardPath);
-        debugHash('dropped empty source shard %s', shardPath);
+        debugHash('skipped empty source shard %s', shardPath);
         continue;
       }
       const rawHash = await hashFile(shardPath);
-      if (!runsDirectory && !recordsDirectory) {
-        hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
-      }
-      if (!normalizedDirectory && !runsDirectory && !recordsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.jsonl`;
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
-      const outputPaths = [
-        normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
-        runsDirectory ? ['runs', path.join(cacheDirectories.runs, phasedPayloadName)] : null,
-        recordsDirectory ? ['records', path.join(cacheDirectories.records, phasedPayloadName)] : null
-      ].filter(Boolean);
+      const outputPaths = [['normalized', path.join(cacheDirectories.normalized, phasedPayloadName)]];
       const missing = [];
       for (const output of outputPaths) {
         try {
@@ -2041,23 +2028,16 @@ async function hashActivityPayloads({
           payloadIdentity: rawHash
         });
         const batch = normalize(adapted.observations);
+        if (await hashFile(shardPath) !== rawHash) {
+          throw new TypeError('Authoritative source changed while preparing its projection');
+        }
         const metadata = {
           schemaVersion: CANONICAL_SCHEMA_VERSION,
           ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
           sourceRecords: adapted.records
         };
         const payloads = {
-          normalized: { ...metadata, batch },
-          runs: {
-            ...metadata,
-            phase: 'runs',
-            batch: normalizedPhaseBatch(batch, 'runs')
-          },
-          records: {
-            ...metadata,
-            phase: 'records',
-            batch: normalizedPhaseBatch(batch, 'records')
-          }
+          normalized: { ...metadata, batch }
         };
         await Promise.all(missing.map(async ([phase, outputPath]) => {
           const temporaryPath = `${outputPath}.${process.pid}.tmp`;
@@ -2074,42 +2054,29 @@ async function hashActivityPayloads({
           debugHash('dropped empty %s shard %s', phase, outputPath);
           continue;
         }
-        if (phase === 'normalized') {
-          retainedPayloads.normalized.add(path.basename(outputPath));
-          hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
-          continue;
-        }
         retainedCachePayloads[phase].add(path.basename(outputPath));
         cachePaths[phase].push(outputPath);
       }
     }
-    let runWorkflowIds = new Map();
-    let runFacts = new Map();
-    let referencedAuditIds = new Set();
+    const projected = await consolidateActivityPayloads(
+      cachePaths.normalized
+    );
     for (const [phase, directory] of [
+      ['normalized', normalizedDirectory],
       ['runs', runsDirectory],
       ['records', recordsDirectory]
     ].filter(([, directory]) => Boolean(directory))) {
-      const consolidated = await consolidatePhasePayloads(
-        phase,
-        cachePaths[phase],
-        directory,
-        maxBytes,
-        { runWorkflowIds, runFacts, referencedAuditIds }
+      const names = await publishActivityPhase(
+        phase === 'normalized' ? 'all' : phase, projected.batch, projected.receipt, directory, maxBytes
       );
-      if (phase === 'runs') {
-        runWorkflowIds = consolidated.runWorkflowIds;
-        runFacts = consolidated.runFacts;
-        referencedAuditIds = consolidated.referencedAuditIds;
-      }
-      for (const name of consolidated.names) {
+      for (const name of names) {
         retainedPayloads[phase].add(name);
         hashes[`${path.basename(directory)}/${name}`] = await hashFile(path.join(directory, name));
       }
-      for (const name of await readdir(cacheDirectories[phase])) {
-        if (name.endsWith('.jsonl') && !retainedCachePayloads[phase].has(name)) {
-          await rm(path.join(cacheDirectories[phase], name), { force: true });
-        }
+    }
+    if (cacheDirectories.normalized) for (const name of await readdir(cacheDirectories.normalized)) {
+      if (name.endsWith('.jsonl') && !retainedCachePayloads.normalized.has(name)) {
+        await rm(path.join(cacheDirectories.normalized, name), { force: true });
       }
     }
     for (const [phase, directory] of [
@@ -2123,10 +2090,38 @@ async function hashActivityPayloads({
         }
       }
     }
+    if (databasePath) {
+      validateSqliteProjectionReceipts(databasePath, hashes, projected.receipt);
+    }
   }
+  if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
   return hashes;
 }
 
+function validateSqliteProjectionReceipts(databasePath, hashes, receipt) {
+  const connection = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    const version = connection.prepare('SELECT version FROM __idb_databases WHERE name=?').get(DATABASE_NAME)?.version;
+    if (version !== DATABASE_VERSION) throw new TypeError('Published SQLite requires the current fresh database contract');
+    const transactions = connection.prepare(
+      "SELECT 1 FROM __idb_records WHERE database_name=? AND store_name='transactions' AND json_extract(value,'$.kind')='ingest-normalized-jsonl' AND json_extract(value,'$.payloadHash')=? AND json_extract(value,'$.ingestionVersion')=? LIMIT 1"
+    );
+    for (const [name, hash] of Object.entries(hashes)) {
+      if (!name.endsWith('.jsonl')) continue;
+      if (!transactions.get(DATABASE_NAME, hash, NORMALIZED_JSONL_INGESTION_VERSION)) {
+        throw new TypeError(`Published SQLite has not ingested the projected artifact: ${name}`);
+      }
+    }
+    const count = connection.prepare(
+      "SELECT count(*) AS count FROM __idb_records WHERE database_name=? AND store_name='audits'"
+    ).get(DATABASE_NAME)?.count;
+    if (count !== receipt.residualAudits) {
+      throw new TypeError('Published SQLite residual Audits disagree with the projected generation');
+    }
+  } finally {
+    connection.close();
+  }
+}
 async function fileSizeStats(filePath) {
   try {
     const info = await stat(filePath);

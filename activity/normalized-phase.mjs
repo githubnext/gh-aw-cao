@@ -52,8 +52,6 @@ export function normalizedPhaseBatch(batch, phase) {
   return Object.fromEntries(NORMALIZED_COLLECTIONS.map((collection) => {
     if (RUN_COLLECTIONS.has(collection) !== (phase === 'runs')) return [collection, []];
     const records = batch[collection] ?? [];
-    return [collection, collection === 'audits'
-      ? records.filter((audit) => String(audit.status ?? '').trim().toLowerCase() !== 'info')
-      : records];
+    return [collection, records];
   }));
 }

@@ -160,10 +160,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		return Result{}, err
 	}
 	if !options.Force && active.Ready && active.DataRevision == dataRevision {
-		active, err = store.CurateAudits(ctx)
-		if err != nil {
-			return Result{}, err
-		}
 		return stateResult(active), nil
 	}
 	writer, err := store.BeginIngestion(ctx)
@@ -173,10 +169,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 	defer writer.Abort(ctx)
 	if !options.Force && writer.PreviousDataRevision == dataRevision {
 		writer.Abort(ctx)
-		active, err := store.CurateAudits(ctx)
-		if err != nil {
-			return Result{}, err
-		}
 		return stateResult(active), nil
 	}
 	for _, source := range []string{"$security-findings", "$outcomes", "work-items"} {
@@ -264,11 +256,14 @@ func readShard(ctx context.Context, writer *postgresx.Writer, path, expected str
 			continue
 		}
 		var envelope struct {
-			Kind       string          `json:"kind"`
-			Collection string          `json:"collection"`
-			Record     json.RawMessage `json:"record"`
-			Records    *int64          `json:"records"`
-			Phase      string          `json:"phase"`
+			Kind             string                            `json:"kind"`
+			Collection       string                            `json:"collection"`
+			Record           json.RawMessage                   `json:"record"`
+			Records          *int64                            `json:"records"`
+			Phase            string                            `json:"phase"`
+			SchemaVersion    int                               `json:"schemaVersion"`
+			IngestionVersion int                               `json:"ingestionVersion"`
+			Projection       *postgresx.AuditProjectionReceipt `json:"projection"`
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &envelope); err != nil {
 			return fmt.Errorf("%s:%d must contain valid canonical JSON", path, line)
@@ -278,6 +273,12 @@ func readShard(ctx context.Context, writer *postgresx.Writer, path, expected str
 			if header || count != 0 || envelope.Records == nil || *envelope.Records < 0 ||
 				envelope.Phase != "" && envelope.Phase != kind {
 				return errors.New("normalized shard metadata is invalid")
+			}
+			if envelope.SchemaVersion != 29 || envelope.IngestionVersion != 5 {
+				return errors.New("normalized shard requires the current information projection")
+			}
+			if err := writer.ObserveAuditProjection(envelope.Projection); err != nil {
+				return err
 			}
 			header = true
 			expectedRecords = envelope.Records

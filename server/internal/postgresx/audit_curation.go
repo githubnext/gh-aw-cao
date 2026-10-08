@@ -73,35 +73,9 @@ func auditCurationCandidate(row model.Row) bool {
 	return false
 }
 
-// Native storage cannot preserve unknown evidence for a later maintenance pass.
-// Reject potentially eligible rows before projection rather than erase that
-// evidence and subsequently mistake the row for a pure metadata copy.
+// Residual public evidence must be representable before binding.
 func validateAuditProjection(row model.Row) error {
-	if row["timestamp"] == nil {
-		return nil
-	}
-	if discardAuditCopy(row, nil) {
-		return nil
-	}
-	if !auditCurationCandidate(row) {
-		return nil
-	}
-	for _, column := range entityTables["$audits"].columns {
-		if !auditMetadataField(column.field) && column.field != "code" {
-			if bound, err := column.bind(row[column.field]); err == nil && bound != nil {
-				return nil
-			}
-		}
-	}
-	source, _ := row["source"].(string)
-	kind, _ := row["type"].(string)
-	if row["code"] != nil && (source != "audit" || kind != "audit.finding" || row["code"] != "workflow_failed") {
-		return nil
-	}
-	for field, value := range row {
-		if value == nil || auditMetadataField(field) {
-			continue
-		}
+	for field := range row {
 		stored := false
 		for _, column := range entityTables["$audits"].columns {
 			if column.field == field {
@@ -111,7 +85,45 @@ func validateAuditProjection(row model.Row) error {
 		}
 		if !stored {
 			auditCurationLog.Printf("audit projection rejected unsupported evidence field=%q", field)
-			return fmt.Errorf("audit evidence field %q is not supported by native storage; refusing lossy curation", field)
+			return fmt.Errorf("audit evidence field %q is not supported by native storage; refusing lossy ingestion", field)
+		}
+	}
+	return nil
+}
+
+func validateInformationObjects(source string, row model.Row) error {
+	table := entityTables[source]
+	for _, column := range table.columns {
+		if column.kind != "object" || strings.Contains(column.field, ".") {
+			continue
+		}
+		field := column.field
+		if source != "$audits" && field != "auditEvidence" &&
+			!strings.HasSuffix(field, "Evidence") && !strings.HasPrefix(field, "assessment") &&
+			!strings.HasPrefix(field, "recommendation") && !strings.HasPrefix(field, "observability") {
+			continue
+		}
+		value, present := row[field]
+		if !present || value == nil {
+			continue
+		}
+		var object map[string]any
+		switch value := value.(type) {
+		case model.Row:
+			object = value
+		case map[string]any:
+			object = value
+		default:
+			return fmt.Errorf("%s.%s must be a typed evidence object", source, field)
+		}
+		for member := range object {
+			known := false
+			for _, child := range table.columns {
+				known = known || child.field == field+"."+member
+			}
+			if !known {
+				return fmt.Errorf("%s.%s has unsupported evidence attribute %q", source, field, member)
+			}
 		}
 	}
 	return nil

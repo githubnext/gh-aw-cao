@@ -8,6 +8,7 @@ import {
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
+import { projectAuditEvidence, validateAuditProjectionReceipt } from '../model/audit-projection.js';
 import {
   maintainCanonicalDatabase,
   openCanonicalDatabase,
@@ -36,12 +37,10 @@ import { AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION } from '../model/
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 7;
-const GH_AW_JSONL_INGESTION_VERSION = 7;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
-const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
-const PRE_EVIDENCE_INGESTION_VERSION = 3;
-const LAST_PRE_EVIDENCE_SCHEMA_VERSION = 22;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 8;
+const GH_AW_JSONL_INGESTION_VERSION = 8;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 5;
+const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 29;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -447,9 +446,11 @@ export async function ingestSqlExport(indexedDB, input, options = {}) {
   try {
     const adapted = adaptSqlExport(input);
     phase = 'normalizing';
-    const batch = normalize(adapted.observations);
+    const { batch, receipt } = projectAuditEvidence(normalize(adapted.observations));
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, batch, options);
+    const result = await ingestCanonicalBatch(indexedDB, batch, options);
+    await recordProjectionClock(indexedDB, receipt.sourceClock, options.now);
+    return result;
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -468,13 +469,15 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
   try {
     const adapted = adaptGhAwLogs(input);
     phase = 'normalizing';
-    const batch = normalize(adapted.observations);
+    const { batch, receipt } = projectAuditEvidence(normalize(adapted.observations));
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, batch, {
+    const result = await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
       preserveWorkflowCampaignMappings: true,
       preserveRepositoryRecords: true
     });
+    await recordProjectionClock(indexedDB, receipt.sourceClock, options.now);
+    return result;
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -552,7 +555,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const encoder = new TextEncoder();
       let pending = '';
       let lineNumber = 0;
-      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number } | null} */
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number, sourceClock: string | null } | null} */
       let header = null;
       let batch = emptyNormalizedBatch();
       let bufferedRecords = 0;
@@ -644,11 +647,10 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
                 || schemaVersion > CANONICAL_SCHEMA_VERSION) {
               throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
             }
-            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION
-                && !(envelope.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION
-                  && schemaVersion <= LAST_PRE_EVIDENCE_SCHEMA_VERSION)) {
+            if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
               throw new TypeError(`Unsupported normalized activity ingestion version: ${String(envelope.ingestionVersion)}`);
             }
+            const projection = validateAuditProjectionReceipt(envelope.projection);
             if (typeof envelope.phase !== 'string'
                 || !['all', 'runs', 'records'].includes(envelope.phase)) {
               throw new TypeError(`Unsupported normalized activity phase: ${String(envelope.phase)}`);
@@ -663,6 +665,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
               phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
               records: Number(envelope.records),
               ingestionVersion: Number(envelope.ingestionVersion),
+              sourceClock: projection.sourceClock,
               sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
                 ? Number(envelope.sourceRecords)
                 : undefined
@@ -675,8 +678,6 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           if (envelope.kind !== 'record'
               || collection === null
               || !NORMALIZED_BATCH_COLLECTIONS.includes(collection)
-              || (header.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION && ['experiments', 'experimentAssignments', 'graders',
-                'graderObservations', 'evals', 'evalObservations'].includes(collection))
               || !envelope.record
               || typeof envelope.record !== 'object'
               || Array.isArray(envelope.record)) {
@@ -708,7 +709,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         }
         pending += decoder.decode();
         if (pending) await accept(pending);
-        const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number } | null} */ (header);
+        const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number, sourceClock: string | null } | null} */ (header);
         if (!metadata) throw new TypeError('Normalized activity JSONL metadata is missing');
         await flush();
         if (committedRecords !== metadata.records) {
@@ -728,11 +729,13 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           payloadScope: options.payloadScope,
           payloadHash: options.payloadIdentity,
           ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+          sourceClock: metadata.sourceClock,
           records: Number(metadata.sourceRecords ?? 0),
           committedRecords,
           rawRuns,
           ...(retained === null ? { maintenanceDeferred: true } : { storage: retained })
         });
+        await recordProjectionClock(indexedDB, metadata.sourceClock, options.now);
         return { ...result, records: Number(metadata.sourceRecords ?? 0) };
       } finally {
         database.close();
@@ -742,6 +745,14 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
     }
   }, { onLockWait: options.onLockWait, signal: options.signal });
+}
+
+/** @param {IDBFactory} indexedDB @param {string | null} sourceClock @param {number} [now] */
+async function recordProjectionClock(indexedDB, sourceClock, now) {
+  await recordTransaction(indexedDB, {
+    id: 'projection-clock', kind: 'projection-clock', sourceClock,
+    createdAt: new Date(now ?? Date.now()).toISOString()
+  });
 }
 
 function emptyNormalizedBatch() {

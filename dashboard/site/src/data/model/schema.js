@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 28;
+export const CANONICAL_SCHEMA_VERSION = 29;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -172,6 +172,7 @@ export function relationshipErrors(batch) {
   const graders = new Map((batch.graders ?? []).map((record) => [record.id, record]));
   const evals = new Map((batch.evals ?? []).map((record) => [record.id, record]));
   const runsById = new Map(batch.runs.map((record) => [record.id, record]));
+  const auditIds = new Set(batch.audits.map((record) => record.id));
   for (const record of batch.experiments ?? []) requireReference(record, 'workflowId', 'workflows');
   for (const record of batch.graders ?? []) requireReference(record, 'workflowId', 'workflows');
   for (const record of batch.evals ?? []) requireReference(record, 'workflowId', 'workflows');
@@ -182,6 +183,9 @@ export function relationshipErrors(batch) {
   ])) {
     for (const record of collection ?? []) {
       requireReference(record, 'runId', 'runs');
+      if (record.auditId != null && !auditIds.has(record.auditId)) {
+        errors.push(`${String(record.id)}.auditId does not reference an existing audit`);
+      }
       if (!parents.has(record[parentField])) errors.push(`${String(record.id)}.${parentField} does not reference a definition`);
       const parent = parents.get(record[parentField]);
       const run = runsById.get(record.runId);

@@ -55,6 +55,8 @@ export const SQLITE_RELATIONAL_STORES = Object.freeze({
   graderObservations: { runId: 'TEXT', graderId: 'TEXT', value: 'REAL', status: 'TEXT',
     experimentId: 'TEXT', variant: 'TEXT',
     evaluatorDigest: 'TEXT', timestamp: 'TEXT',
+    observedName: 'TEXT', observedUnit: 'TEXT', observedDirection: 'TEXT',
+    graderSource: 'TEXT', message: 'TEXT', error: 'TEXT',
     included: 'INTEGER', exclusionReason: 'TEXT', auditId: 'TEXT' },
   evals: { workflowId: 'TEXT', name: 'TEXT', sourceEvalId: 'TEXT',
     firstObservedAt: 'TEXT', lastObservedAt: 'TEXT' },

@@ -1,10 +1,11 @@
 import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
+import { projectAuditEvidence } from '../../src/data/model/audit-projection.js';
 
 /** @param {string} jsonl */
 export function normalizedActivityShards(jsonl) {
-  const batch = normalize(adaptCachedGhAwJsonl(jsonl).observations);
+  const { batch, receipt } = projectAuditEvidence(normalize(adaptCachedGhAwJsonl(jsonl).observations));
   const sourceRecords = jsonl.trim().split('\n').filter(Boolean).length;
   /**
    * @param {'runs' | 'records'} phase
@@ -18,7 +19,8 @@ export function normalizedActivityShards(jsonl) {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 4,
+        ingestionVersion: 5,
+        projection: receipt,
         sourceRecords,
         phase,
         records: records.length

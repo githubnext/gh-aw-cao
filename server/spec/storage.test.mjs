@@ -88,13 +88,13 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
   assert.deepEqual([...discovered[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort(), names);
 });
 
-test('TypeSpec Audit storage describes curation without speculative duplicate Run columns', () => {
+test('TypeSpec Audit storage describes complete information projection', () => {
   const contract = documentation.get('audits');
   assert.match(contract, /dashboard-data\.md section 11\.1/);
-  assert.match(contract, /JavaScript and Go ingestion and existing-database maintenance/);
-  assert.match(contract, /missing Run facts/);
+  assert.match(contract, /Complete-generation JavaScript publication/);
+  assert.match(contract, /missing\s+Run facts/);
   assert.match(contract, /Grader\/eval identities/);
-  assert.match(contract, /Cleanup precedes size eviction/);
+  assert.match(contract, /rejects unsupported evidence/);
 });
 
 test('native table fields cover database projections and joins without speculative columns', () => {

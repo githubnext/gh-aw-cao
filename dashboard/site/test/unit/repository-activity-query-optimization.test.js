@@ -314,7 +314,7 @@ describe('repository activity query optimization', () => {
         analyzeDashboardComplexity({ dashboard: { queries } }).inventory.find((query) => query.name === 'repository-activity')
       )));
     `], { input: JSON.stringify([baseline, queries]), encoding: 'utf8' }));
-    expect(estimates[0]).toMatchObject({ 'total-row-read-units': 53, 'total-materialized-field-units': 155 });
+    expect(estimates[0]).toMatchObject({ 'total-row-read-units': 53, 'total-materialized-field-units': 178 });
     expect(estimates[1]).toMatchObject({ 'total-row-read-units': 52, 'total-materialized-field-units': 93 });
   });
 });

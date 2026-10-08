@@ -42,7 +42,7 @@ function normalizedRunPhase(runId) {
     {
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 4,
+      ingestionVersion: 5, projection: { version: 1, inputAudits: 0, representedAudits: 0, residualAudits: 0, sourceClock: null },
       sourceRecords: 1,
       phase: 'runs',
       records: records.length

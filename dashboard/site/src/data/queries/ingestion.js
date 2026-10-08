@@ -9,7 +9,7 @@ const debug = createDebug('ingestion');
 /**
  * @typedef {{ field?: string, fields?: string[], default?: unknown, trim?: boolean,
  *   omitEmpty?: boolean, equals?: unknown, notEquals?: unknown,
- *   nonnegativeInteger?: boolean }} FieldMapping
+ *   nonnegativeInteger?: boolean, preserveNull?: boolean }} FieldMapping
  */
 
 /** @param {unknown} value */
@@ -50,8 +50,10 @@ function queryInputs(sources) {
 function mappedValue(row, mapping) {
   const fields = mapping.fields ?? (mapping.field ? [mapping.field] : []);
   /** @type {unknown} */
-  let value = fields.map((field) => row[field]).find((candidate) => candidate !== undefined && candidate !== null);
-  if (value === undefined || value === null) value = mapping.default;
+  let value = fields.map((field) => row[field]).find((candidate) => (
+    candidate !== undefined && (mapping.preserveNull || candidate !== null)
+  ));
+  if (value === undefined || (value === null && !mapping.preserveNull)) value = mapping.default;
   if (mapping.trim && value !== undefined && value !== null) value = String(value).trim();
   if (value === '' && mapping.default !== undefined) value = mapping.default;
   if (mapping.omitEmpty && value === '') return undefined;

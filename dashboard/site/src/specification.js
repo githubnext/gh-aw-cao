@@ -249,7 +249,9 @@ export const FILTER_DIMENSION_VALUES = [
   'protocol',
   'policy-rule-id',
   'firewall-enabled',
-  'evidence-state'
+  'evidence-state',
+  'task-domain-label',
+  'session-label'
 ];
 
 export const PAGE_KIND_VALUES = ['built-in', 'custom'];
@@ -380,6 +382,7 @@ export const TABLE_VALUES = [
   'experiment-assignments',
   'graders',
   'grader-observations',
+  'audit-result-details',
   'evals',
   'eval-observations',
   'usage',
@@ -448,7 +451,10 @@ export const TABLE_VALUES = [
 
 const RUN_RECORD_FIELDS = ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'event', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'code', 'request-count', 'correlation-id', 'payload-ref', 'mcp-server', 'mcp-tool', 'safe-output-type', 'github-entity-type', 'number', 'source-sequence', 'observed-at', 'run-link', 'target-repo', 'target-organization', 'target-repository', 'target-workflow-path', 'optimizer-run-attempt', 'optimizer-workflow-path', 'optimizer-workflow-name', 'claim-run-id', 'claim-run-attempt', 'actor', 'opportunity-id', 'opportunity-kind', 'assignment-run', 'experiment', 'evidence-window-start', 'evidence-window-end', 'evidence-state', 'evidence-confidence', 'cost-grain', 'intervention-id', 'lifecycle-observation-id', 'previous-intervention-state', 'intervention-state', 'previous-recommendation-disposition', 'recommendation-disposition', 'supersedes-intervention-id', 'superseded-by-intervention-id', 'recommendation-churn-count', 'recommendation-churn-rate', 'control-variant', 'optimized-variant', 'proposed-savings-aic', 'missing-reason', 'safe-output-id', 'safe-output-url', 'implementation-change-id', 'implementation-pull-request-url', 'accepted-at', 'implementation-started-at', 'implementation-completed-at', 'rejected-at', 'superseded-at'];
 
+const RUN_AUDIT_FIELDS = ['task-domain-label', 'session-label', 'behavior-evidence', 'session-evidence', 'started-evidence', 'completed-evidence', 'failure-evidence', 'usage-evidence', 'safe-output-count-evidence', 'assessment-heavy-execution', 'assessment-smaller-model', 'assessment-deterministic', 'recommendation-review-errors', 'recommendation-trim-execution', 'recommendation-smaller-model', 'recommendation-allow-domains', 'recommendation-deterministic', 'recommendation-stronger-evidence', 'recommendation-monitor', 'observability-network-friction', 'observability-exploratory', 'observability-anomaly'];
+
 export const TABLE_FIELDS = {
+  'audit-result-details': ['id', 'run-id', 'run-attempt', 'sequence', 'provenance', 'grader', 'grader-name', 'value', 'unit', 'direction', 'grader-source', 'message', 'error', 'baseline-value', 'delta-from-baseline', 'eval-id', 'answer'],
   'marketplace-packages': ['id', 'registry-id', 'registry-name', 'registry-precedence', 'package-name', 'package-description', 'publisher', 'repository', 'repository-link', 'path', 'package-ref', 'resolved-commit', 'package-version', 'package-icon', 'package-artwork', 'package-readme', 'package-readme-path', 'package-source', 'add-command', 'stars', 'forks'],
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
   campaigns: ['id', 'campaign', 'campaign-name', 'campaign-description', 'campaign-icon', 'campaign-mode', 'campaign-enabled', 'campaign-registration', 'campaign-max-repositories', 'campaign-rollout-percent', 'campaign-monthly-ai-credit-budget', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'campaign-min-version', 'campaign-version', 'campaign-current-version', 'campaign-update-state', 'campaign-experimental', 'campaign-readme-path', 'campaign-readme', 'observed-at', 'campaign-link'],
@@ -533,6 +539,13 @@ export const TABLE_FIELDS = {
   'control-plane-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
   'evidence-records': ['evidence-id', 'evidence-class', 'evidence-kind', 'work-item-id', 'objective', 'claim', 'verification-state', 'provenance-state', 'source-revision', 'observed-at', 'evidence-link', 'repository-link', 'run-link']
 };
+
+TABLE_FIELDS.runs.push(...RUN_AUDIT_FIELDS);
+TABLE_FIELDS.issues.push('audit-evidence');
+TABLE_FIELDS.transactions.push('sourceClock');
+TABLE_FIELDS['experiment-assignments'].push('audit-id');
+TABLE_FIELDS['grader-observations'].push('grader-name', 'grader-source', 'message', 'error', 'audit-id', 'audit-evidence', 'result-timestamp', 'current-definition-unit', 'current-definition-direction');
+TABLE_FIELDS['eval-observations'].push('audit-id', 'audit-evidence');
 
 export const ROLLOUT_MODE_VALUES = ['review', 'live', 'unknown'];
 export const DETECTION_STATE_VALUES = ['clean', 'threat', 'degraded', 'tooling-failure', 'skipped', 'unknown'];

@@ -121,6 +121,16 @@ the authoritative inputs. It deterministically separates compact, immutable run
 information from detailed run-linked records so the browser data worker loads every run
 before continuing with event shards. Raw Activity JSONL remains available only
 inside the Activity cache for audits and projection rebuilds. The deployed
+generation resolves all source relationships before either phase is emitted.
+Its versioned information projection extracts typed Run/result facts and source
+attribution, then publishes only residual independent Audits. The same projected
+generation feeds normalized exports, SQLite, and native PostgreSQL ingestion.
+Findings and individual action occurrences remain independent; unsupported or
+conflicting evidence fails closed or stays residual. Raw archives, retention and
+authority are unchanged. Version bumps initialize fresh disposable databases,
+not existing-row cleanup or compatibility migrations. Dashboard queries read
+typed owners directly and never reconstruct removed Audit rows.
+The deployed
 dashboard artifact contains the SQLite projection, inventory, and compacted
 normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a

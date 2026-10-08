@@ -1,6 +1,6 @@
 package model
 
-const SchemaVersion = 17
+const SchemaVersion = 18
 
 type Row map[string]any
 

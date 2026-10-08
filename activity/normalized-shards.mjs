@@ -6,11 +6,12 @@ import { NORMALIZED_JSONL_INGESTION_VERSION } from '../dashboard/site/src/data/i
 
 export const DEFAULT_NORMALIZED_JSONL_SHARD_BYTES = 1024 * 1024;
 
-function shardHeader(phase, records) {
+function shardHeader(phase, records, projection) {
   return `${JSON.stringify({
     kind: 'metadata',
     schemaVersion: CANONICAL_SCHEMA_VERSION,
     ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+    ...(projection ? { projection } : {}),
     sourceRecords: records,
     phase,
     records
@@ -18,16 +19,16 @@ function shardHeader(phase, records) {
 }
 
 export async function writeNormalizedShardBucket(
-  phase, bucket, lines, outputDirectory, maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES
+  phase, bucket, lines, outputDirectory, maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, projection
 ) {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < Buffer.byteLength(shardHeader(phase, 0))) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < Buffer.byteLength(shardHeader(phase, 0, projection))) {
     throw new RangeError('Normalized shard byte limit must fit its metadata header');
   }
   const names = [];
   let current = [];
   let currentBytes = 0;
   const flush = async () => {
-    const content = shardHeader(phase, current.length) + current.join('');
+    const content = shardHeader(phase, current.length, projection) + current.join('');
     const digest = createHash('sha256').update(content).digest('hex');
     const name = `${bucket}-${String(names.length).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
     const outputPath = path.join(outputDirectory, name);
@@ -49,7 +50,7 @@ export async function writeNormalizedShardBucket(
   };
   for (const line of lines) {
     const size = Buffer.byteLength(line);
-    const headerBytes = Buffer.byteLength(shardHeader(phase, current.length + 1));
+    const headerBytes = Buffer.byteLength(shardHeader(phase, current.length + 1, projection));
     if (current.length > 0 && headerBytes + currentBytes + size > maxBytes) await flush();
     current.push(line);
     currentBytes += size;

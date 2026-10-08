@@ -103,9 +103,9 @@
     {
       "name": "run-import-status",
       "subject": "Identify observed runs that have one or more imported run-owned records.",
-      "objective": "Compare observed run attempts with retained run-owned event evidence to locate import-coverage gaps for investigation.",
-      "acceptance": "Keep each observed run and its run-attempt identity; imported-event-count is zero and imported is false without a matching retained event, but missing events alone do not establish an ingestion failure.",
-      "description": "Observed runs enriched with imported-record status.",
+      "objective": "Report canonical Run presence separately from residual detail-stream coverage.",
+      "acceptance": "Keep each canonical run and its attempt identity. Canonical-run-present describes retained Run evidence; imported and imported-event-count describe only residual detail records, not historical coverage or ingestion success.",
+      "description": "Canonical Run presence with independent residual-detail counts.",
       "from": "runs",
       "joins": [
         {
@@ -165,6 +165,11 @@
               "value": 0
             }
           ]
+        },
+        {
+          "as": "canonical-run-present",
+          "function": "literal",
+          "args": [{ "value": true }]
         }
       ]
     },

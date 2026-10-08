@@ -9,6 +9,7 @@ import {
   readCollectionQueryKeys,
   readCollectionQueryKeyRecords,
   readCollections,
+  readRecord,
   readTransactions
 } from '../storage/indexeddb.js';
 import {
@@ -64,7 +65,9 @@ function queryMetadata(sources, sourceName, queryName, available) {
     ? /** @type {{ metadata?: Record<string, unknown> }} */ (sources[sourceName])
     : {};
   const metadata = input.metadata ?? {};
-  const asOf = typeof metadata['as-of'] === 'string' ? metadata['as-of'] : '';
+  const projectionClock = sources['$projection-clock'];
+  const asOf = typeof metadata['as-of'] === 'string' && metadata['as-of']
+    ? metadata['as-of'] : typeof projectionClock === 'string' ? projectionClock : '';
   return /** @type {import('../../presenter.js').SourceMetadata} */ ({
     ...metadata,
     'source-id': queryName,
@@ -206,6 +209,9 @@ function executeRunRecordsQuery(sourceName, records, runs, sources) {
  * @returns {Promise<Record<string, import('../../presenter.js').LogicalSourceInput>>}
  */
 export async function queryIndexedDatabaseSources(indexedDB, logicalSources, definitions, requested, options = {}) {
+  if (resolveDashboardQuerySources(definitions, requested).some((name) => (
+    DATABASE_TABLE_SOURCES.has(name) || queryStores(name).length > 0
+  ))) logicalSources = await withProjectionClock(indexedDB, logicalSources);
   const budget = options.budget ?? createDashboardQueryBudget(options);
   budget.checkpoint();
   const index = dashboardQueryIndex(definitions);
@@ -880,6 +886,14 @@ function queryStores(name) {
     : [];
 }
 
+/** @param {IDBFactory} indexedDB @param {Record<string, unknown>} sources */
+async function withProjectionClock(indexedDB, sources) {
+  if (typeof sources['$projection-clock'] === 'string') return sources;
+  const transaction = await readRecord(indexedDB, 'transactions', 'projection-clock');
+  return typeof transaction?.sourceClock === 'string'
+    ? { ...sources, '$projection-clock': transaction.sourceClock } : sources;
+}
+
 /**
  * Loads only database stores needed by requested JSON query definitions.
  *
@@ -893,12 +907,14 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
     throw new TypeError('Dashboard source names must be an array of strings.');
   }
+
   const requested = new Set(sourceNames);
   const databaseRequested = [...requested].filter((name) => (
     !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name)
     && (DATABASE_TABLE_SOURCES.has(name) || !hasUsableRows(logicalSources[name]))
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
+  if (stores.length > 0) logicalSources = await withProjectionClock(indexedDB, logicalSources);
   const transactionRequested = stores.includes('transactions');
   const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
     stores.filter((name) => name !== 'transactions')

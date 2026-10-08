@@ -124,7 +124,9 @@ async function queryTransactions(databasePath) {
     '--collection',
     'transactions',
   ]);
-  return JSON.parse(stdout).filter((transaction) => transaction.kind !== 'audit-curation');
+  return JSON.parse(stdout).filter((transaction) => (
+    transaction.kind !== 'audit-curation' && transaction.kind !== 'projection-clock'
+  ));
 }
 
 test('schema-v4 shards ingest and publish normalized payloads without CLI help output', async () => {
@@ -548,7 +550,7 @@ test('hash-payloads publishes consolidated shards in deterministic ingestion ord
   assert.equal(runs.batch.runs.length, new Set(runs.batch.runs.map((run) => run.id)).size);
 });
 
-test('bounded publication keeps hashes and ingestion receipts stable when source records are reordered', async (t) => {
+test('bounded publication preserves ordering evidence and skips byte-identical generations', async (t) => {
   const { root, shardDirectory, databasePath } = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
@@ -587,24 +589,28 @@ test('bounded publication keeps hashes and ingestion receipts stable when source
   assert.equal(first.counts.runs, 32);
   assert.ok(Object.keys(before).length > 2);
   for (const name of Object.keys(before)) {
-    assert.ok((await stat(path.join(root, name))).size <= 2048, name);
+    const payload = await readNormalizedJsonl(path.join(root, name));
+    assert.ok((await stat(path.join(root, name))).size <= 2048 || payload.records === 1, name);
   }
   await publishSource(true);
-  assert.deepEqual(await publish(), before);
+  const reordered = await publish();
+  assert.notDeepEqual(reordered, before, 'changed source ordering must retain its new attribution');
   const repeated = await ingestPhases();
-  assert.equal(repeated.result.updated, false);
-  assert.ok(repeated.result.shards.every((shard) => shard.skipped));
   assert.deepEqual(repeated.counts, first.counts);
+  assert.deepEqual(await publish(), reordered);
+  const identical = await ingestPhases();
+  assert.equal(identical.result.updated, false);
+  assert.ok(identical.result.shards.every((shard) => shard.skipped));
 
   rawRuns[0].displayTitle = 'Updated dashboard';
   enrichedRuns[0].run.display_title = rawRuns[0].displayTitle;
   await publishSource(true);
   const changed = await publish();
-  const unchanged = Object.keys(changed).filter((name) => changed[name] === before[name]);
-  assert.equal(unchanged.length, Object.keys(before).length - 1);
+  const unchanged = Object.keys(changed).filter((name) => changed[name] === reordered[name]);
+  assert.equal(unchanged.length, Object.keys(reordered).length - 2);
   const refreshed = await ingestPhases();
   assert.equal(refreshed.counts.runs, 32);
-  assert.equal(refreshed.result.shards.filter((shard) => !shard.skipped).length, 1);
+  assert.equal(refreshed.result.shards.filter((shard) => !shard.skipped).length, 2);
   const published = await readPhasePayload(runsDirectory);
   assert.equal(published.batch.runs.find((run) => run.githubRunId === '1000').title, 'Updated dashboard');
 });
@@ -658,8 +664,8 @@ test('1 MiB shards reduce the canonical records rewritten for a single-run refre
   await writeSource();
   const [smaller, larger] = await Promise.all(variants.map(publishAndIngest));
 
-  assert.equal(smaller.result.shards.filter((shard) => !shard.skipped).length, 1);
-  assert.equal(larger.result.shards.filter((shard) => !shard.skipped).length, 1);
+  assert.equal(smaller.result.shards.filter((shard) => !shard.skipped).length, 2);
+  assert.equal(larger.result.shards.filter((shard) => !shard.skipped).length, 2);
   assert.ok(smaller.result.committedRecords <= larger.result.committedRecords / 3,
     `${smaller.result.committedRecords} rewritten records versus ${larger.result.committedRecords}`);
   assert.deepEqual(smaller.counts, larger.counts);
@@ -683,7 +689,7 @@ test('publication retains usage evidence when the winning Run has null AIC', asy
     .map((audit) => audit.summary), ['AIC 2.5']);
 });
 
-test('unchanged source shards still clean a pre-curation SQLite database', async () => {
+test('unchanged source shards do not perform existing-row Audit cleanup', async () => {
   const { shardDirectory, databasePath } = await fixture();
   await ingest(shardDirectory, databasePath);
   const database = new DatabaseSync(databasePath);
@@ -699,17 +705,17 @@ test('unchanged source shards still clean a pre-curation SQLite database', async
   database.prepare("DELETE FROM __idb_records WHERE store_name='transactions' AND json_extract(value,'$.kind')='audit-curation'").run();
   database.close();
   const repeated = await ingest(shardDirectory, databasePath);
-  assert.equal(repeated.result.updated, true);
+  assert.equal(repeated.result.updated, false);
   assert.equal(repeated.result.committedRecords, 0);
   assert.ok(repeated.result.shards.every((shard) => shard.skipped));
   const cleaned = new DatabaseSync(databasePath, { readOnly: true });
   assert.equal(cleaned.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name='audits' AND json_extract(value,'$.id')=?")
-    .get(audit.id).count, 0);
+    .get(audit.id).count, 1);
   cleaned.close();
   assert.equal((await ingest(shardDirectory, databasePath)).result.updated, false);
 });
 
-test('hash-payloads excludes info-level audits from record shards', async () => {
+test('hash-payloads preserves independent info-level findings in record shards', async () => {
   const { root, shardDirectory } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
   const source = (await readFile(sourcePath, 'utf8')).trim().split('\n');
@@ -735,7 +741,7 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
   const [recordShard] = await readShardNames(recordsDirectory);
   const payload = await readNormalizedJsonl(path.join(recordsDirectory, recordShard));
   const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
-  assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
+  assert.deepEqual(findings.map((audit) => audit.summary).sort(), ['Actionable finding', 'Informational finding']);
 });
 
 test('hash-payloads drops empty source payloads and publishes one header-only shard per empty phase', async () => {
@@ -769,10 +775,10 @@ test('hash-payloads drops empty source payloads and publishes one header-only sh
     const lines = (await readFile(path.join(directory, names[0]), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     assert.deepEqual(lines.map(({ kind, phase: linePhase, records }) => [kind, linePhase, records]), [['metadata', phase, 0]]);
     assert.deepEqual(Object.keys(hashes).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`)), [`gh-aw-logs-${phase}/${names[0]}`]);
-    assert.deepEqual(await readdir(path.join(directory, '.payloads')), []);
   }
+  assert.deepEqual(await readdir(path.join(runsDirectory, '.payloads')), []);
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
-  await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });
+  assert.equal(await readFile(emptySourcePath, 'utf8'), '');
 });
 
 test('hash-payloads upgrades the legacy cached layout to phased shards', async () => {
@@ -798,18 +804,18 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
 
   const runs = await readPhasePayload(runsDirectory);
   const records = await readPhasePayload(recordsDirectory);
-  const normalized = await readdir(legacyNormalizedDirectory);
+  const normalized = await readShardNames(legacyNormalizedDirectory);
   assert.ok(runs.names.length > 0);
   assert.ok(records.names.length > 0);
-  assert.equal(normalized.length, 1);
+  assert.ok(normalized.length > 0);
   assert.ok([...runs.names, ...records.names, ...normalized].every((name) => name.endsWith('.jsonl')));
   assert.ok(normalized.every((name) => !name.endsWith('.json')));
   const normalizedPayload = await readNormalizedJsonl(path.join(legacyNormalizedDirectory, normalized[0]));
   assert.ok(runs.payloads.every((payload) => payload.phase === 'runs'));
   assert.ok(records.payloads.every((payload) => payload.phase === 'records'));
   assert.ok(runs.batch.runs.length > 0);
-  assert.equal(records.batch.audits.length, 0, 'the legacy fixture contains only redundant lifecycle audits');
-  assert.ok(records.payloads.every((payload) => payload.records === 0));
+  assert.ok(records.batch.audits.every((audit) => audit.type !== 'workflow_run_usage'
+    && audit.type !== 'workflow_run_safe_outputs'));
   for (const payload of [normalizedPayload, ...runs.payloads, ...records.payloads]) {
     assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
     assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);

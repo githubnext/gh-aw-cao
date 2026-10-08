@@ -249,7 +249,9 @@ it('diagnoses report-incomplete outcomes instead of presenting driver exit as th
           'run-attempt': 1,
           'run-status': 'completed',
           'run-conclusion': 'failure',
-          'failure-kind': 'driver_exit'
+          'failure-kind': 'driver_exit',
+          'terminal-outcome': 'report_incomplete',
+          'terminal-outcome-detail': 'Dependabot alert evidence was unavailable for the target repository.'
         }]
       },
       workflows: {

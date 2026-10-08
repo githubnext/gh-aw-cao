@@ -1,11 +1,32 @@
 import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, ENTITY_KINDS, requiredString } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
+import { RUN_AUDIT_EVIDENCE_FIELDS } from '../model/audit-projection.js';
 
 const debugSqlExport = createDebug('data:adapters:sql-export');
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
-export const SQL_EXPORT_VERSION = 3;
+export const SQL_EXPORT_VERSION = 4;
+
+const SQL_EVIDENCE_FIELDS = {
+  experiment: ['campaign', 'candidateVariant', 'controlVariant', 'decision', 'evidenceStrength', 'name',
+    'normalizedEffect', 'primaryMetric', 'primarySource', 'readiness', 'state', 'timestamp'],
+  'experiment-assignment': ['experimentId', 'variant', 'artifactLink', 'campaign', 'exclusionReason',
+    'included', 'timestamp', 'traceLink', 'auditId'],
+  grader: ['sourceGraderId', 'name', 'displayName', 'role', 'threshold', 'unit', 'direction', 'timestamp'],
+  'grader-observation': ['graderId', 'value', 'status', 'timestamp', 'auditId', 'observedName', 'observedUnit',
+    'observedDirection', 'graderSource', 'message', 'error', 'baselineValue', 'deltaFromBaseline', 'auditEvidence',
+    'evaluatorDigest', 'evidenceLink', 'exclusionReason', 'experimentId', 'graderLink', 'included',
+    'maturityStatus', 'role', 'variant'],
+  eval: ['sourceEvalId', 'name', 'displayName', 'question', 'direction', 'requestedModel', 'role', 'timestamp'],
+  'eval-observation': ['evalId', 'evalResult', 'status', 'timestamp', 'auditId', 'auditEvidence', 'direction',
+    'evalLink', 'exclusionReason', 'experimentId', 'included', 'role', 'variant']
+};
+
+/** @param {string} field */
+function sqlField(field) {
+  return field.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -200,8 +221,31 @@ export function adaptSqlExport(input) {
           startedAt: optionalString(row.run_started_at) ?? null,
           completedAt: optionalString(row.run_completed_at) ?? null,
           headSha: optionalString(row.run_head_sha) ?? null,
-          headBranch: optionalString(row.run_head_branch) ?? null
+          headBranch: optionalString(row.run_head_branch) ?? null,
+          taskDomainLabel: row.run_task_domain_label,
+          sessionLabel: row.run_session_label,
+          terminalOutcome: row.run_terminal_outcome,
+          terminalOutcomeDetail: row.run_terminal_outcome_detail,
+          ...Object.fromEntries(RUN_AUDIT_EVIDENCE_FIELDS.map((field) => [field, row[`run_${sqlField(field)}`]]))
         };
+        break;
+      }
+      case 'experiment':
+      case 'experiment-assignment':
+      case 'grader':
+      case 'grader-observation':
+      case 'eval':
+      case 'eval-observation': {
+        data = {
+          id: sourceRecordId,
+          ...Object.fromEntries(SQL_EVIDENCE_FIELDS[kind].map((field) => [field, row[sqlField(field)]]))
+        };
+        if (['experiment', 'grader', 'eval'].includes(kind)) {
+          data.workflowId = workflowId(identifier(row.github_workflow_id, 'github_workflow_id'));
+        } else {
+          const coordinates = coordinatesFor(row, index, kind);
+          data.runId = runId(coordinates.owner, coordinates.repository, identifier(row.github_run_id, 'github_run_id'));
+        }
         break;
       }
       case 'domain': {
@@ -255,7 +299,8 @@ export function adaptSqlExport(input) {
           isPullRequest: row.is_pull_request === true,
           url: requiredString(row.url, 'url'),
           safeOutputType: optionalString(row.safe_output_type),
-          githubEntityType: optionalString(row.github_entity_type)
+          githubEntityType: optionalString(row.github_entity_type),
+          auditEvidence: row.audit_evidence
         };
         break;
       }
@@ -288,7 +333,21 @@ export function adaptSqlExport(input) {
           timestamp: canonicalTimestamp(row.event_timestamp ?? observedAt, 'event_timestamp'),
           source: requiredString(row.event_source, 'event_source'),
           type: eventType,
+          attempt: row.run_attempt === undefined ? undefined : positiveInteger(row.run_attempt, 'run_attempt'),
+          status: row.event_status,
           summary: optionalString(row.event_summary),
+          grader: row.grader,
+          graderName: row.grader_name,
+          graderSource: row.grader_source,
+          value: row.value,
+          unit: row.unit,
+          direction: row.direction,
+          message: row.message,
+          error: row.error,
+          baselineValue: row.baseline_value,
+          deltaFromBaseline: row.delta_from_baseline,
+          evalId: row.eval_id,
+          answer: row.answer,
           correlationId: optionalString(row.correlation_id),
           payloadRef: optionalString(row.payload_ref),
           safeOutputType: optionalString(row.safe_output_type),
@@ -368,7 +427,7 @@ export function adaptSqlExport(input) {
             row.optimization_recommendation_churn_rate,
             'optimization_recommendation_churn_rate'
           ),
-          evidenceState: optionalEnum(
+          evidenceState: eventType === 'workflow_run_eval' ? row.evidence_state : optionalEnum(
             row.optimization_evidence_state,
             'optimization_evidence_state',
             ['complete', 'incomplete', 'unavailable']

@@ -399,7 +399,7 @@ The implementation profile defined by this specification is:
 | Browser IndexedDB | 37 | Eighteen canonical entity stores and `transactions` |
 | Local SQLite projection | IndexedDB 37 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
-| Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
+| Static SQL export | 4 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
 
@@ -1486,65 +1486,79 @@ Records MUST remain independently addressable and MUST NOT be stored as one
 ever-growing array inside the Run record. Issues and pull requests share the
 Issue table; pull requests set `isPullRequest=true`.
 
-## 11.1 First-pass Audit curation
+## 11.1 Audit information projection
 
-Audit is an evidence table, not a second Run summary table. JavaScript canonical
-ingestion, normalized Activity publication, and Go/Postgres ingestion SHALL apply
-the same versioned, fail-closed curation rules. Existing IndexedDB, SQLite, and
-Postgres databases SHALL apply those rules during maintenance, including when
-the input payload hashes have not changed. Cleanup MUST precede size-based Run
-eviction, use bounded cursor scans or namespace-scoped SQL, and publish any
-changed database revision so active worker/hosted query subscriptions refresh.
+Audit is residual independent evidence, not a second representation of Runs or
+canonical results. Projection version 1 operates on a complete deduplicated
+incoming generation, after owner resolution and before either publication phase.
+Authoritative cached JSONL remains private and unchanged. Fresh consumers use
+canonical schema 29, normalized ingestion version 5, browser database version
+38, and native schema version 18; existing-row cleanup, compatibility migrations,
+and historical recovery are not part of this ingestion contract.
 
-IndexedDB Audit cleanup SHALL queue deletion keys in bounded batches within the
-scan transaction, flushing the final partial batch before commit. Deleting each
-row through its cursor invalidates Chromium's cursor prefetch and can stall a
-deployed-data refresh; batching MUST preserve the same eligibility and reference
-checks without materializing the Audit collection.
+An Audit MAY leave publication only when its facts, explicit positive Run attempt,
+source-reported state, event and observation times, identity, locators, provenance,
+ordering, and every independently present attribute are represented on a
+canonical owner. Missing attribution, competing values or occurrences, explicit
+null provenance not representable in attribution, unknown wording, extra detail,
+and unresolved references MUST retain it. Native binding MUST reject residual
+evidence or typed attribution members it cannot store, including unknown explicit
+null members; unsupported must not become absent.
 
-The first pass MAY discard only the following source/type/status/summary tuples:
-
-| Source | Type | Status | Summary |
-|---|---|---|---|
-| `gh-aw-logs` | `workflow_run_comparison` | `unavailable` | `No baseline comparison` |
-| `gh-aw-logs` | `workflow_run_working_set` | `observed` | `Working set measured` |
-| `agent` | `agent.session` | `completed` | Empty string |
-| `audit` | `audit.observability` | `low` | `1 anomalous event pattern(s) detected` |
-| `audit` | `audit.recommendation` | `low` | `Monitor workflow performance over time` |
-
-It MAY additionally discard these Run-backed copies only when the owning Run
-exists and the applicable fields agree:
-
-| Source/type | Required agreement |
+| Family | Typed destination and proof |
 |---|---|
-| `gh-aw-logs` / `workflow_run_started` | Valid timestamp equals `startedAt` (or `createdAt` when start is unavailable), and status equals Run status. |
-| `gh-aw-logs` / `workflow_run_completed` | Valid timestamp equals `completedAt`, status equals Run conclusion, and summary equals the nonempty Run classification or conclusion. |
-| `gh-aw-logs` / `workflow_run_failed` | Status is `failure`; Run conclusion is `failure` or Run failure kind is nonempty; summary equals that failure kind or `workflow run failed`. |
-| `gh-aw-logs` / `workflow_run_usage` | Status is `observed`; summary is `AIC N`, and finite nonnegative `N` equals the nonnull Run `aicTotal`. |
-| `gh-aw-logs` / `workflow_run_safe_outputs` | Status is `observed`; summary is `N safe output items`, and nonnegative safe-integer `N` equals nonnull Run `safeItemsCount`. |
-| `audit` / `audit.finding` | Status is `critical`, code is `workflow_failed`, summary is `Workflow Failed`, and Run conclusion is `failure`. |
+| Run start/completion/failure/usage/count summaries | Exact existing Run facts plus the corresponding `startedEvidence`, `completedEvidence`, `failureEvidence`, `usageEvidence`, or `safeOutputCountEvidence`; start text must also equal the Run title. Numeric matching consumes the entire bounded string and preserves zero versus missing/null. |
+| `workflow_run_behavior` | Explicit recognized `taskDomainLabel` plus `behaviorEvidence`, with no competing label or occurrence. |
+| `agent.session` | Exact `sessionLabel` plus `sessionEvidence`, with matching Run status. Display strings never imply a provider identity. |
+| `workflow_run_grader` | One linked observation with matching owner, definition/source identity, value, and status. Preserve `observedName`, `observedUnit`, `observedDirection`, source, message/error, baseline/delta, and `auditEvidence`; independent unsupported diagnostics remain residual. |
+| Classified `workflow_run_eval` | One matching canonical YES/NO/UNKNOWN result, status and definition, plus `auditEvidence`. Unclassified, incomplete, or unmatched evidence remains residual. |
+| Recognized assessments | Fixed heavy-execution, smaller-model, and deterministic Run slots preserve source-reported severity and the explicit task-domain label independently of findings. |
+| Recognized recommendations/commentary | Fixed versioned Run slots identify exact explicitly reported templates, priority/severity and source attribution. Co-occurrence never creates advice. |
+| `safe_output.created` | One exactly matching Issue/action occurrence, including identity, fields, time and status, plus `auditEvidence`. Multiple occurrences remain; `safeItemsCount` is not an action representation. |
 
-Eligible rows MUST contain no additional nonnull evidence beyond shared record
-identity, provenance, ordering, timestamps, source/type/status/summary, and the
-specified failure code. Unexpected sources, statuses, summaries, invalid
-numbers/timestamps, conflicting explicit attempts, and missing/null Run facts
-MUST retain the Audit. Absence after curation MUST NOT establish zero source
-activity, a successful outcome, or complete import coverage. Transport record
-counts and checksums MUST still validate every input record; retained counts
-SHALL reflect only rows actually stored. Database health diagnostics MUST permit
-an empty Audit collection when the retained Run hierarchy is valid.
+The frozen whitelist is `AUDIT_TEMPLATES` and the assessment forms in
+`data/model/audit-projection.js`; changed wording requires a new projection
+version. The six task-domain labels are Code Fix, Research, General Automation,
+Release / Ops, Triage, and Issue Response. Slots are bounded typed facts, not
+an attributes JSON blob or a copied Run report. Repeated meaningful occurrences
+remain Audits rather than selecting a latest value to improve removal.
 
-Numeric summary matching SHALL consume the entire string, without trailing
-whitespace, and SHALL retain summaries longer than 1,024 ASCII characters or
-scientific exponents longer than three digits. These shared conservative bounds
-MUST prevent a malformed numeric summary from aborting existing-database cleanup.
+Attribution preserves `originId`, source/status, timestamp/observedAt,
+sequence/sourceSequence, payloadRef, attempt, provenance source/sourceId/time,
+and template version. `originId` is an original observation locator, not a live
+Audit foreign key. Source result time and Audit event time remain separate.
+Observation-time name/unit/direction preserve absent versus recorded null;
+queries expose mutable current-definition metadata under separate names rather
+than reinterpreting historical measurements.
 
-This first pass MUST preserve grader/eval audits and their referenced identities,
-safe-output events, security/policy evidence, specific findings and diagnostics,
-and runtime facts that are missing from the Run. Behavior and assessment copies
-remain retained because their complete comparison facts are not present in the
-query-minimal native Postgres Run representation. Implementations MUST NOT add
-duplicate Run payloads or speculative native columns merely to prune them.
+Absorbed result observations keep their stable IDs, diagnostics and source
+links; only optional exported `auditId` backlinks are removed. References to
+residual Audits remain unchanged. Publication MUST validate live backlinks and
+mandatory relationships, including owner/definition workflow agreement, before
+committing. Unavailable/error results never become success or zero.
+
+Run/record shards and advertised unphased normalized exports MUST come from the
+same projection; SQLite and native publication consume those projected bytes.
+Every shard carries the same versioned receipt: input, represented and residual
+Audit counts, bounded family/retained-reason statistics, and the pre-filter source
+clock. Transport counts/checksums validate incoming rows before transformation;
+published counts/hashes describe emitted rows. Receipts across native shards and
+the final residual count MUST agree. Projection versions invalidate derived
+caches even when raw hashes are unchanged.
+
+Findings, security/policy evidence, unknown diagnostics and ordinary action
+occurrences retain their independent IDs/severity/times. Comparison-unavailable
+and working-set markers without typed representation remain. Status `info`
+alone never excludes an Audit. Existing time retention and tool handling are
+unchanged. There is no arbitrary row cap, probability sampling, or action
+aggregation.
+
+Dashboard queries read typed owners directly through the worker/hosted boundary;
+they MUST NOT synthesize legacy Audit rows. `canonical-run-present` identifies
+canonical Run evidence independently of residual `imported` detail presence and
+`imported-event-count`. Fewer residual rows do not prove fewer historical
+findings, failed imports, complete detail coverage, or zero source activity.
+An empty Audit collection is valid when canonical evidence is otherwise valid.
 
 ---
 
@@ -1799,12 +1813,12 @@ SQL-export adapter
 canonical model
 ```
 
-The version 3 JSON document SHALL contain:
+The version 4 JSON document SHALL contain:
 
 ```js
 {
   contract: "gh-aw-cao.dashboard-sql-export",
-  schema_version: 3,
+  schema_version: 4,
   source: "stable-source-name",
   generation: "immutable-generation-id",
   exported_at: "RFC3339 timestamp",
@@ -1819,6 +1833,21 @@ Domains, Tools, Audits, and Issues SHALL carry `github_run_id` and
 `run_attempt`; normalization uses the execution Repository coordinates and
 `github_run_id` for the canonical `runId`, while `run_attempt` preserves source
 grain and validation context.
+
+Version 4 SHALL preserve Run `run_task_domain_label`, `run_session_label`,
+`run_terminal_outcome`, `run_terminal_outcome_detail`, and the bounded
+`run_<snake_case evidence slot>` columns from Section 11.1. Typed evidence
+objects SHALL retain the same scalar members as normalized JSONL.
+Experiment, assignment, grader, grader-observation, eval, and eval-observation
+rows SHALL use their canonical stable ID as `source_id`. Definitions SHALL
+carry `github_workflow_id`; results and assignments SHALL carry
+`github_run_id`. Their typed model attributes SHALL use the snake_case
+column names of the native storage contract, including `audit_evidence`,
+historical measurement snapshots, diagnostics, and optional live backlinks.
+Recorded null SHALL remain distinct from an unrecorded column. Residual
+grader/eval Audit columns SHALL preserve their typed result evidence and
+explicit `run_attempt`. Source identity and raw archives SHALL NOT be
+rewritten to manufacture projection eligibility.
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 

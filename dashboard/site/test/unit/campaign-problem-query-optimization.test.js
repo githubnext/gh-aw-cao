@@ -130,6 +130,10 @@ function evidence() {
       };
     })
   ));
+  Object.assign(runs[30], {
+    'terminal-outcome': 'report_incomplete',
+    'terminal-outcome-detail': 'Required target evidence is unavailable.'
+  });
   const audits = [{
     ...runs[30],
     event: 'incomplete-report',
@@ -285,6 +289,10 @@ describe('campaign problem query optimization', () => {
     /** @type {typeof canonical} */
     const sources = {
       ...canonical,
+      runs: {
+        ...canonical.runs,
+        metadata: { ...canonical.runs.metadata, completeness: 'partial', freshness: 'stale' }
+      },
       audits: {
         ...canonical.audits,
         metadata: { ...canonical.audits.metadata, completeness: 'partial', freshness: 'stale' }
