@@ -7,8 +7,11 @@ import { validateQueryWindow } from './query-window-validator.js';
 import { dashboardViewSourceNames } from './view-filter-contract.js';
 import { validateEnumeratedFilterValue, validateEnumeratedMetadataValue, validateLinkObject, rejectSensitiveStringsInObject, SEMANTIC_FILTER_VALUE_SETS, validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateNonEmptyStringSequence, isRfc3339Timestamp, validateObjectKeys, createError, isPlainObject, isAggregateFilterLiteral, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
+import { createDebug } from './debug.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
+
+const debugValidatorQueries = createDebug('validator-queries');
 
 /**
  * @param {unknown} entries
@@ -127,8 +130,10 @@ export function validateQueries(queries, queriesNode, errors) {
   for (const [index, query] of queries.entries()) {
     const path = `$.dashboard.queries[${index}]`;
     const queryNode = getSequenceItemNode(queriesNode, index);
+    const errorCountBeforeQuery = errors.length;
     if (!isPlainObject(query)) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query must be a mapping.', path));
+      debugValidatorQueries({ operation: 'validate-query', index, status: 'invalid' });
       continue;
     }
     validateObjectKeys(queryNode, QUERY_KEYS, path, errors);
@@ -172,6 +177,11 @@ export function validateQueries(queries, queriesNode, errors) {
       }
       state.declaredQueryTables.set(name, tables);
     }
+    debugValidatorQueries({
+      operation: 'validate-query',
+      index,
+      status: errors.length === errorCountBeforeQuery ? 'ok' : 'invalid'
+    });
   }
   return declared;
 }
@@ -1008,6 +1018,7 @@ export function validateViewQueryMaterialization(dashboard, errors) {
           { ...querySources, ...declared },
           payload.aliases
         );
+        const errorCountBeforeMaterialization = errors.length;
         for (const alias of payload.aliases) {
           if (materialized[alias]?.metadata?.availability !== 'unavailable') continue;
           errors.push(createError(
@@ -1016,12 +1027,19 @@ export function validateViewQueryMaterialization(dashboard, errors) {
             `$.dashboard.pages[${pageIndex}].views`
           ));
         }
+        debugValidatorQueries({
+          operation: 'materialize-view-queries',
+          pageIndex,
+          aliasCount: payload.aliases.length,
+          status: errors.length === errorCountBeforeMaterialization ? 'ok' : 'invalid'
+        });
       } catch (error) {
         errors.push(createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
           `page-scoped view queries must materialize successfully: ${error instanceof Error ? error.message : String(error)}`,
           `$.dashboard.pages[${pageIndex}]`
         ));
+        debugValidatorQueries({ operation: 'materialize-view-queries', pageIndex, status: 'exception' });
       }
     });
 }
