@@ -1,35 +1,7 @@
 {
   "source_sha": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-08T03:34:26Z",
-      "worker_run_id": 37723157866,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37721895830,
-        37720832297,
-        37720401950,
-        37719586994,
-        37719585540,
-        37719364858,
-        37719315177,
-        37719133607,
-        37719003613,
-        37718915373,
-        37717682972,
-        37716988743,
-        37716461895,
-        37716273921,
-        37716166002,
-        37716007399,
-        37715820775,
-        37714408833,
-        37714226098,
-        37714027113
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: the latest 20 completed docs.yml runs in the last 14 days contained 0 successful runs, below the required minimum of 5 comparable successful runs. The bounded sample was dominated by cancelled and action_required workflow_run and schedule attempts across recent source SHAs 60c32537bbde09ebde7c1ae2dd6e9f07ebc0c035, 307c586c9c43a0e9859b5a616848dc8aee94912b, fa22e47bdb019d5742e1c2695836c142a198c6e0, and d9d427b9d69190983beca0d94a4f09d6373b27ab, so no trusted timing or cache-effectiveness recommendation could be revalidated safely in this run."
-    },
     {
       "evaluated_at": "2026-10-08T04:03:00Z",
       "worker_run_id": 37725312001,
@@ -855,6 +827,35 @@
         37802710234
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T15:40:36Z through 2026-10-08T17:23:47Z, 7 runs concluded success but only 1 run (37809367639) completed the comparable schedule-freshness + build + deploy path for category \"artifact transfer and Pages packaging\". The remaining successful runs were freshness-only schedule passes with build and deploy skipped, alongside skipped and action_required workflow_run outcomes. That leaves fewer than the required 5 comparable successful runs, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle.",
+      "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-08T17:48:25Z",
+      "worker_run_id": 37818296159,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37817729084,
+        37817563564,
+        37816220255,
+        37815934507,
+        37813421963,
+        37813110563,
+        37812197656,
+        37811803743,
+        37811094278,
+        37809367639,
+        37809022764,
+        37809017428,
+        37806255715,
+        37806255813,
+        37806254570,
+        37806253789,
+        37805620432,
+        37804974563,
+        37804274542,
+        37803726329
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the cycle's next category (artifact transfer and Pages packaging) still lacks the required 5 comparable build-bearing docs successes in the latest 20 completed docs.yml runs. The latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T15:48:08Z through 2026-10-08T17:35:34Z and yielded 7 successful schedule runs, 9 skipped workflow_run runs, and 4 action_required workflow_run outliers with no jobs; queue median/p90 was 0s/0s and full successful-workflow median/p90 was 14s/61.4s. Trusted Actions metadata showed schedule-freshness ran in all 7 successful runs at 9s median / 10s p90, while only 1 run (37809367639) executed build and deploy after a new default-branch SHA; its build and deploy jobs took 61s and 49s with node_modules and CAO Dashboard cache hits, Build documentation 14s, and Upload Pages artifact 15s. Source inspection of .github/workflows/docs.yml confirms the freshness gate now covers both schedule and successful default-branch workflow_run events, and the bounded run sample matches that behavior: every completed workflow_run docs invocation in the sample either skipped cleanly or was an action_required outlier rather than performing a duplicate rebuild. Relevant cao-dashboard evidence in the same repository showed the latest 20 completed cao-dashboard.yml runs contained 0 successful runs (14 skipped, 4 cancelled, 2 failed), so no new dashboard-generation optimization can be revalidated safely in this cycle; the standing threshold-meeting dashboard-side improvement is already tracked by open issue #16825, while open issue #16054 already represents the earlier workflow_run duplicate-build subject. No additional non-duplicate scheduling/concurrency change currently meets the >=60s or >=15% threshold without weakening freshness or correctness.",
       "suggestion_fingerprint": null
     }
   ]
