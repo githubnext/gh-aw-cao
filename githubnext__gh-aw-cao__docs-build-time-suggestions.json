@@ -3,36 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-05T16:31:00Z",
-      "worker_run_id": 37341123437,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37323116688,
-        37321614017,
-        37320374780,
-        37320198675,
-        37318592172,
-        37317829360,
-        37315396199,
-        37313643352,
-        37312746008,
-        37311023171,
-        37307544275,
-        37306843116,
-        37305512812,
-        37305354586,
-        37303943885,
-        37303820914,
-        37302772628,
-        37300319657,
-        37300174741,
-        37314906458,
-        37312296433
-      ],
-      "outcome": "incomplete_due_to_rate_limit: attempted to refresh docs.yml and cao-dashboard.yml run evidence from GitHub Actions, but GitHub API rate limiting blocked additional trusted metadata collection before step-level verification could complete. Reused existing memory evidence and open-issue scan only; no new actionable, non-duplicate recommendation could be validated safely in this run.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-05T17:24:00Z",
       "worker_run_id": 37348059728,
       "category": "reusable dashboard generation",
@@ -761,6 +731,34 @@
       ],
       "outcome": "suggestion_created: latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T05:34:54Z through 2026-10-08T06:42:49Z and yielded 5 successful runs, including 3 build-bearing successes (37734716675, 37733857728, 37733404070) plus 2 trusted freshness skips (37735489476, 37739110146); the remaining sample contained 12 skipped workflow_run runs and 3 action_required workflow_run runs that were disclosed but excluded from comparable timing. Trusted Actions metadata showed 100% node_modules cache hits and 100% CAO Dashboard cache hits in all 3 build-bearing docs runs, so docs build median/p90 was 52s/52.8s, deploy 29s/31.4s, and full workflow 58s/93.6s across successful runs. The latest 10 successful main-branch cao-dashboard.yml runs in the same window showed full workflow median/p90 438.5s/649.8s and dashboard build median/p90 395.5s/632.7s, with Restore collected activity data 41s/81.6s, Install dashboard build dependencies 6.5s/10s, Upgrade fallback activity data 298s/509.3s, Assemble Dashboard Language site 7s/9s, and Upload dashboard artifact 11s/12.1s. Bounded logs confirmed repeated reuse of the same activity cache key across multiple successful dashboard builds (37696643240, 37698114059, 37700462461, 37703216748, and 37709368540 all restored cao-activity-v5-37691694017-1; 37712654857 and 37716988626 both restored cao-activity-v5-37698136052-1; 37721052798 and 37726721769 both restored cao-activity-v5-37704871035-1), yet each reran Upgrade fallback activity data for 175-218s, 378-397s, and 473-491s respectively. This justified a new non-duplicate recommendation to cache and reuse the upgraded activity workspace across repeated CAO Dashboard builds keyed by the restored activity snapshot and ingestion-compatibility inputs.",
       "suggestion_fingerprint": "cache-upgraded-cao-activity-snapshot-by-restored-cache-key"
+    },
+    {
+      "evaluated_at": "2026-10-08T07:13:44Z",
+      "worker_run_id": 37741664097,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        37741745801,
+        37741448739,
+        37739110146,
+        37738891866,
+        37736402303,
+        37736253412,
+        37735634847,
+        37735489476,
+        37735405414,
+        37735013924,
+        37734716675,
+        37734298228,
+        37734297231,
+        37734180833,
+        37734063823,
+        37733942264,
+        37733857728,
+        37733404070,
+        37733402887,
+        37733402875
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: evaluated the latest 20 completed docs.yml runs from the last 14 days for artifact transfer and Pages packaging. The bounded window contained 6 successful runs overall, but only 3 comparable build-bearing successes (37734716675, 37733857728, 37733404070) that executed the packaging path, below the required minimum of 5 comparable successful runs. The remaining successful runs were freshness skips after the current skip logic prevented redundant builds, and the latest 20-run sample also included skipped and action_required outcomes. No fresh threshold-backed recommendation could be validated safely in this cycle."
     }
   ]
 }
