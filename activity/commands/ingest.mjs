@@ -5,8 +5,7 @@ export async function runIngest({
   indexedDB,
   ingestGhAwLogDirectory,
   databaseCounts,
-  retentionWindowMs,
-  runRetentionWindowMs,
+  sqliteRetention,
   option,
   rejectUnknownOptions,
 }) {
@@ -15,10 +14,7 @@ export async function runIngest({
     indexedDB,
     path.resolve(option(options, "context")),
     path.resolve(option(options, "logs")),
-    {
-      retentionWindowMs: retentionWindowMs(options),
-      retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
-    },
+    sqliteRetention(options),
   );
   return { result, counts: await databaseCounts(indexedDB) };
 }

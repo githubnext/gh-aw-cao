@@ -79,6 +79,10 @@ beforeEach(async () => {
   afterEach(() => vi.restoreAllMocks());
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('database table ingestion and queries', () => {
   it('streams normalized JSONL across chunk boundaries and skips published repeats', async () => {
     await ingestDashboardSources(indexedDB, sources);
@@ -834,7 +838,10 @@ describe('database table ingestion and queries', () => {
       expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
-    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+    ]);
+    expect((await readCanonicalBatch(indexedDB)).audits).toEqual([]);
   });
 
   it('upserts multiple JSONL runs and retains earlier fresh records', async () => {

@@ -33,11 +33,12 @@ type State struct {
 }
 
 type Store struct {
-	db              *sql.DB
-	config          *pgx.ConnConfig
-	namespace       string
-	stopMaintenance context.CancelFunc
-	maintenanceDone sync.WaitGroup
+	db                  *sql.DB
+	config              *pgx.ConnConfig
+	namespace           string
+	linkedRetentionDays int
+	stopMaintenance     context.CancelFunc
+	maintenanceDone     sync.WaitGroup
 }
 
 // Open reports whether the store has a database handle. A zero-valued Store
@@ -109,8 +110,13 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, err
 	}
-	store := &Store{db: db, config: config.Copy(), namespace: namespace}
-	if err := store.RunPartitionMaintenance(ctx, time.Now(), retention); err != nil {
+	linkedRetention, err := configuredLinkedRetentionDays()
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	store := &Store{db: db, config: config.Copy(), namespace: namespace, linkedRetentionDays: linkedRetention}
+	if err := store.RunPartitionMaintenance(ctx, time.Now(), retention, linkedRetention); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize run partitions: %w", err)
 	}
@@ -118,7 +124,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, fmt.Errorf("maintain existing native audits: %w", err)
 	}
-	storeLog.Printf("store opened retention_days=%d", retention)
+	storeLog.Printf("store opened retention_days=%d linked_retention_days=%d", retention, linkedRetention)
 	maintenanceCtx, stop := context.WithCancel(context.WithoutCancel(ctx))
 	store.stopMaintenance = stop
 	store.maintenanceDone.Add(1)
@@ -127,7 +133,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		ticker := time.NewTicker(partitionMaintenanceInterval)
 		defer ticker.Stop()
 		runPartitionMaintenanceLoop(maintenanceCtx, ticker.C, func(ctx context.Context, now time.Time) error {
-			return store.RunPartitionMaintenance(ctx, now, retention)
+			return store.RunPartitionMaintenance(ctx, now, retention, linkedRetention)
 		})
 	}()
 	return store, nil

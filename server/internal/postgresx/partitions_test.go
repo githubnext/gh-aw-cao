@@ -76,3 +76,40 @@ func TestConfiguredRetentionDays(t *testing.T) {
 		})
 	}
 }
+
+func TestConfiguredLinkedRetentionDays(t *testing.T) {
+	for _, tt := range []struct {
+		value   string
+		want    int
+		wantErr bool
+	}{
+		{want: 7},
+		{value: " \t ", want: 7},
+		{value: " 14 ", want: 14},
+		{value: "3650", want: 3650},
+		{value: "6", wantErr: true},
+		{value: "3651", wantErr: true},
+		{value: "invalid", wantErr: true},
+	} {
+		t.Run(tt.value, func(t *testing.T) {
+			t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", tt.value)
+			got, err := configuredLinkedRetentionDays()
+			if (err != nil) != tt.wantErr || (!tt.wantErr && got != tt.want) {
+				t.Fatalf("configuredLinkedRetentionDays() = %d, %v; want %d, error=%v", got, err, tt.want, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRetentionBounds(t *testing.T) {
+	for _, tt := range []struct {
+		run, linked int
+	}{
+		{6, 7}, {30, 6}, {30, 31},
+	} {
+		store := &Store{}
+		if err := store.RunPartitionMaintenance(t.Context(), time.Now(), tt.run, tt.linked); err == nil {
+			t.Fatalf("accepted invalid retention run=%d linked=%d", tt.run, tt.linked)
+		}
+	}
+}

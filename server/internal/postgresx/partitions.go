@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 )
 
 const defaultRunRetentionDays = 30
+const defaultLinkedRetentionDays = 7
 const futureRunWeeks = 4
 const partitionMaintenanceInterval = 24 * time.Hour
 
@@ -32,10 +34,13 @@ func weekStart(t time.Time) time.Time {
 }
 
 // RunPartitionMaintenance is an administrative operation, never part of
-// ingestion. Only whole weeks strictly older than the retention cutoff go.
-func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, retentionDays int) error {
+// ingestion. Only whole weeks strictly older than each retention cutoff go.
+func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, retentionDays, linkedRetentionDays int) error {
 	if retentionDays < 7 || retentionDays > 3650 {
 		return fmt.Errorf("run retention days must be between 7 and 3650")
+	}
+	if linkedRetentionDays < 7 || linkedRetentionDays > retentionDays {
+		return fmt.Errorf("linked retention days must be between 7 and run retention days")
 	}
 	lock, err := pgx.ConnectConfig(ctx, s.config.Copy())
 	if err != nil {
@@ -51,14 +56,16 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	}
 	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
+	linkedCutoff := now.UTC().AddDate(0, 0, -linkedRetentionDays)
 	start := weekStart(cutoff)
+	linkedStart := weekStart(linkedCutoff)
 	current := weekStart(now)
 	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
-	existing, expired, err := s.existingPartitions(ctx, cutoff)
+	existing, expired, err := s.existingPartitions(ctx, cutoff, linkedCutoff)
 	if err != nil {
 		return err
 	}
-	partitionsLog.Printf("partition maintenance started namespace=%s retention_days=%d expired_weeks=%d", s.namespace, retentionDays, len(expired))
+	partitionsLog.Printf("partition maintenance started namespace=%s retention_days=%d linked_retention_days=%d expired_weeks=%d", s.namespace, retentionDays, linkedRetentionDays, len(expired))
 	defer func() {
 		partitionsLog.Printf("partition maintenance finished namespace=%s window_start=%s window_end=%s", s.namespace, start.Format("20060102"), end.Format("20060102"))
 	}()
@@ -69,12 +76,27 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 		}
 	}
 	for at := start; at.Before(current); at = at.AddDate(0, 0, 7) {
-		if err := s.createWeek(ctx, tables, at, existing); err != nil {
+		needed := []string{"runs"}
+		if !at.Before(linkedStart) {
+			needed = tables
+		}
+		if err := s.createWeek(ctx, needed, at, existing); err != nil {
 			return err
 		}
 	}
 	for _, at := range expired {
-		if err := s.maintainWeek(ctx, tables, at, true); err != nil {
+		var drop []string
+		for _, table := range tables {
+			name := table + "_w" + at.Format("20060102")
+			tableCutoff := linkedCutoff
+			if table == "runs" {
+				tableCutoff = cutoff
+			}
+			if existing[name] && !at.AddDate(0, 0, 7).After(tableCutoff) {
+				drop = append(drop, table)
+			}
+		}
+		if err := s.maintainWeek(ctx, drop, at, true); err != nil {
 			return err
 		}
 	}
@@ -131,7 +153,7 @@ func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time)
 	return tx.Commit()
 }
 
-func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[string]bool, []time.Time, error) {
+func (s *Store) existingPartitions(ctx context.Context, cutoff, linkedCutoff time.Time) (map[string]bool, []time.Time, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT c.relname,p.relname FROM pg_inherits i
 		JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent
 		WHERE p.relnamespace=current_schema()::regnamespace AND p.relname IN
@@ -143,29 +165,33 @@ func (s *Store) existingPartitions(ctx context.Context, cutoff time.Time) (map[s
 	defer func() { _ = rows.Close() }()
 	existing := make(map[string]bool)
 	var expired []time.Time
+	seen := make(map[time.Time]bool)
 	for rows.Next() {
 		var name, table string
 		if err := rows.Scan(&name, &table); err != nil {
 			return nil, nil, err
 		}
 		existing[name] = true
-		if table != "runs" {
-			continue
+		if !strings.HasPrefix(name, table+"_w") || len(name) != len(table+"_w")+8 {
+			return nil, nil, fmt.Errorf("unexpected %s partition", table)
 		}
-		if !strings.HasPrefix(name, "runs_w") || len(name) != len("runs_w")+8 {
-			return nil, nil, fmt.Errorf("unexpected runs partition")
-		}
-		date, err := time.Parse("20060102", strings.TrimPrefix(name, "runs_w"))
+		date, err := time.Parse("20060102", strings.TrimPrefix(name, table+"_w"))
 		if err != nil {
 			return nil, nil, err
 		}
-		if !date.AddDate(0, 0, 7).After(cutoff) {
+		tableCutoff := linkedCutoff
+		if table == "runs" {
+			tableCutoff = cutoff
+		}
+		if !date.AddDate(0, 0, 7).After(tableCutoff) && !seen[date] {
 			expired = append(expired, date)
+			seen[date] = true
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
+	sort.Slice(expired, func(i, j int) bool { return expired[i].Before(expired[j]) })
 	return existing, expired, nil
 }
 
@@ -196,9 +222,18 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 	defer func() { _ = tx.Rollback() }()
 	var namespaces []string
 	if drop {
-		namespaces, err = partitionNamespaces(ctx, tx, "runs_w"+at.Format("20060102"))
-		if err != nil {
-			return err
+		seen := make(map[string]bool)
+		for _, table := range tables {
+			found, err := partitionNamespaces(ctx, tx, table+"_w"+at.Format("20060102"))
+			if err != nil {
+				return err
+			}
+			for _, namespace := range found {
+				if !seen[namespace] {
+					namespaces = append(namespaces, namespace)
+					seen[namespace] = true
+				}
+			}
 		}
 		for _, namespace := range namespaces {
 			if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, namespace); err != nil {
@@ -285,6 +320,18 @@ func configuredRetentionDays() (int, error) {
 	days, err := strconv.Atoi(value)
 	if err != nil || days < 7 || days > 3650 {
 		return 0, fmt.Errorf("CAO_POSTGRES_RUN_RETENTION_DAYS must be between 7 and 3650")
+	}
+	return days, nil
+}
+
+func configuredLinkedRetentionDays() (int, error) {
+	value := strings.TrimSpace(os.Getenv("CAO_POSTGRES_LINKED_RETENTION_DAYS"))
+	if value == "" {
+		return defaultLinkedRetentionDays, nil
+	}
+	days, err := strconv.Atoi(value)
+	if err != nil || days < 7 || days > 3650 {
+		return 0, fmt.Errorf("CAO_POSTGRES_LINKED_RETENTION_DAYS must be between 7 and 3650")
 	}
 	return days, nil
 }

@@ -287,10 +287,65 @@ func TestNativeInventoryEnrichment(t *testing.T) {
 	}
 }
 
+func TestLinkedRetentionDoesNotProvisionOldShards(t *testing.T) {
+	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "")
+	store, _ := nativeTestStore(t)
+	now := time.Now().UTC()
+	week := weekStart(now.AddDate(0, 0, -21)).Format("20060102")
+	for _, table := range []struct {
+		name string
+		want bool
+	}{
+		{"runs", true},
+		{"audits", false},
+		{"tools", false},
+	} {
+		var exists bool
+		if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", table.name+"_w"+week).Scan(&exists); err != nil || exists != table.want {
+			t.Fatalf("%s historical partition exists=%v, want %v: %v", table.name, exists, table.want, err)
+		}
+	}
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	for _, record := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$repositories", model.Row{"id": "repository"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repository"}},
+		{"$runs", model.Row{"id": "historical", "repositoryId": "repository", "workflowId": "workflow", "createdAt": now.AddDate(0, 0, -21).Format(time.RFC3339)}},
+		{"$runs", model.Row{"id": "recent", "repositoryId": "repository", "workflowId": "workflow", "createdAt": now.Format(time.RFC3339)}},
+		{"$tools", model.Row{"id": "old-tool", "runId": "historical"}},
+		{"$tools", model.Row{"id": "recent-tool", "runId": "recent"}},
+	} {
+		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := writer.Publish(t.Context(), "linked-retention"); err != nil {
+		t.Fatal(err)
+	}
+	var runs, tools int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM runs WHERE namespace=$1", store.namespace).Scan(&runs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM tools WHERE namespace=$1", store.namespace).Scan(&tools); err != nil {
+		t.Fatal(err)
+	}
+	if runs != 2 || tools != 1 {
+		t.Fatalf("historical ingestion kept %d runs and %d tools, want 2 and 1", runs, tools)
+	}
+}
+
 func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
+	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "30")
 	store, _ := nativeTestStore(t)
 	now := time.Now().UTC()
 	old := now.AddDate(0, 0, -28).Format(time.RFC3339)
+	middle := now.AddDate(0, 0, -14).Format(time.RFC3339)
 	current := now.Format(time.RFC3339)
 	writer, err := store.BeginIngestion(t.Context())
 	if err != nil {
@@ -307,6 +362,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
 		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
 		{"$runs", model.Row{"id": "old", "repositoryId": "repository", "workflowId": "workflow", "createdAt": old}},
+		{"$runs", model.Row{"id": "middle", "repositoryId": "repository", "workflowId": "workflow", "createdAt": middle}},
 		{"$runs", model.Row{"id": "current", "repositoryId": "repository", "workflowId": "workflow", "createdAt": current}},
 	} {
 		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
@@ -314,7 +370,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		}
 	}
 	for _, source := range []string{"$audits", "$domains", "$evalObservations", "$experimentAssignments", "$friction", "$graderObservations", "$issues", "$skills", "$tools"} {
-		for _, run := range []string{"old", "current"} {
+		for _, run := range []string{"old", "middle", "current"} {
 			row := model.Row{"id": source + run, "runId": run}
 			switch source {
 			case "$evalObservations":
@@ -333,15 +389,15 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	var partitions int
-	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 2 {
-		t.Fatalf("runs did not route to two weekly partitions: %d %v", partitions, err)
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 3 {
+		t.Fatalf("runs did not route to three weekly partitions: %d %v", partitions, err)
 	}
 	var future bool
 	if err := store.db.QueryRowContext(t.Context(), `SELECT to_regclass('runs_w' || to_char(date_trunc('week', now() AT TIME ZONE 'UTC') + interval '3 weeks','YYYYMMDD')) IS NOT NULL`).Scan(&future); err != nil || !future {
 		t.Fatalf("future weekly partition was not pre-created: %v %v", future, err)
 	}
 	result, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{{Name: "runs", From: "$runs", Select: []query.SelectedField{{Field: "id"}}}}, []string{"runs"})
-	if err != nil || len(result["runs"].Rows) != 2 {
+	if err != nil || len(result["runs"].Rows) != 3 {
 		t.Fatalf("parent query lost partitions: %v %v", result, err)
 	}
 	active, err := store.BeginIngestion(t.Context())
@@ -349,7 +405,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	maintenance := make(chan error, 1)
-	go func() { maintenance <- store.RunPartitionMaintenance(t.Context(), now, 14) }()
+	go func() { maintenance <- store.RunPartitionMaintenance(t.Context(), now, 30, 7) }()
 	select {
 	case err := <-maintenance:
 		t.Fatalf("maintenance raced an active ingestion: %v", err)
@@ -360,14 +416,24 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	state, err := store.State(t.Context())
-	if err != nil || state.Revision <= 1 || state.Counts["$runs"] != 1 || state.Counts["$tools"] != 1 {
+	if err != nil || state.Revision <= 1 || state.Counts["$runs"] != 3 || state.Counts["$tools"] != 1 {
 		t.Fatalf("retention did not publish updated counts and revision: %+v %v", state, err)
 	}
-	for _, table := range []string{"runs", "audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools"} {
+	for _, table := range []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools"} {
 		var count int
 		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count); err != nil || count != 1 {
 			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)
 		}
+	}
+	var retainedRuns int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM runs WHERE namespace=$1", store.namespace).Scan(&retainedRuns); err != nil || retainedRuns != 3 {
+		t.Fatalf("run retention count = %d, err = %v", retainedRuns, err)
+	}
+	if err := store.RunPartitionMaintenance(t.Context(), now, 14, 7); err != nil {
+		t.Fatal(err)
+	}
+	if state, err = store.State(t.Context()); err != nil || state.Counts["$runs"] != 2 || state.Counts["$tools"] != 1 {
+		t.Fatalf("run retention did not remove the expired run: %+v %v", state, err)
 	}
 	if _, err := store.db.ExecContext(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
 		VALUES($1,2,repeat('0',73)::bit varying,'unroutable','repository','workflow','1900-01-01')`, store.namespace); err == nil || !strings.Contains(err.Error(), "no partition") {
@@ -377,8 +443,8 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM pg_inherits WHERE inhparent='runs'::regclass`).Scan(&before); err != nil {
 		t.Fatal(err)
 	}
-	for _, day := range []time.Time{now, now.AddDate(0, 0, 1)} {
-		if err := store.RunPartitionMaintenance(t.Context(), day, 14); err != nil {
+	for _, day := range []time.Time{now, now} {
+		if err := store.RunPartitionMaintenance(t.Context(), day, 14, 7); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -388,7 +454,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if after < before || after > before+1 {
 		t.Fatalf("repeated daily maintenance duplicated partitions: before=%d after=%d", before, after)
 	}
-	if repeat, err := store.State(t.Context()); err != nil || repeat.Revision != state.Revision || repeat.Counts["$runs"] != 1 {
+	if repeat, err := store.State(t.Context()); err != nil || repeat.Revision != state.Revision || repeat.Counts["$runs"] != 2 {
 		t.Fatalf("repeated maintenance changed logical state: %+v %v", repeat, err)
 	}
 	missingWeek := now.AddDate(0, 0, 7*futureRunWeeks)
@@ -397,7 +463,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE "+missingName); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.RunPartitionMaintenance(t.Context(), now, 14); err != nil {
+	if err := store.RunPartitionMaintenance(t.Context(), now, 14, 7); err != nil {
 		t.Fatal(err)
 	}
 	var restored bool
@@ -407,7 +473,7 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		t.Fatalf("missing child partition was not restored: %v %v", restored, err)
 	}
 	later := now.AddDate(0, 0, 7)
-	if err := store.RunPartitionMaintenance(t.Context(), later, 14); err != nil {
+	if err := store.RunPartitionMaintenance(t.Context(), later, 14, 7); err != nil {
 		t.Fatal(err)
 	}
 	futureWeek := later.AddDate(0, 0, 7*futureRunWeeks)

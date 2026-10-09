@@ -54,9 +54,10 @@ Activity uses the `central-agentic-ops-activity` concurrency group with
 by the next scheduled trigger; GitHub Actions queues at most one pending
 refresh behind it.
 
-Runs collect a rolling 30-day window and recent artifact detail. The canonical
-stores preserve every run summary available in the collected JSONL while
-expiring detailed run-owned records after 30 days.
+Runs collect a rolling 30-day window and recent artifact detail. The Activity
+SQLite projection retains Run and Operational Value records for 30 days by
+default while expiring run-linked detail after seven days. Historical archives
+can override these windows explicitly.
 
 ## Cache contract
 

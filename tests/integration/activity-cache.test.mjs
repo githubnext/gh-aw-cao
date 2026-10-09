@@ -109,6 +109,8 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
   assert.match(collector, /--cached-jsonl "\$\{shard_prefix\}\*"/);
+  assert.match(collector, /detail_window_days="\$\{REPORT_DETAIL_WINDOW_DAYS:-7\}"/);
+  assert.match(collector, /--retention-days "\$detail_window_days"/);
   assert.match(collector, /REPORT_DEFER_ISSUE_STATUS/);
   assert.doesNotMatch(
     indexJob,
@@ -147,7 +149,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(workflow, /REPORT_LOG_TIMEOUT: "15"/);
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--retention-days 30[\s\S]*?--run-retention-days 30[\s\S]*?doctor[\s\S]*?--ttl-days 30[\s\S]*?--run-ttl-days 30/,
+    /ingest-jsonl[\s\S]*?--retention-days 7[\s\S]*?--run-retention-days 30[\s\S]*?doctor[\s\S]*?--ttl-days 7[\s\S]*?--run-ttl-days 30/,
   );
   assert.doesNotMatch(
     workflow,

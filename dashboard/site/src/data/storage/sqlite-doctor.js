@@ -364,9 +364,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
  * @param {string} checkedAt
  * @param {number} now
  * @param {number} retentionWindowMs
- * @param {number | undefined} runRetentionWindowMs
+ * @param {{ runs: number, operationalValues: number }} retentionWindowMsByStore
  */
-async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs, runRetentionWindowMs) {
+async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs, retentionWindowMsByStore) {
   const connection = openConnection(filename);
   let backupPath = null;
   let candidateBackupPath = null;
@@ -400,7 +400,7 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
     const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
       now,
       retentionWindowMs,
-      retentionWindowMsByStore: { runs: runRetentionWindowMs },
+      retentionWindowMsByStore,
       includePreviousInReference: true,
       preserveUnreferencedParents: true
     });
@@ -476,7 +476,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const retainAll = options.ttlDays === 'all';
   const ttlDays = retainAll
     ? 'all'
-    : Number.isFinite(options.ttlDays) ? Number(options.ttlDays) : RETENTION_WINDOW_DAYS;
+    : Number.isFinite(options.ttlDays) ? Number(options.ttlDays) : 7;
   const retentionWindowMs = retainAll ? Number.MAX_SAFE_INTEGER : Number(ttlDays) * DAY_MS;
   if (!retainAll && (Number(ttlDays) <= 0 || !Number.isFinite(retentionWindowMs))) {
     throw new TypeError('TTL days must produce a finite window greater than zero');
@@ -484,14 +484,19 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const retainAllRuns = options.runTtlDays === 'all';
   const runTtlDays = retainAllRuns
     ? 'all'
-    : Number.isFinite(options.runTtlDays) ? Number(options.runTtlDays) : undefined;
+    : Number.isFinite(options.runTtlDays) ? Number(options.runTtlDays)
+      : options.ttlDays === undefined ? RETENTION_WINDOW_DAYS : ttlDays;
   const runRetentionWindowMs = retainAllRuns
     ? Number.MAX_SAFE_INTEGER
-    : runTtlDays === undefined ? undefined : Number(runTtlDays) * DAY_MS;
-  if (!retainAllRuns && runTtlDays !== undefined
+    : runTtlDays === 'all' ? Number.MAX_SAFE_INTEGER : Number(runTtlDays) * DAY_MS;
+  if (!retainAllRuns
     && (Number(runTtlDays) <= 0 || !Number.isFinite(runRetentionWindowMs))) {
     throw new TypeError('Run TTL days must produce a finite window greater than zero');
   }
+  const retentionWindowMsByStore = {
+    runs: runRetentionWindowMs,
+    operationalValues: options.ttlDays === undefined ? RETENTION_WINDOW_DAYS * DAY_MS : retentionWindowMs
+  };
   const checkedAt = new Date(now).toISOString();
   const actions = /** @type {string[]} */ ([]);
   const errors = /** @type {string[]} */ ([]);
@@ -575,7 +580,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
     now,
     retentionWindowMs,
-    retentionWindowMsByStore: { runs: runRetentionWindowMs },
+    retentionWindowMsByStore,
     includePreviousInReference: true,
     preserveUnreferencedParents: true
   });
@@ -613,7 +618,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         checkedAt,
         now,
         retentionWindowMs,
-        runRetentionWindowMs
+        retentionWindowMsByStore
       );
       backupPath = repair.backupPath;
     } catch (error) {

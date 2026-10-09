@@ -426,14 +426,20 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		for i, column := range columns {
 			quoted[i] = "s." + query.SQLIdentifier(column)
 		}
-		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id",
+		stage := query.SQLIdentifier(name + "_stage")
+		cutoff := weekStart(w.ingestedAt.AddDate(0, 0, -w.store.linkedRetentionDays))
+		var expired int64
+		if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+stage+" s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at<$1", cutoff).Scan(&expired); err != nil {
+			return State{}, err
+		}
+		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at >= $1",
 			query.SQLIdentifier(name), strings.Join(columns, ","), strings.Join(quoted, ","),
-			query.SQLIdentifier(name+"_stage"))
-		tag, err := w.tx.Exec(ctx, statement)
+			stage)
+		tag, err := w.tx.Exec(ctx, statement, cutoff)
 		if err != nil {
 			return State{}, fmt.Errorf("publish run-owned %s: %w", name, err)
 		}
-		if tag.RowsAffected() != w.ordinals[source] {
+		if tag.RowsAffected()+expired != w.ordinals[source] {
 			return State{}, fmt.Errorf("run-owned %s references a missing or ambiguous parent", name)
 		}
 		if err := w.tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM "+query.SQLIdentifier(name)+" WHERE namespace=$1 GROUP BY id HAVING count(*)>1)", w.store.namespace).Scan(&duplicate); err != nil {

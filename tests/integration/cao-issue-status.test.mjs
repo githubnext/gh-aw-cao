@@ -367,6 +367,7 @@ process.exit(1);
       REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, 'collection-exit-code'),
       REPORT_GH_AW_LOGS_SHARDS: item.shardDirectory,
       REPORT_RUN_WINDOW_DAYS: '3650',
+      REPORT_DETAIL_WINDOW_DAYS: '3650',
       GRAPHQL_CALLS_PATH: item.callsPath
     };
     await execFileAsync('bash', [path.resolve('activity/collect-logs.sh')], { env });

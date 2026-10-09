@@ -126,7 +126,7 @@ test("queries canonical data with the gh-like surface", async () => {
   try {
     await mkdir(inputDirectory, { recursive: true });
     await writeFile(input, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
-    await executeFile(cao, ["ingest-jsonl", "--input-dir", inputDirectory, "--database", database]);
+    await executeFile(cao, ["ingest-jsonl", "--input-dir", inputDirectory, "--database", database, "--retention-days", "all"]);
 
     const { stdout: runsOutput } = await executeFile(cao, [
       "gh", "runs",

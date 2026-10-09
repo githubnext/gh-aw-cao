@@ -71,6 +71,10 @@ beforeEach(async () => {
   afterEach(() => vi.restoreAllMocks());
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('canonical dashboard worker retention updates', () => {
   it('publishes retained tools to subscribers after a partial collection', async () => {
     /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */

@@ -9,6 +9,7 @@ output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
 drain3_weights_path="${REPORT_DRAIN3_WEIGHTS:-}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
+detail_window_days="${REPORT_DETAIL_WINDOW_DAYS:-7}"
 run_limit="${REPORT_RUN_LIMIT:-10}"
 request_timeout="${REPORT_LOG_TIMEOUT:-10}"
 rate_limit="${REPORT_MAX_GITHUB_API_RATE_LIMIT:--2000}"
@@ -162,7 +163,7 @@ if [[ $exit_code -eq 0 ]]; then
     node "$cao_script" ingest-jsonl \
       --database "$activity_database" \
       --input-dir "$shard_directory" \
-      --retention-days "$window_days" \
+      --retention-days "$detail_window_days" \
       --run-retention-days "$window_days" || exit_code=$?
   fi
   if [[ $exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then

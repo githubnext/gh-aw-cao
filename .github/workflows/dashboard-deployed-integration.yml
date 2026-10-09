@@ -158,6 +158,7 @@ jobs:
       CAO_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       # Published snapshots include run cohorts older than the hosted 30-day window.
       CAO_POSTGRES_RUN_RETENTION_DAYS: "90"
+      CAO_POSTGRES_LINKED_RETENTION_DAYS: "90"
       DASHBOARD_SERVER_BINARY: ${{ github.workspace }}/.tmp/cao-dashboard
     permissions:
       contents: read

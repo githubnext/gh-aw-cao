@@ -87,6 +87,50 @@ afterEach(() => {
 });
 
 describe('canonical IndexedDB', () => {
+  it('expires every run-linked store after seven days without expiring its run', async () => {
+    const linkedStores = /** @type {const} */ ([
+      'domains', 'tools', 'skills', 'friction', 'audits', 'issues',
+      'experimentAssignments', 'graderObservations', 'evalObservations'
+    ]);
+    await writeRecords('runs', [
+      { id: 'run:old', observedAt: '2026-09-01T00:00:00Z' },
+      { id: 'run:new', observedAt: '2026-09-09T00:00:00Z' }
+    ]);
+    for (const store of linkedStores) {
+      await writeRecords(store, [
+        { id: `${store}:old`, runId: 'run:old', observedAt: '2026-09-01T00:00:00Z' },
+        { id: `${store}:new`, runId: 'run:new', observedAt: '2026-09-09T00:00:00Z' }
+      ]);
+    }
+    await writeRecords('operationalValues', [
+      { id: 'value:old', observedAt: '2026-09-01T00:00:00Z' }
+    ]);
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+
+    expect((await readCollection(indexedDB, 'runs')).map(({ id }) => id)).toEqual(['run:new', 'run:old']);
+    for (const store of linkedStores) {
+      expect((await readCollection(indexedDB, store)).map(({ id }) => id)).toEqual([`${store}:new`]);
+    }
+    expect((await readCollection(indexedDB, 'operationalValues')).map(({ id }) => id)).toEqual(['value:old']);
+  });
+
+  it('honors an explicit longer retention window for historical IndexedDB imports', async () => {
+    await writeRecords('runs', [{ id: 'run:old', observedAt: '2026-09-01T00:00:00Z' }]);
+    await writeRecords('tools', [{
+      id: 'tool:old', runId: 'run:old', observedAt: '2026-09-01T00:00:00Z'
+    }]);
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+    expect((await readCollection(indexedDB, 'tools')).map(({ id }) => id)).toEqual(['tool:old']);
+  });
+
   it('maintains retention and size limits without loading whole stores', async () => {
     await writeRecords('repositories', [{ id: 'repository:1' }]);
     await writeRecords('runs', [

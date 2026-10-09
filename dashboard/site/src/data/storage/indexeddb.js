@@ -1,6 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
-import { recordTimestamp } from './retention.js';
+import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
@@ -770,7 +770,9 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
               return;
             }
           }
-          const configuredWindow = options.retentionWindowMsByStore?.[storeName];
+          const configuredWindow = options.retentionWindowMsByStore?.[storeName]
+            ?? (Number.isFinite(options.retentionWindowMs)
+              ? undefined : BROWSER_RETENTION_WINDOWS_MS[/** @type {keyof typeof BROWSER_RETENTION_WINDOWS_MS} */ (storeName)]);
           const windowMs = Number.isFinite(configuredWindow)
             ? Math.max(0, Number(configuredWindow))
             : defaultWindow;

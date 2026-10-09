@@ -9,8 +9,7 @@ export async function runIngestJsonl({
   ingestJsonlFile,
   ingestJsonlShardDirectory,
   databaseCounts,
-  retentionWindowMs,
-  runRetentionWindowMs,
+  sqliteRetention,
   option,
   rejectUnknownOptions,
   UsageError,
@@ -24,8 +23,7 @@ export async function runIngestJsonl({
     ? JSON.parse(await readFile(path.resolve(contextPath), "utf8"))
     : undefined;
   const ingestOptions = {
-    retentionWindowMs: retentionWindowMs(options),
-    retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
+    ...sqliteRetention(options),
     context,
   };
   const runsDirectory = option(options, "runs-dir", false);

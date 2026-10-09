@@ -110,6 +110,21 @@ describe('canonical retention merge', () => {
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
   });
 
+  it('prunes run-linked browser detail after seven days without shortening the SQLite window', () => {
+    const previous = batch([
+      { eventId: 'event:old', timestamp: '2026-09-01T04:00:00Z' },
+      { eventId: 'event:recent', timestamp: '2026-09-09T04:00:00Z' }
+    ]);
+    expect(mergeRetainedRecords(previous, normalize([]), { now: NOW }).audits.map(({ id }) => id))
+      .toEqual(['event:old', 'event:recent']);
+    const browser = mergeRetainedRecords(previous, normalize([]), {
+      now: NOW,
+      retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+    });
+    expect(browser.audits.map(({ id }) => id)).toEqual(['event:recent']);
+    expect(browser.runs).toHaveLength(1);
+  });
+
   it('drops retained records whose parents no longer survive', () => {
     const previous = batch([
       { eventId: 'event:orphan', timestamp: '2026-09-01T04:00:00Z' }

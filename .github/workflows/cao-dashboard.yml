@@ -195,7 +195,7 @@ jobs:
               '--database', process.env.ACTIVITY_DATABASE,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
               '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
-              '--retention-days', '30',
+              '--retention-days', '7',
               '--run-retention-days', '30',
             ])
             await exec.exec(process.execPath, [

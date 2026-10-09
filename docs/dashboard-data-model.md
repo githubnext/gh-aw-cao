@@ -122,7 +122,7 @@ ingestion outcomes and is indexed by `createdAt`. Overview aggregates are
 computed by request-scoped queries over canonical runs. Schema upgrades rebuild all stores from
 authoritative dashboard inputs.
 
-For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
+For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires run-linked detail outside the browser's 7-day window (while retaining available run summaries and keeping Operational Values on 30 days), and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
 Browser storage remains disposable derived state rather than a generation-atomic
 authority. Writes use bounded transactions, so interruption can leave a
