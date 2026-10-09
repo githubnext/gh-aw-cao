@@ -345,6 +345,48 @@ func TestQueryCacheTTLAndOldestEvictionAgainstRedis(t *testing.T) {
 	}
 }
 
+// TestQueryCacheBulkExpiryRemovesAllEntriesAgainstRedis covers the batched
+// HDEL/ZREM path: several entries expiring in the same maintenance pass must
+// all be removed from both the hash and the expiry index, leaving no
+// partially-cleaned keys and no residual memory.
+func TestQueryCacheBulkExpiryRemovesAllEntriesAgainstRedis(t *testing.T) {
+	store, keys := queryCacheIntegrationStore(t)
+	const count = 37
+	data := []byte(strings.Repeat("x", 256))
+	expiring := make([]string, count)
+	for i := 0; i < count; i++ {
+		expiring[i] = queryDigest("bulk-expiring-" + strconv.Itoa(i))
+		if stored, _, err := store.CacheQueryResult(t.Context(), expiring[i], data, 1024, 1<<20); err != nil || !stored {
+			t.Fatalf("admission %d: stored=%t err=%v", i, stored, err)
+		}
+	}
+	survivor := queryDigest("bulk-survivor")
+	if stored, _, err := store.CacheQueryResult(t.Context(), survivor, data, 1024, 1<<20); err != nil || !stored {
+		t.Fatalf("survivor admission: stored=%t err=%v", stored, err)
+	}
+	for _, key := range expiring {
+		if _, err := store.Client.Do(t.Context(), "ZADD", keys[1], "0", key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, stats, err := store.CachedQueryResult(t.Context(), survivor, 1024, 1<<20); err != nil || string(got) != string(data) {
+		t.Fatalf("survivor cache hit: bytes=%d err=%v", len(got), err)
+	} else if stats.Expired != count {
+		t.Fatalf("expired count = %d, want %d", stats.Expired, count)
+	}
+	for _, key := range expiring {
+		if got, err := store.Client.Do(t.Context(), "HEXISTS", keys[0], key); err != nil || got != int64(0) {
+			t.Fatalf("expired entry %s remained in the hash: exists=%v err=%v", key, got, err)
+		}
+		if got, err := store.Client.Do(t.Context(), "ZSCORE", keys[1], key); err != nil || got != nil {
+			t.Fatalf("expired entry %s remained in the index: score=%v err=%v", key, got, err)
+		}
+	}
+	if got, _, err := store.CachedQueryResult(t.Context(), survivor, 1024, 1<<20); err != nil || string(got) != string(data) {
+		t.Fatalf("survivor retained after bulk expiry: bytes=%d err=%v", len(got), err)
+	}
+}
+
 func TestQueryCacheExpiryAndPartialEvictionAgainstRedis(t *testing.T) {
 	store, keys := queryCacheIntegrationStore(t)
 	key := queryDigest("expiring")

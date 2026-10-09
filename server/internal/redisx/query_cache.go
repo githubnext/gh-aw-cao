@@ -37,10 +37,18 @@ local function remove(key)
   redis.call("HDEL", entries, key)
   redis.call("ZREM", index, key)
 end
-for _, key in ipairs(redis.call("ZRANGEBYSCORE", index, "-inf", now)) do
-  remove(key)
-  expired = expired + 1
+-- Batching HDEL/ZREM into one multi-key call per round (instead of one call
+-- pair per key) collapses the dominant per-call Redis/Lua dispatch overhead
+-- during bulk expiry and eviction; QueryCacheMaxEntries bounds batch size
+-- well under Lua's unpack argument limit.
+local function removeAll(keys)
+  if #keys == 0 then return end
+  redis.call("HDEL", entries, unpack(keys))
+  redis.call("ZREM", index, unpack(keys))
 end
+local expiredKeys = redis.call("ZRANGEBYSCORE", index, "-inf", now)
+removeAll(expiredKeys)
+expired = #expiredKeys
 local function memory(key)
   return redis.call("MEMORY", "USAGE", key, "SAMPLES", 0) or 0
 end
@@ -57,10 +65,8 @@ local function trim(reserve, outgoing)
       batch = math.max(batch, math.ceil(cache_count * excess / cache_bytes))
     end
     local oldest = redis.call("ZRANGE", index, 0, math.min(batch, cache_count) - 1)
-    for _, key in ipairs(oldest) do
-      remove(key)
-      evicted = evicted + 1
-    end
+    removeAll(oldest)
+    evicted = evicted + #oldest
     cache_count = cache_count - #oldest
     cache_bytes = memory(entries) + memory(index)
     used, global_budget = pressure()
