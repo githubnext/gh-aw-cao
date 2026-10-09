@@ -687,7 +687,11 @@ test('publication retains usage evidence when the winning Run has null AIC', asy
 
 test('unchanged source shards still clean a pre-curation SQLite database', async () => {
   const { shardDirectory, databasePath } = await fixture();
-  await ingest(shardDirectory, databasePath);
+  const ingestRetained = async () => JSON.parse((await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'), 'ingest-jsonl', '--database', databasePath,
+    '--input-dir', shardDirectory, '--retention-days', 'all', '--run-retention-days', 'all'
+  ])).stdout);
+  await ingestRetained();
   const database = new DatabaseSync(databasePath);
   const run = JSON.parse(database.prepare("SELECT value FROM __idb_records WHERE store_name='runs' LIMIT 1").get().value);
   const { database_name: databaseName } = database.prepare("SELECT database_name FROM __idb_records WHERE store_name='runs' LIMIT 1").get();
@@ -700,7 +704,7 @@ test('unchanged source shards still clean a pre-curation SQLite database', async
     .run(databaseName, 'audits', JSON.stringify(audit.id), JSON.stringify(audit));
   database.prepare("DELETE FROM __idb_records WHERE store_name='transactions' AND json_extract(value,'$.kind')='audit-curation'").run();
   database.close();
-  const repeated = await ingest(shardDirectory, databasePath);
+  const repeated = await ingestRetained();
   assert.equal(repeated.result.updated, true);
   assert.equal(repeated.result.committedRecords, 0);
   assert.ok(repeated.result.shards.every((shard) => shard.skipped));
@@ -708,7 +712,7 @@ test('unchanged source shards still clean a pre-curation SQLite database', async
   assert.equal(cleaned.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name='audits' AND json_extract(value,'$.id')=?")
     .get(audit.id).count, 0);
   cleaned.close();
-  assert.equal((await ingest(shardDirectory, databasePath)).result.updated, false);
+  assert.equal((await ingestRetained()).result.updated, false);
 });
 
 test('hash-payloads excludes info-level audits from record shards', async () => {

@@ -205,6 +205,12 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen).toContainText(upgrade
     ? 'This update can take several minutes'
     : 'The first import can take several minutes');
+  const importHistory = importScreen.locator('.first-load-ingestion-details');
+  await expect(importHistory).toBeVisible();
+  await importHistory.locator('summary').click();
+  await expect(importHistory.locator('.dashboard-notification-details li').first()).toContainText('Preparing data');
+  await expect(importHistory.getByRole('button', { name: 'Cancel' })).toBeVisible();
+  await importHistory.locator('summary').click();
   if (upgrade) {
     await expect(importScreen).toContainText('refreshing your browser copy');
     await expect(importScreen.locator('.first-load-eyebrow')).toHaveText('Dashboard update');
@@ -231,12 +237,12 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
     await expectTheme(colorScheme);
     await page.setViewportSize({ width: 390, height: 844 });
   }
-  await importScreen.locator('summary').click();
+  await importScreen.locator('.first-load-about summary').click();
   await expect(importScreen.locator('.first-load-server-option')).toBeVisible();
   await expect(importScreen.locator('.first-load-reason')).toContainText(upgrade ? 'newer browser database format' : 'no completed local copy yet');
   await expect(importScreen.getByRole('link', { name: 'deployment options (opens in a new tab)' })).toBeVisible();
-  await expect(importScreen.getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
-  await importScreen.locator('summary').click();
+  await expect(importScreen.locator('.first-load-reason').getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
+  await importScreen.locator('.first-load-about summary').click();
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
   const readBackground = (/** @type {Element} */ element) => {
     const css = getComputedStyle(element, '::before');
@@ -254,10 +260,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await page.keyboard.press('Escape');
   await expect(importScreen).not.toBeVisible();
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
-  await page.getByRole('button', { name: 'Show import progress' }).click();
-  await expect(importScreen).toBeVisible();
-  await page.getByRole('button', { name: 'Explore data' }).click();
-  await expect(importScreen).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
@@ -283,17 +286,13 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   }
 
   await navigateToPage(page, 'overview');
-  await page.getByRole('button', { name: 'Show import progress' }).click();
-  await expect(importScreen).toBeVisible();
-  const importProgress = importScreen.getByRole('progressbar', { name: 'Dashboard import progress' });
-  expect(await importProgress.evaluate((element) => /** @type {HTMLProgressElement} */ (element).position))
-    .toBeLessThanOrEqual(0.7);
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
   await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'overview');
   await expect(page.locator('#agent-factory-heading')).not.toHaveText('Your dashboard is taking shape.');
-  await expect(page.getByRole('button', { name: 'Show import progress' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'runs');
   await selectTable(page, mobile);

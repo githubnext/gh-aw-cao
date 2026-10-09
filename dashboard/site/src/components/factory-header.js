@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { effect, render } from '../reactive.js';
-import { browserFirstLoad, showBrowserFirstLoad } from '../browser-first-load.js';
+import { browserFirstLoad } from '../browser-first-load.js';
 import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 import { createDebug } from '../debug.js';
@@ -57,7 +57,7 @@ export function renderFactoryHeader(sources, scope, roleNames, showFirstLoad = f
     const text = initialStatus === 'loading'
       ? 'We are preparing the first activity snapshot in this browser. Campaign status will appear when the import is complete.'
       : initialStatus === 'failed'
-      ? 'Campaign status is not available yet. Open the import screen to retry.'
+      ? 'Campaign status is not available yet.'
       : typeof candidate === 'string' ? candidate : '';
     summary.hidden = initialStatus === 'inactive' && (pending || !text);
     if (!pending) debugFactoryHeader({ event: 'summary-settled', hasSummary: Boolean(text) });
@@ -65,20 +65,14 @@ export function renderFactoryHeader(sources, scope, roleNames, showFirstLoad = f
   }, { signal: scope.signal });
 
   const rhythm = renderFactoryRhythm(sources[roleNames.rhythm], scope);
-  const details = h('button', {
-    type: 'button',
-    className: 'first-load-details',
-    onClick: showBrowserFirstLoad
-  }, 'Show import progress');
   const header = h(
     'header',
     { className: 'factory-intro' },
-    h('div', { className: 'factory-intro-copy' }, heading, summary, details),
+    h('div', { className: 'factory-intro-copy' }, heading, summary),
     rhythm
   );
   effect(() => {
     const initialStatus = firstLoadStatus();
-    details.hidden = initialStatus === 'inactive';
     rhythm.hidden = initialStatus !== 'inactive';
     header.classList.toggle('factory-intro-importing', initialStatus !== 'inactive');
   }, { signal: scope.signal });

@@ -38,10 +38,12 @@ const sources = {
 };
 
 beforeEach(() => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-10T00:00:00Z'));
   indexedDB.deleteDatabase('cao-dashboard-canonical');
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.doUnmock('../../src/debug.js');
   vi.resetModules();
 });

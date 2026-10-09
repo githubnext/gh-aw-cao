@@ -68,6 +68,7 @@ beforeEach(async () => {
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
+  afterEach(() => vi.restoreAllMocks());
 });
 
 afterEach(() => {

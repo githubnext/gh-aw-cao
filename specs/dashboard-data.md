@@ -53,10 +53,13 @@ Repository
             └── Issue
 ```
 
-The static deployment SHALL maintain this canonical model in IndexedDB. The
-Go server profile SHALL transactionally replace current dashboard sources in
-Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
-hold only operational caches, queues, and sessions, not dashboard entities.
+The dashboard data and query implementations are IndexedDB in the browser,
+SQLite for local/headless consumers, and Postgres in the Go server. The static
+deployment SHALL maintain the canonical model in IndexedDB. The Go server
+profile SHALL transactionally replace current dashboard sources in Postgres
+and SHALL execute Dashboard Language queries server-side. Redis SHALL hold
+only operational caches, queues, and sessions, not dashboard entities or
+execute dashboard queries.
 
 PostgreSQL is the default operational adapter in a PostgreSQL-only deployment.
 Redis remains an explicit alternative, not a mandatory dashboard data store.
@@ -268,8 +271,8 @@ Views MUST NOT parse:
 
 IndexedDB MUST be disposable and reconstructable.
 
-The local Redis projection MUST also be disposable, generation-scoped, and
-reconstructable from the deployed dashboard artifact.
+The local SQLite projection MUST also be reconstructable from the deployed
+dashboard artifact.
 
 ## INV-005 — Authoritative inputs remain external
 
@@ -298,8 +301,9 @@ retain their last complete result until that phase succeeds.
 
 Correctness MUST NOT require loading the complete historical dataset into browser memory.
 
-The local server profile MUST push compatible selection, range filtering,
-aggregation, ordering, and limiting into Redis before bounded Go fallbacks.
+The local server profile MUST execute compatible selection, range filtering,
+aggregation, ordering, and limiting in PostgreSQL, with bounded Go fallbacks
+where required.
 
 ## INV-011 — Test parity
 

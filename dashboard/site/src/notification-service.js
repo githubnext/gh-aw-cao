@@ -130,6 +130,28 @@ function normalizeNotification(input) {
   return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, actions, dismissOnCollapse };
 }
 
+/** @param {HTMLElement} details @param {string[]} messages */
+export function updateNotificationDetails(details, messages) {
+  const followsLatest = details.scrollTop + details.clientHeight >= details.scrollHeight - 1;
+  const scrollTop = details.scrollTop;
+  messages.forEach((detail, index) => {
+    const item = details.children[index] ?? h('li', {});
+    item.textContent = detail;
+    if (item.parentElement !== details) details.append(item);
+  });
+  while (details.children.length > messages.length) details.lastElementChild?.remove();
+  details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;
+}
+
+/** @param {HTMLElement} element @param {Array<{ label: string, run: () => void }>} actions */
+export function updateNotificationActions(element, actions) {
+  element.replaceChildren(...actions.map((action) => button({
+    className: 'dashboard-notification-action',
+    type: 'button',
+    onclick: action.run
+  }, action.label)));
+}
+
 /**
  * @param {ReturnType<typeof normalizeNotification>} initial
  * @param {HTMLElement} container
@@ -181,15 +203,7 @@ function renderNotification(initial, container, onRemove) {
   };
   const setDetails = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    const followsLatest = details.scrollTop + details.clientHeight >= details.scrollHeight - 1;
-    const scrollTop = details.scrollTop;
-    current.details.forEach((detail, index) => {
-      const item = details.children[index] ?? h('li', {});
-      item.textContent = detail;
-      if (item.parentElement !== details) details.append(item);
-    });
-    while (details.children.length > current.details.length) details.lastElementChild?.remove();
-    details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;
+    updateNotificationDetails(details, current.details);
     if (current.details.length > 0) {
       if (summary.parentElement !== toggle) toggle.prepend(summary);
       if (!toggle.isConnected) content.prepend(toggle);
@@ -216,11 +230,7 @@ function renderNotification(initial, container, onRemove) {
     const placement = current.actions.every((action) => action.placement === 'details')
       ? 'details'
       : 'summary';
-    actions.replaceChildren(...current.actions.map((action) => button({
-      className: 'dashboard-notification-action',
-      type: 'button',
-      onclick: action.run
-    }, action.label)));
+    updateNotificationActions(actions, current.actions);
     if (!current.actions.length) return;
     actions.hidden = placement === 'details'
       && toggle.getAttribute('aria-expanded') !== 'true';

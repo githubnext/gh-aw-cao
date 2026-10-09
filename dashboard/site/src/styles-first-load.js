@@ -19,6 +19,11 @@ export const firstLoadStyles = `
 .first-load-progress progress { display: block; width: 100%; height: 6px; accent-color: var(--accent); }
 .first-load-message { display: flex; align-items: center; min-height: 3em; margin: 20px 0; padding: 12px 16px; border-radius: 6px; background: var(--canvas-subtle); color: var(--muted); font-size: .875rem; line-height: 1.5; }
 .first-load-status { margin: 8px 0 0; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.first-load-ingestion-details { margin: 0 0 12px; font-size: .75rem; }
+.first-load-ingestion-details summary { width: fit-content; padding: 6px 0; color: var(--accent); cursor: pointer; }
+.first-load-ingestion-details summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.first-load-ingestion-details .dashboard-notification-details { max-height: min(180px, 25vh); }
+.first-load-ingestion-details .dashboard-notification-actions { justify-content: flex-end; margin-top: 10px; }
 .first-load-about { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border-muted); }
 .first-load-about summary { display: list-item; width: fit-content; padding: 8px 0; color: var(--muted); font-size: .75rem; line-height: 1.5; cursor: pointer; }
 .first-load-about summary:hover { color: var(--fg); }
@@ -29,6 +34,9 @@ export const firstLoadStyles = `
 .first-load-note { margin: 12px 0; color: var(--muted); font-size: .75rem; line-height: 1.6; }
 .first-load-copy-status { display: block; margin-top: 8px; color: var(--muted); font-size: .75rem; }
 .first-load-server-option a { text-decoration: underline; }
+.first-load-details-link { border: 0; padding: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.first-load-details-link:hover { color: var(--fg); }
+.first-load-details-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 3px; }
 .first-load-browse, .first-load-details { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
 .first-load-browse { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .first-load-browse .octicon { width: 16px; height: 16px; }
@@ -47,6 +55,7 @@ export const firstLoadStyles = `
   .first-load-card h2 { font-size: 1.5rem; }
   .first-load-description { margin: 12px 0 16px; font-size: .875rem; line-height: 1.5; }
   .first-load-message { margin: 16px 0; padding: 10px 12px; font-size: .8125rem; }
+  .first-load-message-ingesting { display: none; }
   .first-load-status { font-size: .75rem; }
   .first-load-about { margin-top: 16px; }
   .first-load-browse { width: 100%; }

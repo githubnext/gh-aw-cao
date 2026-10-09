@@ -512,6 +512,10 @@
             {
               "field": "aic",
               "as": "observed-aic"
+            },
+            {
+              "field": "aic-runs",
+              "as": "observed-aic-runs"
             }
           ]
         }
@@ -672,7 +676,7 @@
               "field": "total-aic"
             },
             {
-              "field": "total-runs"
+              "field": "observed-aic-runs"
             }
           ]
         },

@@ -1783,8 +1783,8 @@
       "name": "cost-per-workflow-run",
       "subject": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
       "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
-      "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
-      "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+      "acceptance": "aic-per-run uses only positive-AIC run attempts; observed-runs still counts all retained attempts, and missing or zero positive-AIC denominators remain unavailable.",
+      "description": "Observed AI Credit totals divided by positive-AIC run attempts for each declared workflow.",
       "from": "workflow-aic-run-totals",
       "compute": [
         {
@@ -1795,7 +1795,7 @@
               "field": "aic"
             },
             {
-              "field": "runs"
+              "field": "aic-runs"
             }
           ]
         },

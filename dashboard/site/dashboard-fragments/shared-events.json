@@ -250,6 +250,9 @@
       "acceptance": "Return the sum of recorded aic-total by organization, repository, and workflow; missing usage or runs is not evidence of zero actual cost.",
       "description": "Observed AI Credit totals for each declared workflow.",
       "from": "runs",
+      "compute": [
+        { "as": "positive-aic", "function": "greater-than", "args": [{ "field": "aic-total" }, { "value": 0 }] }
+      ],
       "aggregate": {
         "by": [
           "organization",
@@ -261,6 +264,12 @@
             "field": "aic-total",
             "as": "aic",
             "reducer": "sum"
+          },
+          {
+            "field": "run",
+            "as": "aic-runs",
+            "reducer": "count",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           }
         ]
       }

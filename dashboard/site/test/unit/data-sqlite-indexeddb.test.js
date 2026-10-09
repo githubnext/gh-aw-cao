@@ -345,7 +345,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--database', filename,
       '--context', context,
       '--logs', logs,
-      '--retention-days', 'all'
+      '--retention-days', 'all',
+      '--run-retention-days', 'all'
     ], { encoding: 'utf8' }));
     expect(ingestion.counts).toMatchObject({ runs: 1, domains: 1, tools: 3, audits: 2, issues: 0 });
 
@@ -392,7 +393,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--database', filename,
       '--input-dir', shardDirectory,
       '--context', context,
-      '--retention-days', 'all'
+      '--retention-days', 'all',
+      '--run-retention-days', 'all'
     ], { encoding: 'utf8' }));
     expect(ingestion).toMatchObject({
       result: {
