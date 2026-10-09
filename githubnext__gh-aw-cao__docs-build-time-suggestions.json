@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-09T03:40:00Z",
-      "worker_run_id": 37879838052,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37881550371,
-        37882676786,
-        37884143605,
-        37884420310,
-        37885847477,
-        37886066357,
-        37886576634,
-        37886721587,
-        37888532319,
-        37888769329,
-        37890182557,
-        37890362629,
-        37891165045,
-        37891538465,
-        37894720919,
-        37894925277,
-        37897139933,
-        37897449706,
-        37899913853,
-        37900699132
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T23:35:14Z through 2026-10-09T03:31:38Z and contained 9 successful runs, but only 1 comparable build-bearing success (37867790067 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117). The other 8 successful runs were freshness-only schedule passes where build and deploy were skipped, while the remaining 11 runs were skipped workflow_run attempts. Trusted job metadata for the lone build-bearing success showed a CAO Dashboard cache hit in docs.yml (Restore cached CAO Dashboard succeeded while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped), but the corresponding latest 20 completed cao-dashboard.yml runs still yielded only 1 successful upstream build (37865724910) and therefore do not provide the required >=5 comparable successful runs needed to re-evaluate reusable dashboard generation safely or make a new threshold-backed recommendation."
-    },
-    {
       "evaluated_at": "2026-10-09T04:07:23Z",
       "worker_run_id": 37882599576,
       "category": "reusable dashboard generation",
@@ -841,6 +813,34 @@
         37962214518
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-09T16:52:20Z through 2026-10-09T17:56:23Z and included 7 successful runs, but only 4 successful build-bearing docs runs (37967199094, 37966952812, 37963311018, 37963179891). Those build-bearing docs runs were 37967199094 (schedule, deploy success, sha 97754b289c91), 37966952812 (push, deploy skipped, sha 97754b289c91), 37963311018 (schedule, deploy success, sha 779dfde7bdae), 37963179891 (push, deploy skipped, sha 779dfde7bdae). The paired latest 20 completed cao-dashboard.yml runs covered 2026-10-09T15:46:28Z through 2026-10-09T17:56:18Z and included 0 successful dashboard builds, below the required minimum of 5 comparable successful runs for category \"dependency installation and caching\"."
+    },
+    {
+      "evaluated_at": "2026-10-09T18:34:00Z",
+      "worker_run_id": 37973629054,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37973681377,
+        37973430907,
+        37970467144,
+        37969784087,
+        37968902436,
+        37968445411,
+        37967199094,
+        37967123849,
+        37967121623,
+        37966952812,
+        37965789382,
+        37965541848,
+        37964639311,
+        37964273179,
+        37964027176,
+        37963360705,
+        37963360063,
+        37963311018,
+        37963179131,
+        37963179891
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-09T17:00:27Z through 2026-10-09T18:30:07Z and included 8 successful runs, but only 4 successful build-bearing docs runs (37967199094, 37966952812, 37963311018, 37963179891). Of those, only 2 runs (37967199094 on source SHA 97754b289c91ff1a424f6ef63d6bab80ddc90a18 and 37963311018 on source SHA 779dfde7bdae5c880b5a742bc1093fafb88b00e0) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\"; the 2 successful push runs (37966952812, 37963179891) built docs but skipped deploy and are disclosed as non-comparable outliers rather than counted toward the threshold. Trusted job metadata and bounded logs for all 4 build-bearing docs runs confirmed cache hits for setup-node npm cache, Restore node_modules, and Restore cached CAO Dashboard because Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped after successful restore steps; those runs still spent 52-59s in build with repeated costs of 5-7s restoring node_modules, 11-14s in Build documentation, 3-4s restoring the cached CAO Dashboard, and 13-15s uploading the Pages artifact. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window covered 2026-10-09T15:52:35Z through 2026-10-09T18:27:40Z and included 0 successful dashboard builds (10 skipped workflow_run runs, 5 skipped push runs, 3 cancelled push runs, and 2 failed push runs). That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency-installation or cache-effectiveness recommendation in this cycle."
     }
   ]
 }
