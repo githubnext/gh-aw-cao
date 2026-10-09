@@ -1,35 +1,7 @@
 {
   "source_sha": "61503eaf3146e4832574f5a171aa281bbe5e4ec5",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-08T15:29:42Z",
-      "worker_run_id": 37800675283,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37800797116,
-        37797356316,
-        37796870536,
-        37795548047,
-        37795226883,
-        37794805297,
-        37793869432,
-        37792819686,
-        37792649619,
-        37792646499,
-        37791083560,
-        37790722447,
-        37790716821,
-        37790351319,
-        37790350473,
-        37789144789,
-        37788670536,
-        37787631283,
-        37787589536,
-        37787268115
-      ],
-      "outcome": "incomplete_insufficient_successful_runs: latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T13:48:18Z through 2026-10-08T15:26:47Z and yielded only 2 comparable build-bearing successes (37792819686, 37790351319) for category \"artifact transfer and Pages packaging\", below the required minimum of 5. The same bounded sample also contained 5 successful freshness skips (37800797116, 37797356316, 37795226883, 37789144789, 37787631283), 11 skipped workflow_run runs, and 2 action_required workflow_run runs, so artifact-transfer and Pages-packaging timings could not be evaluated safely against the required comparable-success baseline."
-    },
     {
       "evaluated_at": "2026-10-08T15:48:43Z",
       "worker_run_id": 37803210211,
@@ -849,6 +821,34 @@
         37862083137
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T23:55:27Z through 2026-10-09T03:56:17Z and contained 9 successful docs runs, but only 2 comparable build-bearing successes (37867790067 workflow_run on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117 and 37879841926 schedule on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5) completed the schedule-freshness + build + deploy path. The other 7 successful runs were freshness-only schedule passes with build and deploy skipped, and the remaining 11 runs were skipped workflow_run invocations. The paired producer sample is also below threshold for reusable dashboard generation: the latest 20 completed cao-dashboard.yml runs in the same window contained only 1 successful dashboard build (37865724910 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117), alongside 18 skipped runs and 1 cancelled run. Trusted Actions metadata and bounded logs confirmed both build-bearing docs runs restored the node_modules cache and the central-agentic-ops-dashboard cache, while the lone successful dashboard producer run restored cao-activity-v5-37765769970-1 and still spent 1190 seconds in Upgrade fallback activity data before issue #16825's standing producer-side recommendation could be revalidated. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so no new non-duplicate reusable-dashboard recommendation can be made safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-09T04:33:40Z",
+      "worker_run_id": 37884114033,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37884143605,
+        37882676786,
+        37881550371,
+        37881320811,
+        37879841926,
+        37879680984,
+        37877549341,
+        37877308144,
+        37876370234,
+        37875977277,
+        37873504326,
+        37873263189,
+        37872646611,
+        37871426071,
+        37871212950,
+        37869096027,
+        37868065451,
+        37867847098,
+        37867790067,
+        37865772509
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the cycle's next category (artifact transfer and Pages packaging) still lacks the required 5 comparable build-bearing docs successes and the build-heavy categories ahead of scheduling remain below threshold. In the latest 20 completed docs.yml runs from 2026-10-09T00:38:07Z through 2026-10-09T04:29:50Z, 9 runs concluded success (8 schedule, 1 workflow_run) and 11 were skipped workflow_run invocations. Queue median/p90 was 0s/0s and full successful-workflow median/p90 was 13s/96.4s; schedule-freshness was 8s/11s. Only 2 successful runs executed build + deploy (37867790067 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117 and 37879841926 on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5), both with npm and central-agentic-ops-dashboard cache restores confirmed in logs, while 7 later schedule runs on those SHAs skipped build and deploy and the other 11 workflow_run invocations also skipped. The paired latest 20 completed cao-dashboard.yml runs in the same window contained only 1 successful full build (37865724910), so artifact transfer, dependency/caching, Astro generation, and reusable-dashboard categories still lack the required >=5 comparable successes. Current source inspection of .github/workflows/docs.yml plus trusted run outcomes indicates the earlier duplicate workflow_run rebuild subject tracked by open issue #16054 is already working as intended, and the standing producer-side reusable-dashboard recommendation remains represented by open issue #16825. No new non-duplicate scheduling, concurrency, or avoidable-rebuild change currently meets the >=60s or >=15% threshold without weakening freshness, correctness, or deployment safety."
     }
   ]
 }
