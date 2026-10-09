@@ -14,6 +14,7 @@ import {
   readRecord,
   readRecordWithConnection,
   readTransaction,
+  readTransactionBatch,
   recordTransaction,
   upsertCanonicalBatch,
   upsertCanonicalBatchWithConnection,
@@ -165,6 +166,25 @@ export async function isNormalizedJsonlCurrent(indexedDB, options) {
     && receipt.payloadHash === options.payloadIdentity
     && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
     && (options.expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
+}
+
+/**
+ * Checks published shard receipts in one readonly transaction, avoiding a
+ * separate database open for every shard in a large mobile manifest.
+ * @param {IDBFactory} indexedDB
+ * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records' }[]} shards
+ */
+export async function normalizedJsonlCurrentShards(indexedDB, shards) {
+  const receipts = await readTransactionBatch(
+    indexedDB, shards.map(({ payloadIdentity }) => normalizedJsonlShardTransactionId(payloadIdentity))
+  );
+  return shards.map(({ payloadIdentity, expectedPhase }, index) => {
+    const receipt = receipts[index];
+    return receipt?.kind === 'ingest-normalized-jsonl'
+      && receipt.payloadHash === payloadIdentity
+      && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+      && (expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
+  });
 }
 
 /** @param {IDBFactory} indexedDB */

@@ -7,7 +7,7 @@ import {
   ingestDashboardSources,
   ingestNormalizedJsonl,
   isAuditCurationCurrent,
-  isNormalizedJsonlCurrent
+  normalizedJsonlCurrentShards
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import {
@@ -31,7 +31,7 @@ import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { formatDataSize, publishWorkerLoadingProgress, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
-import { createDebug, debugEagerIngest, debugShardLimit } from './debug.js';
+import { createDebug, debugEagerIngest, debugShardLimit, diagnosticErrorName, isDebugEnabled } from './debug.js';
 import { withRetries } from './retry.js';
 import { prepareMemoryFile } from './data/repository-memory-jsonl.js';
 
@@ -61,7 +61,10 @@ function withQueryProgress(query) {
 
 async function readDashboardSnapshotMetadata() {
   const snapshot = await readTransaction(indexedDB, DASHBOARD_SNAPSHOT_TRANSACTION_ID);
-  if (typeof snapshot?.createdAt === 'string') return { createdAt: snapshot.createdAt };
+  if (typeof snapshot?.createdAt === 'string') {
+    debugIngestion({ event: 'snapshot-read', status: 'present', schemaVersion: DATABASE_VERSION });
+    return { createdAt: snapshot.createdAt };
+  }
 
   const legacySnapshot = (await readTransactions(indexedDB))
     .filter((transaction) => transaction.kind === 'ingest-dashboard-sources'
@@ -69,14 +72,40 @@ async function readDashboardSnapshotMetadata() {
       && !String(transaction.payloadScope ?? '').endsWith('#inventory-phase'))
     .toSorted((left, right) => String(left.createdAt).localeCompare(String(right.createdAt)))
     .at(-1);
-  if (typeof legacySnapshot?.createdAt !== 'string') return null;
+  if (typeof legacySnapshot?.createdAt !== 'string') {
+    debugIngestion({ event: 'snapshot-read', status: 'missing', schemaVersion: DATABASE_VERSION });
+    return null;
+  }
   const migratedSnapshot = {
     id: DASHBOARD_SNAPSHOT_TRANSACTION_ID,
     kind: 'dashboard-snapshot',
     createdAt: legacySnapshot.createdAt
   };
   await recordTransaction(indexedDB, migratedSnapshot).catch(() => undefined);
+  debugIngestion({ event: 'snapshot-read', status: 'migrated', schemaVersion: DATABASE_VERSION });
   return { createdAt: migratedSnapshot.createdAt };
+}
+
+async function reportBrowserStorageDiagnostics() {
+  if (!isDebugEnabled('data:ingestion')) return;
+  const storage = globalThis.navigator?.storage;
+  try {
+    const [estimate, persisted] = await Promise.all([
+      storage?.estimate?.() ?? null,
+      storage?.persisted?.() ?? null
+    ]);
+    debugIngestion({
+      event: 'browser-storage',
+      estimateSupported: typeof storage?.estimate === 'function',
+      persistenceSupported: typeof storage?.persist === 'function',
+      persisted,
+      usageBytes: estimate?.usage ?? null,
+      quotaBytes: estimate?.quota ?? null,
+      indexedDBBytes: estimate?.usageDetails?.indexedDB ?? null
+    });
+  } catch (error) {
+    debugIngestion({ event: 'browser-storage-failed', errorName: diagnosticErrorName(error) });
+  }
 }
 /**
  * Forces every published activity shard to be ingested before results are
@@ -839,6 +868,7 @@ export function processDataRequest(request, signal) {
     return prepareMemoryFile(path, request.content);
   }
   if (request?.operation === 'read-dashboard-snapshot') {
+    void reportBrowserStorageDiagnostics();
     return readDashboardSnapshotMetadata().then((snapshot) => {
       hasCompleteDashboardSnapshot = snapshot !== null;
       return snapshot;
@@ -879,6 +909,7 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       const previousSnapshot = await readDashboardSnapshotMetadata();
+      debugIngestion({ event: 'ingestion-start', snapshotPresent: previousSnapshot !== null, revision: liveDashboard?.revision ?? 0 });
       hasCompleteDashboardSnapshot = previousSnapshot !== null;
       dashboardIngestionCount += 1;
       const progress = startIngestionProgress(
@@ -981,13 +1012,15 @@ export function processDataRequest(request, signal) {
             throw new Error('Activity shard manifest is missing compacted run-information shards.');
           }
           /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
+          if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
+          const currentShards = await normalizedJsonlCurrentShards(indexedDB, shards.map((shard) => ({
+            payloadIdentity: shard.hash,
+            expectedPhase: shard.phase
+          })));
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
-            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
-            const current = await isNormalizedJsonlCurrent(indexedDB, {
-              payloadIdentity: shard.hash
-            });
+            const current = currentShards[index];
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);
@@ -1003,6 +1036,13 @@ export function processDataRequest(request, signal) {
             runPhaseShardCount,
             initialPendingShardCount: initialPendingShards.length,
             eagerIngest
+          });
+          debugIngestion({
+            event: 'shard-cache-checked',
+            cached: shardStates.length - pendingShards.length,
+            missing: pendingShards.length,
+            cachedRuns: shardStates.slice(0, runInformationShards.length).filter(({ current }) => current).length,
+            cachedRecords: shardStates.slice(runInformationShards.length).filter(({ current }) => current).length
           });
           if (pendingShards.length > 0) {
             progress.start();
@@ -1029,6 +1069,10 @@ export function processDataRequest(request, signal) {
           for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
+              await refreshDashboardSubscriptions(
+                /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                'runs'
+              );
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
               await measureShards(eventPendingShards);
               workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
@@ -1159,11 +1203,13 @@ export function processDataRequest(request, signal) {
           kind: 'dashboard-snapshot',
           createdAt: new Date().toISOString()
         });
+        debugIngestion({ event: 'snapshot-saved', schemaVersion: DATABASE_VERSION, changed });
         hasCompleteDashboardSnapshot = true;
         // A different tab may have committed the current payload to IndexedDB,
         // leaving this worker's in-memory query results stale even when this
         // ingestion reports no local writes.
         const nextRevision = (liveDashboard?.revision ?? 0) + 1;
+        debugIngestion({ event: 'dashboard-revision', previous: liveDashboard?.revision ?? 0, next: nextRevision, phase: 'complete' });
         liveDashboard = {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
           revision: nextRevision
