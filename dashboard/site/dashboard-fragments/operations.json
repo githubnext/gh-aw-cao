@@ -713,7 +713,7 @@
       "subject": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
       "objective": "Locate agent and model combinations whose observed per-run AIC or token usage merits checking against individual runs.",
       "acceptance": "Report run counts and native minimum, mean, and maximum values only for reported metrics; inspect underlying runs for per-metric telemetry coverage and context before comparing combinations, and infer neither efficiency nor outcome value from usage alone.",
-      "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
+      "description": "Observed workflow runs grouped by agent ID and model ID. AIC statistics use only positive-AIC runs; token statistics use runs that reported each token metric.",
       "from": "runs",
       "compute": [
         {
@@ -730,6 +730,11 @@
               "field": "model-id"
             }
           ]
+        },
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
         }
       ],
       "aggregate": {
@@ -745,17 +750,20 @@
           {
             "field": "aic-total",
             "as": "minimum-aic-per-run",
-            "reducer": "min"
+            "reducer": "min",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           },
           {
             "field": "aic-total",
             "as": "average-aic-per-run",
-            "reducer": "mean"
+            "reducer": "mean",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           },
           {
             "field": "aic-total",
             "as": "maximum-aic-per-run",
-            "reducer": "max"
+            "reducer": "max",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           },
           {
             "field": "input-tokens",
