@@ -152,7 +152,7 @@ describe('canonical dashboard worker ingestion order', () => {
     const updates = posted.filter((message) => message.type === 'loading-progress'
       && /** @type {{ phase?: string }} */ (message.state)?.phase === 'update')
       .map((message) => /** @type {{ completed: number, total: number, stage: string }} */ (message.state));
-    const preparationStepWeight = Math.max(1, shardCount / 7);
+    const preparationStepWeight = Math.max(1, Math.ceil(shardCount / 7));
     const totalSteps = shardCount + 3 * preparationStepWeight;
     expect(updates.some(({ stage, completed, total }) =>
       stage === 'files' && completed === shardCount && total === totalSteps)).toBe(true);

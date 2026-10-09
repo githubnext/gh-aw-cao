@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const debug = vi.hoisted(() => vi.fn());
 vi.mock('../../src/debug.js', () => ({ createDebug: () => debug }));
@@ -76,6 +76,7 @@ function quotaExceededError() {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-10T00:00:00Z'));
   debug.mockClear();
   readCanonicalBatch.mockClear();
   upsertCanonicalBatch.mockClear();
@@ -97,6 +98,7 @@ beforeEach(async () => {
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
+  afterEach(() => vi.restoreAllMocks());
 });
 
 describe('canonical ingestion termination', () => {
