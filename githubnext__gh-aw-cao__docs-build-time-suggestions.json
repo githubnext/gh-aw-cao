@@ -3,34 +3,6 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T13:37:12Z",
-      "worker_run_id": 37785252041,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37784986879,
-        37784554578,
-        37781083055,
-        37780803597,
-        37780014134,
-        37780011425,
-        37778314251,
-        37778177147,
-        37778119736,
-        37774099789,
-        37773443442,
-        37772685592,
-        37772174247,
-        37771254350,
-        37769964157,
-        37769640439,
-        37768339711,
-        37767354938,
-        37766421316,
-        37765800699
-      ],
-      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T10:47:33Z through 2026-10-08T13:31:14Z, 10 runs concluded success, but only 2 runs (37778314251 and 37768339711) completed the comparable build+deploy path; the other 8 successful runs were freshness-only schedule passes with build and deploy skipped. This is below the required minimum of 5 comparable successful runs for a trusted artifact-transfer and Pages-packaging evaluation, so no actionable recommendation could be made safely in this run."
-    },
-    {
       "evaluated_at": "2026-10-08T14:01:37Z",
       "worker_run_id": 37788350271,
       "category": "artifact transfer and Pages packaging",
@@ -848,6 +820,34 @@
         37854500905
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T22:36:09Z through 2026-10-09T01:46:54Z, 10 runs concluded success but only 1 run (37867790067) completed the comparable schedule-freshness + build + deploy path for category \"reusable dashboard generation\". The other 9 successful runs were freshness-only schedule passes with build and deploy skipped, while the remaining 10 runs were skipped workflow_run invocations. The related producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained only 1 successful full build (37865724910), 1 cancelled push run, and 18 skipped workflow_run triggers. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed reusable-dashboard recommendation safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-09T02:44:32Z",
+      "worker_run_id": 37875739427,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37873504326,
+        37873263189,
+        37872646611,
+        37871426071,
+        37871212950,
+        37869096027,
+        37868065451,
+        37867847098,
+        37867790067,
+        37865772509,
+        37862866233,
+        37862083137,
+        37861467278,
+        37861188915,
+        37860257805,
+        37860135214,
+        37859196214,
+        37858977704,
+        37857086761,
+        37856544752
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T22:56:19Z through 2026-10-09T02:13:02Z and contained 9 successful runs, but only 1 comparable build-bearing success (37867790067) completed the schedule-freshness + build + deploy path on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117; the other 8 successful runs were freshness-only schedule passes with build and deploy skipped, while the remaining 11 runs were skipped workflow_run entries. The paired producer sample is also below threshold for reusable dashboard generation: the latest 20 completed cao-dashboard.yml runs in the same 14-day window covered 2026-10-08T20:30:37Z through 2026-10-09T02:09:47Z and yielded only 1 successful dashboard build (37865724910), alongside 18 skipped runs and 1 cancelled run. That leaves fewer than the required 5 comparable successful runs to revalidate dashboard-generation timing safely, so no evidence-backed >=60s or >=15% reusable-dashboard recommendation can be made in this cycle."
     }
   ]
 }
