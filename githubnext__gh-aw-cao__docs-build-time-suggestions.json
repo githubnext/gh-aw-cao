@@ -3,34 +3,6 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T13:09:27Z",
-      "worker_run_id": 37781618987,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37781083055,
-        37780803597,
-        37780014134,
-        37780011425,
-        37778314251,
-        37778177147,
-        37778119736,
-        37774099789,
-        37773443442,
-        37772685592,
-        37772174247,
-        37771254350,
-        37769964157,
-        37769640439,
-        37768339711,
-        37767354938,
-        37766421316,
-        37765800699,
-        37765341322,
-        37763659759
-      ],
-      "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T10:28:08Z through 2026-10-08T13:01:02Z, but only 2 runs (37778314251 and 37768339711) completed the build and deploy jobs successfully. The remaining 18 runs were freshness-skip schedule successes or skipped workflow_run triggers, so the sample does not meet the minimum of 5 comparable successful runs required for trusted build-time analysis of artifact transfer and Pages packaging."
-    },
-    {
       "evaluated_at": "2026-10-08T13:37:12Z",
       "worker_run_id": 37785252041,
       "category": "artifact transfer and Pages packaging",
@@ -848,6 +820,34 @@
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T22:01:52Z through 2026-10-09T01:05:40Z, 11 runs concluded success but only 1 run (37867790067) completed the comparable schedule-freshness + build + deploy path for category \"reusable dashboard generation\". The other 10 successful runs were freshness-only schedule passes with build and deploy skipped, while the remaining 9 runs were skipped workflow_run invocations. The relevant producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained only 1 successful full build (37865724910), 1 cancelled push run, and 18 skipped workflow_run triggers. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed reusable-dashboard recommendation safely in this cycle.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-09T01:52:25.557Z",
+      "worker_run_id": 37871556109,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37871426071,
+        37871212950,
+        37869096027,
+        37868065451,
+        37867847098,
+        37867790067,
+        37865772509,
+        37862866233,
+        37862083137,
+        37861467278,
+        37861188915,
+        37860257805,
+        37860135214,
+        37859196214,
+        37858977704,
+        37857086761,
+        37856544752,
+        37855862451,
+        37855445318,
+        37854500905
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T22:36:09Z through 2026-10-09T01:46:54Z, 10 runs concluded success but only 1 run (37867790067) completed the comparable schedule-freshness + build + deploy path for category \"reusable dashboard generation\". The other 9 successful runs were freshness-only schedule passes with build and deploy skipped, while the remaining 10 runs were skipped workflow_run invocations. The related producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained only 1 successful full build (37865724910), 1 cancelled push run, and 18 skipped workflow_run triggers. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed reusable-dashboard recommendation safely in this cycle."
     }
   ]
 }
