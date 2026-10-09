@@ -163,6 +163,27 @@ func TestBenchmarkQueriesRejectsEmptyEvidence(t *testing.T) {
 	}
 }
 
+func TestClassifyBenchmarkEvidenceIdentifiesEachRejectionStage(t *testing.T) {
+	cases := []struct {
+		name    string
+		records int
+		counts  map[string]int
+		want    benchmarkEvidenceRejectionStage
+	}{
+		{"no sources at all", 0, map[string]int{}, benchmarkEvidenceRejectionStageNoRecord},
+		{"records present but zero $runs", 20, map[string]int{"$runs": 0, "$repositories": 20}, benchmarkEvidenceRejectionStageNoRuns},
+		{"missing $runs key entirely", 20, map[string]int{"$repositories": 20}, benchmarkEvidenceRejectionStageNoRuns},
+		{"nonempty projection with runs", 5, map[string]int{"$runs": 2, "$repositories": 3}, benchmarkEvidenceRejectionStageNone},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := classifyBenchmarkEvidence(tc.records, tc.counts); got != tc.want {
+				t.Fatalf("classifyBenchmarkEvidence(%d, %+v) = %q, want %q", tc.records, tc.counts, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestBuildBenchmarkMeasurementRejectsUnavailableSource(t *testing.T) {
 	sources := map[string]model.Source{
 		"overview": {Metadata: model.Metadata{"availability": "unavailable"}},
