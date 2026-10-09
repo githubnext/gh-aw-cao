@@ -6,9 +6,6 @@ const debugRetention = createDebug('retention');
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
-  runs: Number.MAX_SAFE_INTEGER
-});
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
@@ -53,6 +50,10 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
   'audits',
   'issues', 'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
+export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
+  runs: Number.MAX_SAFE_INTEGER,
+  ...Object.fromEntries(RUN_LINKED_STORES.map((store) => [store, 7 * 24 * 60 * 60 * 1000]))
+});
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'campaignId',
   'githubId',

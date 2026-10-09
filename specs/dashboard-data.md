@@ -20,13 +20,13 @@ should read `docs/dashboard-data-model.md` first, then this specification and
 the production boundary under `dashboard/site/src/data/`. Computation changes
 must also follow `specs/computations.md`.
 
-| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
+| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 7 days. |
 | --- | --- |
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
 summaries so dashboard trends and run history can cover the complete published
-source. It SHALL retain detailed Domain, Tool, Audit, and Issue records for the
-bounded 30-day operational window. Expiring run-linked records MUST NOT remove
+source. It SHALL retain detailed run-linked records for the bounded 7-day
+browser window. Expiring run-linked records MUST NOT remove
 their retained Run or the Run's structural parents.
 
 ---
@@ -384,8 +384,9 @@ to JSON and adapted before canonical normalization. The SQL export contract
 MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
-Repository, Workflow, and Run summaries. They SHALL retain detailed Domain,
-Tool, Audit, Issue, and Operational Value records for the bounded 30-day operational window.
+Repository, Workflow, and Run summaries. IndexedDB SHALL retain detailed
+run-linked records for seven days and Operational Value records for 30 days;
+the Activity SQLite database SHALL retain its 30-day operational window.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
@@ -998,13 +999,10 @@ rebuild MUST NOT create a successful ingestion receipt or publish a compatible
 derived projection. A historical SQLite archive MAY use longer retention but
 MUST apply the same adapter and normalization rules.
 
-The browser SHALL retain active interventions until they reach a terminal state
-and SHALL retain the resulting compact comparison for at least the existing
-30-day operational window. To remain bounded, a non-terminal intervention with
-no authoritative observation for 90 days SHALL become `inconclusive` with
-`evidence-state=incomplete`; the browser MAY then prune it under normal
-relationship-safe retention. Historical backfills belong in a separate SQLite
-archive, not browser IndexedDB.
+Browser IndexedDB retains run-linked intervention evidence, including active
+interventions and compact comparisons, only within its seven-day detail window.
+Longer-lived intervention tracking and historical backfills belong in a separate
+SQLite archive, not browser IndexedDB.
 
 Dashboard Language SHALL expose `token-efficiency-opportunities`,
 `token-efficiency-interventions`, and `token-efficiency-comparisons`. All
@@ -2616,9 +2614,10 @@ The architecture MUST NOT require every browser to retain unlimited execution hi
 
 Ingestion SHALL upsert each collected batch onto the records already retained
 instead of replacing them, so a partial collection or worker restart never drops
-observations the browser still retains. The implementation retains records
-observed within the last 30 days; records observed outside that window SHALL be
-pruned during the next ingestion.
+observations the browser still retains. The browser retains run-linked records
+observed within the last seven days and Operational Values within the last
+30 days; records observed outside their window SHALL be pruned during the next
+ingestion.
 
 Retention pruning MUST remain relationship-safe: a retained record SHALL be
 dropped when a mandatory parent no longer survives, and structural parents that
