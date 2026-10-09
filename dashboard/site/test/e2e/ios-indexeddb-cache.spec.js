@@ -75,6 +75,11 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
         .map((/** @type {{ payloadHash: string }} */ receipt) => receipt.payloadHash).sort()
     };
   }, storageUrl);
+  const cachedShards = async () => page.evaluate(async ({ url, identities }) => {
+    const { normalizedJsonlCurrentShards } = await import(url);
+    return normalizedJsonlCurrentShards(indexedDB,
+      identities.map((payloadIdentity) => ({ payloadIdentity, expectedPhase: 'runs' })));
+  }, { url: moduleUrl, identities: [firstIdentity, secondIdentity] });
 
   expect(await ingest(firstShard, firstIdentity)).toMatchObject({ updated: true });
   const firstState = await stored();
@@ -83,8 +88,10 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
 
   await page.reload();
   expect(await stored()).toEqual(firstState);
+  expect(await cachedShards()).toEqual([true, false]);
   expect(await ingest(firstShard, firstIdentity)).toMatchObject({ updated: false, skipped: true });
   expect(await ingest(secondShard, secondIdentity)).toMatchObject({ updated: true });
+  expect(await cachedShards()).toEqual([true, true]);
   expect(await stored()).toEqual({
     runIds: [
       'github:run:githubnext/gh-aw-cao:1001',
@@ -95,4 +102,5 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
 
   await page.reload();
   expect((await stored()).runIds).toHaveLength(2);
+  expect(await cachedShards()).toEqual([true, true]);
 });

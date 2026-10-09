@@ -14,7 +14,7 @@ beforeEach(async () => {
   });
 });
 
-it('refreshes subscriptions during ingestion only when explicitly requested', async () => {
+it('publishes run subscriptions during ingestion and permits an explicit full sync', async () => {
   /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */
   const listeners = new Map();
   /** @type {Record<string, unknown>[]} */
@@ -137,7 +137,8 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   await new Promise((resolve) => { setTimeout(resolve, 75); });
-  expect(posted.some(({ subscriptionId }) => subscriptionId)).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'runs')).toBe(true);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'audits')).toBe(false);
   listeners.get('message')?.({
     data: {
       operation: 'sync-dashboard-queries',
@@ -153,7 +154,6 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
   });
   expect(recordsDownloaded).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'audits')).toBe(true);
   listeners.get('message')?.({
     data: {
       operation: 'subscribe-canonical-dashboard',

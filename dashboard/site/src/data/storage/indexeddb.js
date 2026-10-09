@@ -1704,9 +1704,14 @@ export async function readTransactionBatch(indexedDB, ids) {
     const transaction = database.transaction(TRANSACTION_STORE);
     const done = transactionDone(transaction);
     const store = transaction.objectStore(TRANSACTION_STORE);
-    const records = await Promise.all(ids.map((id) => requestResult(store.get(id))));
-    await done;
-    return records;
+    try {
+      const records = await Promise.all(ids.map((id) => requestResult(store.get(id))));
+      await done;
+      return records;
+    } catch (error) {
+      await done.catch(() => undefined);
+      throw error;
+    }
   } finally {
     database.close();
   }

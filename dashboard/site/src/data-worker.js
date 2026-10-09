@@ -101,7 +101,7 @@ async function reportBrowserStorageDiagnostics() {
       persisted,
       usageBytes: estimate?.usage ?? null,
       quotaBytes: estimate?.quota ?? null,
-      indexedDBBytes: estimate?.usageDetails?.indexedDB ?? null
+      indexedDBBytes: /** @type {StorageEstimate & { usageDetails?: { indexedDB?: number } } | null} */ (estimate)?.usageDetails?.indexedDB ?? null
     });
   } catch (error) {
     debugIngestion({ event: 'browser-storage-failed', errorName: diagnosticErrorName(error) });
@@ -1017,6 +1017,7 @@ export function processDataRequest(request, signal) {
             payloadIdentity: shard.hash,
             expectedPhase: shard.phase
           })));
+          /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);

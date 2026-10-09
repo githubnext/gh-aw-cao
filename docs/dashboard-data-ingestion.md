@@ -128,7 +128,11 @@ Overview aggregates are computed by request-scoped queries over canonical runs
 rather than stored separately. Because the database is derived state, physical schema
 upgrades rebuild every store from authoritative dashboard inputs.
 
-For each ingestion, the worker reads the existing canonical batch, merges incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection, deleting records absent from the retained batch and writing every retained record.
+Normalized shards are written in bounded transactions, with a separate receipt
+recorded after each complete shard. A stopped import can reuse those receipts on
+the next visit, even before the full snapshot marker has been written. Run-phase
+views can load after the run shards finish while record shards continue. Retention
+and orphan cleanup run after shard ingestion.
 
 Every merged batch must satisfy these relationships:
 
@@ -158,6 +162,15 @@ Worker errors abort the update instead of rerunning ingestion through an older p
 Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness. Diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRANSACTION_ABORTED`, and `QUOTA_EXCEEDED`.
 
 IndexedDB is disposable derived state. Clearing browser storage reconstructs it from authorized published inputs; it does not delete authoritative information.
+
+To investigate repeated imports on a mobile browser, open the dashboard with
+`?debug=data:ingestion,data:indexeddb,quota`. The worker reports whether the
+complete snapshot was found, schema upgrades, storage quota and persistence
+availability, cached versus missing run and record shards, shard commits, and
+dashboard revisions. These diagnostics report counts and storage metadata, not
+record contents. A `missing-snapshot` message alone does not mean previously
+committed shards were lost: compare the `shard-cache-checked` counts on the next
+visit. Browsers may decline persistent storage or evict this rebuildable cache.
 
 ## Validate browser performance
 
