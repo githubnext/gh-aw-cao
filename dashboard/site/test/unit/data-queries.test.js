@@ -1317,7 +1317,7 @@ describe('declarative dashboard queries', () => {
     expect(derived['entity-workflows'].rows).toEqual([
       expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5 }),
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null }),
-      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0 })
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': null })
     ]);
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
@@ -1332,7 +1332,7 @@ describe('declarative dashboard queries', () => {
     expect(derived['workflow-inventory'].rows).toEqual([
       expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5, ingestion: '50%' }),
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
-      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': null, ingestion: '100%' })
     ]);
     expect(derived['workflow-aic-per-run'].rows).toEqual(
       derived['workflow-inventory'].rows
@@ -1398,7 +1398,7 @@ describe('declarative dashboard queries', () => {
 
     expect(derived['workflow-aic-per-run'].rows).toEqual([
       expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'aic-per-run': 5 }),
-      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:b.md', 'aic-per-run': 0 })
+      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:b.md', 'aic-per-run': null })
     ]);
   });
 

@@ -21,6 +21,11 @@
               "field": "run-attempt"
             }
           ]
+        },
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
         }
       ],
       "aggregate": {
@@ -34,6 +39,12 @@
             "field": "run-attempt-identity",
             "as": "runs",
             "reducer": "distinct-count"
+          },
+          {
+            "field": "run-attempt-identity",
+            "as": "aic-runs",
+            "reducer": "distinct-count",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           },
           {
             "field": "run-conclusion",
@@ -114,6 +125,10 @@
             {
               "field": "aic",
               "as": "observed-aic"
+            },
+            {
+              "field": "aic-runs",
+              "as": "observed-aic-runs"
             }
           ]
         }
@@ -175,7 +190,7 @@
               "field": "aic"
             },
             {
-              "field": "runs"
+              "field": "observed-aic-runs"
             }
           ]
         }

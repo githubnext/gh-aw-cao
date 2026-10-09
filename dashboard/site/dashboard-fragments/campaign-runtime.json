@@ -216,6 +216,11 @@
               "field": "run-attempt"
             }
           ]
+        },
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
         }
       ],
       "aggregate": {
@@ -294,6 +299,10 @@
                 {
                   "field": "status",
                   "equals": "success"
+                },
+                {
+                  "field": "positive-aic",
+                  "equals": true
                 }
               ]
             }
