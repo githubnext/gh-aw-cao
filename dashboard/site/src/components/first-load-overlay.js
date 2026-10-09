@@ -91,8 +91,9 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const ingestionSubtitle = h('p', { className: 'dashboard-notification-details-subtitle' });
   const ingestionHistory = h('ul', { className: 'dashboard-notification-details', 'aria-label': 'Ingestion progress history' });
   const ingestionActions = h('div', { className: 'dashboard-notification-actions' });
+  const compactIngestionSummary = h('span', { className: 'first-load-compact-copy' });
   const ingestionDetails = h('details', { className: 'first-load-ingestion-details' },
-    h('summary', null, 'Ingestion progress history'),
+    h('summary', null, h('span', { className: 'first-load-wide-copy' }, 'Ingestion progress history'), compactIngestionSummary),
     ingestionSubtitle, ingestionHistory, ingestionActions);
   const continuationNote = h('p', { className: 'first-load-note' }, responsiveCopy(
     'No need to wait here. The import continues as you explore.',
@@ -176,7 +177,11 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   }, { signal });
   render(message, () => browserFirstLoad.get().ingestion?.message ?? currentMessage.get(), { signal });
   effect(() => {
-    message.hidden = browserFirstLoad.get().status === 'failed';
+    const current = browserFirstLoad.get();
+    message.hidden = current.status === 'failed';
+    message.classList.toggle('first-load-message-ingesting', Boolean(current.ingestion));
+  }, { signal });
+  effect(() => {
     if (!rotating.get()) return;
     const timer = setInterval(() => currentMessage.set(nextMessage()), FIRST_LOAD_MESSAGE_INTERVAL_MS);
     onCleanup(() => clearInterval(timer));
@@ -185,6 +190,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     const { status: phase, ingestion } = browserFirstLoad.get();
     ingestionDetails.hidden = phase !== 'loading' || !ingestion;
     if (!ingestion || phase !== 'loading') return;
+    compactIngestionSummary.textContent = ingestion.message;
     ingestionSubtitle.textContent = ingestion.detailsSubtitle ?? '';
     ingestionSubtitle.hidden = !ingestion.detailsSubtitle;
     updateNotificationDetails(ingestionHistory, ingestion.details ?? []);

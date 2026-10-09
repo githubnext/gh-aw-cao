@@ -55,6 +55,7 @@ export const firstLoadStyles = `
   .first-load-card h2 { font-size: 1.5rem; }
   .first-load-description { margin: 12px 0 16px; font-size: .875rem; line-height: 1.5; }
   .first-load-message { margin: 16px 0; padding: 10px 12px; font-size: .8125rem; }
+  .first-load-message-ingesting { display: none; }
   .first-load-status { font-size: .75rem; }
   .first-load-about { margin-top: 16px; }
   .first-load-browse { width: 100%; }

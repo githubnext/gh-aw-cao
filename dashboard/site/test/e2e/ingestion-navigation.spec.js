@@ -205,6 +205,12 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen).toContainText(upgrade
     ? 'This update can take several minutes'
     : 'The first import can take several minutes');
+  const importHistory = importScreen.locator('.first-load-ingestion-details');
+  await expect(importHistory).toBeVisible();
+  await importHistory.locator('summary').click();
+  await expect(importHistory.locator('.dashboard-notification-details li').first()).toContainText('Preparing data');
+  await expect(importHistory.getByRole('button', { name: 'Cancel' })).toBeVisible();
+  await importHistory.locator('summary').click();
   if (upgrade) {
     await expect(importScreen).toContainText('refreshing your browser copy');
     await expect(importScreen.locator('.first-load-eyebrow')).toHaveText('Dashboard update');
@@ -231,12 +237,12 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
     await expectTheme(colorScheme);
     await page.setViewportSize({ width: 390, height: 844 });
   }
-  await importScreen.locator('summary').click();
+  await importScreen.locator('.first-load-about summary').click();
   await expect(importScreen.locator('.first-load-server-option')).toBeVisible();
   await expect(importScreen.locator('.first-load-reason')).toContainText(upgrade ? 'newer browser database format' : 'no completed local copy yet');
   await expect(importScreen.getByRole('link', { name: 'deployment options (opens in a new tab)' })).toBeVisible();
   await expect(importScreen.locator('.first-load-reason').getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
-  await importScreen.locator('summary').click();
+  await importScreen.locator('.first-load-about summary').click();
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
   const readBackground = (/** @type {Element} */ element) => {
     const css = getComputedStyle(element, '::before');

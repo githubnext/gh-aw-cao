@@ -81,6 +81,42 @@ describe('browser first-load presentation', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('shows the same live ingestion message, history and action as the bottom notification', () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    browserFirstLoad.set((current) => ({ ...current, ingestion: {
+      id: 'ingestion-progress-1',
+      message: '750 KB/1.5 MB · 3s remaining',
+      detailsSubtitle: 'Downloading and processing a local copy.',
+      details: ['Preparing data... +0s', 'Parsing overall: 1,000 rec. +3s'],
+      actions: [{ label: 'Cancel', run: cancel }]
+    } }));
+    const dialog = document.querySelector('dialog');
+    const details = dialog?.querySelector('.first-load-ingestion-details');
+    expect(dialog?.querySelector('.first-load-message')?.textContent).toBe('750 KB/1.5 MB · 3s remaining');
+    expect(details?.hasAttribute('hidden')).toBe(false);
+    details?.querySelector('summary')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(details?.querySelector('.dashboard-notification-details-subtitle')?.textContent).toBe('Downloading and processing a local copy.');
+    expect([...details?.querySelectorAll('li') ?? []].map((item) => item.textContent)).toEqual([
+      'Preparing data... +0s', 'Parsing overall: 1,000 rec. +3s'
+    ]);
+    details?.querySelector('button')?.click();
+    expect(cancel).toHaveBeenCalledOnce();
+    browserFirstLoad.set((current) => ({ ...current, ingestion: {
+      ...current.ingestion, id: 'ingestion-progress-1', message: '1.5 MB/1.5 MB · 0s remaining',
+      details: ['Storing 1,000/1,000 rec. +4s'], actions: []
+    } }));
+    expect(dialog?.querySelector('.first-load-message')?.textContent).toBe('1.5 MB/1.5 MB · 0s remaining');
+    expect(details?.querySelectorAll('li')).toHaveLength(1);
+    expect(details?.querySelector('button')).toBeNull();
+    browserFirstLoad.set((current) => ({ ...current, ingestion: undefined }));
+    expect(details?.hasAttribute('hidden')).toBe(true);
+    browserFirstLoad.set({ status: 'inactive', dismissed: false });
+    expect(document.querySelector('.first-load-ingestion-details')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('does not mount after data is already loaded or its owner is aborted', () => {
     vi.useFakeTimers();
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
@@ -105,8 +141,8 @@ describe('browser first-load presentation', () => {
     expect(dialog?.textContent).toContain('build a local database');
     expect(dialog?.querySelector('.first-load-description .first-load-compact-copy')?.textContent)
       .toBe('Bringing your campaign activity together for a first look.');
-    const about = dialog?.querySelector('details');
-    expect(about?.open).toBe(false);
+    const about = dialog?.querySelector('.first-load-about');
+    expect(about?.hasAttribute('open')).toBe(false);
     expect(about?.querySelector('summary')?.textContent).toBe('About this preparation');
     expect(about?.textContent).toContain('build a local database');
     expect(about?.querySelector('.first-load-steps')).not.toBeNull();
