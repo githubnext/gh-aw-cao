@@ -66,7 +66,7 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37796381362",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-08T15:00:22Z",
+  "last_seen_at": "2026-10-09T01:36:03Z",
   "additional_target_evaluations": [
     {
       "target_repo": "githubnext/gh-aw-cao",
@@ -77,6 +77,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "First evaluation on this target: no mount-namespace bind/privatize code exists in githubnext/gh-aw-cao; the sole '--bind' hit is an unrelated network listener flag. Not applicable here, independent of needs-work readiness on github/gh-aw-firewall.",
       "txn_id": "refiner-37671193744-3"
+    },
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
+      "true_positive_count": 1,
+      "false_positive_count": 3,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f748e418: virtiofsd.ts readonlyBindPath still never privatized; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root already privatized before creation). No drift since refiner-37662241728-1.",
+      "txn_id": "refiner-37870178954-2"
     }
   ],
   "last_updated": "2026-10-08T15:00:22Z"

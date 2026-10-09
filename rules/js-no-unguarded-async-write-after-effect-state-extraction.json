@@ -100,7 +100,7 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37812883520",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-08T17:03:52Z",
+  "last_seen_at": "2026-10-09T01:36:03Z",
   "last_updated": "2026-10-08T17:03:52Z",
   "additional_target_evaluations": [
     {
@@ -142,6 +142,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
       "txn_id": "refiner-37662241728-3"
+    },
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
+      "txn_id": "refiner-37870178954-1"
     }
   ]
 }
