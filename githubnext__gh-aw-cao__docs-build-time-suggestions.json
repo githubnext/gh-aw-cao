@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-09T06:01:29Z",
-      "worker_run_id": 37891065306,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37891165045,
-        37890362629,
-        37890182557,
-        37888769329,
-        37888532319,
-        37886721587,
-        37886576634,
-        37886066357,
-        37885847477,
-        37884420310,
-        37884143605,
-        37882676786,
-        37881550371,
-        37881320811,
-        37879841926,
-        37879680984,
-        37877549341,
-        37877308144,
-        37876370234,
-        37875977277
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-09T02:44:17Z through 2026-10-09T05:58:51Z, 10 runs concluded success but only 1 run (37879841926) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\". The other 9 successful runs were freshness-only schedule passes with build and deploy skipped, and the remaining 10 runs were skipped workflow_run invocations. Trusted logs for 37879841926 confirmed cache hits for the setup-node npm cache, node_modules cache, and central-agentic-ops-dashboard cache, with Install dependencies and Save node_modules skipped; the related latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-08T23:33:51Z through 2026-10-09T05:58:47Z contained only 1 successful full build (37865724910), 18 skipped runs, and 1 cancelled run, and trusted logs for 37865724910 showed a Restore collected activity data cache hit while Install dashboard build dependencies still ran npm ci for 9s. That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency-installation or cache-effectiveness recommendation in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-09T06:48:13Z",
       "worker_run_id": 37894875573,
       "category": "dependency installation and caching",
@@ -841,6 +813,34 @@
         37967199094
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-09T17:34:09Z through 2026-10-09T19:54:31Z, 9 runs concluded success and 11 workflow_run invocations were skipped. Only 3 successful runs (37982589412 on source SHA 445ac4f24955fca0cc3a40650c5e7c7df90bd604, 37975856869 on source SHA 2347d026afec9d21f8af9c86a9cd2335afbea1b0, and 37967199094 on source SHA 97754b289c91ff1a424f6ef63d6bab80ddc90a18) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\"; the other 6 successful schedule runs were freshness-only passes with build and deploy skipped. Across the 9 successful docs runs, queue median/p90 was 0s/0s and full workflow execution median/p90 was 14s/101.6s. Trusted step metadata and bounded logs for the 3 comparable full builds confirmed setup-node npm cache hits, Restore node_modules cache hits, skipped Install dependencies and Save node_modules steps, and central-agentic-ops-dashboard cache hits before Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped. Those comparable full builds took 104s, 94s, and 101s end-to-end, with build jobs at 60s, 47s, and 57s and deploy jobs at 23s, 26s, and 26s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-09T16:58:21Z through 2026-10-09T19:54:27Z contained 0 successful dashboard builds (16 skipped workflow_run runs and 4 cancelled push runs). That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency installation and caching recommendation."
+    },
+    {
+      "evaluated_at": "2026-10-09T20:29:56Z",
+      "worker_run_id": 37986774767,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37986880915,
+        37986598366,
+        37984213032,
+        37983410558,
+        37982589412,
+        37982235751,
+        37982231419,
+        37981161265,
+        37980933253,
+        37979740546,
+        37979459773,
+        37977338112,
+        37977110706,
+        37976136140,
+        37976134001,
+        37975856869,
+        37973681377,
+        37973430907,
+        37970467144,
+        37969784087
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the current cycle's earlier build-heavy categories still lack the required 5 comparable successful build-bearing docs runs. In the latest 20 completed docs.yml runs from 2026-10-09T17:56:21Z through 2026-10-09T20:25:35Z, 9 runs concluded success and all 9 were schedule-triggered; 2 of those successes (37982589412 and 37975856869) completed the full schedule-freshness + build + deploy path, 7 were freshness-only passes with build and deploy skipped, and 11 workflow_run invocations were skipped. Successful-run queue median/p90 was 0s/0s, full successful-workflow execution median/p90 was 13s/104s, schedule-freshness job median/p90 was 7s/10s, full-build workflow median/p90 was 99s/104s, build job median/p90 was 53.5s/60s, deploy job median/p90 was 24.5s/26s, and skipped workflow_run executions were 2s median/p90. Trusted logs for the 2 full builds confirmed cache hits for the setup-node npm cache, the node_modules restore cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-09T17:00:27Z through 2026-10-09T20:22:53Z contained 0 successful dashboard builds, 13 skipped workflow_run attempts, and 4 cancelled push runs, so reusable-dashboard producer changes still lack fresh comparable build evidence beyond the standing open issue #16825. Within this bounded sample, the remaining scheduling/concurrency overhead is the 7-10s freshness check plus 1-2s skipped workflow_run invocations, which is below the >=60s or >=15% actionable threshold without weakening correctness, freshness, or deployment safety."
     }
   ]
 }
