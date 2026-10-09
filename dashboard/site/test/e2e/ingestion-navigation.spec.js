@@ -254,10 +254,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await page.keyboard.press('Escape');
   await expect(importScreen).not.toBeVisible();
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
-  await page.getByRole('button', { name: 'Show import progress' }).click();
-  await expect(importScreen).toBeVisible();
-  await page.getByRole('button', { name: 'Explore data' }).click();
-  await expect(importScreen).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
@@ -283,17 +280,13 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   }
 
   await navigateToPage(page, 'overview');
-  await page.getByRole('button', { name: 'Show import progress' }).click();
-  await expect(importScreen).toBeVisible();
-  const importProgress = importScreen.getByRole('progressbar', { name: 'Dashboard import progress' });
-  expect(await importProgress.evaluate((element) => /** @type {HTMLProgressElement} */ (element).position))
-    .toBeLessThanOrEqual(0.7);
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
   await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'overview');
   await expect(page.locator('#agent-factory-heading')).not.toHaveText('Your dashboard is taking shape.');
-  await expect(page.getByRole('button', { name: 'Show import progress' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   await expect(importScreen).toHaveCount(0);
   await navigateToPage(page, 'runs');
   await selectTable(page, mobile);
