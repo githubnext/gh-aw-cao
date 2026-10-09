@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T22:43:52Z",
-      "worker_run_id": 37854968734,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        37854500905,
-        37853319314,
-        37853069623,
-        37850822943,
-        37850199522,
-        37849436737,
-        37849106613,
-        37847904951,
-        37847756334,
-        37846551954,
-        37846239020,
-        37843846400,
-        37843247798,
-        37842661494,
-        37841378564,
-        37839991393,
-        37839590657,
-        37839269857,
-        37836389054,
-        37835705192
-      ],
-      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-08T19:56:29Z through 2026-10-08T22:36:09Z, 11 runs concluded success but all 11 were freshness-only schedule passes with build and deploy skipped, while the remaining 9 runs were skipped workflow_run attempts. All 20 runs used source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. The latest 20 completed cao-dashboard.yml runs in the same evidence window were also all skipped workflow_run attempts, so there are 0 producer-side comparable successful dashboard builds. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5, so trusted Actions metadata cannot support median/p90 execution measurements or a safe threshold-backed recommendation in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-08T22:57:56.876581Z",
       "worker_run_id": 37856373243,
       "category": "Astro documentation generation",
@@ -841,6 +813,34 @@
         37917736446
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T10:27:42Z through 2026-10-09T13:26:55Z, 11 runs concluded success and all 11 were same-SHA schedule freshness passes on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. Queue median/p90 across the successful docs runs was 0s/0s, full successful-workflow median/p90 was 21s/21s, the schedule-freshness job median/p90 was 16s/17s, and the Check documentation and dashboard freshness step median/p90 was 12s/13s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window also contained 0 successful full builds, so there is no trusted upstream dashboard-generation sample for category \"Astro documentation generation\". That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for a safe evidence-backed recommendation."
+    },
+    {
+      "evaluated_at": "2026-10-09T14:01:28Z",
+      "worker_run_id": 37940546395,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37940801880,
+        37939895219,
+        37939491297,
+        37938256757,
+        37936903695,
+        37936459681,
+        37933647554,
+        37933325959,
+        37931054161,
+        37930762070,
+        37927469591,
+        37926832532,
+        37926104312,
+        37925730650,
+        37924591541,
+        37924459472,
+        37923481978,
+        37922083103,
+        37921203421,
+        37920712647
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T10:56:54Z through 2026-10-09T13:59:08Z, 10 runs concluded success and all 10 were same-SHA schedule freshness passes on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped, while the remaining 10 workflow_run-triggered attempts were skipped. Queue median/p90 across the successful docs runs was 0s/0s, full successful-workflow median/p90 was 21s/22s, the schedule-freshness job median/p90 was 17s/17.1s, and the Check documentation and dashboard freshness step median/p90 was 12s/13.1s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window also contained 0 successful full builds, so there is no trusted upstream dashboard-generation sample for category \"Astro documentation generation\". That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for a safe evidence-backed recommendation."
     }
   ]
 }
