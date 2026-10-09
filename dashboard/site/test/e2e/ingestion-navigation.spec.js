@@ -235,7 +235,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen.locator('.first-load-server-option')).toBeVisible();
   await expect(importScreen.locator('.first-load-reason')).toContainText(upgrade ? 'newer browser database format' : 'no completed local copy yet');
   await expect(importScreen.getByRole('link', { name: 'deployment options (opens in a new tab)' })).toBeVisible();
-  await expect(importScreen.getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
+  await expect(importScreen.locator('.first-load-reason').getByRole('button', { name: 'Copy preparation details' })).toBeVisible();
   await importScreen.locator('summary').click();
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
   const readBackground = (/** @type {Element} */ element) => {

@@ -29,6 +29,9 @@ export const firstLoadStyles = `
 .first-load-note { margin: 12px 0; color: var(--muted); font-size: .75rem; line-height: 1.6; }
 .first-load-copy-status { display: block; margin-top: 8px; color: var(--muted); font-size: .75rem; }
 .first-load-server-option a { text-decoration: underline; }
+.first-load-details-link { border: 0; padding: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.first-load-details-link:hover { color: var(--fg); }
+.first-load-details-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 3px; }
 .first-load-browse, .first-load-details { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
 .first-load-browse { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .first-load-browse .octicon { width: 16px; height: 16px; }

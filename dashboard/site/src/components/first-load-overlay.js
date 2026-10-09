@@ -56,7 +56,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const eyebrow = h('p', { className: 'first-load-eyebrow' });
   const description = h('p', { className: 'first-load-description' });
   const durationNote = h('p', { className: 'first-load-note first-load-duration' });
-  const reasonNote = h('p', { className: 'first-load-note first-load-reason' });
+  const reasonCopy = h('span');
   const copyControl = createCopyControl({
     getContent: () => {
       const { reason, status, stage, completed, total, oldVersion, newVersion } = browserFirstLoad.get();
@@ -72,7 +72,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
       }, null, 2);
     },
     label: 'Copy preparation details',
-    buttonClassName: 'first-load-details',
+    buttonClassName: 'first-load-details-link',
     statusClassName: 'first-load-copy-status',
     successText: 'Preparation details copied.',
     failureText: 'Could not copy preparation details.',
@@ -110,7 +110,8 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     h('details', { className: 'first-load-about' },
       h('summary', null, 'About this preparation'),
       h('p', { className: 'first-load-note' }, 'We download the latest published activity snapshot and build a local database in this browser. Views update as evidence becomes available.'),
-      reasonNote,
+      h('p', { className: 'first-load-note first-load-reason' }, reasonCopy, ' ', copyControl.button),
+      copyControl.status,
       h('ol', { className: 'first-load-steps' },
         h('li', null, h('strong', null, 'Download'), h('span', null, 'Collect the latest published snapshot')),
         h('li', null, h('strong', null, 'Prepare'), h('span', null, 'Cache data for this visit and the next')),
@@ -120,9 +121,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
         'For larger datasets, deploy a CAO backend server to run queries server-side and avoid this browser import. See ',
         h('a', { href: 'https://githubnext.github.io/gh-aw-cao/deployment/', target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'deployment options (opens in a new tab)' }, 'deployment options'),
         '.'
-      ),
-      copyControl.button,
-      copyControl.status
+      )
     )
   ));
   dialog.addEventListener('cancel', (event) => {
@@ -130,7 +129,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     dismiss();
   }, { signal });
   document.body.append(dialog);
-  render(reasonNote, () => browserFirstLoad.get().reason === 'upgrade'
+  render(reasonCopy, () => browserFirstLoad.get().reason === 'upgrade'
     ? 'Why is the database being rebuilt? This dashboard version needs a newer browser database format. We rebuild this local copy from published activity so it stays compatible; your campaign data is not changed.'
     : 'Why is the database being populated? This browser has no completed local copy yet. This can happen on your first visit, after clearing browser data, or if an earlier import did not finish.', { signal });
   render(eyebrow, () => browserFirstLoad.get().reason === 'upgrade' ? 'Dashboard update' : 'Welcome to CAO', { signal });

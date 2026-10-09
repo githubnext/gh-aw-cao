@@ -168,6 +168,7 @@ describe('browser first-load presentation', () => {
     expect(dialog?.textContent).not.toContain('The first import can take');
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Updating the local database');
     expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('needs a newer browser database format');
+    expect(dialog?.querySelector('.first-load-reason button')?.textContent).toContain('Copy preparation details');
     browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'upgrade', stage: 'files', completed: 1, total: 5 });
     expect(dialog?.querySelector('[role="status"]')?.textContent).toContain('Importing activity files');
     browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade' });
@@ -181,7 +182,9 @@ describe('browser first-load presentation', () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     const dialog = document.querySelector('dialog');
     expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('no completed local copy yet');
-    const copy = /** @type {HTMLButtonElement | null} */ (dialog?.querySelector('.first-load-details'));
+    const copy = /** @type {HTMLButtonElement | null} */ (dialog?.querySelector('.first-load-reason .first-load-details-link'));
+    expect(copy?.type).toBe('button');
+    expect(copy?.textContent).toContain('Copy preparation details');
     copy?.click();
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
@@ -196,6 +199,8 @@ describe('browser first-load presentation', () => {
     });
     await vi.waitFor(() => expect(dialog?.querySelector('.first-load-copy-status')?.textContent).toBe('Preparation details copied.'));
     browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade', oldVersion: 36, newVersion: 37 });
+    expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('newer browser database format');
+    expect(dialog?.querySelector('.first-load-reason button')).toBe(copy);
     copy?.click();
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
     expect(JSON.parse(writeText.mock.calls[1][0])).toMatchObject({
@@ -205,7 +210,7 @@ describe('browser first-load presentation', () => {
 
   it('reports when copying diagnostics is unavailable', async () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
-    /** @type {HTMLButtonElement | null} */ (document.querySelector('.first-load-details'))?.click();
+    /** @type {HTMLButtonElement | null} */ (document.querySelector('.first-load-details-link'))?.click();
     await vi.waitFor(() => expect(document.querySelector('.first-load-copy-status')?.textContent).toBe('Could not copy preparation details.'));
   });
 
