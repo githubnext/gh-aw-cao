@@ -13,6 +13,12 @@ const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
+const fixtureTimeOffset = Date.now() - Date.parse('2026-09-09T05:00:00Z');
+/** @template T @param {T} value @returns {T} */
+const currentFixtureDates = (value) => JSON.parse(JSON.stringify(value).replace(
+  /2026-09-(?:08|09|10)T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g,
+  (instant) => new Date(Date.parse(instant) + fixtureTimeOffset).toISOString()
+));
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'evalObservations', 'evals', 'experimentAssignments',
   'experiments', 'friction', 'graderObservations', 'graders', 'issues', 'marketplacePackages',
@@ -21,7 +27,7 @@ const canonicalEntityTables = [
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs');
-  const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
+  const context = currentFixtureDates(JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8')));
   const paths = [
     'run-303/mcp-logs/gateway.jsonl',
     'run-303/sandbox/firewall/audit/audit.jsonl',
@@ -29,12 +35,16 @@ function ghAwLogInput() {
   ];
   return {
     ...context,
-    files: paths.map((path) => ({ path, content: readFileSync(join(fixtureRoot, path), 'utf8') }))
+    files: paths.map((path) => ({
+      path,
+      content: currentFixtureDates(readFileSync(join(fixtureRoot, path), 'utf8'))
+        .replaceAll('"ts":1788926403', `"ts":${Math.floor((1788926403 * 1000 + fixtureTimeOffset) / 1000)}`)
+    }))
   };
 }
 
 function databaseTables(generation = 'browser-generation', run = '12345') {
-  return {
+  return currentFixtureDates({
     campaigns: {
       rows: [{
         campaign: 'dashboard',
@@ -229,7 +239,7 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'operational-value': 1 }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
-  };
+  });
 }
 
 function canonicalWarningSources() {
@@ -286,7 +296,7 @@ function canonicalWarningSources() {
       'event-status': 'high',
       'observed-at': '2026-09-09T05:00:00Z'
   });
-  return sources;
+  return currentFixtureDates(sources);
 }
 
 test.beforeEach(async ({ context, page }) => {
@@ -341,7 +351,7 @@ test.beforeEach(async ({ context, page }) => {
     if (pathname === `/${shardName}` || pathname === `/${recordShardName}`) {
       await route.fulfill({
         contentType: 'application/x-ndjson',
-        body: normalizedActivityShards(`${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+        body: normalizedActivityShards(`${JSON.stringify(currentFixtureDates({ schema_version: 2, kind: 'run', run: {
           run_id: 12345,
           run_attempt: 1,
           organization: 'githubnext',
@@ -397,7 +407,7 @@ test.beforeEach(async ({ context, page }) => {
               }
             }
           }
-        } })}\n`)[pathname === `/${shardName}` ? 'runs' : 'records']
+        } }))}\n`)[pathname === `/${shardName}` ? 'runs' : 'records']
       });
       return;
     }
@@ -1289,7 +1299,7 @@ test('SQLite and browser IndexedDB ingestion produce identical populated tables'
   const directory = mkdtempSync(join(tmpdir(), 'cao-ingestion-compliance-'));
   try {
     const sqliteIndexedDB = createSqliteIndexedDB(join(directory, 'dashboard.sqlite'));
-    await ingestNodeGhAwLogs(sqliteIndexedDB, input);
+    await ingestNodeGhAwLogs(sqliteIndexedDB, input, { now: Date.now() });
     const sqliteRows = await readCanonicalBatch(sqliteIndexedDB);
 
     const downloadPromise = page.waitForEvent('download');
