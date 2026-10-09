@@ -206,8 +206,9 @@ hosted queries retain their production limits. Each query measures its first
 reporting page rows and total result rows separately. Output and retained-data
 limits remain unchanged. The query-cost test independently enforces its
 duration, operation, and retained-byte thresholds. Before ingestion, set
-`CAO_POSTGRES_RUN_RETENTION_DAYS` to cover the artifact timestamps; deployed
-query-cost CI provisions a 90-day window without changing hosted retention.
+`CAO_POSTGRES_RUN_RETENTION_DAYS` to cover the artifact timestamps and
+`CAO_POSTGRES_LINKED_RETENTION_DAYS` when historical linked evidence is needed;
+deployed query-cost CI provisions 90-day windows without changing hosted retention.
 
 ### Redis memory budget
 
@@ -1192,7 +1193,8 @@ expired run shards, updating affected source counts and revisions. Repeated main
 is a no-op when partitions are already present and none have expired; a restart
 reruns maintenance to catch up after downtime. Choose a window
 that covers all authoritative run timestamps before ingestion; historical linked
-records outside the linked window cannot be ingested into missing shards.
+records outside the linked window are skipped while their retained runs are
+still ingested.
 
 Startup initializes this fresh schema and its partitions. There is no old-layout detection,
 conversion, backfill, or backward-compatible import. Use a new database and

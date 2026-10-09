@@ -47,6 +47,7 @@ test("deployed integration runs both SQLite and Postgres query cost benchmarks",
   assert.match(workflow, /run: npm run test:performance:dashboard-query-cost-postgres/);
   assert.match(workflow, /image: postgres:16-alpine/);
   assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_RUN_RETENTION_DAYS, "90");
+  assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_LINKED_RETENTION_DAYS, "90");
   assert.match(workflow, /go -C server build -o \.\.\/\.tmp\/cao-dashboard/);
   assert.match(workflow, /name: dashboard-query-cost\n/);
   const manifest = JSON.parse(await readFile("package.json", "utf8"));

@@ -287,6 +287,59 @@ func TestNativeInventoryEnrichment(t *testing.T) {
 	}
 }
 
+func TestLinkedRetentionDoesNotProvisionOldShards(t *testing.T) {
+	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "")
+	store, _ := nativeTestStore(t)
+	now := time.Now().UTC()
+	week := weekStart(now.AddDate(0, 0, -21)).Format("20060102")
+	for _, table := range []struct {
+		name string
+		want bool
+	}{
+		{"runs", true},
+		{"audits", false},
+		{"tools", false},
+	} {
+		var exists bool
+		if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", table.name+"_w"+week).Scan(&exists); err != nil || exists != table.want {
+			t.Fatalf("%s historical partition exists=%v, want %v: %v", table.name, exists, table.want, err)
+		}
+	}
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	for _, record := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$repositories", model.Row{"id": "repository"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repository"}},
+		{"$runs", model.Row{"id": "historical", "repositoryId": "repository", "workflowId": "workflow", "createdAt": now.AddDate(0, 0, -21).Format(time.RFC3339)}},
+		{"$runs", model.Row{"id": "recent", "repositoryId": "repository", "workflowId": "workflow", "createdAt": now.Format(time.RFC3339)}},
+		{"$tools", model.Row{"id": "old-tool", "runId": "historical"}},
+		{"$tools", model.Row{"id": "recent-tool", "runId": "recent"}},
+	} {
+		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := writer.Publish(t.Context(), "linked-retention"); err != nil {
+		t.Fatal(err)
+	}
+	var runs, tools int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM runs WHERE namespace=$1", store.namespace).Scan(&runs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM tools WHERE namespace=$1", store.namespace).Scan(&tools); err != nil {
+		t.Fatal(err)
+	}
+	if runs != 2 || tools != 1 {
+		t.Fatalf("historical ingestion kept %d runs and %d tools, want 2 and 1", runs, tools)
+	}
+}
+
 func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "30")
 	store, _ := nativeTestStore(t)
@@ -371,16 +424,16 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table+" WHERE namespace=$1", store.namespace).Scan(&count); err != nil || count != 1 {
 			t.Fatalf("%s coordinated retention count = %d, err = %v", table, count, err)
 		}
-		var retainedRuns int
-		if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM runs WHERE namespace=$1", store.namespace).Scan(&retainedRuns); err != nil || retainedRuns != 3 {
-			t.Fatalf("run retention count = %d, err = %v", retainedRuns, err)
-		}
-		if err := store.RunPartitionMaintenance(t.Context(), now, 14, 7); err != nil {
-			t.Fatal(err)
-		}
-		if state, err = store.State(t.Context()); err != nil || state.Counts["$runs"] != 2 || state.Counts["$tools"] != 1 {
-			t.Fatalf("run retention did not remove the expired run: %+v %v", state, err)
-		}
+	}
+	var retainedRuns int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(*) FROM runs WHERE namespace=$1", store.namespace).Scan(&retainedRuns); err != nil || retainedRuns != 3 {
+		t.Fatalf("run retention count = %d, err = %v", retainedRuns, err)
+	}
+	if err := store.RunPartitionMaintenance(t.Context(), now, 14, 7); err != nil {
+		t.Fatal(err)
+	}
+	if state, err = store.State(t.Context()); err != nil || state.Counts["$runs"] != 2 || state.Counts["$tools"] != 1 {
+		t.Fatalf("run retention did not remove the expired run: %+v %v", state, err)
 	}
 	if _, err := store.db.ExecContext(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
 		VALUES($1,2,repeat('0',73)::bit varying,'unroutable','repository','workflow','1900-01-01')`, store.namespace); err == nil || !strings.Contains(err.Error(), "no partition") {

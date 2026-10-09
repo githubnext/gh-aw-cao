@@ -33,11 +33,12 @@ type State struct {
 }
 
 type Store struct {
-	db              *sql.DB
-	config          *pgx.ConnConfig
-	namespace       string
-	stopMaintenance context.CancelFunc
-	maintenanceDone sync.WaitGroup
+	db                  *sql.DB
+	config              *pgx.ConnConfig
+	namespace           string
+	linkedRetentionDays int
+	stopMaintenance     context.CancelFunc
+	maintenanceDone     sync.WaitGroup
 }
 
 // Open reports whether the store has a database handle. A zero-valued Store
@@ -114,7 +115,7 @@ func NewConfig(ctx context.Context, config *pgx.ConnConfig, namespaces ...string
 		_ = db.Close()
 		return nil, err
 	}
-	store := &Store{db: db, config: config.Copy(), namespace: namespace}
+	store := &Store{db: db, config: config.Copy(), namespace: namespace, linkedRetentionDays: linkedRetention}
 	if err := store.RunPartitionMaintenance(ctx, time.Now(), retention, linkedRetention); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize run partitions: %w", err)
