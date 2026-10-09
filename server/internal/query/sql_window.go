@@ -89,7 +89,7 @@ func isValidWindowGroupBy(groupBy []string) bool {
 func isValidRollingWindow(entry WindowField) bool {
 	return entry.Frame != nil && *entry.Frame >= 1 && *entry.Frame <= 1000 &&
 		(entry.Alignment == "" || entry.Alignment == "trailing" || entry.Alignment == "centered") &&
-		!(entry.Alignment == "centered" && *entry.Frame%2 == 0) &&
+		(entry.Alignment != "centered" || *entry.Frame%2 != 0) &&
 		(entry.Reducer == "" || entry.Reducer == "mean" || entry.Reducer == "sum" || entry.Reducer == "min" || entry.Reducer == "max") &&
 		entry.Mode == "" && entry.TimeField == "" && entry.Unit == ""
 }
