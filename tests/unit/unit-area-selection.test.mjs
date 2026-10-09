@@ -18,4 +18,8 @@ test("CI runs every defined unit test area", () => {
   const areas = /^\s+area: \[([^\]]+)\]/m.exec(workflow)?.[1].split(", ");
   assert.deepEqual(areas, Object.keys(unitTestAreas));
   assert.equal((workflow.match(/npm run test:unit:area -- \$\{\{ matrix\.area \}\}/g) ?? []).length, 1);
+  assert.match(
+    workflow,
+    /name: Install dashboard dependencies\n\s+if: matrix\.area == 'dashboard'\n\s+run: npm ci --prefix dashboard\/site --ignore-scripts/,
+  );
 });

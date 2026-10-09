@@ -182,7 +182,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
   assert.match(lighthousePerformance.block, /npm run test:performance/);
-  assert.match(lighthousePerformance.block, /status.*42/);
+  assert.doesNotMatch(lighthousePerformance.block, /continue-on-error:\s*true/);
   assert.doesNotMatch(lighthousePerformance.block, /pull-requests: write/);
   assert.match(lighthousePerformance.block, /uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
   assert.match(lighthousePerformance.block, /name: dashboard-lighthouse-performance/);
