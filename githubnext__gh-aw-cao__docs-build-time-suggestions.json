@@ -3,34 +3,6 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T23:56:54.404Z",
-      "worker_run_id": 37862039389,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37862038669,
-        37861182278,
-        37860129025,
-        37859196214,
-        37858977704,
-        37857086761,
-        37856544752,
-        37855862451,
-        37855445318,
-        37854500905,
-        37853319314,
-        37853069623,
-        37850822943,
-        37850199522,
-        37849436737,
-        37849106613,
-        37847904951,
-        37847756334,
-        37846551954,
-        37846239020
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T16:58:58Z through 2026-10-08T18:50:39Z, 10 runs concluded success but 0 runs executed the comparable build-bearing path needed for category \"reusable dashboard generation\". All 10 successful docs runs were schedule freshness checks that skipped build and deploy on the same default-branch SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243, while the other 10 runs were skipped workflow_run invocations. The latest 20 completed cao-dashboard.yml runs in the same 14-day window were also all skipped, so there is no trusted producer sample to measure dashboard-generation work or validate a >=60s or >=15% optimization safely in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-09T01:10:30Z",
       "worker_run_id": 37867769065,
       "category": "reusable dashboard generation",
@@ -841,6 +813,34 @@
         37948857431
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-09T15:03:38Z through 2026-10-09T15:57:36Z, only 3 runs concluded success and just 2 runs (37952930031 and 37951512372) completed the comparable schedule-freshness + build + deploy path for category \"reusable dashboard generation\"; the third success (37954801524) was a freshness-only pass with build and deploy skipped. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds. Trusted step metadata on the two build-bearing docs runs confirmed central-agentic-ops-dashboard cache hits because Restore cached CAO Dashboard succeeded while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped. Fewer than 5 comparable successful runs are available, so no safe evidence-backed reusable-dashboard recommendation can be made in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-09T16:31:00Z",
+      "worker_run_id": 37959144087,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37959298896,
+        37959296965,
+        37959296562,
+        37959296335,
+        37959211631,
+        37958929629,
+        37958633833,
+        37956156938,
+        37955575621,
+        37955175385,
+        37954801524,
+        37954229429,
+        37952930031,
+        37952705856,
+        37952704631,
+        37952524731,
+        37952260511,
+        37951888058,
+        37951789746,
+        37951787563
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-09T15:26:46Z through 2026-10-09T16:27:52Z, 5 runs concluded success but only 1 run (37952930031) completed the comparable schedule-freshness + build + deploy path for category \"reusable dashboard generation\". The other 4 successful runs comprised 3 freshness-only schedule passes with build and deploy skipped (37959211631, 37956156938, 37954801524) and 1 push run where build succeeded but deploy was skipped (37959298896). The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds; instead they comprised 11 skipped runs, 4 cancelled runs, 4 failed runs, and 1 action_required run. Trusted job metadata on docs run 37952930031 confirmed a central-agentic-ops-dashboard cache hit because Restore cached CAO Dashboard succeeded while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped. Fewer than 5 comparable successful runs are available, so no safe evidence-backed reusable-dashboard recommendation can be made in this cycle."
     }
   ]
 }
