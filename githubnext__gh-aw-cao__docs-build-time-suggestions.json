@@ -3,35 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T17:48:25Z",
-      "worker_run_id": 37818296159,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        37817729084,
-        37817563564,
-        37816220255,
-        37815934507,
-        37813421963,
-        37813110563,
-        37812197656,
-        37811803743,
-        37811094278,
-        37809367639,
-        37809022764,
-        37809017428,
-        37806255715,
-        37806255813,
-        37806254570,
-        37806253789,
-        37805620432,
-        37804974563,
-        37804274542,
-        37803726329
-      ],
-      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the cycle's next category (artifact transfer and Pages packaging) still lacks the required 5 comparable build-bearing docs successes in the latest 20 completed docs.yml runs. The latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T15:48:08Z through 2026-10-08T17:35:34Z and yielded 7 successful schedule runs, 9 skipped workflow_run runs, and 4 action_required workflow_run outliers with no jobs; queue median/p90 was 0s/0s and full successful-workflow median/p90 was 14s/61.4s. Trusted Actions metadata showed schedule-freshness ran in all 7 successful runs at 9s median / 10s p90, while only 1 run (37809367639) executed build and deploy after a new default-branch SHA; its build and deploy jobs took 61s and 49s with node_modules and CAO Dashboard cache hits, Build documentation 14s, and Upload Pages artifact 15s. Source inspection of .github/workflows/docs.yml confirms the freshness gate now covers both schedule and successful default-branch workflow_run events, and the bounded run sample matches that behavior: every completed workflow_run docs invocation in the sample either skipped cleanly or was an action_required outlier rather than performing a duplicate rebuild. Relevant cao-dashboard evidence in the same repository showed the latest 20 completed cao-dashboard.yml runs contained 0 successful runs (14 skipped, 4 cancelled, 2 failed), so no new dashboard-generation optimization can be revalidated safely in this cycle; the standing threshold-meeting dashboard-side improvement is already tracked by open issue #16825, while open issue #16054 already represents the earlier workflow_run duplicate-build subject. No additional non-duplicate scheduling/concurrency change currently meets the >=60s or >=15% threshold without weakening freshness or correctness.",
-      "suggestion_fingerprint": null
-    },
-    {
       "evaluated_at": "2026-10-08T18:05:00Z",
       "worker_run_id": 37820653229,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -848,6 +819,34 @@
         37879841926
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-09T03:33:45Z through 2026-10-09T07:09:47Z, 11 runs concluded success but only 1 run (37879841926) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\". The other 10 successful runs were schedule freshness checks with build and deploy skipped, and the remaining 9 runs were skipped workflow_run invocations. All 20 docs runs used source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5. Across the successful docs runs, queue median/p90 was 0s/0s and full workflow execution median/p90 was 13s/18s. The lone build-bearing docs run showed build 58s and deploy 17s with cache-hit restores for node_modules and the CAO Dashboard artifact. The latest 20 completed cao-dashboard.yml runs in the same window yielded only 1 successful build-bearing run (37865724910), still below the required minimum of 5 comparable successful runs for category \"dependency installation and caching\"."
+    },
+    {
+      "evaluated_at": "2026-10-09T07:53:11Z",
+      "worker_run_id": 37901251033,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37900699132,
+        37899913853,
+        37897449706,
+        37897139933,
+        37894925277,
+        37894720919,
+        37891538465,
+        37891165045,
+        37890362629,
+        37890182557,
+        37888769329,
+        37888532319,
+        37886721587,
+        37886576634,
+        37886066357,
+        37885847477,
+        37884420310,
+        37884143605,
+        37882676786,
+        37881550371
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-09T03:56:17Z through 2026-10-09T07:43:53Z, 11 runs concluded success but every success was a schedule freshness pass with schedule-freshness successful and build and deploy skipped. The other 9 runs were skipped workflow_run invocations. All 20 docs runs used source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5, leaving 0 comparable successful build-bearing docs runs for category \"dependency installation and caching\", below the required minimum of 5. Across the successful docs runs, queue median/p90 was 0s/0s and full workflow execution median/p90 was 13s/16s. The latest 20 completed cao-dashboard.yml runs in the same evidence window yielded only 1 successful build-bearing run (37865724910), so no trusted repeatable dependency-install or cache-hit sample is currently available for an evidence-backed recommendation."
     }
   ]
 }
