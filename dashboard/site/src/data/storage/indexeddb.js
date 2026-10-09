@@ -1697,6 +1697,26 @@ export async function readTransaction(indexedDB, id) {
   }
 }
 
+/** @param {IDBFactory} indexedDB @param {string[]} ids */
+export async function readTransactionBatch(indexedDB, ids) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction(TRANSACTION_STORE);
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(TRANSACTION_STORE);
+    try {
+      const records = await Promise.all(ids.map((id) => requestResult(store.get(id))));
+      await done;
+      return records;
+    } catch (error) {
+      await done.catch(() => undefined);
+      throw error;
+    }
+  } finally {
+    database.close();
+  }
+}
+
 /** @returns {Error} */
 function ingestionLockTimeoutError() {
   const error = new Error('Timed out waiting for canonical ingestion lock');

@@ -4089,7 +4089,7 @@
       "subject": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
       "objective": "Locate agent and model combinations whose observed per-run AIC or token usage merits checking against individual runs.",
       "acceptance": "Report run counts and native minimum, mean, and maximum values only for reported metrics; inspect underlying runs for per-metric telemetry coverage and context before comparing combinations, and infer neither efficiency nor outcome value from usage alone.",
-      "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
+      "description": "Observed workflow runs grouped by agent ID and model ID. AIC statistics use only positive-AIC runs; token statistics use runs that reported each token metric.",
       "parameters": [],
       "sources": [
         "runs"
@@ -5504,8 +5504,8 @@
       "id": "cost-per-workflow-run",
       "subject": "Present the average observed AI Credit cost of a single run for each repository-owned workflow.",
       "objective": "Compare observed AI Credit per run across repository workflows with each observed-runs denominator.",
-      "acceptance": "aic-per-run is derived from native aic and observed-runs for matching workflows only; missing or zero denominators remain unavailable, and differences are not claimed as efficiency gains.",
-      "description": "Observed AI Credit totals divided by observed run attempts for each declared workflow.",
+      "acceptance": "aic-per-run uses only positive-AIC run attempts; observed-runs still counts all retained attempts, and missing or zero positive-AIC denominators remain unavailable.",
+      "description": "Observed AI Credit totals divided by positive-AIC run attempts for each declared workflow.",
       "parameters": [],
       "sources": [
         "workflow-aic-run-totals"

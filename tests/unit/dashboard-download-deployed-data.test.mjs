@@ -407,7 +407,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       assert.equal(audit.command, "audit-jsonl");
       assert.equal(audit.source.records, 3);
 
-      await executeFile(cao, ["ingest-jsonl"], { cwd: root });
+      await executeFile(cao, ["ingest-jsonl", "--retention-days", "all", "--run-retention-days", "all"], { cwd: root });
       const { stdout: runsStdout } = await executeFile(cao, [
         "query",
         "--collection",
