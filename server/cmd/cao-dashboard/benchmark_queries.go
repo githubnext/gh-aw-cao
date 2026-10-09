@@ -43,12 +43,42 @@ type benchmarkReport struct {
 	Measurements []benchmarkMeasurement `json:"measurements"`
 }
 
+// benchmarkEvidenceRejectionStage identifies which emptiness check
+// validateBenchmarkEvidence failed, so a misconfigured or incomplete
+// deployed-artifact ingest is diagnosable without logging the source counts
+// themselves, which can reveal deployment-specific record volumes.
+type benchmarkEvidenceRejectionStage string
+
+const (
+	benchmarkEvidenceRejectionStageNone     benchmarkEvidenceRejectionStage = "none"
+	benchmarkEvidenceRejectionStageNoRecord benchmarkEvidenceRejectionStage = "no-records"
+	benchmarkEvidenceRejectionStageNoRuns   benchmarkEvidenceRejectionStage = "no-runs"
+)
+
+// classifyBenchmarkEvidence reports which of validateBenchmarkEvidence's two
+// emptiness checks, if any, counts fails: no records at all across every
+// source, or records present but none in the $runs source specifically. It
+// is a pure function extracted from validateBenchmarkEvidence so each
+// rejection stage is independently testable against a constructed source
+// count map, without executing any Postgres ingest.
+func classifyBenchmarkEvidence(records int, counts map[string]int) benchmarkEvidenceRejectionStage {
+	switch {
+	case records == 0:
+		return benchmarkEvidenceRejectionStageNoRecord
+	case counts["$runs"] == 0:
+		return benchmarkEvidenceRejectionStageNoRuns
+	default:
+		return benchmarkEvidenceRejectionStageNone
+	}
+}
+
 func validateBenchmarkEvidence(counts map[string]int) (int, error) {
 	records := 0
 	for _, count := range counts {
 		records += count
 	}
-	if records == 0 || counts["$runs"] == 0 {
+	if stage := classifyBenchmarkEvidence(records, counts); stage != benchmarkEvidenceRejectionStageNone {
+		benchmarkLog.Printf("benchmark evidence rejected stage=%s", stage)
 		return records, errors.New("deployed Postgres projection is empty")
 	}
 	return records, nil
