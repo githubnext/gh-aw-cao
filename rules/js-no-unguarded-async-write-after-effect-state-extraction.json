@@ -90,18 +90,18 @@
   "status": "ready",
   "evaluation": {
     "target_repo": "github/gh-aw",
-    "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+    "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
     "true_positive_count": 0,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-    "txn_id": "refiner-38001319335-1"
+    "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
+    "txn_id": "refiner-38006263601-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38001319335",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
   "last_updated_target_repo": "github/gh-aw",
-  "last_seen_at": "2026-10-09T22:54:31Z",
-  "last_updated": "2026-10-09T22:54:31Z",
+  "last_seen_at": "2026-10-09T23:53:21Z",
+  "last_updated": "2026-10-09T23:53:21Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw",
@@ -202,6 +202,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
       "txn_id": "refiner-38001319335-1"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
+      "txn_id": "refiner-38006263601-1"
     }
   ]
 }
