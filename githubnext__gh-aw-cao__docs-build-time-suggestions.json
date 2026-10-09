@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T20:30:46Z",
-      "worker_run_id": 37839513591,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37839590657,
-        37839269857,
-        37836389054,
-        37835705192,
-        37834847191,
-        37834469714,
-        37833111436,
-        37832937262,
-        37831646623,
-        37831315374,
-        37828963289,
-        37828764238,
-        37827847262,
-        37827544394,
-        37824955752,
-        37824589778,
-        37821163655,
-        37820370700,
-        37819530284,
-        37819170486
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T17:46:36Z through 2026-10-08T20:27:31Z and all referenced source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. The sample contained 10 successful schedule runs and 10 skipped workflow_run runs. Every successful run was a freshness-only pass with build and deploy skipped, leaving 0 comparable successful build-bearing docs runs for the dependency installation and caching category. Trusted Actions metadata therefore provides no current-window cache-hit or install-duration evidence for docs.yml, and the related latest 20 completed cao-dashboard.yml runs in the same window also yielded 0 successful runs (18 skipped, 2 cancelled), so upstream dashboard-cache evidence is likewise unavailable. Queue median/p90 for the successful docs runs was 0s/0s, full successful-workflow median/p90 was 15.5s/17s, and schedule-freshness job median/p90 was 10.5s/12s. This remains below the required minimum of 5 comparable successful runs for a safe evidence-backed recommendation."
-    },
-    {
       "evaluated_at": "2026-10-08T21:01:04Z",
       "worker_run_id": 37843176335,
       "category": "dependency installation and caching",
@@ -842,6 +814,34 @@
         37901951353
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T07:56:46Z through 2026-10-09T10:56:54Z, 11 runs concluded success but every success was a schedule freshness pass with schedule-freshness successful and build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. All 20 runs used source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5. That leaves 0 comparable successful build-bearing docs runs for category \"dependency installation and caching\", below the required minimum of 5. Queue median/p90 across the successful docs runs was 0s/0s, full workflow median/p90 was 18s/21s, and schedule-freshness job median/p90 was 12s/14s. The related latest 20 completed cao-dashboard.yml runs in the same 14-day window were all skipped workflow_run attempts, so there is also 0 trusted upstream dashboard-build evidence for the current source SHA."
+    },
+    {
+      "evaluated_at": "2026-10-09T11:30:00Z",
+      "worker_run_id": 37923580391,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37923481978,
+        37922083103,
+        37921203421,
+        37920712647,
+        37920246198,
+        37919740690,
+        37919210740,
+        37917736446,
+        37917524122,
+        37915060362,
+        37914775117,
+        37914112685,
+        37913787684,
+        37912748080,
+        37911536206,
+        37911112270,
+        37908407398,
+        37907883017,
+        37906876975,
+        37905737974
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T08:33:59Z through 2026-10-09T11:24:02Z, 11 runs concluded success but every success was a schedule freshness pass with schedule-freshness successful and build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. All 20 runs used source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5. Queue median/p90 across the successful schedule passes was 0s/0s, full successful-workflow median/p90 was 18s/21s, and schedule-freshness job median/p90 was 14s/15s. The paired latest 20 completed cao-dashboard.yml runs in the same window also contained 0 successful full builds, so no trusted cache-hit, npm install, or dashboard artifact reuse sample was available. That leaves 0 comparable successful build-bearing docs runs for category \"dependency installation and caching\", below the required minimum of 5 for a safe evidence-backed recommendation."
     }
   ]
 }
