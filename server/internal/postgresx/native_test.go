@@ -17,6 +17,67 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
+func TestNormalizeQualityMetadataDefaultsAndAliases(t *testing.T) {
+	quality, err := normalizeQualityMetadata(model.Metadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quality.availability != "available" || quality.completeness != "complete" || quality.freshness != "current" {
+		t.Fatalf("unexpected defaults: %+v", quality)
+	}
+	if quality.asOf != nil || quality.retrievedAt != nil {
+		t.Fatalf("expected no instants without input: %+v", quality)
+	}
+
+	quality, err = normalizeQualityMetadata(model.Metadata{"availability": "unavailable", "completeness": "partial", "freshness": "fresh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quality.availability != "unavailable" || quality.completeness != "partial" {
+		t.Fatalf("overrides not applied: %+v", quality)
+	}
+	if quality.freshness != "current" {
+		t.Fatalf("expected fresh to alias to current, got %q", quality.freshness)
+	}
+}
+
+func TestNormalizeQualityMetadataObservedAtFallback(t *testing.T) {
+	asOf := "2024-01-02T03:04:05Z"
+	quality, err := normalizeQualityMetadata(model.Metadata{"observed-at": asOf})
+	if err != nil {
+		t.Fatal(err)
+	}
+	instant, ok := quality.asOf.(time.Time)
+	if !ok {
+		t.Fatalf("expected as-of to fall back to observed-at, got %+v", quality.asOf)
+	}
+	expected, _ := time.Parse(time.RFC3339Nano, asOf)
+	if !instant.Equal(expected) {
+		t.Fatalf("as-of = %v, want %v", instant, expected)
+	}
+
+	// Explicit "as-of" takes precedence over "observed-at".
+	explicit := "2025-06-07T08:09:10Z"
+	quality, err = normalizeQualityMetadata(model.Metadata{"as-of": explicit, "observed-at": asOf})
+	if err != nil {
+		t.Fatal(err)
+	}
+	instant, _ = quality.asOf.(time.Time)
+	expected, _ = time.Parse(time.RFC3339Nano, explicit)
+	if !instant.Equal(expected) {
+		t.Fatalf("explicit as-of overridden: got %v, want %v", instant, expected)
+	}
+}
+
+func TestNormalizeQualityMetadataRejectsInvalidTimestamp(t *testing.T) {
+	if _, err := normalizeQualityMetadata(model.Metadata{"as-of": "not-a-timestamp"}); err == nil {
+		t.Fatal("expected an error for an invalid as-of timestamp")
+	}
+	if _, err := normalizeQualityMetadata(model.Metadata{"retrieved-at": "not-a-timestamp"}); err == nil {
+		t.Fatal("expected an error for an invalid retrieved-at timestamp")
+	}
+}
+
 func nativeTestStore(t *testing.T) (*Store, *pgx.ConnConfig) {
 	t.Helper()
 	endpoint := os.Getenv("POSTGRES_URL")

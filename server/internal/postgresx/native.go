@@ -12,10 +12,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
 )
+
+var nativeLog = logger.New("cao:postgresx:native")
 
 type entityColumn struct{ field, name, kind, sql string }
 type entityTable struct {
@@ -357,23 +360,32 @@ func (w *Writer) Flush(ctx context.Context) error {
 	return nil
 }
 
-func (w *Writer) Quality(ctx context.Context, source string, metadata model.Metadata) error {
-	table, exists := entityTables[source]
-	if !exists || table.runtime {
-		return fmt.Errorf("unregistered native quality collection %q", source)
-	}
-	availability, completeness, freshness := "available", "complete", "current"
+// normalizedQuality holds the scalar availability/completeness/freshness
+// fields and optional instants resolved from one input quality metadata map.
+type normalizedQuality struct {
+	availability, completeness, freshness string
+	asOf, retrievedAt                     any
+}
+
+// normalizeQualityMetadata applies Quality's default, override, and alias
+// rules (including the "fresh"->"current" freshness alias and the
+// "observed-at" fallback for "as-of") to a single metadata map. It is
+// extracted from Quality so the metadata-shape decision is a pure,
+// independently testable unit boundary, separate from the SQL upsert that
+// follows it.
+func normalizeQualityMetadata(metadata model.Metadata) (normalizedQuality, error) {
+	result := normalizedQuality{availability: "available", completeness: "complete", freshness: "current"}
 	if value, ok := metadata["availability"].(string); ok {
-		availability = value
+		result.availability = value
 	}
 	if value, ok := metadata["completeness"].(string); ok {
-		completeness = value
+		result.completeness = value
 	}
 	if value, ok := metadata["freshness"].(string); ok {
-		freshness = value
+		result.freshness = value
 	}
-	if freshness == "fresh" {
-		freshness = "current"
+	if result.freshness == "fresh" {
+		result.freshness = "current"
 	}
 	instants := map[string]any{}
 	for _, field := range []string{"as-of", "retrieved-at"} {
@@ -384,15 +396,29 @@ func (w *Writer) Quality(ctx context.Context, source string, metadata model.Meta
 		if value != "" {
 			instant, err := time.Parse(time.RFC3339Nano, value)
 			if err != nil {
-				return errors.New("invalid input quality timestamp")
+				return normalizedQuality{}, errors.New("invalid input quality timestamp")
 			}
 			instants[field] = instant
 		}
 	}
-	_, err := w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,availability,completeness,freshness,as_of,retrieved_at)
+	result.asOf, result.retrievedAt = instants["as-of"], instants["retrieved-at"]
+	return result, nil
+}
+
+func (w *Writer) Quality(ctx context.Context, source string, metadata model.Metadata) error {
+	table, exists := entityTables[source]
+	if !exists || table.runtime {
+		return fmt.Errorf("unregistered native quality collection %q", source)
+	}
+	quality, err := normalizeQualityMetadata(metadata)
+	if err != nil {
+		nativeLog.Printf("quality metadata rejected collection=%s reason=invalid_timestamp", source)
+		return err
+	}
+	_, err = w.tx.Exec(ctx, `INSERT INTO cao_quality(namespace,collection,availability,completeness,freshness,as_of,retrieved_at)
 		VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(namespace,collection) DO UPDATE SET
 		availability=excluded.availability,completeness=excluded.completeness,freshness=excluded.freshness,as_of=excluded.as_of,retrieved_at=excluded.retrieved_at`,
-		w.store.namespace, source, availability, completeness, freshness, instants["as-of"], instants["retrieved-at"])
+		w.store.namespace, source, quality.availability, quality.completeness, quality.freshness, quality.asOf, quality.retrievedAt)
 	return err
 }
 
