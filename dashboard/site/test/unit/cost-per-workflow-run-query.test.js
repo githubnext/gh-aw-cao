@@ -49,6 +49,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
   const definitions = authoritativeDashboard.dashboard.queries.filter(
     (/** @type {{ name?: string }} */ query) => names.includes(query.name ?? '')
   );
+  /** @type {import('../../src/presenter.js').SourceMetadata} */
   const metadata = {
     'source-id': 'fixture',
     'source-kind': 'fixture',
@@ -64,6 +65,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
     { organization: 'example', repository: 'one', workflow: 'worker', run: '3', 'run-attempt': '1', 'aic-total': null, 'run-conclusion': 'failure', 'agent-id': 'agent', 'model-id': 'model', 'input-tokens': 300 },
     { organization: 'example', repository: 'two', workflow: 'worker', run: '4', 'run-attempt': '1', 'aic-total': 0, 'run-conclusion': 'success', 'agent-id': 'other', 'model-id': 'model', 'input-tokens': 50 }
   ];
+  /** @param {string} name @param {Record<string, unknown>[]} sourceRows */
   const source = (name, sourceRows) => ({ source: name, metadata, rows: sourceRows });
   const result = executeDashboardQueries(definitions, {
     runs: source('runs', rows),
@@ -83,6 +85,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
     'entity-workflows', 'engines-models-usage', 'campaign-performance-baseline-totals'
   ]);
 
+  /** @param {string} name @param {string} field @param {string} value */
   const rowFor = (name, field, value) => result[name].rows.find((row) => row[field] === value);
   expect(rowFor('cost-per-workflow-run', 'repository-coordinate', 'example/one')).toMatchObject({
     'observed-runs': 3, 'aic-per-run': 12
