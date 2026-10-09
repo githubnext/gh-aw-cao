@@ -56,18 +56,28 @@
   "status": "needs-work",
   "evaluation": {
     "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
+    "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
     "true_positive_count": 0,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD d00b985: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag ('--bind 127.0.0.1'), unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
-    "txn_id": "refiner-37796381362-2"
+    "reason": "Re-confirmed on HEAD c835648: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
+    "txn_id": "refiner-37947701110-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37796381362",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37947701110",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-09T01:36:03Z",
+  "last_seen_at": "2026-10-09T14:56:10Z",
   "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD d00b985: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag ('--bind 127.0.0.1'), unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
+      "txn_id": "refiner-37796381362-2"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
@@ -89,5 +99,5 @@
       "txn_id": "refiner-37870178954-2"
     }
   ],
-  "last_updated": "2026-10-08T15:00:22Z"
+  "last_updated": "2026-10-09T14:56:10Z"
 }
