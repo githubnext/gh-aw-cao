@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.8.2
+version: 1.8.3
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,11 +9,11 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.8.2
+**Version:** 1.8.3
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-24
+**Date:** 2026-10-09
 
 Implementers changing canonical data, ingestion, storage, or query execution
 should read `docs/dashboard-data-model.md` first, then this specification and
@@ -427,8 +427,9 @@ Node.js dashboard preview server. It SHALL:
 * keep Postgres and Redis credentials exclusively in the Go process; use Redis
   for operational state only;
 * validate Dashboard Language before executing proven equivalent, bounded,
-  parameterized SQL plans in a repeatable-read Postgres transaction; evaluate
-  unsupported shapes in the bounded Go query engine without exposing raw SQL;
+  parameterized SQL plans in a repeatable-read Postgres transaction; reject
+  unsupported shapes with a fail-closed error instead of evaluating them in a
+  Go row evaluator, which the hosted path no longer retains;
 * keep active browser views subscribed to revision changes and return fresh,
   bounded query payloads after successful ingestion.
 
@@ -3773,6 +3774,14 @@ set or enumerate unrelated worker partitions.
 ---
 
 # 74. Change Log
+
+## Version 1.8.3 — Removed Go row evaluator fallback
+
+* Corrected §5.2 to require a fail-closed error for unsupported Dashboard
+  Language shapes instead of describing evaluation in a bounded Go query
+  engine; the hosted PostgreSQL path no longer retains a Go row evaluator, and
+  the response contract keeps `fallbackOperations` only as an always-empty
+  legacy compatibility field.
 
 ## Version 1.8.2 — Cross-workflow evidence relationship rejection
 
