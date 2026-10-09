@@ -238,7 +238,6 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-reactive-ui-expert.md", "self-care", "reactive-ui-expert"],
     ["self-care-release-blogger.md", "self-care", "release-blogger"],
     ["self-care-server-go-logging.md", "self-care", "server-go-logging"],
-    ["self-care-redis-query-optimization.md", "self-care", "redis-query-optimization"],
     ["self-care-specs-maintainer.md", "self-care", "specs-maintainer"],
   ];
 

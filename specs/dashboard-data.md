@@ -268,8 +268,8 @@ Views MUST NOT parse:
 
 IndexedDB MUST be disposable and reconstructable.
 
-The local Redis projection MUST also be disposable, generation-scoped, and
-reconstructable from the deployed dashboard artifact.
+The local SQLite projection MUST also be reconstructable from the deployed
+dashboard artifact.
 
 ## INV-005 — Authoritative inputs remain external
 
@@ -298,8 +298,9 @@ retain their last complete result until that phase succeeds.
 
 Correctness MUST NOT require loading the complete historical dataset into browser memory.
 
-The local server profile MUST push compatible selection, range filtering,
-aggregation, ordering, and limiting into Redis before bounded Go fallbacks.
+The local server profile MUST execute compatible selection, range filtering,
+aggregation, ordering, and limiting in PostgreSQL, with bounded Go fallbacks
+where required.
 
 ## INV-011 — Test parity
 
