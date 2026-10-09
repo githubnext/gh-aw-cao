@@ -67,6 +67,8 @@ func (s *Store) TakeRateLimitTokens(ctx context.Context, key string, limit int, 
 	case tokenBucketRejectedSubjects:
 		limiterLog.Printf("token bucket request rejected reason=%s", rejection)
 		return operational.RateLimitResult{}, capacity()
+	case tokenBucketAccepted:
+		break
 	}
 	if !exists {
 		if err := s.reserve(map[recordKey]int64{{"bucket", key, ""}: charge(key)}); err != nil {
