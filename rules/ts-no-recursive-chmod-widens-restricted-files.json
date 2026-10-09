@@ -76,18 +76,28 @@
     "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history."
   },
   "evaluation": {
-    "target_repo": "github/gh-aw",
-    "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
-    "true_positive_count": 0,
-    "false_positive_count": 0,
-    "false_negative_count": 0,
-    "readiness_for_target": "not-applicable",
-    "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
-    "txn_id": "refiner-37835259305-5"
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
+    "true_positive_count": 1,
+    "false_positive_count": 4,
+    "false_negative_count": 1,
+    "readiness_for_target": "needs-work",
+    "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
+    "txn_id": "refiner-37977147256-3"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37835259305",
-  "last_updated_target_repo": "github/gh-aw",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37977147256",
+  "last_updated_target_repo": "github/gh-aw-firewall",
   "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
+      "txn_id": "refiner-37835259305-5"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
@@ -169,6 +179,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-08T20:02:40Z",
-  "last_updated": "2026-10-08T20:02:40Z"
+  "last_seen_at": "2026-10-09T19:06:40Z",
+  "last_updated": "2026-10-09T19:06:40Z"
 }

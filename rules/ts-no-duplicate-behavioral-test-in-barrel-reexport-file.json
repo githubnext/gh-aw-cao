@@ -74,21 +74,31 @@
     "txn_id": "librarian-37819777303-1",
     "reason": "7 refiner evaluations of github/gh-aw-firewall (2026-10-03 to 2026-10-07) stayed flat at TP=2/FP=2 with the same false-positive shape-only assertion sites every time and no suppression mechanism ever added; 4 parallel evaluations of githubnext/gh-aw-cao all found the rule not-applicable. Zero adoption requests across the full history. Matches the deprecation criteria already applied to js-no-literal-color-value-in-test-assertion and ts-no-recursive-chmod-widens-restricted-files."
   },
-  "last_seen_at": "2026-10-08T15:00:22Z",
-  "last_updated": "2026-10-08T15:00:22Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37796381362",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
+  "last_seen_at": "2026-10-09T19:06:40Z",
+  "last_updated": "2026-10-09T19:06:40Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37977147256",
+  "last_updated_target_repo": "github/gh-aw-firewall",
   "evaluation": {
-    "target_repo": "githubnext/gh-aw-cao",
-    "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
-    "true_positive_count": 0,
-    "false_positive_count": 0,
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
+    "true_positive_count": 1,
+    "false_positive_count": 2,
     "false_negative_count": 0,
-    "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD d00b985: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; no barrel/re-export smoke-test files exist in this repository, matching every prior evaluation. Not applicable here regardless of readiness elsewhere.",
-    "txn_id": "refiner-37796381362-3"
+    "readiness_for_target": "needs-work",
+    "reason": "Re-confirmed unchanged on HEAD 98959bdb: docker-manager.test.ts's 'filterCapDrop with explicit bounding set' block (lines 89-117) duplicates capability-filter.test.ts's bounding-set assertions against the file's own stated barrel-only contract (true positive); 'filterCapDrop via barrel' and 'getHostCapabilityBoundingSet via barrel' blocks remain false positives (pass-through wiring only). No drift since refiner-37662241728-2.",
+    "txn_id": "refiner-37977147256-2"
   },
   "additional_target_evaluations": [
+    {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD d00b985: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; no barrel/re-export smoke-test files exist in this repository, matching every prior evaluation. Not applicable here regardless of readiness elsewhere.",
+      "txn_id": "refiner-37796381362-3"
+    },
     {
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
