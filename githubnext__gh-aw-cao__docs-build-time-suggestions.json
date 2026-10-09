@@ -1,35 +1,7 @@
 {
-  "source_sha": "97754b289c91ff1a424f6ef63d6bab80ddc90a18",
+  "source_sha": "2347d026afec9d21f8af9c86a9cd2335afbea1b0",
   "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-09T04:07:23Z",
-      "worker_run_id": 37882599576,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        37884420310,
-        37885847477,
-        37886066357,
-        37886576634,
-        37886721587,
-        37888532319,
-        37888769329,
-        37890182557,
-        37890362629,
-        37891165045,
-        37891538465,
-        37894720919,
-        37894925277,
-        37897139933,
-        37897449706,
-        37899913853,
-        37900699132,
-        37901951353,
-        37902376150,
-        37903868404
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T23:55:27Z through 2026-10-09T03:56:17Z and contained 9 successful docs runs, but only 2 comparable build-bearing successes (37867790067 workflow_run on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117 and 37879841926 schedule on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5) completed the schedule-freshness + build + deploy path. The other 7 successful runs were freshness-only schedule passes with build and deploy skipped, and the remaining 11 runs were skipped workflow_run invocations. The paired producer sample is also below threshold for reusable dashboard generation: the latest 20 completed cao-dashboard.yml runs in the same window contained only 1 successful dashboard build (37865724910 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117), alongside 18 skipped runs and 1 cancelled run. Trusted Actions metadata and bounded logs confirmed both build-bearing docs runs restored the node_modules cache and the central-agentic-ops-dashboard cache, while the lone successful dashboard producer run restored cao-activity-v5-37765769970-1 and still spent 1190 seconds in Upgrade fallback activity data before issue #16825's standing producer-side recommendation could be revalidated. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so no new non-duplicate reusable-dashboard recommendation can be made safely in this cycle."
-    },
     {
       "evaluated_at": "2026-10-09T04:33:40Z",
       "worker_run_id": 37884433135,
@@ -841,6 +813,34 @@
         37963179891
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-09T17:00:27Z through 2026-10-09T18:30:07Z and included 8 successful runs, but only 4 successful build-bearing docs runs (37967199094, 37966952812, 37963311018, 37963179891). Of those, only 2 runs (37967199094 on source SHA 97754b289c91ff1a424f6ef63d6bab80ddc90a18 and 37963311018 on source SHA 779dfde7bdae5c880b5a742bc1093fafb88b00e0) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\"; the 2 successful push runs (37966952812, 37963179891) built docs but skipped deploy and are disclosed as non-comparable outliers rather than counted toward the threshold. Trusted job metadata and bounded logs for all 4 build-bearing docs runs confirmed cache hits for setup-node npm cache, Restore node_modules, and Restore cached CAO Dashboard because Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped after successful restore steps; those runs still spent 52-59s in build with repeated costs of 5-7s restoring node_modules, 11-14s in Build documentation, 3-4s restoring the cached CAO Dashboard, and 13-15s uploading the Pages artifact. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window covered 2026-10-09T15:52:35Z through 2026-10-09T18:27:40Z and included 0 successful dashboard builds (10 skipped workflow_run runs, 5 skipped push runs, 3 cancelled push runs, and 2 failed push runs). That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency-installation or cache-effectiveness recommendation in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-09T19:03:17Z",
+      "worker_run_id": 37976944522,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37977338112,
+        37977110706,
+        37976136140,
+        37976134001,
+        37975856869,
+        37973681377,
+        37973430907,
+        37970467144,
+        37969784087,
+        37968902436,
+        37968445411,
+        37967199094,
+        37967123849,
+        37967121623,
+        37966952812,
+        37965789382,
+        37965541848,
+        37964639311,
+        37964273179,
+        37964027176
+      ],
+      "outcome": "incomplete_insufficient_comparable_successful_runs: within the latest 20 completed docs.yml runs from 2026-10-09T17:07:28Z through 2026-10-09T19:01:18Z, 8 runs concluded success (7 schedule, 1 push) and 12 were skipped workflow_run invocations. Only 2 successful runs (37967199094 on source SHA 97754b289c91ff1a424f6ef63d6bab80ddc90a18 and 37975856869 on source SHA 2347d026afec9d21f8af9c86a9cd2335afbea1b0) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\"; 1 additional push success (37966952812 on source SHA 97754b289c91ff1a424f6ef63d6bab80ddc90a18) completed build but had deploy skipped. Trusted step metadata and bounded logs for the build-bearing runs showed setup-node npm cache restores, node_modules cache hits, skipped Install dependencies and Save node_modules steps, and central-agentic-ops-dashboard cache hits. The latest 20 completed cao-dashboard.yml runs contained 0 successful full builds (15 skipped, 4 cancelled, 1 failed), so there is no current producer-side sample for dashboard dependency or artifact cache behavior. That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency-installation and caching recommendation."
     }
   ]
 }
