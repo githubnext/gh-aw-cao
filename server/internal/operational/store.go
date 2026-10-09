@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var operationalLog = logger.New("cao:operational")
 
 type Scope uint8
 
@@ -129,27 +133,72 @@ type serviceFeature struct {
 	required bool
 }
 
+// featureRejectionRule names which validateFeatures precondition rejected one
+// serviceFeature, stable across the generated error text so it is useful to
+// log without exposing the feature's name or capability values.
+type featureRejectionRule string
+
+const (
+	featureRejectionRuleNone              featureRejectionRule = "none"
+	featureRejectionRuleInvalidGuarantees featureRejectionRule = "invalid-guarantees"
+	featureRejectionRuleMissingService    featureRejectionRule = "missing-service"
+	featureRejectionRuleUnsupported       featureRejectionRule = "unsupported"
+	featureRejectionRuleSingleProcess     featureRejectionRule = "single-process"
+	featureRejectionRuleVolatileState     featureRejectionRule = "volatile-state"
+)
+
+// classifyFeatureRejection applies validateFeatures' precondition order to a
+// single serviceFeature and reports which rule rejected it, or
+// featureRejectionRuleNone when f satisfies every precondition. It is a pure
+// function extracted from validateFeatures' loop body so each precedence
+// rule is independently testable against a constructed serviceFeature,
+// without assembling a full OperationalServices value.
+func classifyFeatureRejection(f serviceFeature, r Requirements) featureRejectionRule {
+	switch {
+	case f.cap.Scope > ScopeDeployment || f.cap.Persistence > PersistenceRestart ||
+		(f.cap.Scope == ScopeUnsupported && f.cap.Persistence != PersistenceVolatile):
+		return featureRejectionRuleInvalidGuarantees
+	case f.cap.Scope != ScopeUnsupported && !f.present:
+		return featureRejectionRuleMissingService
+	case !f.required:
+		return featureRejectionRuleNone
+	case f.cap.Scope == ScopeUnsupported || !f.present:
+		return featureRejectionRuleUnsupported
+	case f.cap.Scope == ScopeProcess && !r.SingleProcess:
+		return featureRejectionRuleSingleProcess
+	case f.cap.Persistence == PersistenceVolatile && !r.AllowVolatile &&
+		(f.name == "sessions" || f.name == "revocations" || f.name == "collection"):
+		return featureRejectionRuleVolatileState
+	default:
+		return featureRejectionRuleNone
+	}
+}
+
+// featureRejectionError renders the message validateFeatures previously
+// returned inline for each rejection rule, keeping classification and error
+// text generation separate so each is independently testable.
+func featureRejectionError(f serviceFeature, rule featureRejectionRule) error {
+	switch rule {
+	case featureRejectionRuleInvalidGuarantees:
+		return fmt.Errorf("%s has invalid operational guarantees", f.name)
+	case featureRejectionRuleMissingService:
+		return fmt.Errorf("%s advertised without a service: %w", f.name, ErrUnsupported)
+	case featureRejectionRuleUnsupported:
+		return fmt.Errorf("%s: %w", f.name, ErrUnsupported)
+	case featureRejectionRuleSingleProcess:
+		return fmt.Errorf("%s requires one owning process", f.name)
+	case featureRejectionRuleVolatileState:
+		return fmt.Errorf("%s requires explicit volatile-state acknowledgement", f.name)
+	default:
+		return nil
+	}
+}
+
 func validateFeatures(features []serviceFeature, r Requirements) error {
 	for _, f := range features {
-		if f.cap.Scope > ScopeDeployment || f.cap.Persistence > PersistenceRestart ||
-			(f.cap.Scope == ScopeUnsupported && f.cap.Persistence != PersistenceVolatile) {
-			return fmt.Errorf("%s has invalid operational guarantees", f.name)
-		}
-		if f.cap.Scope != ScopeUnsupported && !f.present {
-			return fmt.Errorf("%s advertised without a service: %w", f.name, ErrUnsupported)
-		}
-		if !f.required {
-			continue
-		}
-		if f.cap.Scope == ScopeUnsupported || !f.present {
-			return fmt.Errorf("%s: %w", f.name, ErrUnsupported)
-		}
-		if f.cap.Scope == ScopeProcess && !r.SingleProcess {
-			return fmt.Errorf("%s requires one owning process", f.name)
-		}
-		if f.cap.Persistence == PersistenceVolatile && !r.AllowVolatile &&
-			(f.name == "sessions" || f.name == "revocations" || f.name == "collection") {
-			return fmt.Errorf("%s requires explicit volatile-state acknowledgement", f.name)
+		if rule := classifyFeatureRejection(f, r); rule != featureRejectionRuleNone {
+			operationalLog.Printf("operational service validation rejected feature=%s rule=%s", f.name, rule)
+			return featureRejectionError(f, rule)
 		}
 	}
 	return nil
