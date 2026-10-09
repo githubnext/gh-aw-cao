@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T19:42:57Z",
-      "worker_run_id": 37833535488,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37833111436,
-        37832937262,
-        37831646623,
-        37831315374,
-        37828963289,
-        37828764238,
-        37827847262,
-        37827544394,
-        37824955752,
-        37824589778,
-        37821163655,
-        37820370700,
-        37819530284,
-        37819170486,
-        37817729084,
-        37817563564,
-        37816220255,
-        37815934507,
-        37813421963,
-        37813110563
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T16:59:45Z through 2026-10-08T19:35:52Z and contained 10 successful schedule runs, but all 10 were freshness-only passes where schedule-freshness succeeded and build and deploy were skipped. The other 10 runs were skipped workflow_run entries for the same source SHA 3d42b1d12bb1d6901bb82f995a12f916b0b1d243. That leaves 0 comparable build-bearing successful docs runs, below the required minimum of 5 for dependency installation and caching. The related latest 20 completed cao-dashboard.yml runs in the same window contained 17 skipped workflow_run runs, 2 cancelled runs, and 1 failed push run, with 0 successful dashboard builds available for trusted cache-hit or install-time comparison."
-    },
-    {
       "evaluated_at": "2026-10-08T20:00:14Z",
       "worker_run_id": 37835583923,
       "category": "dependency installation and caching",
@@ -842,6 +814,34 @@
         37891538465
       ],
       "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the earlier categories (dependency installation and caching, Astro documentation generation, reusable dashboard generation, and artifact transfer and Pages packaging) still lack the required 5 comparable build-bearing successful docs runs. In the latest 20 completed docs.yml runs from 2026-10-09T06:03:10Z through 2026-10-09T09:59:20Z, 11 runs concluded success and all 11 were same-SHA schedule freshness passes on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped; the remaining 9 runs were skipped workflow_run invocations for that same SHA. Successful-run workflow queue median/p90 was 0s/0s, full workflow execution median/p90 was 16s/18s, and the schedule-freshness job queue median/p90 was 3s/4s with execution median/p90 11s/14s; the Check documentation and dashboard freshness step itself was 7s median and 10s p90. Trusted Actions job metadata showed 0 successful build or deploy jobs across those 20 docs runs, and the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds, so build-heavy categories still lack comparable timing and cache-hit evidence. Current source inspection of .github/workflows/docs.yml and .github/workflows/cao-dashboard.yml plus trusted run outcomes shows the duplicate workflow_run rebuild concern tracked by open issue #16054 is not reproducing in this bounded sample, while the standing dashboard-generation optimization remains represented by open issue #16825. The remaining freshness-check work is below the >=60s or >=15% actionable threshold without weakening freshness, correctness, or deployment safety."
+    },
+    {
+      "evaluated_at": "2026-10-09T10:31:20Z",
+      "worker_run_id": 37917592841,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        37917736446,
+        37917524122,
+        37915060362,
+        37914775117,
+        37914112685,
+        37913787684,
+        37912748080,
+        37911536206,
+        37911112270,
+        37908407398,
+        37907883017,
+        37906876975,
+        37905737974,
+        37903868404,
+        37902376150,
+        37901951353,
+        37900699132,
+        37899913853,
+        37897449706,
+        37897139933
+      ],
+      "outcome": "no_actionable_improvement: evaluated scheduling, concurrency, and avoidable rebuilds because the earlier categories (dependency installation and caching, Astro documentation generation, reusable dashboard generation, and artifact transfer and Pages packaging) still lack the required 5 comparable build-bearing successful docs runs. In the latest 20 completed docs.yml runs from 2026-10-09T07:06:22Z through 2026-10-09T10:27:42Z, 11 runs concluded success and all 11 were same-SHA schedule freshness passes on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped; the remaining 9 runs were skipped workflow_run invocations for that same SHA. Successful-run workflow queue median/p90 was 0s/0s, full workflow execution median/p90 was 16s/21s, and the schedule-freshness job queue median/p90 was 3s/5s with execution median/p90 11s/14s; the Check documentation and dashboard freshness step itself was 8s median and 10s p90. Trusted Actions job metadata showed 0 successful build or deploy jobs across those 20 docs runs, and the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds, so build-heavy categories still lack comparable timing and cache-hit evidence. Current source inspection of .github/workflows/docs.yml and .github/workflows/cao-dashboard.yml plus trusted run outcomes shows the duplicate workflow_run rebuild concern tracked by open issue #16054 is not reproducing in this bounded sample, while the standing dashboard-generation optimization remains represented by open issue #16825. The remaining freshness-check work is below the >=60s or >=15% actionable threshold without weakening freshness, correctness, or deployment safety."
     }
   ]
 }
