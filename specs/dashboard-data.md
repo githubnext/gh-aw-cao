@@ -53,10 +53,13 @@ Repository
             └── Issue
 ```
 
-The static deployment SHALL maintain this canonical model in IndexedDB. The
-Go server profile SHALL transactionally replace current dashboard sources in
-Postgres and SHALL execute Dashboard Language queries server-side. Redis SHALL
-hold only operational caches, queues, and sessions, not dashboard entities.
+The dashboard data and query implementations are IndexedDB in the browser,
+SQLite for local/headless consumers, and Postgres in the Go server. The static
+deployment SHALL maintain the canonical model in IndexedDB. The Go server
+profile SHALL transactionally replace current dashboard sources in Postgres
+and SHALL execute Dashboard Language queries server-side. Redis SHALL hold
+only operational caches, queues, and sessions, not dashboard entities or
+execute dashboard queries.
 
 PostgreSQL is the default operational adapter in a PostgreSQL-only deployment.
 Redis remains an explicit alternative, not a mandatory dashboard data store.
