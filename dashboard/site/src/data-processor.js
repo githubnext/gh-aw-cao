@@ -3,6 +3,7 @@ import { clusterScatterPoints } from './scatter-clustering.js';
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
+import { browserFirstLoad } from './browser-first-load.js';
 import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
@@ -93,6 +94,12 @@ function attachWorkerNotificationActions(notification, id, getHandle) {
               dismissOnCollapse: true,
               duration: 0
             });
+            if (browserFirstLoad.get().ingestion?.id === id) {
+              browserFirstLoad.set((current) => ({
+                ...current,
+                ingestion: current.ingestion && { ...current.ingestion, message: 'Data ingestion cancelled.', actions: [] }
+              }));
+            }
             cancelledWorkerNotificationIds.add(id);
           }
         }];
@@ -829,6 +836,9 @@ function getWorker() {
         const notification = event.data.notification;
         const id = typeof notification?.id === 'string' ? notification.id : undefined;
         if (notification?.dismiss === true) {
+          if (notification.kind === 'ingestion' && browserFirstLoad.get().ingestion?.id === id) {
+            browserFirstLoad.set((current) => ({ ...current, ingestion: undefined }));
+          }
           if (id) {
             if (!cancelledWorkerNotificationIds.has(id)) {
               workerNotificationHandles.get(id)?.dismiss();
@@ -841,13 +851,21 @@ function getWorker() {
           if (typeof notification.message !== 'string') return;
           const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action' | 'actions'> & { actions?: Array<{ label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown }> }} */ (notification);
           const current = workerNotificationHandles.get(id);
+          /** @type {ReturnType<typeof publishNotification>} */
+          let handle;
+          const interactive = attachWorkerNotificationActions(interactiveNotification, id, () => handle);
           if (current) {
-            current.update(attachWorkerNotificationActions(interactiveNotification, id, () => current));
+            handle = current;
+            current.update(interactive);
           } else {
-            /** @type {ReturnType<typeof publishNotification>} */
-            let handle;
-            handle = publishNotification(attachWorkerNotificationActions(interactiveNotification, id, () => handle));
+            handle = publishNotification(interactive);
             workerNotificationHandles.set(id, handle);
+          }
+          if (notification.kind === 'ingestion' && browserFirstLoad.get().status === 'loading') {
+            browserFirstLoad.set((current) => ({ ...current, ingestion: {
+              id, message: interactive.message, detailsSubtitle: interactive.detailsSubtitle,
+              details: interactive.details, actions: interactive.actions
+            } }));
           }
         } else {
           publishNotification(notification);
@@ -911,6 +929,9 @@ function resetWorker(processor) {
   }
   workerNotificationHandles.clear();
   cancelledWorkerNotificationIds.clear();
+  if (browserFirstLoad.get().ingestion) {
+    browserFirstLoad.set((current) => ({ ...current, ingestion: undefined }));
+  }
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 

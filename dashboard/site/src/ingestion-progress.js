@@ -9,7 +9,7 @@ const debugIngestionProgress = createDebug('ingestion-progress');
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], actions?: Array<{ label: string, operation: 'cancel-data-ingestion' | 'sync-dashboard-queries', placement: 'details', requestId?: number }>, dismiss?: boolean }} notification
+ * @param {{ id?: string, kind?: 'ingestion', message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], actions?: Array<{ label: string, operation: 'cancel-data-ingestion' | 'sync-dashboard-queries', placement: 'details', requestId?: number }>, dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -65,6 +65,7 @@ export function startIngestionProgress(target = self, requestId) {
       const snapshot = clock.snapshot();
       publishWorkerNotification({
         id,
+        kind: 'ingestion',
         message: status,
         icon: 'download',
         detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
@@ -141,7 +142,7 @@ export function startIngestionProgress(target = self, requestId) {
       debugIngestionProgress({ event: 'completed', id, started });
       if (!started) return;
       publishWorkerLoadingProgress({ id, phase: 'complete' }, target);
-      publishWorkerNotification({ id, dismiss: true }, target);
+      publishWorkerNotification({ id, kind: 'ingestion', dismiss: true }, target);
     }
   };
 }

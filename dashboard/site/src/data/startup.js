@@ -446,7 +446,7 @@ export async function startDashboardData(options) {
     refreshFailed = false;
     refreshPending = true;
     if (firstBrowserLoad && !hasCompleteSnapshot) {
-      browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined, stage: undefined }));
+      browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined, stage: undefined, ingestion: undefined }));
     }
     emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
       kind: "refresh",

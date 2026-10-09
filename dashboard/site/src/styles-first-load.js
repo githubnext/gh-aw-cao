@@ -19,6 +19,11 @@ export const firstLoadStyles = `
 .first-load-progress progress { display: block; width: 100%; height: 6px; accent-color: var(--accent); }
 .first-load-message { display: flex; align-items: center; min-height: 3em; margin: 20px 0; padding: 12px 16px; border-radius: 6px; background: var(--canvas-subtle); color: var(--muted); font-size: .875rem; line-height: 1.5; }
 .first-load-status { margin: 8px 0 0; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.first-load-ingestion-details { margin: 0 0 12px; font-size: .75rem; }
+.first-load-ingestion-details summary { width: fit-content; padding: 6px 0; color: var(--accent); cursor: pointer; }
+.first-load-ingestion-details summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.first-load-ingestion-details .dashboard-notification-details { max-height: min(180px, 25vh); }
+.first-load-ingestion-details .dashboard-notification-actions { justify-content: flex-end; margin-top: 10px; }
 .first-load-about { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border-muted); }
 .first-load-about summary { display: list-item; width: fit-content; padding: 8px 0; color: var(--muted); font-size: .75rem; line-height: 1.5; cursor: pointer; }
 .first-load-about summary:hover { color: var(--fg); }
