@@ -386,7 +386,9 @@ MUST NOT be confused with the local SQLite projection.
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. IndexedDB SHALL retain detailed
 run-linked records for seven days and Operational Value records for 30 days;
-the Activity SQLite database SHALL retain its 30-day operational window.
+the Activity SQLite database SHALL retain run-linked detail for seven days by
+default, while retaining Run and Operational Value records for 30 days by
+default. Explicit historical retention windows MAY override these defaults.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 

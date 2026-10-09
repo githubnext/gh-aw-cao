@@ -1180,6 +1180,18 @@ function runRetentionWindowMs(options) {
   return milliseconds;
 }
 
+function sqliteRetention(options) {
+  const configuredDetail = retentionWindowMs(options);
+  const otherWindow = configuredDetail ?? 30 * DAY_MS;
+  return {
+    retentionWindowMs: configuredDetail ?? 7 * DAY_MS,
+    retentionWindowMsByStore: {
+      runs: runRetentionWindowMs(options) ?? otherWindow,
+      operationalValues: otherWindow
+    }
+  };
+}
+
 function runTtlDays(options) {
   const value = option(options, 'run-ttl-days', false);
   if (!value) return undefined;
@@ -2918,8 +2930,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     rejectUnknownOptions,
     ttlDays,
     runTtlDays,
-    retentionWindowMs,
-    runRetentionWindowMs,
+    sqliteRetention,
     downloadDeployedDashboardData,
     discoverWorkflows,
     analyzeDashboardComplexityFile,
