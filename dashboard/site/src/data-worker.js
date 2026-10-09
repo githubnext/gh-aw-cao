@@ -995,7 +995,7 @@ export function processDataRequest(request, signal) {
           const shards = shardLimit === undefined ? phasedShards : phasedShards.slice(0, shardLimit);
           const shardCount = shards.length;
           // Reserve at least 10% for each post-shard stage, even for large manifests.
-          const preparationStepWeight = Math.max(1, shardCount / 7);
+          const preparationStepWeight = Math.max(1, Math.ceil(shardCount / 7));
           const importSteps = shardCount + 3 * preparationStepWeight;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
