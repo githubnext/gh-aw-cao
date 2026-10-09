@@ -66,7 +66,9 @@ async function fixture() {
     '--database',
     databasePath,
     '--input-dir',
-    shardDirectory
+    shardDirectory,
+    '--retention-days', 'all',
+    '--run-retention-days', 'all'
   ]);
   const ghPath = path.join(bin, 'gh');
   await writeFile(ghPath, `#!/usr/bin/env node
@@ -143,7 +145,9 @@ test('issue-status enriches issues through one-item GraphQL batches within a sma
       '--database',
       item.databasePath,
       '--input-dir',
-      item.shardDirectory
+      item.shardDirectory,
+      '--retention-days', 'all',
+      '--run-retention-days', 'all'
     ]);
     const query = await execFileAsync(process.execPath, [
       cao,
@@ -362,6 +366,7 @@ process.exit(1);
       REPORT_ACTIVITY_DATABASE: item.databasePath,
       REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, 'collection-exit-code'),
       REPORT_GH_AW_LOGS_SHARDS: item.shardDirectory,
+      REPORT_RUN_WINDOW_DAYS: '3650',
       GRAPHQL_CALLS_PATH: item.callsPath
     };
     await execFileAsync('bash', [path.resolve('activity/collect-logs.sh')], { env });
@@ -384,7 +389,9 @@ process.exit(1);
       '--runs-dir',
       runsDirectory,
       '--records-dir',
-      recordsDirectory
+      recordsDirectory,
+      '--retention-days', 'all',
+      '--run-retention-days', 'all'
     ]);
     const query = await execFileAsync(process.execPath, [
       cao,
