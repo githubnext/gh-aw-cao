@@ -55,19 +55,29 @@
   "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
   "status": "needs-work",
   "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
-    "true_positive_count": 1,
-    "false_positive_count": 3,
+    "target_repo": "github/gh-aw",
+    "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
+    "true_positive_count": 0,
+    "false_positive_count": 0,
     "false_negative_count": 0,
-    "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, one-workload-sandbox-backend feature unrelated to mount/privatization logic): virtiofsd.ts readonlyBindPath/shareDirectory never privatized (true positive); 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root/ancestor already privatized). No drift since refiner-37969204993-1.",
-    "txn_id": "refiner-37977147256-1"
+    "readiness_for_target": "not-applicable",
+    "reason": "Re-confirmed on HEAD 7745f43: zero hits for '--bind'/'make-private' mount-propagation idiom in this CLI/Actions monorepo. No drift since prior evaluation.",
+    "txn_id": "refiner-37989801072-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37983619707",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-09T20:03:13Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37989801072",
+  "last_updated_target_repo": "github/gh-aw",
+  "last_seen_at": "2026-10-09T20:59:05Z",
   "additional_target_evaluations": [
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 7745f43: zero hits for '--bind'/'make-private' mount-propagation idiom in this CLI/Actions monorepo. No drift since prior evaluation.",
+      "txn_id": "refiner-37989801072-2"
+    },
     {
       "target_repo": "githubnext/gh-aw-cao",
       "target_commit": "445ac4f24955fca0cc3a40650c5e7c7df90bd604",
@@ -119,16 +129,6 @@
       "txn_id": "refiner-37870178954-2"
     },
     {
-      "target_repo": "github/gh-aw",
-      "target_commit": "7dbebb0c9f5bd941d466e9af26f9e81b03498050",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 7dbebb0: grep across all .ts/.js sources for mount(tools,[...]), '--bind', and 'make-private' still returns zero hits. No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. Not applicable here regardless of the rule's needs-work status elsewhere. No drift since refiner-37819791317-2.",
-      "txn_id": "refiner-37962301242-2"
-    },
-    {
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
       "true_positive_count": 1,
@@ -139,5 +139,5 @@
       "txn_id": "refiner-37969204993-1"
     }
   ],
-  "last_updated": "2026-10-09T20:03:13Z"
+  "last_updated": "2026-10-09T20:59:05Z"
 }
