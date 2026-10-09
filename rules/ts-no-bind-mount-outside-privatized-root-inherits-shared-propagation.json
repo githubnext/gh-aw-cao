@@ -64,9 +64,9 @@
     "reason": "Re-confirmed on HEAD c835648: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
     "txn_id": "refiner-37947701110-2"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37962301242",
-  "last_updated_target_repo": "github/gh-aw",
-  "last_seen_at": "2026-10-09T16:59:11Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37969204993",
+  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_seen_at": "2026-10-09T17:56:28Z",
   "additional_target_evaluations": [
     {
       "target_repo": "githubnext/gh-aw-cao",
@@ -107,7 +107,17 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD 7dbebb0: grep across all .ts/.js sources for mount(tools,[...]), '--bind', and 'make-private' still returns zero hits. No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. Not applicable here regardless of the rule's needs-work status elsewhere. No drift since refiner-37819791317-2.",
       "txn_id": "refiner-37962301242-2"
+    },
+    {
+      "target_repo": "github/gh-aw-firewall",
+      "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
+      "true_positive_count": 1,
+      "false_positive_count": 3,
+      "false_negative_count": 0,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 8ad503f1 (#9756, unrelated CH smoke/diagnostics changes): virtiofsd.ts startOne() ro-export branch still never privatizes readonlyBindPath/shareDirectory; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root/ancestor already privatized). No drift since refiner-37870178954-2.",
+      "txn_id": "refiner-37969204993-1"
     }
   ],
-  "last_updated": "2026-10-09T16:59:11Z"
+  "last_updated": "2026-10-09T17:56:28Z"
 }
