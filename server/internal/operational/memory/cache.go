@@ -8,8 +8,45 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var cacheLog = logger.New("cao:operational:memory:cache")
+
+// cacheAdmissionRejection identifies which size limit rejected a query
+// cache admission, so a misbehaving caller (one that repeatedly submits
+// oversized results) is diagnosable without logging the result bytes
+// themselves.
+type cacheAdmissionRejection string
+
+const (
+	cacheAdmissionAccepted            cacheAdmissionRejection = "accepted"
+	cacheAdmissionRejectedResultLimit cacheAdmissionRejection = "result-limit"
+	cacheAdmissionRejectedValueLimit  cacheAdmissionRejection = "value-limit"
+	cacheAdmissionRejectedRequestCap  cacheAdmissionRejection = "request-cap"
+	cacheAdmissionRejectedStoreCap    cacheAdmissionRejection = "store-cap"
+)
+
+// classifyCacheAdmission reports which of CacheQueryResult's four size checks,
+// if any, rejects a candidate entry of the given charged size. It is a pure
+// function extracted from CacheQueryResult so each rejection case is
+// independently testable against constructed sizes, without a Store or
+// mutex.
+func classifyCacheAdmission(dataLen int, size, maxResultBytes, maxBytes, maxCacheValueBytes, maxCacheBytes int64) cacheAdmissionRejection {
+	switch {
+	case int64(dataLen) > maxResultBytes:
+		return cacheAdmissionRejectedResultLimit
+	case int64(dataLen) > maxCacheValueBytes:
+		return cacheAdmissionRejectedValueLimit
+	case size > maxBytes:
+		return cacheAdmissionRejectedRequestCap
+	case size > maxCacheBytes:
+		return cacheAdmissionRejectedStoreCap
+	default:
+		return cacheAdmissionAccepted
+	}
+}
 
 type cacheEntry struct {
 	data    []byte
@@ -162,8 +199,8 @@ func (s *Store) CacheQueryResult(ctx context.Context, key string, data []byte, m
 	now := s.config.Clock()
 	expired := s.expireCache(now)
 	size := charge(key) + int64(len(data))
-	if int64(len(data)) > maxResultBytes || int64(len(data)) > s.config.MaxCacheValueBytes ||
-		size > maxBytes || size > s.config.MaxCacheBytes {
+	if rejection := classifyCacheAdmission(len(data), size, maxResultBytes, maxBytes, s.config.MaxCacheValueBytes, s.config.MaxCacheBytes); rejection != cacheAdmissionAccepted {
+		cacheLog.Printf("query cache admission rejected reason=%s", rejection)
 		return false, s.queryStats(expired, 0), nil
 	}
 	var evicted int64
@@ -183,6 +220,9 @@ func (s *Store) CacheQueryResult(ctx context.Context, key string, data []byte, m
 	s.cache[key] = cacheEntry{data: bytes.Clone(data), expires: now.Add(operational.QueryCacheTTL),
 		order: s.seq, query: true, bytes: size}
 	s.cacheBytes += size
+	if evicted > 0 {
+		cacheLog.Printf("query cache admission evicted entries=%d", evicted)
+	}
 	return true, s.queryStats(expired, evicted), nil
 }
 
