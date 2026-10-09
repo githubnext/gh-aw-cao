@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-08T16:00:53Z",
-      "worker_run_id": 37805007139,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37804974563,
-        37804274542,
-        37803726329,
-        37803716106,
-        37802710234,
-        37800797116,
-        37797356316,
-        37796870536,
-        37795548047,
-        37795226883,
-        37794805297,
-        37793869432,
-        37792819686,
-        37792649619,
-        37792646499,
-        37791083560,
-        37790722447,
-        37790716821,
-        37790351319,
-        37790350473
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T14:10:52Z through 2026-10-08T15:57:32Z, 7 runs concluded success but only 1 run (37792819686) completed the comparable schedule-freshness + build + deploy path for category \"artifact transfer and Pages packaging\". The other successful runs comprised 5 freshness-only schedule passes with build and deploy skipped (37804274542, 37802710234, 37800797116, 37797356316, 37795226883) and 1 push-triggered build-only success with deploy skipped (37790351319); the remaining sample contained 11 skipped workflow_run runs and 2 action_required workflow_run runs. The relevant producer sample is also below threshold because the latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful full builds. That leaves fewer than 5 comparable successful runs for artifact transfer and Pages packaging, so trusted timing and cache-effectiveness analysis cannot support a new threshold-backed recommendation safely in this cycle."
-    },
-    {
       "evaluated_at": "2026-10-08T16:32:56Z",
       "worker_run_id": 37809105789,
       "category": "artifact transfer and Pages packaging",
@@ -849,6 +821,34 @@
         37869096027
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-09T01:17:57Z through 2026-10-09T05:01:06Z and contained 9 successful schedule runs plus 11 skipped workflow_run entries. Only 1 successful docs run (37879841926 on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5) completed the comparable schedule-freshness + build + deploy path needed for the dependency installation and caching category; the other 8 successful runs were freshness-only passes with build and deploy skipped. Trusted step metadata on 37879841926 showed node_modules restore hit and skipped npm ci, with build 58s and deploy 17s. The related latest 20 completed cao-dashboard.yml runs in the same 14-day window covered 2026-10-08T22:45:16Z through 2026-10-09T05:00:56Z and yielded 18 skipped runs, 1 cancelled run, and only 1 successful full build (37865724910, push) whose dashboard dependency-install step took 9s. That leaves fewer than the required 5 comparable successful runs for a safe evidence-backed dependency-installation or cache-effectiveness recommendation in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-09T05:33:01Z",
+      "worker_run_id": 37888678286,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        37888769329,
+        37888532319,
+        37886721587,
+        37886576634,
+        37886066357,
+        37885847477,
+        37884420310,
+        37884143605,
+        37882676786,
+        37881550371,
+        37881320811,
+        37879841926,
+        37879680984,
+        37877549341,
+        37877308144,
+        37876370234,
+        37875977277,
+        37873504326,
+        37873263189,
+        37872646611
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-09T02:02:20Z through 2026-10-09T05:28:54Z, 10 runs concluded success but only 1 run (37879841926) completed the comparable schedule-freshness + build + deploy path for category \"dependency installation and caching\". The other 9 successful runs were freshness-only schedule passes with build and deploy skipped, and the remaining 10 runs were skipped workflow_run invocations. The related latest 20 completed cao-dashboard.yml runs in the same window contained 1 successful push build (37865724910), 1 cancelled push run, and 18 skipped runs, leaving fewer than 5 comparable successful runs for trusted dependency-install or cache-hit analysis."
     }
   ]
 }
