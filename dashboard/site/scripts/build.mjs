@@ -3,7 +3,6 @@ import { access, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "n
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, transform } from "esbuild";
-import { rollup } from "rollup";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 import { loadPolicyFile } from "../../../.github/workflows/shared/policy.mjs";
@@ -206,7 +205,6 @@ async function findCampaignDashboards(repositoryPath, controlSettings) {
 
 async function bundleSiteJavascript(destinationPath) {
   const bundlePath = join(destinationPath, ".bundle");
-  const clientBundlePath = join(destinationPath, ".bundle-client");
   try {
     const stylesheet = await transform(`${primerStyles}\n${notificationStyles}`, {
       loader: "css", minify: true, legalComments: "none", target: "es2022",
@@ -267,64 +265,29 @@ async function bundleSiteJavascript(destinationPath) {
     const startupOutput = Object.entries(result.metafile.outputs)
       .find(([, output]) => output.entryPoint === "src/dashboard-app.js")?.[0];
     if (!startupOutput) throw new Error("Dashboard application startup chunk is missing.");
-    const client = await rollup({
-      input: { main: join(bundlePath, "main.js") },
-      plugins: [{
-        name: "esbuild-source-maps",
-        async load(id) {
-          if (!id.startsWith(`${bundlePath}/`) || !id.endsWith(".js")) return null;
-          return {
-            code: await readFile(id, "utf8"),
-            map: JSON.parse(await readFile(`${id}.map`, "utf8")),
-          };
-        },
-      }],
-    });
-    let output;
-    try {
-      ({ output } = await client.write({
-        dir: clientBundlePath,
-        format: "esm",
-        sourcemap: true,
-        entryFileNames: "[name].js",
-        chunkFileNames: "chunk-[name]-[hash].js",
-        onlyExplicitManualChunks: true,
-        manualChunks(id) {
-          return relative(bundlePath, id).startsWith("chunk-chunk-") ? "shared" : undefined;
-        },
-      }));
-    } finally {
-      await client.close();
-    }
     for (const sourceFile of (await listFiles(join(destinationPath, "src")))
       .filter((file) => file.endsWith(".js"))) {
       await rm(join(destinationPath, "src", sourceFile));
     }
-    await cp(clientBundlePath, join(destinationPath, "src"), { recursive: true });
-    for (const file of ["data-worker.js", "data-worker.js.map"]) {
-      await cp(join(bundlePath, file), join(destinationPath, "src", file));
-    }
-    const chunks = new Map(output.filter((file) => file.type === "chunk").map((file) => [file.fileName, file]));
-    const applicationChunk = [...chunks.values()].find((file) => (
-      file.facadeModuleId === resolve(destinationPath, startupOutput)
-    ));
-    if (!applicationChunk) throw new Error("Repacked dashboard application startup chunk is missing.");
+    await cp(bundlePath, join(destinationPath, "src"), { recursive: true });
     const startupModules = new Set();
     const collectStartupModules = (outputPath) => {
       if (startupModules.has(outputPath)) return;
-      const output = chunks.get(outputPath);
+      const output = result.metafile.outputs[outputPath];
       if (!output) throw new Error(`Dashboard startup dependency is missing: ${outputPath}`);
       startupModules.add(outputPath);
       for (const dependency of output.imports) {
-        collectStartupModules(dependency);
+        if (dependency.kind === "import-statement" && !dependency.external) {
+          collectStartupModules(dependency.path);
+        }
       }
     };
-    collectStartupModules(applicationChunk.fileName);
+    collectStartupModules(startupOutput);
     const preloads = [
       '    <link rel="stylesheet" href="./styles.css">',
       '    <link rel="modulepreload" href="./src/main.js">',
       ...[...startupModules].map((outputPath) => (
-        `    <link rel="modulepreload" href="./src/${outputPath}">`
+        `    <link rel="modulepreload" href="./src/${relative(bundlePath, resolve(destinationPath, outputPath))}">`
       )),
     ];
     const indexPath = join(destinationPath, "index.html");
@@ -333,7 +296,6 @@ async function bundleSiteJavascript(destinationPath) {
     await writeFile(indexPath, index.replace("  </head>", `${preloads.join("\n")}\n  </head>`));
   } finally {
     await rm(bundlePath, { force: true, recursive: true });
-    await rm(clientBundlePath, { force: true, recursive: true });
   }
 }
 
