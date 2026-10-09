@@ -138,6 +138,10 @@ The canonical gh-aw capability that persists files with unlimited retention in a
 
 One execution of a coordinator, worker, or standalone workflow. A coordinator run may produce many dispatches; each dispatch starts a separate worker run. A run records activity and evidence, but successful completion alone does not prove operational value. Use **run** rather than **session**: a run is the canonical execution entity, and canonical Domain, Tool, Audit, and Issue records link directly to it.
 
+## Run-linked detail
+
+The Domain, Tool, Skill, Friction, Audit, Issue, experiment assignment, grader observation, and eval observation records attached to a Run. Browser IndexedDB and the Activity SQLite projection expire run-linked detail after a bounded 7-day window by default while retaining the Run and Operational Value records themselves for 30 days; the Go server's canonical Postgres schema expires the same run-linked tables independently from run retention on its own configurable window. Expiring run-linked detail MUST NOT remove its retained Run or the Run's structural parents. See `specs/dashboard-data.md` and [Activity](activity.md).
+
 ## Rollout mode
 
 The effective mode in which a campaign runs for an admitted target: `review`, `live`, or `unknown` when retained evidence does not identify the mode. Review mode directs safe outputs to a review destination; live mode requires explicit authority in the control repository's reviewed policy.
