@@ -28,56 +28,153 @@ func (w *WindowField) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// windowRejectionStage identifies which precondition validateWindows failed,
+// so a misconfigured dashboard query's window clause is diagnosable without
+// logging the field names, output names, or other query-author-supplied
+// content a rejection would otherwise require.
+type windowRejectionStage string
+
+const (
+	windowRejectionStageNone      windowRejectionStage = "none"
+	windowRejectionStageCount     windowRejectionStage = "count"
+	windowRejectionStageOutput    windowRejectionStage = "output"
+	windowRejectionStageOrderBy   windowRejectionStage = "order-by"
+	windowRejectionStageGroupBy   windowRejectionStage = "groupby"
+	windowRejectionStageRolling   windowRejectionStage = "rolling"
+	windowRejectionStageChange    windowRejectionStage = "change"
+	windowRejectionStageOperation windowRejectionStage = "operation"
+)
+
+// isValidWindowOrderBy reports whether a window entry's order-by clause has
+// between 1 and 8 fields, each with a nonempty field name and either no
+// direction or "asc"/"desc". It is a pure function extracted from
+// validateWindows so this precondition is independently testable against a
+// constructed []OrderField, without a full WindowField or query Definition.
+func isValidWindowOrderBy(orderBy []OrderField) bool {
+	if len(orderBy) == 0 || len(orderBy) > 8 {
+		return false
+	}
+	for _, field := range orderBy {
+		if field.Field == "" || (field.Direction != "" && field.Direction != "asc" && field.Direction != "desc") {
+			return false
+		}
+	}
+	return true
+}
+
+// isValidWindowGroupBy reports whether a window entry's groupby clause has
+// at most 8 fields, is either nil or nonempty, and contains only nonempty,
+// distinct field names. It is a pure function extracted from
+// validateWindows so this precondition is independently testable against a
+// constructed []string, without a full WindowField.
+func isValidWindowGroupBy(groupBy []string) bool {
+	if len(groupBy) > 8 || (groupBy != nil && len(groupBy) == 0) {
+		return false
+	}
+	groups := map[string]bool{}
+	for _, field := range groupBy {
+		if field == "" || groups[field] {
+			return false
+		}
+		groups[field] = true
+	}
+	return true
+}
+
+// isValidRollingWindow reports whether entry's rolling-specific fields
+// (frame, alignment, reducer) are well formed and no change-only fields
+// (mode, time-field, unit) are set. It is a pure function extracted from
+// validateWindows so the "rolling" operation's precondition is independently
+// testable against a constructed WindowField.
+func isValidRollingWindow(entry WindowField) bool {
+	return entry.Frame != nil && *entry.Frame >= 1 && *entry.Frame <= 1000 &&
+		(entry.Alignment == "" || entry.Alignment == "trailing" || entry.Alignment == "centered") &&
+		(entry.Alignment != "centered" || *entry.Frame%2 != 0) &&
+		(entry.Reducer == "" || entry.Reducer == "mean" || entry.Reducer == "sum" || entry.Reducer == "min" || entry.Reducer == "max") &&
+		entry.Mode == "" && entry.TimeField == "" && entry.Unit == ""
+}
+
+// isValidChangeWindow reports whether entry's change-specific fields (mode,
+// time-field, unit) are well formed and no rolling-only fields (frame,
+// alignment, reducer) are set. It is a pure function extracted from
+// validateWindows so the "change" operation's precondition is independently
+// testable against a constructed WindowField.
+func isValidChangeWindow(entry WindowField) bool {
+	if entry.Frame != nil || entry.Alignment != "" || entry.Reducer != "" {
+		return false
+	}
+	if entry.Mode != "" && entry.Mode != "absolute" && entry.Mode != "percentage" && entry.Mode != "rate" {
+		return false
+	}
+	if entry.Mode == "rate" {
+		return entry.TimeField != "" &&
+			(entry.Unit == "second" || entry.Unit == "minute" || entry.Unit == "hour" || entry.Unit == "day")
+	}
+	return entry.TimeField == "" && entry.Unit == ""
+}
+
+// windowRejectionMessages maps each non-passing windowRejectionStage to the
+// error text validateWindows previously returned inline for that case, so
+// classifyWindowEntry's stage and validateWindows' returned error always
+// describe the same rejection.
+var windowRejectionMessages = map[windowRejectionStage]string{
+	windowRejectionStageCount:     "window must contain between 1 and 8 entries",
+	windowRejectionStageOutput:    "window requires a field and unique output name",
+	windowRejectionStageOrderBy:   "window order-by must contain 1 to 8 fields",
+	windowRejectionStageGroupBy:   "window groupby fields must be nonempty and distinct",
+	windowRejectionStageRolling:   "invalid rolling window",
+	windowRejectionStageChange:    "invalid change window",
+	windowRejectionStageOperation: "unsupported window operation",
+}
+
+// classifyWindowEntry reports the first precondition a single window entry
+// fails, consulting and updating outputs to track output names already
+// claimed by earlier entries. It is extracted from validateWindows so each
+// entry-level rejection stage is independently testable against a
+// constructed WindowField and outputs map, without a full window list.
+func classifyWindowEntry(entry WindowField, outputs map[string]bool) windowRejectionStage {
+	if entry.Field == "" || entry.As == "" || outputs[entry.As] {
+		return windowRejectionStageOutput
+	}
+	outputs[entry.As] = true
+	if !isValidWindowOrderBy(entry.OrderBy) {
+		return windowRejectionStageOrderBy
+	}
+	if !isValidWindowGroupBy(entry.GroupBy) {
+		return windowRejectionStageGroupBy
+	}
+	switch entry.Operation {
+	case "rolling":
+		if !isValidRollingWindow(entry) {
+			return windowRejectionStageRolling
+		}
+	case "change":
+		if !isValidChangeWindow(entry) {
+			return windowRejectionStageChange
+		}
+	default:
+		return windowRejectionStageOperation
+	}
+	return windowRejectionStageNone
+}
+
 func validateWindows(windows []WindowField) error {
+	stage := windowRejectionStageNone
 	if len(windows) == 0 || len(windows) > 8 {
-		return errors.New("window must contain between 1 and 8 entries")
-	}
-	outputs := map[string]bool{}
-	for _, entry := range windows {
-		if entry.Field == "" || entry.As == "" || outputs[entry.As] {
-			return errors.New("window requires a field and unique output name")
-		}
-		outputs[entry.As] = true
-		if len(entry.OrderBy) == 0 || len(entry.OrderBy) > 8 {
-			return errors.New("window order-by must contain 1 to 8 fields")
-		}
-		for _, field := range entry.OrderBy {
-			if field.Field == "" || (field.Direction != "" && field.Direction != "asc" && field.Direction != "desc") {
-				return errors.New("window order-by contains an invalid field or direction")
+		stage = windowRejectionStageCount
+	} else {
+		outputs := map[string]bool{}
+		for _, entry := range windows {
+			if stage = classifyWindowEntry(entry, outputs); stage != windowRejectionStageNone {
+				break
 			}
-		}
-		if len(entry.GroupBy) > 8 || (entry.GroupBy != nil && len(entry.GroupBy) == 0) {
-			return errors.New("window groupby must contain 1 to 8 fields")
-		}
-		groups := map[string]bool{}
-		for _, field := range entry.GroupBy {
-			if field == "" || groups[field] {
-				return errors.New("window groupby fields must be nonempty and distinct")
-			}
-			groups[field] = true
-		}
-		switch entry.Operation {
-		case "rolling":
-			if entry.Frame == nil || *entry.Frame < 1 || *entry.Frame > 1000 ||
-				(entry.Alignment != "" && entry.Alignment != "trailing" && entry.Alignment != "centered") ||
-				(entry.Alignment == "centered" && *entry.Frame%2 == 0) ||
-				(entry.Reducer != "" && entry.Reducer != "mean" && entry.Reducer != "sum" && entry.Reducer != "min" && entry.Reducer != "max") ||
-				entry.Mode != "" || entry.TimeField != "" || entry.Unit != "" {
-				return errors.New("invalid rolling window")
-			}
-		case "change":
-			if entry.Frame != nil || entry.Alignment != "" || entry.Reducer != "" ||
-				(entry.Mode != "" && entry.Mode != "absolute" && entry.Mode != "percentage" && entry.Mode != "rate") ||
-				(entry.Mode == "rate" && (entry.TimeField == "" ||
-					(entry.Unit != "second" && entry.Unit != "minute" && entry.Unit != "hour" && entry.Unit != "day"))) ||
-				(entry.Mode != "rate" && (entry.TimeField != "" || entry.Unit != "")) {
-				return errors.New("invalid change window")
-			}
-		default:
-			return errors.New("unsupported window operation")
 		}
 	}
-	return nil
+	if stage == windowRejectionStageNone {
+		return nil
+	}
+	queryLog.Printf("window validation rejected stage=%s", stage)
+	return errors.New(windowRejectionMessages[stage])
 }
 
 func windowInstant(column SQLColumn) string {
