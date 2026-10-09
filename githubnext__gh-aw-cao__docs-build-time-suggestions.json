@@ -1,35 +1,7 @@
 {
-  "source_sha": "fee57d7e7f2365f789fd01090ac9c3cca64292dd",
-  "next_category": "Astro documentation generation",
+  "source_sha": "c835648d9da5cdab8eea3726c8235761d391ca8d",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-09T14:31:42.975744Z",
-      "worker_run_id": 37944337223,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        37944322952,
-        37944315860,
-        37943357156,
-        37941247615,
-        37940801880,
-        37939895219,
-        37939491297,
-        37938256757,
-        37936903695,
-        37936459681,
-        37933647554,
-        37933325959,
-        37931054161,
-        37930762070,
-        37927469591,
-        37926832532,
-        37926104312,
-        37925730650,
-        37924591541,
-        37924459472
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-09T11:33:24Z through 2026-10-09T14:27:33Z, 9 runs concluded success but all 9 were schedule freshness checks where build and deploy were skipped, while the remaining 11 runs were skipped workflow_run invocations. That leaves 0 comparable successful docs builds for category \"Astro documentation generation\", below the required minimum of 5. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T08:33:55Z through 2026-10-09T14:26:48Z contained 18 skipped workflow_run entries and 2 cancelled push runs, so there is also no fresh successful dashboard-producer sample to contextualize docs build costs safely in this cycle."
-    },
     {
       "evaluated_at": "2026-10-08T22:57:56.876581Z",
       "worker_run_id": 37856373243,
@@ -841,6 +813,34 @@
         37917736446
       ],
       "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T10:27:42Z through 2026-10-09T13:26:55Z, 11 runs concluded success and all 11 were same-SHA schedule freshness passes on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. Queue median/p90 across the successful docs runs was 0s/0s, full successful-workflow median/p90 was 21s/21s, the schedule-freshness job median/p90 was 16s/17s, and the Check documentation and dashboard freshness step median/p90 was 12s/13s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window also contained 0 successful full builds, so there is no trusted upstream dashboard-generation sample for category \"Astro documentation generation\". That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for a safe evidence-backed recommendation."
+    },
+    {
+      "evaluated_at": "2026-10-09T15:02:38Z",
+      "worker_run_id": 37948146163,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        37948272176,
+        37947439775,
+        37947400690,
+        37947054142,
+        37946867981,
+        37946864567,
+        37946638109,
+        37945935638,
+        37945924487,
+        37945430538,
+        37944635091,
+        37944322952,
+        37944315860,
+        37943357156,
+        37941247615,
+        37940801880,
+        37939895219,
+        37939491297,
+        37938256757,
+        37936903695
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-09T13:26:54Z through 2026-10-09T14:59:06Z, 5 runs concluded success but only 2 runs (37944635091 on source SHA fee57d7e7f2365f789fd01090ac9c3cca64292dd and 37947439775 on source SHA c835648d9da5cdab8eea3726c8235761d391ca8d) completed the comparable schedule-freshness + build + deploy path for category \"Astro documentation generation\". The other 3 successful runs were schedule freshness checks where build and deploy were skipped on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5, while 12 runs were skipped workflow_run invocations and 3 workflow_run entries concluded action_required. Trusted step metadata and bounded logs for the 2 build-bearing successes confirmed npm package-cache hits, node_modules cache hits, skipped npm ci, CAO Dashboard cache hits, and Build documentation step durations of 14s in both runs; limited build-bearing medians/p90s were 115.0s/127.8s for full workflow duration, 58.0s/64.4s for the build job, and 31.0s/31.8s for deploy, but the comparable sample remains below the required minimum of 5. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T13:48:23Z through 2026-10-09T14:58:59Z contained 0 successful full builds (9 skipped, 6 action_required, 4 cancelled, 1 failure), so there is no trusted upstream dashboard sample to contextualize documentation build cost safely in this cycle."
     }
   ]
 }
