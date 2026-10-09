@@ -98,10 +98,10 @@
     "reason": "Re-confirmed on HEAD c835648 (intervening PR #17061 only touched the preparation-details copy action layout, not these call sites): the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js, none guarded by 'if (scope.signal.aborted) return;' unlike data-view.js:1689 and ui-primitives.js:184,1005. No drift since refiner-37812883520-3.",
     "txn_id": "refiner-37947701110-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37947701110",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-09T14:56:00Z",
-  "last_updated": "2026-10-09T14:56:00Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37962301242",
+  "last_updated_target_repo": "github/gh-aw",
+  "last_seen_at": "2026-10-09T16:59:11Z",
+  "last_updated": "2026-10-09T16:59:11Z",
   "additional_target_evaluations": [
     {
       "target_repo": "githubnext/gh-aw-cao",
@@ -162,6 +162,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
       "txn_id": "refiner-37870178954-1"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "7dbebb0c9f5bd941d466e9af26f9e81b03498050",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 7dbebb0: grep for createFactoryScope() and reactive.js imports across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. Not applicable here regardless of the rule's ready status elsewhere. No drift since refiner-37819791317-1.",
+      "txn_id": "refiner-37962301242-1"
     }
   ]
 }
