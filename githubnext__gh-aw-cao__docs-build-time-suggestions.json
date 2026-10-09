@@ -1,35 +1,7 @@
 {
   "source_sha": "61503eaf3146e4832574f5a171aa281bbe5e4ec5",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-08T15:02:08Z",
-      "worker_run_id": 37796896428,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        37796870536,
-        37795548047,
-        37795226883,
-        37794805297,
-        37793869432,
-        37792819686,
-        37792649619,
-        37792646499,
-        37791083560,
-        37790722447,
-        37790716821,
-        37790351319,
-        37790350473,
-        37789144789,
-        37788670536,
-        37787631283,
-        37787589536,
-        37787268115,
-        37784986879,
-        37784554578
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-08T13:27:59Z through 2026-10-08T14:58:25Z, 6 runs concluded success but only 1 run (37792819686) completed the comparable schedule-freshness + build + deploy path. The other successful runs comprised 1 push-triggered build-only success with deploy skipped (37790351319) and 4 freshness-only schedule passes with build and deploy skipped (37795226883, 37789144789, 37787631283, 37784986879); the remaining sample contained 12 skipped workflow_run attempts and 2 action_required workflow_run attempts. That is below the required minimum of 5 comparable successful runs for a trusted artifact-transfer and Pages-packaging evaluation, so no safe evidence-backed recommendation can be made in this cycle."
-    },
     {
       "evaluated_at": "2026-10-08T15:29:42Z",
       "worker_run_id": 37800675283,
@@ -849,6 +821,34 @@
       ],
       "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T23:35:14Z through 2026-10-09T03:31:38Z and contained 9 successful runs, but only 1 comparable build-bearing success (37867790067 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117). The other 8 successful runs were schedule freshness passes where build and deploy were skipped, while the remaining 11 runs were skipped workflow_run attempts. Trusted job metadata for the lone build-bearing success showed a CAO Dashboard cache hit in docs.yml (Restore cached CAO Dashboard succeeded while Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped), but the corresponding latest 20 completed cao-dashboard.yml runs still yielded only 1 successful upstream build (37865724910) and therefore do not provide the required >=5 comparable successful runs needed to re-evaluate reusable dashboard generation safely or make a new threshold-backed recommendation.",
       "suggestion_fingerprint": null
+    },
+    {
+      "evaluated_at": "2026-10-09T04:07:23Z",
+      "worker_run_id": 37881886024,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        37881550371,
+        37881320811,
+        37879841926,
+        37879680984,
+        37877549341,
+        37877308144,
+        37876370234,
+        37875977277,
+        37873504326,
+        37873263189,
+        37872646611,
+        37871426071,
+        37871212950,
+        37869096027,
+        37868065451,
+        37867847098,
+        37867790067,
+        37865772509,
+        37862866233,
+        37862083137
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: the latest 20 completed docs.yml runs in the last 14 days covered 2026-10-08T23:55:27Z through 2026-10-09T03:56:17Z and contained 9 successful docs runs, but only 2 comparable build-bearing successes (37867790067 workflow_run on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117 and 37879841926 schedule on source SHA 61503eaf3146e4832574f5a171aa281bbe5e4ec5) completed the schedule-freshness + build + deploy path. The other 7 successful runs were freshness-only schedule passes with build and deploy skipped, and the remaining 11 runs were skipped workflow_run invocations. The paired producer sample is also below threshold for reusable dashboard generation: the latest 20 completed cao-dashboard.yml runs in the same window contained only 1 successful dashboard build (37865724910 on source SHA e6b23acc1c8a60f12f60ea0c780bf985d4b12117), alongside 18 skipped runs and 1 cancelled run. Trusted Actions metadata and bounded logs confirmed both build-bearing docs runs restored the node_modules cache and the central-agentic-ops-dashboard cache, while the lone successful dashboard producer run restored cao-activity-v5-37765769970-1 and still spent 1190 seconds in Upgrade fallback activity data before issue #16825's standing producer-side recommendation could be revalidated. That leaves fewer than the required 5 comparable successful docs runs and fewer than 5 successful dashboard producer runs, so no new non-duplicate reusable-dashboard recommendation can be made safely in this cycle."
     }
   ]
 }
