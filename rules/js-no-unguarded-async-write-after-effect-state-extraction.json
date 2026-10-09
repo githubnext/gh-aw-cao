@@ -90,18 +90,18 @@
   "status": "ready",
   "evaluation": {
     "target_repo": "github/gh-aw",
-    "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
+    "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
     "true_positive_count": 0,
     "false_positive_count": 0,
     "false_negative_count": 0,
     "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD 7745f43: zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-    "txn_id": "refiner-37989801072-1"
+    "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
+    "txn_id": "refiner-38001319335-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37989801072",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38001319335",
   "last_updated_target_repo": "github/gh-aw",
-  "last_seen_at": "2026-10-09T20:59:05Z",
-  "last_updated": "2026-10-09T20:59:05Z",
+  "last_seen_at": "2026-10-09T22:54:31Z",
+  "last_updated": "2026-10-09T22:54:31Z",
   "additional_target_evaluations": [
     {
       "target_repo": "github/gh-aw",
@@ -192,6 +192,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at HEAD 8ad503f1. Not applicable here regardless of the rule's readiness elsewhere.",
       "txn_id": "refiner-37969204993-2"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
+      "txn_id": "refiner-38001319335-1"
     }
   ]
 }
