@@ -115,7 +115,7 @@ function evidence() {
         'run-status': attempt === 31 && index % 2 === 0 ? 'in-progress' : 'completed',
         'run-conclusion': index % 2 === 1 && attempt === 31 ? 'success'
           : ['failure', 'startup-failure', 'stale', 'timed-out'][attempt % 4],
-        'started-at': `2026-09-${attempt < 16 ? '20' : '29'}T${String(attempt % 16).padStart(2, '0')}:00:00Z`,
+        'started-at': `2026-09-${attempt < 16 ? '24' : '29'}T${String(attempt % 16).padStart(2, '0')}:00:00Z`,
         'target-repository': `octo/target-${attempt % 3}`,
         'failure-kind': attempt % 3 === 0 ? 'driver_exit' : 'agent_logic',
         'failure-message': `Retained failure ${run}`,
@@ -151,6 +151,7 @@ function evidence() {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-30T12:00:00Z'));
   vi.spyOn(console, 'debug').mockImplementation(() => {});
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(databaseName);

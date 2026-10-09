@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   finalizeNormalizedJsonlIngestion,
   ingestCachedGhAwJsonl,
@@ -70,11 +70,16 @@ const sources = {
 };
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-10T00:00:00Z'));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('database table ingestion and queries', () => {
@@ -832,7 +837,10 @@ describe('database table ingestion and queries', () => {
       expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
-    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+    ]);
+    expect((await readCanonicalBatch(indexedDB)).audits).toEqual([]);
   });
 
   it('upserts multiple JSONL runs and retains earlier fresh records', async () => {

@@ -79,6 +79,7 @@ import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from
 import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../dashboard/site/src/data/model/audit-curation.js';
 import { mergeEvidenceDefinition } from '../dashboard/site/src/data/model/schema.js';
 import { commandHandlers } from './commands/index.mjs';
+import { sqliteRetention } from './sqlite-retention.mjs';
 import { parseUpdateArguments, resolveUpdateCommit } from './commands/update.mjs';
 import { setupCaoControlPlane } from './setup.mjs';
 import { upgradeGhAwVersion } from './upgrade-gh-aw.mjs';
@@ -1178,18 +1179,6 @@ function runRetentionWindowMs(options) {
     throw new UsageError('--run-retention-days must be a positive number or all');
   }
   return milliseconds;
-}
-
-function sqliteRetention(options) {
-  const configuredDetail = retentionWindowMs(options);
-  const otherWindow = configuredDetail ?? 30 * DAY_MS;
-  return {
-    retentionWindowMs: configuredDetail ?? 7 * DAY_MS,
-    retentionWindowMsByStore: {
-      runs: runRetentionWindowMs(options) ?? otherWindow,
-      operationalValues: otherWindow
-    }
-  };
 }
 
 function runTtlDays(options) {
@@ -2930,7 +2919,8 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     rejectUnknownOptions,
     ttlDays,
     runTtlDays,
-    sqliteRetention,
+    sqliteRetention: (options) => sqliteRetention(retentionWindowMs(options), runRetentionWindowMs(options), DAY_MS),
+    retentionWindowMs,
     downloadDeployedDashboardData,
     discoverWorkflows,
     analyzeDashboardComplexityFile,

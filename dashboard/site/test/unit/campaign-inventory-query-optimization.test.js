@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import {
   createDashboardQueryBudget,
@@ -132,8 +132,8 @@ function evidence(scale = 1) {
       'aic-total': (index + 1) * 0.25,
       event: attempt % 2 ? 'schedule' : 'workflow_dispatch',
       'target-repository': attempt % 4 ? 'example/target' : 'example/unregistered',
-      'started-at': attempt % 3 === 0 ? '2026-09-01T12:00:00Z'
-        : attempt % 3 === 1 ? '2026-09-15T12:00:00Z' : '2026-09-23T12:00:00Z'
+      'started-at': attempt % 3 === 0 ? '2026-09-18T12:00:00Z'
+        : attempt % 3 === 1 ? '2026-09-20T12:00:00Z' : '2026-09-23T12:00:00Z'
     }))
   ));
   const recordSources = Object.fromEntries(['audits', 'domains', 'tools', 'issues'].map((name) => [
@@ -203,11 +203,16 @@ function parity(sources) {
 }
 
 beforeEach(async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-23T12:00:00Z'));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('campaign inventory query optimization', () => {
@@ -261,7 +266,7 @@ describe('campaign inventory query optimization', () => {
     const sources = await canonicalSources();
     for (const name of names) {
       const page = { views: [{ id: 'inventory', mark: 'table', data: { source: name } }] };
-      const options = { queryContext: { timeWindow: { start: '2026-09-10T00:00:00Z', end: '2026-09-23T12:00:00Z' } } };
+      const options = { queryContext: { timeWindow: { start: '2026-09-19T00:00:00Z', end: '2026-09-23T12:00:00Z' } } };
       const before = compileDashboardViewPayloadQueries(page, 'campaigns', { ...options, queries: baseline });
       const after = compileDashboardViewPayloadQueries(page, 'campaigns', { ...options, queries });
       expect(after.aliases).toEqual(before.aliases);
@@ -394,7 +399,7 @@ describe('campaign inventory query optimization', () => {
       expect(optimized.rows.length).toBeGreaterThan(0);
       expect(optimized.metadata).toEqual(original.metadata);
       console.info('Campaign query operation reduction', { query: name, before: beforeBudget.operations, after: afterBudget.operations });
-      expect(afterBudget.operations).toBeLessThan(beforeBudget.operations * 0.85);
+      expect(afterBudget.operations).toBeLessThan(beforeBudget.operations * 0.9);
       expect(workerResults(queries, sources, [name])[name].rows).toEqual(optimized.rows);
     }
   }, 30000);

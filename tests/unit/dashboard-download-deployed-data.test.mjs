@@ -126,7 +126,7 @@ test("queries canonical data with the gh-like surface", async () => {
   try {
     await mkdir(inputDirectory, { recursive: true });
     await writeFile(input, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
-    await executeFile(cao, ["ingest-jsonl", "--input-dir", inputDirectory, "--database", database]);
+    await executeFile(cao, ["ingest-jsonl", "--input-dir", inputDirectory, "--database", database, "--retention-days", "all"]);
 
     const { stdout: runsOutput } = await executeFile(cao, [
       "gh", "runs",
@@ -407,7 +407,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       assert.equal(audit.command, "audit-jsonl");
       assert.equal(audit.source.records, 3);
 
-      await executeFile(cao, ["ingest-jsonl"], { cwd: root });
+      await executeFile(cao, ["ingest-jsonl", "--retention-days", "all"], { cwd: root });
       const { stdout: runsStdout } = await executeFile(cao, [
         "query",
         "--collection",
