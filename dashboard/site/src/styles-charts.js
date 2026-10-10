@@ -6,6 +6,10 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .area-chart-widget svg, .line-chart-widget svg, .dot-chart-widget svg, .scatter-chart-widget svg { width: 100%; max-height: none; }
 .line-chart-plot { position: relative; width: 100%; }
 .line-chart-plot svg { display: block; }
+.layer-chart-widget { min-width: 0; overflow: hidden; }
+.layer-chart-widget svg { width: 100%; max-height: none; }
+.layer-chart-widget .chart-axis { width: calc(100% - var(--line-chart-left)); margin-left: var(--line-chart-left); }
+.layer-chart-scale-key { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
 .line-chart-y-labels { position: absolute; inset: 0; pointer-events: none; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
 .line-chart-y-labels span { position: absolute; right: calc(100% - var(--line-chart-left) + 1.5%); transform: translateY(-50%); white-space: nowrap; }
 .line-chart-y-labels span:first-child { top: 9.5238%; }
@@ -208,6 +212,8 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .chart-point:hover .point-tooltip, .chart-point:focus-visible .point-tooltip { opacity: 1; }
 .chart-point:focus-visible .line-chart-point { stroke: var(--focus); stroke-width: calc(var(--chart-point-size, 4px) + 2px); }
 .chart-point:focus-visible .dot-chart-point, .chart-point:focus-visible .scatter-chart-point { stroke: var(--focus); stroke-width: 3; }
+.chart-point-link:focus-visible .point-tooltip { opacity: 1; }
+.chart-point-link:focus-visible .line-chart-point, .chart-point-link:focus-visible .dot-chart-point, .chart-point-link:focus-visible .bar-chart-bar { stroke: var(--focus); stroke-width: 3; }
 .bar-chart-axis { stroke: var(--border); stroke-width: .75; vector-effect: non-scaling-stroke; }
 .bar-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 1.5 2; vector-effect: non-scaling-stroke; }
 .bar-chart-y-axis text, .bar-chart-x-axis text { fill: var(--muted); font-size: 2.6px; font-variant-numeric: tabular-nums; }

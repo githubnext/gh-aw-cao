@@ -124,6 +124,19 @@ export function h(name, props, ...children) {
 }
 
 /**
+ * SVG anchors must stay in the SVG namespace; ordinary `h('a')` is HTML.
+ * @param {Record<string, unknown>} props
+ * @param {...unknown} children
+ * @returns {SVGAElement}
+ */
+export function svgAnchor(props, ...children) {
+  const element = document.createElementNS('http://www.w3.org/2000/svg', 'a');
+  applyProps(element, props);
+  appendChildren(element, flattenChildren(children));
+  return element;
+}
+
+/**
  * @param {Record<string, unknown> | null | undefined} [props]
  * @param {...unknown} children
  * @returns {HTMLSpanElement}
