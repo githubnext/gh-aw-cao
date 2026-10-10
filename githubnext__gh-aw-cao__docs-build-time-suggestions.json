@@ -3,6 +3,34 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-10T19:00:22Z",
+      "worker_run_id": 38077758294,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38077891533,
+        38077273308,
+        38077128713,
+        38076784682,
+        38075953824,
+        38075764131,
+        38074141243,
+        38073381947,
+        38073087017,
+        38072856564,
+        38072180047,
+        38072030979,
+        38071361029,
+        38071218681,
+        38070024772,
+        38069655494,
+        38069221258,
+        38068942318,
+        38068422094,
+        38067619239
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d08a0f2e6fb8ede95312a420f10222e60829350a. Within the latest 20 completed docs.yml runs from 2026-10-10T16:25:43Z through 2026-10-10T18:57:54Z, 10 runs concluded success and all 10 were schedule-triggered; the other 10 completed runs were skipped workflow_run invocations. Only 1 successful docs run (38067619239), schedule-triggered on the same source SHA, executed the comparable schedule-freshness + build + deploy path; the other 9 successful schedule runs were freshness-only passes with build and deploy skipped because the deployed docs and dashboard were current. Across all 10 successful docs runs, workflow queue median/p90 was 0s/0s, full execution median/p90 was 11.5s/21.4s, and schedule-freshness job median/p90 was 7.5s/9s. On the lone comparable build-bearing success, full execution was 88s, build was 41s, and deploy was 28s. Trusted Actions metadata and bounded logs for run 38067619239 verified cache hits for actions/setup-node npm cache, the node_modules restore, and the central-agentic-ops-dashboard restore because the build log recorded \"Cache restored successfully\" for each restore, while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T15:23:50Z through 2026-10-10T18:57:41Z contained 0 successful dashboard builds, 16 skipped runs, 2 cancelled push outliers, and 2 push failures; the longer cancelled outlier 38063435353 spent 287s in Restore collected activity data and 249s in Upgrade fallback activity data before cancellation. Because the bounded sample contains only 1 comparable successful build-bearing docs run, below the required minimum of 5, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-10T18:32:48Z",
       "worker_run_id": 38075844613,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -814,34 +842,6 @@
       ],
       "outcome": "suggestion_made: evaluated scheduling, concurrency, and avoidable rebuilds because the earlier build-heavy categories still lack 5 comparable build-bearing successful docs runs in the latest 20 completed docs.yml runs. In the docs evidence window from 2026-10-10T02:58:24Z through 2026-10-10T04:58:29Z, 7 runs concluded success and all 7 were same-SHA schedule freshness passes on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped, while the remaining 13 workflow_run invocations were skipped. Trusted job metadata and bounded logs confirmed that the successful runs spent a median 7.0s (p90 7.8s) in Check documentation and dashboard freshness and a median 11.0s (p90 11.8s) in the entire schedule-freshness job, accounting for most of the median 15.0s (p90 16.8s) successful workflow execution time. Source inspection shows that each freshness pass scans up to 100 successful docs runs and calls listJobsForWorkflowRun until it finds the last deploy-successful run, then separately fetches the latest successful cao-dashboard.yml run. Because none of the 7 latest successful docs runs deployed, every freshness pass necessarily fan-outs across those 7 non-deploy successes before reaching an older deployed run. Recommend persisting deployed docs SHA plus dashboard provenance after each successful deploy and reading that marker directly during schedule-freshness instead of repeatedly scanning workflow runs and jobs.",
       "suggestion_fingerprint": "schedule-freshness-deploy-marker-scan-elimination"
-    },
-    {
-      "evaluated_at": "2026-10-10T04:31:48Z",
-      "worker_run_id": 38024137358,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38024106249,
-        38023224931,
-        38022586098,
-        38022326515,
-        38022018869,
-        38021539942,
-        38020761716,
-        38020409019,
-        38019617600,
-        38019235067,
-        38018897079,
-        38017794033,
-        38016504342,
-        38015820475,
-        38015633653,
-        38014264880,
-        38014133989,
-        38012726057,
-        38011651802,
-        38011477076
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d5d22e74ac7981a707713b9ee6744123d1e5805a. Within the latest 20 completed docs.yml runs from 2026-10-10T01:00:56Z through 2026-10-10T04:27:07Z, 9 runs concluded success and 11 were skipped workflow_run invocations, but every success was a same-SHA schedule freshness pass on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped. Successful docs workflow queue median/p90 was 0s/0s, full execution median/p90 was 13s/15s, the schedule-freshness job median/p90 was 9s/11s, and the Check documentation and dashboard freshness step median/p90 was 5s/7s. No build-bearing docs runs were available to verify dependency-installation or cache-step behavior, so comparable successful docs runs remained 0, below the required minimum of 5. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T21:55:29Z through 2026-10-10T04:27:03Z contained 0 successful dashboard builds and 20 skipped runs, so there is no trusted producer-side dashboard cache sample to broaden the analysis."
     }
   ]
 }
