@@ -230,8 +230,8 @@ components:
     path: dashboard/site/
     responsibility: render bounded Dashboard Language query payloads
   cao_cli:
-    path: activity/cao.mjs, activity/commands/
-    responsibility: query Activity SQLite projections and execute extensible computation commands for local tooling and agents
+    path: activity/cao.mjs, activity/cli/, activity/commands/
+    responsibility: preserve executable and public exports in cao.mjs, separate dispatch and implementation concerns in cli/, provide one handler per command in commands/, and query Activity SQLite projections and execute extensible computation commands for local tooling and agents; implementation modules depend on shared helpers, not the entry point
 
 dependencies:
   - catalog -> control_repository

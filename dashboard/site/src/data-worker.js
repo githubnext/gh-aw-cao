@@ -6,7 +6,6 @@ import {
   finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
   ingestNormalizedJsonl,
-  isAuditCurationCurrent,
   normalizedJsonlCurrentShards
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
@@ -976,6 +975,7 @@ export function processDataRequest(request, signal) {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 payloadScope: `${inventoryUrl.href}#inventory-phase`,
+                deferMaintenance: true,
                 onWriteProgress: (written) => progress.store(written),
                 onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
                 signal
@@ -1022,7 +1022,8 @@ export function processDataRequest(request, signal) {
           if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
           const currentShards = await normalizedJsonlCurrentShards(indexedDB, shards.map((shard) => ({
             payloadIdentity: shard.hash,
-            expectedPhase: shard.phase
+            expectedPhase: shard.phase,
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
           })));
           /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
@@ -1157,26 +1158,14 @@ export function processDataRequest(request, signal) {
               progress.reportImportProgress(completedShardCount, importSteps, 'files');
             }
           }
-          if (changed || !await isAuditCurationCurrent(indexedDB)) {
-            progress.log('Applying retention limits.');
-            progress.reportImportProgress(shardCount, importSteps, 'maintenance');
-            const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
-              storage: globalThis.navigator?.storage,
-              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-              onMaintenanceProgress: (completed, total) =>
-                progress.reportImportProgress(shardCount + preparationStepWeight * 0.9 * completed / total, importSteps, 'maintenance'),
-              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
-              signal
-            });
-            changed ||= maintenance.deletedRecords > 0;
-          }
-          progress.reportImportProgress(shardCount + preparationStepWeight, importSteps, 'inventory');
+          progress.reportImportProgress(shardCount, importSteps, 'inventory');
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,
+              deferMaintenance: true,
               onWriteProgress: (written) => progress.store(written),
               onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
               signal
@@ -1186,6 +1175,18 @@ export function processDataRequest(request, signal) {
               ? 'Inventory metadata is already current.'
               : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
+          progress.log('Applying retention limits.');
+          progress.reportImportProgress(shardCount + preparationStepWeight, importSteps, 'maintenance');
+          const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
+            storage: globalThis.navigator?.storage,
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+            onMaintenanceProgress: (completed, total) =>
+              progress.reportImportProgress(shardCount + preparationStepWeight
+                + preparationStepWeight * 0.9 * completed / total, importSteps, 'maintenance'),
+            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+            signal
+          });
+          changed ||= maintenance.deletedRecords > 0;
           progress.reportImportProgress(shardCount + 2 * preparationStepWeight, importSteps, 'queries');
         } else {
           progress.log('Normalizing dashboard source data.');

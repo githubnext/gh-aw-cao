@@ -157,20 +157,24 @@ describe('canonical dashboard worker ingestion order', () => {
     expect(updates.some(({ stage, completed, total }) =>
       stage === 'files' && completed === shardCount && total === totalSteps)).toBe(true);
     expect(updates.some(({ stage, completed, total }) =>
-      stage === 'maintenance' && completed > shardCount
-      && completed < shardCount + preparationStepWeight && total === totalSteps)).toBe(true);
-    const inventoryProgress = updates.at(-2);
+      stage === 'maintenance' && completed > shardCount + preparationStepWeight
+      && completed < shardCount + 2 * preparationStepWeight && total === totalSteps)).toBe(true);
+    const inventoryProgress = updates.find(({ stage }) => stage === 'inventory');
+    const maintenanceProgress = updates.find(({ stage }) => stage === 'maintenance');
     const queryProgress = updates.at(-1);
     expect(inventoryProgress).toMatchObject({
-      stage: 'inventory', completed: shardCount + preparationStepWeight, total: totalSteps
+      stage: 'inventory', completed: shardCount, total: totalSteps
+    });
+    expect(maintenanceProgress).toMatchObject({
+      stage: 'maintenance', completed: shardCount + preparationStepWeight, total: totalSteps
     });
     expect(queryProgress).toMatchObject({
       stage: 'queries', completed: shardCount + 2 * preparationStepWeight, total: totalSteps
     });
-    if (!inventoryProgress || !queryProgress) throw new Error('Missing post-shard progress.');
+    if (!inventoryProgress || !maintenanceProgress || !queryProgress) throw new Error('Missing post-shard progress.');
     const stageBoundaries = [
       shardCount,
-      inventoryProgress.completed,
+      maintenanceProgress.completed,
       queryProgress.completed,
       totalSteps
     ].map((completed) => completed / totalSteps);
@@ -182,5 +186,17 @@ describe('canonical dashboard worker ingestion order', () => {
       && /** @type {{ phase?: string }} */ (message.state)?.phase === 'complete'))
       .toBeGreaterThan(posted.findIndex((message) => message.type === 'loading-progress'
         && /** @type {{ stage?: string }} */ (message.state)?.stage === 'queries'));
+    requestedUrls.length = 0;
+    const { processDataRequest } = await import('../../src/data-worker.js');
+    await processDataRequest({
+      operation: 'load-canonical-dashboard',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
+      sourceNames: [],
+      context: { pages: [], queries: [] }
+    });
+    expect(requestedUrls).toEqual([
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
+    ]);
   }, 30_000);
 });

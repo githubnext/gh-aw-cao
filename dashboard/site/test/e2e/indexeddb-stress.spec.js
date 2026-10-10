@@ -60,6 +60,7 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
       previousBatch: previous,
       onMetrics: (/** @type {Record<string, number>} */ value) => { metrics = value; }
     });
+
     const reopened = await storage.openCanonicalDatabase(indexedDB);
     reopened.close();
     const stored = /** @type {Record<string, unknown>[]} */ (
@@ -87,4 +88,54 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
     removedPresent: false,
     addedPresent: true
   });
+});
+
+test('native retention cleans expired shards without scanning retained entities', async ({ page }) => {
+  const measured = await page.evaluate(async () => {
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const { normalize } = await import(`${location.origin}/src/data/normalize/index.js`);
+    const batch = normalize([]);
+    batch.runs = [{ id: 'run:1', startedAt: '2026-01-01T00:00:00Z' }];
+    batch.tools = Array.from({ length: 25_000 }, (_, index) => ({
+      id: `tool:${String(index).padStart(6, '0')}`, runId: 'run:1', summary: 'github.list_issues',
+      timestamp: index < 5000 ? '2026-10-01T00:00:00Z' : '2026-10-09T00:00:00Z'
+    }));
+    await storage.upsertCanonicalBatch(indexedDB, batch, { validateRelationships: false });
+    const original = IDBIndex.prototype.getAll;
+    /** @type {{ index: string, count?: number, ranged: boolean }[]} */
+    const reads = [];
+    IDBIndex.prototype.getAll = function (
+      /** @type {IDBValidKey | IDBKeyRange | null | undefined} */ query,
+      /** @type {number | undefined} */ count
+    ) {
+      reads.push({ index: this.name, count, ranged: query instanceof IDBKeyRange });
+      return original.call(this, query, count);
+    };
+    const options = {
+      now: Date.parse('2026-10-10T12:00:00Z'), maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    };
+    try {
+      const start = performance.now();
+      const first = await storage.maintainCanonicalDatabase(indexedDB, options);
+      const cleanupMs = performance.now() - start;
+      const cleanupReads = reads.splice(0);
+      const repeatStart = performance.now();
+      const repeated = await storage.maintainCanonicalDatabase(indexedDB, options);
+      return {
+        first, repeated, cleanupMs, repeatedMs: performance.now() - repeatStart,
+        cleanupReads, repeatedReads: reads,
+        counts: await storage.countCollections(indexedDB, ['runs', 'tools'])
+      };
+    } finally {
+      IDBIndex.prototype.getAll = original;
+    }
+  });
+  expect(measured.first).toMatchObject({ deletedRecords: 5000, retainedRecords: 20_001 });
+  expect(measured.repeated).toMatchObject({ deletedRecords: 0, retainedRecords: 20_001 });
+  expect(measured.cleanupReads.every(({ count, ranged }) => count === 1000 && ranged)).toBe(true);
+  expect(measured.repeatedReads).toEqual([]);
+  expect(measured.counts).toEqual({ runs: 1, tools: 20_000 });
+  expect(measured.cleanupMs).toBeLessThan(10_000);
+  expect(measured.repeatedMs).toBeLessThan(1000);
+  console.log(`Native shard retention: ${Math.round(measured.cleanupMs)}ms cleanup; ${Math.round(measured.repeatedMs)}ms unchanged`);
 });

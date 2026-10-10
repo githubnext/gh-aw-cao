@@ -1,4 +1,5 @@
 // @vitest-environment node
+import 'fake-indexeddb/auto';
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -55,7 +56,7 @@ describe('first-pass canonical Audit curation', () => {
     expect(await isAuditCurationCurrent(indexedDB)).toBe(false);
     const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
     const maintained = await maintainCanonicalDatabase(indexedDB, options);
-    expect(getAll).not.toHaveBeenCalled();
+    expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
     getAll.mockRestore();
     expect(maintained.prunedAudits).toBe(incoming.audits.filter((audit) => discardAudit(audit, incoming.runs[0])).length);
     expect(maintained.prunedAudits).toBeGreaterThan(0);
@@ -116,11 +117,10 @@ describe('first-pass canonical Audit curation', () => {
     try {
       const maintained = await maintainCanonicalDatabase(indexedDB, options);
       expect(maintained.prunedAudits).toBe(2105);
-      expect(getAll).not.toHaveBeenCalled();
+      expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
       expect(cursorDelete).not.toHaveBeenCalled();
-      expect(pendingDeletes.slice(0, 1000)).toEqual(Array(1000).fill(1000));
-      expect(pendingDeletes.slice(1000, 2000)).toEqual(Array(1000).fill(2000));
-      expect(pendingDeletes.slice(2000)).toEqual(Array(105).fill(2106));
+      expect(pendingDeletes).toEqual(Array(2105).fill(0));
+      expect(auditCursorReads).toBe(0);
     } finally {
       getAll.mockRestore();
       cursorDelete.mockRestore();

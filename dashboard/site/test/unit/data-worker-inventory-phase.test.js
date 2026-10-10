@@ -98,6 +98,11 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   const recordsReady = new Promise((resolve) => {
     releaseRecords = () => resolve(undefined);
   });
+  /** @type {() => void} */
+  let releaseRuns = () => {};
+  const runsReady = new Promise((resolve) => {
+    releaseRuns = () => resolve(undefined);
+  });
   globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
     const url = String(input);
     if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
@@ -105,6 +110,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
       return Response.json({ [runsName]: 'a'.repeat(64), [recordsName]: 'b'.repeat(64) });
     }
     if (init?.method === 'HEAD') return new Response(null, { headers: { 'content-length': '1' } });
+    if (url.endsWith(`/${runsName}`)) await runsReady;
     // Hold record shards until the run-phase subscription has published.
     if (url.endsWith(`/${recordsName}`)) await recordsReady;
     return new Response(url.endsWith(`/${runsName}`)
@@ -200,6 +206,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
     .some((source) => JSON.stringify(source.rows).includes('Self Care'))).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
 
+  releaseRuns();
   await waitFor('the runs subscription to be published before record ingestion',
     () => posted.some(({ subscriptionId }) => subscriptionId === 'runs'));
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'runs')).toMatchObject({

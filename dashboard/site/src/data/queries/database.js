@@ -11,6 +11,7 @@ import {
   readCollections,
   readTransactions
 } from '../storage/indexeddb.js';
+import { STORAGE_SHARD_STORE } from '../storage/shards.js';
 import {
   createDashboardQueryBudget,
   DASHBOARD_QUERY_LIMITS,
@@ -384,6 +385,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   const countPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     if (!definition || defects.has(name)) return [];
+    if (definition.from === STORAGE_SHARD_STORE) return [];
     const table = CANONICAL_DATABASE_SCHEMA[definition.from];
     const values = definition.aggregate?.values;
     const computedLiterals = Object.fromEntries((definition.compute ?? []).flatMap((computed) => (
