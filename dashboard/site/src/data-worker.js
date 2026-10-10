@@ -857,6 +857,13 @@ export function publishedPhasedActivityShards(hashes) {
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'validate-query-editor-document') {
+    signal?.throwIfAborted();
+    return import('./data/query-editor.js').then(({ validateQueryEditorDocument }) => {
+      signal?.throwIfAborted();
+      return validateQueryEditorDocument(request.content);
+    });
+  }
   if (request?.operation === 'prepare-repository-memory-file') {
     if (typeof request.content !== 'string') throw new TypeError('Memory file content must be text.');
     const path = repositoryMemoryPath(request.path);

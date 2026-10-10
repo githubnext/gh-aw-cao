@@ -117,6 +117,10 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
+  ['query-editor-lazy', lazyElementRenderer(
+    () => import('./query-editor.js'),
+    ({ renderQueryEditor }, context) => renderQueryEditor(context)
+  )],
   ['campaign-route-lazy', lazyElementRenderer(
     () => import('./campaign-route-view.js'),
     ({ renderCampaignRouteView }, context) => renderCampaignRouteView(context)

@@ -33,7 +33,18 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await page.setViewportSize(viewport);
       await page.addInitScript(() => {
         let opens = 0;
+        let importScreens = 0;
         Object.defineProperty(globalThis, "__indexedDbOpens", { get: () => opens });
+        Object.defineProperty(globalThis, "__browserImportScreens", { get: () => importScreens });
+        new MutationObserver((changes) => {
+          for (const change of changes) {
+            for (const node of change.addedNodes) {
+              if (node instanceof Element && (node.matches('.first-load-overlay') || node.querySelector('.first-load-overlay'))) {
+                importScreens += 1;
+              }
+            }
+          }
+        }).observe(document, { childList: true, subtree: true });
         IDBFactory.prototype.open = () => {
           opens += 1;
           throw new Error("Canvas must not open browser IndexedDB.");
@@ -44,8 +55,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await page.goto(`${preview.url}/`);
       const result = await (await response).json();
       expect(Object.keys(result.sources).length).toBeGreaterThan(0);
+      await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "server-http");
+      await expect(page.getByRole("dialog", { name: "Preparing your dashboard" })).toHaveCount(0);
       await expect(page.locator("#root .custom-view").first()).toBeVisible();
       expect(await page.evaluate(() => Object.getOwnPropertyDescriptor(globalThis, "__indexedDbOpens")?.get?.())).toBe(0);
+      expect(await page.evaluate(() => Object.getOwnPropertyDescriptor(globalThis, "__browserImportScreens")?.get?.())).toBe(0);
       const repositories = await page.evaluate(async () => {
         const { queryRemoteDashboard } = await import(new URL("./src/remote-data-backend.js", location.href).href);
         return queryRemoteDashboard(["repositories"], { pages: [] });

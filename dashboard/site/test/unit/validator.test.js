@@ -4376,7 +4376,10 @@ dashboard:
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.x' }),
+          expect.objectContaining({
+            code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.x',
+            message: expect.stringContaining('add "time-unit": "day" inside encoding.x')
+          }),
           expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[1].encoding.x.type' })
         ])
       );

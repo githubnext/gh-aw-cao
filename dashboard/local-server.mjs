@@ -36,6 +36,10 @@ import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
+import { assertQueryEditorAuthoring, assertQueryEditorEnhancement, assertQueryEditorIntent, maximumQueryEditorRequestBytes } from "./query-editor-contract.mjs";
+import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "json" };
+import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
+import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -606,6 +610,8 @@ function readWebsocketFrames(buffer) {
  *   ghExecutable?: string,
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void>,
  *   canvas?: boolean,
+ *   generateQuery?: (intent: import('./query-editor-contract.mjs').QueryEditorIntent, options: { signal: AbortSignal }) => Promise<{ document: string }>,
+ *   enhanceQueryIntent?: (request: import('./query-editor-contract.mjs').QueryEditorEnhancement, options: { signal: AbortSignal }) => Promise<import('./query-editor-contract.mjs').QueryEditorAuthoring>,
  *   dataBackend?: 'sqlite' | 'indexeddb',
  *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
@@ -628,6 +634,8 @@ export async function startDashboardServer({
   dataBackend = canvas ? "sqlite" : "indexeddb",
   executeCliAction,
   approveCliAction,
+  generateQuery,
+  enhanceQueryIntent,
   allowMissingOrigin = false,
   traceFile,
   traceOutput = console.log,
@@ -645,6 +653,16 @@ export async function startDashboardServer({
   }
   if (canvas && typeof approveCliAction !== "function") {
     throw new Error("Canvas mode requires trusted CLI action approval.");
+  }
+  let queryEditorValidationBundle;
+  if (canvas && typeof generateQuery === "function") {
+    const { build } = await import("esbuild");
+    const result = await build({
+      entryPoints: [join(scriptDirectory, "site/src/data/query-editor.js")],
+      bundle: true, write: false, platform: "browser", format: "esm",
+      target: "es2023", minify: true,
+    });
+    queryEditorValidationBundle = result.outputFiles[0].text;
   }
   const resolvedWorkingDirectory = await realpath(workingDirectory);
   const resolvedTraceFile = traceFile ? resolve(resolvedWorkingDirectory, traceFile) : null;
@@ -734,6 +752,12 @@ export async function startDashboardServer({
   let refreshRetryCount = 0;
   let closed = false;
   let cliActionInProgress = false;
+  /** @type {AbortController | null} */
+  let queryGeneration = null;
+  /** @type {Promise<{ document: string } | import('./query-editor-contract.mjs').QueryEditorAuthoring> | null} */
+  let queryGenerationPending = null;
+  /** @type {Promise<{ id: string, path: string }> | null} */
+  let customViewSavePending = null;
 
   const broadcastDashboard = (traceId) => {
     output("Broadcasting dashboard preview update.", { socketCount: sockets.size });
@@ -754,7 +778,8 @@ export async function startDashboardServer({
     const dashboardSources = await Promise.all(
       [baseDashboardPath, ...campaignPaths].map((source) => loadDashboardSource(source)),
     );
-    const editableDashboardPaths = dashboardSources.flatMap(({ sourcePaths }) => sourcePaths);
+    const localViews = canvas ? await loadLocalCustomViews(resolvedWorkingDirectory) : [];
+    const editableDashboardPaths = [...dashboardSources.flatMap(({ sourcePaths }) => sourcePaths), ...localViews.map((view) => view.path)];
     const nextSignature = await sourceSignature(editableDashboardPaths);
     if (nextSignature === signature) {
       if (notify && forceNotify) broadcastDashboard(traceId);
@@ -762,8 +787,21 @@ export async function startDashboardServer({
     }
 
     await bundleDashboardFiles(bundledDashboardPath, campaignPaths, baseDashboardPath);
-    const dashboardDocument = JSON.parse(await readFile(bundledDashboardPath, "utf8"));
+    const additions = localViews.map(({ id, document }) => materializeLocalCustomView(document, id));
+    let dashboardDocument = composeDashboardDocuments(JSON.parse(await readFile(bundledDashboardPath, "utf8")), additions);
+    for (const addition of additions) {
+      if (addition.dashboard["card-templates"]?.length) {
+        (dashboardDocument.dashboard["card-templates"] ??= []).push(...addition.dashboard["card-templates"]);
+      }
+      if (addition.dashboard.units) Object.assign(dashboardDocument.dashboard.units ??= {}, addition.dashboard.units);
+    }
     if (repository) dashboardDocument.dashboard.repository = repository;
+    if (canvas && typeof generateQuery === "function") {
+      if (dashboardDocument.dashboard.pages.some((page) => page.id === "query-editor")) {
+        throw new Error("The query-editor page ID is reserved for canvas authoring.");
+      }
+      dashboardDocument = composeDashboardDocuments(dashboardDocument, [queryEditorDocument]);
+    }
     const splitDashboard = splitDashboardDocument({
       languageVersion: dashboardDocument["language-version"],
       dashboard: dashboardDocument.dashboard,
@@ -904,6 +942,116 @@ export async function startDashboardServer({
           && !url.searchParams.has("local-preview")) {
         url.searchParams.set("local-preview", canvas ? "canvas" : "enabled");
         response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
+        return;
+      }
+      if (pathname === "/__query_designer" || pathname === "/__query_designer/enhance") {
+        const enhance = pathname.endsWith("/enhance");
+        if (!canvas || (enhance ? typeof enhanceQueryIntent !== "function" : typeof generateQuery !== "function")) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        if (request.method !== "POST") {
+          response.writeHead(405, { Allow: "POST" }).end();
+          return;
+        }
+        if (!isAllowedOrigin(request.headers.origin)
+            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+          response.writeHead(403).end("Forbidden\n");
+          return;
+        }
+        let intent;
+        try {
+          intent = await readJsonRequest(request, maximumQueryEditorRequestBytes);
+          if (enhance) assertQueryEditorEnhancement(intent);
+          else assertQueryEditorIntent(intent);
+        } catch (error) {
+          sendJson(response, error?.code === "REQUEST_TOO_LARGE" ? 413 : 400, {
+            error: error instanceof Error ? error.message : "Invalid query designer request.",
+          });
+          return;
+        }
+        if (queryGeneration) {
+          sendJson(response, 409, { error: "Another query is being generated. Cancel it or wait before retrying." });
+          return;
+        }
+        const controller = new AbortController();
+        queryGeneration = controller;
+        const cancel = () => controller.abort();
+        response.once("close", cancel);
+        const timeout = setTimeout(cancel, 120000);
+        try {
+          queryGenerationPending = enhance
+            ? enhanceQueryIntent(intent, { signal: controller.signal })
+            : generateQuery(intent, { signal: controller.signal });
+          const result = await queryGenerationPending;
+          controller.signal.throwIfAborted();
+          if (enhance) assertQueryEditorAuthoring(result);
+          if (!response.destroyed && !closed) sendJson(response, 200, result);
+        } catch (error) {
+          output("Query designer request failed.", { errorName: error instanceof Error ? error.name : "unknown" });
+          if (!response.destroyed && !closed) {
+            sendJson(response, controller.signal.aborted ? 408 : 503, {
+              error: controller.signal.aborted ? "Query generation timed out or was cancelled."
+                : "Query generation failed. Check Copilot authentication and try again.",
+            });
+          }
+        } finally {
+          clearTimeout(timeout);
+          response.removeListener("close", cancel);
+          queryGeneration = null;
+          queryGenerationPending = null;
+        }
+        return;
+      }
+      if (pathname === "/__custom_views") {
+        if (!canvas || typeof generateQuery !== "function") {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        if (request.method !== "POST") {
+          response.writeHead(405, { Allow: "POST" }).end();
+          return;
+        }
+        if (!isAllowedOrigin(request.headers.origin)
+            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+          response.writeHead(403).end("Forbidden\n");
+          return;
+        }
+        let draft;
+        try {
+          draft = await readJsonRequest(request, maximumQueryEditorRequestBytes);
+          if (!draft || typeof draft !== "object" || Array.isArray(draft)
+              || Object.keys(draft).length !== 1 || typeof draft.document !== "string") {
+            throw new Error("Save a complete Dashboard Language document; paths and identifiers are assigned by CAO.");
+          }
+        } catch (error) {
+          sendJson(response, error?.code === "REQUEST_TOO_LARGE" ? 413 : 400, { error: error instanceof Error ? error.message : "Invalid custom view request." });
+          return;
+        }
+        if (customViewSavePending) {
+          sendJson(response, 409, { error: "Another custom view is being saved. Wait before retrying." });
+          return;
+        }
+        try {
+          customViewSavePending = (async () => {
+            const saved = await saveLocalCustomView(resolvedWorkingDirectory, draft.document);
+            const paths = await rebuild(false);
+            await refreshWatchers(paths);
+            return saved;
+          })();
+          const saved = await customViewSavePending;
+          if (!response.destroyed && !closed) sendJson(response, 201, { ...saved, dashboard: JSON.parse(dashboardContent) });
+        } catch (error) {
+          output("Custom view save failed.", { errorName: error instanceof Error ? error.name : "unknown" });
+          if (!response.destroyed && !closed) {
+            sendJson(response, error instanceof InvalidCustomViewDocumentError ? 400 : 503, {
+              error: error instanceof InvalidCustomViewDocumentError ? error.message
+                : "Could not save or load the custom view. Check workspace storage and try again.",
+            });
+          }
+        } finally {
+          customViewSavePending = null;
+        }
         return;
       }
       if (sqliteBackend && pathname.startsWith("/api/")) {
@@ -1139,6 +1287,10 @@ export async function startDashboardServer({
         sendContent(request, response, contentTypes.get(".json"), dashboardPageChunkContent.get(pathname));
         return;
       }
+      if (pathname === "/src/data/query-editor.js" && queryEditorValidationBundle) {
+        sendContent(request, response, contentTypes.get(".js"), queryEditorValidationBundle);
+        return;
+      }
       if (pathname === "/sources/manifest.json") {
         if (sourceManifestContent === undefined) {
           response.writeHead(404).end("Not found\n");
@@ -1330,6 +1482,7 @@ export async function startDashboardServer({
     async close() {
       if (closed) return;
       closed = true;
+      queryGeneration?.abort();
       output("Stopping dashboard server.");
       clearTimeout(refreshTimer);
       for (const watcher of watchers.values()) watcher.close();
@@ -1337,6 +1490,8 @@ export async function startDashboardServer({
       const shutdown = new Promise((accept, reject) => server.close((error) => error ? reject(error) : accept()));
       server.closeAllConnections();
       await shutdown;
+      if (queryGenerationPending) await Promise.allSettled([queryGenerationPending]);
+      if (customViewSavePending) await Promise.allSettled([customViewSavePending]);
       await refreshPromise;
       await sqliteBackend?.close();
       await rm(temporaryDirectory, { recursive: true, force: true });

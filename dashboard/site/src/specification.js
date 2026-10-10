@@ -112,7 +112,8 @@ export const VIEW_ELEMENT_VALUES = [
   'factory-floor',
   'all-campaign-memory',
   'link-button-list',
-  'markdown'
+  'markdown',
+  'query-editor'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
 export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];
@@ -146,7 +147,8 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'work-tasks',
   'work-roadmap',
   'evidence',
-  'insights'
+  'insights',
+  'query-editor'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];

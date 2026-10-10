@@ -7,6 +7,12 @@ export const bundledResources = Object.freeze({
   localServer: "dashboard/local-server.mjs",
   site: "dashboard/site",
   dataSpecification: "specs/dashboard-data.md",
+  languageSpecification: "docs/dashboard-language-specification.md",
+  queryDesignerSkill: ".github/skills/generate-dashboard-ir/SKILL.md",
+  intentAuthoringSkill: ".github/skills/author-dashboard-intent/SKILL.md",
+  dashboardAuthoringSkill: ".github/skills/dashboard-authoring/SKILL.md",
+  declarativeChartsGuide: ".github/skills/generate-dashboard-ir/references/declarative-charts.md",
+  builtInDashboard: "dashboard/site/dashboard.json",
 });
 
 const pluginRootUrl = new URL("../../../", import.meta.url);

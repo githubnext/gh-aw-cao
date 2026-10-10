@@ -7,6 +7,7 @@ import { inboxStyles } from './styles-inbox.js';
 import { overviewStyles } from './styles-overview.js';
 import { operationStyles } from './styles-operations.js';
 import { contentStyles } from './styles-content.js';
+import { queryEditorStyles } from './styles-query-editor.js';
 import { responsiveStyles } from './styles-responsive.js';
 import { accessibilityStyles } from './styles-accessibility.js';
 
@@ -21,6 +22,7 @@ export const primerStyles = [
   overviewStyles,
   operationStyles,
   contentStyles,
+  queryEditorStyles,
   responsiveStyles,
   accessibilityStyles
 ].join('');

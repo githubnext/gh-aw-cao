@@ -1,0 +1,35 @@
+{
+  "language-version": "0.1.0",
+  "dashboard": {
+    "id": "generated-preview",
+    "title": "Workflow failures",
+    "queries": [{
+      "name": "failure-counts",
+      "from": "runs",
+      "limit": 200,
+      "subject": "Workflow failures",
+      "objective": "Identify failure distribution",
+      "acceptance": "Preserve native run conclusions",
+      "aggregate": {
+        "by": ["run-conclusion"],
+        "values": [{ "field": "run", "as": "runs", "reducer": "count" }]
+      }
+    }],
+    "pages": [{
+      "id": "query-preview",
+      "kind": "custom",
+      "title": "Workflow failures",
+      "views": [{
+        "id": "failures",
+        "title": "Run conclusions",
+        "mark": "chart",
+        "chart": "pie",
+        "data": { "source": "failure-counts", "limit": 200 },
+        "encoding": {
+          "x": { "field": "run-conclusion", "type": "nominal" },
+          "y": { "field": "runs", "type": "quantitative" }
+        }
+      }]
+    }]
+  }
+}

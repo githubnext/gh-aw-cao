@@ -228,6 +228,7 @@ async function bundleSiteJavascript(destinationPath) {
     await writeFile(join(destinationPath, "src/octicons.svg"), OCTICON_SPRITE);
     const bundleOptions = {
       absWorkingDir: destinationPath,
+      nodePaths: [fileURLToPath(new URL('node_modules/', siteRoot))],
       bundle: true,
       entryNames: "[name]",
       chunkNames: "chunk-[name]-[hash]",

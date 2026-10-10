@@ -6,7 +6,7 @@ Use [`docs/dashboard-language-specification.md`](../../../../docs/dashboard-lang
 
 | Operator question | Chart and constraints |
 | --- | --- |
-| Quantitative trend | `line`; temporal `x`. A single-widget line may encode two to eight quantitative `y` fields instead of `color`. |
+| Quantitative trend | `line`; temporal `x` with an explicit `time-unit` for single-measure charts. A single-widget line may encode two to eight quantitative `y` fields instead of `color`. |
 | Contributions over time | `area`; ordinal or explicitly bucketed temporal `x`, quantitative `y`, optional categorical `color` for normal stacking. Do not stack negative contributions. |
 | Exact observations over time | `dot` or `scatter`; temporal `x`, quantitative `y`, no connecting lines. Only a single-widget dot may encode quantitative `reference` lines. |
 | Category comparison or ranking | `bar` or `horizontal-bar`; horizontal bars require categorical `x` and `data.limit` at most 100, with optional categorical `section` headings. |
@@ -19,6 +19,18 @@ Use [`docs/dashboard-language-specification.md`](../../../../docs/dashboard-lang
 Set `chart` explicitly. A chart is not an evidence queue: use a separate linked table when row-level evidence or operator action is required. Preserve native metric values, units, nulls, and upstream semantics.
 
 ## Temporal shaping and missing evidence
+
+Single-widget temporal line/area/bar charts with one `y` measure, including the
+omitted-chart line default, require `encoding.x.time-unit`: `hour`, `day`, `week`,
+or `month`.
+For example, a daily trend can use
+`x: { field: date, type: temporal, time-unit: day }`. Choose the unit from the
+intended time grain; do not assume every trend is daily. Computing `date-bucket`
+in a source query or setting `chart: line` does not replace this encoding
+property. The property is declarative metadata executed by the worker, not
+JavaScript data shaping. Layered charts over already-shaped queries and
+multiple-measure lines have their own rules; exact-observation `dot`, `scatter`,
+and `swimlane` charts do not need this single-measure line bucket.
 
 Bucket and aggregate temporal observations in a query before applying declarative `window` smoothing or change operations. Partition independent series explicitly. Rolling windows count observations, not elapsed days; centered windows require future observations and must not portray incomplete newest points as complete estimates. Rates use actual elapsed time between observations. A first observation, missing measure, or zero percentage-change denominator does not imply zero change. Read Sections 5.5.3 and 5.5.4 for the exact temporal-series and window vocabulary rather than inventing encoding transforms.
 

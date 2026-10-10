@@ -788,6 +788,26 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
 }
 
 /**
+ * Renders an isolated, validated page with the normal declarative renderer,
+ * without installing another dashboard shell or global navigation.
+ * @param {PresentationDocument} document
+ * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, failures: import('./reactive.js').State<Record<string, string>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} binding
+ * @param {PageSourceLoadOptions['queryContext']} [queryContext]
+ */
+export function renderDashboardPagePreview(document, binding, queryContext) {
+  const page = document.dashboard.pages[0];
+  if (!page || document.dashboard.pages.length !== 1 || page.kind !== 'custom') {
+    throw new Error('A dashboard preview requires exactly one custom page.');
+  }
+  const templates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
+  const root = renderPage(page, binding.sources.get(), document.dashboard.units ?? {},
+    document.dashboard.defaults ?? {}, templates, [], queryContext, document.dashboard.queries ?? [], binding);
+  enableLazyViews(root);
+  binding.signal.addEventListener('abort', () => disconnectLazyViews(root), { once: true });
+  return root;
+}
+
+/**
  * @param {PresentableCustomPage} page
  * @param {string} title
  * @param {Record<string, LogicalSourceInput>} sources
@@ -2499,7 +2519,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   const elementName = typeof view.element === 'string' ? view.element : '';
   const sourceNames = getViewSources(view);
   const viewData = isPlainObject(view.data) ? view.data : undefined;
-  if (sourceNames.length === 0) {
+  if (sourceNames.length === 0 && elementName !== 'query-editor') {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
   }
 

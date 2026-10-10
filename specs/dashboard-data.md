@@ -20,6 +20,47 @@ should read `docs/dashboard-data-model.md` first, then this specification and
 the production boundary under `dashboard/site/src/data/`. Computation changes
 must also follow `specs/computations.md`.
 
+### Canvas query authoring boundary
+
+The canvas-only query editor SHALL submit a complete Dashboard Language document
+to the data worker for structural and semantic validation before rendering it.
+Preview documents SHALL contain exactly one custom `query-preview` page with
+data marks only, no new CLI capabilities or named UI elements, and an explicit
+per-view output limit of at most 200 rows. Every view source, including filter
+options, SHALL reference a declared query with `query.limit` between 1 and the
+view's `data.limit`; layered charts SHALL omit `data.limit` and bound their
+source query to at most 200 rows. The worker SHALL execute the query bound
+before returning rows.
+Preview documents SHALL NOT declare forms, lazy pagination, or drill navigation.
+Invalid documents SHALL preserve the
+last accepted preview and expose validation diagnostics.
+
+Accepted previews SHALL execute through the existing canonical query and
+view-payload compiler and retain an abort-scoped subscription. Canonical database
+changes SHALL refresh their payloads; replacing the document or leaving the page
+SHALL cancel old subscriptions and requests. No main-thread query fallback or
+test-only logical-source synthesis is permitted.
+The default local canvas backend SHALL execute queries in the server-side SQLite
+worker without opening browser IndexedDB. An explicitly selected `indexeddb`
+backend SHALL execute them in the browser data worker. Document validation SHALL
+remain in the browser data worker for both backends.
+
+Authoring intent and drafts are local interaction state, not canonical entities.
+The editor SHALL NOT add IndexedDB stores, alter retention or relationships, or
+write preview rows to storage. A user-requested save SHALL persist only the
+validated Dashboard Language document under the workspace-local
+`.cao/dashboard/custom-views/` directory, not evidence rows or browser entities.
+Saved queries, views, card templates, and units SHALL have isolated identifiers;
+the local set SHALL survive canvas/server restarts and SHALL NOT be loaded by
+static or hosted dashboards. Source JSON/YAML SHALL be an optional disclosure;
+the rendered view SHALL be primary.
+Hosted SQL ingestion and storage remain unchanged:
+this feature is available only in a loopback Copilot canvas, not the static or
+hosted dashboard. Its preview uses the existing browser/SQL Dashboard Language
+contract rather than a separate query dialect or execution service. SDK generation
+SHALL receive authoring text and trusted language/skill context, not canonical
+source rows, and SHALL have no filesystem, shell, MCP, or repository-write tools.
+
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 7 days. |
 | --- | --- |
 
