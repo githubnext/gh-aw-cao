@@ -120,7 +120,6 @@ func TestNormalizeTemporalShape(t *testing.T) {
 				if plan.ResultShape.Fields[i].As != field {
 					t.Fatalf("field %d: got %+v, want %q", i, plan.ResultShape.Fields[i], field)
 				}
-
 			}
 			if plan.ResultShape.Mode != ClosedShape || len(plan.ResultShape.Fields) != len(fields) {
 				t.Fatalf("wrong temporal shape: %+v", plan.ResultShape)

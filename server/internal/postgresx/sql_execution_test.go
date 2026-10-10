@@ -157,7 +157,8 @@ func TestFacetPanelBudgetAndUniqueFiltersInPostgres(t *testing.T) {
 	nativeSeed(t.Context(), t, store, map[string][]model.Row{"$domains": domains})
 	limit := 64
 	facet := &query.Facet{Field: "domain", As: "rows"}
-	definitions := []query.Definition{{Name: "panels", From: "$domains", Limit: &limit, Facet: facet}}
+	definitions := make([]query.Definition, 1, 2)
+	definitions[0] = query.Definition{Name: "panels", From: "$domains", Limit: &limit, Facet: facet}
 	got, _, err := store.ExecuteSQLPlan(t.Context(), definitions, []string{"panels"})
 	if err != nil || len(got["panels"].Rows) != 64 {
 		t.Fatalf("64 panels must remain available: %v", err)
