@@ -3,6 +3,10 @@
  * the worker query; this module does not select, aggregate, or sort source rows.
  */
 
+import { createDebug } from '../debug.js';
+
+const debug = createDebug('treemap-layout');
+
 /** @typedef {{ x: number, y: number, width: number, height: number }} Rectangle */
 /** @typedef {{ index: number, value: number }} Tile */
 /** @typedef {{ method?: 'squarify'|'binary'|'slicedice', ratio?: number, padding?: number }} TreemapOptions */
@@ -20,14 +24,19 @@ export function tileTreemap(tiles, bounds, options = {}, depth = 0) {
   const maximum = Math.max(...tiles.map((tile) => tile.value));
   if (!Number.isFinite(maximum) || maximum <= 0
       || tiles.some((tile) => !Number.isFinite(tile.value) || tile.value <= 0)) {
+    debug({ operation: 'tile', status: 'rejected-invalid-values', tileCount: tiles.length });
     throw new RangeError('Treemap layout requires finite positive tile values.');
   }
   const weights = tiles.map((tile) => ({ ...tile, value: tile.value / maximum }));
   const total = weights.reduce((sum, tile) => sum + tile.value, 0);
   const method = options.method ?? 'squarify';
-  if (method === 'binary') return binary(weights, bounds, total);
-  if (method === 'slicedice') return slice(weights, bounds, total, depth % 2 === 0);
-  return squarify(weights, bounds, total, options.ratio ?? 1.618);
+  const placed = method === 'binary'
+    ? binary(weights, bounds, total)
+    : method === 'slicedice'
+      ? slice(weights, bounds, total, depth % 2 === 0)
+      : squarify(weights, bounds, total, options.ratio ?? 1.618);
+  if (depth === 0) debug({ operation: 'tile', status: 'placed', method, tileCount: tiles.length, placedCount: placed.length });
+  return placed;
 }
 
 /** @param {Tile[]} tiles @param {Rectangle} bounds @param {number} total @param {boolean} vertical */
