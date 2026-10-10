@@ -3,6 +3,34 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-10T19:23:26Z",
+      "worker_run_id": 38079311304,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38079405215,
+        38079229659,
+        38078130179,
+        38077891533,
+        38077273308,
+        38077128713,
+        38076784682,
+        38075953824,
+        38075764131,
+        38074141243,
+        38073381947,
+        38073087017,
+        38072856564,
+        38072180047,
+        38072030979,
+        38071361029,
+        38071218681,
+        38070024772,
+        38069655494,
+        38069221258
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d08a0f2e6fb8ede95312a420f10222e60829350a. Within the latest 20 completed docs.yml runs from 2026-10-10T16:49:39Z through 2026-10-10T19:20:39Z, 10 runs concluded success and all 10 were schedule-triggered; the other 10 completed runs were skipped workflow_run invocations. The bounded sample contains 0 comparable successful build-bearing docs runs: every successful schedule run executed only schedule-freshness, and build plus deploy were skipped because the deployed docs and dashboard were current, verified by bounded log read of run 38079405215 recording \"Documentation build skipped because the deployed docs and dashboard are current.\" Across all 10 successful docs runs, workflow queue median/p90 was 3s/4s, full execution median/p90 was 8.5s/10.1s, and schedule-freshness job median/p90 was 8s/10.1s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T15:23:50Z through 2026-10-10T19:17:46Z contained 0 successful dashboard builds, 17 skipped runs, 2 push failures, and 1 cancelled push outlier; the cancelled outlier 38067354405 spent 57s in Restore collected activity data before cancellation. Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-10T19:00:22Z",
       "worker_run_id": 38077758294,
       "category": "dependency installation and caching",
@@ -813,35 +841,6 @@
         38020409019
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 9b16d5261d438fe6e05bcd00b9ab844e84cd72fb. Within the latest 20 completed docs.yml runs in the last 14 days from 2026-10-10T03:23:52Z through 2026-10-10T05:25:43Z, 8 runs concluded success and only 1 successful runs completed the comparable schedule-freshness + build + deploy path required for analysis. The bounded docs sample therefore remains below the required minimum of 5 comparable successful runs. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 0 successful build runs, so upstream dashboard timing could not broaden the sample safely."
-    },
-    {
-      "evaluated_at": "2026-10-10T05:03:15Z",
-      "worker_run_id": 38025767475,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38025907693,
-        38025871065,
-        38025870420,
-        38025791365,
-        38025791562,
-        38025781370,
-        38025532987,
-        38025388312,
-        38024384333,
-        38024106249,
-        38023224931,
-        38022586098,
-        38022326515,
-        38022018869,
-        38021539942,
-        38020761716,
-        38020409019,
-        38019617600,
-        38019235067,
-        38018897079
-      ],
-      "outcome": "suggestion_made: evaluated scheduling, concurrency, and avoidable rebuilds because the earlier build-heavy categories still lack 5 comparable build-bearing successful docs runs in the latest 20 completed docs.yml runs. In the docs evidence window from 2026-10-10T02:58:24Z through 2026-10-10T04:58:29Z, 7 runs concluded success and all 7 were same-SHA schedule freshness passes on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped, while the remaining 13 workflow_run invocations were skipped. Trusted job metadata and bounded logs confirmed that the successful runs spent a median 7.0s (p90 7.8s) in Check documentation and dashboard freshness and a median 11.0s (p90 11.8s) in the entire schedule-freshness job, accounting for most of the median 15.0s (p90 16.8s) successful workflow execution time. Source inspection shows that each freshness pass scans up to 100 successful docs runs and calls listJobsForWorkflowRun until it finds the last deploy-successful run, then separately fetches the latest successful cao-dashboard.yml run. Because none of the 7 latest successful docs runs deployed, every freshness pass necessarily fan-outs across those 7 non-deploy successes before reaching an older deployed run. Recommend persisting deployed docs SHA plus dashboard provenance after each successful deploy and reading that marker directly during schedule-freshness instead of repeatedly scanning workflow runs and jobs.",
-      "suggestion_fingerprint": "schedule-freshness-deploy-marker-scan-elimination"
     }
   ]
 }
