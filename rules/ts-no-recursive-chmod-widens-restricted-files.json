@@ -93,6 +93,16 @@
       "false_positive_count": 1,
       "false_negative_count": 1,
       "readiness_for_target": "needs-work",
+      "target_commit": "0fc4d674167a86006cbc61d7f2295a21c3bd1ddd",
+      "target_repo": "githubnext/gh-aw-cao",
+      "txn_id": "refiner-38046411134-3",
+      "reason": "Re-confirmed unchanged on HEAD 0fc4d67: tests/e2e/cao-mcp-container.mjs:89 chmod call unchanged. No drift since refiner-38036133421-2."
+    },
+    {
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 1,
+      "readiness_for_target": "needs-work",
       "target_commit": "9b16d5261d438fe6e05bcd00b9ab844e84cd72fb",
       "target_repo": "githubnext/gh-aw-cao",
       "txn_id": "refiner-38036133421-2",
