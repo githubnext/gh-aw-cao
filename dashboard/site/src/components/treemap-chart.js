@@ -2,13 +2,15 @@ import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
 import { MAX_TREEMAP_LEAVES } from '../specification.js';
 import { createDebug } from '../debug.js';
-import { renderEmptyMessage } from './ui-primitives.js';
+import { renderEmptyMessage, renderTooltip } from './ui-primitives.js';
 import { renderSafeLink } from './link-content.js';
+import { createFactoryScope } from './factory-elements.js';
 import { tileTreemap } from './treemap-layout.js';
 
 const debug = createDebug('render:treemap');
 const WIDTH = 100;
 const HEIGHT = 60;
+let tooltipId = 0;
 
 /**
  * @param {import('./chart-elements.js').ChartPointLike[]} points
@@ -55,6 +57,7 @@ export function renderTreemapChart(points, valueLabel, unit, options, seriesClas
   })), bounds, options);
   const padding = options.padding ?? 0.5;
   const plot = h('div', { className: 'treemap-plot', role: 'group', 'aria-label': `Treemap: ${valueLabel}` });
+  const scope = createFactoryScope();
   for (const groupTile of groupTiles) {
     const [groupName, tiles] = entries[groupTile.index];
     const inset = grouped ? Math.min(padding, groupTile.width / 4, groupTile.height / 4) : 0;
@@ -85,18 +88,41 @@ export function renderTreemapChart(points, valueLabel, unit, options, seriesClas
       const leaf = renderSafeLink(content, point.link ?? null);
       const element = leaf instanceof HTMLElement && leaf.tagName === 'A'
         ? leaf
-        : h('div', { role: 'img', tabIndex: 0 }, leaf);
+        : h('button', { type: 'button', tabIndex: 0 }, leaf);
       element.className = `treemap-leaf ${seriesClassName(point.color ?? (groupName || point.x), tile.index)}`;
-      element.setAttribute('style', rectangleStyle(rectangle));
-      element.setAttribute('aria-label', label);
-      element.title = label;
       element.dataset.treemapLeaf = point.x;
       element.dataset.treemapValue = String(point.y);
       if (rectangle.width < 10 || rectangle.height < 5) element.classList.add('treemap-leaf-small');
-      plot.append(element);
+      const tooltip = renderTooltip({
+        id: `treemap-tooltip-${++tooltipId}`,
+        label,
+        trigger: element,
+        className: 'treemap-tile',
+        contentClassName: 'treemap-tooltip',
+        viewportAnchored: true,
+        signal: scope.signal,
+        content: [
+          h('strong', null, point.x),
+          ...(grouped ? [h('span', { className: 'tooltip-description' }, groupName || 'Ungrouped')] : []),
+          h('span', null, `${valueLabel}: ${value}`),
+          ...(point.color ? [h('span', { className: 'tooltip-description' }, point.color)] : [])
+        ]
+      });
+      tooltip.setAttribute('style', rectangleStyle(rectangle));
+      tooltip.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          tooltip.classList.add('treemap-tooltip-dismissed');
+          event.stopPropagation();
+        }
+      }, { signal: scope.signal });
+      for (const event of ['pointerenter', 'focusin']) {
+        tooltip.addEventListener(event, () => tooltip.classList.remove('treemap-tooltip-dismissed'), { signal: scope.signal });
+      }
+      plot.append(tooltip);
     }
   }
   root.append(plot);
+  scope.bind(root);
   if (omitted > 0) root.append(renderEmptyMessage(`${omitted} missing or zero-valued observations have no area.`, { role: 'status' }));
   debug({ event: 'rendered', pointCount: points.length, groupCount: groups.size, omittedCount: omitted, method: options.method ?? 'squarify' });
   return root;

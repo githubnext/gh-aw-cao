@@ -1154,7 +1154,8 @@ leaf levels. Input query order determines deterministic layout order.
   Every rendered leaf **MUST** expose its label, group when present, and
   formatted value without relying on color alone. Encoded safe links **MUST**
   remain keyboard-operable. A small rectangle **MAY** omit visible text but
-  **MUST** retain its complete accessible name and tooltip.
+  **MUST** retain its complete accessible name and visible, viewport-bounded
+  tooltip on hover, keyboard focus, or tap. Escape **MUST** dismiss the tooltip.
 
 #### 11.1.1 Route-Bound Page Templates
 

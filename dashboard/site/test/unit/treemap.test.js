@@ -242,6 +242,14 @@ describe('treemap accessible rendering', () => {
     expect(link?.getAttribute('aria-label')).toBe('alpha / Doctor: Runs 6');
     expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(chart.querySelector('[data-treemap-leaf="Audit"]')?.getAttribute('tabindex')).toBe('0');
+    const tooltip = chart.querySelector(`[id="${link?.getAttribute('aria-describedby')}"]`);
+    expect(tooltip?.getAttribute('role')).toBe('tooltip');
+    expect(tooltip?.textContent).toContain('DoctoralphaRuns: 6');
+    expect(chart.querySelector('[data-treemap-leaf="Audit"]')?.tagName).toBe('BUTTON');
+    link?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(link?.parentElement?.classList.contains('treemap-tooltip-dismissed')).toBe(true);
+    link?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(link?.parentElement?.classList.contains('treemap-tooltip-dismissed')).toBe(false);
     expect(renderChartWidget('treemap', [point(1)], []).querySelectorAll('[data-treemap-leaf]')).toHaveLength(1);
   });
 
@@ -254,5 +262,20 @@ describe('treemap accessible rendering', () => {
     const partial = renderChartWidget('treemap', [point(3), point(null), point(0)], []);
     expect(partial.querySelectorAll('[data-treemap-leaf]')).toHaveLength(1);
     expect(partial.textContent).toContain('2 missing or zero-valued observations');
+  });
+
+  it('preserves readable tooltips for tiny tiles and releases tracking on detachment', async () => {
+    const chart = renderChartWidget('treemap', [point(1000, 'Large'), point(1, 'Small label that does not fit')], []);
+    document.body.append(chart);
+    const tiny = chart.querySelector('.treemap-leaf-small');
+    expect(tiny).not.toBeNull();
+    const tooltip = chart.querySelector(`[id="${tiny?.getAttribute('aria-describedby')}"]`);
+    expect(tooltip?.textContent).toContain('Small label that does not fit');
+    expect(tooltip?.textContent).toContain('Total: 1');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    tiny?.parentElement?.dispatchEvent(new Event('pointerenter'));
+    chart.remove();
+    await vi.waitFor(() => expect(remove).toHaveBeenCalledWith('resize', expect.any(Function)));
+    expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function), true);
   });
 });

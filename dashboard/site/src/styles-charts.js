@@ -47,10 +47,16 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .heatmap-cell:focus-visible rect { stroke: var(--focus); stroke-width: 1; }
 .treemap-chart-widget { display: block; min-width: 0; min-height: 0; }
 .treemap-plot { position: relative; width: 100%; aspect-ratio: 5 / 3; isolation: isolate; }
-.treemap-group, .treemap-leaf { position: absolute; left: var(--treemap-x); top: var(--treemap-y); width: var(--treemap-width); height: var(--treemap-height); box-sizing: border-box; overflow: hidden; }
+.treemap-group, .treemap-tile { position: absolute; left: var(--treemap-x); top: var(--treemap-y); width: var(--treemap-width); height: var(--treemap-height); box-sizing: border-box; }
+.treemap-group { overflow: hidden; }
+.treemap-tile { display: block; }
+.treemap-tile:hover, .treemap-tile:focus-within { z-index: 2; }
+.treemap-tile .treemap-tooltip { font-size: .8125rem; overflow-wrap: anywhere; pointer-events: auto; }
+.treemap-tooltip::before { position: absolute; inset: -10px 0; z-index: -1; content: ""; }
+.treemap-tile.treemap-tooltip-dismissed .treemap-tooltip { visibility: hidden; opacity: 0; pointer-events: none; }
 .treemap-group { border: 1px solid var(--border); background: var(--canvas-subtle); }
 .treemap-group-label { display: block; padding: 2px 6px; color: var(--muted); font-size: .6875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.treemap-leaf { display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--treemap-color) 60%, var(--border)); background: color-mix(in srgb, var(--treemap-color) 18%, var(--canvas)); color: var(--fg); text-decoration: none; }
+.treemap-leaf { display: grid; place-items: center; width: 100%; height: 100%; padding: 0; box-sizing: border-box; overflow: hidden; border: 1px solid color-mix(in srgb, var(--treemap-color) 60%, var(--border)); border-radius: 0; background: color-mix(in srgb, var(--treemap-color) 18%, var(--canvas)); color: var(--fg); font: inherit; text-decoration: none; cursor: pointer; }
 .treemap-leaf-content { display: grid; gap: 2px; max-width: 100%; padding: 3px; box-sizing: border-box; text-align: center; pointer-events: none; }
 .treemap-leaf-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; font-weight: 600; }
 .treemap-leaf-value { font-size: .6875rem; font-variant-numeric: tabular-nums; }

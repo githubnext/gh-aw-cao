@@ -180,7 +180,8 @@ determine area before gutters and group headings; missing and zero values
 have no area and are reported explicitly. Negative or non-finite values
 produce an explanatory unavailable chart rather than misleading rectangles.
 Labels, values, and groups remain available through accessible names and
-tooltips even when a rectangle is too small for visible text. An optional
+visible, viewport-bounded tooltips on hover, keyboard focus, or tap, even when a
+rectangle is too small for visible text. Escape dismisses a tooltip. An optional
 `href` encoding makes leaves keyboard-operable safe links.
 
 For a temporal chart, aggregate observations into buckets before smoothing a
