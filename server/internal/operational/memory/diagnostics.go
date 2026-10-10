@@ -6,7 +6,11 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var diagnosticsLog = logger.New("cao:operational:memory:diagnostics")
 
 var counterNames = [...]string{
 	"webhookReceived", "webhookDuplicate", "webhookAdmissionFailed",
@@ -15,6 +19,46 @@ var counterNames = [...]string{
 }
 
 var loadPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
+
+// loadCounterIndex reports the decayed-load slot a counter increment feeds,
+// if any. It is a pure function extracted from IncrementIngestionCounter's
+// inline switch so the counter-to-load-category mapping is independently
+// testable without touching the store's locked state.
+func loadCounterIndex(name string) (int, bool) {
+	switch name {
+	case "webhookReceived":
+		return 0, true
+	case "collectionSucceeded":
+		return 1, true
+	case "collectionFailed":
+		return 2, true
+	default:
+		return -1, false
+	}
+}
+
+// healthEventIndex reports the events-slice index a RecordIngestionHealthEvent
+// call targets, applying the same event/code validation the method
+// previously performed inline. It is a pure function extracted from
+// RecordIngestionHealthEvent so the accepted (event, code) combinations are
+// independently testable without a store or a context.
+func healthEventIndex(event, code string) (int, bool) {
+	switch event {
+	case "failure":
+		if code == "admission" || code == "collection" || code == "redis" {
+			return 0, true
+		}
+	case "success":
+		if code == "" {
+			return 2, true
+		}
+	case "webhook":
+		if code == "" {
+			return 3, true
+		}
+	}
+	return -1, false
+}
 
 type load struct {
 	amount float64
@@ -56,6 +100,7 @@ func (s *Store) IncrementIngestionCounter(ctx context.Context, name string) erro
 		}
 	}
 	if index < 0 {
+		diagnosticsLog.Printf("ingestion counter rejected unknown name")
 		return invalid("unknown ingestion counter")
 	}
 	if s.counters[index] == math.MaxInt64 {
@@ -66,16 +111,7 @@ func (s *Store) IncrementIngestionCounter(ctx context.Context, name string) erro
 	}
 	s.counters[index]++
 	s.healthRevision++
-	loadIndex := -1
-	switch name {
-	case "webhookReceived":
-		loadIndex = 0
-	case "collectionSucceeded":
-		loadIndex = 1
-	case "collectionFailed":
-		loadIndex = 2
-	}
-	if loadIndex >= 0 {
+	if loadIndex, ok := loadCounterIndex(name); ok {
 		now := s.config.Clock()
 		s.loads[loadIndex] = load{amount: decayed(s.loads[loadIndex], now, time.Minute) + 1, at: now}
 	}
@@ -87,22 +123,9 @@ func (s *Store) RecordIngestionHealthEvent(ctx context.Context, event, code stri
 		return err
 	}
 	defer s.mu.Unlock()
-	index := -1
-	switch event {
-	case "failure":
-		if code == "admission" || code == "collection" || code == "redis" {
-			index = 0
-		}
-	case "success":
-		if code == "" {
-			index = 2
-		}
-	case "webhook":
-		if code == "" {
-			index = 3
-		}
-	}
-	if index < 0 || at.IsZero() {
+	index, ok := healthEventIndex(event, code)
+	if !ok || at.IsZero() {
+		diagnosticsLog.Printf("ingestion health event rejected event=%s", event)
 		return invalid("invalid ingestion event, code, or time")
 	}
 	if err := s.diagnosticSpace(); err != nil {
