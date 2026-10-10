@@ -21,6 +21,57 @@ describe('query editor worker validation', () => {
     });
   });
 
+  it('explains the exact encoding property required even for a pre-bucketed temporal query', async () => {
+    const fixture = previewDocument();
+    const x = { field: 'date', type: 'temporal' };
+    const document = {
+      ...fixture,
+      dashboard: {
+        ...fixture.dashboard,
+        queries: [
+          ...fixture.dashboard.queries,
+          {
+            name: 'daily-runs', subject: 'Native run counts by UTC day.', from: 'runs', limit: 200,
+            compute: [{ as: 'date', function: 'date-bucket', args: [{ field: 'started-at' }, { value: 'day' }] }],
+            aggregate: { by: ['date'], values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+          }
+        ],
+        pages: [{
+          ...fixture.dashboard.pages[0],
+          views: [
+            ...fixture.dashboard.pages[0].views,
+            {
+              id: 'daily-trend', mark: 'chart', chart: 'line',
+              data: { source: 'daily-runs', limit: 200 },
+              encoding: { x, y: { field: 'runs', type: 'quantitative' } }
+            }
+          ]
+        }]
+      }
+    };
+    const result = await validate(document);
+    expect(result).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        code: 'DLS-E010', path: '$.dashboard.pages[0].views[1].encoding.x',
+        message: expect.stringContaining('encoding.x.time-unit')
+      })])
+    });
+    for (const hint of [
+      'hour, day, week, month',
+      'add "time-unit": "day" inside encoding.x',
+      'pre-bucketing the source query does not replace'
+    ]) {
+      expect(result).toMatchObject({
+        errors: expect.arrayContaining([expect.objectContaining({
+          path: '$.dashboard.pages[0].views[1].encoding.x', message: expect.stringContaining(hint)
+        })])
+      });
+    }
+    Object.assign(x, { 'time-unit': 'day' });
+    expect(await validate(document)).toMatchObject({ ok: true });
+  });
+
   it('accepts bounded layered facets without a forbidden view-level limit', async () => {
     const document = structuredClone(layeredFixture);
     document.dashboard.pages[0].id = 'query-preview';

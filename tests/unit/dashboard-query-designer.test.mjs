@@ -44,6 +44,8 @@ test("query designer uses the trusted skill and SDK session without ambient tool
   assert.match(config.systemMessage.content, /Dashboard Language Specification/);
   assert.match(config.systemMessage.content, /data.limit of at most 200/);
   assert.match(config.systemMessage.content, /512 Unicode characters combined, not per field/);
+  assert.match(config.systemMessage.content, /declare encoding\.x\["time-unit"\] as hour, day, week, or month/);
+  assert.match(config.systemMessage.content, /Pre-bucketing with date-bucket does not replace this required encoding property/);
   assert.match(config.systemMessage.content, /# Declarative charts/);
   assert.match(config.systemMessage.content, /# Dashboard Authoring/);
   assert.ok(prompt.includes(JSON.stringify(intent)));

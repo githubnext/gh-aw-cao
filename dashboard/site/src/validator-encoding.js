@@ -545,7 +545,7 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
   ) {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      'chart views with temporal x must declare a temporal bucket to realize the line time-series default conservatively.',
+      `Temporal chart x requires encoding.x.time-unit. Set it to ${TIME_UNIT_VALUES.join(', ')} to match the intended UTC grouping; for example, add "time-unit": "day" inside encoding.x. Setting chart: line or pre-bucketing the source query does not replace this encoding property.`,
       `${path}.x`
     ));
   }

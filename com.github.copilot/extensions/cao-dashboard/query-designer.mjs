@@ -34,6 +34,7 @@ export async function generateDashboardQuery(intent, options) {
       "Use only canonical tables and fields. Include subject, objective and acceptance metadata.",
       `For each query and each view, subject + objective + acceptance must total at most ${MAX_SEMANTIC_METADATA_CHARACTERS} Unicode characters combined, not per field. Keep annotations concise; use the intent as detailed context, not as metadata.`,
       "Keep all data shaping in dashboard.queries. Do not generate JavaScript, SQL text, or synthetic evidence.",
+      'For single-widget temporal line/area/bar charts with one y measure, including the omitted-chart line default, declare encoding.x["time-unit"] as hour, day, week, or month to match the query bucket. Pre-bucketing with date-bucket does not replace this required encoding property. Preserve exact timestamps for dot, scatter, and swimlane charts; do not add a bucket to those charts just to silence validation.',
       "If essential evidence cannot be represented, return a brief explanation rather than fabricate a query. The host will report it as an invalid draft.",
     ],
     maximumQueryEditorDocumentCharacters,

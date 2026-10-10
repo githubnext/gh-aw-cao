@@ -191,6 +191,57 @@ test('cancelling a validator repair stops further attempts and preserves authori
   await pending.route?.abort();
 });
 
+test('repairs a pre-bucketed temporal chart using the worker time-unit hint', async ({ page }) => {
+  await openEditor(page);
+  await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Show hourly workflow run counts');
+  await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Hourly workflow runs');
+  await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Render an hourly temporal line chart');
+  const temporal = {
+    id: 'hourly-trend', title: 'Hourly workflow runs', mark: 'chart', chart: 'line',
+    data: { source: 'hourly-runs', limit: 200 },
+    encoding: { x: { field: 'date', type: 'temporal' }, y: { field: 'runs', type: 'quantitative' } }
+  };
+  const document = {
+    ...previewDocument,
+    dashboard: {
+      ...previewDocument.dashboard,
+      queries: [
+        ...previewDocument.dashboard.queries,
+        {
+          name: 'hourly-runs', subject: 'Native run counts by UTC hour.', from: 'runs', limit: 200,
+          compute: [{ as: 'date', function: 'date-bucket', args: [{ field: 'started-at' }, { value: 'hour' }] }],
+          aggregate: { by: ['date'], values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+        }
+      ],
+      pages: [{
+        ...previewDocument.dashboard.pages[0],
+        views: [...previewDocument.dashboard.pages[0].views, temporal]
+      }]
+    }
+  };
+  const invalidDocument = JSON.stringify(document);
+  Object.assign(temporal.encoding.x, { 'time-unit': 'hour' });
+  const repairedDocument = JSON.stringify(document);
+  let attempts = 0;
+  await page.route('**/__query_designer', (route) => {
+    attempts += 1;
+    if (attempts > 1) {
+      expect(route.request().postDataJSON()).toMatchObject({
+        document: invalidDocument,
+        feedback: expect.stringContaining('add "time-unit": "day" inside encoding.x')
+      });
+    }
+    return route.fulfill({ json: { document: attempts === 1 ? invalidDocument : repairedDocument } });
+  });
+  await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
+  expect(attempts).toBe(2);
+  const preview = page.locator('.query-editor-preview');
+  await expect(preview.getByRole('heading', { name: 'Hourly workflow runs', exact: true })).toBeVisible();
+  await expect(preview.getByRole('region', { name: 'Hourly workflow runs', exact: true }).locator('svg').first()).toBeVisible();
+  await expect(page.locator('.query-editor-errors')).toBeHidden();
+});
+
 test('checks the combined 512-character Unicode budget before generation and field improvement', async ({ page }) => {
   await openEditor(page);
   /** @type {Record<string, string>} */
