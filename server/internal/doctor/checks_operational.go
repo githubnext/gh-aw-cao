@@ -17,10 +17,8 @@ func (d Doctor) checkOperational(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, area, title, err)
 	}
-	status := StatusPass
-	if !health.Ready {
-		status = StatusFail
-	}
+	status := classifyOperationalHealth(health.Ready)
+	doctorLog.Printf("operational health classified status=%s", status)
 	return Check{
 		ID: id, Area: area, Title: title, Status: status,
 		Summary: "selected operational backend " + orDefault(d.Backend, "redis"),
@@ -30,6 +28,17 @@ func (d Doctor) checkOperational(ctx context.Context) Check {
 			detail("entries", fmt.Sprint(health.Entries)),
 		},
 	}
+}
+
+// classifyOperationalHealth decides the operational.health check's status
+// from the operational store's reported readiness. It is a pure function
+// extracted from checkOperational so the ready/not-ready decision is
+// independently testable without a Doctor or a store.
+func classifyOperationalHealth(ready bool) Status {
+	if !ready {
+		return StatusFail
+	}
+	return StatusPass
 }
 
 func (d Doctor) checkOperationalCapabilities(context.Context) Check {

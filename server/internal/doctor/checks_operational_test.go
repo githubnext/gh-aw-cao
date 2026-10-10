@@ -84,6 +84,18 @@ func TestOperationalMemoryDoctorDoesNotInventHealthyDisconnectedState(t *testing
 	}
 }
 
+func TestClassifyOperationalHealthReady(t *testing.T) {
+	if status := classifyOperationalHealth(true); status != StatusPass {
+		t.Fatalf("ready state classified as %q, want %q", status, StatusPass)
+	}
+}
+
+func TestClassifyOperationalHealthNotReady(t *testing.T) {
+	if status := classifyOperationalHealth(false); status != StatusFail {
+		t.Fatalf("not-ready state classified as %q, want %q", status, StatusFail)
+	}
+}
+
 func TestSummarizeOperationalCapabilitiesAllSupportedRestart(t *testing.T) {
 	restart := operational.Capability{Scope: operational.ScopeDeployment, Persistence: operational.PersistenceRestart}
 	caps := operational.Capabilities{
