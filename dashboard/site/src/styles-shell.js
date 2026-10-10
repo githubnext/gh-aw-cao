@@ -163,7 +163,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .nav-item .experimental-page-label, .mobile-nav-item .experimental-page-label { margin-left: auto; }
 .experimental-page-label .octicon { width: 12px; height: 12px; flex: 0 0 12px; color: inherit; }
 .experimental-page-label[hidden] { display: none; }
-.nav-indicator { width: 8px; height: 8px; flex: 0 0 8px; margin-left: auto; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--canvas-subtle); }
+.nav-indicator { width: 8px; height: 8px; flex: 0 0 8px; margin-left: auto; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--canvas-subtle); }
 .nav-indicator[hidden] { display: none; }
 .sidebar-collapsed .nav-indicator { position: absolute; top: 6px; right: 7px; margin-left: 0; }
 .mobile-nav-menu { display: none; }
