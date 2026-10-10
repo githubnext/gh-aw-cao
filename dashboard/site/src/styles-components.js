@@ -53,7 +53,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .route-tabs a, .repository-tabs a { display: inline-flex; align-items: center; gap: 8px; position: relative; padding: 10px 14px 12px; color: var(--fg); font-weight: 600; white-space: nowrap; text-decoration: none; }
 .route-tabs a > .octicon, .repository-tabs a > .octicon { color: var(--muted); }
 .route-tabs a:hover, .repository-tabs a:hover { background: var(--canvas-subtle); }
-.route-tabs a[aria-current="page"]::after, .repository-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 8px; bottom: -1px; left: 8px; background: var(--danger); }
+.route-tabs a[aria-current="page"]::after, .repository-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 8px; bottom: -1px; left: 8px; background: var(--accent); }
 .workflow-badge-operation, .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }
 .workflow-identity { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .workflow-identity p { margin: 7px 0 0; }
