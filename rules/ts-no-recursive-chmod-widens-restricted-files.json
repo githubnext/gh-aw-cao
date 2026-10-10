@@ -85,28 +85,18 @@
     "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
     "txn_id": "refiner-37977147256-3"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38036133421",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
     {
       "true_positive_count": 0,
       "false_positive_count": 1,
-      "false_negative_count": 1,
+      "false_negative_count": 0,
       "readiness_for_target": "needs-work",
-      "target_commit": "0fc4d674167a86006cbc61d7f2295a21c3bd1ddd",
+      "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
       "target_repo": "githubnext/gh-aw-cao",
-      "txn_id": "refiner-38046411134-3",
-      "reason": "Re-confirmed unchanged on HEAD 0fc4d67: tests/e2e/cao-mcp-container.mjs:89 chmod call unchanged. No drift since refiner-38036133421-2."
-    },
-    {
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "target_commit": "9b16d5261d438fe6e05bcd00b9ab844e84cd72fb",
-      "target_repo": "githubnext/gh-aw-cao",
-      "txn_id": "refiner-38036133421-2",
-      "reason": "Re-confirmed unchanged on HEAD 9b16d52: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit; no new true positives."
+      "txn_id": "refiner-38065270021-1",
+      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit on a freshly mkdtemp'd scratch directory; no new true positives repo-wide."
     },
     {
       "target_repo": "github/gh-aw",
@@ -117,26 +107,6 @@
       "readiness_for_target": "not-applicable",
       "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
       "txn_id": "refiner-37835259305-5"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 3d42b1d: tests/e2e/cao-mcp-container.mjs:89 still runs chmod -R a+rX on a fresh mkdtemp directory before reading it read-only into a docker volume (false positive against a naive recursive-chmod heuristic: the directory is freshly created and exclusively owned, not a widening of pre-existing restricted files). No drift since refiner-37557116506-2.",
-      "txn_id": "refiner-37812883520-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD f6ebad6: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX on a mkdtemp test-fixture directory (public SQLite snapshot only) remains a false positive. No other recursive chmod call sites found; no suppression convention.",
-      "txn_id": "refiner-37499745280-2"
     },
     {
       "target_repo": "github/gh-aw-firewall",
@@ -157,16 +127,6 @@
       "readiness_for_target": "not-applicable",
       "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
       "txn_id": "refiner-36658147600-1"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "d4e4f4047b3ab673cc994d71e25ece332d380aea",
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged: sole recursive chmod site, tests/e2e/cao-mcp-container.mjs:89, remains a false positive (no restricted-mode file ever written there). No change in classification.",
-      "txn_id": "refiner-37010165621-3"
     },
     {
       "target_repo": "github/gh-aw-firewall",
@@ -199,6 +159,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-10T08:01:29Z",
-  "last_updated": "2026-10-09T19:06:40Z"
+  "last_seen_at": "2026-10-10T15:55:15Z",
+  "last_updated": "2026-10-10T15:55:15Z"
 }
