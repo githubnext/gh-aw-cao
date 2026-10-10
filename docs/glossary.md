@@ -150,6 +150,10 @@ The effective mode in which a campaign runs for an admitted target: `review`, `l
 
 A declared, bounded way for a workflow to produce an external effect, such as creating an issue or dispatching a worker. See the canonical gh-aw definition of [Safe Outputs](https://github.github.com/gh-aw/reference/glossary/#safe-outputs).
 
+## Storage shard
+
+The disposable `_storage` metadata (`shard`, `timestamp`, `bytes`) that canonical browser IndexedDB writes attach to every record, plus the non-queryable `storageShards` store that tracks per-store UTC-day counts and approximate byte totals atomically with those writes. Routine retention and size maintenance use these totals and bounded, indexed batches instead of full entity scans; only explicit relationship repair or a missing curation receipt after unchanged ingestion may rebuild shard accounting with bounded scans. Storage shards are never a query source or evidence. See `specs/dashboard-data.md` Section 5.1-5.2 and `dashboard/site/src/data/storage/shards.js`.
+
 ## Target repository
 
 A repository enrolled for a campaign. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
