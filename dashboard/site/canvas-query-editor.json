@@ -3,7 +3,7 @@
   "dashboard": {
     "id": "canvas-query-editor",
     "title": "Query editor",
-    "navigation": [{ "label": "Canvas", "pages": ["query-editor"] }],
+    "navigation": [{ "label": "Experimental", "experimental": true, "pages": ["query-editor"] }],
     "pages": [{
       "id": "query-editor",
       "kind": "custom",

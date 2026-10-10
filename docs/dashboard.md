@@ -82,7 +82,7 @@ rollout mode, safe output, outcome, and operational value.
 ### Design queries in a Copilot canvas
 
 The local **Central Agentic Ops** Copilot canvas includes a **Query editor**
-page. It is not enabled on the static website, hosted server, or ordinary local
+page under **Experimental**. It is not enabled on the static website, hosted server, or ordinary local
 preview. Enter an intent, subject, optional objective, and acceptance criteria,
 then select **Generate query and view**. The Copilot SDK uses the bundled
 `generate-dashboard-ir` query-design skill and Dashboard Language specification

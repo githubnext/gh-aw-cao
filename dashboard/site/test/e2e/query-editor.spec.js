@@ -58,6 +58,10 @@ async function openEditor(page) {
     await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
   }
   await expect(page.getByRole('textbox', { name: 'Intent', exact: true })).toBeVisible();
+  const experimental = page.locator('.org-sidebar [data-nav-section="Experimental"]');
+  await expect(experimental.getByRole('link', { name: 'Query editor', exact: true, includeHidden: true }))
+    .toHaveAttribute('href', '#page-query-editor');
+  await expect(page.locator('.org-sidebar [data-nav-section="Canvas"]')).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
 }
 

@@ -788,7 +788,7 @@ export async function startDashboardServer({
 
     await bundleDashboardFiles(bundledDashboardPath, campaignPaths, baseDashboardPath);
     const additions = localViews.map(({ id, document }) => materializeLocalCustomView(document, id));
-    const dashboardDocument = composeDashboardDocuments(JSON.parse(await readFile(bundledDashboardPath, "utf8")), additions);
+    let dashboardDocument = composeDashboardDocuments(JSON.parse(await readFile(bundledDashboardPath, "utf8")), additions);
     for (const addition of additions) {
       if (addition.dashboard["card-templates"]?.length) {
         (dashboardDocument.dashboard["card-templates"] ??= []).push(...addition.dashboard["card-templates"]);
@@ -800,8 +800,7 @@ export async function startDashboardServer({
       if (dashboardDocument.dashboard.pages.some((page) => page.id === "query-editor")) {
         throw new Error("The query-editor page ID is reserved for canvas authoring.");
       }
-      dashboardDocument.dashboard.pages.push(...queryEditorDocument.dashboard.pages);
-      (dashboardDocument.dashboard.navigation ??= []).push(...queryEditorDocument.dashboard.navigation);
+      dashboardDocument = composeDashboardDocuments(dashboardDocument, [queryEditorDocument]);
     }
     const splitDashboard = splitDashboardDocument({
       languageVersion: dashboardDocument["language-version"],

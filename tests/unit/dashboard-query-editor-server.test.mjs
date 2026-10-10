@@ -9,11 +9,12 @@ const document = await readFile(new URL("../../dashboard/site/test/fixtures/quer
 const intent = { intent: "Find failing workflows", subject: "Workflow failures", acceptance: "Show native conclusions." };
 
 async function preview(t, options = {}) {
+  const { dashboardDocument = document, ...serverOptions } = options;
   const root = await mkdtemp(join(tmpdir(), "cao-query-editor-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, "site"));
   await writeFile(join(root, "site", "index.html"), "<!doctype html><body>CAO preview</body>");
-  await writeFile(join(root, "site", "dashboard.json"), document);
+  await writeFile(join(root, "site", "dashboard.json"), dashboardDocument);
   const server = await startDashboardServer({
     siteRoot: join(root, "site"), catalogRoot: null, workingDirectory: root, port: 0,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
@@ -22,7 +23,7 @@ async function preview(t, options = {}) {
       await mkdir(destination, { recursive: true });
       await writeFile(join(destination, "sources.json"), "{}");
     },
-    ...options,
+    ...serverOptions,
   });
   t.after(() => server.close());
   return { ...server, root };
@@ -43,9 +44,24 @@ test("query editor is injected only into SDK-enabled canvases, not query-flag-sp
   const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
   const page = dashboard.dashboard.pages.find(({ id }) => id === "query-editor");
   assert.ok(page);
+  assert.deepEqual(dashboard.dashboard.navigation, [
+    { label: "Experimental", experimental: true, pages: ["query-editor"] },
+  ]);
   const chunk = await (await fetch(`${canvas.url}/${page.chunk}`)).json();
   assert.equal(chunk.page.views[0].element, "query-editor");
   assert.deepEqual(chunk.page.views[0].data.sources, []);
+});
+
+test("query editor joins the existing Experimental section without duplicating navigation", async (t) => {
+  const base = JSON.parse(document);
+  base.dashboard.navigation = [{ label: "Experimental", experimental: true, pages: ["query-preview"] }];
+  const canvas = await preview(t, {
+    canvas: true, generateQuery: async () => ({ document }), dashboardDocument: JSON.stringify(base),
+  });
+  const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
+  assert.deepEqual(dashboard.dashboard.navigation, [
+    { label: "Experimental", experimental: true, pages: ["query-preview", "query-editor"] },
+  ]);
 });
 
 test("query generation enforces capability paths, Origin, method, bounded intent and one active request", async (t) => {
