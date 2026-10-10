@@ -85,6 +85,12 @@ window and the same underlying GitHub activity.
 - The collector profile MUST acquire logs with the same `gh aw logs --audit`
   invocation and compact them with the same `activity/cao.mjs` commands the
   Actions profile uses.
+- The collector's catalog root MUST contain at least one compiled
+  `.github/workflows/*.lock.yml` file, matching the compiled workflow metadata
+  input the Actions profile reads per `specs/activity.md` §3. An implementation
+  MUST fail startup when the catalog root contains no compiled workflow,
+  rather than run `gh aw logs` against a catalog that cannot resolve agentic
+  workflow identity and silently publish empty evidence.
 - The collector profile MUST reconstruct retained operational-value observations
   with a native Go implementation conforming to
   `specs/operational-value-history.md`, using the same campaign adapter contract,
@@ -520,7 +526,8 @@ A conforming implementation:
 3. derives scope from App installations, never from `cao.json`;
 4. admits and enqueues webhooks without projecting in the request path;
 5. collects with the shared `gh aw logs --audit` and `activity/cao.mjs`
-   implementations;
+   implementations, after failing startup if its catalog root contains no
+   compiled `.lock.yml` workflow;
 6. persists a snapshot-compatible evidence lake sufficient for cold start;
 7. projects by reusing the Actions profile's ingestion implementation, coalesced
    and atomically activated;
