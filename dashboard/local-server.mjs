@@ -36,7 +36,7 @@ import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
-import { assertQueryEditorEnhancement, assertQueryEditorIntent, maximumQueryEditorRequestBytes } from "./query-editor-contract.mjs";
+import { assertQueryEditorAuthoring, assertQueryEditorEnhancement, assertQueryEditorIntent, maximumQueryEditorRequestBytes } from "./query-editor-contract.mjs";
 import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "json" };
 import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
@@ -986,6 +986,7 @@ export async function startDashboardServer({
             : generateQuery(intent, { signal: controller.signal });
           const result = await queryGenerationPending;
           controller.signal.throwIfAborted();
+          if (enhance) assertQueryEditorAuthoring(result);
           if (!response.destroyed && !closed) sendJson(response, 200, result);
         } catch (error) {
           output("Query designer request failed.", { errorName: error instanceof Error ? error.name : "unknown" });

@@ -62,6 +62,9 @@ test("query generation enforces capability paths, Origin, method, bounded intent
   assert.equal((await fetch(endpoint)).status, 405);
   assert.equal((await fetch(endpoint, requestOptions(server, intent, "https://untrusted.test"))).status, 403);
   assert.equal((await fetch(endpoint, requestOptions(server, { ...intent, model: "custom" }))).status, 400);
+  const oversized = await fetch(endpoint, requestOptions(server, { ...intent, acceptance: "x".repeat(512) }));
+  assert.equal(oversized.status, 400);
+  assert.match((await oversized.json()).error, /at most 512 characters/);
   assert.equal((await fetch(endpoint, requestOptions(server, { ...intent, intent: "x".repeat(200000) }))).status, 413);
   assert.equal((await fetch(`${new URL(server.url).origin}/__query_designer`, requestOptions(server))).status, 404);
   const pending = fetch(endpoint, requestOptions(server));
@@ -117,6 +120,24 @@ test("all-field improvement accepts partial intent but cannot request tools or r
   assert.deepEqual(submitted, request);
   const normal = await preview(t, { enhanceQueryIntent: async () => improved });
   assert.equal((await fetch(`${normal.url}/__query_designer/enhance`, requestOptions(normal, request))).status, 404);
+});
+
+test("field improvement can condense overlong input but rejects over-budget callback output", async (t) => {
+  const request = { ...intent, acceptance: "x".repeat(512) };
+  const improved = { ...intent, objective: "Prioritize investigation." };
+  let valid = true;
+  const server = await preview(t, {
+    canvas: true,
+    enhanceQueryIntent: async () => valid ? improved : { ...improved, acceptance: "x".repeat(512) },
+  });
+  const endpoint = `${server.url}/__query_designer/enhance`;
+  const accepted = await fetch(endpoint, requestOptions(server, request));
+  assert.equal(accepted.status, 200);
+  assert.deepEqual(await accepted.json(), improved);
+  valid = false;
+  const rejected = await fetch(endpoint, requestOptions(server, request));
+  assert.equal(rejected.status, 503);
+  assert.doesNotMatch(await rejected.text(), /x{512}/);
 });
 
 test("custom view saves require a valid canvas document and populate isolated local navigation", async (t) => {

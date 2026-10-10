@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import previewDocument from '../fixtures/query-editor.json' with { type: 'json' };
 import sources from '../fixtures/query-editor-sources.json' with { type: 'json' };
 import { normalizedRunShard } from './normalized-shard.js';
@@ -18,7 +18,7 @@ test.beforeAll(async () => {
   const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
   await cp(siteRoot, join(workspace, 'site'), {
     recursive: true,
-    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(path.slice(siteRoot.length + 1).split('/')[0])
+    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
   });
   server = await startDashboardServer({
     workingDirectory: workspace,
@@ -70,6 +70,9 @@ for (const width of [1280, 390]) {
     await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Show native conclusion counts');
     const improve = page.getByRole('button', { name: 'Improve all fields with Copilot', exact: true });
     await expect(improve).toBeVisible();
+    await expect(improve).toHaveText('');
+    await expect(improve).toHaveAttribute('title', 'Improve all fields with Copilot');
+    await expect(improve.locator('svg')).toHaveCount(1);
     const box = await improve.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(44);
     expect(box?.height).toBeGreaterThanOrEqual(44);
@@ -82,18 +85,28 @@ for (const width of [1280, 390]) {
     const preview = page.locator('.query-editor-preview');
     await expect(preview.getByRole('heading', { name: 'Run conclusions', exact: true })).toBeVisible();
     await expect(preview.locator('svg').first()).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Dashboard Language document', exact: true })).toBeHidden();
-    await page.getByText('Dashboard Language source (advanced)', { exact: true }).click();
-    const draft = page.getByRole('textbox', { name: 'Dashboard Language document', exact: true });
-    const accepted = await draft.inputValue();
-    await draft.fill('[broken');
-    await page.getByRole('button', { name: 'Validate and render', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Dashboard Language document', exact: true })).toHaveCount(0);
+    await expect(page.getByText('Dashboard Language source (advanced)', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Validate and render', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Copy Dashboard Language', exact: true })).toHaveCount(0);
+    let invalidAttempts = 0;
+    await page.route('**/__query_designer', (route) => {
+      invalidAttempts += 1;
+      return route.fulfill({ json: { document: '[broken' } });
+    });
+    await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
+    await expect(page.locator('.query-editor > [role=status]')).toContainText('after 3 attempts');
+    expect(invalidAttempts).toBe(3);
     await expect(page.locator('.query-editor-errors')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save as custom view', exact: true })).toBeDisabled();
     await expect(preview.locator('svg').first()).toBeVisible();
-    await draft.fill(accepted);
-    await page.getByRole('button', { name: 'Validate and render', exact: true }).click();
+    await page.unroute('**/__query_designer');
+    const correction = page.waitForRequest((request) => request.url().endsWith('/__query_designer'));
+    await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
+    expect((await correction).postDataJSON()).toMatchObject({ document: '[broken', feedback: expect.any(String) });
     await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
-    await page.getByText('Dashboard Language source (advanced)', { exact: true }).click();
+    await expect(page.locator('.query-editor-errors')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Save as custom view', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     const screenshot = testInfo.outputPath(`query-editor-${width}.png`);
     await page.screenshot({ path: screenshot, fullPage: true });
@@ -124,12 +137,121 @@ test('saves a validated rendered view locally and restores it after reload', asy
   await expect(rendered.locator('svg').first()).toBeVisible();
 });
 
+test('generation repairs validator diagnostics automatically and renders only accepted output', async ({ page }) => {
+  await openEditor(page);
+  await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Compare run conclusions');
+  await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Workflow runs');
+  await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Show native conclusion counts');
+  const invalid = structuredClone(previewDocument);
+  invalid.dashboard.queries[0].subject = 'x'.repeat(513);
+  const invalidDocument = JSON.stringify(invalid);
+  let attempts = 0;
+  await page.route('**/__query_designer', (route) => {
+    attempts += 1;
+    if (attempts === 2) {
+      expect(route.request().postDataJSON()).toMatchObject({
+        intent: 'Compare run conclusions', document: invalidDocument,
+        feedback: expect.stringContaining('at most 512 characters'),
+      });
+    }
+    return route.fulfill({ json: { document: attempts === 1 ? invalidDocument : JSON.stringify(previewDocument) } });
+  });
+  await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
+  expect(attempts).toBe(2);
+  await expect(page.locator('.query-editor-preview svg').first()).toBeVisible();
+  await expect(page.locator('.query-editor-errors')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Save as custom view', exact: true })).toBeEnabled();
+});
+
+test('cancelling a validator repair stops further attempts and preserves authoring text', async ({ page }) => {
+  await openEditor(page);
+  const intent = page.getByRole('textbox', { name: 'Intent', exact: true });
+  await intent.fill('Compare run conclusions');
+  await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Workflow runs');
+  await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Show native conclusion counts');
+  let attempts = 0;
+  /** @type {{ route?: import('@playwright/test').Route }} */
+  const pending = {};
+  await page.route('**/__query_designer', (route) => {
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({ json: { document: '[broken' } });
+    pending.route = route;
+  });
+  await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
+  await expect.poll(() => Boolean(pending.route)).toBe(true);
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('Correcting');
+  await page.locator('.query-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('cancelled');
+  await expect(intent).toHaveValue('Compare run conclusions');
+  await expect(page.getByRole('button', { name: 'Generate query and view', exact: true })).toBeEnabled();
+  expect(attempts).toBe(2);
+  await pending.route?.abort();
+});
+
+test('checks the combined 512-character Unicode budget before generation and field improvement', async ({ page }) => {
+  await openEditor(page);
+  /** @type {Record<string, string>} */
+  const authoring = {
+    intent: 'Compare native run conclusions.',
+    subject: '\u{1f600}'.repeat(170), objective: 'b'.repeat(170), acceptance: 'c'.repeat(172),
+  };
+  /** @type {Record<string, import('@playwright/test').Locator>} */
+  const fields = {
+    intent: page.getByRole('textbox', { name: 'Intent', exact: true }),
+    subject: page.getByRole('textbox', { name: 'Subject', exact: true }),
+    objective: page.getByRole('textbox', { name: 'Objective (optional)', exact: true }),
+    acceptance: page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }),
+  };
+  for (const [key, field] of Object.entries(fields)) await field.fill(authoring[key]);
+  const limit = page.locator('.query-editor-semantic-limit');
+  const generate = page.getByRole('button', { name: 'Generate query and view', exact: true });
+  const improve = page.getByRole('button', { name: 'Improve all fields with Copilot', exact: true });
+  await expect(limit).toContainText('512/512 characters');
+  await expect(generate).toBeEnabled();
+  await page.route('**/__query_designer', (route) => {
+    const { subject, objective, acceptance } = route.request().postDataJSON();
+    const document = structuredClone(previewDocument);
+    Object.assign(document.dashboard.queries[0], { subject, objective, acceptance });
+    Object.assign(document.dashboard.pages[0].views[0], { subject, objective, acceptance });
+    return route.fulfill({ json: { document: JSON.stringify(document) } });
+  });
+  await generate.click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
+  await fields.acceptance.fill(`${authoring.acceptance}d`);
+  await expect(limit).toContainText('513/512 characters');
+  await expect(generate).toBeDisabled();
+  await expect(improve).toBeEnabled();
+  for (const key of ['subject', 'objective', 'acceptance']) {
+    await expect(fields[key]).toHaveAttribute('aria-invalid', 'true');
+    await expect(fields[key]).toHaveAttribute('aria-describedby', await limit.getAttribute('id') ?? '');
+  }
+  /** @type {Record<string, string>} */
+  const improved = {
+    intent: authoring.intent, subject: 'Retained runs', objective: 'Compare native conclusions', acceptance: 'Show conclusion counts',
+  };
+  await page.route('**/__query_designer/enhance', (route) => route.fulfill({ json: improved }));
+  await improve.click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('All four fields improved');
+  await expect(generate).toBeEnabled();
+  await expect(fields.acceptance).toHaveAttribute('aria-invalid', 'false');
+  await page.unroute('**/__query_designer/enhance');
+  await page.route('**/__query_designer/enhance', (route) => route.fulfill({
+    json: { ...authoring, acceptance: `${authoring.acceptance}d` },
+  }));
+  await improve.click();
+  await expect(page.locator('.query-editor > [role=status]')).toContainText('exceeding 512 characters combined');
+  for (const [key, field] of Object.entries(fields)) await expect(field).toHaveValue(improved[key]);
+  await expect(generate).toBeEnabled();
+});
+
 test('preview subscriptions refresh from canonical ingestion and worker output stays bounded', async ({ page, context }) => {
   test.skip(dataBackend !== 'indexeddb', 'Browser canonical ingestion is exclusive to the IndexedDB backend.');
   await openEditor(page);
-  await page.getByText('Dashboard Language source (advanced)', { exact: true }).click();
-  await page.getByRole('textbox', { name: 'Dashboard Language document', exact: true }).fill(JSON.stringify(previewDocument));
-  await page.getByRole('button', { name: 'Validate and render', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Compare run conclusions');
+  await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Workflow runs');
+  await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Show native conclusion counts');
+  await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
   await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
   await context.route('**/query-editor-update.json', (route) => route.fulfill({
     json: {

@@ -1,5 +1,6 @@
 import { DISPATCH_STATUS_VALUES, ERROR_CODES, LINK_OBJECT_KEYS, LINK_RELATION_VALUES, EVAL_RESULT_VALUES, DETECTION_STATE_VALUES, FINDING_SEVERITY_VALUES, FINDING_STATUS_VALUES, GRADER_STATUS_VALUES, IDENTIFIER_PATTERN, OUTCOME_STATE_VALUES, ROLLOUT_MODE_VALUES, RUN_CONCLUSION_VALUES, RUN_STATUS_VALUES, WORKFLOW_ACTIVE_VALUES, WORKFLOW_ROLE_VALUES } from './specification.js';
 import { createDebug } from './debug.js';
+import { MAX_SEMANTIC_METADATA_CHARACTERS, SEMANTIC_METADATA_FIELDS, semanticMetadataLength } from './semantic-metadata.js';
 
 const debugValidatorCommon = createDebug('validator-common');
 
@@ -264,16 +265,12 @@ export function validateStringField(value, path, required, errors) {
  * @param {ValidationError[]} errors
  */
 export function validateSemanticMetadataLength(definition, path, errors) {
-  const fields = ['subject', 'objective', 'acceptance'];
-  if (fields.some((field) => definition[field] !== undefined && typeof definition[field] !== 'string')) return;
-  const length = fields.reduce((total, field) => {
-    const value = definition[field];
-    return total + (typeof value === 'string' ? [...value].length : 0);
-  }, 0);
-  if (length > 512) {
+  if (SEMANTIC_METADATA_FIELDS.some((field) => definition[field] !== undefined && typeof definition[field] !== 'string')) return;
+  const length = semanticMetadataLength(definition);
+  if (length > MAX_SEMANTIC_METADATA_CHARACTERS) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      `Combined subject, objective, and acceptance must be at most 512 characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
+      `Combined subject, objective, and acceptance must be at most ${MAX_SEMANTIC_METADATA_CHARACTERS} characters (found ${length}); shorten them or offload details to a separate Markdown file in the repository.`,
       path
     ));
   }

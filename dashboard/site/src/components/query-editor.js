@@ -1,13 +1,14 @@
 import { h } from '../dom.js';
 import { state, effect, batch } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
-import { createCopyControl } from './ui-primitives.js';
 import { publishNotification } from '../notification-service.js';
 import { loadCanonicalDashboardPage, subscribeCanonicalDashboardView, validateQueryEditorDocument } from '../data-processor.js';
 import { renderDashboardPagePreview } from '../presenter.js';
 import { octicon } from '../octicons.js';
+import { MAX_SEMANTIC_METADATA_CHARACTERS, semanticMetadataLength } from '../semantic-metadata.js';
 
 let nextEditorId = 0;
+const maximumGenerationAttempts = 3;
 
 /**
  * The editor owns interaction only. Documents and evidence are validated and
@@ -24,6 +25,8 @@ export function renderQueryEditor(context) {
   const message = state('Describe the result you want, then generate a query and view.');
   const diagnostics = state('');
   const acceptedDraft = state('');
+  const semanticCharacters = state(0);
+  let draftDocument = '';
   const preview = h('div', { className: 'query-editor-preview', 'aria-label': 'Query preview' });
   /** @type {AbortController | null} */
   let operation = null;
@@ -47,12 +50,15 @@ export function renderQueryEditor(context) {
     intent: intent.input.value, subject: subject.input.value,
     objective: objective.input.value, acceptance: acceptance.input.value
   });
-  const document = /** @type {HTMLTextAreaElement} */ (h('textarea', {
-    id: `${id}-document`, className: 'query-editor-document', rows: 16,
-    maxLength: 131072, spellcheck: false, 'aria-label': 'Dashboard Language document',
-    onInput: () => acceptedDraft.set('')
-  }));
-
+  const semanticLimit = h('p', {
+    id: `${id}-semantic-limit`, className: 'query-editor-semantic-limit', role: 'status', 'aria-live': 'polite'
+  });
+  for (const field of [subject, objective, acceptance]) {
+    field.input.setAttribute('aria-describedby', semanticLimit.id);
+    field.input.addEventListener('input', () => semanticCharacters.set(semanticMetadataLength(authoringContext())), {
+      signal: scope.signal
+    });
+  }
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'button', onClick: () => operation?.abort()
   }, 'Cancel'));
@@ -60,20 +66,13 @@ export function renderQueryEditor(context) {
     type: 'submit', className: 'button button-primary'
   }, 'Generate query and view'));
   const improve = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button', className: 'button', 'aria-label': 'Improve all fields with Copilot',
+    type: 'button', className: 'button query-editor-improve', 'aria-label': 'Improve all fields with Copilot',
+    title: 'Improve all fields with Copilot',
     onClick: () => enhanceIntent()
-  }, octicon('sparkle'), 'Improve all fields'));
-  const apply = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button', className: 'button', onClick: () => run(false)
-  }, 'Validate and render'));
+  }, octicon('sparkle')));
   const save = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'button button-primary', onClick: () => saveView()
   }, octicon('bookmark'), 'Save as custom view'));
-  const copy = createCopyControl({
-    label: 'Copy Dashboard Language', getContent: () => document.value,
-    buttonClassName: 'button', statusClassName: 'query-editor-copy-status'
-  });
-
   /**
    * @param {import('../data/query-editor.js').QueryEditorValidation & { ok: true }} result
    * @param {AbortSignal} signal
@@ -201,6 +200,9 @@ export function renderQueryEditor(context) {
       ))) {
         throw new Error('Copilot returned incomplete or oversized authoring fields. No fields were changed.');
       }
+      if (semanticMetadataLength(result) > MAX_SEMANTIC_METADATA_CHARACTERS) {
+        throw new Error(`Copilot returned subject, objective, and acceptance exceeding ${MAX_SEMANTIC_METADATA_CHARACTERS} characters combined. No fields were changed.`);
+      }
       signal.throwIfAborted();
       if (JSON.stringify(context) !== JSON.stringify(authoringContext())) {
         message.set('Authoring text changed while Copilot was working. The enhancement was not applied.');
@@ -214,45 +216,51 @@ export function renderQueryEditor(context) {
     });
   }
 
-  /** @param {boolean} useAgent */
-  async function run(useAgent) {
-    await perform(useAgent ? 'Generating Dashboard Language with Copilot…' : 'Validating Dashboard Language in the data worker…', async (signal) => {
-      if (useAgent) {
+  async function run() {
+    const context = authoringContext();
+    if (semanticMetadataLength(context) > MAX_SEMANTIC_METADATA_CHARACTERS) {
+      message.set(`Shorten subject, objective, and acceptance to ${MAX_SEMANTIC_METADATA_CHARACTERS} characters combined, or use Copilot to condense them.`);
+      return;
+    }
+    await perform('Generating Dashboard Language with Copilot…', async (signal) => {
+      for (let attempt = 1; attempt <= maximumGenerationAttempts; attempt += 1) {
+        signal.throwIfAborted();
+        message.set(`${attempt === 1 ? 'Generating' : 'Correcting'} Dashboard Language with Copilot (${attempt}/${maximumGenerationAttempts})…`);
         const response = await fetch('./__query_designer', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
           body: JSON.stringify({
-            ...authoringContext(),
-            ...(document.value.trim() ? { document: document.value } : {}),
+            ...context,
+            ...(draftDocument.trim() ? { document: draftDocument } : {}),
             ...(diagnostics.get() ? { feedback: diagnostics.get().slice(0, 8000) } : {})
           })
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || `Query generation failed with HTTP ${response.status}.`);
-        if (typeof result.document !== 'string') throw new Error('Query generation returned no Dashboard Language document.');
+        const generated = await response.json();
+        if (!response.ok) throw new Error(generated.error || `Query generation failed with HTTP ${response.status}.`);
+        if (typeof generated.document !== 'string') throw new Error('Query generation returned no Dashboard Language document.');
         signal.throwIfAborted();
         acceptedDraft.set('');
-        document.value = result.document;
-      }
-      const result = await validateQueryEditorDocument(document.value, signal);
-      signal.throwIfAborted();
-      if (!result.ok) {
-        sourceDisclosure.open = true;
-        diagnostics.set(result.errors.map((error) => `${error.path}: ${error.message}`).join('\n'));
-        message.set('The draft is invalid. Fix it or generate again; the previous preview is unchanged.');
+        draftDocument = generated.document;
+        const result = await validateQueryEditorDocument(draftDocument, signal);
+        signal.throwIfAborted();
+        if (!result.ok) {
+          diagnostics.set(result.errors.map((error) => `${error.path}: ${error.message}`).join('\n'));
+          continue;
+        }
+        await accept(result, signal);
+        acceptedDraft.set(draftDocument);
+        diagnostics.set('');
+        message.set('Preview updated. It stays subscribed to canonical dashboard data.');
         return;
       }
-      await accept(result, signal);
-      acceptedDraft.set(document.value);
-      diagnostics.set('');
-      message.set('Preview updated. It stays subscribed to canonical dashboard data.');
+      throw new Error(`Could not generate a valid query and view after ${maximumGenerationAttempts} attempts. The previous preview is unchanged. Adjust the authoring fields and try again.`);
     });
   }
   async function saveView() {
     await perform('Saving the rendered view to local CAO custom views…', async (signal) => {
       const draft = acceptedDraft.get();
-      if (!draft || draft !== document.value) throw new Error('Validate and render the current draft before saving.');
+      if (!draft || draft !== draftDocument) throw new Error('Generate a valid preview before saving.');
       const result = await validateQueryEditorDocument(draft, signal);
-      if (!result.ok) throw new Error('The draft is no longer valid. Validate and render it before saving.');
+      if (!result.ok) throw new Error('The draft is no longer valid. Generate a new preview before saving.');
       const response = await fetch('./__custom_views', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
         body: JSON.stringify({ document: draft })
@@ -270,30 +278,29 @@ export function renderQueryEditor(context) {
   }
   const form = h('form', {
     className: 'query-editor-form',
-    onSubmit: (/** @type {SubmitEvent} */ event) => { event.preventDefault(); void run(true); }
-  }, intent.root, subject.root, objective.root, acceptance.root,
+    onSubmit: (/** @type {SubmitEvent} */ event) => { event.preventDefault(); void run(); }
+  }, intent.root, subject.root, objective.root, acceptance.root, semanticLimit,
   h('div', { className: 'query-editor-actions' }, generate, improve, cancel));
   const status = h('p', { role: 'status', 'aria-live': 'polite' });
   const errors = h('pre', { className: 'query-editor-errors', role: 'alert', hidden: true });
-  const sourceDisclosure = /** @type {HTMLDetailsElement} */ (h('details', { className: 'query-editor-source' },
-    h('summary', {}, 'Dashboard Language source (advanced)'),
-    h('label', { className: 'query-editor-field', htmlFor: document.id }, 'Dashboard Language (JSON or YAML)', document),
-    h('div', { className: 'query-editor-actions' }, apply, copy.button, copy.status)));
   preview.append(h('p', { className: 'muted' }, 'Your rendered view will appear here after generation.'));
   const root = h('section', { className: 'query-editor', 'aria-label': context.title },
     form, status, errors,
     preview,
     h('div', { className: 'query-editor-actions' }, save),
-    h('p', { className: 'muted' }, 'Copilot generation and field enhancements use AI credits, with no tools. Previews are read-only and limited to 200 rows per view. Saved custom views stay in this workspace under .cao/dashboard/custom-views/.'),
-    sourceDisclosure);
+    h('p', { className: 'muted' }, 'Copilot generation and field enhancements use AI credits, with no tools. Previews are read-only and limited to 200 rows per view. Saved custom views stay in this workspace under .cao/dashboard/custom-views/.'));
   effect(() => {
-    generate.disabled = busy.get();
-    apply.disabled = busy.get();
+    const tooLong = semanticCharacters.get() > MAX_SEMANTIC_METADATA_CHARACTERS;
+    generate.disabled = busy.get() || tooLong;
+    semanticLimit.textContent = `Subject, objective, and acceptance: ${semanticCharacters.get()}/${MAX_SEMANTIC_METADATA_CHARACTERS} characters.${tooLong ? ' Shorten these fields or use Copilot to condense them.' : ' Keep additional detail in intent.'}`;
+    semanticLimit.classList.toggle('query-editor-semantic-limit-invalid', tooLong);
+    for (const field of [subject, objective, acceptance]) {
+      field.input.setAttribute('aria-invalid', String(tooLong));
+    }
     save.disabled = busy.get() || !acceptedDraft.get();
     improve.disabled = busy.get();
     cancel.hidden = !busy.get();
     root.setAttribute('aria-busy', String(busy.get()));
-    document.readOnly = busy.get();
     status.textContent = message.get();
     errors.hidden = !diagnostics.get();
     errors.textContent = diagnostics.get();

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { stat } from "node:fs/promises";
 import test from "node:test";
-import { assertQueryEditorEnhancement, assertQueryEditorIntent } from "../../dashboard/query-editor-contract.mjs";
+import { assertQueryEditorAuthoring, assertQueryEditorEnhancement, assertQueryEditorIntent } from "../../dashboard/query-editor-contract.mjs";
 import { enhanceQueryEditorIntent, generateDashboardQuery } from "../../com.github.copilot/extensions/cao-dashboard/query-designer.mjs";
 
 const intent = { intent: "Find failing workflows", subject: "Workflow failures", acceptance: "Show native failure counts, not inferred outcomes." };
@@ -43,6 +43,7 @@ test("query designer uses the trusted skill and SDK session without ambient tool
   assert.match(config.systemMessage.content, /# Generate Dashboard IR/);
   assert.match(config.systemMessage.content, /Dashboard Language Specification/);
   assert.match(config.systemMessage.content, /data.limit of at most 200/);
+  assert.match(config.systemMessage.content, /512 Unicode characters combined, not per field/);
   assert.match(config.systemMessage.content, /# Declarative charts/);
   assert.match(config.systemMessage.content, /# Dashboard Authoring/);
   assert.ok(prompt.includes(JSON.stringify(intent)));
@@ -64,6 +65,7 @@ test("one intent authoring session improves all fields using the trusted skill a
           assert.deepEqual(config.mcpServers, {});
           assert.deepEqual(config.skillDirectories, []);
           assert.match(config.systemMessage.content, /# Author dashboard intent/);
+          assert.match(config.systemMessage.content, /512 Unicode characters combined, not per field/);
           return { sendAndWait: async ({ prompt }) => {
             assert.ok(prompt.includes(JSON.stringify(request)));
             return { data: { content: JSON.stringify(authoring) } };
@@ -76,6 +78,34 @@ test("one intent authoring session improves all fields using the trusted skill a
   assert.throws(() => assertQueryEditorEnhancement({ field: "document", text: "text", context: {} }));
   assert.throws(() => assertQueryEditorEnhancement({ field: "intent", text: "", context: {} }));
   assert.doesNotThrow(() => assertQueryEditorEnhancement({ intent: intent.intent }));
+});
+
+test("enhanced authoring and generation share the validator's combined Unicode character budget", () => {
+  const boundary = {
+    intent: "Preserve detailed context outside the annotation budget.",
+    subject: "\u{1f600}".repeat(170), objective: "b".repeat(170), acceptance: "c".repeat(172),
+  };
+  assert.doesNotThrow(() => assertQueryEditorAuthoring(boundary));
+  assert.doesNotThrow(() => assertQueryEditorIntent(boundary));
+  const oversized = { ...boundary, acceptance: `${boundary.acceptance}d` };
+  assert.throws(() => assertQueryEditorAuthoring(oversized), /at most 512 characters \(found 513\)/);
+  assert.throws(() => assertQueryEditorIntent(oversized), /at most 512 characters \(found 513\)/);
+  assert.doesNotThrow(() => assertQueryEditorEnhancement(oversized), "Overlong input must remain eligible for condensation.");
+});
+
+test("intent authoring rejects over-budget SDK output without silently truncating it", async () => {
+  const output = { ...intent, objective: "x".repeat(500) };
+  let stopped = 0;
+  await assert.rejects(enhanceQueryEditorIntent({ intent: intent.intent }, {
+    signal: new AbortController().signal,
+    createClient: () => ({
+      createSession: async () => ({
+        sendAndWait: async () => ({ data: { content: JSON.stringify(output) } }),
+      }),
+      stop: async () => { stopped += 1; return []; },
+    }),
+  }), /at most 512 characters/);
+  assert.equal(stopped, 1);
 });
 
 test("query designer aborts the SDK and cleans up on cancellation and errors", async () => {

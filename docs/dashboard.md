@@ -88,21 +88,30 @@ then select **Generate query and view**. The Copilot SDK uses the bundled
 `generate-dashboard-ir` query-design skill and Dashboard Language specification
 to generate a complete query and declarative view.
 
-The **Improve all fields** sparkle button next to **Generate query and view**
+The icon-only sparkle button next to **Generate query and view**, labeled
+**Improve all fields with Copilot** for assistive technology,
 uses the bundled `author-dashboard-intent` skill in one pure LLM Copilot SDK
 session to refine intent, subject, objective, and acceptance together.
 Review the enhancement before generating the query; if you edit the
 authoring text while the request is pending, the editor does not overwrite
 your changes. These sessions have no tools or automatically discovered skills;
 the trusted authoring skills are supplied as prompt context.
+Subject, objective, and acceptance share a **512-character combined limit**,
+counted as Unicode characters just like query/view annotations. The editor shows
+the current total and blocks generation when it is exceeded. The sparkle action
+can still condense an overlong draft; its output is checked against the same
+combined limit before replacing any fields. Keep additional detail in intent.
 
 The browser data worker validates the draft. The default canvas backend executes
 it against canonical data in a server-side SQLite worker; selecting `indexeddb`
 executes it in the browser data worker instead. SQLite previews do not open
 browser IndexedDB. Successful previews stay subscribed to data changes and show the rendered
-view first. Open **Dashboard Language source (advanced)** to edit JSON or YAML
-and select **Validate and render**; invalid documents
-show diagnostics without replacing the previous preview. **Cancel** stops
+view without exposing a source editor. Invalid generated documents
+show diagnostics without replacing the previous preview. Generation automatically
+feeds worker validation errors and the rejected draft back to Copilot, with at
+most three attempts per click; only a validated document updates the preview.
+If all attempts fail, the editor reports the failure and retains the diagnostics.
+Each attempt uses AI credits. **Cancel** stops the generation/repair loop or
 generation or validation. **Save as custom view** persists the accepted document
 in `.cao/dashboard/custom-views/<id>.json`, adds it to **Custom views** in local
 canvas navigation, and opens the rendered view. Identical saves reuse the same
@@ -110,7 +119,7 @@ file; independently saved queries are namespaced to avoid collisions. The set
 is workspace-local, survives canvas/server restarts, and is not published or
 installed into other repositories. `.cao/` is ignored by Git. Up to 50 custom
 views are supported; remove a saved JSON file to remove that view. Unsaved
-drafts still belong to the currently loaded canvas; copy their source to keep it.
+drafts still belong to the currently loaded canvas; save a custom view to keep it.
 Saved files are content-addressed; use the editor to save revisions instead of
 editing or renaming those files in place.
 

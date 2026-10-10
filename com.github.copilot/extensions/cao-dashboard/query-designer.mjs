@@ -8,9 +8,11 @@ import { resolveBundledResource } from "./bundled-resources.mjs";
 import {
   assertQueryEditorIntent,
   assertQueryEditorEnhancement,
+  assertQueryEditorAuthoring,
   maximumQueryEditorDocumentCharacters,
   queryEditorFieldLimits,
 } from "../../../dashboard/query-editor-contract.mjs";
+import { MAX_SEMANTIC_METADATA_CHARACTERS } from "../../../dashboard/site/src/semantic-metadata.js";
 
 /**
  * @typedef {{ signal: AbortSignal, createClient?: (options: import('@github/copilot-sdk').CopilotClientOptions) => Pick<CopilotClient, 'createSession' | 'stop'> }} QueryDesignerOptions
@@ -30,6 +32,7 @@ export async function generateDashboardQuery(intent, options) {
       "Do not declare CLI actions, reusable views, site callouts, navigation, routes, forms, elements, backend requirements, encoding actions, list actions, drill navigation, or lazy pagination.",
       "Every view source (including filter options) must reference a declared query with query.limit from 1 through 200. Declare data.limit of at most 200 on ordinary views, and cap each source query to that view's data.limit. For layered charts omit data.limit as required by the specification; cap the source query to 200 instead. Never use a native table directly as a view source.",
       "Use only canonical tables and fields. Include subject, objective and acceptance metadata.",
+      `For each query and each view, subject + objective + acceptance must total at most ${MAX_SEMANTIC_METADATA_CHARACTERS} Unicode characters combined, not per field. Keep annotations concise; use the intent as detailed context, not as metadata.`,
       "Keep all data shaping in dashboard.queries. Do not generate JavaScript, SQL text, or synthetic evidence.",
       "If essential evidence cannot be represented, return a brief explanation rather than fabricate a query. The host will report it as an invalid draft.",
     ],
@@ -52,17 +55,15 @@ export async function enhanceQueryEditorIntent(request, options) {
       "Return only a JSON object with exactly four nonempty string fields: intent, subject, objective, acceptance.",
       "Refine these fields as one coherent contract, preserving the user's scope, meaning, and uncertainty. Do not invent evidence, thresholds, metric definitions, authority, or causal claims.",
       `Respect these per-field character limits: ${JSON.stringify(queryEditorFieldLimits)}. Do not return queries, views, explanations, or Markdown fences.`,
+      `The subject, objective, and acceptance strings must total at most ${MAX_SEMANTIC_METADATA_CHARACTERS} Unicode characters combined, not per field. Count them before returning. Condense these annotations faithfully and preserve additional detail in intent; do not truncate or invent repository files.`,
     ],
     maximumQueryEditorDocumentCharacters,
     options,
     "intentAuthoringSkill",
   );
   const authoring = JSON.parse(text);
-  assertQueryEditorEnhancement(authoring);
-  if (Object.keys(authoring).length !== 4 || [authoring.intent, authoring.subject, authoring.objective, authoring.acceptance].some((text) => typeof text !== "string" || !text.trim())) {
-    throw new Error("Copilot must improve all four authoring fields together.");
-  }
-  return /** @type {import('../../../dashboard/query-editor-contract.mjs').QueryEditorAuthoring} */ (authoring);
+  assertQueryEditorAuthoring(authoring);
+  return authoring;
 }
 
 /**
