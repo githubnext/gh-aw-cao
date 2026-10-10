@@ -250,15 +250,18 @@ describe('database table ingestion and queries', () => {
     const records = [
       { collection: 'experiments', record: { id: 'experiment:1', workflowId: 'workflow:1' }, phase: 'runs' },
       { collection: 'experimentAssignments', record: {
-        id: 'assignment:1', runId: 'run:1', experimentId: 'experiment:1'
+        id: 'assignment:1', runId: 'run:1', experimentId: 'experiment:1',
+        timestamp: '2026-09-09T00:00:00Z'
       }, phase: 'runs' },
       { collection: 'graders', record: { id: 'grader:1', workflowId: 'workflow:1' }, phase: 'records' },
       { collection: 'graderObservations', record: {
-        id: 'grade:1', runId: 'run:1', graderId: 'grader:1'
+        id: 'grade:1', runId: 'run:1', graderId: 'grader:1',
+        timestamp: '2026-09-09T00:00:00Z'
       }, phase: 'records' },
       { collection: 'evals', record: { id: 'eval:1', workflowId: 'workflow:1' }, phase: 'records' },
       { collection: 'evalObservations', record: {
-        id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1'
+        id: 'eval-observation:1', runId: 'run:1', evalId: 'eval:1',
+        timestamp: '2026-09-09T00:00:00Z'
       }, phase: 'records' }
     ];
     const shard = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof records} */ entries) =>
@@ -328,10 +331,9 @@ describe('database table ingestion and queries', () => {
       });
     }
 
-    // Retention must not run per shard: it rescans every canonical store, so
-    // paying it once per shard makes a multi-shard import quadratic.
+    // Expired input is rejected before writes even when cleanup is deferred.
     expect((await readCanonicalBatch(indexedDB)).runs.map(({ id }) => id).sort())
-      .toEqual(['run:current', 'run:expired']);
+      .toEqual(['run:current']);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
         kind: 'ingest-normalized-jsonl',

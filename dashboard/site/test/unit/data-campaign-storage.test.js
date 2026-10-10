@@ -8,7 +8,7 @@ import { normalize } from '../../src/data/normalize/index.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import {
   DATABASE_NAME, DATABASE_VERSION, deleteCanonicalDatabase, maintainCanonicalDatabase,
-  openCanonicalDatabase, readCollection, readIndex, replaceCanonicalBatch, upsertCanonicalBatch
+  openCanonicalDatabase, prepareCanonicalRecord, readCollection, readIndex, replaceCanonicalBatch, upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
@@ -89,7 +89,8 @@ describe.each(['IndexedDB', 'SQLite'])('Campaign storage in %s', (backend) => {
         expect(connection.prepare(`
           SELECT value FROM __idb_records
           WHERE database_name = ? AND store_name = 'campaigns' AND record_key = ?
-        `).get(DATABASE_NAME, JSON.stringify(records[0].id))?.value).toBe(JSON.stringify(records[0]));
+        `).get(DATABASE_NAME, JSON.stringify(records[0].id))?.value)
+          .toBe(JSON.stringify(prepareCanonicalRecord('campaigns', records[0])));
         expect(connection.prepare('PRAGMA index_info(campaigns_slug)').all().map((row) => row.name))
           .toEqual(['database_name', 'slug']);
       } finally {

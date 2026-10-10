@@ -8,6 +8,7 @@ import {
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
+import { pruneCanonicalRecord } from '../model/fields.js';
 import {
   maintainCanonicalDatabase,
   openCanonicalDatabase,
@@ -23,6 +24,8 @@ import {
 import {
   capCanonicalBatchSize,
   estimateCanonicalBatchBytes,
+  isExpiredCanonicalRecord,
+  retentionWindowForStore,
   mergeActivityStructuralRecord
 } from '../storage/retention.js';
 import {
@@ -116,16 +119,22 @@ function normalizedJsonlShardTransactionId(hash) {
   return `ingest-normalized-jsonl:sha256:${hash}:v${NORMALIZED_JSONL_INGESTION_VERSION}`;
 }
 
+/** @param {{ retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options */
+function retentionProfile(options) {
+  return JSON.stringify(NORMALIZED_BATCH_COLLECTIONS.map((store) => retentionWindowForStore(store, options)));
+}
+
 /** @param {string} hash */
 function cachedJsonlShardTransactionId(hash) {
   return `ingest-jsonl:sha256:${hash}:v${GH_AW_JSONL_INGESTION_VERSION}`;
 }
 
-/** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options */
+/** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options */
 export function cachedJsonlAdaptationContext(options) {
   return JSON.stringify({
     ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
     auditCurationVersion: AUDIT_CURATION_VERSION,
+    retentionProfile: retentionProfile(options),
     context: options.context ?? null,
     workflowHints: options.workflowHints ?? []
   });
@@ -146,7 +155,7 @@ async function readCachedJsonlShardReceipt(indexedDB, payloadIdentity) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, payloadScope: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
+ * @param {{ payloadIdentity: string, payloadScope: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
  */
 export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   const adaptationContext = cachedJsonlAdaptationContext(options);
@@ -158,13 +167,14 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records' }} options
+ * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records', retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
  */
 export async function isNormalizedJsonlCurrent(indexedDB, options) {
   const receipt = await readTransaction(indexedDB, normalizedJsonlShardTransactionId(options.payloadIdentity));
   return receipt?.kind === 'ingest-normalized-jsonl'
     && receipt.payloadHash === options.payloadIdentity
     && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+    && receipt.retentionProfile === retentionProfile(options)
     && (options.expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
 }
 
@@ -172,17 +182,19 @@ export async function isNormalizedJsonlCurrent(indexedDB, options) {
  * Checks published shard receipts in one readonly transaction, avoiding a
  * separate database open for every shard in a large mobile manifest.
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records' }[]} shards
+ * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records', retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }[]} shards
  */
 export async function normalizedJsonlCurrentShards(indexedDB, shards) {
   const receipts = await readTransactionBatch(
     indexedDB, shards.map(({ payloadIdentity }) => normalizedJsonlShardTransactionId(payloadIdentity))
   );
-  return shards.map(({ payloadIdentity, expectedPhase }, index) => {
+  return shards.map((options, index) => {
+    const { payloadIdentity, expectedPhase } = options;
     const receipt = receipts[index];
     return receipt?.kind === 'ingest-normalized-jsonl'
       && receipt.payloadHash === payloadIdentity
       && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+      && receipt.retentionProfile === retentionProfile(options)
       && (expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
   });
 }
@@ -198,8 +210,7 @@ export async function isAuditCurationCurrent(indexedDB) {
  * @param {Parameters<typeof maintainNormalizedJsonlDatabase>[1]} options
  */
 async function skippedIngestion(indexedDB, options) {
-  const cleanup = await isAuditCurationCurrent(indexedDB)
-    ? null : await maintainNormalizedJsonlDatabase(indexedDB, options);
+  const cleanup = await maintainNormalizedJsonlDatabase(indexedDB, options);
   return {
     updated: (cleanup?.deletedRecords ?? 0) > 0,
     skipped: true,
@@ -242,7 +253,7 @@ function serializeIngestion(indexedDB, task, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowCampaignMappings?: boolean, preserveRepositoryRecords?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, deferMaintenance?: boolean, preserveWorkflowCampaignMappings?: boolean, preserveRepositoryRecords?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   options.signal?.throwIfAborted();
@@ -256,12 +267,16 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
     ? Math.max(0, Number(options.maxDatabaseBytes))
     : MAX_DASHBOARD_DATABASE_BYTES;
-  let batch = incoming;
+  let batch = { ...incoming };
+  for (const storeName of NORMALIZED_BATCH_COLLECTIONS) {
+    batch[storeName] = (incoming[storeName] ?? []).filter((record) =>
+      !isExpiredCanonicalRecord(storeName, record, options));
+  }
   if (options.preserveRepositoryRecords || options.preserveWorkflowCampaignMappings) {
     batch = {
-      ...incoming,
+      ...batch,
       repositories: options.preserveRepositoryRecords
-        ? await Promise.all(incoming.repositories.map(async (record) =>
+        ? await Promise.all(batch.repositories.map(async (record) =>
             mergeActivityStructuralRecord(
               'repositories',
               /** @type {Record<string, unknown> | undefined} */ (
@@ -269,9 +284,9 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
               ),
               record
             )))
-        : incoming.repositories,
+        : batch.repositories,
       workflows: options.preserveWorkflowCampaignMappings
-        ? await Promise.all(incoming.workflows.map(async (record) =>
+        ? await Promise.all(batch.workflows.map(async (record) =>
             mergeActivityStructuralRecord(
               'workflows',
               /** @type {Record<string, unknown> | undefined} */ (
@@ -279,7 +294,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
               ),
               record
             )))
-        : incoming.workflows
+        : batch.workflows
     };
   }
   let writeMetrics = {
@@ -335,11 +350,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
         retentionWindowMs: options.retentionWindowMs,
         retentionWindowMsByStore: options.retentionWindowMsByStore,
         maxDatabaseBytes: Math.floor(maxDatabaseBytes * 0.5),
-        reconcileRelationships: true,
-        preserveEntityIds: {
-          repositories: batch.repositories.map((record) => String(record.id)),
-          workflows: batch.workflows.map((record) => String(record.id))
-        }
+        signal: options.signal
       });
       debug('retrying canonical write after quota pressure', {
         attempt: attempt + 1,
@@ -366,32 +377,24 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
         retentionWindowMsByStore: options.retentionWindowMsByStore,
         maxDatabaseBytes,
         usageBytes: databaseUsage,
-        reconcileRelationships: true,
-        preserveEntityIds: {
-          repositories: batch.repositories.map((record) => String(record.id)),
-          workflows: batch.workflows.map((record) => String(record.id))
-        }
+        signal: options.signal
       });
       writeMetrics.deletedRecords += maintenance.deletedRecords;
     }
   }
-  const maintenance = await maintainCanonicalDatabase(indexedDB, {
+  const maintenance = options.deferMaintenance ? null : await maintainCanonicalDatabase(indexedDB, {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore,
     maxDatabaseBytes,
     usageBytes: databaseUsage,
-    reconcileRelationships: true,
-    preserveEntityIds: {
-      repositories: batch.repositories.map((record) => String(record.id)),
-      workflows: batch.workflows.map((record) => String(record.id))
-    }
+    signal: options.signal
   });
-  writeMetrics.deletedRecords += maintenance.deletedRecords;
+  writeMetrics.deletedRecords += maintenance?.deletedRecords ?? 0;
   return {
     updated: true,
     committedBatches: 0,
-    committedRecords: maintenance.retainedRecords,
+    committedRecords: maintenance?.retainedRecords ?? writeMetrics.storedRecords,
     idb: writeMetrics
   };
 }
@@ -401,7 +404,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, signal?: AbortSignal }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, deferMaintenance?: boolean, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, signal?: AbortSignal }} [options]
  */
 export function ingestDashboardSources(indexedDB, sources, options = {}) {
   return serializeIngestion(
@@ -414,12 +417,14 @@ export function ingestDashboardSources(indexedDB, sources, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, deferMaintenance?: boolean, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
  */
 async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   let phase = 'adapting';
   try {
-    const hash = await payloadHash(sources, options.payloadIdentity);
+    const hash = await payloadHash(
+      `${await payloadHash(sources, options.payloadIdentity)}:${retentionProfile(options)}`, undefined
+    );
     options.signal?.throwIfAborted();
     const scope = options.payloadScope ?? 'dashboard-sources';
     if (await previouslyIngested(
@@ -430,7 +435,9 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       DASHBOARD_SOURCE_INGESTION_VERSION
     )) {
       debug('skipped unchanged dashboard source shard', { scope });
-      return skippedIngestion(indexedDB, options);
+      return options.deferMaintenance
+        ? { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 }
+        : skippedIngestion(indexedDB, options);
     }
     const adapted = queryDashboardSourceObservations(sources);
     phase = 'normalizing';
@@ -530,11 +537,9 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
  * Runs the retention and size maintenance pass that `ingestNormalizedJsonl`
  * skips when called with `deferMaintenance`.
  *
- * Maintenance cursor-scans every canonical store and re-estimates the size of
- * each retained record, so its cost scales with the whole database rather than
- * with the shard just written. Callers that ingest a batch of shards must defer
- * it and invoke this once afterwards; running it per shard makes a multi-shard
- * import quadratic in the number of shards.
+ * Maintenance uses persisted shard accounting and indexes to visit only expired
+ * records and dirty audit shards. Multi-shard callers defer it until inventory
+ * and all activity shards have committed.
  *
  * @param {IDBFactory} indexedDB
  * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onLockWait?: () => void, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
@@ -578,6 +583,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       let bufferedRecords = 0;
       let committedBatches = 0;
       let committedRecords = 0;
+      let parsedRecords = 0;
+      let expiredRecords = 0;
       let rawRuns = 0;
       // A single shard can require hundreds of small write batches. Opening
       // and closing a canonical database connection per batch (as
@@ -712,7 +719,13 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError(`Normalized ${header.phase} payload must not include ${collection}`);
           }
           if (collection === 'runs') rawRuns += 1;
-          batch[collection]?.push(/** @type {never} */ (envelope.record));
+          parsedRecords += 1;
+          const record = pruneCanonicalRecord(collection, /** @type {Record<string, unknown>} */ (envelope.record));
+          if (isExpiredCanonicalRecord(collection, record, options)) {
+            expiredRecords += 1;
+            return;
+          }
+          batch[collection]?.push(/** @type {never} */ (record));
           bufferedRecords += 1;
           if (bufferedRecords >= NORMALIZED_JSONL_WRITE_BATCH_SIZE) await flush();
         };
@@ -731,16 +744,16 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, ingestionVersion: number } | null} */ (header);
         if (!metadata) throw new TypeError('Normalized activity JSONL metadata is missing');
         await flush();
-        if (committedRecords !== metadata.records) {
+        if (parsedRecords !== metadata.records) {
           throw new TypeError(
-            `Normalized activity JSONL declared ${metadata.records} records but contained ${committedRecords}`
+            `Normalized activity JSONL declared ${metadata.records} records but contained ${parsedRecords}`
           );
         }
         options.signal?.throwIfAborted();
         const retained = options.deferMaintenance
           ? null
           : await maintainNormalizedJsonlDatabase(indexedDB, options);
-        const result = { updated: true, committedBatches, committedRecords };
+        const result = { updated: true, committedBatches, committedRecords, expiredRecords };
         await recordTransaction(indexedDB, {
           id: normalizedJsonlShardTransactionId(options.payloadIdentity),
           kind: 'ingest-normalized-jsonl',
@@ -751,6 +764,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           records: Number(metadata.sourceRecords ?? 0),
           committedRecords,
           rawRuns,
+          retentionProfile: retentionProfile(options),
+          expiredRecords,
           ...(retained === null ? { maintenanceDeferred: true } : { storage: retained })
         });
         return { ...result, records: Number(metadata.sourceRecords ?? 0) };

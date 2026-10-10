@@ -9,8 +9,10 @@ import {
   DATABASE_NAME,
   DATABASE_STORES,
   DATABASE_VERSION,
-  ENTITY_STORES
+  ENTITY_STORES,
+  prepareCanonicalRecord
 } from './indexeddb.js';
+import { STORAGE_SHARD_STORE } from './shards.js';
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
 import {
   createSqliteRelationalTables,
@@ -344,10 +346,27 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   const insertRecord = connection.prepare(`
     INSERT INTO __idb_records (database_name, store_name, record_key, value) VALUES (?, ?, ?, ?)
   `);
+  /** @type {Map<string, import('./shards.js').Shard>} */
+  const shards = new Map();
+  const totals = { id: 'totals', bytes: 0, count: 0 };
   for (const store of ENTITY_STORES) {
     for (const record of batch[store] ?? []) {
-      insertRecord.run(DATABASE_NAME, store, JSON.stringify(record.id), JSON.stringify(pruneCanonicalRecord(store, record)));
+      const prepared = prepareCanonicalRecord(store, pruneCanonicalRecord(store, record));
+      insertRecord.run(DATABASE_NAME, store, JSON.stringify(record.id), JSON.stringify(prepared));
+      const storage = prepared._storage;
+      const shard = shards.get(storage.shard) ?? {
+        id: storage.shard, storeName: store, day: Number(storage.shard.split(':').at(-1)),
+        bytes: 0, count: 0, dirty: store === 'audits'
+      };
+      shard.bytes += storage.bytes;
+      shard.count += 1;
+      shards.set(shard.id, shard);
+      totals.bytes += storage.bytes;
+      totals.count += 1;
     }
+  }
+  for (const shard of [...shards.values(), totals]) {
+    insertRecord.run(DATABASE_NAME, STORAGE_SHARD_STORE, JSON.stringify(shard.id), JSON.stringify(shard));
   }
   for (const transaction of transactions) {
     insertRecord.run(
