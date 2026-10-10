@@ -192,6 +192,8 @@ func validateFeatures(features []serviceFeature, r Requirements) error {
 		case featureRejectionStageVolatileAcknowledge:
 			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageVolatileAcknowledge)
 			return fmt.Errorf("%s requires explicit volatile-state acknowledgement", f.name)
+		case featureRejectionStageNone:
+			continue
 		}
 	}
 	return nil
