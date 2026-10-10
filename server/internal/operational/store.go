@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var validationLog = logger.New("cao:operational:validation")
 
 type Scope uint8
 
@@ -129,26 +133,64 @@ type serviceFeature struct {
 	required bool
 }
 
+// featureRejectionStage identifies which of validateFeatures' checks failed
+// for one service feature, so a misconfigured operational backend is
+// diagnosable without logging the feature's advertised capability or the
+// service value itself.
+type featureRejectionStage string
+
+const (
+	featureRejectionStageNone                featureRejectionStage = "none"
+	featureRejectionStageInvalidGuarantees   featureRejectionStage = "invalid-guarantees"
+	featureRejectionStageAdvertisedWithout   featureRejectionStage = "advertised-without-service"
+	featureRejectionStageUnsupported         featureRejectionStage = "unsupported"
+	featureRejectionStageSingleProcess       featureRejectionStage = "single-process-required"
+	featureRejectionStageVolatileAcknowledge featureRejectionStage = "volatile-acknowledgement-required"
+)
+
+// classifyFeatureRejection applies validateFeatures' precondition order to
+// one service feature and reports which stage, if any, rejects it. It is a
+// pure function extracted from validateFeatures so each rejection stage is
+// independently testable against a constructed serviceFeature and
+// Requirements, without building an OperationalServices value.
+func classifyFeatureRejection(f serviceFeature, r Requirements) featureRejectionStage {
+	switch {
+	case f.cap.Scope > ScopeDeployment || f.cap.Persistence > PersistenceRestart ||
+		(f.cap.Scope == ScopeUnsupported && f.cap.Persistence != PersistenceVolatile):
+		return featureRejectionStageInvalidGuarantees
+	case f.cap.Scope != ScopeUnsupported && !f.present:
+		return featureRejectionStageAdvertisedWithout
+	case !f.required:
+		return featureRejectionStageNone
+	case f.cap.Scope == ScopeUnsupported || !f.present:
+		return featureRejectionStageUnsupported
+	case f.cap.Scope == ScopeProcess && !r.SingleProcess:
+		return featureRejectionStageSingleProcess
+	case f.cap.Persistence == PersistenceVolatile && !r.AllowVolatile &&
+		(f.name == "sessions" || f.name == "revocations" || f.name == "collection"):
+		return featureRejectionStageVolatileAcknowledge
+	default:
+		return featureRejectionStageNone
+	}
+}
+
 func validateFeatures(features []serviceFeature, r Requirements) error {
 	for _, f := range features {
-		if f.cap.Scope > ScopeDeployment || f.cap.Persistence > PersistenceRestart ||
-			(f.cap.Scope == ScopeUnsupported && f.cap.Persistence != PersistenceVolatile) {
+		switch classifyFeatureRejection(f, r) {
+		case featureRejectionStageInvalidGuarantees:
+			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageInvalidGuarantees)
 			return fmt.Errorf("%s has invalid operational guarantees", f.name)
-		}
-		if f.cap.Scope != ScopeUnsupported && !f.present {
+		case featureRejectionStageAdvertisedWithout:
+			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageAdvertisedWithout)
 			return fmt.Errorf("%s advertised without a service: %w", f.name, ErrUnsupported)
-		}
-		if !f.required {
-			continue
-		}
-		if f.cap.Scope == ScopeUnsupported || !f.present {
+		case featureRejectionStageUnsupported:
+			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageUnsupported)
 			return fmt.Errorf("%s: %w", f.name, ErrUnsupported)
-		}
-		if f.cap.Scope == ScopeProcess && !r.SingleProcess {
+		case featureRejectionStageSingleProcess:
+			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageSingleProcess)
 			return fmt.Errorf("%s requires one owning process", f.name)
-		}
-		if f.cap.Persistence == PersistenceVolatile && !r.AllowVolatile &&
-			(f.name == "sessions" || f.name == "revocations" || f.name == "collection") {
+		case featureRejectionStageVolatileAcknowledge:
+			validationLog.Printf("operational feature rejected feature=%s stage=%s", f.name, featureRejectionStageVolatileAcknowledge)
 			return fmt.Errorf("%s requires explicit volatile-state acknowledgement", f.name)
 		}
 	}
@@ -159,6 +201,7 @@ func validateFeatures(features []serviceFeature, r Requirements) error {
 // including the components of optional collection and OAuth profiles.
 func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requirements) error {
 	if nilService(s.Backend) {
+		validationLog.Printf("operational feature rejected feature=backend stage=%s", featureRejectionStageUnsupported)
 		return fmt.Errorf("backend: %w", ErrUnsupported)
 	}
 	return validateFeatures([]serviceFeature{
