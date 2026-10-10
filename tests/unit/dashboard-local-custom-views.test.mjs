@@ -97,6 +97,11 @@ test("custom view storage fails closed on invalid drafts, corrupt files, and sym
   await assert.rejects(saveLocalCustomView(root, "[invalid"));
   assert.deepEqual(await loadLocalCustomViews(root), []);
   const saved = await saveLocalCustomView(root, content);
+  const changed = JSON.parse(content);
+  changed.dashboard.title = "Different accepted view";
+  await writeFile(join(root, saved.path), JSON.stringify(changed));
+  await assert.rejects(loadLocalCustomViews(root), /identity does not match/);
+  await assert.rejects(saveLocalCustomView(root, content), /identity does not match/);
   await writeFile(join(root, saved.path), "[invalid");
   await assert.rejects(loadLocalCustomViews(root));
   const linked = await workspace(t);

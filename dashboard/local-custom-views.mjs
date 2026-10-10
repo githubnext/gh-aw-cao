@@ -12,6 +12,9 @@ const maximumCustomViews = 50;
 
 export class InvalidCustomViewDocumentError extends Error {}
 
+/** @param {string} serialized */
+const customViewId = (serialized) => `local-${createHash("sha256").update(serialized).digest("hex").slice(0, 24)}`;
+
 /** @param {string} workspace @param {boolean} create */
 async function customViewsDirectory(workspace, create) {
   let directory = workspace;
@@ -58,6 +61,9 @@ export async function loadLocalCustomViews(workspace) {
       if (!(error instanceof InvalidCustomViewDocumentError)) throw error;
       throw new Error(`Invalid local custom view file: ${name}.`, { cause: error });
     }
+    if (name !== `${customViewId(`${JSON.stringify(document, null, 2)}\n`)}.json`) {
+      throw new Error(`Local custom view identity does not match its document: ${name}.`);
+    }
     return { id: name.slice(0, -5), path, document };
   }));
 }
@@ -67,7 +73,7 @@ export async function saveLocalCustomView(workspace, content) {
   const document = validatedDocument(content);
   const serialized = `${JSON.stringify(document, null, 2)}\n`;
   validatedDocument(serialized);
-  const id = `local-${createHash("sha256").update(serialized).digest("hex").slice(0, 24)}`;
+  const id = customViewId(serialized);
   const materialized = validateDashboardDocument(JSON.stringify(materializeLocalCustomView(document, id)));
   if (!materialized.ok) throw new InvalidCustomViewDocumentError(materialized.errors.map((error) => `${error.path}: ${error.message}`).join("\n"));
   const existing = await loadLocalCustomViews(workspace);

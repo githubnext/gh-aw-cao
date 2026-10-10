@@ -109,6 +109,8 @@ is workspace-local, survives canvas/server restarts, and is not published or
 installed into other repositories. `.cao/` is ignored by Git. Up to 50 custom
 views are supported; remove a saved JSON file to remove that view. Unsaved
 drafts still belong to the currently loaded canvas; copy their source to keep it.
+Saved files are content-addressed; use the editor to save revisions instead of
+editing or renaming those files in place.
 
 Generation requires Copilot authentication and uses AI credits. Only authoring
 text and trusted language context go to the SDK, not dashboard evidence rows.
