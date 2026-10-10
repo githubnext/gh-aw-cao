@@ -79,6 +79,47 @@ rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
 
+### Design queries in a Copilot canvas
+
+The local **Central Agentic Ops** Copilot canvas includes a **Query editor**
+page. It is not enabled on the static website, hosted server, or ordinary local
+preview. Enter an intent, subject, optional objective, and acceptance criteria,
+then select **Generate query and view**. The Copilot SDK uses the bundled
+`generate-dashboard-ir` query-design skill and Dashboard Language specification
+to generate a complete query and declarative view.
+
+The **Improve all fields** sparkle button next to **Generate query and view**
+uses the bundled `author-dashboard-intent` skill in one pure LLM Copilot SDK
+session to refine intent, subject, objective, and acceptance together.
+Review the enhancement before generating the query; if you edit the
+authoring text while the request is pending, the editor does not overwrite
+your changes. These sessions have no tools or automatically discovered skills;
+the trusted authoring skills are supplied as prompt context.
+
+The data worker validates the draft and executes it against the loaded canonical
+data. Successful previews stay subscribed to data changes and show the rendered
+view first. Open **Dashboard Language source (advanced)** to edit JSON or YAML
+and select **Validate and render**; invalid documents
+show diagnostics without replacing the previous preview. **Cancel** stops
+generation or validation. **Save as custom view** persists the accepted document
+in `.cao/dashboard/custom-views/<id>.json`, adds it to **Custom views** in local
+canvas navigation, and opens the rendered view. Identical saves reuse the same
+file; independently saved queries are namespaced to avoid collisions. The set
+is workspace-local, survives canvas/server restarts, and is not published or
+installed into other repositories. `.cao/` is ignored by Git. Up to 50 custom
+views are supported; remove a saved JSON file to remove that view. Unsaved
+drafts still belong to the currently loaded canvas; copy their source to keep it.
+
+Generation requires Copilot authentication and uses AI credits. Only authoring
+text and trusted language context go to the SDK, not dashboard evidence rows.
+The generation session has no shell, filesystem, MCP, or write tools. Preview
+documents cannot add CLI actions or UI elements, and each view is capped at
+200 rows. Every preview source must be a declared query with a `limit` between 1
+and its view's `data.limit`, so the worker bounds the result before rendering.
+Layered charts omit `data.limit` and use a source query `limit` of at most 200.
+Forms, lazy pagination, and drill navigation are not supported in previews.
+This editor does not change rollout policy or control-plane authority.
+
 The dashboard helps you observe and investigate campaigns. It does not start
 work, approve an output, grant workflow authority, change rollout policy, or
 write to a repository. Make those decisions through the control repository and

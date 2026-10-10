@@ -8,6 +8,8 @@ import { resolveBundledResource } from "./bundled-resources.mjs";
  *   workingDirectory: string,
  *   repository?: string,
  *   ghExecutable?: string,
+ *   generateQuery?: typeof import('./query-designer.mjs').generateDashboardQuery,
+ *   enhanceQueryIntent?: typeof import('./query-designer.mjs').enhanceQueryEditorIntent,
  *   approveCliAction: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   executeCliAction: (action: {
  *     id: string, command: string, input?: string,
@@ -21,6 +23,8 @@ export async function startLocalDashboardPreview({
   executeCliAction,
   approveCliAction,
   ghExecutable = "gh",
+  generateQuery,
+  enhanceQueryIntent,
 }) {
   const localServerPath = await resolveBundledResource("localServer");
   const localServer = await import(pathToFileURL(localServerPath).href);
@@ -58,6 +62,8 @@ export async function startLocalDashboardPreview({
       repository,
       ghExecutable,
       canvas: true,
+      generateQuery,
+      enhanceQueryIntent,
       executeCliAction,
       approveCliAction,
       host: "127.0.0.1",

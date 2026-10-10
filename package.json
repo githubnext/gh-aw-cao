@@ -74,6 +74,7 @@
     "@github/copilot-sdk": "1.0.13",
     "astro": "7.3.2",
     "astro-mermaid": "2.1.0",
+    "esbuild": "0.28.2",
     "mermaid": "11.17.2",
     "source-map-js": "file:dashboard/site/packages/source-map-compat",
     "starlight-blog": "0.30.0",

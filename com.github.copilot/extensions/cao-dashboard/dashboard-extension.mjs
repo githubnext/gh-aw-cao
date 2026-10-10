@@ -11,6 +11,7 @@ import {
 } from "./dashboard-agent-tools.mjs";
 import { executeDashboardCommand } from "./cli-actions.mjs";
 import { startLocalDashboardPreview } from "./local-preview.mjs";
+import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-designer.mjs";
 
 /**
  * @param {{
@@ -194,6 +195,8 @@ export function createDashboardExtension({
                 workingDirectory: previewWorkingDirectory,
                 repository: input && typeof input === "object" && !Array.isArray(input)
                   && typeof input.repository === "string" ? input.repository : undefined,
+                generateQuery: generateDashboardQuery,
+                enhanceQueryIntent: enhanceQueryEditorIntent,
                 approveCliAction: async ({ command, input: commandInput }) => {
                   if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
                   const approved = await approveCommand(Object.freeze({

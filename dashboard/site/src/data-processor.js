@@ -417,17 +417,34 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'], signal?: AbortSignal }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
+  const { signal, ...queryOptions } = options;
   if (usesRemoteDataBackend()) {
     return queryRemoteDashboard(sourceNames, context, pagination, options).then(({ sources }) => sources);
   }
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'query-canonical-dashboard', sourceNames, context, pagination, ...options },
+    { operation: 'query-canonical-dashboard', sourceNames, context, pagination, ...queryOptions },
     () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
-    false
+    false,
+    signal
+  ));
+}
+
+/**
+ * Validates editor YAML/JSON in the worker with no main-thread fallback.
+ * @param {string} source
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<import('./data/query-editor.js').QueryEditorValidation>}
+ */
+export function validateQueryEditorDocument(source, signal) {
+  return /** @type {Promise<import('./data/query-editor.js').QueryEditorValidation>} */ (processRequest(
+    { operation: 'validate-query-editor-document', content: source },
+    () => Promise.reject(new Error('Query editor validation requires a data worker.')),
+    false,
+    signal
   ));
 }
 

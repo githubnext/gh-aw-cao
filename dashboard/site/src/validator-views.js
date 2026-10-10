@@ -785,7 +785,9 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     if (view.mark === 'element') {
-      validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
+      if (!(view.element === 'query-editor' && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
+        validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
+      }
       if (view.data.source !== undefined) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,

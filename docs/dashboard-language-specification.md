@@ -77,6 +77,14 @@ This specification does not cover:
 - campaign or experiment management; or
 - causal inference.
 
+The canvas authoring surface additionally registers `query-editor`, an
+interaction-only named element with `data.sources: []`. It is available only in
+a Copilot canvas and is exempt from chart-first layout because it is an editor,
+not an evidence view. Its form and generation lifecycle cannot be expressed by
+data marks. Generated evidence previews use ordinary Dashboard Language queries
+and data marks, validated and executed by the canonical data worker; the element
+does not derive or query source rows.
+
 ### 1.3 Design Goals
 
 The language is designed to be minimal, deterministic, auditable, and safe to validate. Built-in pages provide useful defaults. Custom pages provide only metric, table, chart, and time-series views.
