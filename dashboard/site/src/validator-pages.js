@@ -392,6 +392,9 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     }
 
     const viewPath = `${path}.definition.views[${index}]`;
+    if (view.chart === 'treemap' || view.treemap !== undefined) {
+      validateView(view, undefined, viewPath, new Set(), errors);
+    }
     if (view.subject !== undefined) validateStringField(view.subject, `${viewPath}.subject`, true, errors);
     if (view.objective !== undefined) validateStringField(view.objective, `${viewPath}.objective`, true, errors);
     if (view.acceptance !== undefined) validateStringField(view.acceptance, `${viewPath}.acceptance`, true, errors);

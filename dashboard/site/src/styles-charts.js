@@ -45,6 +45,35 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .heatmap-cell-empty text { fill: var(--muted); font-weight: 400; }
 .heatmap-cell:focus-visible { outline: none; }
 .heatmap-cell:focus-visible rect { stroke: var(--focus); stroke-width: 1; }
+.treemap-chart-widget { display: block; min-width: 0; min-height: 0; }
+.treemap-plot { position: relative; width: 100%; aspect-ratio: 5 / 3; isolation: isolate; }
+.treemap-group, .treemap-leaf { position: absolute; left: var(--treemap-x); top: var(--treemap-y); width: var(--treemap-width); height: var(--treemap-height); box-sizing: border-box; overflow: hidden; }
+.treemap-group { border: 1px solid var(--border); background: var(--canvas-subtle); }
+.treemap-group-label { display: block; padding: 2px 6px; color: var(--muted); font-size: .6875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.treemap-leaf { display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--treemap-color) 60%, var(--border)); background: color-mix(in srgb, var(--treemap-color) 18%, var(--canvas)); color: var(--fg); text-decoration: none; }
+.treemap-leaf-content { display: grid; gap: 2px; max-width: 100%; padding: 3px; box-sizing: border-box; text-align: center; pointer-events: none; }
+.treemap-leaf-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; font-weight: 600; }
+.treemap-leaf-value { font-size: .6875rem; font-variant-numeric: tabular-nums; }
+.treemap-leaf-small .treemap-leaf-content { visibility: hidden; }
+.treemap-leaf:hover { background: color-mix(in srgb, var(--treemap-color) 28%, var(--canvas)); }
+.treemap-leaf:focus-visible { z-index: 1; outline: 2px solid var(--focus); outline-offset: -2px; }
+.treemap-leaf.chart-series-1 { --treemap-color: var(--success); }
+.treemap-leaf.chart-series-2 { --treemap-color: var(--attention); }
+.treemap-leaf.chart-series-3 { --treemap-color: var(--danger); }
+.treemap-leaf.chart-series-4 { --treemap-color: var(--accent); }
+.treemap-leaf.chart-series-5 { --treemap-color: var(--muted); }
+.treemap-leaf.chart-series-6 { --treemap-color: var(--purple); }
+.treemap-leaf.chart-series-7 { --treemap-color: var(--pink); }
+.treemap-leaf.chart-series-8 { --treemap-color: var(--coral); }
+.treemap-leaf.chart-series-9 { --treemap-color: var(--yellow); }
+.treemap-leaf.chart-series-10 { --treemap-color: var(--cyan); }
+.treemap-leaf.chart-series-11 { --treemap-color: var(--lime); }
+.treemap-leaf.chart-series-12 { --treemap-color: var(--violet); }
+.treemap-leaf.chart-series-semantic-failure { --treemap-color: var(--danger); }
+.treemap-leaf.chart-series-semantic-success, .treemap-leaf.chart-series-semantic-waiting { --treemap-color: var(--accent); }
+.treemap-leaf.chart-series-semantic-attention { --treemap-color: var(--attention); }
+.treemap-leaf.chart-series-semantic-neutral { --treemap-color: var(--muted); }
+.chart-legend-treemap i { height: 10px; border-top-width: 0; background: currentColor; }
 .horizontal-bar-chart-widget { min-width: 0; max-height: 560px; place-items: stretch; overflow-y: auto; padding: 8px 4px; }
 .horizontal-bar-chart-list { display: grid; gap: 6px; width: 100%; margin: 0; padding: 0; list-style: none; }
 .horizontal-bar-chart-section { display: grid; gap: 6px; min-width: 0; list-style: none; }

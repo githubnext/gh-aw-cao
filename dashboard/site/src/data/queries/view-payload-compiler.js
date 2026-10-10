@@ -138,6 +138,22 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
           typeof query.limit === 'number' ? query.limit : Infinity
         );
       }
+      if (isPlainObject(view) && view.mark === 'chart' && view.chart === 'treemap' && !isOptions) {
+        // Treemaps consume ready-to-render rows, never presenter-side ordering or limiting.
+        const inputName = `${alias}:input`;
+        const limit = Number(viewData?.limit);
+        const order = useQueryContext && options.queryContext?.orderBy?.length
+          ? options.queryContext.orderBy
+          : viewData?.['order-by'];
+        queries.push(...compiled.dependencies, { ...query, name: inputName }, {
+          name: alias,
+          from: inputName,
+          ...(Array.isArray(order) ? { 'order-by': order } : {}),
+          ...(Number.isSafeInteger(limit) && limit > 0 ? { limit } : {})
+        });
+        if (compiled.replacesSource || querySource !== sourceName) replacedSources.add(sourceName);
+        return;
+      }
       queries.push(...compiled.dependencies, query);
       if (compiled.replacesSource || querySource !== sourceName) replacedSources.add(sourceName);
     });
@@ -231,7 +247,7 @@ function usesNativeSource(view, sourceName, predicates, queryContext, definition
   const declared = Array.isArray(definitions)
     && definitions.some((definition) => isPlainObject(definition) && definition.name === sourceName);
   const data = isPlainObject(view) && isPlainObject(view.data) ? view.data : null;
-  if (declared && isPlainObject(view) && view.mark !== 'element' && data?.['query-context'] === false && predicates.length === 0
+  if (declared && isPlainObject(view) && view.mark !== 'element' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
       && !(queryContext?.search?.query.trim()) && !(queryContext?.orderBy?.length)
       && !hasRelativeQueryTime(sourceName, definitions)) return true;
   return isPlainObject(view)

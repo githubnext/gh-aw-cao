@@ -143,6 +143,46 @@ Views turn query results into a small set of standard marks:
 - `callout` for a concise status or attention message
 - `element` for a named reusable UI element
 
+### Show a treemap
+
+Use `chart: treemap` for proportional rectangles, optionally nested by one
+categorical `section` field. Like Vega-Lite, fields declare their visual
+roles: `x` supplies labels, quantitative `y` supplies area, and optional
+`color` supplies a categorical palette. Vega-Lite has no native treemap
+transform; this layout follows Vega's treemap methods instead.
+
+This view consumes the `highest-aic-workflows` query above:
+
+```yaml
+views:
+  - id: workflow-aic-treemap
+    title: Where are AI Credits concentrated?
+    mark: chart
+    chart: treemap
+    treemap: { method: squarify, ratio: 1.618, padding: 0.5 }
+    data: { source: highest-aic-workflows, limit: 10 }
+    encoding:
+      x: { field: workflow, type: nominal, format: workflow-relative-path }
+      y: { field: total-aic, type: quantitative, title: AI Credits }
+      section: { field: repository, type: nominal }
+      color: { field: repository, type: nominal }
+```
+
+`method` supports `squarify` (default), `binary`, and `slicedice`. `ratio`
+controls squarify's preferred rectangle aspect ratio from 1 to 5, not the
+chart's dimensions. `padding` controls rectangle gutters from 0 to 10 in a
+100-by-60 drawing plane. Omit `section` for a flat treemap.
+
+Declare aggregation, filtering, ordering, and limiting in queries, not
+encoding aggregates. Every treemap also declares a `data.limit` from 1 to
+100, applied by the worker after query execution. Positive finite values
+determine area before gutters and group headings; missing and zero values
+have no area and are reported explicitly. Negative or non-finite values
+produce an explanatory unavailable chart rather than misleading rectangles.
+Labels, values, and groups remain available through accessible names and
+tooltips even when a rectangle is too small for visible text. An optional
+`href` encoding makes leaves keyboard-operable safe links.
+
 For a temporal chart, aggregate observations into buckets before smoothing a
 measure or computing its change. A rolling window counts observations, not
 elapsed calendar time: seven trailing observations include the current point
