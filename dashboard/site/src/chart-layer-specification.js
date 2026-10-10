@@ -1,4 +1,7 @@
 import { FIELD_DEFINITION_KEYS, TEMPORAL_FIELD_NAMES } from './specification.js';
+import { createDebug } from './debug.js';
+
+const debugChartLayerSpecification = createDebug('chart-layer-specification');
 
 export const MAX_CHART_LAYERS = 8;
 export const MAX_CHART_LAYER_DEPTH = 4;
@@ -29,7 +32,10 @@ export function resolveChartLayers(view) {
   /** @type {ChartLayer[]} */
   const result = [];
   /** @param {string} message @param {string} path @returns {never} */
-  const fail = (message, path) => { throw new ChartLayerError(message, path); };
+  const fail = (message, path) => {
+    debugChartLayerSpecification({ operation: 'resolve-chart-layers', status: 'rejected', path });
+    throw new ChartLayerError(message, path);
+  };
   /** @param {unknown} value @param {string} path */
   const encoding = (value, path) => {
     if (value === undefined) return {};
@@ -113,6 +119,7 @@ export function resolveChartLayers(view) {
       fail('resolve supports only scale.y: shared or independent.', 'resolve');
     }
   }
+  debugChartLayerSpecification({ operation: 'resolve-chart-layers', status: 'resolved', layerCount: result.length });
   return result;
 }
 
