@@ -6,6 +6,9 @@ import { loadCanonicalDashboardPage, subscribeCanonicalDashboardView, validateQu
 import { renderDashboardPagePreview } from '../presenter.js';
 import { octicon } from '../octicons.js';
 import { MAX_SEMANTIC_METADATA_CHARACTERS, semanticMetadataLength } from '../semantic-metadata.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
+
+const debugQueryEditor = createDebug('components:query-editor');
 
 let nextEditorId = 0;
 const maximumGenerationAttempts = 10;
@@ -163,8 +166,9 @@ export function renderQueryEditor(context) {
   /**
    * @param {string} statusText
    * @param {(signal: AbortSignal) => Promise<void>} task
+   * @param {string} operationName
    */
-  async function perform(statusText, task) {
+  async function perform(statusText, task, operationName) {
     if (busy.get() || scope.signal.aborted) return;
     const controller = new AbortController();
     operation = controller;
@@ -173,11 +177,15 @@ export function renderQueryEditor(context) {
     message.set(statusText);
     try {
       await task(controller.signal);
+      if (!controller.signal.aborted) debugQueryEditor({ operation: operationName, status: 'succeeded' });
     } catch (error) {
       if (scope.signal.aborted) return;
       message.set(controller.signal.aborted ? 'Copilot request or validation cancelled. Existing text and preview are unchanged.'
         : error instanceof Error ? error.message : 'Could not update the editor.');
-      if (!controller.signal.aborted) publishNotification({ message: message.get(), tone: 'error' });
+      if (!controller.signal.aborted) {
+        publishNotification({ message: message.get(), tone: 'error' });
+        debugQueryEditor({ operation: operationName, status: 'failed', error: diagnosticErrorName(error) });
+      }
     } finally {
       controller.abort();
       if (operation === controller) operation = null;
@@ -213,7 +221,7 @@ export function renderQueryEditor(context) {
         field.input.dispatchEvent(new Event('input', { bubbles: true }));
       }
       message.set('All four fields improved. Review them before generating a query.');
-    });
+    }, 'enhance');
   }
 
   async function run() {
@@ -250,10 +258,11 @@ export function renderQueryEditor(context) {
         acceptedDraft.set(draftDocument);
         diagnostics.set('');
         message.set('Preview updated. It stays subscribed to canonical dashboard data.');
+        debugQueryEditor({ operation: 'generate', status: 'succeeded', attempt });
         return;
       }
       throw new Error(`Could not generate a valid query and view after ${maximumGenerationAttempts} attempts. The previous preview is unchanged. Adjust the authoring fields and try again.`);
-    });
+    }, 'generate');
   }
   async function saveView() {
     await perform('Saving the rendered view to local CAO custom views…', async (signal) => {
@@ -274,7 +283,7 @@ export function renderQueryEditor(context) {
       publishNotification({ message: `Custom view saved to ${saved.path}.`, tone: 'success' });
       globalThis.location.hash = `#page-${saved.id}`;
       globalThis.dispatchEvent(new CustomEvent('dashboard-preview-update', { detail: { dashboard: saved.dashboard } }));
-    });
+    }, 'save');
   }
   const form = h('form', {
     className: 'query-editor-form',
