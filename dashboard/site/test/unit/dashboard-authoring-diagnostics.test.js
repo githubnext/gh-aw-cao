@@ -46,4 +46,9 @@ describe('dashboard authoring diagnostic eval', () => {
   it('suggests a transposed identifier when the correction is unique', () => {
     expect(nearestIdentifier('rnu', ['run'])).toBe('run');
   });
+
+  it('accepts the document after applying the indicated corrections', () => {
+    const input = structuredClone(document);
+    expect(validateDashboardDocument(JSON.stringify(input))).toMatchObject({ ok: true, errors: [] });
+  });
 });
