@@ -45,6 +45,7 @@ describe('dashboard authoring diagnostic eval', () => {
 
   it('suggests a transposed identifier when the correction is unique', () => {
     expect(nearestIdentifier('rnu', ['run'])).toBe('run');
+    expect(nearestIdentifier('daata', ['data'])).toBe('data');
   });
 
   it('accepts the document after applying the indicated corrections', () => {

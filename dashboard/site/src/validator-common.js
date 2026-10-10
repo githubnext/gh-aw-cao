@@ -401,7 +401,8 @@ export function nearestIdentifier(value, candidates) {
       if (value[left] === candidate[right]) {
         left++;
         right++;
-      } else if (value[left] === candidate[right + 1] && value[left + 1] === candidate[right]) {
+      } else if (value.length === candidate.length
+        && value[left] === candidate[right + 1] && value[left + 1] === candidate[right]) {
         left += 2;
         right += 2;
         edits++;
