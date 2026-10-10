@@ -80,7 +80,10 @@ export function resolveChartLayers(view) {
       if (view.data[key] !== undefined) fail(`Layer ${key} must be declared in dashboard.queries.`, `data.${key}`);
     }
   }
-  visit(view.layer, encoding(view.encoding, 'encoding'), 'layer', 1);
+  const sharedEncoding = isObject(view.encoding)
+    ? Object.fromEntries(Object.entries(view.encoding).filter(([channel]) => !['facet', 'row', 'column'].includes(channel)))
+    : view.encoding;
+  visit(view.layer, encoding(sharedEncoding, 'encoding'), 'layer', 1);
   for (const layer of result) {
     for (const channel of layer.chart === 'rule' ? ['y'] : ['x', 'y']) {
       const definition = layer.encoding[channel];

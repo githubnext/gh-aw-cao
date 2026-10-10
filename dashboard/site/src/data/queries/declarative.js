@@ -14,6 +14,7 @@
 import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
 import { createDebug } from '../../debug.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
+import { validFacetDefinition } from './facet.js';
 
 const debugQuery = createDebug('data:query');
 
@@ -36,12 +37,13 @@ const debugQuery = createDebug('data:query');
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }>, search?: { fields: string[], query: string } },
  *   compute?: import('../../data-operations.js').ComputedField[],
  *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
+ *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max'|'unique', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
  *   window?: import('../../data-operations.js').WindowField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
- *   limit?: number
+ *   limit?: number,
+ *   facet?: import('./facet.js').FacetDefinition
  * }} DashboardQuery
  */
 
@@ -342,6 +344,9 @@ export function dashboardQueryDefects(definitions) {
  * @returns {string | undefined}
  */
 function queryStructuralDefect(definition) {
+  if (definition.facet !== undefined && !validFacetDefinition(definition.facet)) {
+    return 'facet requires a field or row/column fields and an output as';
+  }
   if (definition.union !== undefined
       && (!Array.isArray(definition.union) || definition.union.length === 0
         || definition.union.some((source) => typeof source !== 'string'))) {
@@ -581,6 +586,9 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
   for (const entry of definition.window ?? []) fields.push(entry.as);
   if (definition.select) {
     fields = definition.select.map((field) => field.as ?? field.field);
+  }
+  if (definition.facet) {
+    fields = ['facet-field', 'facet-row', 'facet-column', 'facet-row-index', 'facet-column-index', definition.facet.as];
   }
   return [...new Set(fields)];
 }
@@ -983,6 +991,7 @@ export function compileRowOperators(definition) {
   if (definition.select?.length) operators.push({ op: 'select', fields: definition.select });
   if (definition['order-by']?.length) operators.push({ op: 'arrange', by: definition['order-by'] });
   if (typeof definition.limit === 'number') operators.push({ op: 'slice', limit: definition.limit });
+  if (definition.facet) operators.push({ op: 'facet', ...definition.facet });
   return operators;
 }
 

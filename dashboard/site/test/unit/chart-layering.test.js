@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import contract from '../fixtures/chart-layer-contract.json' with { type: 'json' };
+import facetContract from '../fixtures/chart-layer-facet-contract.json' with { type: 'json' };
 import { resolveChartLayers } from '../../src/chart-layer-specification.js';
 import { renderLayeredChartWidget } from '../../src/components/chart-elements.js';
 import { renderDataView } from '../../src/components/data-view.js';
@@ -213,6 +214,45 @@ dashboard:
       operation: 'execute-dashboard-queries', queries: compiled.queries, sourceNames: compiled.aliases, sources: {}
     }));
     expect(unavailable[compiled.aliases[0]].metadata.availability).toBe('unavailable');
+  });
+
+  it.each(['view', 'encoding', 'row'])('composes %s facets with layers without changing query order or limits', (syntax) => {
+    const model = structuredClone(facetContract);
+    const facetedPage = model.dashboard.pages[0];
+    const facetedView = facetedPage.views[0];
+    if (syntax !== 'view') {
+      Object.assign(facetedView.encoding, { [syntax === 'row' ? 'row' : 'facet']: facetedView.facet });
+      Object.assign(facetedView, { facet: undefined, ...(syntax === 'row' ? { columns: undefined } : {}) });
+    }
+    expect(validateDashboardDocument(JSON.stringify(model))).toMatchObject({ ok: true });
+    expect(resolveChartLayers(facetedView).map((item) => item.encoding)).toEqual(resolveChartLayers(view).map((item) => item.encoding));
+    const compiled = compileDashboardViewPayloadQueries(facetedPage, facetedPage.id, { queries: model.dashboard.queries });
+    expect(compiled.queries.some((query) => String(query.name).endsWith(':facet-rows'))).toBe(false);
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries: compiled.queries, sourceNames: compiled.aliases,
+      sources: { usage: { source: 'usage', metadata, rows: [
+        { engine: 'alpha', 'observed-at': '2026-10-01', aic: 2, 'estimated-usd': 5 },
+        { engine: 'beta', 'observed-at': '2026-10-02', aic: 4, 'estimated-usd': 5 },
+        { engine: 'alpha', 'observed-at': '2026-10-03', aic: 10, 'estimated-usd': 5 },
+        { engine: 'beta', 'observed-at': '2026-09-01', aic: 999, 'estimated-usd': 5 }
+      ] } }
+    }))[compiled.aliases[0]];
+    expect(result.rows.map((row) => row['facet-rows'])).toMatchObject([
+      [{ aic: 10 }, { aic: 2 }], [{ aic: 4 }]
+    ]);
+    const prepare = vi.fn(() => { throw new Error('UI must not query rows'); });
+    const rendered = renderDataView('chart', {
+      pageId: facetedPage.id, title: facetedView.title, view: facetedView, sourceName: result.source,
+      rows: result.rows, metadata: result.metadata, contextDetails: [], headingTag: 'h3', toText: String,
+      prepareTableRows: prepare, buildChartPoints: prepare, prepareChartPoints: prepare
+    });
+    expect(rendered?.querySelectorAll('figure')).toHaveLength(2);
+    expect(rendered?.querySelectorAll('.layer-chart-widget svg')).toHaveLength(2);
+    expect(rendered?.querySelectorAll('[data-chart-layer]')).toHaveLength(8);
+    expect(rendered?.querySelectorAll('figure section')).toHaveLength(0);
+    expect(prepare).not.toHaveBeenCalled();
+    Object.assign(facetedView.layer[0], { encoding: { facet: { field: 'engine' } } });
+    expect(validateDashboardDocument(JSON.stringify(model))).toMatchObject({ ok: false });
   });
 
   it('reacts to fresh worker payloads and stops updates after its subscription is aborted', async () => {

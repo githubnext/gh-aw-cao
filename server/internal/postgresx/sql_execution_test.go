@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ func TestReadTransactionDisablesJITLocally(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), "SET jit = on"); err != nil {
 		t.Fatal(err)
 	}
+
 	for _, tc := range []struct {
 		name string
 		err  error
@@ -143,5 +145,36 @@ func TestRelationalSQLExecutesInPostgres(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFacetPanelBudgetAndUniqueFiltersInPostgres(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	domains := make([]model.Row, 65)
+	for index := range domains {
+		domains[index] = model.Row{"id": fmt.Sprintf("domain-%02d", index), "runId": "run", "domain": fmt.Sprintf("domain-%02d.example", index)}
+	}
+	nativeSeed(t.Context(), t, store, map[string][]model.Row{"$domains": domains})
+	limit := 64
+	facet := &query.Facet{Field: "domain", As: "rows"}
+	definitions := make([]query.Definition, 1, 2)
+	definitions[0] = query.Definition{Name: "panels", From: "$domains", Limit: &limit, Facet: facet}
+	got, _, err := store.ExecuteSQLPlan(t.Context(), definitions, []string{"panels"})
+	if err != nil || len(got["panels"].Rows) != 64 {
+		t.Fatalf("64 panels must remain available: %v", err)
+	}
+	definitions[0].Limit = nil
+	definitions = append(definitions, query.Definition{Name: "outer", From: "panels", Select: []query.SelectedField{{Field: "facet-field"}}})
+	if _, _, err := store.ExecuteSQLPlan(t.Context(), definitions, []string{"outer"}); err == nil || !strings.Contains(err.Error(), "max chart facets") {
+		t.Fatalf("intermediate facets must enforce the 64-panel budget: %v", err)
+	}
+	got, _, err = store.ExecuteSQLPlan(t.Context(), []query.Definition{{
+		Name: "unique", From: "$domains", Aggregate: &query.Aggregate{Values: []query.AggregateValue{{
+			Field: "domain", As: "picked", Reducer: "unique",
+			Filter: &query.Filter{Predicates: []query.Predicate{{Field: "id", Equals: "domain-01"}}},
+		}}},
+	}}, []string{"unique"})
+	if err != nil || len(got["unique"].Rows) != 1 || got["unique"].Rows[0]["picked"] != "domain-01.example" {
+		t.Fatalf("unique must retain the first included value rather than an excluded value: %+v %v", got, err)
 	}
 }

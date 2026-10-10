@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -2984,6 +2984,27 @@
           }
         }
       },
+      "Facet": {
+        "type": "object",
+        "required": [
+          "as"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "row": {
+            "type": "string"
+          },
+          "column": {
+            "type": "string"
+          },
+          "as": {
+            "type": "string"
+          }
+        },
+        "description": "Terminal projection of processed rows into at most 64 chart panels. Declare field alone, or row and/or column; as names each panel's ordered row sequence."
+      },
       "Filter": {
         "type": "object",
         "properties": {
@@ -3433,6 +3454,9 @@
           "limit": {
             "type": "integer",
             "format": "int32"
+          },
+          "facet": {
+            "$ref": "#/components/schemas/Facet"
           },
           "stores": {
             "type": "array",

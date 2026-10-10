@@ -32,7 +32,8 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'subject', 'objective', 'acceptance', 'description', 'parameters', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'temporal-series', 'aggregate', 'predict', 'window', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'subject', 'objective', 'acceptance', 'description', 'parameters', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'temporal-series', 'aggregate', 'predict', 'window', 'select', 'order-by', 'limit', 'facet'];
+export const FACET_FIELD_KEYS = ['field', 'type', 'title', 'format'];
 export const QUERY_PARAMETER_KEYS = ['name', 'type'];
 export const QUERY_PARAMETER_TYPE_VALUES = ['number', 'string', 'boolean'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
@@ -52,7 +53,7 @@ export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
 export const QUERY_PREDICT_KEYS = ['field', 'on', 'method', 'order', 'groupby', 'as'];
 export const QUERY_WINDOW_KEYS = ['field', 'as', 'operation', 'order-by', 'groupby', 'frame', 'reducer', 'alignment', 'mode', 'time-field', 'unit'];
-export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'latest-failure-streak', 'sum', 'mean', 'min', 'max'];
+export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'latest-failure-streak', 'sum', 'mean', 'min', 'max', 'unique'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
 export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
 export const INFERRED_FIELD_NAMES = ['campaign-link'];
@@ -82,7 +83,7 @@ export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
 
-export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'prompt-level', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'treemap', 'layer', 'resolve', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'prompt-level', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'facet', 'columns', 'treemap', 'layer', 'resolve', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_FILTER_BAR_KEYS = ['filters'];
 export const VIEW_FILTER_CONTROL_KEYS = ['id', 'label', 'groups'];
 export const VIEW_FILTER_GROUP_KEYS = ['label', 'field', 'source', 'value-field', 'label-field'];
@@ -149,7 +150,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'evidence',
   'insights'
 ]);
-export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions'];
+export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action', 'external-link'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];

@@ -47,8 +47,9 @@ type StageFields struct {
 }
 
 // NormalizedQuery describes output shape independently of the fields needed
-// temporarily to evaluate the query. A preserving shape requires full source
-// documents even if SourceFields names only a few known columns.
+// temporarily to evaluate the query. A preserving shape, including a facet's
+// input shape, requires full source documents even if SourceFields names only
+// a few known columns.
 type NormalizedQuery struct {
 	Source          string              `json:"source"`
 	Filter          *Filter             `json:"filter,omitempty"`
@@ -58,6 +59,8 @@ type NormalizedQuery struct {
 	TemporalSeries  *TemporalSeries     `json:"temporal-series,omitempty"`
 	Order           []OrderField        `json:"order,omitempty"`
 	Limit           *int                `json:"limit,omitempty"`
+	Facet           *Facet              `json:"facet,omitempty"`
+	FacetInputShape *ResultShape        `json:"facet-input-shape,omitempty"`
 	RequiredFields  FieldSet            `json:"required-fields,omitempty"`
 	SourceFields    FieldSet            `json:"source-fields,omitempty"`
 	JoinFields      map[string]FieldSet `json:"join-fields,omitempty"`
@@ -97,7 +100,7 @@ func Normalize(definition Definition) NormalizedQuery {
 	plan := NormalizedQuery{
 		Source: definition.From, Filter: definition.Filter, Computes: definition.Compute,
 		Aggregate: definition.Aggregate, TemporalSeries: definition.TemporalSeries, Window: definition.Window,
-		Order: definition.OrderBy, Limit: definition.Limit,
+		Order: definition.OrderBy, Limit: definition.Limit, Facet: definition.Facet,
 		ResultShape: ResultShape{Mode: PreserveInput}, Stages: []StageFields{},
 	}
 	type stage struct {
@@ -246,6 +249,21 @@ func Normalize(definition Definition) NormalizedQuery {
 	}
 	if definition.Limit != nil {
 		stages = append(stages, stage{name: "limit", requires: map[string]bool{}, produces: map[string]bool{}})
+	}
+	if facet := definition.Facet; facet != nil {
+		inputShape := plan.ResultShape
+		plan.FacetInputShape = &inputShape
+		required := map[string]bool{facet.Field: true, facet.Row: true, facet.Column: true}
+		for _, field := range append(append([]ResultField{}, inputShape.Fields...), inputShape.Added...) {
+			required[field.As] = true
+		}
+		plan.ResultShape = ResultShape{Mode: ClosedShape}
+		produced := map[string]bool{}
+		for _, field := range []string{"facet-field", "facet-row", "facet-column", "facet-row-index", "facet-column-index", facet.As} {
+			produced[field] = true
+			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: field, As: field})
+		}
+		stages = append(stages, stage{name: "facet", requires: required, produces: produced, closes: true})
 	}
 
 	live := map[string]bool{}

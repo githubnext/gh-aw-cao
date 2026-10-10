@@ -1,0 +1,29 @@
+{
+  "language-version": "0.1.0",
+  "dashboard": {
+    "id": "chart-facet-contract",
+    "title": "Chart facet contract",
+    "pages": [
+      {
+        "id": "facets",
+        "kind": "custom",
+        "title": "Workflow costs",
+        "views": [
+          {
+            "id": "cost-by-engine",
+            "title": "Cost by engine",
+            "mark": "chart",
+            "chart": "bar",
+            "columns": 2,
+            "facet": { "field": "engine", "type": "nominal", "title": "Engine" },
+            "data": { "source": "usage", "limit": 100 },
+            "encoding": {
+              "x": { "field": "workflow", "type": "nominal" },
+              "y": { "field": "aic", "type": "quantitative", "aggregate": "sum", "title": "AI Credits" }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

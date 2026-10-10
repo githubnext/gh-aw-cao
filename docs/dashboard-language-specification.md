@@ -226,7 +226,9 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `subject`, `objective`, `acceptance`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `subject`, `objective`, `acceptance`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit`, `facet` |
+| Query `facet` | `field`, `row`, `column`, `as` |
+| Chart facet field | `field`, `type`, `title`, `format` |
 | Query parameter | `name`, `type` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
@@ -251,7 +253,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `treemap`, `layer`, `resolve`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `facet`, `columns`, `treemap`, `layer`, `resolve`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | Chart layer | `chart`, `encoding`, `layer` |
 | Layer resolution | `scale` with `y: shared` or `y: independent` |
 | Treemap options | `method`, `ratio`, `padding` |
@@ -529,6 +531,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `literal` | 1 | scalar value |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |
+| `date-bucket` | 2 | UTC bucket-start timestamp text for a timestamp and literal `hour`, `day`, `week` (Monday), or `month` |
 | `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and run conclusion |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |
 | `greater-than` | 2 | whether the first numeric argument is greater than the second |
@@ -652,10 +655,10 @@ return the untransformed observations.
 
 #### 5.5.5 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `subject` describing what its data is about or intended to show, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `window`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. The combined `subject`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `subject` describing what its data is about or intended to show, and one `from` input; **MAY** declare non-empty `objective` and `acceptance` semantic annotations, `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `window`, `select`, `order-by`, `limit`, and `facet`; and **MUST NOT** declare any other key. The combined `subject`, `objective`, and `acceptance` of each query **MUST NOT** exceed 512 Unicode characters. Query execution **MUST** treat semantic annotations as inert metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 database table or registered Section 5.4 runtime source. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table, registered Section 5.4 runtime source, built-in `simulation-days` source, or query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table, runtime source, or query are available to later clauses, and a field absent from one row has a null value for query operations.
-- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `window` in declaration order, `select`, `order-by`, and finally `limit`.
+- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `window` in declaration order, `select`, `order-by`, `limit`, and finally `facet`.
 - **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address table or query fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined table or query. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
 - **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
@@ -670,7 +673,7 @@ return the untransformed observations.
 - **DLS-QUERY-016:** A presenter **MUST** resolve the query dependency graph before requesting a page projection so every input source required by a requested derived source is loaded while unrelated sources remain excluded, and **MUST** execute queries in the data-processing layer defined by Section 7.5 without a main-thread fallback.
 - **DLS-QUERY-017:** An execution layer **MUST NOT** assume its query definitions were validated. Before it reads any rows it **MUST** reject a query that reads itself, participates in a dependency cycle, reads a query declared later in the sequence, shares its name with another query, declares a join without equality keys, declares more joins than **DLS-QUERY-005** permits, or declares a `limit` outside **DLS-QUERY-013**. Every query that reads a rejected query **MUST** also be rejected. Rejected queries **MUST** fail closed under **DLS-QUERY-015**, and a query that does not depend on a rejected query **MUST** still execute.
 - **DLS-QUERY-018:** Query execution **MUST** be cancelable from outside the execution layer through an abort signal, **MUST** stop after 60000 milliseconds of execution, and **MUST** stop after 5000000 row operations. A stopped execution **MUST NOT** report a partial projection: it **MUST** surface an explicit cancellation distinct from a query fault, and **MUST** identify only the cancellation cause without source payloads or secrets. A presenter **MUST** offer a command that cancels a runaway computation, and **MUST** terminate a data worker that does not acknowledge cancellation.
-- **DLS-QUERY-019:** A validator **MUST** reject a query whose field references are incompatible with the table or earlier-query schema, with `DLS-E011`. A field that only exists after a presenter derives it from an executed projection **MUST NOT** be read by a query. A structured link field **MUST NOT** be a join key, filter field, computed-field argument, grouping field, aggregate measure, or `order-by` field, because **DLS-QUERY-006** and **DLS-QUERY-010** define no scalar value for it; a query **MAY** still project one. A temporal field **MUST NOT** be a numeric computed-field argument or the measure of a `sum`, `mean`, `min`, or `max` reducer.
+- **DLS-QUERY-019:** A validator **MUST** reject a query whose field references are incompatible with the table or earlier-query schema, with `DLS-E011`. A field that only exists after a presenter derives it from an executed projection **MUST NOT** be read by a query. A structured link field **MUST NOT** be a join key, filter field, computed-field argument, grouping field, numeric aggregate measure, or `order-by` field; a query **MAY** project one or retain it using `unique`, which returns the single distinct non-null value and otherwise `null`. A temporal field **MUST NOT** be a numeric computed-field argument or the measure of a `sum`, `mean`, `min`, or `max` reducer.
 - **DLS-QUERY-020:** Query `time`, when present, **MUST** satisfy Section 6 time syntax. A relative query range **MUST** resolve against the active view window's exclusive end and replace only that view's temporal bounds for the query; scope, route, and dimension filters **MUST** remain in force.
 - **DLS-QUERY-021:** `predict` **MUST** be a non-empty sequence. Each entry **MUST** declare one numeric `field`, one `on` predictor field or a sequence of one to eight numeric predictor fields, and a unique `as` output name; **MAY** declare `method`, `groupby`, and `order`; and **MUST NOT** declare another key. `method` **MUST** be one Section 5.5.2 built-in and defaults to `linear`. Only `linear` **MAY** declare more than one predictor. `order` **MAY** appear only with `poly`.
 - **DLS-QUERY-022:** A prediction **MUST** fit independently for each distinct `groupby` tuple, or once for all rows when `groupby` is absent. Fitting **MUST** ignore rows whose target or predictor input is not a finite number. Prediction **MUST** preserve row count and order, MUST NOT mutate an input row, and **MUST** append a finite numeric value or null under the Section 5.5.2 semantics.
@@ -895,7 +898,7 @@ An **output row** is the post-aggregation result of applying grouping and aggreg
 The **canonical post-aggregation row order** is defined for every output grain, entity-grain or group-grain, as follows:
 
 1. Apply each declared `order-by` clause in sequence, comparing each row's resolved output identifier value ascending or descending as declared.
-2. Break any ties remaining after step 1, or order all rows when `order-by` is entirely omitted, by the view's remaining unaggregated output dimensions that are not already fully determined by step 1. Only the grouping-capable encoding channels defined in Section 11.1 (`x`, `y`, `color`, `section`, and each `columns` entry) can hold an unaggregated output dimension; `value` and `href` are excluded because they do not participate in grouping. Consider these channels in that fixed declaration order (`x`, then `y`, then `color`, then `section`, then each `columns` entry in its declared sequence), each compared ascending by canonical field value after time bucketing.
+2. Break any ties remaining after step 1, or order all rows when `order-by` is entirely omitted, by the view's remaining unaggregated output dimensions that are not already fully determined by step 1. The grouping-capable encoding channels defined in Section 11.1 (`x`, `y`, `color`, `section`, and each `columns` entry), plus chart facet fields, can hold an unaggregated output dimension; `value` and `href` are excluded because they do not participate in grouping. Consider these channels in that fixed declaration order (`x`, then `y`, then `color`, then `section`, then each `columns` entry in its declared sequence, then the single facet field or facet `row` followed by `column`), each compared ascending by canonical field value after time bucketing.
 3. Break any ties still remaining after step 2 by canonical entity ID ascending, when a canonical entity ID is present at the output grain; an entity-grain output row always has a canonical entity ID available for this step.
 
 A presenter **MUST** apply `limit` only after the canonical post-aggregation row order from steps 1 through 3 is fully resolved.
@@ -1120,7 +1123,14 @@ The example's `credit-observations` query must declare `observed-at`, `aic`, and
 
 Bar and rule layers accept at most 2,000 source observations per leaf; a larger payload produces an explicit limit message rather than silently truncating observations. Bound these sources with a query `limit`. Line, area, and dot layers retain the shared renderer's bounded mark sampling for dense plots. Invalid or absent numeric observations remain gaps rather than zeroes.
 
-Scale domains default to unions across all leaves, including stacked area totals, with shared axes and a merged legend. Temporal positions are proportional to timestamp; categorical positions share one category domain. Explicit `x` types must be nominal, ordinal, or temporal and retain the selected widget's type constraints; quantitative x scales are not supported. Shared `x` types and `y` units must be compatible. `resolve: { "scale": { "y": "independent" } }` uses a separate quantitative domain and value formatting for each leaf. The presenter replaces the common numeric y labels with an explicit per-layer scale key showing its lower, midpoint, and upper values; guides indicate the same fractional plot positions. This bounded implementation is not a general Vega-Lite interpreter: independent x/color scales, facets, projections, per-layer data/transforms, and other chart widgets are rejected.
+Scale domains default to unions across all leaves, including stacked area totals, with shared axes and a merged legend. Temporal positions are proportional to timestamp; categorical positions share one category domain. Explicit `x` types must be nominal, ordinal, or temporal and retain the selected widget's type constraints; quantitative x scales are not supported. Shared `x` types and `y` units must be compatible. `resolve: { "scale": { "y": "independent" } }` uses a separate quantitative domain and value formatting for each leaf. The presenter replaces the common numeric y labels with an explicit per-layer scale key showing its lower, midpoint, and upper values; guides indicate the same fractional plot positions. This bounded implementation is not a general Vega-Lite interpreter: independent x/color scales, projections, per-layer data/transforms, and other chart widgets are rejected.
+
+A layered view may declare a top-level facet using the view or encoding syntax
+below. Facet channels are not inherited into leaves and remain forbidden inside
+layer specifications. The worker partitions the already-shaped query result
+without reordering, aggregating, or limiting it; each panel renders all leaves
+with its own scale domains. Layer bounds and scale resolution apply within each
+panel, and sorting and limits remain the responsibility of `dashboard.queries`.
 
 Any view may include the optional Boolean `locked` authoring hint. When `true`, an agent evolving the dashboard should preserve the view and modify it only to correct bugs. `locked` does not affect presentation, accessibility, data processing, or validation of the view's other fields.
 
@@ -1233,7 +1243,7 @@ those states in user-facing terms.
 | Named UI element | `element` | no encoding; one `element` name |
 | Callout | `callout` | no encoding or data; one `callout` mapping |
 
-Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `section`, `reference`, and `href`. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, or `workflow-dashboard-link` field; it does not select from multiple links. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series. The nominal or ordinal `section` channel is available to horizontal bar charts for section headings and to treemap charts for nested group rectangles, in first-appearance order.
+Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `section`, `reference`, `href`, and the chart-only `facet`, `row`, and `column` facet channels. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, or `workflow-dashboard-link` field; it does not select from multiple links. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series. The nominal or ordinal `section` channel is available to horizontal bar charts for section headings and to treemap charts for nested group rectangles, in first-appearance order.
 
 Chart presenters MUST assign each non-semantic nominal category to a stable palette slot from its identity rather than its row, sort, or visibility position. The shared presenter normalizes the identity with Unicode NFKC, trimming, and lowercase conversion, then applies 32-bit FNV-1a and selects one of the twelve chart palette slots by modulo. This deterministic hash is the fallback for categories not previously observed, including new campaign and repository identities. Semantic status colors override the resulting palette color. The reserved `value` identity represents an ungrouped series and always uses the first palette slot; only an empty identity falls back to its local series position. Marks and legend swatches MUST resolve the same identity through the same mapping.
 
@@ -1353,6 +1363,66 @@ encoding:
   x: { field: day, type: temporal, time-unit: day }
   y: { field: aic, type: quantitative, aggregate: sum }
 ```
+
+#### Faceted charts (small multiples)
+
+A chart can repeat its visualization over categorical subsets, following the
+[Vega-Lite facet model](https://vega.github.io/vega-lite/docs/facet.html).
+There is still one view box: panels contain chart graphics, not nested views.
+
+```json
+{
+  "id": "cost-by-engine",
+  "mark": "chart",
+  "chart": "bar",
+  "facet": { "field": "engine", "type": "nominal", "title": "Engine" },
+  "columns": 2,
+  "data": { "source": "usage", "limit": 100 },
+  "encoding": {
+    "x": { "field": "workflow", "type": "nominal" },
+    "y": { "field": "aic", "type": "quantitative", "aggregate": "sum" }
+  }
+}
+```
+
+`facet` accepts one field definition or a mapping containing `row`, `column`,
+or both field definitions. As shortcuts, put a single-field `facet`, `row`,
+and/or `column` in `encoding` instead. Do not combine view-level and encoding
+facet syntax, or combine `encoding.facet` with row/column channels. Optional
+`columns` (1–64) wraps only a single-field facet; omission uses one row on
+desktop. A row/column mapping places observed panels on their categorical
+axes. Mobile may collapse either layout to one column without dropping panels.
+
+- **DLS-VIEW-FACET-001:** Facet fields **MUST** exist in the source and be
+  unaggregated categorical dimensions (`nominal` or `ordinal` when explicitly
+  typed). Field definitions accept only `field`, `type`, `title`, and categorical
+  `format` (`workflow-relative-path` or `workflow-identity-label`). Binning,
+  temporal transforms, custom sorting, headers, nested `spec`, and scale
+  resolution are not part of this subset; derive categories in a query first.
+- **DLS-VIEW-FACET-002:** The query engine **MUST** retain facet dimensions as
+  aggregation keys, apply view ordering and `data.limit` globally to chart
+  rows, and then partition those rows. Panels and rows retain first-appearance
+  order after processing. Missing and null categories share an explicit
+  Unknown panel; the literal string `"unknown"` remains a distinct category.
+  Formatted labels **MUST NOT** determine partition identity.
+- **DLS-VIEW-FACET-003:** Browser and hosted queries **MUST** produce the same
+  terminal `facet` payload: each panel contains `facet-field`, `facet-row`,
+  `facet-column`, zero-based `facet-row-index` and `facet-column-index`, and
+  the ordered row sequence named by `as`. Chart view compilation uses
+  `as: facet-rows`. Query-level `facet` runs after `limit`; it declares a
+  scalar `field` alone or scalar `row` and/or `column` names plus a non-empty
+  `as` distinct from the five reserved facet category/index output names.
+  The UI **MUST NOT** group, filter, aggregate, or sort rows to construct panels.
+- **DLS-VIEW-FACET-004:** A result exceeding 64 observed panels **MUST** fail
+  closed with an unavailable state rather than truncate panels. Unobserved
+  row/column combinations **MUST NOT** synthesize points or empty panels.
+  Each panel **MUST** have a visible, accessible categorical caption and
+  preserve chart labels, links, units, and legends. Scales are independent
+  per panel in this subset; no shared-scale comparison is implied.
+- **DLS-VIEW-FACET-005:** Facets **MUST** use the existing abort-scoped view
+  subscription so refreshed evidence republishes the complete panel payload.
+  Empty, partial, and unavailable evidence **MUST** preserve their existing
+  meanings, and panel rendering resources **MUST** stop on detachment.
 
 Grouped operational area chart:
 

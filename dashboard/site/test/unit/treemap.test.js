@@ -201,6 +201,60 @@ describe('declarative treemap contract', () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
+  it.each(['view', 'encoding'])('composes %s facets with worker-prepared treemaps and global limits', (syntax) => {
+    const facet = { field: 'run-conclusion', title: 'Conclusion' };
+    const facetedView = {
+      ...view, columns: 2,
+      ...(syntax === 'view' ? { facet } : { encoding: { ...view.encoding, facet } }),
+      data: { ...view.data, limit: 3, 'order-by': [{ field: 'run-count', direction: 'desc' }] }
+    };
+    const facetedPage = { ...page, views: [facetedView] };
+    const model = { ...contract, dashboard: { ...contract.dashboard, pages: [facetedPage] } };
+    expect(validateDashboardDocument(JSON.stringify(model)).ok).toBe(true);
+    const payload = compileDashboardViewPayloadQueries(facetedPage, page.id, { queries: contract.dashboard.queries });
+    expect(payload.queries.at(-1)).toMatchObject({ facet: { field: 'run-conclusion', as: 'facet-rows' } });
+    const rows = [
+      { repository: 'alpha', workflow: 'a.md', run: '1', 'run-conclusion': 'success' },
+      { repository: 'alpha', workflow: 'a.md', run: '2', 'run-conclusion': 'success' },
+      { repository: 'beta', workflow: 'b.md', run: '3', 'run-conclusion': 'failure' },
+      { repository: 'gamma', workflow: 'c.md', run: '4', 'run-conclusion': 'success' }
+    ];
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries: payload.queries, sourceNames: payload.aliases,
+      sources: { runs: { source: 'runs', rows, metadata } }
+    }))[payload.aliases[0]];
+    expect(result.rows).toMatchObject([
+      { 'facet-field': 'success', 'facet-rows': [{ workflow: 'a.md', 'run-count': 2 }, { workflow: 'c.md', 'run-count': 1 }] },
+      { 'facet-field': 'failure', 'facet-rows': [{ workflow: 'b.md', 'run-count': 1 }] }
+    ]);
+    const prepare = vi.fn(() => { throw new Error('Main-thread query is forbidden'); });
+    const chart = renderDataView('chart', {
+      pageId: page.id, title: view.title, view: facetedView, sourceName: result.source,
+      rows: result.rows, metadata: result.metadata, contextDetails: [], headingTag: 'h3',
+      prepareTableRows: prepare, buildChartPoints: prepare, prepareChartPoints: prepare, toText: String
+    });
+    expect(chart?.querySelectorAll('figure')).toHaveLength(2);
+    expect(chart?.querySelectorAll('[data-treemap-leaf]')).toHaveLength(3);
+    expect(prepare).not.toHaveBeenCalled();
+    const limitedPage = { ...facetedPage, views: [{ ...facetedView, data: { ...facetedView.data, limit: 1 } }] };
+    const limited = compileDashboardViewPayloadQueries(limitedPage, page.id, {
+      queries: contract.dashboard.queries, queryContext: { orderBy: [{ field: 'run-count', direction: 'asc' }] }
+    });
+    const limitedResult = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries: limited.queries, sourceNames: limited.aliases,
+      sources: { runs: { source: 'runs', rows, metadata } }
+    }))[limited.aliases[0]];
+    expect(limitedResult.rows).toMatchObject([{ 'facet-field': 'failure', 'facet-rows': [{ workflow: 'b.md', 'run-count': 1 }] }]);
+    const isolated = compileDashboardViewPayloadQueries({
+      ...limitedPage, views: [{ ...limitedPage.views[0], data: { ...limitedPage.views[0].data, 'query-context': false } }]
+    }, page.id, { queries: contract.dashboard.queries, queryContext: { orderBy: [{ field: 'run-count', direction: 'asc' }] } });
+    const isolatedResult = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries: isolated.queries, sourceNames: isolated.aliases,
+      sources: { runs: { source: 'runs', rows, metadata } }
+    }))[isolated.aliases[0]];
+    expect(isolatedResult.rows).toMatchObject([{ 'facet-field': 'success', 'facet-rows': [{ workflow: 'a.md', 'run-count': 2 }] }]);
+  });
+
   it('updates the active chart from abort-scoped source subscriptions', async () => {
     /** @type {((sources: Record<string, import('../../src/presenter.js').LogicalSourceInput>) => void) | undefined} */
     let update;

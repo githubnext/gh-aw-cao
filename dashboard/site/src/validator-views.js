@@ -6,6 +6,7 @@ import { cliActionTemplateFields } from './cli-action-template.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
 import { validateSource, sourceFieldNames, validateSourceSequence, validateSemanticFieldLiterals, validateContext, validateDatasetMetadata } from './validator-queries.js';
 import { validateEncoding } from './validator-encoding.js';
+import { validateChartFacet } from './validator-facet.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getMappingItems, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
@@ -83,6 +84,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   const errorCountBeforeView = errors.length;
+  validateChartFacet(view, viewNode, path, errors);
   if (view.treemap !== undefined) {
     const treemapPath = `${path}.treemap`;
     if (view.mark !== 'chart' || view.chart !== 'treemap') {
@@ -886,10 +888,10 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     }
     try {
       const layers = resolveChartLayers(view);
-      /** @param {Record<string, unknown>} specification @param {unknown} node @param {string} nodePath */
-      const validateLayerKeys = (specification, node, nodePath) => {
+      /** @param {Record<string, unknown>} specification @param {unknown} node @param {string} nodePath @param {boolean} [root] */
+      const validateLayerKeys = (specification, node, nodePath, root = false) => {
         const encodingNode = getValueNodeByKey(node, 'encoding');
-        validateObjectKeys(encodingNode, ['x', 'y', 'color', 'href'], `${nodePath}.encoding`, errors);
+        validateObjectKeys(encodingNode, root ? ['x', 'y', 'color', 'href', 'facet', 'row', 'column'] : ['x', 'y', 'color', 'href'], `${nodePath}.encoding`, errors);
         for (const channel of ['x', 'y', 'color', 'href']) {
           validateObjectKeys(getValueNodeByKey(encodingNode, channel), FIELD_DEFINITION_KEYS, `${nodePath}.encoding.${channel}`, errors);
         }
@@ -901,12 +903,12 @@ export function validateView(view, viewNode, path, viewIds, errors) {
           validateLayerKeys(child, childNode, childPath);
         });
       };
-      validateLayerKeys(view, viewNode, path);
+      validateLayerKeys(view, viewNode, path, true);
       validateObjectKeys(getValueNodeByKey(viewNode, 'resolve'), ['scale'], `${path}.resolve`, errors);
       validateObjectKeys(getValueNodeByKey(getValueNodeByKey(viewNode, 'resolve'), 'scale'), ['y'], `${path}.resolve.scale`, errors);
       for (const layer of layers) {
         validateEncoding(null, layer.encoding, 'chart', layer.chart,
-          sourceName, view.data, `${path}.${layer.path}`, errors, true);
+          sourceName, view.data, `${path}.${layer.path}`, errors, undefined, true);
       }
     } catch (error) {
       if (!(error instanceof ChartLayerError)) throw error;
@@ -916,7 +918,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     if (view.resolve !== undefined) {
       errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'resolve requires layer.', `${path}.resolve`));
     }
-    validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors);
+    validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors, view.facet);
   }
   validateViewFilterBar(view, viewNode, path, sourceName, errors);
   validateTableActions(

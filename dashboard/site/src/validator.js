@@ -98,6 +98,7 @@ export function validateDashboardDocument(source) {
     validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
   } finally {
     state.declaredQueries = new Map();
+    state.declaredQueryFieldTypes = new Map();
     state.declaredCardTemplates = new Set();
     state.declaredQueryTables = new Map();
     state.declaredQueryParameters = new Map();

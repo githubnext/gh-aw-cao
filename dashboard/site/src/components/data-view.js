@@ -23,6 +23,8 @@ import { effect, onCleanup, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { createDebug } from '../debug.js';
 import { assertActionLevel, normalizeAction, actionPresentation, constrainPrompt } from '../action-model.js';
+import { chartFacet, facetPresentationEncoding, MAX_CHART_FACETS } from '../chart-facet.js';
+import { formatString as formatFacetValue } from '../view-formatters.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -128,6 +130,7 @@ export function supportsIncrementalChartContinuation(view) {
   return isPlainObject(view)
     && view.mark === 'chart'
     && view.chart === 'swimlane'
+    && !chartFacet(view)
     && !(isPlainObject(view.encoding) && isPlainObject(view.encoding.weight));
 }
 
@@ -1266,7 +1269,70 @@ function renderStatusDetail(row, view, toText) {
 }
 
 /** @param {DataViewContext} context */
-function renderChartView(context) {
+function renderFacetedChartView(context) {
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag } = context;
+  const facet = chartFacet(view);
+  if (!facet) throw new TypeError('A faceted chart requires a facet declaration.');
+  const unavailable = metadata.availability === 'unavailable';
+  const invalid = rows.length > MAX_CHART_FACETS
+    || rows.some((row) => !Array.isArray(row['facet-rows'])
+      || !row['facet-rows'].every(isPlainObject)
+      || !Object.hasOwn(row, 'facet-field') || !Object.hasOwn(row, 'facet-row') || !Object.hasOwn(row, 'facet-column')
+      || !Number.isSafeInteger(row['facet-row-index']) || Number(row['facet-row-index']) < 0 || Number(row['facet-row-index']) >= MAX_CHART_FACETS
+      || !Number.isSafeInteger(row['facet-column-index']) || Number(row['facet-column-index']) < 0 || Number(row['facet-column-index']) >= MAX_CHART_FACETS);
+  const grid = h('div', {
+    className: `chart-facet-grid${facet.field ? ' chart-facet-wrap' : ' chart-facet-matrix'}`,
+    role: 'group',
+    'aria-label': `${title} facets`,
+    style: `--chart-facet-columns: ${view.columns ?? Math.max(rows.length, 1)}`
+  });
+  if (invalid) debugChart({ event: 'facet-payload-rejected', panelCount: rows.length });
+  if (unavailable || invalid || rows.length === 0) {
+    grid.append(h('p', { role: 'status', className: 'document-list-empty' },
+      unavailable || invalid ? 'Data is unavailable for this faceted visualization.' : 'No data is available for this visualization.'));
+  } else {
+    rows.forEach((row, index) => {
+      const labels = Object.entries(facet).map(([channel, definition]) => {
+        const value = row[`facet-${channel}`];
+        return `${definition.title ?? titleCase(String(definition.field))}: ${value == null ? 'Unknown' : formatFacetValue(value, definition.format)}`;
+      });
+      const label = labels.join(' · ');
+      const content = renderChartView({
+        ...context,
+        pageId: `${pageId}-facet-${index}`,
+        title: label,
+        rows: /** @type {Array<Record<string, unknown>>} */ (row['facet-rows']),
+        contextDetails: [],
+        continuation: undefined,
+        view: {
+          ...view,
+          facet: undefined,
+          columns: undefined,
+          description: undefined,
+          layout: undefined,
+          data: {},
+          encoding: facetPresentationEncoding(isPlainObject(view.encoding) ? view.encoding : {})
+        }
+      }, true);
+      grid.append(h('figure', {
+        className: 'chart-facet-panel',
+        'aria-label': label,
+        style: facet.field ? undefined : `--chart-facet-row: ${Number(row['facet-row-index']) + 1}; --chart-facet-column: ${Number(row['facet-column-index']) + 1}`
+      }, h('figcaption', { className: 'chart-facet-header' }, label), content));
+    });
+  }
+  const section = renderPageSection(pageId, title, [
+    ...(view.description ? [h('p', { className: 'view-description' }, view.description)] : []),
+    ...renderViewSectionChrome(metadata, contextDetails),
+    grid
+  ], headingTag);
+  section.classList.add('chart-view', 'chart-view-faceted');
+  return section;
+}
+
+/** @param {DataViewContext} context @param {boolean} [facetPanel] */
+function renderChartView(context, facetPanel = false) {
+  if (chartFacet(context.view)) return renderFacetedChartView(context);
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints, continuation } = context;
   if (view.layer !== undefined) {
     const definitions = resolveChartLayers(view);
@@ -1289,12 +1355,15 @@ function renderChartView(context) {
       return { chart: definition.chart, points, label, unit: y ? fieldUnit(y, context.units ?? {}) : null };
     });
     const temporal = definitions.some(hasTemporalLayerX);
-    const section = renderPageSection(pageId, title, [
-      ...renderViewSectionChrome(metadata, contextDetails),
+    const chartContent = [
       renderChartLegend(listChartSeries(layers.flatMap((layer) => layer.points)), 'layer'),
       metadata.availability === 'unavailable'
         ? h('div', { className: 'chart-widget layer-chart-widget', role: 'status' }, 'Data is unavailable for this view.')
         : renderLayeredChartWidget(layers, temporal, hasIndependentLayerY(view))
+    ];
+    if (facetPanel) return h('div', { className: 'chart-facet-content chart-view-layer' }, ...chartContent);
+    const section = renderPageSection(pageId, title, [
+      ...renderViewSectionChrome(metadata, contextDetails), ...chartContent
     ], headingTag, view.description);
     section.classList.add('chart-view', 'chart-view-layer');
     return section;
@@ -1338,14 +1407,14 @@ function renderChartView(context) {
         key: `${point.key}-${definition.field}`,
         color: fieldTitle(definition)
       })));
-      return prepareChartPoints(points, x, y, null, view.data);
+      return facetPanel ? points : prepareChartPoints(points, x, y, null, view.data);
     }
     const chartPoints = chartSection
       ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
       : weight
         ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
         : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null);
-    return chartSection
+    return facetPanel ? chartPoints : chartSection
       ? prepareChartPoints(chartPoints, x, value, series, view.data, chartSection)
       : prepareChartPoints(chartPoints, x, value, series, view.data);
   };
@@ -1409,16 +1478,15 @@ function renderChartView(context) {
         `Clustering ${formatCount(points.length)} scatter points…`
       )
     : null;
-  const section = renderPageSection(
+  const content = [
+    ...(description ? [description] : []),
+    ...(!facetPanel ? renderViewSectionChrome(metadata, contextDetails) : []),
+    ...(pending ? [/** @type {HTMLElement} */ (visualization)] : initial?.chartContent ?? [])
+  ];
+  const section = facetPanel ? h('div', { className: 'chart-facet-content' }, ...content) : renderPageSection(
     pageId,
     title,
-    [
-      ...(description ? [description] : []),
-      ...renderViewSectionChrome(metadata, contextDetails),
-      ...(pending
-        ? [/** @type {HTMLElement} */ (visualization)]
-        : initial?.chartContent ?? [])
-    ],
+    content,
     headingTag
   );
   if (pending) {
@@ -1475,7 +1543,7 @@ function renderChartView(context) {
       });
     }
   }
-  section.classList.add('chart-view', `chart-view-${chartType}`);
+  if (!facetPanel) section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
     const maximumRows = chartRowLimit(view);
     const initialRows = Number.isFinite(maximumRows)

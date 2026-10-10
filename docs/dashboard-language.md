@@ -143,6 +143,31 @@ Views turn query results into a small set of standard marks:
 - `callout` for a concise status or attention message
 - `element` for a named reusable UI element
 
+Charts support **facets** (small multiples) for comparing categorical subsets:
+
+```json
+{
+  "id": "workflow-costs",
+  "mark": "chart",
+  "chart": "bar",
+  "facet": { "field": "engine", "type": "nominal" },
+  "columns": 2,
+  "data": { "source": "usage", "limit": 100 },
+  "encoding": {
+    "x": { "field": "workflow", "type": "nominal" },
+    "y": { "field": "aic", "type": "quantitative", "aggregate": "sum" }
+  }
+}
+```
+
+Use `facet: { row: { field: "engine" }, column: { field: "repository" } }`
+for a matrix, or the equivalent `encoding.row` / `encoding.column` shortcuts.
+`columns` wraps single-field facets only. The worker handles aggregation and
+partitioning, with a maximum of 64 observed panels; mobile stacks the panels.
+Each panel has independent scales. See the
+[facet contract](dashboard-language-specification.md#faceted-charts-small-multiples)
+for ordering, missing data, and the supported Vega-Lite-inspired subset.
+
 ### Show a treemap
 
 Use `chart: treemap` for proportional rectangles, optionally nested by one

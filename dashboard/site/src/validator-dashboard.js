@@ -402,6 +402,7 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
     }
   }
   state.declaredQueries = queryTypes.queryFields;
+  state.declaredQueryFieldTypes = queryTypes.queryFieldTypes;
   state.declaredQueryTables = queryTypes.queryTables;
   for (const query of findDeadDashboardQueries(dashboard)) {
     errors.push(createError(
