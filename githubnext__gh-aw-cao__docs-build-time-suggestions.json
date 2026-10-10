@@ -3,6 +3,34 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-10T22:42:43Z",
+      "worker_run_id": 38092123805,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38091951866,
+        38091836517,
+        38091261783,
+        38091072402,
+        38089874373,
+        38089432489,
+        38088947921,
+        38088742738,
+        38088122356,
+        38087983666,
+        38087387872,
+        38087196981,
+        38086037664,
+        38085207542,
+        38085138827,
+        38085011090,
+        38084365987,
+        38084300131,
+        38083633306,
+        38083450904
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d08a0f2e6fb8ede95312a420f10222e60829350a. Within the latest 20 completed docs.yml runs from 2026-10-10T20:21:51Z through 2026-10-10T22:34:46Z, 10 runs concluded success and all 10 were schedule-triggered on the same source SHA; the other 10 completed runs were workflow_run invocations skipped before build. The bounded sample contains 0 comparable successful build-bearing docs runs: every successful schedule run executed only schedule-freshness, and build plus deploy were skipped, verified by trusted job metadata and a bounded log read of run 38091951866 showing the freshness-check path that ends with \"Documentation build skipped because the deployed docs and dashboard are current.\" Across all 10 successful docs runs, workflow queue median/p90 was 0s/0s, full execution median/p90 was 16s/19s, schedule-freshness job median/p90 was 12.5s/14.0s, and the Check documentation and dashboard freshness step median/p90 was 9.0s/10.0s. No bounded docs build sample existed in this window, so node_modules restore behavior, npm install cost, and dashboard artifact cache effectiveness could not be verified from trusted build metadata or logs for this cycle. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T17:42:49Z through 2026-10-10T22:32:52Z contained 20 skipped runs and 0 successful dashboard builds. Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-10T22:26:53Z",
       "worker_run_id": 38091227632,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -813,34 +841,6 @@
         38031498480
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 9b16d5261d438fe6e05bcd00b9ab844e84cd72fb. Within the latest 20 completed docs.yml runs from 2026-10-10T06:36:00Z through 2026-10-10T09:38:04Z, 10 runs concluded success and 10 were skipped workflow_run invocations. None of the successful runs executed the comparable schedule-freshness + build + deploy path; all 10 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 13.5s/16.2s, while successful schedule-freshness job median/p90 was 9.5s/11.3s and the Check documentation and dashboard freshness step median/p90 was 6.0s/8.2s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T04:57:41Z through 2026-10-10T09:23:34Z contained 0 successful dashboard builds (20 skipped: 13 workflow_run and 7 push). Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-10T08:34:35Z",
-      "worker_run_id": 38038054472,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38038123010,
-        38037976938,
-        38036484947,
-        38036153062,
-        38035646961,
-        38035613793,
-        38035500251,
-        38034583591,
-        38034424345,
-        38032962088,
-        38032839656,
-        38031624176,
-        38031498480,
-        38030598741,
-        38029901443,
-        38029640154,
-        38029568358,
-        38029553643,
-        38029201796,
-        38028957102
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 9b16d5261d438fe6e05bcd00b9ab844e84cd72fb. Within the latest 20 completed docs.yml runs from 2026-10-10T05:45:25Z through 2026-10-10T08:30:37Z, 7 runs concluded success and 13 were skipped workflow_run invocations. None of the successful docs runs executed the comparable schedule-freshness + build + deploy path for the category; all 7 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 12.0s/13.8s, while successful schedule-freshness job median/p90 was 8.0s/9.8s and the Check documentation and dashboard freshness step median/p90 was 5.0s/6.0s. There were 0 successful build jobs and 0 successful deploy jobs in this bounded docs sample, so build-time, cache-hit, and artifact-transfer costs could not be re-measured from trusted step metadata or logs without exceeding the permitted evidence window. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-10T05:21:28Z through 2026-10-10T08:28:05Z contained 0 successful dashboard builds (10 skipped workflow_run runs, 8 skipped push runs, and 2 cancelled push runs), leaving no current-window dashboard-generation sample either. Because the bounded sample contains 0 comparable successful build-bearing docs runs and 0 successful dashboard builds, below the required minimum of 5 comparable successful runs, no safe evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
