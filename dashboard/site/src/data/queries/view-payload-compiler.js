@@ -7,6 +7,8 @@ import { createDebug } from '../../debug.js';
 import { viewBackendAvailable } from '../../view-availability.js';
 import { resolveDashboardQuerySources } from './declarative.js';
 import { dashboardViewSourceNames as getViewSources, viewFilterControls, viewFilterSourceNames } from '../../view-filter-contract.js';
+import { chartFacet } from '../../chart-facet.js';
+import { compileChartFacetQuery } from './chart-facet-compiler.js';
 
 const debugViewPayloadCompiler = createDebug('view-payload-compiler');
 
@@ -138,7 +140,9 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
           typeof query.limit === 'number' ? query.limit : Infinity
         );
       }
-      queries.push(...compiled.dependencies, query);
+      queries.push(...compiled.dependencies, ...(isPlainObject(view) && view.mark === 'chart'
+        ? compileChartFacetQuery(view, query)
+        : [query]));
       if (compiled.replacesSource || querySource !== sourceName) replacedSources.add(sourceName);
     });
   });
@@ -228,6 +232,7 @@ export function resolveDashboardQueryParameters(definitions, values) {
  * @param {unknown} definitions
  */
 function usesNativeSource(view, sourceName, predicates, queryContext, definitions) {
+  if (isPlainObject(view) && chartFacet(view)) return false;
   const declared = Array.isArray(definitions)
     && definitions.some((definition) => isPlainObject(definition) && definition.name === sourceName);
   const data = isPlainObject(view) && isPlainObject(view.data) ? view.data : null;

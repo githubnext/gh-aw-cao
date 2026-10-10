@@ -6,6 +6,7 @@ import { cliActionTemplateFields } from './cli-action-template.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
 import { validateSource, sourceFieldNames, validateSourceSequence, validateSemanticFieldLiterals, validateContext, validateDatasetMetadata } from './validator-queries.js';
 import { validateEncoding } from './validator-encoding.js';
+import { validateChartFacet } from './validator-facet.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getMappingItems, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
@@ -81,6 +82,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   const errorCountBeforeView = errors.length;
+  validateChartFacet(view, viewNode, path, errors);
 
   if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
     errors.push(createError(
@@ -846,7 +848,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       `${path}.data.limit`
     ));
   }
-  validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors);
+  validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors, view.facet);
   validateViewFilterBar(view, viewNode, path, sourceName, errors);
   validateTableActions(
     view.encoding,

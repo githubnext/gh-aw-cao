@@ -1,4 +1,15 @@
 export const chartStyles = `.chart-widget { min-height: 230px; display: grid; place-items: center; margin: 12px 0; border: 0; background: transparent; }
+.chart-facet-grid { display: grid; gap: 16px; min-width: 0; }
+.chart-facet-wrap { grid-template-columns: repeat(var(--chart-facet-columns), minmax(0, 1fr)); }
+.chart-facet-matrix { grid-auto-columns: minmax(240px, 1fr); overflow-x: auto; }
+.chart-facet-panel { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
+.chart-facet-matrix .chart-facet-panel { grid-row: var(--chart-facet-row); grid-column: var(--chart-facet-column); }
+.chart-facet-header { margin-bottom: 8px; color: var(--fg); font-size: .8125rem; font-weight: 600; overflow-wrap: anywhere; }
+.chart-facet-content { min-width: 0; }
+@media (max-width: 600px) {
+  .chart-facet-grid { grid-template-columns: minmax(0, 1fr); grid-auto-columns: auto; overflow-x: visible; }
+  .chart-facet-matrix .chart-facet-panel { grid-row: auto; grid-column: auto; }
+}
 .chart-clustering-progress { min-height: 230px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 12px 0; color: var(--muted); font-size: .8125rem; }
 .chart-clustering-progress progress { width: min(240px, 70vw); }
 .chart-widget svg { width: min(100%, 420px); max-height: 220px; overflow: visible; }

@@ -35,6 +35,7 @@ const debugCompile = createDebug('query-type-checker');
  *   errors: ValidationError[],
  *   queryFields: Map<string, string[] | undefined>,
  *   queryTables: Map<string, Set<string>>
+ *   queryFieldTypes: Map<string, Map<string, FieldType> | undefined>,
  * }}
  */
 export function compileDashboardQueryTypes(definitions) {
@@ -155,6 +156,7 @@ export function compileDashboardQueryTypes(definitions) {
       name,
       new Set(compiled.get(name)?.tables ?? [])
     ])),
+    queryFieldTypes: new Map([...symbols.keys()].map((name) => [name, compiled.get(name)?.fields])),
     errors
   };
 }
@@ -320,7 +322,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
         requireField(
           value.field,
           `${valuePath}.field`,
-          typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer) ? 'aggregate-numeric' : 'scalar'
+          value.reducer === 'unique' ? 'read' : typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer) ? 'aggregate-numeric' : 'scalar'
         );
         if (isRecord(value.filter) && Array.isArray(value.filter.predicates)) {
           value.filter.predicates.forEach((predicate, predicateIndex) => {
@@ -405,6 +407,16 @@ function compileQuery(query, index, symbols, compiled, errors) {
     query['order-by'].forEach((clause, clauseIndex) => {
       if (isRecord(clause)) requireField(clause.field, `${path}.order-by[${clauseIndex}].field`, 'scalar');
     });
+  }
+  if (isRecord(query.facet)) {
+    for (const channel of ['field', 'row', 'column']) {
+      if (query.facet[channel] !== undefined) requireField(query.facet[channel], `${path}.facet.${channel}`, 'scalar');
+    }
+    fields = new Map([
+      ['facet-field', 'scalar'], ['facet-row', 'scalar'], ['facet-column', 'scalar'],
+      ['facet-row-index', 'numeric'], ['facet-column-index', 'numeric'],
+      [String(query.facet.as), 'unknown']
+    ]);
   }
 
   return { fields, tables, rowTables };
@@ -569,7 +581,7 @@ function inferComputeType(computed, fields, parameters = new Map()) {
   const functionName = computed.function;
   if (functionName === 'dashboard-link') return 'link';
   if (functionName === 'link') return 'link';
-  if (functionName === 'date-day') return 'temporal';
+  if (functionName === 'date-day' || functionName === 'date-bucket') return 'temporal';
   if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
   if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
   if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';

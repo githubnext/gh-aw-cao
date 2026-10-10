@@ -138,6 +138,9 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 		if size.rows > limits.MaxInputRows {
 			return nil, metrics, fmt.Errorf("query %q exceeds max input rows", step.Query)
 		}
+		if step.Operation == "facet-output" && size.rows > query.MaxChartFacets {
+			return nil, metrics, fmt.Errorf("query %q exceeds max chart facets", step.Query)
+		}
 		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, size.rows)
 		metrics.PeakWorkingBytes = max(metrics.PeakWorkingBytes, size.bytes)
 		if size.bytes > limits.MaxWorkingBytes {

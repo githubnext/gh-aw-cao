@@ -143,6 +143,7 @@ function executeDatabaseProjection(definition, inputs) {
     && !definition['temporal-series']
     && !definition.predict?.length
     && !definition.window?.length
+    && !definition.facet
     && !definition['order-by']?.length
     && definition.limit === undefined;
   if (!rowLocal || !input || input.rows.length <= batchSize) {
@@ -406,7 +407,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         || groupedFields.length !== computedFields.length
         || groupedFields.some((field) => !Object.hasOwn(computedLiterals, field))
         || definition['temporal-series']
-        || definition.predict?.length || definition.window?.length
+        || definition.predict?.length || definition.window?.length || definition.facet
         || definition.select?.length
         || definition['order-by']?.length
         || definition.limit !== undefined
@@ -688,7 +689,7 @@ function indexedRecordAggregatePlan(definition) {
   const sources = [definition.from, ...(definition.union ?? [])];
   if (sources.some((source) => !RUN_RECORD_STORES.has(source))
       || definition.compute?.length || definition['temporal-series']
-      || definition.predict?.length || definition.window?.length || definition.filter?.search) return null;
+      || definition.predict?.length || definition.window?.length || definition.facet || definition.filter?.search) return null;
   const values = definition.aggregate?.values;
   if (!Array.isArray(values) || values.length === 0) return null;
   if (!definition.aggregate?.by?.length && !definition.filter && !definition.union?.length
@@ -804,7 +805,7 @@ function indexedRunOperators(definition) {
       || definition.compute?.length
       || definition.aggregate
       || definition['temporal-series']
-      || definition.predict?.length || definition.window?.length
+      || definition.predict?.length || definition.window?.length || definition.facet
       || definition.select?.length
       || definition.filter?.search) return null;
   const predicates = definition.filter?.predicates;
@@ -847,7 +848,7 @@ function indexedRunAggregateOperators(definition) {
       || definition.joins?.length
       || definition.compute?.length
       || definition['temporal-series']
-      || definition.predict?.length || definition.window?.length
+      || definition.predict?.length || definition.window?.length || definition.facet
       || definition.select?.length
       || definition['order-by']?.length
       || definition.limit !== undefined

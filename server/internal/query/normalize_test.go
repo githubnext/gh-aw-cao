@@ -120,10 +120,28 @@ func TestNormalizeTemporalShape(t *testing.T) {
 				if plan.ResultShape.Fields[i].As != field {
 					t.Fatalf("field %d: got %+v, want %q", i, plan.ResultShape.Fields[i], field)
 				}
+
 			}
 			if plan.ResultShape.Mode != ClosedShape || len(plan.ResultShape.Fields) != len(fields) {
 				t.Fatalf("wrong temporal shape: %+v", plan.ResultShape)
 			}
 		})
+	}
+}
+
+func TestNormalizeFacetRetainsNestedInputShape(t *testing.T) {
+	limit := 2
+	definition := Definition{From: "runs", Limit: &limit, Facet: &Facet{Field: "engine", As: "rows"}}
+	plan := Normalize(definition)
+	if plan.FacetInputShape == nil || plan.FacetInputShape.Mode != PreserveInput ||
+		plan.ResultShape.Mode != ClosedShape || len(plan.ResultShape.Fields) != 6 ||
+		plan.Stages[len(plan.Stages)-1].Operator != "facet" {
+		t.Fatalf("facet shape and processing order: %+v", plan)
+	}
+	definition.Aggregate = &Aggregate{By: []string{"engine"}, Values: []AggregateValue{{Field: "duration", As: "total", Reducer: "sum"}}}
+	plan = Normalize(definition)
+	if plan.FacetInputShape.Mode != ClosedShape || len(plan.FacetInputShape.Fields) != 2 ||
+		!reflect.DeepEqual(plan.SourceFields, FieldSet{"duration", "engine"}) {
+		t.Fatalf("facet lost nested measures or source requirements: %+v", plan)
 	}
 }

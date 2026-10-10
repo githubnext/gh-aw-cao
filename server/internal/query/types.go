@@ -37,8 +37,18 @@ type Definition struct {
 	Select         []SelectedField     `json:"select,omitempty"`
 	OrderBy        []OrderField        `json:"order-by,omitempty"`
 	Limit          *int                `json:"limit,omitempty"`
+	Facet          *Facet              `json:"facet,omitempty"`
 	Stores         []string            `json:"stores,omitempty"`
 	StoresBySource map[string][]string `json:"stores-by-source,omitempty"`
+}
+
+const MaxChartFacets = 64
+
+type Facet struct {
+	Field  string `json:"field,omitempty"`
+	Row    string `json:"row,omitempty"`
+	Column string `json:"column,omitempty"`
+	As     string `json:"as"`
 }
 
 type Join struct {

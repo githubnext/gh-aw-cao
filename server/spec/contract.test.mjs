@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.3.0')
+  assert.equal(openapi.info.version, '2.4.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -111,6 +111,7 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
     ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],
     ['../internal/server/server.go', 'queryResponse', 'QueryResponse'],
     ['../internal/query/types.go', 'Definition', 'QueryDefinition'],
+    ['../internal/query/types.go', 'Facet', 'Facet'],
     ['../internal/query/types.go', 'WindowField', 'WindowField'],
     ['../internal/query/types.go', 'OrderField', 'OrderField'],
     ['../internal/model/model.go', 'Source', 'QuerySource'],

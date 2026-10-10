@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -97,6 +98,17 @@ func Validate(definitions []Definition) error {
 		if definition.Limit != nil && (*definition.Limit <= 0 || *definition.Limit > MaxOutputRows) {
 			return fmt.Errorf("query %q has invalid limit", definition.Name)
 		}
+		if definition.Facet != nil {
+			facet := definition.Facet
+			if strings.TrimSpace(facet.As) == "" || (facet.Field == "" && facet.Row == "" && facet.Column == "") ||
+				(facet.Field != "" && (facet.Row != "" || facet.Column != "")) {
+				return fmt.Errorf("query %q has invalid facet", definition.Name)
+			}
+			switch facet.As {
+			case "facet-field", "facet-row", "facet-column", "facet-row-index", "facet-column-index":
+				return fmt.Errorf("query %q has a reserved facet output name", definition.Name)
+			}
+		}
 		available[definition.Name] = true
 	}
 	names := make([]string, 0, len(definitions))
@@ -113,7 +125,7 @@ func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
 		"literal": {1, 1}, "coalesce": {1, 8}, "concat": {1, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
-		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1}, "link": {2, 2},
+		"date-day": {1, 1}, "date-bucket": {2, 2}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1}, "link": {2, 2},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
 		"format-percent": {1, 1}, "array-length": {1, 1}, "failure-streak-point": {3, 3},
 		"number": {1, 1}, "positive-integer": {2, 2}, "sum": {2, 8}, "difference": {2, 2},
@@ -126,7 +138,7 @@ func computeArity(function string) (int, int, bool) {
 func supportedReducer(reducer string) bool {
 	switch reducer {
 	case "count", "distinct-count", "distinct-list", "distinct-values", "calendar-week-rhythm",
-		"latest-failure-streak", "sum", "mean", "min", "max":
+		"latest-failure-streak", "sum", "mean", "min", "max", "unique":
 		return true
 	default:
 		return false

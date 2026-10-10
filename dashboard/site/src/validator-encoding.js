@@ -2,6 +2,7 @@ import { ADDITIVE_MEASURE_FIELDS, AGGREGATE_VALUES, DASHBOARD_LINK_FIELD_NAMES, 
 import { sourceFieldNames } from './validator-queries.js';
 import { validateStringField, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { createDebug } from './debug.js';
+import { chartFacet } from './chart-facet.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -17,8 +18,9 @@ const debugValidatorEncoding = createDebug('validator-encoding');
  * @param {unknown} data
  * @param {string} viewPath
  * @param {ValidationError[]} errors
+ * @param {unknown} [facet]
  */
-export function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors) {
+export function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors, facet) {
   const errorCountBeforeValidation = errors.length;
   const markValue = typeof mark === 'string' ? mark : null;
 
@@ -91,7 +93,7 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
     validateChartWidget(encoding, chart, viewPath, errors);
   }
 
-  validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors);
+  validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors, facet);
 
   debugValidatorEncoding({ operation: 'validate-encoding', mark: markValue, status: errors.length === errorCountBeforeValidation ? 'ok' : 'invalid' });
 }
@@ -790,8 +792,9 @@ function validateAggregateCompatibility(fieldName, aggregate, path, errors) {
  * @param {string | null} sourceName
  * @param {string} viewPath
  * @param {ValidationError[]} errors
+ * @param {unknown} facet
  */
-function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors) {
+function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors, facet) {
   if (!isPlainObject(data) || !Array.isArray(data['order-by']) || !sourceName) {
     return;
   }
@@ -810,6 +813,7 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
       encoding.color,
       encoding.section,
       ...(Array.isArray(encoding.columns) ? encoding.columns : []),
+      ...Object.values(chartFacet({ encoding, facet }) ?? {}),
     ];
     for (const definition of definitions) {
       if (

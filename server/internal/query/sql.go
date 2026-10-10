@@ -325,6 +325,13 @@ func (c *sqlCompiler) definition(definition Definition, relations map[string]SQL
 		relation.SQL += " ORDER BY " + relation.Order + " LIMIT " + c.bind(*definition.Limit)
 		relation = c.materialize(relation, definition.Name, "limit", 0)
 	}
+	if definition.Facet != nil {
+		var err error
+		relation, err = c.facet(relation, *definition.Facet, definition.Name)
+		if err != nil {
+			return SQLRelation{}, err
+		}
+	}
 	return relation, nil
 }
 
@@ -604,6 +611,18 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 			return SQLColumn{}, errors.New("date-day requires a typed timestamp")
 		}
 		out.Expression, out.Kind = "to_char("+args[0].Expression+" AT TIME ZONE 'UTC', 'YYYY-MM-DD')", SQLText
+	case "date-bucket":
+		unit, ok := computed.Args[1].Value.(string)
+		if !ok || (unit != "hour" && unit != "day" && unit != "week" && unit != "month") {
+			return SQLColumn{}, errors.New("date-bucket requires a supported literal UTC unit")
+		}
+		at := args[0].Expression
+		if args[0].Kind == SQLText {
+			at = "CASE WHEN pg_input_is_valid(" + at + ", 'timestamp with time zone') THEN (" + at + ")::timestamptz ELSE NULL::timestamptz END"
+		} else if args[0].Kind != SQLTimestamp {
+			return SQLColumn{}, errors.New("date-bucket requires text or a typed timestamp")
+		}
+		out.Expression, out.Kind = "to_char(date_trunc('"+unit+"', "+at+" AT TIME ZONE 'UTC'), 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')", SQLText
 	case "format-percent":
 		value := sqlNumeric(args[0])
 		out.Expression, out.Kind = "CASE WHEN "+value+" IS NULL THEN NULL::text ELSE trim_scale(round("+value+"*100,1))::text || '%' END", SQLText
@@ -782,7 +801,7 @@ func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name st
 	}
 	for index, value := range aggregate.Values {
 		column := sqlField(input, value.Field)
-		if column.Kind == SQLStructured {
+		if column.Kind == SQLStructured && value.Reducer != "unique" {
 			return SQLRelation{}, errors.New("structured aggregate measures are forbidden")
 		}
 		predicate, err := c.filter(input, value.Filter)
@@ -793,6 +812,11 @@ func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name st
 		var expression string
 		kind := SQLNumber
 		switch value.Reducer {
+		case "unique":
+			kind = column.Kind
+			first := "(array_agg(" + column.Expression + " ORDER BY " + input.Order + ") FILTER (WHERE " + predicate + " AND " + column.Expression + " IS NOT NULL))[1]"
+			expression = "CASE WHEN count(DISTINCT to_jsonb(" + column.Expression + ")) FILTER (WHERE " + predicate + ") = 1 THEN " +
+				first + " ELSE NULL END"
 		case "count":
 			expression = "count(*) FILTER (WHERE " + where + ")"
 		case "distinct-count":

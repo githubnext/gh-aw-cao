@@ -7,6 +7,8 @@ const debugValidatorState = createDebug('validator-state');
 export const state = {
   /** @type {Map<string, string[] | undefined>} */
   declaredQueries: new Map(),
+  /** @type {Map<string, Map<string, import('./query-type-checker.js').FieldType> | undefined>} */
+  declaredQueryFieldTypes: new Map(),
   /** @type {Map<string, Map<string, string>>} */
   declaredQueryParameters: new Map(),
   /** @type {Set<string>} */

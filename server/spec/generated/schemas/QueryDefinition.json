@@ -82,6 +82,9 @@
             "minimum": -2147483648,
             "maximum": 2147483647
         },
+        "facet": {
+            "$ref": "#/$defs/Facet"
+        },
         "stores": {
             "type": "array",
             "items": {
@@ -395,6 +398,27 @@
             "required": [
                 "field"
             ]
+        },
+        "Facet": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "string"
+                },
+                "column": {
+                    "type": "string"
+                },
+                "as": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "as"
+            ],
+            "description": "Terminal projection of processed rows into at most 64 chart panels. Declare field alone, or row and/or column; as names each panel's ordered row sequence."
         },
         "RecordArrayString": {
             "type": "object",

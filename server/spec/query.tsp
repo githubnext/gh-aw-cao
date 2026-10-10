@@ -50,6 +50,13 @@ model OrderField {
   field: string;
   direction?: string;
 }
+/** Terminal projection of processed rows into at most 64 chart panels. Declare field alone, or row and/or column; as names each panel's ordered row sequence. */
+model Facet {
+  field?: string;
+  row?: string;
+  column?: string;
+  as: string;
+}
 /** One observation-count rolling window or elapsed-time change operation, evaluated after aggregation and before temporal-series projection. */
 model WindowField {
   operation: string;
@@ -83,6 +90,7 @@ model QueryDefinition {
   select?: SelectedField[];
   @encodedName("application/json", "order-by") orderBy?: OrderField[];
   limit?: int32;
+  facet?: Facet;
   stores?: string[];
   @encodedName("application/json", "stores-by-source") storesBySource?: Record<string[]>;
 }

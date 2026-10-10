@@ -8,6 +8,7 @@ import { dashboardViewSourceNames } from './view-filter-contract.js';
 import { validateEnumeratedFilterValue, validateEnumeratedMetadataValue, validateLinkObject, rejectSensitiveStringsInObject, SEMANTIC_FILTER_VALUE_SETS, validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateNonEmptyStringSequence, isRfc3339Timestamp, validateObjectKeys, createError, isPlainObject, isAggregateFilterLiteral, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
+import { validFacetDefinition } from './data/queries/facet.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -660,7 +661,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           requireSchemaType(
             value.field,
             `${valuePath}.field`,
-            typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer)
+            value.reducer === 'unique' ? 'read' : typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer)
               ? 'numeric'
               : 'scalar'
           );
@@ -941,6 +942,14 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       `limit must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`,
       `${path}.limit`
     ));
+  }
+  if (query.facet !== undefined && !validFacetDefinition(query.facet)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'facet requires a field or row/column fields and an output as.', `${path}.facet`));
+  } else if (validFacetDefinition(query.facet)) {
+    for (const field of [query.facet.field, query.facet.row, query.facet.column]) {
+      if (field) requireField(field, `${path}.facet`);
+    }
+    return ['facet-field', 'facet-row', 'facet-column', 'facet-row-index', 'facet-column-index', query.facet.as];
   }
 
   return fields;
