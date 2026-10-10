@@ -8,7 +8,7 @@ import { octicon } from '../octicons.js';
 import { MAX_SEMANTIC_METADATA_CHARACTERS, semanticMetadataLength } from '../semantic-metadata.js';
 
 let nextEditorId = 0;
-const maximumGenerationAttempts = 3;
+const maximumGenerationAttempts = 10;
 
 /**
  * The editor owns interaction only. Documents and evidence are validated and

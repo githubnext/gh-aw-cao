@@ -109,7 +109,7 @@ browser IndexedDB. Successful previews stay subscribed to data changes and show 
 view without exposing a source editor. Invalid generated documents
 show diagnostics without replacing the previous preview. Generation automatically
 feeds worker validation errors and the rejected draft back to Copilot, with at
-most three attempts per click; only a validated document updates the preview.
+most ten attempts per click; only a validated document updates the preview.
 If all attempts fail, the editor reports the failure and retains the diagnostics.
 Each attempt uses AI credits. **Cancel** stops the generation/repair loop or
 generation or validation. **Save as custom view** persists the accepted document

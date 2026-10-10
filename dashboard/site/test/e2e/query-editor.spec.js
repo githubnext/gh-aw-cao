@@ -95,8 +95,8 @@ for (const width of [1280, 390]) {
       return route.fulfill({ json: { document: '[broken' } });
     });
     await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
-    await expect(page.locator('.query-editor > [role=status]')).toContainText('after 3 attempts');
-    expect(invalidAttempts).toBe(3);
+    await expect(page.locator('.query-editor > [role=status]')).toContainText('after 10 attempts');
+    expect(invalidAttempts).toBe(10);
     await expect(page.locator('.query-editor-errors')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save as custom view', exact: true })).toBeDisabled();
     await expect(preview.locator('svg').first()).toBeVisible();
@@ -137,7 +137,8 @@ test('saves a validated rendered view locally and restores it after reload', asy
   await expect(rendered.locator('svg').first()).toBeVisible();
 });
 
-test('generation repairs validator diagnostics automatically and renders only accepted output', async ({ page }) => {
+for (const acceptedAttempt of [2, 10]) {
+test(`generation repairs validator diagnostics and accepts valid output on attempt ${acceptedAttempt}`, async ({ page }) => {
   await openEditor(page);
   await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Compare run conclusions');
   await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Workflow runs');
@@ -148,21 +149,22 @@ test('generation repairs validator diagnostics automatically and renders only ac
   let attempts = 0;
   await page.route('**/__query_designer', (route) => {
     attempts += 1;
-    if (attempts === 2) {
+    if (attempts > 1) {
       expect(route.request().postDataJSON()).toMatchObject({
         intent: 'Compare run conclusions', document: invalidDocument,
         feedback: expect.stringContaining('at most 512 characters'),
       });
     }
-    return route.fulfill({ json: { document: attempts === 1 ? invalidDocument : JSON.stringify(previewDocument) } });
+    return route.fulfill({ json: { document: attempts < acceptedAttempt ? invalidDocument : JSON.stringify(previewDocument) } });
   });
   await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
   await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
-  expect(attempts).toBe(2);
+  expect(attempts).toBe(acceptedAttempt);
   await expect(page.locator('.query-editor-preview svg').first()).toBeVisible();
   await expect(page.locator('.query-editor-errors')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Save as custom view', exact: true })).toBeEnabled();
 });
+}
 
 test('cancelling a validator repair stops further attempts and preserves authoring text', async ({ page }) => {
   await openEditor(page);
