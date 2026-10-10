@@ -75,11 +75,11 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 6976a37: grep for '--bind'/'make-private' mount-propagation idiom across .ts/.js/.mjs/.cjs sources still returns zero relevant hits (only match is an unrelated python http.server network bind flag). No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. No drift since refiner-38013029314-2.",
-      "target_commit": "6976a375a288e2ac4ca5102fd54bb9adafcf2f5e",
+      "reason": "Re-confirmed on HEAD 1c39981: grep across all .ts/.js/.mjs/.cjs sources for '--bind' and 'make-private' still returns zero hits (sole '--bind' match is .github/workflows/ci.yml:1718, a python http.server network bind flag unrelated to Linux mount-namespace bind mounts). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38019164463-1.",
+      "target_commit": "1c39981bdaa3e8ebcda9c688cca9e05d2fa98066",
       "target_repo": "github/gh-aw",
       "true_positive_count": 0,
-      "txn_id": "refiner-38019164463-2"
+      "txn_id": "refiner-38073519493-2"
     },
     {
       "false_negative_count": 0,
@@ -152,7 +152,7 @@
     "txn_id": "librarian-38042902464-1",
     "reason": "The file's last_updated timestamp (2026-10-09T23:53:21Z) predated the most recent github/gh-aw-firewall evaluation, refiner-37977147256-1 (recorded 2026-10-09T19:06:40Z but never carried in), leaving the file's github/gh-aw-firewall record one evaluation stale (still pointing at refiner-37969204993-1, 2026-10-09T01:36:03Z) while github/gh-aw and githubnext/gh-aw-cao were current. Appended the missing additional_target_evaluations entry; readiness and counts (TP=1, FP=3, needs-work) are unchanged from the prior firewall entry, so overall status stays needs-work."
   },
-  "last_seen_at": "2026-10-09T23:53:21Z",
+  "last_seen_at": "2026-10-10T17:55:00Z",
   "last_updated": "2026-10-10T11:53:44Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38049700647",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
