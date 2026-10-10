@@ -14,6 +14,7 @@ on:
     paths:
       - .github/workflows/cid.yml
       - activity/cao.mjs
+      - activity/cli/**
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
