@@ -167,23 +167,6 @@ export function slugify(value, fallback = '') {
 }
 
 /**
- * Tallies rows into a `Map` keyed by a derived label, counting how many rows
- * produced each key. Shared by experiment summary and detail views that
- * group observations by state, readiness, or reason.
- * @param {Array<Record<string, any>>} rows
- * @param {(row: Record<string, any>) => string} key
- * @returns {Map<string, number>}
- */
-export function countBy(rows, key) {
-  const counts = new Map();
-  for (const row of rows) {
-    const value = key(row);
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-  return counts;
-}
-
-/**
  * Extracts a display-safe message from a caught value, preferring the
  * `Error#message` when the value is an `Error` and otherwise coercing it to
  * a string. Shared by view components and controls that surface a caught
