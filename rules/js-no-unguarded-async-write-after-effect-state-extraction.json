@@ -2,14 +2,14 @@
   "additional_languages": [],
   "additional_target_evaluations": [
     {
-      "true_positive_count": 7,
-      "false_positive_count": 0,
       "false_negative_count": 0,
+      "false_positive_count": 0,
       "readiness_for_target": "ready",
+      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js effect handlers.",
       "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
       "target_repo": "githubnext/gh-aw-cao",
-      "txn_id": "refiner-38065270021-2",
-      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js effect handlers."
+      "true_positive_count": 7,
+      "txn_id": "refiner-38065270021-2"
     },
     {
       "false_negative_count": 0,
@@ -60,6 +60,16 @@
       "target_repo": "github/gh-aw",
       "true_positive_count": 0,
       "txn_id": "refiner-38073519493-1"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 81fad53: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
+      "target_commit": "81fad537eb6bd6835a781e3818deab857f7be499",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38085319995-2"
     }
   ],
   "affected_paths": [
@@ -149,7 +159,7 @@
   ],
   "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
   "language": "javascript",
-  "last_seen_at": "2026-10-10T17:55:00Z",
+  "last_seen_at": "2026-10-10T20:52:23Z",
   "last_updated": "2026-10-10T15:55:15Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
