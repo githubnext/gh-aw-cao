@@ -58,10 +58,14 @@ const archiveResources = [
   ".github/workflows/shared/review-bundle.md",
 ];
 const { stdout: trackedArchiveFiles } = await executeFile("git", ["ls-files", "-z", "--", ...archiveResources], { cwd: catalog });
+const archiveMembers = trackedArchiveFiles.split("\0").filter(Boolean).map((member) => `${path.basename(catalog)}/${member}`);
+// Keep the tracked inventory out of Windows' bounded process command line.
+const archiveMembersName = "archive-members.txt";
+await writeFile(path.join(fixtureRoot, archiveMembersName), `${archiveMembers.join("\0")}\0`);
 await executeFile("tar", [
   "-czf", archiveName,
   "-C", path.dirname(catalog),
-  ...trackedArchiveFiles.split("\0").filter(Boolean).map((member) => `${path.basename(catalog)}/${member}`),
+  "--null", "-T", archiveMembersName,
 ], { cwd: fixtureRoot });
 await writeFile(mockFetch, `
 import { appendFileSync, readFileSync } from "node:fs";
@@ -86,6 +90,11 @@ globalThis.fetch = async (input) => {
 };
 `);
 test.after(() => rm(fixtureRoot, { recursive: true, force: true }));
+
+test("installer fixture archive contains every tracked runtime source and no generated files", async () => {
+  const { stdout } = await executeFile("tar", ["-tzf", archiveName], { cwd: fixtureRoot });
+  assert.deepEqual(stdout.trimEnd().split(/\r?\n/).sort(), [...archiveMembers].sort());
+});
 
 // FAKE_CONTROL_REPOSITORY is gh's answer for the consumer checkout; when it is
 // unset the lookup fails as it does outside a GitHub repository checkout.
