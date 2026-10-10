@@ -80,6 +80,16 @@
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 0,
       "txn_id": "refiner-38085319995-2"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "b161aea53caa3d8f8af271b8b6d3650b9c31b47b",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD b161aea (shallow clone, single commit visible): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. No drift since refiner-38073519493-1.",
+      "txn_id": "refiner-38092782506-1"
     }
   ],
   "affected_paths": [
@@ -169,7 +179,7 @@
   ],
   "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
   "language": "javascript",
-  "last_seen_at": "2026-10-10T22:00:00Z",
+  "last_seen_at": "2026-10-10T22:53:58Z",
   "last_updated": "2026-10-10T22:00:00Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38089620887",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
