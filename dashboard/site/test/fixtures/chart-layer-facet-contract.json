@@ -1,0 +1,55 @@
+{
+  "language-version": "0.1.0",
+  "dashboard": {
+    "id": "faceted-chart-layers",
+    "title": "Faceted chart layers",
+    "queries": [
+      {
+        "name": "layer-observations",
+        "subject": "Three most recent AI-credit observations partitioned by engine.",
+        "from": "usage",
+        "select": [
+          { "field": "engine" },
+          { "field": "observed-at" },
+          { "field": "aic" },
+          { "field": "estimated-usd" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }],
+        "limit": 3
+      }
+    ],
+    "pages": [
+      {
+        "id": "layers",
+        "kind": "custom",
+        "title": "Faceted layered observations",
+        "views": [
+          {
+            "id": "observations",
+            "title": "AI credits",
+            "mark": "chart",
+            "data": { "source": "layer-observations" },
+            "facet": { "field": "engine", "type": "nominal", "title": "Engine" },
+            "columns": 2,
+            "encoding": {
+              "x": { "field": "observed-at", "type": "temporal" },
+              "y": { "field": "aic", "type": "quantitative", "title": "AI credits" },
+              "href": { "field": "run-link" }
+            },
+            "layer": [
+              { "chart": "area" },
+              { "layer": [{ "chart": "line" }, { "chart": "dot" }] },
+              {
+                "chart": "rule",
+                "encoding": {
+                  "y": { "field": "estimated-usd", "type": "quantitative", "title": "Reference" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -8,7 +8,8 @@ import { formatAggregateValue, formatRelativeTime, formatString } from '../view-
 import { errorMessage, formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
-import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
+import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget, renderLayeredChartWidget } from './chart-elements.js';
+import { hasIndependentLayerY, hasTemporalLayerX, resolveChartLayers } from '../chart-layer-specification.js';
 import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
@@ -1333,6 +1334,40 @@ function renderFacetedChartView(context) {
 function renderChartView(context, facetPanel = false) {
   if (chartFacet(context.view)) return renderFacetedChartView(context);
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints, continuation } = context;
+  if (view.layer !== undefined) {
+    const definitions = resolveChartLayers(view);
+    const availableRows = metadata.availability === 'unavailable' || metadata.availability === 'empty' ? [] : rows;
+    const layers = definitions.map((definition) => {
+      const { encoding } = definition;
+      const x = isPlainObject(encoding.x) ? encoding.x : null;
+      const y = isPlainObject(encoding.y) ? encoding.y : null;
+      const color = isPlainObject(encoding.color) ? encoding.color : null;
+      const href = isPlainObject(encoding.href) ? encoding.href : null;
+      const label = y ? fieldTitle(y) : definition.chart;
+      const points = availableRows.map((row, index) => ({
+        key: `${pageId}-${view.id}-${definition.path}-${index}`,
+        x: definition.chart === 'rule' ? '' : x ? formatString(row[x.field], x.format) : '',
+        y: y && typeof row[y.field] === 'number' && Number.isFinite(row[y.field])
+          ? /** @type {number} */ (row[y.field]) : null,
+        color: color ? context.toText(row[color.field]) : label,
+        link: href ? findLink(row, href.field) : null
+      }));
+      return { chart: definition.chart, points, label, unit: y ? fieldUnit(y, context.units ?? {}) : null };
+    });
+    const temporal = definitions.some(hasTemporalLayerX);
+    const chartContent = [
+      renderChartLegend(listChartSeries(layers.flatMap((layer) => layer.points)), 'layer'),
+      metadata.availability === 'unavailable'
+        ? h('div', { className: 'chart-widget layer-chart-widget', role: 'status' }, 'Data is unavailable for this view.')
+        : renderLayeredChartWidget(layers, temporal, hasIndependentLayerY(view))
+    ];
+    if (facetPanel) return h('div', { className: 'chart-facet-content chart-view-layer' }, ...chartContent);
+    const section = renderPageSection(pageId, title, [
+      ...renderViewSectionChrome(metadata, contextDetails), ...chartContent
+    ], headingTag, view.description);
+    section.classList.add('chart-view', 'chart-view-layer');
+    return section;
+  }
   const encoding = isPlainObject(view.encoding) ? view.encoding : null;
   const x = isPlainObject(encoding?.x) && typeof encoding.x.field === 'string' ? encoding.x : null;
   const yDefinitions = (Array.isArray(encoding?.y) ? encoding.y : [encoding?.y])

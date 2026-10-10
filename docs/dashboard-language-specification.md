@@ -253,7 +253,9 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
-| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `facet`, `columns`, `treemap`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `facet`, `columns`, `treemap`, `layer`, `resolve`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
+| Chart layer | `chart`, `encoding`, `layer` |
+| Layer resolution | `scale` with `y: shared` or `y: independent` |
 | Treemap options | `method`, `ratio`, `padding` |
 | View `filter-bar` | `filters` |
 | View filter control | `id`, `label`, `groups` |
@@ -1093,6 +1095,43 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 
 A custom page contains a non-empty `views` sequence. Each view has one `data` mapping and one mark. Data marks use an `encoding`; named UI elements use `element`. Any view may declare `subject`, `objective`, and `acceptance` semantic metadata. These annotations compose with those of its named query dependencies; they are not rendered verbatim as visible or accessible content. Any view, including any chart type, may declare `prompt` as `auto` (the default), `none`, or `always`. `auto` enables the shared prompt button when all three effective semantic values are available; `none` hides it; `always` shows it even if semantic values are incomplete. In every mode, the button remains hidden while the view or its independently bound widgets are loading. The generated action defaults to `prompt-level: propose`, since its request can produce a pull request; a view may declare `prompt-level: explore` for read-only investigation. The shared preview uses the composed values without duplicating view metadata. The prompt level is validated against `explore`, `propose`, and `operate`.
 
+**Chart layering.** Inspired by [Vega-Lite's layer composition](https://vega.github.io/vega-lite/docs/layer.html), a `mark: chart` view may replace its single `chart` widget with `layer`. Each leaf selects `chart: area`, `bar`, `line`, `dot`, or `rule`. A group instead contains another `layer` array. Parent encodings are inherited by channel; a child's field definition replaces the entire inherited channel. All leaves share the view's one worker-produced `data.source`, one responsive SVG plot, and one merged color legend. Later leaves paint above earlier leaves.
+
+```json
+{
+  "id": "observed-credits",
+  "mark": "chart",
+  "data": { "source": "credit-observations" },
+  "encoding": {
+    "x": { "field": "observed-at", "type": "temporal" },
+    "y": { "field": "aic", "type": "quantitative", "title": "AI credits" }
+  },
+  "layer": [
+    { "chart": "area" },
+    { "layer": [{ "chart": "line" }, { "chart": "dot" }] },
+    {
+      "chart": "rule",
+      "encoding": {
+        "y": { "field": "reference-aic", "type": "quantitative", "title": "Reference" }
+      }
+    }
+  ]
+}
+```
+
+The example's `credit-observations` query must declare `observed-at`, `aic`, and `reference-aic`. Compute references, joins, filters, aggregates, time buckets, sorting, and limits in `dashboard.queries`, not in layers. A rule spans the horizontal plot at each distinct observed quantitative `y` value per color series and needs no `x`. Other leaves require one `x` and one quantitative `y`; supported channels are `x`, `y`, `color`, and `href`. Layers have at most eight leaves and four array nesting levels. Single-widget chart behavior is unchanged.
+
+Bar and rule layers accept at most 2,000 source observations per leaf; a larger payload produces an explicit limit message rather than silently truncating observations. Bound these sources with a query `limit`. Line, area, and dot layers retain the shared renderer's bounded mark sampling for dense plots. Invalid or absent numeric observations remain gaps rather than zeroes.
+
+Scale domains default to unions across all leaves, including stacked area totals, with shared axes and a merged legend. Temporal positions are proportional to timestamp; categorical positions share one category domain. Explicit `x` types must be nominal, ordinal, or temporal and retain the selected widget's type constraints; quantitative x scales are not supported. Shared `x` types and `y` units must be compatible. `resolve: { "scale": { "y": "independent" } }` uses a separate quantitative domain and value formatting for each leaf. The presenter replaces the common numeric y labels with an explicit per-layer scale key showing its lower, midpoint, and upper values; guides indicate the same fractional plot positions. This bounded implementation is not a general Vega-Lite interpreter: independent x/color scales, projections, per-layer data/transforms, and other chart widgets are rejected.
+
+A layered view may declare a top-level facet using the view or encoding syntax
+below. Facet channels are not inherited into leaves and remain forbidden inside
+layer specifications. The worker partitions the already-shaped query result
+without reordering, aggregating, or limiting it; each panel renders all leaves
+with its own scale domains. Layer bounds and scale resolution apply within each
+panel, and sorting and limits remain the responsibility of `dashboard.queries`.
+
 Any view may include the optional Boolean `locked` authoring hint. When `true`, an agent evolving the dashboard should preserve the view and modify it only to correct bugs. `locked` does not affect presentation, accessibility, data processing, or validation of the view's other fields.
 
 Any view may declare `requires` with a `backend` of `static` or `hosted`.
@@ -1494,6 +1533,7 @@ The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt
 - **DLS-VIEW-041:** An `element` view **MAY** declare `config.labels` for an element that presents counted summary boxes. Each entry **MUST** be keyed by a canonical kebab-case identifier and **MUST** be a plural text variable containing exactly the non-empty strings `singular` and `plural`. A presenter **MUST** present `singular` when the accompanying count has an absolute value of one and `plural` otherwise, **MUST** apply the same selection to the accessible name of that box, and **MUST** fall back to the element's declared default text for an undeclared label. Plural text selection **MUST** affect presentation only.
 - **DLS-VIEW-042:** `show-title`, when present, **MUST** be Boolean and defaults to `true`. When `false`, the presenter **MUST** omit the view title heading from the rendered view without hiding the view or removing its accessible name. This does not omit data-derived headings inside named UI elements or supplemental disclosure labels.
 - **DLS-VIEW-043:** `requires`, when present, **MUST** contain `backend` and **MAY** contain `message` and `on-unavailable`, with no other keys. `backend` **MUST** be `static` or `hosted`; `on-unavailable` **MUST** be `hide` or `message` and defaults to `message`. For `message` behavior, `message` **MUST** be a non-empty string; when present for `hide` behavior, it **MUST** also be non-empty. Runtime view eligibility **MUST** use the configured backend rather than page identifiers, source names, query results, or credential reach. An unmet prerequisite **MUST** render its explanatory message for `message` behavior, or **MUST** omit the view and any section left empty by its omission for `hide` behavior, and **MUST NOT** initiate query execution, alias materialization, pagination, or subscriptions for that view. Eligibility **MUST** be evaluated independently for views sharing a source. A met prerequisite **MUST NOT** suppress authorization errors or replace missing telemetry with zero.
+- **DLS-VIEW-048:** Only a `chart` view **MAY** declare `layer`, and it **MUST NOT** also declare `chart`. Layer composition **MUST** follow Section 11.1's bounded vocabulary, channel inheritance, shared-source boundary, scale resolution, and paint order. A layer **MUST NOT** declare data transformations, a separate source, nested graphical views, or unsupported resolution. All layer values **MUST** come from the view's active abort-scoped worker query subscription; unavailable and empty payloads **MUST NOT** produce synthetic observations. The single-widget temporal-bucket requirement in **DLS-VIEW-005** does not apply to layers over already-shaped query results.
 
 ---
 
@@ -1588,6 +1628,7 @@ In the table, “accept” means validation succeeds; “reject” means validat
 | DLS-VIEW-016–021 | T-VIEW-003 | 3 | Validate disclosure vocabulary, one-to-four essential views, initial collapsed state, accessible controls, source order, and unchanged semantic output. |
 | DLS-VIEW-022–024, DLS-VIEW-026–037 | T-VIEW-004 | 3 | Validate named element dispatch, explicit field display treatments, complete ordered custom-page section layouts, route allocation, title links, rejection of chart data tables, tree-table hierarchy, swimlane accessibility, bounded scatter clustering progress, and inert element subject and view-lock hints. |
 | DLS-VIEW-043 | T-VIEW-005 | 3 | Validate backend prerequisites, explanatory unavailable states, exclusion of unmet-view queries and subscriptions, independent eligibility for shared sources, and unchanged hosted authorization failures. |
+| DLS-VIEW-048 | T-VIEW-006 | 3 | Validate layer inheritance and bounds, compatible shared domains, independent y scales, ordered marks, safe SVG links, worker-produced payloads, responsive rendering, and subscription disposal. |
 | DLS-VAL-001–005 | T-VAL-001 | 1–3 | Verify rejection, coded path-specific errors, semantic checks, progressive-disclosure bounds, and secret redaction. |
 | DLS-SAFE-001–006, DLS-SAFE-012, DLS-SAFE-015 | T-SAFE-001 | 3 | Exercise safe YAML, inert content, outcome-HTML allowlisting, prompt-context serialization, HTTPS links, secrets, and authorization boundaries. |
 | DLS-SAFE-007–010 | T-SAFE-002 | 3 | Inspect names, textual alternatives, labels, and non-color semantics. |

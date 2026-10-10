@@ -11,6 +11,16 @@ import { chartFacet } from '../../chart-facet.js';
 export function compileChartFacetQuery(view, query) {
   const facet = chartFacet(view);
   if (!facet) return [query];
+  const inputName = `${query.name}:facet-input`;
+  const partitioned = {
+    name: query.name,
+    from: view.layer !== undefined ? inputName : `${query.name}:facet-rows`,
+    facet: {
+      ...Object.fromEntries(Object.entries(facet).map(([channel, definition]) => [channel, definition.field])),
+      as: 'facet-rows'
+    }
+  };
+  if (view.layer !== undefined) return [{ ...query, name: inputName }, partitioned];
   const encoding = mapping(view.encoding) ? view.encoding : {};
   const definitions = Object.entries(encoding).flatMap(([channel, value]) => {
     if (['facet', 'row', 'column', 'actions'].includes(channel)) return [];
@@ -18,7 +28,6 @@ export function compileChartFacetQuery(view, query) {
   });
   const facetFields = Object.values(facet).map((definition) => String(definition.field));
   const aggregates = definitions.filter((definition) => typeof definition.aggregate === 'string' && definition.aggregate !== 'none');
-  const inputName = `${query.name}:facet-input`;
   /** @type {Record<string, unknown>} */
   const prepared = { name: `${query.name}:facet-rows`, from: inputName };
   if (mapping(encoding.x) && typeof encoding.x['time-unit'] === 'string') {
@@ -63,14 +72,7 @@ export function compileChartFacetQuery(view, query) {
   return [
     { ...query, name: inputName },
     prepared,
-    {
-      name: query.name,
-      from: prepared.name,
-      facet: {
-        ...Object.fromEntries(Object.entries(facet).map(([channel, definition]) => [channel, definition.field])),
-        as: 'facet-rows'
-      }
-    }
+    partitioned
   ];
 }
 
