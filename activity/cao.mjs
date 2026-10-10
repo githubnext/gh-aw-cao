@@ -1720,14 +1720,7 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     const identityHasher = createCachedJsonlPayloadHasher();
     for await (const chunk of createReadStream(shardPath)) identityHasher.update(chunk);
     const payloadIdentity = identityHasher.digest();
-    const current = await isCachedGhAwJsonlCurrent(indexedDB, {
-      payloadIdentity,
-      payloadScope: scope,
-      context: options.context,
-      workflowHints: options.workflowHints,
-      retentionWindowMs: options.retentionWindowMs,
-      retentionWindowMsByStore: options.retentionWindowMsByStore
-    });
+    const current = await isCachedGhAwJsonlCurrent(indexedDB, { ...options, payloadIdentity, payloadScope: scope });
     if (current) {
       debug('skipping shard %s: content hash already recorded in transactions table', name);
       shards.push({ shard: name, skipped: true, committedRecords: 0 });
