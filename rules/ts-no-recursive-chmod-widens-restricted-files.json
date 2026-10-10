@@ -85,9 +85,19 @@
     "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
     "txn_id": "refiner-37977147256-3"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/37977147256",
-  "last_updated_target_repo": "github/gh-aw-firewall",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38036133421",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "additional_target_evaluations": [
+    {
+      "true_positive_count": 0,
+      "false_positive_count": 1,
+      "false_negative_count": 1,
+      "readiness_for_target": "needs-work",
+      "target_commit": "9b16d5261d438fe6e05bcd00b9ab844e84cd72fb",
+      "target_repo": "githubnext/gh-aw-cao",
+      "txn_id": "refiner-38036133421-2",
+      "reason": "Re-confirmed unchanged on HEAD 9b16d52: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit; no new true positives."
+    },
     {
       "target_repo": "github/gh-aw",
       "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
@@ -179,6 +189,6 @@
       "txn_id": "refiner-37467185149-1"
     }
   ],
-  "last_seen_at": "2026-10-09T19:06:40Z",
+  "last_seen_at": "2026-10-10T08:01:29Z",
   "last_updated": "2026-10-09T19:06:40Z"
 }
