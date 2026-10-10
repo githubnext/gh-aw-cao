@@ -16,7 +16,7 @@ test.beforeAll(async () => {
   const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
   await cp(siteRoot, join(workspace, 'site'), {
     recursive: true,
-    filter: (path) => !['node_modules', 'dist', 'test', 'test-results', 'scripts'].includes(path.slice(siteRoot.length + 1).split('/')[0])
+    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(path.slice(siteRoot.length + 1).split('/')[0])
   });
   server = await startDashboardServer({
     workingDirectory: workspace,

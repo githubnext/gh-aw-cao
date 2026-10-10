@@ -38,30 +38,30 @@ const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-")
 const archive = path.join(fixtureRoot, "gh-aw-cao.tar.gz");
 const archiveName = path.basename(archive);
 const mockFetch = path.join(fixtureRoot, "mock-fetch.mjs");
+const archiveResources = [
+  "activity",
+  "dashboard",
+  "cao.sh",
+  "skills",
+  "plugin.json",
+  "com.github.copilot/extensions/cao-dashboard",
+  "specs/dashboard-data.md",
+  "docs/dashboard-language-specification.md",
+  ".github/skills/generate-dashboard-ir",
+  ".github/skills/dashboard-authoring/SKILL.md",
+  ".github/skills/author-dashboard-intent/SKILL.md",
+  ".github/actions/setup-cao-runtime",
+  ".github/actions/setup-gh-aw",
+  ".github/cao/instructions.md",
+  ".github/workflows/shared/activity-cache.md",
+  ".github/workflows/shared/control.md",
+  ".github/workflows/shared/review-bundle.md",
+];
+const { stdout: trackedArchiveFiles } = await executeFile("git", ["ls-files", "-z", "--", ...archiveResources], { cwd: catalog });
 await executeFile("tar", [
   "-czf", archiveName,
-  "--exclude=node_modules", "--exclude=dist", "--exclude=test-results",
   "-C", path.dirname(catalog),
-  ...[
-    "activity",
-    "dashboard",
-    "cao.sh",
-    "skills",
-    "plugin.json",
-    "com.github.copilot/extensions/cao-dashboard",
-    "specs/dashboard-data.md",
-    "docs/dashboard-language-specification.md",
-    ".github/skills/generate-dashboard-ir",
-    ".github/skills/dashboard-authoring/SKILL.md",
-    ".github/skills/author-dashboard-intent/SKILL.md",
-    ".github/actions/setup-cao-runtime",
-    ".github/actions/setup-gh-aw",
-    ".github/cao/instructions.md",
-    ".github/workflows/shared/activity-cache.md",
-    ".github/workflows/shared/control.md",
-    ".github/workflows/shared/review-bundle.md",
-  ]
-    .map((member) => `${path.basename(catalog)}/${member}`),
+  ...trackedArchiveFiles.split("\0").filter(Boolean).map((member) => `${path.basename(catalog)}/${member}`),
 ], { cwd: fixtureRoot });
 await writeFile(mockFetch, `
 import { appendFileSync, readFileSync } from "node:fs";
