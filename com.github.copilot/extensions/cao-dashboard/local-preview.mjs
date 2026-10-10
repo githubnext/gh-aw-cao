@@ -7,6 +7,7 @@ import { resolveBundledResource } from "./bundled-resources.mjs";
  * @param {{
  *   workingDirectory: string,
  *   repository?: string,
+ *   dataBackend?: 'sqlite' | 'indexeddb',
  *   ghExecutable?: string,
  *   generateQuery?: typeof import('./query-designer.mjs').generateDashboardQuery,
  *   enhanceQueryIntent?: typeof import('./query-designer.mjs').enhanceQueryEditorIntent,
@@ -20,6 +21,7 @@ import { resolveBundledResource } from "./bundled-resources.mjs";
 export async function startLocalDashboardPreview({
   workingDirectory,
   repository,
+  dataBackend = "sqlite",
   executeCliAction,
   approveCliAction,
   ghExecutable = "gh",
@@ -50,7 +52,7 @@ export async function startLocalDashboardPreview({
       const sourceSite = siteRoot;
       await cp(sourceSite, stagedSite, {
         recursive: true,
-        filter: (source) => !["node_modules", "dist", "test", "test-results", "scripts"]
+        filter: (source) => !["node_modules", "dist", "test", "test-results", "scripts", ".tmp"]
           .includes(relative(sourceSite, source).split(sep)[0]),
       });
       siteRoot = stagedSite;
@@ -64,6 +66,7 @@ export async function startLocalDashboardPreview({
       canvas: true,
       generateQuery,
       enhanceQueryIntent,
+      dataBackend,
       executeCliAction,
       approveCliAction,
       host: "127.0.0.1",

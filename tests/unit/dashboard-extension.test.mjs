@@ -19,6 +19,7 @@ test("dashboard extension registers executable tools and an SDK canvas", async (
   assert.ok(canvas instanceof Canvas);
   assert.equal(canvas.declaration.id, "cao-dashboard");
   assert.equal(canvas.declaration.inputSchema.additionalProperties, false);
+  assert.deepEqual(canvas.declaration.inputSchema.properties.dataBackend.enum, ["sqlite", "indexeddb"]);
   assert.deepEqual(config.requestedEnvironmentVariables, ["GH_TOKEN", "GITHUB_TOKEN"]);
 
   const queryTool = config.tools.find(({ name }) => name === "cao_dashboard_execute_query");
@@ -71,12 +72,14 @@ test("dashboard canvas uses hook context and retains each preview's working dire
   const canvas = config.canvases[0];
   const guidance = await config.hooks.onSessionStart({ workingDirectory: "/first" });
   assert.match(guidance.additionalContext, /cao_dashboard_execute_query/);
-  await canvas.open({ ...context("first"), input: { repository: "acme/control" } });
+  await canvas.open({ ...context("first"), input: { repository: "acme/control", dataBackend: "indexeddb" } });
   await config.hooks.onUserPromptSubmitted({ workingDirectory: "/second" });
   await canvas.open(context("second"));
   await canvas.open(context("third", "/third"));
   assert.deepEqual(previews.map(({ workingDirectory }) => workingDirectory), ["/first", "/second", "/third"]);
   assert.equal(previews[0].repository, "acme/control");
+  assert.equal(previews[0].dataBackend, "indexeddb");
+  assert.equal(previews[1].dataBackend, undefined);
   assert.equal(await previews[0].approveCliAction({ command: "gh aw compile" }), true);
   await previews[0].executeCliAction({ command: "gh aw compile" });
   assert.equal(commands[0].workingDirectory, "/first");

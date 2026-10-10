@@ -6,6 +6,8 @@ import previewDocument from '../fixtures/query-editor.json' with { type: 'json' 
 import sources from '../fixtures/query-editor-sources.json' with { type: 'json' };
 import { normalizedRunShard } from './normalized-shard.js';
 
+for (const dataBackend of ['indexeddb', 'sqlite']) {
+test.describe(`${dataBackend} canvas query editor`, () => {
 /** @type {{ url: string, close: () => Promise<void> }} */
 let server;
 let workspace = '';
@@ -21,7 +23,7 @@ test.beforeAll(async () => {
   server = await startDashboardServer({
     workingDirectory: workspace,
     siteRoot: join(workspace, 'site'),
-    catalogRoot: null, port: 0, canvas: true,
+    catalogRoot: null, port: 0, canvas: true, dataBackend,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => ({}), approveCliAction: async () => false,
     generateQuery: async () => ({ document: JSON.stringify(previewDocument, null, 2) }),
@@ -44,8 +46,17 @@ test.afterAll(async () => {
 
 /** @param {import('@playwright/test').Page} page */
 async function openEditor(page) {
+  if (dataBackend === 'sqlite') {
+    await page.addInitScript(() => {
+      IDBFactory.prototype.open = () => { throw new Error('SQLite canvas must not open browser IndexedDB.'); };
+    });
+  }
   await page.goto(`${server.url}/?local-preview=canvas#page-query-editor`);
-  await expect(page.locator('.dashboard-current-status .tooltip-trigger')).toHaveAttribute('aria-label', 'Dashboard data is current');
+  if (dataBackend === 'indexeddb') {
+    await expect(page.locator('.dashboard-current-status .tooltip-trigger')).toHaveAttribute('aria-label', 'Dashboard data is current');
+  } else {
+    await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
+  }
   await expect(page.getByRole('textbox', { name: 'Intent', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
 }
@@ -114,6 +125,7 @@ test('saves a validated rendered view locally and restores it after reload', asy
 });
 
 test('preview subscriptions refresh from canonical ingestion and worker output stays bounded', async ({ page, context }) => {
+  test.skip(dataBackend !== 'indexeddb', 'Browser canonical ingestion is exclusive to the IndexedDB backend.');
   await openEditor(page);
   await page.getByText('Dashboard Language source (advanced)', { exact: true }).click();
   await page.getByRole('textbox', { name: 'Dashboard Language document', exact: true }).fill(JSON.stringify(previewDocument));
@@ -188,3 +200,5 @@ test('intent improvement preserves edits during an in-flight request and cancels
   await page.evaluate((id) => { location.hash = `#page-${id}`; }, other.id);
   await expect(page.locator('.query-editor')).toHaveCount(0);
 });
+});
+}

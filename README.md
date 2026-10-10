@@ -76,6 +76,23 @@ local server's path restrictions. Workspace campaign documents remain JSON
 data. Closing the canvas or stopping/reloading the extension removes its
 temporary preview files and prevents new previews from starting.
 
+Canvas previews ingest the downloaded inventory and Activity shards into a
+temporary server-side SQLite projection in an isolated data worker. The page
+uses the remote HTTP query backend, not browser IndexedDB; declarative queries,
+pagination, diagnostics, and revision subscriptions stay behind the preview's
+capability URL. Ordinary non-canvas local previews default to the static browser
+backend. Select either backend explicitly with
+`npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY` or
+`--data-backend indexeddb`. The canvas open input also accepts
+`dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
+startup rather than silently falling back to IndexedDB.
+
+`--data-backend postgres` selects the existing Go/PostgreSQL server, with
+PostgreSQL operational storage by default; `--operational-store` may select
+Redis or memory instead. This mode requires the reviewed host policy, built
+site, database, and OAuth/HTTPS configuration described in
+[the server guide](server/README.md), and does not support canvas preview mode.
+
 Every native CLI action requires a fresh trusted host confirmation of its exact
 command, working directory, and standard input, independently of the dashboard's
 preview dialog. Hosts without interactive elicitation cannot execute canvas

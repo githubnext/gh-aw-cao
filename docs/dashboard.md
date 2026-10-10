@@ -96,8 +96,10 @@ authoring text while the request is pending, the editor does not overwrite
 your changes. These sessions have no tools or automatically discovered skills;
 the trusted authoring skills are supplied as prompt context.
 
-The data worker validates the draft and executes it against the loaded canonical
-data. Successful previews stay subscribed to data changes and show the rendered
+The browser data worker validates the draft. The default canvas backend executes
+it against canonical data in a server-side SQLite worker; selecting `indexeddb`
+executes it in the browser data worker instead. SQLite previews do not open
+browser IndexedDB. Successful previews stay subscribed to data changes and show the rendered
 view first. Open **Dashboard Language source (advanced)** to edit JSON or YAML
 and select **Validate and render**; invalid documents
 show diagnostics without replacing the previous preview. **Cancel** stops

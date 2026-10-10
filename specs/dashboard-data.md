@@ -40,6 +40,10 @@ view-payload compiler and retain an abort-scoped subscription. Canonical databas
 changes SHALL refresh their payloads; replacing the document or leaving the page
 SHALL cancel old subscriptions and requests. No main-thread query fallback or
 test-only logical-source synthesis is permitted.
+The default local canvas backend SHALL execute queries in the server-side SQLite
+worker without opening browser IndexedDB. An explicitly selected `indexeddb`
+backend SHALL execute them in the browser data worker. Document validation SHALL
+remain in the browser data worker for both backends.
 
 Authoring intent and drafts are local interaction state, not canonical entities.
 The editor SHALL NOT add IndexedDB stores, alter retention or relationships, or

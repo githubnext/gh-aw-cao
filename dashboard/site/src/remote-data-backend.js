@@ -74,7 +74,11 @@ export function fetchServerLogs(signal) {
 
 /** @param {string} path */
 function apiUrl(path) {
-  return new URL(path, globalThis.location?.origin ?? "https://localhost").href;
+  const origin = globalThis.location?.origin ?? "https://localhost";
+  const base = globalThis.document?.querySelector?.('meta[name="dashboard-api-base"]')?.getAttribute("content");
+  return base
+    ? new URL(path.replace(/^\//, ""), new URL(base, origin)).href
+    : new URL(path, origin).href;
 }
 
 function accessToken() {
@@ -101,7 +105,7 @@ async function apiRequest(path, init = {}, signal) {
   if (oauth && !["GET", "HEAD", "OPTIONS"].includes(method)) await ensureCsrfToken(signal);
   const headers = {
     Accept: "application/json",
-    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(!["GET", "HEAD"].includes(method) ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...init.headers,
   };
