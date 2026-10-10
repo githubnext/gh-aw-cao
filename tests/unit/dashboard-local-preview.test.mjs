@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { chmod, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -31,7 +31,11 @@ if (args[0] === "api") {
   const destination = args[args.indexOf("--dir") + 1];
   mkdirSync(destination, { recursive: true });
   writeFileSync(join(destination, "sources.json"), JSON.stringify({
-    repositories: { rows: [{ repository: "acme/control" }] }
+    repositories: {
+      metadata: { "as-of": "2026-10-10T00:00:00Z" },
+      rows: [{ organization: "acme", repository: "control" }]
+    },
+    "configuration-policy": { rows: [{ "default-mode": "review" }] }
   }));
 } else {
   process.exit(3);
@@ -64,22 +68,84 @@ test("plugin canvas stages its site inside a foreign workspace and cleans up", {
     const response = await fetch(preview.url);
     assert.equal(response.status, 200);
     assert.equal(new URL(response.url).searchParams.get("local-preview"), "canvas");
-    assert.match(await response.text(), /src\/main\.js/);
+    const html = await response.text();
+    assert.match(html, /src\/main\.js/);
+    assert.match(html, /name="dashboard-data-backend" content="server-http"/);
+    assert.match(html, /name="dashboard-api-base"/);
     const base = new URL(`${preview.url}/`);
     assert.equal((await fetch(new URL("src/main.js", base))).status, 200);
     const document = await (await fetch(new URL("dashboard.json", base))).json();
     assert.equal(document.dashboard.repository, "acme/control");
     assert.ok(document.dashboard.pages.length > 0);
     assert.deepEqual(await (await fetch(new URL("sources/repositories.json", base))).json(), {
-      rows: [{ repository: "acme/control" }],
+      metadata: { "as-of": "2026-10-10T00:00:00Z" },
+      rows: [{ organization: "acme", repository: "control" }],
     });
+    const post = (pathname, payload) => fetch(new URL(pathname, base), {
+      method: "POST",
+      headers: { Origin: base.origin, "Content-Type": "application/json" },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+    const refresh = await post("api/v1/refresh");
+    assert.equal(refresh.status, 200);
+    const status = await refresh.json();
+    const query = await post("api/v1/query", {
+      sourceNames: ["repository-count"],
+      queries: [{
+        name: "repository-count", from: "repositories",
+        aggregate: { values: [{ field: "repository", as: "count", reducer: "count" }] },
+      }],
+    });
+    assert.equal(query.status, 200);
+    const result = await query.json();
+    assert.equal(result.revision, status.revision);
+    assert.deepEqual(result.sources["repository-count"].rows, [{ count: 1 }]);
+    const diagnostics = await (await fetch(new URL("api/v1/diagnostics", base))).json();
+    assert.equal(diagnostics.counts.repositories, 1);
+    assert.deepEqual(diagnostics.relationshipErrors, []);
+    assert.deepEqual(diagnostics.duplicateRecordIds.repositories, []);
+    const policy = await (await post("api/v1/query", { sourceNames: ["configuration-policy"] })).json();
+    assert.deepEqual(policy.sources["configuration-policy"].rows, [{ "default-mode": "review" }]);
+    assert.equal((await post("api/v1/query", { sourceNames: "repositories" })).status, 400);
+    assert.equal((await fetch(new URL("api/v1/query", base), {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: "https://untrusted.example" },
+      body: JSON.stringify({ sourceNames: ["repositories"] }),
+    })).status, 403);
+    assert.equal((await fetch(new URL("/api/v1/diagnostics", base))).status, 404);
+    const events = await fetch(new URL("api/v1/events", base));
+    assert.equal(events.headers.get("Content-Type"), "text/event-stream");
+    const reader = events.body.getReader();
+    assert.match(new TextDecoder().decode((await reader.read()).value), /"revision":1/);
+    await reader.cancel();
     assert.equal((await previewDirectories(workspace)).length, 2);
+    for (const directory of await previewDirectories(workspace)) {
+      await assert.rejects(readdir(join(workspace, directory, "site", ".tmp")), { code: "ENOENT" });
+    }
     await preview.close();
     await preview.close();
     assert.deepEqual(await previewDirectories(workspace), []);
     await assert.rejects(fetch(preview.url));
   } finally {
     await preview?.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("canvas fails closed when downloaded data cannot be normalized", {
+  skip: process.platform === "win32",
+}, async () => {
+  const { workspace, ghExecutable } = await fixture();
+  try {
+    const source = await readFile(ghExecutable, "utf8");
+    await writeFile(ghExecutable, source.replace('"as-of": "2026-10-10T00:00:00Z"', '"as-of": ""'));
+    await assert.rejects(startLocalDashboardPreview({
+      workingDirectory: workspace,
+      executeCliAction: async () => {},
+      approveCliAction: async () => false,
+      ghExecutable,
+    }), /observed-at is required/);
+    assert.deepEqual(await previewDirectories(workspace), []);
+  } finally {
     await rm(workspace, { recursive: true, force: true });
   }
 });

@@ -36,6 +36,7 @@ import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
+import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -605,6 +606,7 @@ function readWebsocketFrames(buffer) {
  *   ghExecutable?: string,
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void>,
  *   canvas?: boolean,
+ *   dataBackend?: 'sqlite' | 'indexeddb',
  *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   traceFile?: string,
@@ -623,6 +625,7 @@ export async function startDashboardServer({
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
   canvas = false,
+  dataBackend = canvas ? "sqlite" : "indexeddb",
   executeCliAction,
   approveCliAction,
   allowMissingOrigin = false,
@@ -634,6 +637,9 @@ export async function startDashboardServer({
   host = "127.0.0.1",
   port = 4173,
 } = {}) {
+  if (!["sqlite", "indexeddb"].includes(dataBackend)) {
+    throw new Error("Dashboard data backend must be sqlite or indexeddb.");
+  }
   if (canvas && typeof executeCliAction !== "function") {
     throw new Error("Canvas mode requires a CLI action executor.");
   }
@@ -671,6 +677,7 @@ export async function startDashboardServer({
   let inventorySourcesContent;
   let repositoryMemoryDirectory;
   const splitSourceContent = new Map();
+  let sqliteBackend;
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
@@ -831,9 +838,21 @@ export async function startDashboardServer({
 
   try {
     const initialCampaignPaths = await rebuild(false);
+    if (dataBackend === "sqlite") {
+      sqliteBackend = await startLocalSqliteBackend({
+        databasePath: join(temporaryDirectory, "dashboard.sqlite"),
+        sourcesContent: inventorySourcesContent ?? sourcesContent,
+        shards: [...dashboardDataShards].map(([name, path]) => ({
+          path,
+          hash: JSON.parse(payloadHashesContent)[name.slice(1)],
+          phase: name.startsWith("/gh-aw-logs-runs/") ? "runs" : "records",
+        })),
+      });
+    }
     await refreshWatchers(initialCampaignPaths);
   } catch (error) {
     for (const watcher of watchers.values()) watcher.close();
+    await sqliteBackend?.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -885,6 +904,59 @@ export async function startDashboardServer({
           && !url.searchParams.has("local-preview")) {
         url.searchParams.set("local-preview", canvas ? "canvas" : "enabled");
         response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
+        return;
+      }
+      if (sqliteBackend && pathname.startsWith("/api/")) {
+        const memoryMatch = pathname.match(/^\/api\/v1\/memory\/([a-z0-9][a-z0-9._-]{0,99})(\/content)?$/);
+        const operation = {
+          "/api/v1/query": "query",
+          "/api/v1/refresh": "refresh",
+          "/api/v1/diagnostics": "diagnostics",
+          "/api/v1/events": "events",
+        }[pathname] ?? (memoryMatch ? "memory" : undefined);
+        if (!operation) {
+          sendJson(response, 404, { error: "Dashboard API endpoint not found." });
+          return;
+        }
+        const method = ["query", "refresh"].includes(operation) ? "POST" : "GET";
+        if (request.method !== method) {
+          response.writeHead(405, { Allow: method }).end();
+          return;
+        }
+        if (method === "POST" && (!isAllowedOrigin(request.headers.origin)
+            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json"))) {
+          sendJson(response, 403, { error: "Forbidden." });
+          return;
+        }
+        if (operation === "events") {
+          response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": "text/event-stream",
+          });
+          response.write(`data: ${JSON.stringify(sqliteBackend.status)}\n\n`);
+          const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), 15_000);
+          response.once("close", () => clearInterval(heartbeat));
+          return;
+        }
+        try {
+          const payload = operation === "query" ? await readJsonRequest(request, 4 * 1024 * 1024)
+            : operation === "memory" ? {
+              action: memoryMatch[2] ? "content" : "list",
+              campaign: memoryMatch[1],
+              path: url.searchParams.get("path"),
+              memoryRoot: `http://${expectedAuthority}${routePrefix}/memory/`,
+            } : undefined;
+          sendJson(response, 200, await sqliteBackend.request(operation, payload));
+        } catch (error) {
+          output("SQLite dashboard request failed.", errorMetadata(error));
+          sendJson(response, error.code === "REQUEST_TOO_LARGE" ? 413
+            : error instanceof SyntaxError ? 400 : error.statusCode ?? 500, {
+            error: error.message,
+            code: error.code ?? "",
+            queryId: error.queryId ?? "",
+            boundary: error.boundary ?? "",
+          });
+        }
         return;
       }
       if (pathname === "/__cli_action") {
@@ -1145,6 +1217,11 @@ export async function startDashboardServer({
       let content;
       if (pathname === "/dashboard.json") content = dashboardContent;
       else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
+      if (sqliteBackend && extension === ".html") {
+        content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
+<meta name="dashboard-data-backend" content="server-http">
+<meta name="dashboard-api-base" content="${routePrefix}/">`);
+      }
       sendContent(request, response, contentTypes.get(extension), content);
     } catch (error) {
       output(`Dashboard request failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -1243,6 +1320,7 @@ export async function startDashboardServer({
     });
   } catch (error) {
     for (const watcher of watchers.values()) watcher.close();
+    await sqliteBackend?.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -1260,6 +1338,7 @@ export async function startDashboardServer({
       server.closeAllConnections();
       await shutdown;
       await refreshPromise;
+      await sqliteBackend?.close();
       await rm(temporaryDirectory, { recursive: true, force: true });
       trace.record("server", "server.stopped");
       await trace.flush();
@@ -1340,12 +1419,18 @@ export async function runGoDashboardServer({
   }
 }
 
-function parseArguments(arguments_) {
+export function parseDashboardServerArguments(arguments_) {
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
     if (argument === "--help") return { help: true };
     if (argument === "--canvas") options.canvas = true;
+    else if (argument === "--data-backend") {
+      options.dataBackend = arguments_[index += 1];
+      if (!["sqlite", "indexeddb", "postgres"].includes(options.dataBackend)) {
+        throw new Error("--data-backend must be sqlite, indexeddb, or postgres");
+      }
+    }
     else if (argument === "--replace-existing") options.replaceExisting = true;
     else if (argument === "--trace-file") {
       options.traceFile = arguments_[index += 1];
@@ -1376,7 +1461,8 @@ function parseArguments(arguments_) {
     }
     else throw new Error(`unknown argument: ${argument}`);
   }
-  if (options.operationalStore) {
+  if (options.operationalStore || options.dataBackend === "postgres") {
+    options.operationalStore ??= "postgres";
     if (!["redis", "memory", "postgres"].includes(options.operationalStore)) {
       throw new Error("--operational-store must be redis, memory, or postgres");
     }
@@ -1385,6 +1471,7 @@ function parseArguments(arguments_) {
       ["--replace-existing", options.replaceExisting],
       ["--trace-file", options.traceFile],
       ["--repo", options.repository],
+      ["--data-backend", options.dataBackend !== "postgres" ? options.dataBackend : undefined],
     ]) {
       if (value) throw new Error(`${flag} cannot be used with --operational-store`);
     }
@@ -1392,7 +1479,7 @@ function parseArguments(arguments_) {
       throw new Error("--cert and --key must be provided together");
     }
   } else if (options.policyPath || options.siteRoot || options.certFile || options.keyFile) {
-    throw new Error("--policy, --site, --cert, and --key require --operational-store redis|memory|postgres");
+    throw new Error("--policy, --site, --cert, and --key require --data-backend postgres or --operational-store redis|memory|postgres");
   }
   if (!options.host) options.host = "127.0.0.1";
   const port = options.port ?? (options.canvas ? 0 : 4173);
@@ -1409,9 +1496,11 @@ function parseArguments(arguments_) {
 }
 
 async function main() {
-  const options = parseArguments(process.argv.slice(2));
+  const options = parseDashboardServerArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: local-server.mjs [--canvas] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("usage: local-server.mjs [--canvas] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("Data backend defaults to SQLite for canvas previews and IndexedDB otherwise.");
+    console.log("       local-server.mjs --data-backend postgres [--operational-store redis|memory|postgres] [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("Go mode requires a matching reviewed host policy, PostgreSQL, a built site, and hosted OAuth/HTTPS configuration.");
     return;
