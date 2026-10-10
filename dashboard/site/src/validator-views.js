@@ -10,6 +10,7 @@ import { validateChartFacet } from './validator-facet.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getMappingItems, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
+import { MAX_TREEMAP_LEAVES, TREEMAP_KEYS, TREEMAP_METHOD_VALUES } from './specification.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -83,6 +84,38 @@ export function validateView(view, viewNode, path, viewIds, errors) {
 
   const errorCountBeforeView = errors.length;
   validateChartFacet(view, viewNode, path, errors);
+  if (view.treemap !== undefined) {
+    const treemapPath = `${path}.treemap`;
+    if (view.mark !== 'chart' || view.chart !== 'treemap') {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'treemap options are allowed only on treemap charts.', treemapPath));
+    }
+    if (!isPlainObject(view.treemap)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'treemap must be a mapping.', treemapPath));
+    } else {
+      const treemapNode = getValueNodeByKey(viewNode, 'treemap');
+      validateObjectKeys(treemapNode, TREEMAP_KEYS, treemapPath, errors);
+      if (!getMappingItems(treemapNode)) {
+        for (const key of Object.keys(view.treemap)) {
+          if (!TREEMAP_KEYS.includes(key)) {
+            errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed.`, `${treemapPath}.${key}`));
+          }
+        }
+      }
+      if (view.treemap.method !== undefined && !TREEMAP_METHOD_VALUES.includes(String(view.treemap.method))) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'treemap method must be squarify, binary, or slicedice.', `${treemapPath}.method`));
+      }
+      for (const [key, minimum, maximum] of [['ratio', 1, 5], ['padding', 0, 10]]) {
+        const value = view.treemap[String(key)];
+        if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < Number(minimum) || value > Number(maximum))) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `treemap ${key} must be a finite number from ${minimum} to ${maximum}.`, `${treemapPath}.${key}`));
+        }
+      }
+    }
+  }
+  if (view.mark === 'chart' && view.chart === 'treemap'
+      && (!isPlainObject(view.data) || !Number.isSafeInteger(view.data.limit) || Number(view.data.limit) < 1 || Number(view.data.limit) > MAX_TREEMAP_LEAVES)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `treemap charts must declare data.limit from 1 to ${MAX_TREEMAP_LEAVES}.`, `${path}.data.limit`));
+  }
 
   if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
     errors.push(createError(

@@ -11,6 +11,7 @@ import { binHistogramValues } from './histogram.js';
 import { renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { renderTreemapChart } from './treemap-chart.js';
 
 const debugChartElements = createDebug('chart-elements');
 
@@ -472,9 +473,13 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {string | null} [referenceField]
  * @param {(label: string) => string} [formatCategory]
  * @param {{ at: string, label: string } | null} [temporalMarker]
+ * @param {import('./treemap-layout.js').TreemapOptions} [treemapOptions]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}) {
+  if (chartType === 'treemap') {
+    return renderTreemapChart(points, totalLabel, unit, treemapOptions, chartSeriesClassName);
+  }
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['bar', 'heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;

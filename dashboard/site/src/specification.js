@@ -83,7 +83,7 @@ export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
 
-export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'prompt-level', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'facet', 'columns', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'show-title', 'description', 'subject', 'objective', 'acceptance', 'prompt', 'prompt-level', 'locked', 'requires', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'facet', 'columns', 'treemap', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'filter-bar', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_FILTER_BAR_KEYS = ['filters'];
 export const VIEW_FILTER_CONTROL_KEYS = ['id', 'label', 'groups'];
 export const VIEW_FILTER_GROUP_KEYS = ['label', 'field', 'source', 'value-field', 'label-field'];
@@ -116,7 +116,10 @@ export const VIEW_ELEMENT_VALUES = [
   'link-button-list',
   'markdown'
 ];
-export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
+export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
+export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];
+export const TREEMAP_METHOD_VALUES = ['squarify', 'binary', 'slicedice'];
+export const MAX_TREEMAP_LEAVES = 100;
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];

@@ -157,10 +157,10 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       `${viewPath}.encoding.reference`
     ));
   }
-  if (chart === 'pie' && isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal'].includes(String(encoding.x.type))) {
+  if (['pie', 'treemap'].includes(String(chart)) && isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal'].includes(String(encoding.x.type))) {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      'pie chart x encoding must be nominal or ordinal when explicitly typed.',
+      `${chart} chart x encoding must be nominal or ordinal when explicitly typed.`,
       `${viewPath}.encoding.x.type`
     ));
   }
@@ -191,10 +191,10 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
     }
   }
   if (encoding.section !== undefined) {
-    if (chart !== 'horizontal-bar') {
+    if (chart !== 'horizontal-bar' && chart !== 'treemap') {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'section encoding is supported only by horizontal-bar charts.',
+        'section encoding is supported only by horizontal-bar and treemap charts.',
         `${viewPath}.encoding.section`
       ));
     } else if (
@@ -204,9 +204,30 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
     ) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'horizontal-bar chart section encoding must be nominal or ordinal when explicitly typed.',
+        `${chart} chart section encoding must be nominal or ordinal when explicitly typed.`,
         `${viewPath}.encoding.section.type`
       ));
+    }
+  }
+  if (chart === 'treemap') {
+    for (const channel of ['x', 'y', 'color', 'section']) {
+      const definition = encoding[channel];
+      if (!isPlainObject(definition)) continue;
+      if (definition.aggregate !== undefined && definition.aggregate !== 'none') {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          'treemap fields must use query-produced values; declare aggregation in dashboard.queries.',
+          `${viewPath}.encoding.${channel}.aggregate`
+        ));
+      }
+      if (['color', 'section'].includes(channel) && definition.type !== undefined
+          && !['nominal', 'ordinal'].includes(String(definition.type))) {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          `treemap ${channel} encoding must be nominal or ordinal when explicitly typed.`,
+          `${viewPath}.encoding.${channel}.type`
+        ));
+      }
     }
   }
   if (chart === 'histogram') {

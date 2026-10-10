@@ -1348,8 +1348,21 @@ function renderChartView(context, facetPanel = false) {
   const chartType = typeof view.chart === 'string' ? view.chart : x?.type === 'temporal' ? 'line' : 'bar';
   const value = chartType === 'heatmap' ? color : y;
   const series = chartType === 'heatmap' ? y : color;
-  /** @param {Array<Record<string, unknown>>} chartRows */
+  /** @param {Array<Record<string, unknown>>} chartRows @returns {ChartPoint[]} */
   const pointsForRows = (chartRows) => {
+    if (chartType === 'treemap') {
+      return chartRows.map((row, index) => {
+        const value = y ? row[y.field] : null;
+        return {
+          key: `${pageId}-${title}-${index}`,
+          x: x ? formatString(row[x.field], x.format) : 'unknown',
+          y: value == null ? null : typeof value === 'number' ? value : Number.NaN,
+          color: color ? formatString(row[color.field], color.format) : null,
+          section: chartSection ? formatString(row[chartSection.field], chartSection.format) : null,
+          link: href ? findLink(row, href.field) : null
+        };
+      });
+    }
     if (chartType === 'line' && yDefinitions.length > 1) {
       const points = yDefinitions.flatMap((definition) => (weight
         ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight)
@@ -1387,7 +1400,9 @@ function renderChartView(context, facetPanel = false) {
       value ? fieldUnit(value, context.units ?? {}) : null,
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
       reference?.field ?? null,
-      pieCategoryLabelFormatter(x)
+      pieCategoryLabelFormatter(x),
+      null,
+      chartType === 'treemap' && isPlainObject(view.treemap) ? view.treemap : {}
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
