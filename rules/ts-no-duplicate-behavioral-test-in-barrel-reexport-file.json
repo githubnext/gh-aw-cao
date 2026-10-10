@@ -72,7 +72,7 @@
   "normalization": {
     "relationship": "deprecated",
     "txn_id": "librarian-37819777303-1",
-    "reason": "7 refiner evaluations of github/gh-aw-firewall (2026-10-03 to 2026-10-07) stayed flat at TP=2/FP=2 with the same false-positive shape-only assertion sites every time and no suppression mechanism ever added; 4 parallel evaluations of githubnext/gh-aw-cao all found the rule not-applicable. Zero adoption requests across the full history. Matches the deprecation criteria already applied to js-no-literal-color-value-in-test-assertion and ts-no-recursive-chmod-widens-restricted-files."
+    "reason": "7 refiner evaluations of github/gh-aw-firewall (2026-10-03 to 2026-10-07) stayed flat at TP=2/FP=2 with the same false-positive shape-only assertion sites every time and no suppression mechanism ever added; 4 parallel evaluations of githubnext/gh-aw-cao all found the rule not-applicable. Zero adoption requests across the full history. Matches the deprecation criteria already applied to js-no-literal-color-value-in-test-assertion and ts-no-recursive-chmod-widens-restricted-files. Amended by librarian-38042902464-1: appended a missing github/gh-aw not-applicable evaluation (refiner-37819791317-3) that had not been carried into additional_target_evaluations; deprecated status is unchanged."
   },
   "last_seen_at": "2026-10-09T19:06:40Z",
   "last_updated": "2026-10-09T19:06:40Z",
@@ -98,6 +98,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD d00b985: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; no barrel/re-export smoke-test files exist in this repository, matching every prior evaluation. Not applicable here regardless of readiness elsewhere.",
       "txn_id": "refiner-37796381362-3"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "812d1a84b7224bb282af5c064ae7188331618751",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Searched all *.test.ts/*.test.js/*.test.mjs files for 're-export'/'barrel'/'does not duplicate' header-comment conventions and for a src/index.ts-style barrel with a corresponding smoke-test file: no barrel re-export smoke-test file with a symbol-shape-only scope comment exists anywhere in github/gh-aw (eslint-factory/src/index.ts is a plain rule registry with no such test file). Not applicable here regardless of the rule's needs-work status on github/gh-aw-firewall. This is the only github/gh-aw evaluation of this rule and was missing from this file until librarian-38042902464-1 repaired the gap.",
+      "txn_id": "refiner-37819791317-3"
     },
     {
       "target_repo": "github/gh-aw-firewall",
