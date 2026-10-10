@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-09T13:06:09Z",
-      "worker_run_id": 37934076158,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        37933647554,
-        37933325959,
-        37931054161,
-        37930762070,
-        37927469591,
-        37926832532,
-        37926104312,
-        37925730650,
-        37924591541,
-        37924459472,
-        37923481978,
-        37922083103,
-        37921203421,
-        37920712647,
-        37920246198,
-        37919740690,
-        37919210740,
-        37917736446,
-        37917524122,
-        37915060362
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: within the latest 20 completed docs.yml runs from 2026-10-09T10:01:54Z through 2026-10-09T12:59:00Z, 11 runs concluded success but every success was a same-SHA schedule freshness pass on 61503eaf3146e4832574f5a171aa281bbe5e4ec5 with build and deploy skipped, while the remaining 9 workflow_run-triggered attempts were skipped. Queue median/p90 across the successful docs runs was 0s/0s, full successful-workflow median/p90 was 21s/22s, and the schedule-freshness job median/p90 was 16s/18s with the Check documentation and dashboard freshness step median/p90 at 12s/13s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window also contained 0 successful full builds, so there is no trusted upstream dashboard-generation sample for category \"Astro documentation generation\". That leaves 0 comparable successful build-bearing docs runs, below the required minimum of 5 for a safe evidence-backed recommendation."
-    },
-    {
       "evaluated_at": "2026-10-09T13:34:22Z",
       "worker_run_id": 37937328911,
       "category": "Astro documentation generation",
@@ -841,6 +813,34 @@
         38007407470
       ],
       "outcome": "incomplete_insufficient_comparable_successful_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d5d22e74ac7981a707713b9ee6744123d1e5805a. Within the latest 20 completed docs.yml runs from 2026-10-10T00:04:10Z through 2026-10-10T04:01:08Z, 9 runs concluded success and 11 workflow_run invocations concluded skipped. All 9 successful runs were same-SHA schedule freshness checks on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped, leaving 0 successful build-bearing docs runs and therefore 0 comparable successful runs for dependency-installation/cache analysis. Successful docs workflow queue median/p90 was 3s/4.0s, full execution median/p90 was 10s/10.4s, and the schedule-freshness job median/p90 was 9s/9.4s. Because no run in the bounded sample executed Set up Node.js, Restore node_modules, Install dependencies, Restore cached CAO Dashboard, Upload Pages artifact, or Deploy Pages on a successful build path, cache-hit/miss effectiveness and build-time savings cannot be verified safely in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-10T04:31:48Z",
+      "worker_run_id": 38024137358,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38024106249,
+        38023224931,
+        38022586098,
+        38022326515,
+        38022018869,
+        38021539942,
+        38020761716,
+        38020409019,
+        38019617600,
+        38019235067,
+        38018897079,
+        38017794033,
+        38016504342,
+        38015820475,
+        38015633653,
+        38014264880,
+        38014133989,
+        38012726057,
+        38011651802,
+        38011477076
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d5d22e74ac7981a707713b9ee6744123d1e5805a. Within the latest 20 completed docs.yml runs from 2026-10-10T01:00:56Z through 2026-10-10T04:27:07Z, 9 runs concluded success and 11 were skipped workflow_run invocations, but every success was a same-SHA schedule freshness pass on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped. Successful docs workflow queue median/p90 was 0s/0s, full execution median/p90 was 13s/15s, the schedule-freshness job median/p90 was 9s/11s, and the Check documentation and dashboard freshness step median/p90 was 5s/7s. No build-bearing docs runs were available to verify dependency-installation or cache-step behavior, so comparable successful docs runs remained 0, below the required minimum of 5. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T21:55:29Z through 2026-10-10T04:27:03Z contained 0 successful dashboard builds and 20 skipped runs, so there is no trusted producer-side dashboard cache sample to broaden the analysis."
     }
   ]
 }
