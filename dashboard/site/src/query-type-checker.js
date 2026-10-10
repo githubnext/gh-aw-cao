@@ -13,6 +13,7 @@ import {
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
 import { createDebug } from './debug.js';
+import { nearestIdentifier } from './validator-common.js';
 
 /**
  * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
@@ -72,9 +73,10 @@ export function compileDashboardQueryTypes(definitions) {
       if (QUERY_SOURCE_VALUES.includes(reference.name)) continue;
       const target = symbols.get(reference.name);
       if (!target) {
+        const suggestion = nearestIdentifier(reference.name, [...QUERY_SOURCE_VALUES, ...symbols.keys()]);
         errors.push(error(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          `query input "${reference.name}" is not a database table or previously declared query.`,
+          `query input "${reference.name}" is not a database table or previously declared query.${suggestion ? ` Did you mean "${suggestion}"?` : ''}`,
           reference.path
         ));
       } else if (target.index >= symbol.index) {
@@ -648,7 +650,8 @@ function unavailableFieldMessage(field, fields, inputLabel) {
   const available = [...fields.keys()].sort();
   const displayed = available.slice(0, 8);
   const suffix = available.length > displayed.length ? `, and ${available.length - displayed.length} more` : '';
-  return `field "${field}" is not available from ${inputLabel}; available fields: ${displayed.join(', ') || '(none)'}${suffix}.`;
+  const suggestion = nearestIdentifier(field, available);
+  return `field "${field}" is not available from ${inputLabel}; available fields: ${displayed.join(', ') || '(none)'}${suffix}.${suggestion ? ` Did you mean "${suggestion}"?` : ''}`;
 }
 
 /** @param {string} field @returns {FieldType} */
