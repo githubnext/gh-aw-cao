@@ -371,13 +371,52 @@ export function validateObjectKeys(node, allowedKeys, path, errors) {
     seen.set(key, 1);
 
     if (!allowedKeys.includes(key)) {
+      const suggestion = nearestIdentifier(key, allowedKeys);
       errors.push(createError(
         ERROR_CODES.unknownOrDuplicateKey,
-        `Unknown key "${key}" is not allowed at ${path}.`,
+        `Unknown key "${key}" is not allowed at ${path}.${suggestion ? ` Did you mean "${suggestion}"?` : ''}`,
         keyPath
       ));
     }
   }
+}
+
+/**
+ * Suggest only an unambiguous one-edit correction from the actual vocabulary.
+ * @param {string} value
+ * @param {Iterable<string>} candidates
+ * @returns {string | undefined}
+ */
+export function nearestIdentifier(value, candidates) {
+  if (value.length > 64) return undefined;
+  const vocabulary = [...candidates];
+  if (vocabulary.includes(value)) return undefined;
+  let match;
+  for (const candidate of vocabulary) {
+    if (Math.abs(candidate.length - value.length) > 1) continue;
+    let left = 0;
+    let right = 0;
+    let edits = 0;
+    while (left < value.length && right < candidate.length && edits <= 1) {
+      if (value[left] === candidate[right]) {
+        left++;
+        right++;
+      } else if (value.length === candidate.length
+        && value[left] === candidate[right + 1] && value[left + 1] === candidate[right]) {
+        left += 2;
+        right += 2;
+        edits++;
+      } else {
+        edits++;
+        if (value.length >= candidate.length) left++;
+        if (candidate.length >= value.length) right++;
+      }
+    }
+    if (edits + Number(left < value.length || right < candidate.length) !== 1) continue;
+    if (match) return undefined;
+    match = candidate;
+  }
+  return match;
 }
 
 /**

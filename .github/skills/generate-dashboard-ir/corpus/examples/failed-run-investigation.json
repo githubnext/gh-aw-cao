@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "failed-run-investigation",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "Failed workflow runs requiring investigation",
+    "intent": "Show failed runs in a bounded, actionable queue with the failure step and message, workflow identity, run provenance, and a link to each run; do not mistake a successful run for accepted repository output.",
+    "activationConditions": [
+      "The selected repository has workflow runs in the last 30 days.",
+      "At least one run has a failure conclusion and available failure details."
+    ],
+    "requiredEffects": [
+      "List only runs with a failure conclusion at run grain, newest first.",
+      "Expose the failing step, message, workflow, and run link so an operator can investigate the failure."
+    ],
+    "noopConditions": [
+      "No failed runs are observed within the selected horizon.",
+      "Run evidence is unavailable; an empty queue must not imply that all runs succeeded."
+    ],
+    "successConditions": [
+      "The operator can navigate from a failed run to its source run without inferring failure details from unrelated findings.",
+      "The failure queue stays bounded and is ordered deterministically by start time and run identity."
+    ],
+    "uncertainties": [
+      "A failed run may have no populated failure message or step.",
+      "A run conclusion does not establish whether a safe output was accepted.",
+      "Missing run observations are not evidence that the workflow did not execute."
+    ]
+  },
+  "operationalValue": {
+    "upstream": "gh-aw",
+    "orderedMetrics": [
+      {
+        "id": "failure-investigation-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
+    ],
+    "preservation": "Preserve the upstream metric identity, ordering, native value or null, unit, and direction; a run failure count is not a substitute for the metric."
+  },
+  "logicalSources": {
+    "runs": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dashboard.md",
+          "run": "9101",
+          "started-at": "2026-09-01T01:00:00Z",
+          "run-status": "completed",
+          "run-conclusion": "failure",
+          "failure-step": "Validate dashboard",
+          "failure-message": "Dashboard document did not validate",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9101",
+            "label": "Run 9101"
+          }
+        }
+      ]
+    }
+  },
+  "dashboard": "failed-run-investigation.dashboard.yml"
+}

@@ -1,0 +1,57 @@
+language-version: "0.1.0"
+dashboard:
+  id: failed-run-investigation
+  title: Failed run investigation
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+    time:
+      range: 30d
+  pages:
+    - id: failed-run-investigation
+      kind: custom
+      title: Failed run investigation
+      views:
+        - id: failed-runs
+          subject: Failed workflow runs in the selected repository and horizon.
+          objective: Give operators failure details and direct access to each run for investigation.
+          acceptance: Only failed runs appear, newest first, with workflow, step, message, and run link.
+          title: Failed runs
+          data:
+            source: runs
+            filters:
+              run-conclusion: failure
+            order-by:
+              - field: started-at
+                direction: desc
+              - field: run
+                direction: asc
+            limit: 30
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No failed runs were observed in the selected horizon.
+          encoding:
+            href:
+              field: run-link
+              type: nominal
+            columns:
+              - field: workflow
+                type: nominal
+                title: Workflow
+                format: workflow-relative-path
+              - field: run
+                type: nominal
+                title: Run
+                display: run-link
+              - field: failure-step
+                type: nominal
+                title: Failure step
+              - field: failure-message
+                type: nominal
+                title: Failure message
+              - field: started-at
+                type: temporal
+                title: Started
