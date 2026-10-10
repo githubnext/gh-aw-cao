@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(() => {
   vi.doUnmock('../../src/debug.js');
+  vi.doUnmock('../../src/rate-limit-notification.js');
+  vi.unstubAllGlobals();
   vi.resetModules();
 });
 
@@ -21,6 +23,7 @@ async function loadAuthWithDebug(search) {
       createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => search, output })
     };
   });
+  vi.doMock('../../src/rate-limit-notification.js', () => ({ updateRateLimitNotification: vi.fn() }));
   vi.resetModules();
   const module = await import('../../src/auth.js');
   return { ...module, output };
@@ -87,5 +90,48 @@ describe('auth debug logging', () => {
         expect(value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean').toBe(true);
       }
     }
+  });
+
+  it('is disabled by default for session renewal (no debug output)', async () => {
+    document.cookie = 'cao_csrf=abc123; Path=/';
+    const { ensureCsrfToken, output } = await loadAuthWithDebug('');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 }));
+
+    await ensureCsrfToken();
+
+    expect(output.debug).not.toHaveBeenCalled();
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+  });
+
+  it('logs session renewal completion with status, outcome, and coarse duration', async () => {
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+    const { ensureCsrfToken, output } = await loadAuthWithDebug('?debug=auth');
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+      document.cookie = 'cao_csrf=renewed-token; Path=/';
+      return { ok: true, status: 200 };
+    }));
+
+    await ensureCsrfToken();
+
+    const call = output.debug.mock.calls.find(([, payload]) => payload.event === 'session-renewal-completed');
+    expect(call).toBeTruthy();
+    const [, payload] = /** @type {[string, Record<string, unknown>]} */ (call);
+    expect(payload).toMatchObject({ event: 'session-renewal-completed', status: 200, renewed: true });
+    expect(typeof payload.durationMs).toBe('number');
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+  });
+
+  it('logs session renewal failure with a sanitized error name when the request throws', async () => {
+    document.cookie = 'cao_csrf=; Max-Age=0; Path=/';
+    const { ensureCsrfToken, output } = await loadAuthWithDebug('?debug=auth');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    await expect(ensureCsrfToken()).rejects.toThrow();
+
+    const call = output.debug.mock.calls.find(([, payload]) => payload.event === 'session-renewal-failed');
+    expect(call).toBeTruthy();
+    const [, payload] = /** @type {[string, Record<string, unknown>]} */ (call);
+    expect(payload).toEqual({ event: 'session-renewal-failed', errorName: 'TypeError', durationMs: expect.any(Number) });
+    expect(JSON.stringify(payload)).not.toContain('Failed to fetch');
   });
 });
