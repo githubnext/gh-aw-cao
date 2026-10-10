@@ -466,9 +466,9 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `transactions` | `byCreatedAt -> createdAt` |
 | `storageShards` | none |
 
-Time-bounded stores additionally index `byStorageTimestamp ->
-[_storage.timestamp, id]`. Run-linked stores additionally index `byStorageRun ->
-[runId, id]` for bounded subtree deletion. Experiment assignments, grader
+Time-bounded stores additionally index `byStorageTimestamp -> [_storage.timestamp, id]`.
+Run-linked stores additionally index `byStorageRun -> [runId, id]`
+for bounded subtree deletion. Experiment assignments, grader
 observations, and eval observations additionally index `byAudit -> auditId`
 for scoped curation reference checks.
 
@@ -480,6 +480,7 @@ Shard counts, byte totals, dirty-audit markers, and global totals SHALL update
 atomically with record inserts, overwrites, moves, and deletes. Routine maintenance
 SHALL use these totals and indexed, at-most-1,000-record batches, never full entity
 scans or reserialization of unaffected records. Only explicit relationship repair
+or CLI legacy audit repair after unchanged ingestion with a missing curation receipt
 MAY rebuild shard accounting with bounded scans.
 
 The `_queryKeys` fields are disposable physical index projections, not canonical
@@ -2198,7 +2199,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 37;
+const DATABASE_VERSION = 38;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2210,7 +2211,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 37 SHALL define:
+IndexedDB version 38 SHALL define:
 
 ```text
 campaigns
@@ -2232,6 +2233,7 @@ graderObservations
 evals
 evalObservations
 transactions
+storageShards
 ```
 
 Future physical versions MAY include:

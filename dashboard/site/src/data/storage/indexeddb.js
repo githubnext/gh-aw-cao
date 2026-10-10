@@ -670,13 +670,13 @@ function estimatedRecordBytes(record) {
 
 /**
  * Applies retention and size limits using indexed, bounded shard cleanup.
- * Full scans are reserved for explicitly requested relationship repair.
+ * Full scans are reserved for explicitly requested relationship or legacy audit repair.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, repairAuditCuration?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 export async function maintainCanonicalDatabase(indexedDB, options) {
-  if (options.reconcileRelationships) return reconcileCanonicalDatabase(indexedDB, options);
+  if (options.reconcileRelationships || options.repairAuditCuration) return reconcileCanonicalDatabase(indexedDB, options);
   options.signal?.throwIfAborted();
   const database = await openCanonicalDatabase(indexedDB);
   try {
@@ -689,7 +689,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
 }
 
 /**
- * Explicit relationship repair; never used for routine ingestion maintenance.
+ * Explicit relationship or legacy audit repair; never used for routine ingestion maintenance.
  * @param {IDBFactory} indexedDB
  * @param {Parameters<typeof maintainCanonicalDatabase>[1]} options
  */

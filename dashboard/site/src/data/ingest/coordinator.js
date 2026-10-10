@@ -513,7 +513,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * caller's configured windows and storage estimate.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, repairAuditCuration?: boolean, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 async function maintainNormalizedJsonlDatabase(indexedDB, options) {
   const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
@@ -528,6 +528,7 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
     retentionWindowMsByStore: options.retentionWindowMsByStore,
     maxDatabaseBytes,
     usageBytes,
+    repairAuditCuration: options.repairAuditCuration,
     onMaintenanceProgress: options.onMaintenanceProgress,
     signal: options.signal
   });
@@ -540,9 +541,10 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
  * Maintenance uses persisted shard accounting and indexes to visit only expired
  * records and dirty audit shards. Multi-shard callers defer it until inventory
  * and all activity shards have committed.
+ * CLI callers can explicitly repair legacy audits when the curation receipt is missing.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onLockWait?: () => void, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, repairAuditCuration?: boolean, onLockWait?: () => void, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 export function finalizeNormalizedJsonlIngestion(indexedDB, options = {}) {
   return serializeIngestion(
