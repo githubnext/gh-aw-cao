@@ -3,6 +3,34 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-10T18:32:48Z",
+      "worker_run_id": 38075844613,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38075953824,
+        38075764131,
+        38074141243,
+        38073381947,
+        38073087017,
+        38072856564,
+        38072180047,
+        38072030979,
+        38071361029,
+        38071218681,
+        38070024772,
+        38069655494,
+        38069221258,
+        38068942318,
+        38068422094,
+        38067619239,
+        38067441660,
+        38067434490,
+        38067352673,
+        38067352805
+      ],
+      "outcome": "no_actionable_improvement: evaluated category \"scheduling, concurrency, and avoidable rebuilds\" after the in-order \"dependency installation and caching\", \"Astro documentation generation\", \"reusable dashboard generation\", and \"artifact transfer and Pages packaging\" categories lacked sufficient evidence in the current bounded window. Within the latest 20 completed docs.yml runs from 2026-10-10T16:21:48Z through 2026-10-10T18:29:19Z, 9 runs concluded success and all 9 were schedule-triggered; 9 workflow_run invocations were skipped and 2 workflow_run invocations concluded action_required before any jobs started. Only 1 successful build-bearing docs run (38067619239) executed the comparable schedule-freshness + build + deploy path, so the dependency-installation, Astro-generation, reusable-dashboard-generation, and artifact-transfer categories remained below the required minimum of 5 comparable successful runs. Those 9 successful schedule runs on source SHA d08a0f2e6fb8ede95312a420f10222e60829350a provided sufficient scheduling evidence: workflow queue median/p90 0s/0s, full execution median/p90 12s/28.8s, schedule-freshness job median/p90 8s/9s, and the Check documentation and dashboard freshness step median/p90 4s/5s. The lone build-bearing schedule run had build 41s and deploy 28s; trusted bounded logs verified cache hits for the setup-node npm cache, the node_modules restore, and the cached CAO dashboard artifact because the run logged \"Cache restored successfully\" for all three restores and skipped Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T14:54:45Z through 2026-10-10T18:26:12Z contained 0 successful dashboard builds, 13 skipped workflow_run runs, 3 cancelled push outliers, 2 skipped push runs, and 2 push failures without started jobs; the three cancelled build outliers spent 57s, 287s, and 149s in Restore collected activity data, and the two longer cancellations then spent 249s and 679s in Upgrade fallback activity data before cancellation. Open issue #17171 already tracks the remaining scheduling optimization (persisting deployment freshness metadata to avoid repeated workflow-history scans), and the current bounded window lowers the freshness-step median to 4s inside a 12s median successful scheduled run without materially changing that issue's scope, priority, or acceptance criteria. Open issue #16825 already tracks caching upgraded CAO activity snapshots on the dashboard producer path, but the current bounded window still contains 0 successful dashboard builds, so it does not materially change that issue either. No new non-duplicate actionable recommendation is warranted."
+    },
+    {
       "evaluated_at": "2026-10-10T17:23:10Z",
       "worker_run_id": 38071299960,
       "category": "dependency installation and caching",
@@ -814,34 +842,6 @@
         38011477076
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA d5d22e74ac7981a707713b9ee6744123d1e5805a. Within the latest 20 completed docs.yml runs from 2026-10-10T01:00:56Z through 2026-10-10T04:27:07Z, 9 runs concluded success and 11 were skipped workflow_run invocations, but every success was a same-SHA schedule freshness pass on d5d22e74ac7981a707713b9ee6744123d1e5805a with build and deploy skipped. Successful docs workflow queue median/p90 was 0s/0s, full execution median/p90 was 13s/15s, the schedule-freshness job median/p90 was 9s/11s, and the Check documentation and dashboard freshness step median/p90 was 5s/7s. No build-bearing docs runs were available to verify dependency-installation or cache-step behavior, so comparable successful docs runs remained 0, below the required minimum of 5. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T21:55:29Z through 2026-10-10T04:27:03Z contained 0 successful dashboard builds and 20 skipped runs, so there is no trusted producer-side dashboard cache sample to broaden the analysis."
-    },
-    {
-      "evaluated_at": "2026-10-10T17:54:21Z",
-      "worker_run_id": 38073324708,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38073381947,
-        38073087017,
-        38072856564,
-        38072180047,
-        38072030979,
-        38071361029,
-        38071218681,
-        38070024772,
-        38069655494,
-        38069221258,
-        38068942318,
-        38068422094,
-        38067619239,
-        38067441660,
-        38067434490,
-        38067352673,
-        38067352805,
-        38067342637,
-        38065998656,
-        38065529403
-      ],
-      "outcome": "no_actionable_improvement: evaluated category \"scheduling, concurrency, and avoidable rebuilds\" after the in-order \"dependency installation and caching\", \"Astro documentation generation\", \"reusable dashboard generation\", and \"artifact transfer and Pages packaging\" categories lacked sufficient evidence in the current bounded window. Within the latest 20 completed docs.yml runs from 2026-10-10T15:54:53Z through 2026-10-10T17:50:32Z, 8 runs concluded success and all 8 were schedule-triggered; 9 workflow_run invocations were skipped and 3 workflow_run invocations concluded action_required before any jobs started. Only 1 successful docs run (38067619239) executed the comparable schedule-freshness + build + deploy path on source SHA d08a0f2e6fb8ede95312a420f10222e60829350a; the other 7 successful schedule runs were freshness-only passes with build and deploy skipped because the deployed docs and dashboard were current, so the dependency-installation, Astro-generation, and artifact-transfer categories remained below the required minimum of 5 comparable successful build-bearing docs runs. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-10T14:44:34Z through 2026-10-10T17:50:29Z contained 0 successful dashboard builds, 13 skipped workflow_run runs, 2 skipped push runs, 3 cancelled push outliers, and 2 push failures with no jobs, leaving reusable-dashboard generation without a successful producer sample. Eight successful schedule docs runs across source SHAs d08a0f2e6fb8ede95312a420f10222e60829350a and 01f6d3a63953eb6013237ad3bc96090e9fe03dee provided sufficient scheduling evidence: workflow queue median/p90 0s/0s, full execution median/p90 11.5s/34.8s, schedule-freshness job median/p90 7.5s/8s, and the Check documentation and dashboard freshness step median/p90 4s/4.3s. The lone schedule-triggered rebuild had build 41s and deploy 28s, with trusted job metadata and bounded logs confirming cache hits for the actions/setup-node npm cache, Restore node_modules, and Restore cached CAO Dashboard because run 38067619239 logged \"Cache restored successfully\" for all three restores, skipped Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact, and logged a setup-node primary-key cache hit in post-job output. The paired dashboard push outliers still point at existing tracked producer work rather than a new scheduling issue: cancelled runs 38067354405, 38063435353, and 38062266402 restored a 2.27 GB activity cache for 57s, 287s, and 149s respectively and two of them then spent 249s and 679s in Upgrade fallback activity data before cancellation, with logs confirming cache restoration from key cao-activity-v5-37765769970-1. Open issue #17171 already tracks docs freshness metadata, #16054 already tracks duplicate Documentation Pages workflow_run rebuilds on already-deployed SHAs, and #16825 already tracks caching upgraded CAO activity snapshots on the dashboard producer path. The current bounded window does not materially change any issue's scope, priority, or acceptance criteria, so no new non-duplicate actionable recommendation is warranted."
     }
   ]
 }
