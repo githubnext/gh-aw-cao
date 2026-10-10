@@ -331,6 +331,11 @@ they preserve source quality and provenance and grant no operational authority.
 The `cao computation runtime-health` command executes the first production
 measure through declarative canonical queries. Future CLI measures extend the
 same `computation` namespace.
+`activity/cao.mjs` is the executable entry point and preserves the public CLI
+exports. `activity/cli/` owns argument parsing, dispatch, policy and campaign
+configuration, authentication, evidence ingestion and publication, downloads,
+and local queries in focused modules. `activity/commands/` owns one handler per
+command; implementation modules depend on shared helpers, not the entry point.
 Successful-Run value computations keep produced safe outputs, native
 operational-grader measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
