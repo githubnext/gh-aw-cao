@@ -1,0 +1,43 @@
+{
+  "language-version": "0.1.0",
+  "dashboard": {
+    "id": "treemap-example",
+    "title": "Workflow footprint",
+    "queries": [
+      {
+        "name": "workflow-footprint",
+        "subject": "Show run volume by repository, workflow, and conclusion.",
+        "from": "runs",
+        "aggregate": {
+          "by": ["repository", "workflow", "run-conclusion"],
+          "values": [{ "field": "run", "reducer": "count", "as": "run-count" }]
+        },
+        "order-by": [{ "field": "run-count", "direction": "desc" }, { "field": "workflow", "direction": "asc" }],
+        "limit": 100
+      }
+    ],
+    "pages": [
+      {
+        "id": "footprint",
+        "kind": "custom",
+        "title": "Workflow footprint",
+        "views": [
+          {
+            "id": "workflow-treemap",
+            "title": "Runs by repository and workflow",
+            "mark": "chart",
+            "chart": "treemap",
+            "treemap": { "method": "squarify", "ratio": 1.618, "padding": 0.5 },
+            "data": { "source": "workflow-footprint", "limit": 100 },
+            "encoding": {
+              "x": { "field": "workflow", "type": "nominal", "format": "workflow-relative-path" },
+              "y": { "field": "run-count", "type": "quantitative", "title": "Runs" },
+              "section": { "field": "repository", "type": "nominal" },
+              "color": { "field": "run-conclusion", "type": "nominal" }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
