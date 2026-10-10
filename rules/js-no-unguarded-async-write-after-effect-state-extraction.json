@@ -4,16 +4,6 @@
     {
       "false_negative_count": 0,
       "false_positive_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 7745f43: zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
-      "target_repo": "github/gh-aw",
-      "true_positive_count": 0,
-      "txn_id": "refiner-37989801072-1"
-    },
-    {
-      "false_negative_count": 0,
-      "false_positive_count": 0,
       "readiness_for_target": "ready",
       "reason": "Re-confirmed on HEAD c835648 (intervening PR #17061 only touched the preparation-details copy action layout, not these call sites): the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js, none guarded by 'if (scope.signal.aborted) return;' unlike data-view.js:1689 and ui-primitives.js:184,1005. No drift since refiner-37812883520-3.",
       "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
@@ -95,21 +85,11 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+      "reason": "Re-confirmed on HEAD 6976a37: zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since refiner-38013029314-1.",
+      "target_commit": "6976a375a288e2ac4ca5102fd54bb9adafcf2f5e",
       "target_repo": "github/gh-aw",
       "true_positive_count": 0,
-      "txn_id": "refiner-38001319335-1"
-    },
-    {
-      "false_negative_count": 0,
-      "false_positive_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
-      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-      "target_repo": "github/gh-aw",
-      "true_positive_count": 0,
-      "txn_id": "refiner-38006263601-1"
+      "txn_id": "refiner-38019164463-1"
     }
   ],
   "affected_paths": [

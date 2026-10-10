@@ -5,16 +5,6 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 7745f43: zero hits for '--bind'/'make-private' mount-propagation idiom in this CLI/Actions monorepo. No drift since prior evaluation.",
-      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
-      "target_repo": "github/gh-aw",
-      "true_positive_count": 0,
-      "txn_id": "refiner-37989801072-2"
-    },
-    {
-      "false_negative_count": 0,
-      "false_positive_count": 0,
-      "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD 445ac4f: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
       "target_commit": "445ac4f24955fca0cc3a40650c5e7c7df90bd604",
       "target_repo": "githubnext/gh-aw-cao",
@@ -75,21 +65,11 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 3ea471b: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall.",
-      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+      "reason": "Re-confirmed on HEAD 6976a37: grep for '--bind'/'make-private' mount-propagation idiom across .ts/.js/.mjs/.cjs sources still returns zero relevant hits (only match is an unrelated python http.server network bind flag). No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. No drift since refiner-38013029314-2.",
+      "target_commit": "6976a375a288e2ac4ca5102fd54bb9adafcf2f5e",
       "target_repo": "github/gh-aw",
       "true_positive_count": 0,
-      "txn_id": "refiner-38001319335-2"
-    },
-    {
-      "false_negative_count": 0,
-      "false_positive_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD a67a4d4: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall. No drift since refiner-38001319335-2 (recorded as 2026-10-09T22:54:31Z).",
-      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-      "target_repo": "github/gh-aw",
-      "true_positive_count": 0,
-      "txn_id": "refiner-38006263601-2"
+      "txn_id": "refiner-38019164463-2"
     }
   ],
   "affected_paths": [
