@@ -239,8 +239,8 @@ export const operationStyles = `.dashboard-next-work-page .custom-view-grid { di
 .work-roadmap-owner { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .work-roadmap-end { width: 7px; height: 7px; position: absolute; z-index: 3; top: 18px; left: var(--work-stop); border: 2px solid var(--canvas); border-radius: 50%; transform: translate(-50%, -50%); }
 .work-roadmap-today { width: 1px; position: absolute; z-index: 7; top: 0; bottom: 0; left: calc(320px + var(--today-position)); pointer-events: none; }
-.work-roadmap-today::before { width: 8px; height: 8px; position: absolute; top: 84px; left: -3px; border-radius: 50%; background: var(--danger); content: ""; }
-.work-roadmap-today::after { width: 1px; position: absolute; top: 88px; bottom: 0; left: 0; background: var(--danger); content: ""; }
+.work-roadmap-today::before { width: 8px; height: 8px; position: absolute; top: 84px; left: -3px; border-radius: 50%; background: var(--accent); content: ""; }
+.work-roadmap-today::after { width: 1px; position: absolute; top: 88px; bottom: 0; left: 0; background: var(--accent); content: ""; }
 .work-mobile-detail:not([open]) { display: none; }
 .signal-clear { min-height: 68px; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 10px; padding: 9px 14px; }
 .signal-clear .signal-icon { color: var(--success); }
