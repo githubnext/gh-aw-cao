@@ -6,7 +6,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runGoDashboardServer, startDashboardServer } from "../../dashboard/local-server.mjs";
+import { parseDashboardServerArguments, runGoDashboardServer, startDashboardServer } from "../../dashboard/local-server.mjs";
 
 const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
@@ -564,6 +564,7 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /usage: local-server\.mjs/);
   assert.match(result.stdout, /--canvas/);
+  assert.match(result.stdout, /--data-backend sqlite\|indexeddb/);
   assert.match(result.stdout, /--replace-existing/);
   assert.match(result.stdout, /--operational-store redis\|memory/);
   assert.match(result.stdout, /matching reviewed host policy/);
@@ -572,14 +573,21 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
 test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => {
   for (const [arguments_, message] of [
     [["--operational-store"], /requires a value/],
+    [["--data-backend"], /must be sqlite, indexeddb, or postgres/],
+    [["--data-backend", "redis"], /must be sqlite, indexeddb, or postgres/],
+    [["--data-backend", "sqlite", "--port", "0"], /--port must be an integer/],
+    [["--data-backend", "indexeddb", "--port", "0"], /--port must be an integer/],
     [["--operational-store", "sqlite"], /must be redis, memory, or postgres/],
     [["--operational-store", "memory", "--policy", "--port", "8080"], /--policy requires a value/],
     [["--operational-store", "redis", "--canvas"], /--canvas cannot be used/],
+    [["--operational-store", "memory", "--data-backend", "sqlite"], /--data-backend cannot be used/],
     [["--operational-store", "memory", "--repo", "acme/control"], /--repo cannot be used/],
     [["--operational-store", "redis", "--replace-existing"], /--replace-existing cannot be used/],
     [["--operational-store", "memory", "--trace-file", "trace.jsonl"], /--trace-file cannot be used/],
     [["--operational-store", "memory", "--cert", "cert.pem"], /--cert and --key/],
-    [["--policy", "cao.json"], /require --operational-store/],
+    [["--data-backend", "postgres", "--canvas"], /--canvas cannot be used/],
+    [["--data-backend", "postgres", "--repo", "acme/control"], /--repo cannot be used/],
+    [["--policy", "cao.json"], /require --data-backend postgres or --operational-store/],
     [["--operational-store", "memory", "--port", "0"], /--port must be an integer/],
   ]) {
     const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", ...arguments_], {
@@ -588,6 +596,29 @@ test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => 
     });
     assert.equal(result.status, 1);
     assert.match(result.stdout, message);
+  }
+});
+
+test("Postgres data backend selects the Go launcher and preserves operational-store selection", async () => {
+  const defaults = parseDashboardServerArguments(["--data-backend", "postgres", "--policy", "reviewed.json"]);
+  assert.equal(defaults.dataBackend, "postgres");
+  assert.equal(defaults.operationalStore, "postgres");
+  assert.equal(defaults.policyPath, "reviewed.json");
+  for (const operationalStore of ["redis", "memory", "postgres"]) {
+    const options = parseDashboardServerArguments([
+      "--data-backend", "postgres", "--operational-store", operationalStore,
+      "--policy", "reviewed.json", "--site", "built", "--port", "8443",
+    ]);
+    const calls = [];
+    await runGoDashboardServer({
+      ...options,
+      runCommand: async (executable, arguments_) => { calls.push({ executable, arguments_ }); },
+    });
+    assert.equal(calls[0].executable, "go");
+    assert.deepEqual(calls[1].arguments_, [
+      "serve-hosted", "--operational-store", operationalStore,
+      "--listen", "127.0.0.1:8443", "--site", path.resolve("built"),
+    ]);
   }
 });
 

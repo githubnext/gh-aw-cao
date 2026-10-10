@@ -67,6 +67,23 @@ describe("remote dashboard data backend", () => {
     expect(usesRemoteDataBackend(document)).toBe(true);
   });
 
+  it("keeps canvas API requests inside the server-injected capability path", async () => {
+    const meta = document.createElement("meta");
+    meta.name = "dashboard-api-base";
+    meta.content = "/preview-capability/";
+    document.head.append(meta);
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      sources: { repositories: { source: "repositories", rows: [], metadata: {} } },
+    }), { headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await queryRemoteDashboard(["repositories"], { pages: [] });
+    expect(fetchMock).toHaveBeenCalled();
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(new URL(url).pathname).toMatch(/^\/preview-capability\/api\/v1\//);
+      expect(init.headers["Content-Type"]).toBe("application/json");
+    }
+  });
+
   it("removes static dashboard workers and caches in remote mode", async () => {
     const unregister = vi.fn().mockResolvedValue(true);
     const deleteCache = vi.fn().mockResolvedValue(true);
