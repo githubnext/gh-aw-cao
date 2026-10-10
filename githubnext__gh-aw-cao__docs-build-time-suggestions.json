@@ -1,7 +1,35 @@
 {
-  "source_sha": "69d401ece7ed86f460a91b772ff4bb70c05ec389",
+  "source_sha": "6486663dcd1245db2d01d0cd0b7549cbe2d48903",
   "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-10T13:03:04Z",
+      "worker_run_id": 38053985916,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38054080003,
+        38053866493,
+        38053859610,
+        38053702295,
+        38053530834,
+        38053139839,
+        38053112394,
+        38053113061,
+        38053100968,
+        38052458612,
+        38052396545,
+        38052232119,
+        38051850169,
+        38051750361,
+        38051662420,
+        38051661647,
+        38051072561,
+        38050756465,
+        38050511872,
+        38050451101
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 6486663dcd1245db2d01d0cd0b7549cbe2d48903. Within the latest 20 completed docs.yml runs from 2026-10-10T12:01:15Z through 2026-10-10T13:00:41Z, 5 runs concluded success, 13 were skipped workflow_run invocations, and 2 workflow_run invocations were cancelled. Only 4 successful build-bearing docs runs were comparable for this category (push 38053859610 and 38053100968; schedule 38053702295 and 38052396545); the remaining successful schedule run 38050511872 was a freshness-only pass with build and deploy skipped because the deployed docs and dashboard were current. Across the 4 comparable runs, workflow queue median/p90 was 0s/0s, execution median/p90 was 77.5s/97s, and build job median/p90 was 52.5s/58s; deploy and schedule-freshness medians on the 2 schedule builds were 25s/29s and 7.5s/8s. Trusted build logs for all 4 comparable runs verified cache hits for the actions/setup-node npm cache, the node_modules restore, and the central-agentic-ops-dashboard restore because each logged \"Cache restored successfully\" and skipped Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact. The paired latest 20 completed cao-dashboard.yml runs in the same window contained 0 successful dashboard builds (18 skipped and 2 cancelled; cancelled outlier 38051340606 spent about 293s in Restore collected activity data before cancellation). Because the bounded sample contains only 4 comparable successful runs, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
+    },
     {
       "evaluated_at": "2026-10-10T12:37:35Z",
       "worker_run_id": 38052346457,
@@ -814,34 +842,6 @@
         37981161265
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA db714a113aa12ab2355c72340c213e3437955df9. Within the latest 20 completed docs.yml runs from 2026-10-09T19:34:36Z through 2026-10-09T21:55:33Z, 10 runs concluded success and 10 were skipped workflow_run invocations. Only 1 successful docs run (37995669931 on db714a113aa12ab2355c72340c213e3437955df9) executed the comparable schedule-freshness + build + deploy path; the other 9 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 12.0s/20.3s, while successful schedule-freshness job median/p90 was 8.0s/8.2s. Trusted step metadata and bounded logs for run 37995669931 confirmed actions/setup-node npm cache hits, node_modules cache hits, central-agentic-ops-dashboard cache hits, and skipped npm ci. That comparable schedule run spent 51s in build and 20s in deploy, with repeated measured costs of 5s restoring node_modules, 13s in Build documentation, 2s restoring the cached CAO Dashboard, 15s in Upload Pages artifact, and 16s in Deploy Pages. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T19:43:54Z through 2026-10-09T21:55:30Z contained 0 successful full builds (19 skipped workflow_run and 1 cancelled push), so there is no trusted current-window dashboard producer sample to expand the cache baseline. Because the bounded sample contains only 1 comparable successful build-bearing docs run, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-09T21:28:01Z",
-      "worker_run_id": 37993549648,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37993169624,
-        37992896917,
-        37990859952,
-        37990325517,
-        37989694300,
-        37988241826,
-        37988080782,
-        37986880915,
-        37986598366,
-        37984213032,
-        37983410558,
-        37982589412,
-        37982235751,
-        37982231419,
-        37981161265,
-        37980933253,
-        37979740546,
-        37979459773,
-        37977338112,
-        37977110706
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 445ac4f24955fca0cc3a40650c5e7c7df90bd604. Within the latest 20 completed docs.yml runs from 2026-10-09T18:59:26Z through 2026-10-09T21:23:46Z, 10 runs concluded success and 10 were skipped workflow_run invocations. None of the successful runs executed the comparable schedule-freshness + build + deploy path for the category; all 10 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 12.0s/13.9s, while successful schedule-freshness job median/p90 was 8.0s/9.0s with the Check documentation and dashboard freshness step median/p90 at 4.0s/4.1s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T19:32:30Z through 2026-10-09T21:20:53Z contained 0 successful full builds (19 skipped workflow_run and 1 cancelled push), so there is no trusted current-window dashboard producer sample to expand the cache baseline. Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
