@@ -2,13 +2,13 @@
  * Reusable presentation-only chart legend and series helpers for dashboard views.
  */
 
-import { h } from '../dom.js';
+import { h, svgAnchor } from '../dom.js';
 import { effect, state } from '../reactive.js';
 import { formatNumber, formatShortUtcDate, toNumber } from '../view-formatters.js';
 import { formatCount, formatCoveragePercent, pluralSuffix } from './count-formatters.js';
 import { createFactoryScope } from './factory-elements.js';
 import { binHistogramValues } from './histogram.js';
-import { renderSafeLink } from './link-content.js';
+import { externalAnchorAttrs, renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 
@@ -229,6 +229,130 @@ export function renderChartLegend(series, chartType) {
     (item) => [h('span', null, item.name)],
     { 'data-chart-legend': 'visual' }
   );
+}
+
+/**
+ * @param {Array<[string, ChartPointLike[]]>} groupedSeries
+ * @param {string[]} xValues
+ * @param {boolean} [gapMissing]
+ * @returns {Map<string, Array<{ x: number, lower: number, upper: number, valid: boolean }>>}
+ */
+function chartAreaCoordinates(groupedSeries, xValues, gapMissing = false) {
+  const result = new Map();
+  const cumulativeByX = new Map(xValues.map((value) => [value, 0]));
+  const negativeByX = new Map(xValues.map((value) => [value, 0]));
+  for (const [seriesName, seriesPoints] of groupedSeries) {
+    /** @type {Map<string, number | null>} */
+    const valuesByX = new Map();
+    for (const point of seriesPoints) {
+      if (point.y == null) {
+        if (!valuesByX.has(point.x)) valuesByX.set(point.x, null);
+        continue;
+      }
+      const value = toNumber(point.y);
+      valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? gapMissing ? value : Math.max(0, value) : 0));
+    }
+    result.set(seriesName, xValues.map((xValue, index) => {
+      const value = valuesByX.get(xValue) ?? 0;
+      const stack = gapMissing && value < 0 ? negativeByX : cumulativeByX;
+      const lower = stack.get(xValue) ?? 0;
+      const upper = lower + value;
+      stack.set(xValue, upper);
+      return {
+        x: xValues.length < 2 ? 0.5 : index / (xValues.length - 1),
+        lower, upper, valid: (!gapMissing || valuesByX.has(xValue)) && valuesByX.get(xValue) !== null
+      };
+    }));
+  }
+  return result;
+}
+
+/**
+ * @typedef {{ xValues: string[], minimum: number, maximum: number, left: number, temporal: boolean }} ChartPlotDomain
+ * @typedef {{ chart: string, points: ChartPointLike[], unit: { name: string, symbol: string, significant: number, format?: string } | null, label: string }} RenderedChartLayer
+ */
+
+/**
+ * Composes existing chart marks on one drawing plane, without changing the
+ * worker's row selection, order, or grain.
+ * @param {RenderedChartLayer[]} layers
+ * @param {boolean} temporal
+ * @param {boolean} [independentY]
+ * @returns {HTMLElement}
+ */
+export function renderLayeredChartWidget(layers, temporal, independentY = false) {
+  const points = layers.flatMap((layer) => layer.points);
+  if (!points.some((point) => point.y != null && Number.isFinite(point.y))) {
+    return renderChartWidgetEmptyState('layer', 'No data is available for this visualization.');
+  }
+  if (layers.some((layer) => ['bar', 'rule'].includes(layer.chart) && layer.points.length > MAX_RENDERED_LINE_POINTS)) {
+    debugChartElements({ event: 'layer-limit-exceeded', limit: MAX_RENDERED_LINE_POINTS });
+    return renderChartWidgetEmptyState('layer', `Bar and rule layers support at most ${MAX_RENDERED_LINE_POINTS} observations. Limit the source query.`);
+  }
+  const xValues = [...new Set(points.filter((point) => point.x !== '' && (!temporal || Number.isFinite(Date.parse(point.x)))).map((point) => point.x))];
+  if (temporal) xValues.sort((left, right) => Date.parse(left) - Date.parse(right));
+  const ranges = layers.map((layer) => {
+    let minimum = 0;
+    let maximum = 1;
+    for (const point of layer.points) {
+      if (point.y == null || !Number.isFinite(point.y)) continue;
+      minimum = Math.min(minimum, point.y);
+      maximum = Math.max(maximum, point.y);
+    }
+    if (layer.chart === 'area') {
+      for (const coordinates of chartAreaCoordinates(groupChartSeries(layer.points), xValues, true).values()) {
+        for (const coordinate of coordinates) if (coordinate.valid) {
+          maximum = Math.max(maximum, coordinate.lower, coordinate.upper);
+          minimum = Math.min(minimum, coordinate.lower, coordinate.upper);
+        }
+      }
+    }
+    return { minimum, maximum };
+  });
+  const shared = {
+    minimum: Math.min(...ranges.map((range) => range.minimum)),
+    maximum: Math.max(...ranges.map((range) => range.maximum))
+  };
+  const left = Math.min(LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH, Math.max(
+    LINE_CHART_MIN_LEFT,
+    ...layers.map((layer, index) => {
+      const range = independentY ? ranges[index] : shared;
+      return Math.ceil(Math.max(...[range.maximum, (range.maximum + range.minimum) / 2, range.minimum]
+        .map((value) => estimateLineChartLabelWidth(formatChartAxisTick(value, layer.unit)))) + LINE_CHART_LABEL_GAP);
+    })
+  ));
+  const widgets = layers.map((layer, index) => renderChartWidget(
+    layer.chart, layer.points, listChartSeries(layer.points), null, layer.label, layer.unit,
+    null, null, undefined, null, { xValues, ...(independentY ? ranges[index] : shared), left, temporal }
+  ));
+  const first = widgets[0];
+  const svg = first.querySelector('svg');
+  if (!svg) throw new Error('Layered chart did not produce a drawing plane.');
+  const guides = [...svg.children].filter((node) => node.matches('.line-chart-y-axis, .line-chart-axis'));
+  const firstLayerMarks = [...svg.children].filter((node) => !guides.includes(node));
+  svg.replaceChildren(...guides);
+  widgets.forEach((widget, index) => {
+    const layerSvg = index === 0 ? null : widget.querySelector('svg');
+    const marks = index === 0
+      ? firstLayerMarks
+      : [...(layerSvg?.children ?? [])].filter((node) => !node.matches('.line-chart-y-axis, .line-chart-axis'));
+    svg.append(h('g', {
+      'data-chart-layer': String(index),
+      'data-chart-layer-type': layers[index].chart,
+      'aria-label': layers[index].label
+    }, ...marks));
+  });
+  svg.setAttribute('aria-label', `Layered chart with ${layers.length} layers${independentY ? ' and independent y scales' : ''}`);
+  first.classList.add('layer-chart-widget');
+  first.dataset.chart = 'layer';
+  if (independentY) {
+    first.querySelector('.line-chart-y-labels')?.remove();
+    first.append(h('div', { className: 'layer-chart-scale-key', 'aria-label': 'Independent y scales' },
+      ...layers.map((layer, index) => h('span', null,
+        `${layer.label}: ${formatNumber(ranges[index].minimum, layer.unit)} – ${formatNumber(ranges[index].maximum, layer.unit)}`,
+        ` (midpoint ${formatNumber((ranges[index].minimum + ranges[index].maximum) / 2, layer.unit)})`))));
+  }
+  return first;
 }
 
 /**
@@ -472,14 +596,15 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {string | null} [referenceField]
  * @param {(label: string) => string} [formatCategory]
  * @param {{ at: string, label: string } | null} [temporalMarker]
+ * @param {ChartPlotDomain | null} [plotDomain]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, plotDomain = null) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['bar', 'heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
   debugChartElements({ event: 'render', chartType, entryCount, seriesCount: series.length });
-  if (entryCount < minimumEntries && chartType !== 'swimlane') {
+  if (entryCount < minimumEntries && chartType !== 'swimlane' && !plotDomain) {
     debugChartElements({ event: 'empty-state', chartType, reason: entryCount === 0 ? 'no-data' : 'insufficient-data', entryCount });
     return renderChartWidgetEmptyState(
       chartType,
@@ -719,19 +844,22 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     );
   }
 
-  if (chartType === 'area' || chartType === 'line' || chartType === 'dot' || chartType === 'scatter') {
+  if (chartType === 'area' || chartType === 'line' || chartType === 'dot' || chartType === 'scatter' || plotDomain) {
     const isAreaChart = chartType === 'area';
     const isDotChart = chartType === 'dot';
     const isScatterChart = chartType === 'scatter';
+    const isLayerBar = chartType === 'bar' && plotDomain !== null;
+    const isRuleChart = chartType === 'rule';
     const isPointChart = isDotChart || isScatterChart;
     const groupedSeries = groupChartSeries(points);
     const renderedPointLimit = Math.max(2, Math.floor(MAX_RENDERED_LINE_POINTS / Math.max(groupedSeries.length, 1)));
     const hasWindowHighlight = points.some((point) => typeof point.highlighted === 'boolean');
     const showInteractivePoints = points.length <= MAX_INTERACTIVE_LINE_POINTS;
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
-    const xValues = [...new Set(points.map((point) => point.x))];
+    const xValues = plotDomain?.xValues ?? [...new Set(points.map((point) => point.x))];
     const xIndexes = new Map(xValues.map((value, index) => [value, index]));
-    const parsedTimes = isScatterChart ? xValues.map((value) => Date.parse(value)) : [];
+    const proportionalTime = isScatterChart || plotDomain?.temporal === true;
+    const parsedTimes = proportionalTime ? xValues.map((value) => Date.parse(value)) : [];
     let minimumTime = Number.POSITIVE_INFINITY;
     let maximumTime = Number.NEGATIVE_INFINITY;
     for (const time of parsedTimes) {
@@ -739,38 +867,16 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       minimumTime = Math.min(minimumTime, time);
       maximumTime = Math.max(maximumTime, time);
     }
-    const timelineTicks = isScatterChart
+    const timelineTicks = proportionalTime
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
     /** @type {Map<string, Array<{ x: number, lower: number, upper: number, valid: boolean }>>} */
-    const areaCoordinates = new Map();
+    const areaCoordinates = isAreaChart ? chartAreaCoordinates(groupedSeries, xValues, plotDomain !== null) : new Map();
     let maximum = 1;
     let minimum = 0;
     if (isAreaChart) {
-      const cumulativeByX = new Map(xValues.map((value) => [value, 0]));
-      for (const [seriesName, seriesPoints] of groupedSeries) {
-        const valuesByX = new Map();
-        for (const point of seriesPoints) {
-          if (point.y == null) {
-            if (!valuesByX.has(point.x)) valuesByX.set(point.x, null);
-            continue;
-          }
-          const value = toNumber(point.y);
-          valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? Math.max(0, value) : 0));
-        }
-        areaCoordinates.set(seriesName, xValues.map((xValue, xIndex) => {
-          const lower = cumulativeByX.get(xValue) ?? 0;
-          const upper = lower + (valuesByX.get(xValue) ?? 0);
-          cumulativeByX.set(xValue, upper);
-          const valid = valuesByX.get(xValue) !== null;
-          if (valid) maximum = Math.max(maximum, upper);
-          return {
-            x: xValues.length < 2 ? 0.5 : xIndex / (xValues.length - 1),
-            lower,
-            upper,
-            valid
-          };
-        }));
+      for (const coordinates of areaCoordinates.values()) {
+        for (const coordinate of coordinates) if (coordinate.valid) maximum = Math.max(maximum, coordinate.upper);
       }
     } else {
       for (const point of points) {
@@ -789,11 +895,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         .map((value) => ({ seriesName, value })))
       : [];
     for (const { value } of referenceLines) maximum = Math.max(maximum, value);
+    if (plotDomain) {
+      maximum = plotDomain.maximum;
+      minimum = plotDomain.minimum;
+    }
     const pointSize = lineChartPointSize(points.length);
     const dotPointRadius = dotChartPointRadius(points.length);
     const yTicks = [maximum, (maximum + minimum) / 2, minimum];
     const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
-    const lineChartLeft = Math.min(
+    const lineChartLeft = plotDomain?.left ?? Math.min(
       LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH,
       Math.max(
         LINE_CHART_MIN_LEFT,
@@ -801,6 +911,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       )
     );
     const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
+    /** @param {string} value */
+    const scaledX = (value) => {
+      const time = Date.parse(value);
+      if (proportionalTime && maximumTime > minimumTime && Number.isFinite(time)) {
+        return lineChartLeft + (((time - minimumTime) / (maximumTime - minimumTime)) * plotWidth);
+      }
+      return xValues.length < 2 ? lineChartLeft + (plotWidth / 2)
+        : lineChartLeft + (((xIndexes.get(value) ?? 0) / (xValues.length - 1)) * plotWidth);
+    };
     const markerTime = Date.parse(temporalMarker?.at ?? '');
     const pointTimes = xValues.map((value) => Date.parse(value)).filter(Number.isFinite);
     const markerX = temporalMarker && Number.isFinite(markerTime) && pointTimes.length > 0
@@ -811,7 +930,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       )
       : null;
     for (const coordinates of areaCoordinates.values()) {
-      for (const coordinate of coordinates) coordinate.x = lineChartLeft + (coordinate.x * plotWidth);
+      for (const [index, coordinate] of coordinates.entries()) coordinate.x = scaledX(xValues[index]);
     }
     const gridLines = yTicks.map((value) => {
       const y = LINE_CHART_BOTTOM - (((value - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT);
@@ -835,7 +954,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       }
       : null;
     /** @param {number} value */
-    const scaledAreaY = (value) => Number((LINE_CHART_BOTTOM - (value / maximum) * LINE_CHART_HEIGHT).toFixed(4));
+    const scaledAreaY = (value) => Number((LINE_CHART_BOTTOM - ((value - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT).toFixed(4));
     return renderChartWidgetShell(
       chartType,
       {
@@ -913,14 +1032,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const seriesClassName = seriesClassNames.get(seriesName) ?? 'chart-series-1';
           const stackedCoordinates = areaCoordinates.get(seriesName) ?? [];
           const coordinates = seriesPoints.map((point, index) => {
-            const xIndex = xIndexes.get(point.x) ?? 0;
-            const pointTime = Date.parse(point.x);
-            const x = isScatterChart && maximumTime > minimumTime && Number.isFinite(pointTime)
-              ? lineChartLeft + (((pointTime - minimumTime) / (maximumTime - minimumTime)) * plotWidth)
-              : xValues.length < 2
-                ? lineChartLeft + (plotWidth / 2)
-                : lineChartLeft + ((xIndex / (xValues.length - 1)) * plotWidth);
-            const valid = point.y != null && Number.isFinite(point.y);
+            const x = scaledX(point.x);
+            const valid = point.y != null && Number.isFinite(point.y)
+              && (!plotDomain?.temporal || isRuleChart || Number.isFinite(Date.parse(point.x)));
             const y = valid
               ? LINE_CHART_BOTTOM - ((/** @type {number} */ (point.y) - minimum) / (maximum - minimum)) * LINE_CHART_HEIGHT
               : LINE_CHART_BOTTOM;
@@ -938,6 +1052,42 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const highlightedCoordinates = hasWindowHighlight
             ? sampleLineCoordinates(validCoordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
             : [];
+          if (isRuleChart) {
+            /** @type {Map<number, ChartPointLike[]>} */
+            const rules = new Map();
+            for (const { point } of validCoordinates) {
+              const value = /** @type {number} */ (point.y);
+              const observations = rules.get(value) ?? [];
+              observations.push(point);
+              rules.set(value, observations);
+            }
+            return [...rules].map(([value, observations]) => {
+              const y = scaledAreaY(value);
+              const label = `${seriesName}: ${formatNumber(value, unit)}`;
+              const links = new Map(observations.flatMap((point) => point.link ? [[point.link.href, point.link]] : []));
+              const point = { ...observations[0], x: seriesName, color: null, link: links.size === 1 ? links.values().next().value ?? null : null };
+              return renderLayerObservationMark(h('line', {
+                className: `dot-chart-reference ${seriesClassName}`,
+                x1: lineChartLeft, x2: LINE_CHART_RIGHT, y1: y, y2: y,
+                tabIndex: 0, role: 'img', 'aria-label': label,
+                'data-chart-series': seriesName
+              }, h('title', null, label)), point, unit, plotDomain !== null);
+            });
+          }
+          if (isLayerBar) {
+            const barWidth = Math.min(14, plotWidth / Math.max(xValues.length * groupedSeries.length, 1) * 0.7);
+            return validCoordinates.map(({ point, x, y }) => {
+              const zero = scaledAreaY(0);
+              return renderLayerObservationMark(h('rect', {
+                className: `bar-chart-bar ${seriesClassName}`,
+                x: Math.max(lineChartLeft, Math.min(LINE_CHART_RIGHT - barWidth,
+                  x + (seriesIndex - groupedSeries.length / 2) * barWidth)),
+                y: Math.min(y, zero), width: barWidth, height: Math.abs(y - zero),
+                tabIndex: 0, role: 'img', 'aria-label': chartPointLabel(point, unit),
+                'data-chart-series': seriesName
+              }, h('title', null, chartPointLabel(point, unit))), point, unit, true);
+            });
+          }
           return [
             ...(isAreaChart ? [h('path', {
               className: `area-chart-area ${seriesClassName}`,
@@ -972,20 +1122,21 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               })]
               : []),
             ...(isPointChart && !showInteractivePoints
-              ? renderedCoordinates.map(({ x, y }) => h('circle', {
+              ? renderedCoordinates.map(({ point, x, y }) => renderLayerObservationMark(h('circle', {
                 className: `${isScatterChart ? 'scatter' : 'dot'}-chart-point ${seriesClassName}`,
                 cx: x,
                 cy: y,
                 r: dotPointRadius,
-                'aria-hidden': 'true'
-              }))
+                'aria-hidden': plotDomain ? undefined : 'true',
+                ...(plotDomain ? { tabindex: 0, role: 'img', 'aria-label': chartPointLabel(point, unit) } : {})
+              }), point, unit, plotDomain !== null))
               : []),
             ...(showInteractivePoints ? validCoordinates.map(({ point, x, y }, pointIndex) => {
               const stacked = isAreaChart
                 ? stackedCoordinates.find((coordinate) => coordinate.x === x && coordinate.valid)
                 : null;
               const markY = stacked ? scaledAreaY(stacked.upper) : y;
-              return h('g', {
+              return renderLayerObservationMark(h('g', {
                 className: `chart-point${point.highlighted === false ? ' chart-point-context' : point.highlighted ? ' chart-point-current' : ''}`,
                 style: `--chart-entry-index: ${pointIndex}`,
                 tabIndex: 0,
@@ -1021,7 +1172,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               renderChartPointTooltip({
                 transform: `translate(${Math.min(Math.max(x - 21, 1), 57)} ${Math.max(markY - 12, 1)})`,
                 label: chartPointLabel(point, unit)
-              }));
+              })), point, unit, plotDomain !== null);
             }) : [])
           ];
         })
@@ -1038,10 +1189,29 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         ? h(
           'div',
           { className: 'chart-axis timeline-chart-axis', 'data-chart-axis': chartType },
-          ...timelineTicks.map((value) => h('span', { title: value }, formatTimelineTick(value)))
+          ...timelineTicks.map((value) => h('span', { title: value }, plotDomain && !plotDomain.temporal ? compactAxisLabel(value) : formatTimelineTick(value)))
         )
         : null
     );
+  }
+
+  /**
+   * @param {Element} mark
+   * @param {ChartPointLike} point
+   * @param {{ name: string, symbol: string, significant: number, format?: string } | null} unit
+   * @param {boolean} layered
+   * @returns {Element}
+   */
+  function renderLayerObservationMark(mark, point, unit, layered) {
+    if (!layered || !point.link) return mark;
+    mark.removeAttribute('tabindex');
+    mark.removeAttribute('role');
+    return svgAnchor({
+      ...externalAnchorAttrs(point.link.href, `${chartPointLabel(point, unit)}: ${point.link.label}`),
+      ...(point.link.href.startsWith('#') ? { target: undefined, rel: undefined } : {}),
+      tabindex: 0,
+      className: 'chart-point-link'
+    }, mark);
   }
 
   if (chartType === 'swimlane') {

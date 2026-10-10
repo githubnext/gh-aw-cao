@@ -17,8 +17,9 @@ const debugValidatorEncoding = createDebug('validator-encoding');
  * @param {unknown} data
  * @param {string} viewPath
  * @param {ValidationError[]} errors
+ * @param {boolean} [layered]
  */
-export function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors) {
+export function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors, layered = false) {
   const errorCountBeforeValidation = errors.length;
   const markValue = typeof mark === 'string' ? mark : null;
 
@@ -87,7 +88,7 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
   } else if (markValue === 'list') {
     validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, 'list');
   } else if (markValue === 'chart') {
-    validateChartEncoding(encodingNode, encoding, chart, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
+    validateChartEncoding(encodingNode, encoding, chart, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, layered);
     validateChartWidget(encoding, chart, viewPath, errors);
   }
 
@@ -376,9 +377,12 @@ function validateTableEncoding(encodingNode, encoding, sourceName, path, aggrega
  * @param {string} path
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
+ * @param {boolean} [layered]
  */
-function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, aggregateOutputIds, errors) {
-  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'x'), encoding.x, sourceName, `${path}.x`, aggregateOutputIds, errors);
+function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, aggregateOutputIds, errors, layered = false) {
+  if (chart !== 'rule' || encoding.x !== undefined) {
+    validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'x'), encoding.x, sourceName, `${path}.x`, aggregateOutputIds, errors);
+  }
   const yNode = getValueNodeByKey(encodingNode, 'y');
   const yDefinitions = Array.isArray(encoding.y) ? encoding.y : [encoding.y];
   for (const [index, definition] of yDefinitions.entries()) {
@@ -511,6 +515,7 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
 
   if (
     expectedDefault === 'line'
+    && !layered
     && !['dot', 'scatter', 'swimlane'].includes(String(chart))
     && !xHasTimeUnit
     && !Array.isArray(encoding.y)

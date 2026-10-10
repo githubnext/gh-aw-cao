@@ -1,6 +1,6 @@
 import { state } from './validator-state.js';
 import { isReadOnlyCliAction, validateActionLevel } from './action-validator.js';
-import { CALLOUT_KEYS, ERROR_CODES, LINK_FIELD_NAMES, FACTORY_FLOOR_STATION_VALUES, FACTORY_HEADER_SOURCE_ROLES, FACTORY_FLOOR_SOURCE_ROLES, GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS, IDENTIFIER_PATTERN, MAX_ESSENTIAL_VIEWS_PER_PAGE, PAGE_FORM_KEYS, PAGE_FORM_UPDATE_KEYS, PAGE_FORM_UPDATE_STRATEGY_VALUES, PAGE_FORM_FIELD_KEYS, PAGE_FORM_CONTROL_VALUES, PAGE_FORM_OPTION_KEYS, PAGE_FORM_MIN_DELAY_MS, PAGE_FORM_MAX_DELAY_MS, PAGE_ICON_VALUES, QUERY_SOURCE_VALUES, TABLE_ACTION_KEYS, TABLE_ACTION_PRESENTATION_VALUES, TABLE_ACTION_WHEN_KEYS, TREE_TABLE_KEYS, VIEW_DATA_KEYS, VIEW_DATA_ARGUMENT_KEYS, VIEW_CHART_VALUES, VIEW_CONTROL_VALUES, VIEW_LIST_DRILL_ARGUMENT_KEYS, VIEW_LIST_DRILL_KEYS, VIEW_LIST_DRILL_TYPE_VALUES, VIEW_LIST_LAYOUT_VALUES, VIEW_LIST_APPEARANCE_VALUES, VIEW_LIST_VIEW_ALL_KEYS, VIEW_DISCLOSURE_VALUES, VIEW_ELEMENT_CONFIG_KEYS, VIEW_ELEMENT_ANIMATION_VALUES, VIEW_ELEMENT_VALUES, PLURAL_LABEL_ELEMENTS, PLURAL_TEXT_KEYS, VIEW_KEYS, VIEW_REQUIREMENT_KEYS, VIEW_BACKEND_VALUES, VIEW_LAYOUT_VALUES, VIEW_LIST_KEYS, VIEW_LIST_STYLE_VALUES, VIEW_MARK_VALUES, VIEW_METRIC_KEYS, VIEW_METRIC_ANIMATION_VALUES, VIEW_METRIC_STYLE_VALUES, VIEW_METRIC_TONE_VALUES, VIEW_TITLE_LINK_KEYS } from './specification.js';
+import { CALLOUT_KEYS, ERROR_CODES, FIELD_DEFINITION_KEYS, LINK_FIELD_NAMES, FACTORY_FLOOR_STATION_VALUES, FACTORY_HEADER_SOURCE_ROLES, FACTORY_FLOOR_SOURCE_ROLES, GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS, IDENTIFIER_PATTERN, MAX_ESSENTIAL_VIEWS_PER_PAGE, PAGE_FORM_KEYS, PAGE_FORM_UPDATE_KEYS, PAGE_FORM_UPDATE_STRATEGY_VALUES, PAGE_FORM_FIELD_KEYS, PAGE_FORM_CONTROL_VALUES, PAGE_FORM_OPTION_KEYS, PAGE_FORM_MIN_DELAY_MS, PAGE_FORM_MAX_DELAY_MS, PAGE_ICON_VALUES, QUERY_SOURCE_VALUES, TABLE_ACTION_KEYS, TABLE_ACTION_PRESENTATION_VALUES, TABLE_ACTION_WHEN_KEYS, TREE_TABLE_KEYS, VIEW_DATA_KEYS, VIEW_DATA_ARGUMENT_KEYS, VIEW_CHART_VALUES, VIEW_CONTROL_VALUES, VIEW_LIST_DRILL_ARGUMENT_KEYS, VIEW_LIST_DRILL_KEYS, VIEW_LIST_DRILL_TYPE_VALUES, VIEW_LIST_LAYOUT_VALUES, VIEW_LIST_APPEARANCE_VALUES, VIEW_LIST_VIEW_ALL_KEYS, VIEW_DISCLOSURE_VALUES, VIEW_ELEMENT_CONFIG_KEYS, VIEW_ELEMENT_ANIMATION_VALUES, VIEW_ELEMENT_VALUES, PLURAL_LABEL_ELEMENTS, PLURAL_TEXT_KEYS, VIEW_KEYS, VIEW_REQUIREMENT_KEYS, VIEW_BACKEND_VALUES, VIEW_LAYOUT_VALUES, VIEW_LIST_KEYS, VIEW_LIST_STYLE_VALUES, VIEW_MARK_VALUES, VIEW_METRIC_KEYS, VIEW_METRIC_ANIMATION_VALUES, VIEW_METRIC_STYLE_VALUES, VIEW_METRIC_TONE_VALUES, VIEW_TITLE_LINK_KEYS } from './specification.js';
 import { OUTCOME_DETAIL_SECTION_BODY_VALUES, CAMPAIGN_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_BODY_VALUES } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
@@ -9,6 +9,7 @@ import { validateEncoding } from './validator-encoding.js';
 import { validateRequiredIdentifier, validateStringField, validateSemanticMetadataLength, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getMappingItems, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
+import { ChartLayerError, resolveChartLayers } from './chart-layer-specification.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -846,7 +847,44 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       `${path}.data.limit`
     ));
   }
-  validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors);
+  if (view.layer !== undefined) {
+    if (view.mark !== 'chart') {
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'layer is allowed only on chart views.', `${path}.layer`));
+    }
+    try {
+      const layers = resolveChartLayers(view);
+      /** @param {Record<string, unknown>} specification @param {unknown} node @param {string} nodePath */
+      const validateLayerKeys = (specification, node, nodePath) => {
+        const encodingNode = getValueNodeByKey(node, 'encoding');
+        validateObjectKeys(encodingNode, ['x', 'y', 'color', 'href'], `${nodePath}.encoding`, errors);
+        for (const channel of ['x', 'y', 'color', 'href']) {
+          validateObjectKeys(getValueNodeByKey(encodingNode, channel), FIELD_DEFINITION_KEYS, `${nodePath}.encoding.${channel}`, errors);
+        }
+        if (!Array.isArray(specification.layer)) return;
+        specification.layer.forEach((child, index) => {
+          const childNode = getSequenceItemNode(getValueNodeByKey(node, 'layer'), index);
+          const childPath = `${nodePath}.layer[${index}]`;
+          validateObjectKeys(childNode, ['chart', 'encoding', 'layer'], childPath, errors);
+          validateLayerKeys(child, childNode, childPath);
+        });
+      };
+      validateLayerKeys(view, viewNode, path);
+      validateObjectKeys(getValueNodeByKey(viewNode, 'resolve'), ['scale'], `${path}.resolve`, errors);
+      validateObjectKeys(getValueNodeByKey(getValueNodeByKey(viewNode, 'resolve'), 'scale'), ['y'], `${path}.resolve.scale`, errors);
+      for (const layer of layers) {
+        validateEncoding(null, layer.encoding, 'chart', layer.chart,
+          sourceName, view.data, `${path}.${layer.path}`, errors, true);
+      }
+    } catch (error) {
+      if (!(error instanceof ChartLayerError)) throw error;
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, error.message, `${path}.${error.path}`));
+    }
+  } else {
+    if (view.resolve !== undefined) {
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'resolve requires layer.', `${path}.resolve`));
+    }
+    validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors);
+  }
   validateViewFilterBar(view, viewNode, path, sourceName, errors);
   validateTableActions(
     view.encoding,
