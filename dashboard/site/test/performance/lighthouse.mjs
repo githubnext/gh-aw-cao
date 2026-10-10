@@ -49,6 +49,7 @@ const mime = {
 
 async function startServer() {
   const compressed = new Map();
+  const retentionAsOf = Date.now();
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -63,19 +64,26 @@ async function startServer() {
       if (!path.startsWith(`${root}${sep}`)) { response.writeHead(403).end(); return; }
       const details = await stat(path);
       if (!details.isFile()) { response.writeHead(404).end(); return; }
+      // Keep retention cutoffs stable across the long repeated-navigation audit.
+      const prefix = relative === 'src/data-worker.js'
+        ? Buffer.from(`Date.now = () => ${retentionAsOf};\n`) : null;
+      const readBody = async () => {
+        const body = await readFile(path);
+        return prefix ? Buffer.concat([prefix, body]) : body;
+      };
       const headers = {
         'content-type': mime[extname(path)] || 'application/octet-stream',
-        'cache-control': 'no-store', 'content-length': details.size, vary: 'Accept-Encoding'
+        'cache-control': 'no-store', 'content-length': details.size + (prefix?.length ?? 0), vary: 'Accept-Encoding'
       };
       if (request.method === 'HEAD') { response.writeHead(200, headers).end(); return; }
       let body;
       if (/\bgzip\b/.test(request.headers['accept-encoding'] || '')
           && ['.js', '.css', '.json', '.jsonl', '.svg', '.html'].includes(extname(path))) {
         body = compressed.get(path);
-        if (!body) { body = gzipSync(await readFile(path)); compressed.set(path, body); }
+        if (!body) { body = gzipSync(await readBody()); compressed.set(path, body); }
         headers['content-encoding'] = 'gzip';
       } else {
-        body = await readFile(path);
+        body = await readBody();
       }
       headers['content-length'] = body.length;
       response.writeHead(200, headers).end(body);
@@ -89,7 +97,7 @@ async function startServer() {
     server.listen(0, '127.0.0.1', resolvePromise);
   });
   const { port } = server.address();
-  return { server, origin: `http://127.0.0.1:${port}` };
+  return { server, origin: `http://127.0.0.1:${port}`, retentionAsOf };
 }
 
 async function unusedPort() {
@@ -178,12 +186,13 @@ async function main() {
   await mkdir(temporaryRoot, { recursive: true });
   const dataset = await preparePerformanceData(fullRoot, emptyRoot, dataUrl, Boolean(process.env.DASHBOARD_PERFORMANCE_DATA_ROOT));
   await writeFile(join(outputRoot, 'dataset.json'), JSON.stringify(dataset, null, 2));
-  const { server, origin } = await startServer();
+  const { server, origin, retentionAsOf } = await startServer();
   const results = [];
   const states = {};
   const writeSummary = (status, error) => writeFile(join(outputRoot, 'summary.json'), JSON.stringify({
     generatedAt: new Date().toISOString(), status, ...(error ? { error } : {}),
     methodology: 'Gzip production site; verified empty and fully ingested canonical databases; repeated desktop/mobile medians; cold HTTP with service-worker bypass and separate PWA navigation.',
+    retentionAsOf: new Date(retentionAsOf).toISOString(),
     dataset, states, results
   }, null, 2));
   try {
@@ -247,7 +256,12 @@ async function main() {
           }
         }
         const after = await canonicalCounts(page);
-        if (JSON.stringify(after) !== JSON.stringify(counts)) throw new Error(`${state} canonical counts changed during the audits.`);
+        if (JSON.stringify(after) !== JSON.stringify(counts)) {
+          const changed = Object.keys(counts).filter((store) => counts[store] !== after[store]);
+          throw new Error(`${state} canonical counts changed during the audits: ${
+            changed.map((store) => `${store} ${counts[store]} -> ${after[store]}`).join(', ')
+          }.`);
+        }
         if (errors.length) throw new Error(`${state} page errors: ${errors.join('; ')}`);
       } catch (error) {
         await writeSummary('failed', error instanceof Error ? error.message : String(error));

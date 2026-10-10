@@ -403,8 +403,8 @@ The implementation profile defined by this specification is:
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
 | Canonical model | 28 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 37 | Eighteen canonical entity stores and `transactions` |
-| Local SQLite projection | IndexedDB 37 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Browser IndexedDB | 38 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Local SQLite projection | IndexedDB 38 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -464,6 +464,24 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `graderObservations` | `byRun -> runId`, `byGrader -> graderId` |
 | `evalObservations` | `byRun -> runId`, `byEval -> evalId` |
 | `transactions` | `byCreatedAt -> createdAt` |
+| `storageShards` | none |
+
+Time-bounded stores additionally index `byStorageTimestamp -> [_storage.timestamp, id]`.
+Run-linked stores additionally index `byStorageRun -> [runId, id]`
+for bounded subtree deletion. Experiment assignments, grader
+observations, and eval observations additionally index `byAudit -> auditId`
+for scoped curation reference checks.
+
+Canonical writes SHALL attach disposable `_storage` metadata identifying the
+store's UTC-day shard, the exact retention timestamp, and a conservative byte
+estimate. Structural records use a non-expiring shard. Canonical reads SHALL
+remove `_storage`; neither it nor `storageShards` is a query source or evidence.
+Shard counts, byte totals, dirty-audit markers, and global totals SHALL update
+atomically with record inserts, overwrites, moves, and deletes. Routine maintenance
+SHALL use these totals and indexed, at-most-1,000-record batches, never full entity
+scans or reserialization of unaffected records. Only explicit relationship repair
+or CLI legacy audit repair after unchanged ingestion with a missing curation receipt
+MAY rebuild shard accounting with bounded scans.
 
 The `_queryKeys` fields are disposable physical index projections, not canonical
 evidence. They encode nullable raw `summary`, `domain`, or
@@ -1497,11 +1515,14 @@ ingestion, normalized Activity publication, and Go/Postgres ingestion SHALL appl
 the same versioned, fail-closed curation rules. Existing IndexedDB, SQLite, and
 Postgres databases SHALL apply those rules during maintenance, including when
 the input payload hashes have not changed. Cleanup MUST precede size-based Run
-eviction, use bounded cursor scans or namespace-scoped SQL, and publish any
+eviction, use bounded dirty-shard indexed reads or namespace-scoped SQL, and publish any
 changed database revision so active worker/hosted query subscriptions refresh.
 
 IndexedDB Audit cleanup SHALL queue deletion keys in bounded batches within the
-scan transaction, flushing the final partial batch before commit. Deleting each
+read transaction and update shard accounting in that same transaction. Only newly
+written audit shards, audits belonging to changed Run curation facts, and audits
+whose evidence references were removed need inspection; reference checks SHALL
+use the `byAudit` indexes. Deleting each
 row through its cursor invalidates Chromium's cursor prefetch and can stall a
 deployed-data refresh; batching MUST preserve the same eligibility and reference
 checks without materializing the Audit collection.
@@ -2178,7 +2199,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 37;
+const DATABASE_VERSION = 38;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2190,7 +2211,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 37 SHALL define:
+IndexedDB version 38 SHALL define:
 
 ```text
 campaigns
@@ -2212,6 +2233,7 @@ graderObservations
 evals
 evalObservations
 transactions
+storageShards
 ```
 
 Future physical versions MAY include:
@@ -2301,6 +2323,14 @@ has been received. Therefore a database read during ingestion MAY observe an
 intermediate state. Query subscriptions that depend on the unfinished phase
 MUST retain their prior complete payload until the phase succeeds.
 
+Ingestion SHALL reject already-expired canonical records before storage writes,
+including when final maintenance is deferred. It SHALL nevertheless parse and
+validate every transport record and verify the metadata's declared count against
+all parsed records, not just stored records. Retained Run summaries and structural
+parents SHALL remain available independently of detail expiry. The worker SHALL
+defer routine inventory and shard maintenance until one final pass after both
+have committed; unchanged inputs still require expiry maintenance as time advances.
+
 Published inventory metadata that no activity shard observes — marketplace
 packages — SHALL be committed before any activity shard is downloaded, and the
 worker SHALL publish that inventory phase as soon as the commit lands. Only
@@ -2317,7 +2347,9 @@ unchanged.
 
 The `transactions` store SHALL record content-addressed ingestion receipts and
 failures. A source shard MAY be skipped only when its payload identity,
-ingestion version, and adaptation context match a successful receipt.
+ingestion version, adaptation context, and effective retention profile match a
+successful receipt. A longer historical retention override SHALL replay the
+authoritative shard rather than reuse a receipt created with shorter retention.
 
 An interrupted or failed shard MUST remain retryable. A failed receipt MUST NOT
 be interpreted as source freshness, completeness, or successful activation.

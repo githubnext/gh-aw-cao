@@ -222,7 +222,7 @@ describe('canonical view sources', () => {
 
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-    const tableNames = [...DATABASE_STORES];
+    const tableNames = DATABASE_STORES.filter((store) => store !== 'storageShards');
     const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
@@ -245,6 +245,17 @@ describe('canonical view sources', () => {
     }
     expect(nativeCounts).toHaveBeenCalledTimes(tableNames.length);
     expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('does not expose physical shard accounting through native source counts', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const definition = {
+      name: 'internal-count', from: 'storageShards',
+      aggregate: { values: [{ field: 'id', as: 'count', reducer: 'count' }] }
+    };
+    const counts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    expect(await queryNativeCountSources(indexedDB, sources, [definition], ['internal-count'])).toEqual({});
+    expect(counts).not.toHaveBeenCalled();
   });
 
   it('projects canonical operational values with campaign fields', async () => {
@@ -333,7 +344,7 @@ describe('canonical view sources', () => {
   });
 
   it('returns the same zero counts as declarative execution for empty tables', async () => {
-    const tableNames = [...DATABASE_STORES];
+    const tableNames = DATABASE_STORES.filter((store) => store !== 'storageShards');
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
       from: table,

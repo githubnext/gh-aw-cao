@@ -1720,12 +1720,7 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     const identityHasher = createCachedJsonlPayloadHasher();
     for await (const chunk of createReadStream(shardPath)) identityHasher.update(chunk);
     const payloadIdentity = identityHasher.digest();
-    const current = await isCachedGhAwJsonlCurrent(indexedDB, {
-      payloadIdentity,
-      payloadScope: scope,
-      context: options.context,
-      workflowHints: options.workflowHints
-    });
+    const current = await isCachedGhAwJsonlCurrent(indexedDB, { ...options, payloadIdentity, payloadScope: scope });
     if (current) {
       debug('skipping shard %s: content hash already recorded in transactions table', name);
       shards.push({ shard: name, skipped: true, committedRecords: 0 });
@@ -1748,7 +1743,9 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
   if (!await isAuditCurationCurrent(indexedDB)) {
-    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
+      ...options, repairAuditCuration: true
+    });
     updated ||= maintenance.deletedRecords > 0;
   }
   return { ...totals, updated, committedRecords, shards };
@@ -1808,9 +1805,12 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
       Date.now() - phaseStartedAt
     );
   }
-  if (updated || !await isAuditCurationCurrent(indexedDB)) {
+  const auditCurationCurrent = await isAuditCurationCurrent(indexedDB);
+  if (updated || !auditCurationCurrent) {
     const maintenanceStartedAt = Date.now();
-    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
+      ...options, repairAuditCuration: !updated && !auditCurationCurrent
+    });
     updated ||= maintenance.deletedRecords > 0;
     debug('applied deferred canonical maintenance durationMs=%d', Date.now() - maintenanceStartedAt);
   }

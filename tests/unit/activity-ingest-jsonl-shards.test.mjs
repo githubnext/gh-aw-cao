@@ -685,35 +685,51 @@ test('publication retains usage evidence when the winning Run has null AIC', asy
     .map((audit) => audit.summary), ['AIC 2.5']);
 });
 
-test('unchanged source shards still clean a pre-curation SQLite database', async () => {
-  const { shardDirectory, databasePath } = await fixture();
-  const ingestRetained = async () => JSON.parse((await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'), 'ingest-jsonl', '--database', databasePath,
-    '--input-dir', shardDirectory, '--retention-days', 'all', '--run-retention-days', 'all'
-  ])).stdout);
-  await ingestRetained();
-  const database = new DatabaseSync(databasePath);
-  const run = JSON.parse(database.prepare("SELECT value FROM __idb_records WHERE store_name='runs' LIMIT 1").get().value);
-  const { database_name: databaseName } = database.prepare("SELECT database_name FROM __idb_records WHERE store_name='runs' LIMIT 1").get();
-  const audit = {
-    id: 'audit:legacy-marker', runId: run.id, source: 'gh-aw-logs',
-    type: 'workflow_run_working_set', status: 'observed', summary: 'Working set measured',
-    timestamp: run.completedAt, observedAt: run.completedAt
-  };
-  database.prepare('INSERT INTO __idb_records (database_name,store_name,record_key,value) VALUES (?,?,?,?)')
-    .run(databaseName, 'audits', JSON.stringify(audit.id), JSON.stringify(audit));
-  database.prepare("DELETE FROM __idb_records WHERE store_name='transactions' AND json_extract(value,'$.kind')='audit-curation'").run();
-  database.close();
-  const repeated = await ingestRetained();
-  assert.equal(repeated.result.updated, true);
-  assert.equal(repeated.result.committedRecords, 0);
-  assert.ok(repeated.result.shards.every((shard) => shard.skipped));
-  const cleaned = new DatabaseSync(databasePath, { readOnly: true });
-  assert.equal(cleaned.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name='audits' AND json_extract(value,'$.id')=?")
-    .get(audit.id).count, 0);
-  cleaned.close();
-  assert.equal((await ingestRetained()).result.updated, false);
-});
+for (const input of ['cached', 'normalized']) {
+  test(`unchanged ${input} source shards still clean a pre-curation SQLite database`, async () => {
+    const { root, shardDirectory, databasePath } = await fixture();
+    let inputArguments = ['--input-dir', shardDirectory];
+    if (input === 'normalized') {
+      const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+      const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+      inputArguments = ['--runs-dir', runsDirectory, '--records-dir', recordsDirectory];
+      await execFileAsync(process.execPath, [
+        path.resolve('activity/cao.mjs'), 'hash-payloads', '--shard-dir', shardDirectory,
+        ...inputArguments
+      ]);
+    }
+    const ingestRetained = async () => JSON.parse((await execFileAsync(process.execPath, [
+      path.resolve('activity/cao.mjs'), 'ingest-jsonl', '--database', databasePath,
+      ...inputArguments, '--retention-days', 'all', '--run-retention-days', 'all'
+    ])).stdout);
+    await ingestRetained();
+    const database = new DatabaseSync(databasePath);
+    const run = JSON.parse(database.prepare("SELECT value FROM __idb_records WHERE store_name='runs' LIMIT 1").get().value);
+    const { database_name: databaseName } = database.prepare("SELECT database_name FROM __idb_records WHERE store_name='runs' LIMIT 1").get();
+    const audit = {
+      id: 'audit:legacy-marker', runId: run.id, source: 'gh-aw-logs',
+      type: 'workflow_run_working_set', status: 'observed', summary: 'Working set measured',
+      timestamp: run.completedAt, observedAt: run.completedAt
+    };
+    database.prepare('INSERT INTO __idb_records (database_name,store_name,record_key,value) VALUES (?,?,?,?)')
+      .run(databaseName, 'audits', JSON.stringify(audit.id), JSON.stringify(audit));
+    database.prepare("DELETE FROM __idb_records WHERE store_name='transactions' AND json_extract(value,'$.kind')='audit-curation'").run();
+    database.close();
+    const repeated = await ingestRetained();
+    assert.equal(repeated.result.updated, true);
+    assert.equal(repeated.result.committedRecords, 0);
+    assert.ok(repeated.result.shards.every((shard) => shard.skipped));
+    const cleaned = new DatabaseSync(databasePath, { readOnly: true });
+    assert.equal(cleaned.prepare("SELECT count(*) AS count FROM __idb_records WHERE store_name='audits' AND json_extract(value,'$.id')=?")
+      .get(audit.id).count, 0);
+    const totals = JSON.parse(cleaned.prepare("SELECT value FROM __idb_records WHERE store_name='storageShards' AND json_extract(value,'$.id')='totals'").get().value);
+    const accounting = cleaned.prepare("SELECT count(*) AS count, sum(json_extract(value,'$._storage.bytes')) AS bytes FROM __idb_records WHERE json_type(value,'$._storage')='object'").get();
+    assert.equal(totals.count, accounting.count);
+    assert.equal(totals.bytes, accounting.bytes);
+    cleaned.close();
+    assert.equal((await ingestRetained()).result.updated, false);
+  });
+}
 
 test('hash-payloads excludes info-level audits from record shards', async () => {
   const { root, shardDirectory } = await fixture();

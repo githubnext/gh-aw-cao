@@ -340,8 +340,8 @@ class SqliteIDBIndex {
     this.keyPath = keyPath;
   }
 
-  /** @param {unknown} [query] */
-  getAll(query) {
+  /** @param {unknown} [query] @param {number} [count] */
+  getAll(query, count) {
     if (!this.transaction) throw new Error('Index is not associated with a transaction');
     const transaction = this.transaction;
     return transaction.runRequest(() => {
@@ -358,6 +358,7 @@ class SqliteIDBIndex {
           compareKeys(left.indexKey, right.indexKey)
           || compareKeys(left.primaryKey, right.primaryKey)
         ))
+        .slice(0, count)
         .map(({ value }) => value);
     });
   }
@@ -502,11 +503,12 @@ class SqliteIDBObjectStore {
     });
   }
 
-  /** @param {unknown} [query] */
-  getAll(query) {
+  /** @param {unknown} [query] @param {number} [count] */
+  getAll(query, count) {
     return this.requireTransaction().runRequest(() => this.database.records(this.name)
       .filter((record) => matchesQuery(record.key, query))
       .sort((left, right) => compareKeys(left.key, right.key))
+      .slice(0, count)
       .map((record) => clone(record.value)));
   }
 
@@ -543,6 +545,15 @@ class SqliteIDBObjectStore {
         DELETE FROM __idb_records
         WHERE database_name = ? AND store_name = ? AND record_key = ?
       `).run(this.database.name, this.name, encodeKey(key));
+      return undefined;
+    });
+  }
+
+  clear() {
+    return this.requireTransaction().runRequest(() => {
+      this.database.connection.prepare(`
+        DELETE FROM __idb_records WHERE database_name = ? AND store_name = ?
+      `).run(this.database.name, this.name);
       return undefined;
     });
   }

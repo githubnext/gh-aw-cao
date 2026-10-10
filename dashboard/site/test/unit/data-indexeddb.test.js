@@ -61,15 +61,20 @@ async function writeTransactionRecord(record) {
 
 /** @param {string} storeName @param {Record<string, unknown>[]} records */
 async function writeRecords(storeName, records) {
-  const database = await openCanonicalDatabase(indexedDB);
-  try {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    for (const record of records) store.put(record);
-    await transactionDone(transaction);
-  } finally {
-    database.close();
+  if (storeName === 'transactions') {
+    const database = await openCanonicalDatabase(indexedDB);
+    try {
+      const transaction = database.transaction(storeName, 'readwrite');
+      for (const record of records) transaction.objectStore(storeName).put(record);
+      await transactionDone(transaction);
+    } finally {
+      database.close();
+    }
+    return;
   }
+  await upsertCanonicalBatch(indexedDB, { ...normalize([]), [storeName]: records }, {
+    validateRelationships: false
+  });
 }
 
 beforeEach(async () => {
@@ -269,6 +274,7 @@ describe('canonical IndexedDB', () => {
       'repositories',
       'runs',
       'skills',
+      'storageShards',
       'tools',
       'transactions',
       'workflows'
@@ -277,16 +283,17 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('repositories').objectStore('repositories').indexNames]).toEqual([]);
     expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byCampaign', 'byRepository']);
     expect([...database.transaction('runs').objectStore('runs').indexNames])
-      .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byRepository', 'byWorkflow']);
+      .toEqual(['byConclusion', 'byEvent', 'byEventConclusion', 'byRepository', 'byStorageTimestamp', 'byWorkflow']);
     expect([...database.transaction('domains').objectStore('domains').indexNames])
-      .toEqual(['byQueryDomain', 'byQuerySummary', 'byRun']);
+      .toEqual(['byQueryDomain', 'byQuerySummary', 'byRun', 'byStorageRun', 'byStorageTimestamp']);
     expect([...database.transaction('tools').objectStore('tools').indexNames])
-      .toEqual(['byQueryMcpIdentity', 'byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
+      .toEqual(['byQueryMcpIdentity', 'byQuerySummary', 'byRun', 'byStorageRun', 'byStorageTimestamp', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
     expect([...database.transaction('audits').objectStore('audits').indexNames])
-      .toEqual(['byQuerySummary', 'byRun', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
-    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byQuerySummary', 'byRun']);
+      .toEqual(['byQuerySummary', 'byRun', 'byStorageRun', 'byStorageTimestamp', 'byTypeStatusRun', 'byTypeStatusRunSummary']);
+    expect([...database.transaction('issues').objectStore('issues').indexNames])
+      .toEqual(['byQuerySummary', 'byRun', 'byStorageRun', 'byStorageTimestamp']);
     expect([...database.transaction('operationalValues').objectStore('operationalValues').indexNames])
-      .toEqual(['byRepository', 'byValue']);
+      .toEqual(['byRepository', 'byStorageTimestamp', 'byValue']);
     expect([...database.transaction('transactions').objectStore('transactions').indexNames]).toEqual(['byCreatedAt']);
     database.close();
   });
@@ -419,6 +426,7 @@ describe('canonical IndexedDB', () => {
       'repositories',
       'runs',
       'skills',
+      'storageShards',
       'tools',
       'transactions',
       'workflows'
@@ -484,6 +492,7 @@ describe('canonical IndexedDB', () => {
       'repositories',
       'runs',
       'skills',
+      'storageShards',
       'tools',
       'transactions',
       'workflows'
@@ -538,7 +547,7 @@ describe('canonical IndexedDB', () => {
     await upsertCanonicalBatch(indexedDB, batch());
 
     expect(transactions).toHaveBeenCalledWith(
-      'repositories',
+      ['repositories', 'storageShards'],
       'readwrite',
       { durability: 'relaxed' }
     );
@@ -611,7 +620,7 @@ describe('canonical IndexedDB', () => {
 
     expect(debug).toHaveBeenCalledWith(
       'relaxed transaction durability unsupported; using default durability',
-      { storeCount: 1 }
+      { storeCount: 2 }
     );
     expect(debug).toHaveBeenCalledWith('explicitly committing queued IndexedDB requests');
     expect(debug).toHaveBeenCalledWith(

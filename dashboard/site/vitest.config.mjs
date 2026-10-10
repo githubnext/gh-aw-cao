@@ -12,7 +12,10 @@ export default defineConfig({
           name: 'dashboard',
           environment: 'jsdom',
           include: ['test/unit/**/*.test.js'],
-          exclude: ['test/unit/audit-curation.test.js', 'test/unit/dashboard-navigation.test.js']
+          exclude: [
+            'test/unit/audit-curation.test.js', 'test/unit/dashboard-navigation.test.js',
+            'test/unit/data-storage-shards.test.js', 'test/unit/detail-query-scale.test.js'
+          ]
         }
       },
       {
@@ -29,8 +32,11 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'audit-curation',
-          include: ['test/unit/audit-curation.test.js'],
-          // Large fake-indexeddb cursor scans are substantially slower in VM workers.
+          include: [
+            'test/unit/audit-curation.test.js', 'test/unit/data-storage-shards.test.js',
+            'test/unit/detail-query-scale.test.js'
+          ],
+          // Large fake-indexeddb scans and indexed shard mutations are slower in VM workers.
           pool: 'forks'
         }
       }

@@ -192,7 +192,7 @@ describe('canonical ingestion termination', () => {
         yield `${JSON.stringify({
           kind: 'record',
           collection: 'runs',
-          record: { id: `run:${index}` }
+          record: { id: `run:${index}`, startedAt: '2026-10-09T00:00:00Z' }
         })}\n`;
       }
     }
@@ -201,6 +201,7 @@ describe('canonical ingestion termination', () => {
       payloadIdentity: 'a'.repeat(64),
       payloadScope: 'https://example.test/gh-aw-logs-runs/quota.jsonl',
       expectedPhase: 'runs',
+      now: Date.parse('2026-10-10T00:00:00Z'),
       storage,
       deferMaintenance: true
     })).resolves.toMatchObject({ updated: true, committedRecords: 4 });
