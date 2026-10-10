@@ -2,6 +2,16 @@
   "additional_languages": [],
   "additional_target_evaluations": [
     {
+      "target_repo": "githubnext/gh-aw-cao",
+      "target_commit": "d08a0f2e6fb8ede95312a420f10222e60829350a",
+      "true_positive_count": 7,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed unchanged on HEAD d08a0f2; same 7 true-positive sites in account-menu.js and configuration-view.js, 0 false positives.",
+      "txn_id": "refiner-38089620887-1"
+    },
+    {
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "ready",
@@ -159,9 +169,9 @@
   ],
   "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
   "language": "javascript",
-  "last_seen_at": "2026-10-10T20:52:23Z",
-  "last_updated": "2026-10-10T15:55:15Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
+  "last_seen_at": "2026-10-10T22:00:00Z",
+  "last_updated": "2026-10-10T22:00:00Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38089620887",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
   "likely_false_positives": "An async handler that calls `.set()` after `await` but whose component is never removed from the DOM during that async work (e.g. a top-level page-scoped singleton that outlives all navigation) does not need the guard; the rule should only fire when the enclosing scope is created via `createFactoryScope()`/bound to a removable node, i.e. an abort signal is already available in scope but unused after an await preceding a `.set()` call.",
   "mechanical_correction": "After every `await` inside an async handler that subsequently calls `state.set(...)`, check `if (scope.signal.aborted) return;` (or the component's equivalent abort signal) before performing the write, mirroring the guard already present in #15419, #15463, and #15483.",
