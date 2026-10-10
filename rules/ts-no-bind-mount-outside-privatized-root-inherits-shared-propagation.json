@@ -120,6 +120,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD b161aea: grep across all .ts/.js/.mjs/.cjs/.go sources for '--bind', 'make-private', 'MS_PRIVATE', and 'privatized' still returns zero hits of the unsafe pattern (sole textual '--bind' match is .github/workflows/ci.yml:1718, a python http.server network bind flag; mount-related Go hits are comment references to bind-mounting Docker volumes, not a privatized-root/shared-propagation bind-mount sequence). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38073519493-2.",
       "txn_id": "refiner-38092782506-2"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "feb7220049159029fa73892e84db65971c7a642c",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD feb7220: grep across all .ts/.js/.mjs/.cjs/.go sources for '--bind', 'make-private', 'MS_PRIVATE', and 'privatized' still returns zero hits of the unsafe pattern; no Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38092782506-2.",
+      "txn_id": "refiner-38096349731-2"
     }
   ],
   "affected_paths": [

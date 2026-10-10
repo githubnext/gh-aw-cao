@@ -90,6 +90,16 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD b161aea (shallow clone, single commit visible): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. No drift since refiner-38073519493-1.",
       "txn_id": "refiner-38092782506-1"
+    },
+    {
+      "target_repo": "github/gh-aw",
+      "target_commit": "feb7220049159029fa73892e84db65971c7a642c",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD feb7220 (one commit past b161aea, #67523 only added model-routing smoke workflow files, no .ts/.js/.mjs/.cjs sources): grep for createFactoryScope() and reactive.js across all 1483 .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. No drift since refiner-38092782506-1.",
+      "txn_id": "refiner-38096349731-1"
     }
   ],
   "affected_paths": [
