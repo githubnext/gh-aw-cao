@@ -2,6 +2,16 @@
   "additional_languages": [],
   "additional_target_evaluations": [
     {
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "target_commit": "5d5ea41dd7cd4973298bd3b0ea9fedfc4ebb38dd",
+      "target_repo": "githubnext/gh-aw-cao",
+      "txn_id": "refiner-38049700647-2",
+      "reason": "Re-confirmed on HEAD 5d5ea41: sole --bind hit remains a network listener flag assertion, unrelated to mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation."
+    },
+    {
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
@@ -143,9 +153,9 @@
     "reason": "The file's last_updated timestamp (2026-10-09T23:53:21Z) predated the most recent github/gh-aw-firewall evaluation, refiner-37977147256-1 (recorded 2026-10-09T19:06:40Z but never carried in), leaving the file's github/gh-aw-firewall record one evaluation stale (still pointing at refiner-37969204993-1, 2026-10-09T01:36:03Z) while github/gh-aw and githubnext/gh-aw-cao were current. Appended the missing additional_target_evaluations entry; readiness and counts (TP=1, FP=3, needs-work) are unchanged from the prior firewall entry, so overall status stays needs-work."
   },
   "last_seen_at": "2026-10-09T23:53:21Z",
-  "last_updated": "2026-10-09T23:53:21Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
-  "last_updated_target_repo": "github/gh-aw",
+  "last_updated": "2026-10-10T11:53:44Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38049700647",
+  "last_updated_target_repo": "githubnext/gh-aw-cao",
   "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
   "mechanical_correction": "After every `mount --bind <source> <destination>` where `destination` is not itself inside a path that was just privatized, immediately run `mount --make-private <destination>` (non-recursive, scoped to exactly that mount) and then verify via `/proc/self/mountinfo` that the resulting entry shows private propagation before trusting the mount. Do this for each distinct bind destination separately; privatizing an ancestor/source does not substitute for privatizing the specific destination mount.",
   "occurrence_count": 4,
