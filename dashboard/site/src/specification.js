@@ -7,8 +7,6 @@ import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
 export {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
-  WORK_VIEW_BODY_VALUES,
-  WORK_VIEW_SECTION_KEYS,
   WORKFLOW_ROUTE_BODY_VALUES,
   WORKFLOW_ROUTE_PAGE_BODY_VALUES
 } from './components/route-body-specification.js';
