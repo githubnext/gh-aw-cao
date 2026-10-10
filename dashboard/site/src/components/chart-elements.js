@@ -11,6 +11,7 @@ import { binHistogramValues } from './histogram.js';
 import { externalAnchorAttrs, renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { renderTreemapChart } from './treemap-chart.js';
 
 const debugChartElements = createDebug('chart-elements');
 
@@ -323,7 +324,7 @@ export function renderLayeredChartWidget(layers, temporal, independentY = false)
   ));
   const widgets = layers.map((layer, index) => renderChartWidget(
     layer.chart, layer.points, listChartSeries(layer.points), null, layer.label, layer.unit,
-    null, null, undefined, null, { xValues, ...(independentY ? ranges[index] : shared), left, temporal }
+    null, null, undefined, null, {}, { xValues, ...(independentY ? ranges[index] : shared), left, temporal }
   ));
   const first = widgets[0];
   const svg = first.querySelector('svg');
@@ -596,10 +597,14 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {string | null} [referenceField]
  * @param {(label: string) => string} [formatCategory]
  * @param {{ at: string, label: string } | null} [temporalMarker]
+ * @param {import('./treemap-layout.js').TreemapOptions} [treemapOptions]
  * @param {ChartPlotDomain | null} [plotDomain]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, plotDomain = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}, plotDomain = null) {
+  if (chartType === 'treemap') {
+    return renderTreemapChart(points, totalLabel, unit, treemapOptions, chartSeriesClassName);
+  }
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['bar', 'heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;

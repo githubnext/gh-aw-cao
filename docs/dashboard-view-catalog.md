@@ -82,6 +82,7 @@ parsing run exclusively in the data worker, including for hosted memory files.
 | `pie` | Show a bounded part-to-whole composition. |
 | `scatter` | Show relationships between two quantitative fields. |
 | `swimlane` | Show events or intervals across categorical lanes and time. |
+| `treemap` | Show up to 100 proportional rectangles, optionally nested by one categorical group; use Vega-style squarify, binary, or slice-dice layouts. See [Treemap authoring](dashboard-language.md#show-a-treemap). |
 
 ## Named UI elements
 
