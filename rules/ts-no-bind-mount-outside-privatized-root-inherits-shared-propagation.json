@@ -1,163 +1,163 @@
 {
-  "rule_key": "ts-no-bind-mount-outside-privatized-root-inherits-shared-propagation",
-  "language": "typescript",
   "additional_languages": [],
-  "unsafe_pattern": "Calling `mount(tools, ['--bind', source, destination])` to bind a source under an already-privatized root (made private via a prior `mount --make-private <root>`) onto a `destination` path that lives OUTSIDE that privatized root (e.g. an invocation export directory under a separate shared `invocationsDir`), without also running `mount --make-private <destination>` on that specific bind result before using it. Privatizing the root/source does not privatize a separate destination mount point that is still covered by a shared ancestor mount.",
-  "consequence": "Per Linux shared-subtree semantics, binding a private source onto a shared destination mount point creates a shared clone at the destination, even though the source was private. The resulting mount silently remains shared propagation, which can leak mount events/visibility across namespaces and defeat the isolation the privatization was meant to guarantee for enclave/VM storage. This was the confirmed root cause of two consecutive live environment-probe failures (`storage-mount-propagation`) in this repository's Cloud Hypervisor enclave storage setup.",
-  "mechanical_correction": "After every `mount --bind <source> <destination>` where `destination` is not itself inside a path that was just privatized, immediately run `mount --make-private <destination>` (non-recursive, scoped to exactly that mount) and then verify via `/proc/self/mountinfo` that the resulting entry shows private propagation before trusting the mount. Do this for each distinct bind destination separately; privatizing an ancestor/source does not substitute for privatizing the specific destination mount.",
-  "evidence": [
+  "additional_target_evaluations": [
     {
-      "type": "merged_pull_request",
-      "repo": "github/gh-aw-firewall",
-      "number": 9530,
-      "title": "fix: isolate enclave allocation mount propagation",
-      "detail": "Root cause: 'the allocation root and artifact parent were overlapping shared peers'. Fix: run `mount --make-private <allocation-root>` before creating any child layout or bind, and verify exactly one private mount-table entry, specifically because nested self-binds inside the allocation were propagating back through overlapping shared views.",
-      "files": [
-        "src/cloud-hypervisor/trusted-enclave-storage.ts",
-        "src/cloud-hypervisor/mount-topology.ts"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 7745f43: zero hits for '--bind'/'make-private' mount-propagation idiom in this CLI/Actions monorepo. No drift since prior evaluation.",
+      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37989801072-2"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "github/gh-aw-firewall",
-      "number": 9536,
-      "title": "fix(enclave): privatize invocation mount beneath shared destination",
-      "detail": "Second, distinct occurrence of the same root defect class one probe-release later: 'The private `<allocation>/state` source is bound beneath a shared external invocation destination, so Linux shared-subtree semantics make the new mount shared.' Fix added a dedicated `mount --make-private <invocationHostDir>` immediately after the `--bind` in `mountTmpfs`, plus a post-remount assertion requiring exactly one private entry, because the prior PR's allocation-root privatization did not cover this separate external destination.",
-      "files": [
-        "src/cloud-hypervisor/trusted-enclave-storage.ts"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 445ac4f: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
+      "target_commit": "445ac4f24955fca0cc3a40650c5e7c7df90bd604",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37983619707-2"
     },
     {
-      "type": "review_comment",
-      "repo": "github/gh-aw-firewall",
-      "number": 9532,
-      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203171519",
-      "detail": "Copilot review comment on trusted-enclave-storage.ts:341 (the exact bind call later fixed by #9536) during the diagnostic-only PR that preceded the fix, flagging the same shared-destination propagation concern before root cause was confirmed."
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD c835648: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
+      "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37947701110-2"
     },
     {
-      "type": "review_comment",
-      "repo": "github/gh-aw-firewall",
-      "number": 9532,
-      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203274458",
-      "detail": "Second Copilot review comment reiterating the same concern at the same trusted-enclave-storage.ts:341 location on PR #9532."
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD d00b985: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag ('--bind 127.0.0.1'), unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
+      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37796381362-2"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "First evaluation on this target: no mount-namespace bind/privatize code exists in githubnext/gh-aw-cao; the sole '--bind' hit is an unrelated network listener flag. Not applicable here, independent of needs-work readiness on github/gh-aw-firewall.",
+      "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37671193744-3"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 3,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f748e418: virtiofsd.ts readonlyBindPath still never privatized; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root already privatized before creation). No drift since refiner-37662241728-1.",
+      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 1,
+      "txn_id": "refiner-37870178954-2"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 3,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 8ad503f1 (#9756, unrelated CH smoke/diagnostics changes): virtiofsd.ts startOne() ro-export branch still never privatizes readonlyBindPath/shareDirectory; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root/ancestor already privatized). No drift since refiner-37870178954-2.",
+      "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 1,
+      "txn_id": "refiner-37969204993-1"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 3ea471b: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall.",
+      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38001319335-2"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD a67a4d4: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall. No drift since refiner-38001319335-2 (recorded as 2026-10-09T22:54:31Z).",
+      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38006263601-2"
     }
   ],
-  "occurrence_count": 4,
   "affected_paths": [
     "src/cloud-hypervisor/trusted-enclave-storage.ts",
     "src/cloud-hypervisor/mount-topology.ts"
   ],
+  "autofix_safe": false,
+  "consequence": "Per Linux shared-subtree semantics, binding a private source onto a shared destination mount point creates a shared clone at the destination, even though the source was private. The resulting mount silently remains shared propagation, which can leak mount events/visibility across namespaces and defeat the isolation the privatization was meant to guarantee for enclave/VM storage. This was the confirmed root cause of two consecutive live environment-probe failures (`storage-mount-propagation`) in this repository's Cloud Hypervisor enclave storage setup.",
+  "evaluation": {
+    "false_negative_count": 0,
+    "false_positive_count": 0,
+    "readiness_for_target": "not-applicable",
+    "reason": "Re-confirmed on HEAD 0ad7d36 (#67247 only touched CI/changeset/workflow-dispatch allowlist files, no .ts/.js sources): grep for '--bind' and 'make-private' across all .ts/.js sources still returns zero hits. No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38006263601-2.",
+    "target_commit": "0ad7d36767de4d80c6632d6006783ac94ae5f8b4",
+    "target_repo": "github/gh-aw",
+    "true_positive_count": 0,
+    "txn_id": "refiner-38013029314-2"
+  },
+  "evidence": [
+    {
+      "detail": "Root cause: 'the allocation root and artifact parent were overlapping shared peers'. Fix: run `mount --make-private <allocation-root>` before creating any child layout or bind, and verify exactly one private mount-table entry, specifically because nested self-binds inside the allocation were propagating back through overlapping shared views.",
+      "files": [
+        "src/cloud-hypervisor/trusted-enclave-storage.ts",
+        "src/cloud-hypervisor/mount-topology.ts"
+      ],
+      "number": 9530,
+      "repo": "github/gh-aw-firewall",
+      "title": "fix: isolate enclave allocation mount propagation",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Second, distinct occurrence of the same root defect class one probe-release later: 'The private `<allocation>/state` source is bound beneath a shared external invocation destination, so Linux shared-subtree semantics make the new mount shared.' Fix added a dedicated `mount --make-private <invocationHostDir>` immediately after the `--bind` in `mountTmpfs`, plus a post-remount assertion requiring exactly one private entry, because the prior PR's allocation-root privatization did not cover this separate external destination.",
+      "files": [
+        "src/cloud-hypervisor/trusted-enclave-storage.ts"
+      ],
+      "number": 9536,
+      "repo": "github/gh-aw-firewall",
+      "title": "fix(enclave): privatize invocation mount beneath shared destination",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Copilot review comment on trusted-enclave-storage.ts:341 (the exact bind call later fixed by #9536) during the diagnostic-only PR that preceded the fix, flagging the same shared-destination propagation concern before root cause was confirmed.",
+      "number": 9532,
+      "repo": "github/gh-aw-firewall",
+      "type": "review_comment",
+      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203171519"
+    },
+    {
+      "detail": "Second Copilot review comment reiterating the same concern at the same trusted-enclave-storage.ts:341 location on PR #9532.",
+      "number": 9532,
+      "repo": "github/gh-aw-firewall",
+      "type": "review_comment",
+      "url": "https://github.com/github/gh-aw-firewall/pull/9532#discussion_r4203274458"
+    }
+  ],
+  "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
+  "language": "typescript",
+  "last_seen_at": "2026-10-09T23:53:21Z",
+  "last_updated": "2026-10-09T23:53:21Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
+  "last_updated_target_repo": "github/gh-aw",
+  "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
+  "mechanical_correction": "After every `mount --bind <source> <destination>` where `destination` is not itself inside a path that was just privatized, immediately run `mount --make-private <destination>` (non-recursive, scoped to exactly that mount) and then verify via `/proc/self/mountinfo` that the resulting entry shows private propagation before trusting the mount. Do this for each distinct bind destination separately; privatizing an ancestor/source does not substitute for privatizing the specific destination mount.",
+  "occurrence_count": 4,
+  "rule_key": "ts-no-bind-mount-outside-privatized-root-inherits-shared-propagation",
+  "status": "needs-work",
   "syntactic_constructs": [
     "mount(tools, ['--bind', source, destination]) call where destination is a distinct path from any previously `--make-private`'d root, with no subsequent `mount(tools, ['--make-private', destination])` call before the mount is relied upon"
   ],
-  "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
-  "autofix_safe": false,
-  "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
-  "status": "needs-work",
-  "evaluation": {
-    "target_repo": "github/gh-aw",
-    "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-    "true_positive_count": 0,
-    "false_positive_count": 0,
-    "false_negative_count": 0,
-    "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD a67a4d4: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall. No drift since refiner-38001319335-2 (recorded as 2026-10-09T22:54:31Z).",
-    "txn_id": "refiner-38006263601-2"
-  },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
-  "last_updated_target_repo": "github/gh-aw",
-  "last_seen_at": "2026-10-09T23:53:21Z",
-  "additional_target_evaluations": [
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 7745f43: zero hits for '--bind'/'make-private' mount-propagation idiom in this CLI/Actions monorepo. No drift since prior evaluation.",
-      "txn_id": "refiner-37989801072-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "445ac4f24955fca0cc3a40650c5e7c7df90bd604",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 445ac4f: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
-      "txn_id": "refiner-37983619707-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD c835648: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag, unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
-      "txn_id": "refiner-37947701110-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD d00b985: searched all .ts/.js/.mjs sources for mount(tools,[...]), '--bind', and 'make-private' usage. The sole '--bind' hit remains tests/unit/workflow-contract-selfcare-docs.test.mjs:32 asserting a network listener flag ('--bind 127.0.0.1'), unrelated to Linux mount-namespace bind mounts. No Cloud Hypervisor/enclave storage mount-propagation code exists in this repository. Unchanged since prior evaluation.",
-      "txn_id": "refiner-37796381362-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "c6796f39fbfb75eceff413c680714a2e7b6e2b38",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "First evaluation on this target: no mount-namespace bind/privatize code exists in githubnext/gh-aw-cao; the sole '--bind' hit is an unrelated network listener flag. Not applicable here, independent of needs-work readiness on github/gh-aw-firewall.",
-      "txn_id": "refiner-37671193744-3"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
-      "true_positive_count": 1,
-      "false_positive_count": 3,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD f748e418: virtiofsd.ts readonlyBindPath still never privatized; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root already privatized before creation). No drift since refiner-37662241728-1.",
-      "txn_id": "refiner-37870178954-2"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
-      "true_positive_count": 1,
-      "false_positive_count": 3,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 8ad503f1 (#9756, unrelated CH smoke/diagnostics changes): virtiofsd.ts startOne() ro-export branch still never privatizes readonlyBindPath/shareDirectory; the 3 self-bind-onto-self calls in trusted-enclave-storage.ts remain false positives (root/ancestor already privatized). No drift since refiner-37870178954-2.",
-      "txn_id": "refiner-37969204993-1"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 3ea471b: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall.",
-      "txn_id": "refiner-38001319335-2"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD a67a4d4: grep across all .ts/.js sources for '--bind', 'make-private', 'make-rslave' still returns zero hits other than an unrelated python3 http.server --bind flag in .github/workflows/ci.yml (not a .ts/.js source file, not a mount-propagation call). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo; the unsafe pattern cannot occur here regardless of the rule's needs-work status on github/gh-aw-firewall. No drift since refiner-38001319335-2 (recorded as 2026-10-09T22:54:31Z).",
-      "txn_id": "refiner-38006263601-2"
-    }
-  ],
-  "last_updated": "2026-10-09T23:53:21Z"
+  "unsafe_pattern": "Calling `mount(tools, ['--bind', source, destination])` to bind a source under an already-privatized root (made private via a prior `mount --make-private <root>`) onto a `destination` path that lives OUTSIDE that privatized root (e.g. an invocation export directory under a separate shared `invocationsDir`), without also running `mount --make-private <destination>` on that specific bind result before using it. Privatizing the root/source does not privatize a separate destination mount point that is still covered by a shared ancestor mount."
 }

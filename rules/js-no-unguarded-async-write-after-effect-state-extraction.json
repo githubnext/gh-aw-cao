@@ -1,76 +1,117 @@
 {
-  "rule_key": "js-no-unguarded-async-write-after-effect-state-extraction",
-  "language": "javascript",
   "additional_languages": [],
-  "unsafe_pattern": "An async event handler (button onClick, IntersectionObserver callback, etc.) that is refactored from direct DOM mutation into a `state()` value written from an `effect()`, but the post-await `.set(...)` calls inside the async callback are not guarded by the component's `createFactoryScope().signal.aborted` check before writing. Two of five near-identical refactors merged in this window ( #15434 account-menu, #15475 configuration-view) omitted the guard that the other three (#15419 ui-primitives, #15463 table-region, #15483 data-view) added for the same busy/status-state extraction.",
-  "consequence": "If the component unmounts (user navigates away) while the awaited async work (clipboard copy, OAuth switch/logout fetch, diagnostics collection) is still pending, the callback resumes after await and calls `.set()` on reactive state whose effect still writes to now-detached DOM nodes. This is at minimum a wasted write to disposed state and, if the effect's cleanup already ran, a null/stale-reference write; the exact bug class the sibling PRs' tests (`ignores a continuation load that resolves after ... removed`, `stops writing ... once its boundary is detached`) were added specifically to catch and prevent.",
-  "mechanical_correction": "After every `await` inside an async handler that subsequently calls `state.set(...)`, check `if (scope.signal.aborted) return;` (or the component's equivalent abort signal) before performing the write, mirroring the guard already present in #15419, #15463, and #15483.",
-  "evidence": [
+  "additional_target_evaluations": [
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15419,
-      "title": "Extract createCopyControl run state into reactive state and effect",
-      "detail": "Added `if (scope.signal.aborted) return;` immediately after `await copyTextToClipboard(...)` and before the subsequent `busy.set(false)`/`copyState.set(...)` writes.",
-      "files": [
-        "dashboard/site/src/components/ui-primitives.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 7745f43: zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
+      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37989801072-1"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15463,
-      "title": "Extract table-region continuation-load busy state into reactive state and effect",
-      "detail": "Added `if (continuationScope.signal.aborted) return;` after the awaited `options.continuation.load(...)` call in both the success and catch paths, and guarded the `finally` block's `continuationBusy.set(false)` with the same check. Added two regression tests: one asserting the button stays disabled and no error dataset is set once removed, another asserting a stale resolution after removal does not reinsert rows.",
-      "files": [
-        "dashboard/site/src/components/table-region.js",
-        "dashboard/site/test/unit/table-region.test.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed on HEAD c835648 (intervening PR #17061 only touched the preparation-details copy action layout, not these call sites): the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js, none guarded by 'if (scope.signal.aborted) return;' unlike data-view.js:1689 and ui-primitives.js:184,1005. No drift since refiner-37812883520-3.",
+      "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 7,
+      "txn_id": "refiner-37947701110-1"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15483,
-      "title": "Extract mobile card-list continuation busy state into reactive state and effect",
-      "detail": "Wrapped the continuation-load state in `state()`/`effect()` bound to `boundaryScope.signal`; regression test 'stops writing the mobile card continuation load state once its boundary is detached' explicitly asserts a post-removal async resolution does not mutate `boundary.dataset.loadState`.",
-      "files": [
-        "dashboard/site/src/components/data-view.js",
-        "dashboard/site/test/unit/data-view.test.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed on HEAD 3d42b1d: the same 7 unguarded post-await .set() writes remain in dashboard/site/src/components/ (cli-actions.js:130-135 x2 call sites, reset-dashboard-control.js:128-134, configuration-view.js:311-317), still lacking the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (data-view.js:1689). Intervening commit #16889 added new component files but did not alter these call sites. No drift since last evaluation.",
+      "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 7,
+      "txn_id": "refiner-37812883520-3"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15434,
-      "title": "Extract account-menu switch/logout busy state into reactive state and effect",
-      "detail": "Same busy-state extraction pattern (`switchBusy`/`logoutBusy` state + single effect writing `switchButton.disabled`/`logoutButton.disabled`) applied to two awaited fetch-based handlers (`switchAccount`, `logout`), but neither handler checks any abort/detached signal before its post-await `busy.set(false)` write; no regression test for a post-unmount resolution was added, unlike the sibling PRs.",
-      "files": [
-        "dashboard/site/src/components/account-menu.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed on HEAD 58f18c1: 7 unguarded post-await .set() writes across 4 files in dashboard/site/src/components/ (cli-actions.js:121,275; reset-dashboard-control.js x2 overlapping matches; configuration-view.js; data-view.js) still lack the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (ui-primitives.js:184,1025, data-view.js:1689). Pattern unchanged since last evaluation.",
+      "target_commit": "58f18c122d32b87e5110609414d5275a1c38a402",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 7,
+      "txn_id": "refiner-37781498008-2"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15475,
-      "title": "Extract configuration-view diagnostics busy state into reactive state and effect",
-      "detail": "Same extraction pattern applied to the awaited `collectFullDiagnostics()` + `copyTextToClipboard(...)` handler; `diagnosticsBusy.set(false)`/`diagnosticsStatusText.set(...)` in the try/catch/finally body have no abort-signal guard despite the component already owning a `createFactoryScope()` (`scope`) used for its other effect, and despite the nearly identical `createCopyControl` (#15419, merged in the same window) adding the guard for the same copy-to-clipboard flow.",
-      "files": [
-        "dashboard/site/src/components/configuration-view.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "ready",
+      "reason": "Re-confirmed unchanged on HEAD 10b42295: same 7 unguarded true positives across account-menu.js, cli-actions.js, configuration-view.js, reset-dashboard-control.js, data-view.js; zero false positives. No new occurrences.",
+      "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 7,
+      "txn_id": "refiner-37118181288-2"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "githubnext/gh-aw-cao",
-      "number": 15925,
-      "title": "Scope scatter-clustering chart updates to an abort-scoped lifetime",
-      "detail": "Same createFactoryScope()/state()/effect() busy-state-extraction shape as the sibling swimlane-continuation flow in the same file (dashboard/site/src/components/data-view.js, lines ~1373-1399), but the scatter-clustering promise's .then()/.catch() callbacks previously wrote clusteringState.set(...) unconditionally after resolving, with no clusteringScope.signal.aborted check before the write, unlike the sibling swimlane flow a few hundred lines above (swimlaneScope.signal.aborted, boundaryScope at line 1078) in the same file that already had the guard. Fixed by adding `if (clusteringScope.signal.aborted) return;` to both the `.then` and `.catch` branches before the state write, plus a new regression test asserting a stale clustering resolution after section detachment is a no-op.",
-      "files": [
-        "dashboard/site/src/components/data-view.js",
-        "dashboard/site/test/unit/data-view.test.js"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "The unsafe pattern requires this repository's dashboard-specific reactive.js convention (createFactoryScope() + state() + effect({signal: scope.signal}), with a post-await .set() write missing an aborted-signal guard). gh-aw-firewall is a Node/TypeScript CLI and container-orchestration backend with no dashboard, no reactive.js import, and no createFactoryScope/state()/effect() call anywhere in the tree; the only 'signal.aborted' occurrences are generic AbortController checks in host-enclave-executor.ts unrelated to this component idiom. Not applicable here regardless of the rule's readiness elsewhere.",
+      "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37359981927-3"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
+      "target_commit": "02b881e12b1f2c3208306bfd85b7d5f2c4b7fc35",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37662241728-3"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
+      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37870178954-1"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at HEAD 8ad503f1. Not applicable here regardless of the rule's readiness elsewhere.",
+      "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37969204993-2"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
+      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38001319335-1"
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
+      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38006263601-1"
     }
   ],
-  "occurrence_count": 6,
   "affected_paths": [
     "dashboard/site/src/components/ui-primitives.js",
     "dashboard/site/src/components/table-region.js",
@@ -79,139 +120,98 @@
     "dashboard/site/src/components/configuration-view.js",
     "dashboard/site/test/unit/data-view.test.js"
   ],
+  "autofix_safe": false,
+  "consequence": "If the component unmounts (user navigates away) while the awaited async work (clipboard copy, OAuth switch/logout fetch, diagnostics collection) is still pending, the callback resumes after await and calls `.set()` on reactive state whose effect still writes to now-detached DOM nodes. This is at minimum a wasted write to disposed state and, if the effect's cleanup already ran, a null/stale-reference write; the exact bug class the sibling PRs' tests (`ignores a continuation load that resolves after ... removed`, `stops writing ... once its boundary is detached`) were added specifically to catch and prevent.",
+  "evaluation": {
+    "false_negative_count": 0,
+    "false_positive_count": 0,
+    "readiness_for_target": "not-applicable",
+    "reason": "Re-confirmed on HEAD 0ad7d36 (#67247 only touched CI/changeset/workflow-dispatch allowlist files, no .ts/.js/.mjs/.cjs sources): grep for createFactoryScope() and reactive.js across all 1440 .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. No drift since refiner-38006263601-1.",
+    "target_commit": "0ad7d36767de4d80c6632d6006783ac94ae5f8b4",
+    "target_repo": "github/gh-aw",
+    "true_positive_count": 0,
+    "txn_id": "refiner-38013029314-1"
+  },
+  "evidence": [
+    {
+      "detail": "Added `if (scope.signal.aborted) return;` immediately after `await copyTextToClipboard(...)` and before the subsequent `busy.set(false)`/`copyState.set(...)` writes.",
+      "files": [
+        "dashboard/site/src/components/ui-primitives.js"
+      ],
+      "number": 15419,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Extract createCopyControl run state into reactive state and effect",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Added `if (continuationScope.signal.aborted) return;` after the awaited `options.continuation.load(...)` call in both the success and catch paths, and guarded the `finally` block's `continuationBusy.set(false)` with the same check. Added two regression tests: one asserting the button stays disabled and no error dataset is set once removed, another asserting a stale resolution after removal does not reinsert rows.",
+      "files": [
+        "dashboard/site/src/components/table-region.js",
+        "dashboard/site/test/unit/table-region.test.js"
+      ],
+      "number": 15463,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Extract table-region continuation-load busy state into reactive state and effect",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Wrapped the continuation-load state in `state()`/`effect()` bound to `boundaryScope.signal`; regression test 'stops writing the mobile card continuation load state once its boundary is detached' explicitly asserts a post-removal async resolution does not mutate `boundary.dataset.loadState`.",
+      "files": [
+        "dashboard/site/src/components/data-view.js",
+        "dashboard/site/test/unit/data-view.test.js"
+      ],
+      "number": 15483,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Extract mobile card-list continuation busy state into reactive state and effect",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Same busy-state extraction pattern (`switchBusy`/`logoutBusy` state + single effect writing `switchButton.disabled`/`logoutButton.disabled`) applied to two awaited fetch-based handlers (`switchAccount`, `logout`), but neither handler checks any abort/detached signal before its post-await `busy.set(false)` write; no regression test for a post-unmount resolution was added, unlike the sibling PRs.",
+      "files": [
+        "dashboard/site/src/components/account-menu.js"
+      ],
+      "number": 15434,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Extract account-menu switch/logout busy state into reactive state and effect",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Same extraction pattern applied to the awaited `collectFullDiagnostics()` + `copyTextToClipboard(...)` handler; `diagnosticsBusy.set(false)`/`diagnosticsStatusText.set(...)` in the try/catch/finally body have no abort-signal guard despite the component already owning a `createFactoryScope()` (`scope`) used for its other effect, and despite the nearly identical `createCopyControl` (#15419, merged in the same window) adding the guard for the same copy-to-clipboard flow.",
+      "files": [
+        "dashboard/site/src/components/configuration-view.js"
+      ],
+      "number": 15475,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Extract configuration-view diagnostics busy state into reactive state and effect",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Same createFactoryScope()/state()/effect() busy-state-extraction shape as the sibling swimlane-continuation flow in the same file (dashboard/site/src/components/data-view.js, lines ~1373-1399), but the scatter-clustering promise's .then()/.catch() callbacks previously wrote clusteringState.set(...) unconditionally after resolving, with no clusteringScope.signal.aborted check before the write, unlike the sibling swimlane flow a few hundred lines above (swimlaneScope.signal.aborted, boundaryScope at line 1078) in the same file that already had the guard. Fixed by adding `if (clusteringScope.signal.aborted) return;` to both the `.then` and `.catch` branches before the state write, plus a new regression test asserting a stale clustering resolution after section detachment is a no-op.",
+      "files": [
+        "dashboard/site/src/components/data-view.js",
+        "dashboard/site/test/unit/data-view.test.js"
+      ],
+      "number": 15925,
+      "repo": "githubnext/gh-aw-cao",
+      "title": "Scope scatter-clustering chart updates to an abort-scoped lifetime",
+      "type": "merged_pull_request"
+    }
+  ],
+  "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
+  "language": "javascript",
+  "last_seen_at": "2026-10-09T23:53:21Z",
+  "last_updated": "2026-10-09T23:53:21Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
+  "last_updated_target_repo": "github/gh-aw",
+  "likely_false_positives": "An async handler that calls `.set()` after `await` but whose component is never removed from the DOM during that async work (e.g. a top-level page-scoped singleton that outlives all navigation) does not need the guard; the rule should only fire when the enclosing scope is created via `createFactoryScope()`/bound to a removable node, i.e. an abort signal is already available in scope but unused after an await preceding a `.set()` call.",
+  "mechanical_correction": "After every `await` inside an async handler that subsequently calls `state.set(...)`, check `if (scope.signal.aborted) return;` (or the component's equivalent abort signal) before performing the write, mirroring the guard already present in #15419, #15463, and #15483.",
+  "occurrence_count": 6,
+  "rule_key": "js-no-unguarded-async-write-after-effect-state-extraction",
+  "status": "ready",
   "syntactic_constructs": [
     "async () => { ... await ...; ...State.set(...); } inside an onClick/observer callback",
     "createFactoryScope() + state() + effect({ signal: scope.signal }) component shape (reactive.js, factory-elements.js)",
     "missing `if (scope.signal.aborted) return;` directly after an awaited call and before a subsequent `.set()`"
   ],
-  "likely_false_positives": "An async handler that calls `.set()` after `await` but whose component is never removed from the DOM during that async work (e.g. a top-level page-scoped singleton that outlives all navigation) does not need the guard; the rule should only fire when the enclosing scope is created via `createFactoryScope()`/bound to a removable node, i.e. an abort signal is already available in scope but unused after an await preceding a `.set()` call.",
-  "autofix_safe": false,
-  "existing_plugin_coverage": "No published ESLint rule covers this: it depends on recognizing this repo's specific `reactive.js` state/effect/createFactoryScope convention and its abort-signal idiom, not a generic async/await or React-hooks pattern that an existing plugin (eslint-plugin-react-hooks, eslint-plugin-promise, etc.) targets.",
-  "status": "ready",
-  "evaluation": {
-    "target_repo": "github/gh-aw",
-    "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-    "true_positive_count": 0,
-    "false_positive_count": 0,
-    "false_negative_count": 0,
-    "readiness_for_target": "not-applicable",
-    "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
-    "txn_id": "refiner-38006263601-1"
-  },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38006263601",
-  "last_updated_target_repo": "github/gh-aw",
-  "last_seen_at": "2026-10-09T23:53:21Z",
-  "last_updated": "2026-10-09T23:53:21Z",
-  "additional_target_evaluations": [
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "7745f43bf7f0ae5e7f2e1dc11e891dff8dff3edb",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 7745f43: zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-      "txn_id": "refiner-37989801072-1"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "c835648d9da5cdab8eea3726c8235761d391ca8d",
-      "true_positive_count": 7,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "ready",
-      "reason": "Re-confirmed on HEAD c835648 (intervening PR #17061 only touched the preparation-details copy action layout, not these call sites): the same 7 unguarded post-await .set() writes remain across cli-actions.js, reset-dashboard-control.js, and configuration-view.js, none guarded by 'if (scope.signal.aborted) return;' unlike data-view.js:1689 and ui-primitives.js:184,1005. No drift since refiner-37812883520-3.",
-      "txn_id": "refiner-37947701110-1"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "3d42b1d12bb1d6901bb82f995a12f916b0b1d243",
-      "true_positive_count": 7,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "ready",
-      "reason": "Re-confirmed on HEAD 3d42b1d: the same 7 unguarded post-await .set() writes remain in dashboard/site/src/components/ (cli-actions.js:130-135 x2 call sites, reset-dashboard-control.js:128-134, configuration-view.js:311-317), still lacking the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (data-view.js:1689). Intervening commit #16889 added new component files but did not alter these call sites. No drift since last evaluation.",
-      "txn_id": "refiner-37812883520-3"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "58f18c122d32b87e5110609414d5275a1c38a402",
-      "true_positive_count": 7,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "ready",
-      "reason": "Re-confirmed on HEAD 58f18c1: 7 unguarded post-await .set() writes across 4 files in dashboard/site/src/components/ (cli-actions.js:121,275; reset-dashboard-control.js x2 overlapping matches; configuration-view.js; data-view.js) still lack the 'if (scope.signal.aborted) return;' guard present in sibling-pattern files (ui-primitives.js:184,1025, data-view.js:1689). Pattern unchanged since last evaluation.",
-      "txn_id": "refiner-37781498008-2"
-    },
-    {
-      "target_repo": "githubnext/gh-aw-cao",
-      "target_commit": "10b422954e7e623749d6bb37133f260111a4076e",
-      "true_positive_count": 7,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "ready",
-      "reason": "Re-confirmed unchanged on HEAD 10b42295: same 7 unguarded true positives across account-menu.js, cli-actions.js, configuration-view.js, reset-dashboard-control.js, data-view.js; zero false positives. No new occurrences.",
-      "txn_id": "refiner-37118181288-2"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "The unsafe pattern requires this repository's dashboard-specific reactive.js convention (createFactoryScope() + state() + effect({signal: scope.signal}), with a post-await .set() write missing an aborted-signal guard). gh-aw-firewall is a Node/TypeScript CLI and container-orchestration backend with no dashboard, no reactive.js import, and no createFactoryScope/state()/effect() call anywhere in the tree; the only 'signal.aborted' occurrences are generic AbortController checks in host-enclave-executor.ts unrelated to this component idiom. Not applicable here regardless of the rule's readiness elsewhere.",
-      "txn_id": "refiner-37359981927-3"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "02b881e12b1f2c3208306bfd85b7d5f2c4b7fc35",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
-      "txn_id": "refiner-37662241728-3"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at this HEAD. Not applicable here regardless of the rule's readiness elsewhere.",
-      "txn_id": "refiner-37870178954-1"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "8ad503f1187261224e16867b00436ee6db284125",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed unchanged: no dashboard, no reactive.js import, no createFactoryScope/state()/effect() usage anywhere in this repo at HEAD 8ad503f1. Not applicable here regardless of the rule's readiness elsewhere.",
-      "txn_id": "refiner-37969204993-2"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "3ea471b37d10069e8d3cbd5ca8aa26f793b0b08a",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 3ea471b (#67254 only added cross-module model-routing contract test coverage, unrelated): zero hits for createFactoryScope()/reactive.js idiom in this CLI/Actions monorepo. No dashboard/site directory exists here. No drift since prior evaluation.",
-      "txn_id": "refiner-38001319335-1"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "a67a4d42118c154b2aa0a880bbc7f78a50bd3b7b",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD a67a4d4 (#67297 only hardened work-queue initialization for empty repositories, unrelated): grep for createFactoryScope() and reactive.js across all .ts/.js/.mjs/.cjs sources still returns zero hits; no dashboard/site directory or reactive-state component idiom exists in github/gh-aw. The unsafe pattern cannot occur here regardless of the rule's ready status on githubnext/gh-aw-cao. No drift since refiner-38001319335-1 (recorded as 2026-10-09T22:54:31Z).",
-      "txn_id": "refiner-38006263601-1"
-    }
-  ]
+  "unsafe_pattern": "An async event handler (button onClick, IntersectionObserver callback, etc.) that is refactored from direct DOM mutation into a `state()` value written from an `effect()`, but the post-await `.set(...)` calls inside the async callback are not guarded by the component's `createFactoryScope().signal.aborted` check before writing. Two of five near-identical refactors merged in this window ( #15434 account-menu, #15475 configuration-view) omitted the guard that the other three (#15419 ui-primitives, #15463 table-region, #15483 data-view) added for the same busy/status-state extraction."
 }
