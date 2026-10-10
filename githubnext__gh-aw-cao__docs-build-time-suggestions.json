@@ -1,7 +1,35 @@
 {
-  "source_sha": "5d5ea41dd7cd4973298bd3b0ea9fedfc4ebb38dd",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "69d401ece7ed86f460a91b772ff4bb70c05ec389",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-10T12:37:35Z",
+      "worker_run_id": 38052346457,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38052458612,
+        38052396545,
+        38052232119,
+        38051850169,
+        38051750361,
+        38051662420,
+        38051661647,
+        38051072561,
+        38050756465,
+        38050511872,
+        38050451101,
+        38050091118,
+        38049650638,
+        38049426736,
+        38048833252,
+        38048829628,
+        38048723348,
+        38048163363,
+        38047998753,
+        38047544200
+      ],
+      "outcome": "no_actionable_improvement: evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on workflow source SHA 69d401ece7ed86f460a91b772ff4bb70c05ec389. Within the latest 20 completed docs.yml runs from 2026-10-10T11:11:43Z through 2026-10-10T12:34:32Z, 6 runs concluded success (5 schedule, 1 push) and 14 workflow_run invocations were skipped. Across the 5 successful schedule runs spanning source SHAs 5d5ea41dd7cd4973298bd3b0ea9fedfc4ebb38dd and 69d401ece7ed86f460a91b772ff4bb70c05ec389, workflow queue median/p90 was 3s/4s, full execution median/p90 was 12s/95s, schedule-freshness job median/p90 was 7s/7.6s, and Check documentation and dashboard freshness median/p90 was 4s/5.2s. Two schedule runs rebuilt and deployed with build median/p90 50.5s/51.7s and deploy median/p90 23.5s/27.9s; one push build success without deploy is disclosed as a non-schedule outlier. Trusted step metadata confirmed cache hits on the build-bearing docs runs because Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped after successful restores. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window contained 18 skipped runs and 2 cancelled push outliers whose build jobs spent 151-293s restoring activity data and 7-234s in Upgrade fallback activity data before cancellation. Source inspection shows the same schedule-freshness history-scan logic already tracked by open issue #17171, while duplicate same-SHA rebuild behavior remains tracked by open issue #16054. Current timing evidence lowers the freshness-step median from the issue's original 7.0s to 4.0s and does not materially change scope, priority, or acceptance criteria, so no new non-duplicate actionable recommendation is warranted."
+    },
     {
       "evaluated_at": "2026-10-10T11:57:14Z",
       "worker_run_id": 38049835332,
@@ -814,34 +842,6 @@
         37977110706
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 445ac4f24955fca0cc3a40650c5e7c7df90bd604. Within the latest 20 completed docs.yml runs from 2026-10-09T18:59:26Z through 2026-10-09T21:23:46Z, 10 runs concluded success and 10 were skipped workflow_run invocations. None of the successful runs executed the comparable schedule-freshness + build + deploy path for the category; all 10 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 12.0s/13.9s, while successful schedule-freshness job median/p90 was 8.0s/9.0s with the Check documentation and dashboard freshness step median/p90 at 4.0s/4.1s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T19:32:30Z through 2026-10-09T21:20:53Z contained 0 successful full builds (19 skipped workflow_run and 1 cancelled push), so there is no trusted current-window dashboard producer sample to expand the cache baseline. Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-09T20:55:15Z",
-      "worker_run_id": 37989898205,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        37989694300,
-        37988241826,
-        37988080782,
-        37986880915,
-        37986598366,
-        37984213032,
-        37983410558,
-        37982589412,
-        37982235751,
-        37982231419,
-        37981161265,
-        37980933253,
-        37979740546,
-        37979459773,
-        37977338112,
-        37977110706,
-        37976136140,
-        37976134001,
-        37975822460,
-        37975622803
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 445ac4f24955fca0cc3a40650c5e7c7df90bd604. Within the latest 20 completed docs.yml runs from 2026-10-09T18:51:04Z through 2026-10-09T20:51:03Z, 10 runs concluded success and 10 were skipped workflow_run invocations. None of the successful runs executed the comparable schedule-freshness + build + deploy path for the category; all 10 successful runs were schedule freshness passes with build and deploy skipped because the deployed docs and dashboard were current. Successful docs workflow queue median/p90 was 0s/0s and execution median/p90 was 12s/13.7s, while successful schedule-freshness job median/p90 was 8.0s/8.2s with the Check documentation and dashboard freshness step at 4-5s. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window from 2026-10-09T19:19:35Z through 2026-10-09T20:36:06Z contained 0 successful full builds (20 skipped workflow_run), so there is no trusted current-window dashboard producer sample to expand the cache baseline. Because the bounded sample contains 0 comparable successful build-bearing docs runs, below the required minimum of 5, no safe evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
