@@ -1,4 +1,7 @@
 import { MAX_CHART_FACETS } from '../../chart-facet.js';
+import { createDebug } from '../../debug.js';
+
+const debugFacet = createDebug('facet');
 
 /**
  * @typedef {{ field?: string, row?: string, column?: string, as: string }} FacetDefinition
@@ -36,6 +39,7 @@ export function partitionFacetRows(rows, definition) {
     const value = row[field] ?? null;
     if (value !== null && (!['string', 'number', 'boolean'].includes(typeof value)
       || typeof value === 'number' && !Number.isFinite(value))) {
+      debugFacet({ operation: 'partition', status: 'rejected-non-scalar-category', field });
       throw new TypeError('Facet categories must be scalar values.');
     }
     return value;
@@ -53,7 +57,10 @@ export function partitionFacetRows(rows, definition) {
     const key = JSON.stringify([field, rowValue, column]);
     let panel = panels.get(key);
     if (!panel) {
-      if (panels.size >= MAX_CHART_FACETS) throw new RangeError(`Facet result exceeds ${MAX_CHART_FACETS} panels.`);
+      if (panels.size >= MAX_CHART_FACETS) {
+        debugFacet({ operation: 'partition', status: 'rejected-too-many-panels', panelCount: panels.size });
+        throw new RangeError(`Facet result exceeds ${MAX_CHART_FACETS} panels.`);
+      }
       panel = {
         'facet-field': field,
         'facet-row': rowValue,
@@ -66,5 +73,6 @@ export function partitionFacetRows(rows, definition) {
     }
     /** @type {Array<Record<string, unknown>>} */ (panel[definition.as]).push(row);
   }
+  debugFacet({ operation: 'partition', status: 'completed', inputRows: rows.length, panelCount: panels.size });
   return [...panels.values()];
 }
