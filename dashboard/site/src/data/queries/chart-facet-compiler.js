@@ -1,4 +1,7 @@
 import { chartFacet } from '../../chart-facet.js';
+import { createDebug } from '../../debug.js';
+
+const debugChartFacetCompiler = createDebug('chart-facet-compiler');
 
 /**
  * Compiles chart encoding aggregation before the terminal facet projection.
@@ -10,7 +13,10 @@ import { chartFacet } from '../../chart-facet.js';
  */
 export function compileChartFacetQuery(view, query) {
   const facet = chartFacet(view);
-  if (!facet) return [query];
+  if (!facet) {
+    debugChartFacetCompiler({ operation: 'compile', outcome: 'no-facet', queryCount: 1 });
+    return [query];
+  }
   const inputName = `${query.name}:facet-input`;
   const partitioned = {
     name: query.name,
@@ -20,7 +26,10 @@ export function compileChartFacetQuery(view, query) {
       as: 'facet-rows'
     }
   };
-  if (view.layer !== undefined) return [{ ...query, name: inputName }, partitioned];
+  if (view.layer !== undefined) {
+    debugChartFacetCompiler({ operation: 'compile', outcome: 'layered', channelCount: Object.keys(facet).length, queryCount: 2 });
+    return [{ ...query, name: inputName }, partitioned];
+  }
   const encoding = mapping(view.encoding) ? view.encoding : {};
   const definitions = Object.entries(encoding).flatMap(([channel, value]) => {
     if (['facet', 'row', 'column', 'actions'].includes(channel)) return [];
@@ -69,6 +78,13 @@ export function compileChartFacetQuery(view, query) {
     }).map((definition) => ({ field: definition.field }))
   ];
   if (Number.isSafeInteger(data.limit)) prepared.limit = data.limit;
+  debugChartFacetCompiler({
+    operation: 'compile',
+    outcome: aggregates.length > 0 ? 'aggregated' : 'partitioned',
+    channelCount: Object.keys(facet).length,
+    aggregateCount: aggregates.length,
+    queryCount: 3
+  });
   return [
     { ...query, name: inputName },
     prepared,
