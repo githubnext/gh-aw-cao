@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { workflow } from "./workflow-contract.helpers.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("hosted health is a four-hour, policy-gated SelfCare worker", () => {
   const orchestrator = workflow("self-care.md");
@@ -25,6 +27,11 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /allowed: \[cao_catalog, cao_query\]/);
   assert.match(worker, /name: Verify hosted CAO health and MCP access/);
   assert.match(worker, /cao-hosted-smoke\.json/);
+  assert.match(worker, /name: Check dashboard build freshness/);
+  assert.match(worker, /dashboard-build-health\.json/);
+  assert.match(worker, /skipped Activity-triggered dashboard runs do not count as builds/);
+  const manifest = readFileSync(join(root, "self-care", "aw.yml"), "utf8");
+  assert.match(manifest, /source: \.github\/workflows\/shared\/dashboard-build-health\.mjs/);
   assert.match(worker, /\/api\/readiness \/api\/health \/api\/v1\/health/);
   assert.match(worker, /--output \/dev\/null/);
   assert.match(worker, /MCP-Protocol-Version: 2026-07-28/);
