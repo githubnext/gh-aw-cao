@@ -269,7 +269,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /workflow_dispatch:/);
   assert.match(dashboardWorkflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Activity[\s\S]*?types:[\s\S]*?- completed/);
   const dashboardConcurrency = parse(dashboardWorkflow).concurrency;
-  assert.equal(dashboardConcurrency["cancel-in-progress"], true);
+  assert.equal(dashboardConcurrency["cancel-in-progress"], false,
+    "new pushes and Activity completions must not cancel a dashboard build before it publishes");
   assert.match(dashboardConcurrency.group, /github\.event_name == 'workflow_run'[\s\S]*?github\.event\.workflow_run\.conclusion != 'success'[\s\S]*?github\.event\.workflow_run\.head_branch != github\.event\.repository\.default_branch/);
   assert.match(dashboardConcurrency.group, /github\.event_name == 'push' && github\.ref_name != github\.event\.repository\.default_branch/);
   assert.match(dashboardConcurrency.group, /format\('central-agentic-ops-dashboard-ineligible-\{0\}', github\.run_id\)[\s\S]*?\|\| 'central-agentic-ops-dashboard'/);

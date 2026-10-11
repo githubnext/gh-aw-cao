@@ -27,7 +27,8 @@ concurrency:
       || (github.event_name == 'push' && github.ref_name != github.event.repository.default_branch)
     ) && format('central-agentic-ops-dashboard-ineligible-{0}', github.run_id)
       || 'central-agentic-ops-dashboard' }}
-  cancel-in-progress: true
+  # Finish publishing the current snapshot; coalesce newer eligible builds behind it.
+  cancel-in-progress: false
 
 jobs:
   build:

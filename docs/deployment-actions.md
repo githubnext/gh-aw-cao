@@ -87,6 +87,8 @@ The CAO Dashboard workflow runs when you push changes to any of these paths on t
 
 The workflow has no schedule. Every successful default-branch Activity run triggers a Dashboard build, so the published site follows the Activity refresh cadence without a second manual dispatch.
 
+Failed or cancelled Activity runs produce skipped Dashboard runs rather than publishing an incomplete snapshot. If every Activity-triggered Dashboard run is skipped, inspect the upstream Activity run first. Manual dispatch and default-branch source changes can still rebuild from the last collected snapshot.
+
 ## Configuration reference
 
 | Setting | Location | Default | Description |
@@ -120,7 +122,7 @@ This option has no server, so there's no server-side OpenTelemetry endpoint to c
 - **Exact source.** The site is built from the exact workflow commit (`github.workflow_sha`). It publishes only the payload files listed in the manifest.
 - **Complete payloads.** Every payload file is hash-verified before the browser loads it. If the payload is incomplete, the build fails instead of publishing partial data.
 - **No long-lived credentials.** The build and deploy jobs don't hold long-lived credentials. The deploy job uses OIDC.
-- **One deployment at a time.** A newer dashboard run cancels an older run that is still in progress.
+- **One deployment at a time.** A running dashboard build finishes publishing its snapshot without being cancelled by newer triggers. GitHub Actions keeps at most one pending eligible build, replacing it when a newer eligible run arrives. Ineligible triggers use separate concurrency groups and cannot displace that pending build.
 - **Safe failures.** If a build or deployment fails, the previously deployed site stays in place.
 
 ## What this deployment does not guarantee
