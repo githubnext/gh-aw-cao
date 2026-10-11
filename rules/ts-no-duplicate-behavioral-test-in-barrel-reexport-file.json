@@ -147,13 +147,23 @@
       "repo": "github/gh-aw-firewall",
       "title": "[Test Coverage] src/docker-manager.ts",
       "type": "merged_pull_request"
+    },
+    {
+      "detail": "Automated commit 'test: add docker-manager capability edge cases' added edge-case behavioral assertions (bounding-set containing/excluding capabilities, empty bounding set, empty docker probe output, unset AWF_SKIP_CAP_DROP default) to the barrel re-export smoke-test file src/docker-manager.test.ts; follow-up commit 'test: remove duplicate docker-manager cases' reverted the duplicated portion before merge, same revert pattern as #9308/#9368/#9408/#9460. A Copilot review comment at src/docker-manager.test.ts:174 flagged the same duplication concern during review.",
+      "files": [
+        "src/docker-manager.test.ts"
+      ],
+      "number": 9782,
+      "repo": "github/gh-aw-firewall",
+      "title": "[Test Coverage] src/docker-manager.ts",
+      "type": "merged_pull_request"
     }
   ],
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "language": "typescript",
-  "last_seen_at": "2026-10-11T04:07:34Z",
-  "last_updated": "2026-10-11T04:07:34Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38110386121",
+  "last_seen_at": "2026-10-11T10:03:17Z",
+  "last_updated": "2026-10-11T10:03:17Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38129431751",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "likely_false_positives": "A barrel test file without an explicit 'shape-only, no duplication' scope comment is not a violation; adding the first behavioral test for a function that has no dedicated module test file elsewhere is legitimate and should not be flagged.",
   "mechanical_correction": "When adding coverage for a function, first check whether it already has a behavioral test file for its defining module (e.g. via existing `<module>.test.ts` or `<module>-host-config.test.ts` conventions) before adding assertions to a barrel/re-export test file. If the barrel file's header comment states it checks re-export shape only, confine additions there to `typeof x === 'function'`-style shape checks and add real behavioral assertions to the defining module's own test file instead.",
