@@ -10,6 +10,65 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
+func TestClassifyRedisServer(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+		mode    string
+		loading bool
+		status  Status
+		reason  serverClassificationReason
+		summary string
+	}{
+		{"ready standalone", "7.2.4", "standalone", false, StatusPass, serverReasonReady, "Redis 7.2.4 in standalone mode"},
+		{"ready cluster", "7.2.4", "cluster", false, StatusPass, serverReasonReady, "Redis 7.2.4 in cluster mode"},
+		{"still loading dataset", "7.2.4", "standalone", true, StatusFail, serverReasonLoading, "Redis is still loading its dataset and cannot serve reads"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			classification := classifyRedisServer(test.version, test.mode, test.loading)
+			if classification.status != test.status {
+				t.Fatalf("status=%s expected=%s", classification.status, test.status)
+			}
+			if classification.reason != test.reason {
+				t.Fatalf("reason=%s expected=%s", classification.reason, test.reason)
+			}
+			if classification.summary != test.summary {
+				t.Fatalf("summary=%q expected=%q", classification.summary, test.summary)
+			}
+			if test.loading && classification.remedy == "" {
+				t.Fatalf("expected a remedy while Redis is still loading")
+			}
+		})
+	}
+}
+
+func TestRedisServerReportsLoadingAsFailure(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(...string) (any, error) {
+		return "# Server\r\nredis_version:7.2.4\r\nredis_mode:standalone\r\nuptime_in_days:3\r\nloading:1\r\n", nil
+	}})
+	check := doctor.checkRedisServer(context.Background())
+	if check.Status != StatusFail {
+		t.Fatalf("status=%s expected=%s summary=%s", check.Status, StatusFail, check.Summary)
+	}
+	if !strings.Contains(check.Summary, "still loading") {
+		t.Fatalf("summary did not mention loading: %q", check.Summary)
+	}
+}
+
+func TestRedisServerReportsReadyAsPass(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(...string) (any, error) {
+		return "# Server\r\nredis_version:7.2.4\r\nredis_mode:standalone\r\nuptime_in_days:3\r\nloading:0\r\n", nil
+	}})
+	check := doctor.checkRedisServer(context.Background())
+	if check.Status != StatusPass {
+		t.Fatalf("status=%s expected=%s summary=%s", check.Status, StatusPass, check.Summary)
+	}
+	if check.Summary != "Redis 7.2.4 in standalone mode" {
+		t.Fatalf("summary=%q", check.Summary)
+	}
+}
+
 func TestRedisMemoryReportsConfiguredCachePressureBudget(t *testing.T) {
 	for _, test := range []struct {
 		name      string

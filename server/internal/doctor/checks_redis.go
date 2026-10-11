@@ -63,6 +63,46 @@ func (d Doctor) checkRedisConnectivity(ctx context.Context) Check {
 	}
 }
 
+// serverClassificationReason names why checkRedisServer reached its status,
+// stable across summary wording changes so it is useful to log without
+// exposing the server's version or mode strings.
+type serverClassificationReason string
+
+const (
+	serverReasonLoading serverClassificationReason = "loading-dataset"
+	serverReasonReady   serverClassificationReason = "ready"
+)
+
+// serverClassification is the status, summary, and remedy classifyRedisServer
+// derives from Redis's reported server fields.
+type serverClassification struct {
+	status  Status
+	summary string
+	remedy  string
+	reason  serverClassificationReason
+}
+
+// classifyRedisServer decides the redis.server check's outcome from Redis's
+// reported version, mode, and loading fields alone. It is a pure function so
+// the still-loading path is testable without a fake Redis INFO reply. A
+// server still loading its dataset answers commands but cannot serve reads,
+// so reporting it as healthy would be wrong.
+func classifyRedisServer(version, mode string, loading bool) serverClassification {
+	if loading {
+		return serverClassification{
+			status:  StatusFail,
+			summary: "Redis is still loading its dataset and cannot serve reads",
+			remedy:  "wait for loading to finish before treating the deployment as ready",
+			reason:  serverReasonLoading,
+		}
+	}
+	return serverClassification{
+		status:  StatusPass,
+		summary: fmt.Sprintf("Redis %s in %s mode", version, mode),
+		reason:  serverReasonReady,
+	}
+}
+
 func (d Doctor) checkRedisServer(ctx context.Context) Check {
 	const id, title = "redis.server", "Redis server"
 	if skip, ok := d.redisUnavailable(id, title); ok {
@@ -77,20 +117,11 @@ func (d Doctor) checkRedisServer(ctx context.Context) Check {
 		detail("mode", fields["redis_mode"]),
 		detail("uptimeDays", fields["uptime_in_days"]),
 	}
-	// A server still loading its dataset answers commands but cannot serve
-	// reads, so reporting it as healthy would be wrong.
-	if infoInt(fields, "loading") == 1 {
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusFail,
-			Summary: "Redis is still loading its dataset and cannot serve reads",
-			Details: details,
-			Remedy:  "wait for loading to finish before treating the deployment as ready",
-		}
-	}
+	classification := classifyRedisServer(fields["redis_version"], fields["redis_mode"], infoInt(fields, "loading") == 1)
+	doctorLog.Printf("redis server classified status=%s reason=%s", classification.status, classification.reason)
 	return Check{
-		ID: id, Area: areaRedis, Title: title, Status: StatusPass,
-		Summary: fmt.Sprintf("Redis %s in %s mode", fields["redis_version"], fields["redis_mode"]),
-		Details: details,
+		ID: id, Area: areaRedis, Title: title, Status: classification.status,
+		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
 }
 
