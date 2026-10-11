@@ -12,7 +12,7 @@ function evidence(runs, jobs = {}) {
         async listWorkflowRuns({ workflow_id, branch, status, per_page }) {
           assert.equal(workflow_id, "cao-dashboard.yml");
           assert.equal(branch, "main");
-          assert.equal(per_page, 10);
+          assert.equal(per_page, status === "completed" ? 100 : 10);
           return { data: { workflow_runs: runs[status] || [], total_count: (runs[status] || []).length } };
         },
         async listJobsForWorkflowRun({ run_id }) {
@@ -40,7 +40,7 @@ test("active build is not mistaken for skipped or completed jobs", async () => {
 
 test("skipped runs cannot hide a stale successful build", async () => {
   const github = evidence({
-    success: [
+    completed: [
       { id: 1, head_branch: "main", updated_at: "2026-10-11T20:55:00Z" },
       { id: 2, head_branch: "main", updated_at: "2026-10-11T16:00:00Z" },
     ],
@@ -55,7 +55,7 @@ test("skipped runs cannot hide a stale successful build", async () => {
 
 test("fresh build, stalled build, and absent build are distinguished", async () => {
   const fresh = evidence({
-    success: [{ id: 3, head_branch: "main", updated_at: "2026-10-11T20:00:00Z" }],
+    completed: [{ id: 3, head_branch: "main", updated_at: "2026-10-11T20:00:00Z" }],
   }, { 3: [{ name: "build", conclusion: "success" }] });
   assert.equal((await checkDashboardBuild(fresh, repo, "main", now)).reason, "recent_build");
 
@@ -66,6 +66,31 @@ test("fresh build, stalled build, and absent build are distinguished", async () 
   assert.deepEqual(await checkDashboardBuild(evidence({}), repo, "main", now), {
     status: "failed", reason: "no_successful_build",
   });
+});
+
+test("a successful build remains fresh when downstream deployment fails", async () => {
+  const github = evidence({
+    completed: [{ id: 6, head_branch: "main", conclusion: "failure", updated_at: "2026-10-11T20:00:00Z" }],
+  }, { 6: [{ name: "build", conclusion: "success", completed_at: "2026-10-11T19:59:00Z" }] });
+  assert.equal((await checkDashboardBuild(github, repo, "main", now)).reason, "recent_build");
+});
+
+test("paginates through skipped dashboard runs to find the last build", async () => {
+  const skipped = Array.from({ length: 100 }, (_, id) => ({
+    id: id + 1, head_branch: "main", conclusion: "skipped",
+  }));
+  const oldBuild = { id: 101, head_branch: "main", updated_at: "2026-10-11T16:00:00Z" };
+  const github = evidence({});
+  github.rest.actions.listWorkflowRuns = async ({ status, page }) => ({
+    data: {
+      workflow_runs: status === "completed" ? (page === 1 ? skipped : [oldBuild]) : [],
+      total_count: status === "completed" ? 101 : 0,
+    },
+  });
+  github.rest.actions.listJobsForWorkflowRun = async () => ({
+    data: { jobs: [{ name: "build", conclusion: "success" }] },
+  });
+  assert.equal((await checkDashboardBuild(github, repo, "main", now)).reason, "no_recent_build");
 });
 
 test("Actions errors and truncated evidence do not assert health", async () => {
