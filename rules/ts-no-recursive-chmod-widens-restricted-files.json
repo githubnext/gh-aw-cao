@@ -67,16 +67,6 @@
       "false_negative_count": 1,
       "false_positive_count": 4,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD f1c3282: same false positives/negative persist, no suppression mechanism.",
-      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
-      "target_repo": "github/gh-aw-firewall",
-      "true_positive_count": 2,
-      "txn_id": "refiner-37467185149-1"
-    },
-    {
-      "false_negative_count": 1,
-      "false_positive_count": 4,
-      "readiness_for_target": "needs-work",
       "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
       "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
       "target_repo": "github/gh-aw-firewall",
