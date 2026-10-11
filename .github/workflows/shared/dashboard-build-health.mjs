@@ -4,6 +4,7 @@ const stalledMs = 2 * 60 * 60 * 1000;
 
 export async function checkDashboardBuild(github, repo, branch, now = Date.now()) {
   try {
+    let latest = null;
     const findActiveBuild = async (status) => {
       const { data } = await github.rest.actions.listWorkflowRuns({
         ...repo,
@@ -20,6 +21,11 @@ export async function checkDashboardBuild(github, repo, branch, now = Date.now()
           per_page: 100,
         });
         const build = jobs.jobs.find((job) => job.name === "build");
+        if (build?.conclusion === "success") {
+          const completed = Date.parse(build.completed_at || run.updated_at);
+          if (!Number.isFinite(completed)) throw new Error("invalid_run_timestamp");
+          if (!latest || completed > latest.completed) latest = { run, completed };
+        }
         if (build && ["in_progress", "queued", "pending"].includes(build.status)) {
           return { run, build };
         }
@@ -43,7 +49,14 @@ export async function checkDashboardBuild(github, repo, branch, now = Date.now()
       };
     }
 
-    let latest = null;
+    if (latest && now - latest.completed <= freshnessMs) {
+      return {
+        status: "passed",
+        reason: "recent_build",
+        run_id: latest.run.id,
+        observed_at: new Date(latest.completed).toISOString(),
+      };
+    }
     for (let page = 1; page <= 10; page += 1) {
       const { data } = await github.rest.actions.listWorkflowRuns({
         ...repo,

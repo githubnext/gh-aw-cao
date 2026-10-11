@@ -30,7 +30,7 @@ test("hosted health reads CAO and OTEL through scoped MCP and replaces its repor
   assert.match(worker, /name: Check dashboard build freshness/);
   assert.match(worker, /dashboard-build-health\.json/);
   assert.match(worker, /skipped Activity-triggered dashboard runs do not count as builds/);
-  const manifest = readFileSync(join(root, "self-care", "aw.yml"), "utf8");
+  const manifest = readFileSync(join(root, "aw.yml"), "utf8");
   assert.match(manifest, /source: \.github\/workflows\/shared\/dashboard-build-health\.mjs/);
   assert.match(worker, /\/api\/readiness \/api\/health \/api\/v1\/health/);
   assert.match(worker, /--output \/dev\/null/);

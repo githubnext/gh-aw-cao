@@ -26,7 +26,7 @@ function evidence(runs, jobs = {}) {
 test("active build is not mistaken for skipped or completed jobs", async () => {
   const github = evidence({
     in_progress: [
-      { id: 1, head_branch: "main", created_at: "2026-10-11T20:50:00Z" },
+      { id: 1, head_branch: "main", created_at: "2026-10-11T20:50:00Z", updated_at: "2026-10-11T20:52:00Z" },
       { id: 2, head_branch: "main", created_at: "2026-10-11T20:55:00Z" },
     ],
   }, {
@@ -73,6 +73,15 @@ test("a successful build remains fresh when downstream deployment fails", async 
     completed: [{ id: 6, head_branch: "main", conclusion: "failure", updated_at: "2026-10-11T20:00:00Z" }],
   }, { 6: [{ name: "build", conclusion: "success", completed_at: "2026-10-11T19:59:00Z" }] });
   assert.equal((await checkDashboardBuild(github, repo, "main", now)).reason, "recent_build");
+});
+
+test("a successful build counts while downstream deployment is still running", async () => {
+  const github = evidence({
+    in_progress: [{ id: 7, head_branch: "main", updated_at: "2026-10-11T20:30:00Z" }],
+  }, { 7: [{ name: "build", status: "completed", conclusion: "success", completed_at: "2026-10-11T20:25:00Z" }] });
+  assert.deepEqual(await checkDashboardBuild(github, repo, "main", now), {
+    status: "passed", reason: "recent_build", run_id: 7, observed_at: "2026-10-11T20:25:00.000Z",
+  });
 });
 
 test("paginates through skipped dashboard runs to find the last build", async () => {

@@ -23,6 +23,3 @@ includes:
   - .github/workflows/self-care-server-go-logging.md
   - .github/workflows/self-care-specs-maintainer.md
   - .github/workflows/self-care.md
-resources:
-  - source: .github/workflows/shared/dashboard-build-health.mjs
-    destination: .github/workflows/shared/dashboard-build-health.mjs

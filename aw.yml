@@ -16,5 +16,7 @@ resources:
     destination: .github/workflows/shared/setup-github-apps.mjs
   - source: .github/workflows/shared/materialize-cao.mjs
     destination: .github/workflows/shared/materialize-cao.mjs
+  - source: .github/workflows/shared/dashboard-build-health.mjs
+    destination: .github/workflows/shared/dashboard-build-health.mjs
   - source: .github/aw/instructions.md
     destination: .github/aw/instructions.md
