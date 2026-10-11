@@ -173,18 +173,35 @@ type profileSelection struct {
 }
 
 func (d Doctor) profile() profileSelection {
-	appID := d.getenv("CAO_COLLECT_APP_ID")
-	source := d.getenv("CAO_SOURCE_DIRECTORY")
-	admitOnly := envTruthy(d.getenv("CAO_COLLECT_ADMIT_ONLY"))
+	selection := classifyAcquisitionProfile(
+		d.getenv("CAO_COLLECT_APP_ID"),
+		d.getenv("CAO_SOURCE_DIRECTORY"),
+		envTruthy(d.getenv("CAO_COLLECT_ADMIT_ONLY")),
+	)
+	if selection.conflict {
+		doctorLog.Printf("acquisition profile conflict detected")
+	}
+	return selection
+}
+
+// classifyAcquisitionProfile decides which acquisition profile the
+// environment selects from the three raw signals the profile check reads. It
+// is a pure function extracted from Doctor.profile so every profile
+// combination, including the conflicting one, is independently testable
+// against constructed strings and booleans, without reading the process
+// environment through Doctor.getenv.
+//
+// The two acquisition profiles (collection and published-snapshot ingestion)
+// are alternatives, never layers. A process configured for both would
+// collect from GitHub and ingest published artifacts into the same
+// namespace, which is always a misconfiguration.
+func classifyAcquisitionProfile(collectAppID, sourceDirectory string, admitOnly bool) profileSelection {
 	switch {
-	case appID != "" && source != "":
-		// The two acquisition profiles are alternatives, never layers. A
-		// process configured for both would collect and ingest published
-		// snapshots into the same namespace.
+	case collectAppID != "" && sourceDirectory != "":
 		return profileSelection{label: "conflicting (collection and published-snapshot ingestion)", conflict: true, collecting: true, admitOnly: admitOnly}
-	case appID != "" && admitOnly:
+	case collectAppID != "" && admitOnly:
 		return profileSelection{label: "collection (admission only)", collecting: true, admitOnly: true}
-	case appID != "":
+	case collectAppID != "":
 		return profileSelection{label: "collection (webhook-driven)", collecting: true}
 	default:
 		return profileSelection{label: "actions (published-snapshot ingestion)"}

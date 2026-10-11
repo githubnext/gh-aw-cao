@@ -179,6 +179,80 @@ func TestProfileCheckRejectsBothAcquisitionProfiles(t *testing.T) {
 	}
 }
 
+func TestClassifyAcquisitionProfile(t *testing.T) {
+	tests := []struct {
+		name            string
+		collectAppID    string
+		sourceDirectory string
+		admitOnly       bool
+		wantLabel       string
+		wantCollecting  bool
+		wantAdmitOnly   bool
+		wantConflict    bool
+	}{
+		{
+			name:           "neither signal selects the actions profile",
+			wantLabel:      "actions (published-snapshot ingestion)",
+			wantCollecting: false,
+		},
+		{
+			name:           "app id alone selects webhook-driven collection",
+			collectAppID:   "42",
+			wantLabel:      "collection (webhook-driven)",
+			wantCollecting: true,
+		},
+		{
+			name:           "app id with admit-only selects admission-only collection",
+			collectAppID:   "42",
+			admitOnly:      true,
+			wantLabel:      "collection (admission only)",
+			wantCollecting: true,
+			wantAdmitOnly:  true,
+		},
+		{
+			name:            "app id and source directory together conflict",
+			collectAppID:    "42",
+			sourceDirectory: "/snapshot",
+			wantLabel:       "conflicting (collection and published-snapshot ingestion)",
+			wantCollecting:  true,
+			wantConflict:    true,
+		},
+		{
+			name:            "app id, source directory, and admit-only together still conflict",
+			collectAppID:    "42",
+			sourceDirectory: "/snapshot",
+			admitOnly:       true,
+			wantLabel:       "conflicting (collection and published-snapshot ingestion)",
+			wantCollecting:  true,
+			wantAdmitOnly:   true,
+			wantConflict:    true,
+		},
+		{
+			name:            "source directory alone selects the actions profile",
+			sourceDirectory: "/snapshot",
+			wantLabel:       "actions (published-snapshot ingestion)",
+			wantCollecting:  false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := classifyAcquisitionProfile(test.collectAppID, test.sourceDirectory, test.admitOnly)
+			if got.label != test.wantLabel {
+				t.Errorf("label = %q, want %q", got.label, test.wantLabel)
+			}
+			if got.collecting != test.wantCollecting {
+				t.Errorf("collecting = %v, want %v", got.collecting, test.wantCollecting)
+			}
+			if got.admitOnly != test.wantAdmitOnly {
+				t.Errorf("admitOnly = %v, want %v", got.admitOnly, test.wantAdmitOnly)
+			}
+			if got.conflict != test.wantConflict {
+				t.Errorf("conflict = %v, want %v", got.conflict, test.wantConflict)
+			}
+		})
+	}
+}
+
 func TestRenderingsCarryStableCheckIdentifiersAndNoSecret(t *testing.T) {
 	report := Report{
 		SchemaVersion: ReportSchemaVersion,
