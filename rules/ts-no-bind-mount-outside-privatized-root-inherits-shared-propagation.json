@@ -120,16 +120,6 @@
       "readiness_for_target": "not-applicable",
       "reason": "Re-confirmed on HEAD b161aea: grep across all .ts/.js/.mjs/.cjs/.go sources for '--bind', 'make-private', 'MS_PRIVATE', and 'privatized' still returns zero hits of the unsafe pattern (sole textual '--bind' match is .github/workflows/ci.yml:1718, a python http.server network bind flag; mount-related Go hits are comment references to bind-mounting Docker volumes, not a privatized-root/shared-propagation bind-mount sequence). No Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38073519493-2.",
       "txn_id": "refiner-38092782506-2"
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "feb7220049159029fa73892e84db65971c7a642c",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD feb7220: grep across all .ts/.js/.mjs/.cjs/.go sources for '--bind', 'make-private', 'MS_PRIVATE', and 'privatized' still returns zero hits of the unsafe pattern; no Cloud Hypervisor/enclave storage mount-propagation code exists in this CLI/Actions tooling monorepo. No drift since refiner-38092782506-2.",
-      "txn_id": "refiner-38096349731-2"
     }
   ],
   "affected_paths": [
@@ -194,13 +184,13 @@
   "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",
   "mechanical_correction": "After every `mount --bind <source> <destination>` where `destination` is not itself inside a path that was just privatized, immediately run `mount --make-private <destination>` (non-recursive, scoped to exactly that mount) and then verify via `/proc/self/mountinfo` that the resulting entry shows private propagation before trusting the mount. Do this for each distinct bind destination separately; privatizing an ancestor/source does not substitute for privatizing the specific destination mount.",
   "normalization": {
-    "reason": "The file's last_updated timestamp (2026-10-09T23:53:21Z) predated the most recent github/gh-aw-firewall evaluation, refiner-37977147256-1 (recorded 2026-10-09T19:06:40Z but never carried in), leaving the file's github/gh-aw-firewall record one evaluation stale (still pointing at refiner-37969204993-1, 2026-10-09T01:36:03Z) while github/gh-aw and githubnext/gh-aw-cao were current. Appended the missing additional_target_evaluations entry; readiness and counts (TP=1, FP=3, needs-work) are unchanged from the prior firewall entry, so overall status stays needs-work.",
-    "relationship": "repaired",
-    "txn_id": "librarian-38042902464-1"
+    "reason": "5 refiner evaluations of github/gh-aw-firewall (2026-10-07 to 2026-10-10, 3 days) stayed completely flat at TP=1/FP=3 with the same unfixed virtiofsd.ts readonlyBindPath true positive and the same 3 self-bind-onto-self false positives every time; no suppression/narrowing was ever added. All 6 githubnext/gh-aw-cao evaluations and all 9 github/gh-aw evaluations found the rule not-applicable (no mount-namespace bind-mount code exists in either repo). Zero adoption requests across the full history. This matches the exact deprecation pattern already applied to js-no-literal-color-value-in-test-assertion, ts-no-duplicate-behavioral-test-in-barrel-reexport-file, and ts-no-recursive-chmod-widens-restricted-files: flat false-positive rate, no narrowing, no adoption, confirmed not-applicable elsewhere. Supersedes the prior repair librarian-38042902464-1 (readiness and counts unchanged at that time; this is a new deprecation decision, not an amendment).",
+    "relationship": "deprecated",
+    "txn_id": "librarian-38096361832-1"
   },
   "occurrence_count": 4,
   "rule_key": "ts-no-bind-mount-outside-privatized-root-inherits-shared-propagation",
-  "status": "needs-work",
+  "status": "deprecated",
   "syntactic_constructs": [
     "mount(tools, ['--bind', source, destination]) call where destination is a distinct path from any previously `--make-private`'d root, with no subsequent `mount(tools, ['--make-private', destination])` call before the mount is relied upon"
   ],
