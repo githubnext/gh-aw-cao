@@ -7,11 +7,11 @@
       "false_negative_count": 0,
       "false_positive_count": 1,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 5ace72f: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit on a freshly mkdtemp'd scratch directory; no new true positives repo-wide. No drift since refiner-38065270021-1.",
-      "target_commit": "5ace72fac5d2afd76feedf41c7ef423e81039b23",
+      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit on a freshly mkdtemp'd scratch directory; no new true positives repo-wide.",
+      "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
       "target_repo": "githubnext/gh-aw-cao",
       "true_positive_count": 0,
-      "txn_id": "refiner-38133337265-3"
+      "txn_id": "refiner-38065270021-1"
     },
     {
       "false_negative_count": 0,

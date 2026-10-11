@@ -126,19 +126,19 @@
     "reason": "Searched all *.test.ts/*.test.js/*.test.cjs/*.test.mjs files under github/gh-aw for hex-color/color-mix() literal assertions copied from an actively-tuned themed source (docs/src/components/*.astro, docs/src/styles): zero hits. Only hex-like matches found are HTML-entity escapes such as &#124; in Markdown table test output, not color literals.",
     "txn_id": "refiner-37835259305-4"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38133337265",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-11T10:53:16Z",
+  "last_seen_at": "2026-10-10T15:55:15Z",
   "additional_target_evaluations": [
     {
       "true_positive_count": 0,
       "false_positive_count": 15,
       "false_negative_count": 0,
       "readiness_for_target": "needs-work",
-      "target_commit": "5ace72fac5d2afd76feedf41c7ef423e81039b23",
+      "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
       "target_repo": "githubnext/gh-aw-cao",
-      "txn_id": "refiner-38133337265-2",
-      "reason": "Re-confirmed unchanged on HEAD 5ace72f: tests/unit/landing-page-diagram.test.mjs and tests/unit/docs-accessibility.test.mjs still literal-match actively-tuned theme color tokens; no suppression convention added. No drift since refiner-38065270021-3."
+      "txn_id": "refiner-38065270021-3",
+      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: tests/unit/landing-page-diagram.test.mjs and tests/unit/docs-accessibility.test.mjs still literal-match actively-tuned theme color tokens; no suppression convention added."
     },
     {
       "target_repo": "github/gh-aw-firewall",

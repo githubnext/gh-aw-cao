@@ -5,11 +5,11 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "Re-confirmed on HEAD 5ace72f: searched all *.test.ts/*.test.js/*.test.mjs sources repo-wide for 'barrel'/'re-export' header-comment conventions; the only 're-export' hit (tests/unit/cao-cli.test.mjs:39) is an unrelated assertion that a CLI export equals its implementation, not a barrel/re-export smoke-test file. No barrel-reexport test files exist in this repository, matching every prior evaluation. Not applicable here regardless of readiness elsewhere. No drift since refiner-37796381362-3.",
-      "target_commit": "5ace72fac5d2afd76feedf41c7ef423e81039b23",
+      "reason": "Re-confirmed on HEAD d00b985: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; no barrel/re-export smoke-test files exist in this repository, matching every prior evaluation. Not applicable here regardless of readiness elsewhere.",
+      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
       "target_repo": "githubnext/gh-aw-cao",
       "true_positive_count": 0,
-      "txn_id": "refiner-38133337265-1"
+      "txn_id": "refiner-37796381362-3"
     },
     {
       "false_negative_count": 0,
