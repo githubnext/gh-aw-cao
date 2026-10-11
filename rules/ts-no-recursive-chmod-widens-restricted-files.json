@@ -1,164 +1,174 @@
 {
-  "rule_key": "ts-no-recursive-chmod-widens-restricted-files",
-  "language": "typescript",
   "additional_languages": [
     "javascript"
   ],
-  "unsafe_pattern": "Applying a recursive chmod (e.g. `execa(.sync)('chmod', ['-R', 'a+rX', dir])`, an equivalent shell string containing `chmod -R`, or `fs.chmodSync`/`fs.promises.chmod` walked recursively over a directory tree) to a directory that also holds, or may in the future hold, files intentionally created with a restrictive mode (e.g. 0o600) for sensitive content such as audit logs, tokens, or credentials.",
-  "consequence": "The recursive chmod silently widens permissions on every file under the target directory, including files deliberately locked down to owner-only access. Sensitive audit/token/log payloads become world- or group-readable, an information-disclosure defect that is easy to reintroduce because the recursive call looks like ordinary cleanup/log-permission-repair code.",
-  "mechanical_correction": "Restrict the chmod to the specific top-level directory and its direct (non-recursive) files only, or explicitly enumerate/exclude known-sensitive subpaths before any recursive step. When a file must stay private, create it with the restrictive mode via `fs.openSync(path, flags, 0o600)` + `fs.fchmodSync` (or equivalent) rather than relying on a later broad chmod pass to skip it.",
-  "evidence": [
+  "additional_target_evaluations": [
     {
-      "type": "merged_pull_request",
-      "repo": "github/gh-aw-firewall",
-      "number": 8550,
-      "title": "Preserve redacted upstream non-2xx payloads and correlation metadata in API proxy audit logs",
-      "detail": "Changed containers/api-proxy/token-persistence.js audit log file mode from 0o644 to 0o600 and added explicit fs.openSync+fchmodSync to avoid a transient world-readable window; added a test asserting the file mode stays 0o600.",
-      "files": [
-        "containers/api-proxy/token-persistence.js",
-        "src/artifact-preservation.ts"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 1,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit on a freshly mkdtemp'd scratch directory; no new true positives repo-wide.",
+      "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
+      "target_repo": "githubnext/gh-aw-cao",
+      "true_positive_count": 0,
+      "txn_id": "refiner-38065270021-1"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "github/gh-aw-firewall",
-      "number": 8562,
-      "title": "fix: preserve API proxy log cleanup permissions",
-      "detail": "Removed recursive chmod widening (`chmodRuntimeDir`) for the API-proxy logs directory and removed proxyLogsDir from the recursive `fixArtifactPermissionsForRootless` fix-up list, specifically to stop `chmod -R a+rX` from exposing the 0600 token-tracker-audit.jsonl file that lives in the same directory tree.",
-      "files": [
-        "src/artifact-preservation.ts",
-        "src/container-cleanup-branches.test.ts",
-        "src/docker-manager-cleanup.test.ts"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
+      "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37835259305-5"
     },
     {
-      "type": "review_comment",
-      "repo": "github/gh-aw-firewall",
-      "number": 8562,
-      "url": "https://github.com/github/gh-aw-firewall/pull/8562#discussion_r4008324427",
-      "detail": "Unresolved copilot-pull-request-reviewer comment noting the #8562 fix was incomplete: src/container-stop.ts still runs `chmod -R a+rX /var/log/squid` (via fixSquidLogPermissions), which shares the same host directory as the 0600 token-tracker-audit.jsonl file, so the file is world-readable again before the direct-files-only cleanup in artifact-preservation.ts runs.",
-      "files": [
-        "src/container-stop.ts",
-        "src/artifact-preservation.ts"
-      ]
+      "false_negative_count": 1,
+      "false_positive_count": 4,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f1c3282: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R with no cross-file awareness of token-persistence.js's 0o600 audit file), no suppression mechanism.",
+      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 2,
+      "txn_id": "refiner-37467185149-1"
     },
     {
-      "type": "merged_pull_request",
-      "repo": "github/gh-aw-firewall",
-      "number": 8624,
-      "title": "Fix Squid log permission repair across topology restarts",
-      "detail": "Squid startup preflight repair kept scoped to explicit top-level log files (access.log, audit.jsonl, cache.log) instead of a recursive chown/chmod pass, because /var/log/squid can be the same host directory tree as restricted-mode API-proxy audit files; PR body and code comment both restate the non-recursive invariant as the fix rationale.",
-      "files": [
-        "src/services/squid-service.ts",
-        "src/container-stop.ts"
-      ]
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
+      "target_commit": "a65c3ae1e11016c37f426bb3847a6f5e1a7d58df",
+      "target_repo": "github/gh-aw-actions",
+      "true_positive_count": 0,
+      "txn_id": "refiner-36658147600-1"
+    },
+    {
+      "false_negative_count": 1,
+      "false_positive_count": 4,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged at current HEAD (140c4fa): the auditDir/audit-tmpdir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
+      "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 2,
+      "txn_id": "refiner-37156057344-1"
+    },
+    {
+      "false_negative_count": 1,
+      "false_positive_count": 4,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD b476c7d5: same 4 false positives (sessionStateDir, squid-logs, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R), no suppression mechanism.",
+      "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 2,
+      "txn_id": "refiner-37359981927-1"
+    },
+    {
+      "false_negative_count": 1,
+      "false_positive_count": 4,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD f1c3282: same false positives/negative persist, no suppression mechanism.",
+      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 2,
+      "txn_id": "refiner-37467185149-1"
+    },
+    {
+      "false_negative_count": 1,
+      "false_positive_count": 4,
+      "readiness_for_target": "needs-work",
+      "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
+      "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
+      "target_repo": "github/gh-aw-firewall",
+      "true_positive_count": 1,
+      "txn_id": "refiner-37977147256-3"
     }
   ],
-  "occurrence_count": 4,
   "affected_paths": [
     "src/artifact-preservation.ts",
     "src/container-stop.ts",
     "containers/api-proxy/token-persistence.js"
   ],
+  "autofix_safe": false,
+  "consequence": "The recursive chmod silently widens permissions on every file under the target directory, including files deliberately locked down to owner-only access. Sensitive audit/token/log payloads become world- or group-readable, an information-disclosure defect that is easy to reintroduce because the recursive call looks like ordinary cleanup/log-permission-repair code.",
+  "evaluation": {
+    "false_negative_count": 1,
+    "false_positive_count": 4,
+    "readiness_for_target": "needs-work",
+    "reason": "Re-confirmed unchanged on HEAD b179fef (#9792, ARC/DinD boundary coverage, unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts's 0o600 write still has no corresponding widening call found (false negative in grep-only method). No drift since refiner-37977147256-3.",
+    "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7",
+    "target_repo": "github/gh-aw-firewall",
+    "true_positive_count": 1,
+    "txn_id": "refiner-38110386121-3"
+  },
+  "evidence": [
+    {
+      "detail": "Changed containers/api-proxy/token-persistence.js audit log file mode from 0o644 to 0o600 and added explicit fs.openSync+fchmodSync to avoid a transient world-readable window; added a test asserting the file mode stays 0o600.",
+      "files": [
+        "containers/api-proxy/token-persistence.js",
+        "src/artifact-preservation.ts"
+      ],
+      "number": 8550,
+      "repo": "github/gh-aw-firewall",
+      "title": "Preserve redacted upstream non-2xx payloads and correlation metadata in API proxy audit logs",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Removed recursive chmod widening (`chmodRuntimeDir`) for the API-proxy logs directory and removed proxyLogsDir from the recursive `fixArtifactPermissionsForRootless` fix-up list, specifically to stop `chmod -R a+rX` from exposing the 0600 token-tracker-audit.jsonl file that lives in the same directory tree.",
+      "files": [
+        "src/artifact-preservation.ts",
+        "src/container-cleanup-branches.test.ts",
+        "src/docker-manager-cleanup.test.ts"
+      ],
+      "number": 8562,
+      "repo": "github/gh-aw-firewall",
+      "title": "fix: preserve API proxy log cleanup permissions",
+      "type": "merged_pull_request"
+    },
+    {
+      "detail": "Unresolved copilot-pull-request-reviewer comment noting the #8562 fix was incomplete: src/container-stop.ts still runs `chmod -R a+rX /var/log/squid` (via fixSquidLogPermissions), which shares the same host directory as the 0600 token-tracker-audit.jsonl file, so the file is world-readable again before the direct-files-only cleanup in artifact-preservation.ts runs.",
+      "files": [
+        "src/container-stop.ts",
+        "src/artifact-preservation.ts"
+      ],
+      "number": 8562,
+      "repo": "github/gh-aw-firewall",
+      "type": "review_comment",
+      "url": "https://github.com/github/gh-aw-firewall/pull/8562#discussion_r4008324427"
+    },
+    {
+      "detail": "Squid startup preflight repair kept scoped to explicit top-level log files (access.log, audit.jsonl, cache.log) instead of a recursive chown/chmod pass, because /var/log/squid can be the same host directory tree as restricted-mode API-proxy audit files; PR body and code comment both restate the non-recursive invariant as the fix rationale.",
+      "files": [
+        "src/services/squid-service.ts",
+        "src/container-stop.ts"
+      ],
+      "number": 8624,
+      "repo": "github/gh-aw-firewall",
+      "title": "Fix Squid log permission repair across topology restarts",
+      "type": "merged_pull_request"
+    }
+  ],
+  "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
+  "language": "typescript",
+  "last_seen_at": "2026-10-11T04:07:34Z",
+  "last_updated": "2026-10-11T04:07:34Z",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38110386121",
+  "last_updated_target_repo": "github/gh-aw-firewall",
+  "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
+  "mechanical_correction": "Restrict the chmod to the specific top-level directory and its direct (non-recursive) files only, or explicitly enumerate/exclude known-sensitive subpaths before any recursive step. When a file must stay private, create it with the restrictive mode via `fs.openSync(path, flags, 0o600)` + `fs.fchmodSync` (or equivalent) rather than relying on a later broad chmod pass to skip it.",
+  "normalization": {
+    "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history.",
+    "relationship": "deprecated",
+    "txn_id": "librarian-37573767430-1"
+  },
+  "occurrence_count": 5,
+  "rule_key": "ts-no-recursive-chmod-widens-restricted-files",
+  "status": "deprecated",
   "syntactic_constructs": [
     "execa.sync('chmod', ['-R', ...])",
     "execa('chmod', ['-R', ...])",
     "shell string containing 'chmod -R'",
     "fs.chmodSync recursive directory walk"
   ],
-  "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
-  "autofix_safe": false,
-  "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
-  "status": "deprecated",
-  "normalization": {
-    "relationship": "deprecated",
-    "txn_id": "librarian-37573767430-1",
-    "reason": "9 refiner evaluations across 3+ weeks (2026-09-16 to 2026-10-07) on github/gh-aw-firewall stayed flat at TP=2/FP=4/FN=1 with the same false-positive and false-negative sites every time and no suppression mechanism ever added; 10 parallel evaluations on githubnext/gh-aw-cao stayed flat at TP=0/FP=1/FN=0. Zero adoption requests across the full history."
-  },
-  "evaluation": {
-    "target_repo": "github/gh-aw-firewall",
-    "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
-    "true_positive_count": 1,
-    "false_positive_count": 4,
-    "false_negative_count": 1,
-    "readiness_for_target": "needs-work",
-    "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
-    "txn_id": "refiner-37977147256-3"
-  },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
-  "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "additional_target_evaluations": [
-    {
-      "true_positive_count": 0,
-      "false_positive_count": 1,
-      "false_negative_count": 0,
-      "readiness_for_target": "needs-work",
-      "target_commit": "01f6d3a63953eb6013237ad3bc96090e9fe03dee",
-      "target_repo": "githubnext/gh-aw-cao",
-      "txn_id": "refiner-38065270021-1",
-      "reason": "Re-confirmed unchanged on HEAD 01f6d3a: tests/e2e/cao-mcp-container.mjs:89 chmod -R a+rX remains the sole false-positive hit on a freshly mkdtemp'd scratch directory; no new true positives repo-wide."
-    },
-    {
-      "target_repo": "github/gh-aw",
-      "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
-      "txn_id": "refiner-37835259305-5"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
-      "true_positive_count": 2,
-      "false_positive_count": 4,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD f1c3282: same 4 false positives (sessionStateDir recursive branch, squid-logs chmodPreservedDir, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R with no cross-file awareness of token-persistence.js's 0o600 audit file), no suppression mechanism.",
-      "txn_id": "refiner-37467185149-1"
-    },
-    {
-      "target_repo": "github/gh-aw-actions",
-      "target_commit": "a65c3ae1e11016c37f426bb3847a6f5e1a7d58df",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "reason": "No execa/execa.sync chmod invocations exist in this repository's JS/TS sources; the unsafe pattern does not occur here (recursive chmod usage in this repo is confined to shell scripts, outside the rule's scope).",
-      "txn_id": "refiner-36658147600-1"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
-      "true_positive_count": 2,
-      "false_positive_count": 4,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged at current HEAD (140c4fa): the auditDir/audit-tmpdir true positives, sessionState/squid-logs/diagnostics-dir false positives, and the artifact-permissions.ts shell-string chmod false negative all persist with no drift.",
-      "txn_id": "refiner-37156057344-1"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
-      "true_positive_count": 2,
-      "false_positive_count": 4,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD b476c7d5: same 4 false positives (sessionStateDir, squid-logs, both diagnostics-dir chmods), same false negative (artifact-permissions.ts shell-string chmod -R), no suppression mechanism.",
-      "txn_id": "refiner-37359981927-1"
-    },
-    {
-      "target_repo": "github/gh-aw-firewall",
-      "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
-      "true_positive_count": 2,
-      "false_positive_count": 4,
-      "false_negative_count": 1,
-      "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD f1c3282: same false positives/negative persist, no suppression mechanism.",
-      "txn_id": "refiner-37467185149-1"
-    }
-  ],
-  "last_seen_at": "2026-10-10T15:55:15Z",
-  "last_updated": "2026-10-10T15:55:15Z"
+  "unsafe_pattern": "Applying a recursive chmod (e.g. `execa(.sync)('chmod', ['-R', 'a+rX', dir])`, an equivalent shell string containing `chmod -R`, or `fs.chmodSync`/`fs.promises.chmod` walked recursively over a directory tree) to a directory that also holds, or may in the future hold, files intentionally created with a restrictive mode (e.g. 0o600) for sensitive content such as audit logs, tokens, or credentials."
 }
