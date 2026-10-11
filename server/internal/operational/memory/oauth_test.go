@@ -8,6 +8,54 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
+func TestClassifyInvalidateSession(t *testing.T) {
+	cases := []struct {
+		name            string
+		exists, matches bool
+		want            invalidateSessionOutcome
+	}{
+		{"absent session", false, false, invalidateSessionOutcomeAbsent},
+		{"absent session even if matches", false, true, invalidateSessionOutcomeAbsent},
+		{"existing mismatched value", true, false, invalidateSessionOutcomeConflict},
+		{"existing matching value", true, true, invalidateSessionOutcomeStaged},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := classifyInvalidateSession(c.exists, c.matches); got != c.want {
+				t.Fatalf("classifyInvalidateSession(%t, %t) = %q, want %q", c.exists, c.matches, got, c.want)
+			}
+		})
+	}
+}
+
+func TestCompleteRevocationStaleAndRemovedOutcomes(t *testing.T) {
+	s, _ := fixture(t, Config{})
+	ctx := t.Context()
+
+	// No pending revocation at all: stale, no error, no panic.
+	must(t, s.CompleteRevocation(ctx, "missing", "anything", "ns:"))
+
+	must(t, s.QueueRevocation(ctx, "pending", "encrypted", "ns:"))
+
+	// Wrong expected value: stale, the revocation must remain pending.
+	must(t, s.CompleteRevocation(ctx, "pending", "wrong-value", "ns:"))
+	pending, err := s.PendingRevocation(ctx, "ns:")
+	must(t, err)
+	if pending.ID != "pending" || pending.Value != "encrypted" {
+		t.Fatalf("stale completion altered pending revocation: %#v", pending)
+	}
+
+	// Correct expected value: removed, and the namespace cursor is cleared
+	// once no revocation remains for it.
+	must(t, s.CompleteRevocation(ctx, "pending", "encrypted", "ns:"))
+	pending, err = s.PendingRevocation(ctx, "ns:")
+	must(t, err)
+	if pending.ID != "" || pending.Value != "" {
+		t.Fatalf("removed revocation still pending: %#v", pending)
+	}
+	invariant(t, s)
+}
+
 func TestLogoutRefreshRaceAndConditionalCompletion(t *testing.T) {
 	s, _ := fixture(t, Config{})
 	ctx := t.Context()

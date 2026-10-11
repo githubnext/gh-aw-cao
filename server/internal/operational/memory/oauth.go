@@ -5,7 +5,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+)
+
+var oauthLog = logger.New("cao:operational:memory:oauth")
+
+// invalidateSessionOutcome names why InvalidateSession did or did not stage
+// a session for revocation, stable across session identity and encrypted
+// payload contents so it is useful to log without exposing either. It
+// mirrors the outcome-name pattern quota.go uses for its own multi-branch
+// decisions.
+type invalidateSessionOutcome string
+
+const (
+	invalidateSessionOutcomeStaged   invalidateSessionOutcome = "staged"
+	invalidateSessionOutcomeAbsent   invalidateSessionOutcome = "absent"
+	invalidateSessionOutcomeConflict invalidateSessionOutcome = "conflict"
+)
+
+// completeRevocationOutcome names why CompleteRevocation did or did not
+// remove a pending revocation, stable across revocation identity and
+// encrypted payload contents so it is useful to log without exposing
+// either.
+type completeRevocationOutcome string
+
+const (
+	completeRevocationOutcomeRemoved completeRevocationOutcome = "removed"
+	completeRevocationOutcomeStale   completeRevocationOutcome = "stale"
 )
 
 func (s *Store) SessionRecord(ctx context.Context, id string) (string, error) {
@@ -93,6 +120,22 @@ func (s *Store) CompareSession(ctx context.Context, id, expected, value string, 
 	return true, nil
 }
 
+// classifyInvalidateSession reports why InvalidateSession would or would not
+// stage a session for revocation, given whether the session exists and
+// whether its current value matches the caller's expectation. It is a pure
+// function extracted from InvalidateSession so the absent/conflict/staged
+// decision is independently testable without a Store or mutex.
+func classifyInvalidateSession(exists, matches bool) invalidateSessionOutcome {
+	switch {
+	case !exists:
+		return invalidateSessionOutcomeAbsent
+	case !matches:
+		return invalidateSessionOutcomeConflict
+	default:
+		return invalidateSessionOutcomeStaged
+	}
+}
+
 // InvalidateSession uses an empty expected value for unconditional logout.
 // namespace is opaque and independent of session identity, including "".
 func (s *Store) InvalidateSession(ctx context.Context, id, expected, namespace string) (string, error) {
@@ -111,10 +154,13 @@ func (s *Store) InvalidateSession(ctx context.Context, id, expected, namespace s
 	}
 	s.prune(s.config.Clock())
 	current, ok := s.sessions[id]
-	if !ok {
+	matches := expected == "" || current.value == expected
+	switch outcome := classifyInvalidateSession(ok, matches); outcome {
+	case invalidateSessionOutcomeAbsent:
+		oauthLog.Printf("session invalidation outcome=%s", outcome)
 		return "", nil
-	}
-	if expected != "" && current.value != expected {
+	case invalidateSessionOutcomeConflict:
+		oauthLog.Printf("session invalidation outcome=%s", outcome)
 		return "", operational.ErrConflict
 	}
 	key := revocationKey{namespace, id}
@@ -209,15 +255,19 @@ func (s *Store) CompleteRevocation(ctx context.Context, id, expected, namespace 
 		return err
 	}
 	key := revocationKey{namespace, id}
-	if value, ok := s.revocations[key]; ok && value.value == expected {
-		delete(s.revocations, key)
-		s.drop(recordKey{"revocation", namespace, id})
-		for k := range s.revocations {
-			if k.namespace == namespace {
-				return nil
-			}
-		}
-		delete(s.revocationCursor, namespace)
+	value, ok := s.revocations[key]
+	if !ok || value.value != expected {
+		oauthLog.Printf("revocation completion outcome=%s", completeRevocationOutcomeStale)
+		return nil
 	}
+	delete(s.revocations, key)
+	s.drop(recordKey{"revocation", namespace, id})
+	oauthLog.Printf("revocation completion outcome=%s", completeRevocationOutcomeRemoved)
+	for k := range s.revocations {
+		if k.namespace == namespace {
+			return nil
+		}
+	}
+	delete(s.revocationCursor, namespace)
 	return nil
 }
