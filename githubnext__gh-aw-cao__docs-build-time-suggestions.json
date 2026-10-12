@@ -1,7 +1,54 @@
 {
   "source_sha": "b56d73723daceacca67a961d071f650e7f76eedd",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-12T16:58:00Z",
+      "worker_run_id": 38280761386,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38280925914,
+        38280486050,
+        38279860649,
+        38279404901,
+        38277612974,
+        38277361354,
+        38274551752,
+        38274093725,
+        38272923946,
+        38272521496,
+        38270478956,
+        38268927025,
+        38267666709,
+        38266270641,
+        38265213123,
+        38263541067,
+        38262162815,
+        38259367074,
+        38259137708,
+        38255322565
+      ],
+      "docs_window": {
+        "start": "2026-10-12T13:23:11Z",
+        "end": "2026-10-12T16:56:58Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 0,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 21.0,
+        "workflow_p90_s": 25.1,
+        "schedule_freshness_median_s": 16.5,
+        "schedule_freshness_p90_s": 20.1,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T13:23:11Z through 2026-10-12T16:56:58Z, 11 runs concluded success and all 11 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 9 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 21.0s/25.1s, and schedule-freshness median/p90 was 16.5s/20.1s. Trusted job metadata for every successful docs run showed build and deploy skipped; a bounded log read of run 38280486050 confirmed the freshness-only summary path reporting that the deployed docs and dashboard are current. Because the bounded sample contains 0 comparable successful deployed docs runs, no evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
     {
       "evaluated_at": "2026-10-12T15:31:10Z",
       "worker_run_id": 38270280139,
@@ -1084,70 +1131,6 @@
         38145074795
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T13:54:59Z through 2026-10-11T16:26:21Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on the same source SHA; the other 10 completed runs were skipped workflow_run invocations. Trusted job metadata showed 0 comparable successful build-bearing docs runs (build and deploy both successful), below the required minimum of 5. Across all 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow median/p90 was 21.0s/24.0s, schedule-freshness job median/p90 was 17.0s/19.0s, and the Check documentation and dashboard freshness step median/p90 was 13.0s/15.0s. A bounded log read of run 38155462547 confirmed the freshness-skip path and the summary line \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T10:55:12Z through 2026-10-11T16:23:41Z contained 0 successful dashboard builds and 20 skipped workflow_run invocations, so artifact transfer, Pages packaging, dashboard generation, deployment timings, and cache-hit evidence for build-bearing paths were not available from comparable successful runs in the bounded window. Because the bounded sample contains 0 comparable successful build-bearing docs runs and 0 successful dashboard builds, no safe evidence-backed artifact-transfer or Pages-packaging recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-12T16:32:51Z",
-      "worker_run_id": 38277495798,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38277612974,
-        38277361354,
-        38274551752,
-        38274093725,
-        38272923946,
-        38272521496,
-        38270478956,
-        38268927025,
-        38267666709,
-        38266270641,
-        38265213123,
-        38263541067,
-        38262162815,
-        38259367074,
-        38259137708,
-        38255322565,
-        38255032935,
-        38251939476,
-        38251472551,
-        38246827163
-      ],
-      "docs_window": {
-        "start": "2026-10-12T12:05:21Z",
-        "end": "2026-10-12T16:28:42Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 11,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 24.0,
-        "workflow_p90_s": 25.0,
-        "schedule_freshness_job_median_s": 18.0,
-        "schedule_freshness_job_p90_s": 20.0,
-        "schedule_freshness_step_median_s": 15.0,
-        "schedule_freshness_step_p90_s": 16.0,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "dashboard_window": {
-        "start": "2026-10-12T07:21:42Z",
-        "end": "2026-10-12T16:26:02Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_current_sha_success_count": 0,
-      "dashboard_metrics": {
-        "build_median_s": null,
-        "build_p90_s": null,
-        "cache_median_s": null,
-        "cache_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "decision": "noop_duplicate_open_issue",
-      "related_open_issue": 17171,
-      "outcome": "no_action_duplicate_open_issue: evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T12:05:21Z through 2026-10-12T16:28:42Z, 11 comparable successful schedule-triggered runs on source SHA b56d73723daceacca67a961d071f650e7f76eedd all skipped build and deploy because docs and dashboard were current, while 9 workflow_run invocations were skipped. Trusted job metadata showed workflow queue median/p90 0.0s/0.0s, full workflow execution median/p90 24.0s/25.0s, schedule-freshness job median/p90 18.0s/20.0s, and Check documentation and dashboard freshness step median/p90 15.0s/16.0s. A bounded log read of run 38272521496 confirmed the freshness-only summary path, and the workflow source still performs repeated workflow-history and per-run job scans to find the last deployed docs run. This remains actionable in principle, but open issue #17171 already represents the same underlying work; because this run cannot update existing issues, no new safe output was created."
     }
   ]
 }
