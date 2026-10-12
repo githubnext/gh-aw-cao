@@ -173,30 +173,7 @@ function inspectRepository(repository, execute) {
   };
 }
 
-const UNRESTRICTED_SITE_GUIDANCE = {
-  removed: 'Setup removed the unrestricted Pages site it had just created, so no dashboard can be published.',
-  'removal-failed': 'Setup created an unrestricted Pages site but could not remove it; unpublish it in Settings > Pages, then run cao setup again.',
-  existing: 'The existing Pages site was left unchanged and is not access-controlled; unpublish it in Settings > Pages, then run cao setup again.',
-};
-
-export class DashboardPagesAccessUnsupportedError extends Error {
-  constructor(repository, detail, siteState) {
-    super([
-      `Private GitHub Pages is not available for ${repository} (${detail}).`,
-      'Access-controlled Pages requires the repository owner to be an organization on GitHub Enterprise Cloud; it cannot be enabled through the API.',
-      UNRESTRICTED_SITE_GUIDANCE[siteState],
-      'To publish the dashboard, move the control repository to an organization on GitHub Enterprise Cloud (or upgrade the owner) and run cao setup again.',
-      'Do not make Pages public for a private control repository.',
-    ].join('\n'));
-    this.name = 'DashboardPagesAccessUnsupportedError';
-    this.siteState = siteState;
-    this.removedSite = siteState === 'removed';
-  }
-}
-
-const PRIVATE_PAGES_UNSUPPORTED = /does not support private GitHub Pages|private pages.*not (?:available|supported)/i;
-
-export function configureDashboardPages({ repository, visibility, execute = spawnSync }) {
+export function configureDashboardPages({ repository, execute = spawnSync }) {
   const endpoint = `repos/${repository}/pages`;
   const request = (arguments_) => execute('gh', ['api', ...arguments_, endpoint], { encoding: 'utf8' });
   const read = () => {
@@ -210,7 +187,6 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   };
 
   let { site, result } = read();
-  const created = !site;
   if (!site) {
     if (result.error || !/\bHTTP 404\b/.test(result.stderr || '')) {
       throw new Error(`Unable to inspect dashboard Pages site: ${commandFailureMessage(result, 'gh api failed')}`);
@@ -221,23 +197,6 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
     }
   }
 
-  if (visibility !== 'public' && site?.public !== false) {
-    result = request(['-X', 'PUT', '-F', 'public=false']);
-    if (!result.error && PRIVATE_PAGES_UNSUPPORTED.test(result.stderr || '')) {
-      const detail = commandFailureMessage(result, 'gh api failed');
-      let siteState = 'existing';
-      if (created) {
-        const removal = request(['-X', 'DELETE']);
-        siteState = !removal.error && removal.status === 0 ? 'removed' : 'removal-failed';
-      }
-      throw new DashboardPagesAccessUnsupportedError(repository, detail, siteState);
-    }
-    if (result.error || result.status !== 0) {
-      throw new Error(
-        `Unable to restrict dashboard Pages access; do not deploy the dashboard: ${commandFailureMessage(result, 'gh api failed')}`,
-      );
-    }
-  }
   if (site && site.build_type !== 'workflow') {
     result = request(['-X', 'PUT', '-f', 'build_type=workflow']);
     if (result.error || result.status !== 0) {
@@ -246,7 +205,7 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   }
 
   ({ site } = read());
-  if (!site || site.build_type !== 'workflow' || (visibility !== 'public' && site.public !== false)) {
+  if (!site || site.build_type !== 'workflow') {
     throw new Error('Dashboard Pages configuration could not be verified; do not deploy the dashboard');
   }
 }
@@ -432,23 +391,13 @@ export async function setupCaoControlPlane({
     interactive.note(`  Review output write scope: ${control.repository}`);
     interactive.note(`  Authentication: ${profile}`);
     interactive.note('  Campaigns: none');
-    interactive.note(`  Dashboard Pages: GitHub Actions source${control.visibility === 'public' ? ' (public)' : ' (repository-restricted access required)'}`);
+    interactive.note('  Dashboard Pages: GitHub Actions source');
     if (!await interactive.confirm('Apply this setup?')) {
       return { command: 'setup', cancelled: true };
     }
 
-    let dashboardPages = 'configured';
-    try {
-      configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
-    } catch (error) {
-      if (!(error instanceof DashboardPagesAccessUnsupportedError) || !error.removedSite) throw error;
-      interactive.note(`\n${error.message}\n`);
-      if (!await interactive.confirm('Continue setup without a published dashboard?')) {
-        return { command: 'setup', cancelled: true, reason: 'private-pages-unsupported' };
-      }
-      dashboardPages = 'skipped';
-    }
     const authentication = setupAuthentication(profile, authenticationArguments, { execute });
+    configureDashboardPages({ repository: control.repository, execute });
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
     return {
       command: 'setup',
@@ -457,7 +406,6 @@ export async function setupCaoControlPlane({
       repositories,
       profile,
       authentication,
-      dashboardPages,
       campaigns: [],
     };
   } finally {

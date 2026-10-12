@@ -125,7 +125,7 @@ The default Central Agentic Ops campaign installs the dashboard builder and manu
 
 1. Open **Settings > Pages** in the control repository.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Restrict Pages access to the intended audience before publishing control-plane data.
+3. Optionally, restrict Pages access to the intended audience if your plan supports private Pages; the dashboard can also be published publicly.
 
 The dashboard workflow remains manual and does not enable Pages automatically.
 
