@@ -3,6 +3,34 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-12T02:07:28Z",
+      "worker_run_id": 38194258102,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38193598462,
+        38191472982,
+        38190910868,
+        38190726458,
+        38186662001,
+        38186068375,
+        38185641576,
+        38185424759,
+        38184815954,
+        38184715225,
+        38184292488,
+        38184115819,
+        38183946140,
+        38182741458,
+        38182715567,
+        38182715679,
+        38181895636,
+        38181742386,
+        38181721872,
+        38181046753
+      ],
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-11T22:35:46Z through 2026-10-12T01:53:01Z, 11 runs concluded success: 9 schedule-triggered runs (2 freshness-only passes on source SHA 412667f50bb55f6dc425791ae8f73fe206f2c5d3, 6 freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd, and 1 full build-and-deploy success on source SHA b56d73723daceacca67a961d071f650e7f76eedd), 1 workflow_run-triggered full build-and-deploy success on source SHA b56d73723daceacca67a961d071f650e7f76eedd, and 1 push-triggered build-only success on source SHA b56d73723daceacca67a961d071f650e7f76eedd whose deploy job was skipped and is therefore non-comparable. Trusted job metadata showed 2 comparable successful deployed docs runs (38184292488 and 38184115819), below the required minimum of 5. Across all 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 13.0s/71.0s, schedule-freshness job median/p90 was 8.0s/9.1s, build job median/p90 was 44.0s/45.6s across 3 build executions, and deploy job median/p90 was 14.5s/18.9s across 2 full deploys. Bounded log reads for docs runs 38184292488 and 38182741458 confirmed repeated cache hits for the setup-node npm cache (~293 MB), the Linux-node-24 node_modules cache (~283 MB), and the central-agentic-ops-dashboard cache (~30 MB); Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped on those hits; Build documentation took about 10-14s and Upload Pages artifact about 5-8s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T21:00:08Z through 2026-10-12T01:19:58Z contained 2 successful push-triggered dashboard builds (38175200719 on source SHA 5893c8e941e3a747c8e6815501145f55ec9b4f3a and 38182741457 on source SHA b56d73723daceacca67a961d071f650e7f76eedd), 1 cancelled manual dispatch, and 17 skipped non-comparable invocations. Trusted dashboard metadata and bounded logs for runs 38175200719 and 38182741457 confirmed restore-key hits on the ~2.17 GiB cao-activity-v5 cache with restore durations of about 288s and 152s, dashboard dependency installation in 5-7s, dashboard build-job durations of 1184s and 1447s dominated by Upgrade fallback activity data at 859s and 1257s, dashboard artifact uploads in 5-7s, and cache-job completion in about 11s. Because the bounded sample contains only 2 comparable successful deployed docs runs and only 1 successful dashboard build on the current source SHA, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-12T01:13:47Z",
       "worker_run_id": 38190765858,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -813,34 +841,6 @@
         38120026674
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T07:02:19Z through 2026-10-11T09:56:17Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes; the other 10 completed runs were skipped workflow_run invocations. Trusted job metadata showed 0 comparable successful build-bearing docs runs, below the required minimum of 5. Across all 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 13.0s/16.0s, schedule-freshness job median/p90 was 9.0s/11.0s, and the Check documentation and dashboard freshness step median/p90 was 6.0s/7.0s. A bounded log read of run 38129771089 confirmed the summary line \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T04:50:39Z through 2026-10-11T09:56:14Z contained 1 successful dashboard build (38114353160), 17 skipped runs, 1 failed push run with no successful jobs (38113688741), and 1 cancelled workflow_dispatch outlier (38113339047); trusted step metadata plus a bounded log read of 38114353160 verified a cache-restored activity snapshot, 151s in Restore collected activity data, 8s in Install dashboard build dependencies, 1258s in Upgrade fallback activity data, and 8s in Upload dashboard artifact. Because the bounded sample contains 0 comparable successful build-bearing docs runs, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-11T09:42:40Z",
-      "worker_run_id": 38129100085,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38129083906,
-        38128356527,
-        38128254260,
-        38128208382,
-        38126904957,
-        38126699957,
-        38126323400,
-        38126168018,
-        38125126318,
-        38124987847,
-        38123389684,
-        38123134609,
-        38122756333,
-        38122610871,
-        38121621043,
-        38121423991,
-        38120026674,
-        38119948417,
-        38118751703,
-        38118635482
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T06:36:52Z through 2026-10-11T09:38:34Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes; the other 10 completed runs were skipped workflow_run invocations. Trusted job metadata showed 0 comparable successful build-bearing docs runs, below the required minimum of 5. Across all 10 successful docs runs, workflow queue median/p90 was 3.0s/4.0s, full workflow execution median/p90 was 12.5s/14.2s, schedule-freshness job median/p90 was 9.0s/10.1s, and the Check documentation and dashboard freshness step median/p90 was 6.0s/7.0s. A bounded log read of run 38129083906 confirmed the summary line \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T03:54:34Z through 2026-10-11T09:24:23Z contained 1 successful dashboard build (38114353160), 17 skipped workflow_run invocations, 1 failed push run with no successful jobs (38113688741), and 1 cancelled workflow_dispatch outlier (38113339047); trusted step metadata plus a bounded build-job log read of 38114353160 verified a cache-hit restore from key cao-activity-v5-37765769970-1, 151s in Restore collected activity data, 8s in Install dashboard build dependencies, 1258s in Upgrade fallback activity data, 3s in Assemble Dashboard Language site, and 8s in Upload dashboard artifact. Because the bounded sample contains 0 comparable successful build-bearing docs runs, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
     }
   ]
 }
