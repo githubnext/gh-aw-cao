@@ -51,7 +51,7 @@ export const operationStyles = `.dashboard-next-work-page .custom-view-grid { di
 .insights-measure-plot { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; }
 .insights-measure-canvas { min-width: 0; }
 .insights-measure-row .chart-widget { min-height: 240px; padding: 0; }
-.insights-axis-label { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
+.insights-axis-label { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .insights-axis-y { writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; text-align: center; }
 .insights-axis-x { grid-column: 2; text-align: center; }
 .insights-point-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0; color: var(--muted); font-size: .75rem; }
