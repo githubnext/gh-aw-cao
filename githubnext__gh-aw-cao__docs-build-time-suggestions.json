@@ -3,6 +3,72 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-12T21:02:42Z",
+      "worker_run_id": 38307424532,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38307636996,
+        38307207457,
+        38306586463,
+        38305948407,
+        38304337693,
+        38304035759,
+        38302022995,
+        38302006983,
+        38301556132,
+        38300939067,
+        38300146752,
+        38299760790,
+        38298619934,
+        38298604444,
+        38298601008,
+        38298392428,
+        38297249708,
+        38296938896,
+        38295636229,
+        38295052298
+      ],
+      "docs_window": {
+        "start": "2026-10-12T19:03:10Z",
+        "end": "2026-10-12T20:58:15Z"
+      },
+      "docs_success_count": 10,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 3,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 13.0,
+        "workflow_p90_s": 81.1,
+        "schedule_freshness_median_s": 7.0,
+        "schedule_freshness_p90_s": 8.2,
+        "build_median_s": 42.0,
+        "build_p90_s": 53.8,
+        "deploy_median_s": 18.0,
+        "deploy_p90_s": 20.4
+      },
+      "dashboard_window": {
+        "start": "2026-10-12T15:48:31Z",
+        "end": "2026-10-12T20:58:11Z"
+      },
+      "dashboard_success_count": 1,
+      "dashboard_current_sha_success_count": 0,
+      "dashboard_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 1433.0,
+        "workflow_p90_s": 1433.0,
+        "build_median_s": 1416.0,
+        "build_p90_s": 1416.0,
+        "cache_median_s": 9.0,
+        "cache_p90_s": 9.0,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"reusable dashboard generation\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. Within the latest 20 completed docs.yml runs from 2026-10-12T19:03:10Z through 2026-10-12T20:58:15Z, 10 runs concluded success, but only 4 successful build-path runs were comparable enough to inspect repeated dashboard-reuse costs; those 4 runs spanned three source SHAs (5263be0, 4494a0a, 5693e12) and three triggers (schedule, push, workflow_run), below the required minimum of 5 comparable successful runs. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s and full execution median/p90 was 13.0s/81.1s; across the 4 build-path runs, build median/p90 was 42.0s/53.8s and deploy median/p90 was 18.0s/20.4s. Trusted step metadata showed the docs workflow reused the cached CAO Dashboard in about 1-2s and spent about 14s building docs and 7-8s uploading the Pages artifact; bounded log reads from docs runs 38304337693 and 38302006983 confirmed cache hits for the 28 MB central-agentic-ops-dashboard cache, while push run 38302006983 alone repopulated node_modules with npm ci. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T15:48:31Z through 2026-10-12T20:58:11Z contained 1 successful dashboard build and 19 skipped workflow_run invocations; that lone successful dashboard build took 1416.0s, including about 152s restoring a 2.27 GB activity cache and 1234s upgrading fallback activity data, with the dashboard site assembly itself at 2s. Because the bounded evidence window still lacks 5 comparable successful docs runs for this category, no evidence-backed reusable-dashboard recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-12T20:31:30Z",
       "worker_run_id": 38304201391,
       "category": "Astro documentation generation",
@@ -1345,34 +1411,6 @@
         38163857041
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T18:27:01Z through 2026-10-11T20:56:04Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful build-bearing docs runs (build and deploy both successful), below the required minimum of 5. Across all 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 25.0s/26.3s, schedule-freshness job median/p90 was 21.0s/22.3s, and the Check documentation and dashboard freshness step median/p90 was 17.0s/19.2s. A bounded log read of run 38173835260 confirmed the freshness-skip path and the summary-script line \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T15:33:00Z through 2026-10-11T20:56:01Z contained 0 successful dashboard builds and 20 skipped workflow_run invocations, so artifact transfer, Pages packaging, dashboard generation, deployment timings, and cache-hit evidence for build-bearing paths were not available from comparable successful runs in the bounded window. Because the bounded sample contains 0 comparable successful build-bearing docs runs and 0 successful dashboard builds, no safe evidence-backed artifact-transfer or Pages-packaging recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-11T19:54:41Z",
-      "worker_run_id": 38169654962,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38169968599,
-        38169426409,
-        38169190806,
-        38168483555,
-        38168324730,
-        38167658645,
-        38167479166,
-        38166256310,
-        38166039432,
-        38165414163,
-        38165295209,
-        38164054149,
-        38163857041,
-        38162129481,
-        38161590541,
-        38161065895,
-        38160825339,
-        38160168787,
-        38160033084,
-        38159340588
-      ],
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T17:22:24Z through 2026-10-11T19:54:19Z, 10 runs concluded success and 10 schedule-triggered on source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23; the other 10 completed runs were skipped workflow_run invocations or other skipped executions. Trusted job metadata showed 0 comparable successful build-bearing docs runs (build and deploy both successful), below the required minimum of 5. Across all 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 24.5s/26.1s, schedule-freshness job median/p90 was 20.5s/22.1s, and the Check documentation and dashboard freshness step median/p90 was 16.5s/18.1s. A bounded log read of run 38169426409 confirmed the freshness-skip path and the summary text \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T14:46:10Z through 2026-10-11T19:54:16Z contained 0 successful dashboard builds and 20 skipped workflow_run invocations, so artifact transfer, Pages packaging, dashboard generation, deployment timings, and cache-hit evidence for build-bearing paths were not available from comparable successful runs in the bounded window. Because the bounded sample contains 0 comparable successful build-bearing docs runs and 0 successful dashboard builds, no safe evidence-backed artifact transfer and pages packaging recommendation is actionable in this cycle."
     }
   ]
 }
