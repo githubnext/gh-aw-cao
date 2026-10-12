@@ -1,68 +1,7 @@
 {
   "source_sha": "b56d73723daceacca67a961d071f650e7f76eedd",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-12T05:37:03Z",
-      "worker_run_id": 38208422188,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38208485637,
-        38206579857,
-        38206236039,
-        38204649439,
-        38203244952,
-        38202566836,
-        38202235263,
-        38201398248,
-        38200435421,
-        38198678254,
-        38197982303,
-        38197143778,
-        38195302757,
-        38193598462,
-        38191472982,
-        38190910868,
-        38190726458,
-        38186662001,
-        38186068375,
-        38185641576
-      ],
-      "docs_window": {
-        "start": "2026-10-11T23:48:13Z",
-        "end": "2026-10-12T05:33:59Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 0,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 13.0,
-        "workflow_p90_s": 14.0,
-        "schedule_freshness_median_s": 9.0,
-        "schedule_freshness_p90_s": 11.0,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "dashboard_window": {
-        "start": "2026-10-11T21:55:03Z",
-        "end": "2026-10-12T05:07:14Z"
-      },
-      "dashboard_success_count": 1,
-      "dashboard_current_sha_success_count": 1,
-      "dashboard_metrics": {
-        "build_median_s": 1447.0,
-        "build_p90_s": 1447.0,
-        "cache_median_s": 11.0,
-        "cache_p90_s": 11.0,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-11T23:48:13Z through 2026-10-12T05:33:59Z, 11 schedule-triggered runs concluded success on source SHA b56d73723daceacca67a961d071f650e7f76eedd, and all 11 took the freshness-only path with build and deploy skipped. Trusted job metadata showed 0 comparable successful deployed docs runs, below the required minimum of 5. Across the successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 13.0s/14.0s, and schedule-freshness median/p90 was 9.0s/11.0s. A bounded log read of docs run 38208485637 confirmed the freshness-skip summary message that the deployed docs and dashboard were current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T21:55:03Z through 2026-10-12T05:07:14Z contained 1 successful dashboard build on the same source SHA and 19 skipped non-comparable invocations. Trusted step metadata for dashboard run 38182741457 showed a 1447.0s build job and 11.0s cache job, dominated by Restore collected activity data at 152.0s and Upgrade fallback activity data at 1257.0s; a bounded log read verified a cache restore hit from key cao-activity-v5-37765769970-1. Because the bounded window contains 0 comparable successful deployed docs runs and only 1 successful dashboard build, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
-    },
     {
       "evaluated_at": "2026-10-12T04:58:00Z",
       "worker_run_id": 38205596829,
@@ -969,6 +908,69 @@
       },
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T02:24:57Z through 2026-10-12T06:55:57Z, 10 schedule-triggered runs concluded success on source SHA b56d73723daceacca67a961d071f650e7f76eedd and all 10 took the freshness-only path with build and deploy skipped; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs, below the required minimum of 5. Across the successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 14.0s/15.0s, and schedule-freshness median/p90 was 10.0s/11.0s. A bounded log read of docs run 38212349296 verified the freshness-skip summary message that the deployed docs and dashboard were current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T22:14:39Z through 2026-10-12T06:55:54Z contained 1 successful push-triggered dashboard build on the same source SHA and 19 skipped non-comparable invocations. Trusted step metadata for dashboard run 38182741457 showed workflow/build/cache medians of 1466.0s/1447.0s/11.0s, dominated by Restore collected activity data at 152.0s and Upgrade fallback activity data at 1257.0s. A bounded log read verified a restore-key cache hit from cao-activity-v5-37765769970-1 with a ~2165 MiB payload and a saved central-agentic-ops-dashboard cache. Because the bounded window contains 0 comparable successful deployed docs runs and only 1 successful dashboard build, no safe evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-12T07:58:51Z",
+      "worker_run_id": 38220354680,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38220493696,
+        38217307151,
+        38216521228,
+        38214993782,
+        38212349296,
+        38212071323,
+        38210543480,
+        38210167185,
+        38209088538,
+        38208485637,
+        38206579857,
+        38206236039,
+        38204649439,
+        38203244952,
+        38202566836,
+        38202235263,
+        38201398248,
+        38200435421,
+        38198678254,
+        38197982303
+      ],
+      "docs_window": {
+        "start": "2026-10-12T02:59:43Z",
+        "end": "2026-10-12T07:55:49Z"
+      },
+      "docs_success_count": 10,
+      "docs_comparable_success_count": 0,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 14.0,
+        "workflow_p90_s": 16.2,
+        "schedule_freshness_median_s": 10.5,
+        "schedule_freshness_p90_s": 12.1,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "dashboard_window": {
+        "start": "2026-10-11T22:46:21Z",
+        "end": "2026-10-12T07:21:43Z"
+      },
+      "dashboard_success_count": 1,
+      "dashboard_current_sha_success_count": 1,
+      "dashboard_metrics": {
+        "workflow_median_s": 1466.0,
+        "workflow_p90_s": 1466.0,
+        "build_median_s": 1447.0,
+        "build_p90_s": 1447.0,
+        "cache_median_s": 11.0,
+        "cache_p90_s": 11.0,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"Astro documentation generation\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T02:59:43Z through 2026-10-12T07:55:49Z, 10 schedule-triggered runs concluded success on source SHA b56d73723daceacca67a961d071f650e7f76eedd, and all 10 took the freshness-only path with build and deploy skipped. Trusted job metadata showed 0 comparable successful deployed docs runs, below the required minimum of 5. Across the successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 14.0s/16.2s, and schedule-freshness median/p90 was 10.5s/12.1s. A bounded log read of docs run 38220493696 confirmed the freshness-skip summary message that the deployed docs and dashboard were current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T22:46:21Z through 2026-10-12T07:21:43Z contained 1 successful dashboard build on the same source SHA and 19 skipped non-comparable invocations. Trusted step metadata for dashboard run 38182741457 showed workflow/build/cache/deploy median durations of 1466.0s/1447.0s/11.0s/Nones, dominated by Upgrade fallback activity data at 1257.0s; a bounded log read verified a cache restore hit from key cao-activity-v5-37765769970-1 with a ~2165 MB payload. Because the bounded window contains 0 comparable successful deployed docs runs, no safe evidence-backed Astro documentation-generation recommendation is actionable in this cycle."
     }
   ]
 }
