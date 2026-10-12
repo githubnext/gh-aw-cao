@@ -147,6 +147,16 @@
       "target_repo": "github/gh-aw",
       "true_positive_count": 0,
       "txn_id": "refiner-38092782506-2"
+    },
+    {
+      "txn_id": "refiner-38313694983-2",
+      "target_repo": "github/gh-aw-actions",
+      "target_commit": "a0486bb9f7e2d8b990201dc43e34e7d668f191a4",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "No mount(), --bind, or --make-private code anywhere in this GitHub Actions script bundle at this HEAD; no mount namespace/sandbox idiom exists here. Not applicable here; rule remains deprecated library-wide."
     }
   ],
   "affected_paths": [
@@ -204,7 +214,7 @@
   ],
   "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
   "language": "typescript",
-  "last_seen_at": "2026-10-11T04:07:34Z",
+  "last_seen_at": "2026-10-12T21:58:00Z",
   "last_updated": "2026-10-11T04:07:34Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38110386121",
   "last_updated_target_repo": "github/gh-aw-firewall",

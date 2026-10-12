@@ -85,6 +85,16 @@
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
       "txn_id": "refiner-38110386121-2"
+    },
+    {
+      "txn_id": "refiner-38313694983-3",
+      "target_repo": "github/gh-aw-actions",
+      "target_commit": "a0486bb9f7e2d8b990201dc43e34e7d668f191a4",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Only 3 test files exist in this repo (none are barrel/re-export smoke tests) and zero 'export * from'/named re-export barrel files exist at all. Not applicable here; rule remains deprecated library-wide."
     }
   ],
   "affected_paths": [
@@ -166,7 +176,7 @@
   ],
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "language": "typescript",
-  "last_seen_at": "2026-10-11T04:07:34Z",
+  "last_seen_at": "2026-10-12T21:58:00Z",
   "last_updated": "2026-10-11T10:03:17Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38129431751",
   "last_updated_target_repo": "github/gh-aw-firewall",
