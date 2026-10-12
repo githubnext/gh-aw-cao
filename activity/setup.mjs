@@ -173,19 +173,24 @@ function inspectRepository(repository, execute) {
   };
 }
 
+const UNRESTRICTED_SITE_GUIDANCE = {
+  removed: 'Setup removed the unrestricted Pages site it had just created, so no dashboard can be published.',
+  'removal-failed': 'Setup created an unrestricted Pages site but could not remove it; unpublish it in Settings > Pages, then run cao setup again.',
+  existing: 'The existing Pages site was left unchanged and is not access-controlled; unpublish it in Settings > Pages, then run cao setup again.',
+};
+
 export class DashboardPagesAccessUnsupportedError extends Error {
-  constructor(repository, detail, { removedSite = false } = {}) {
+  constructor(repository, detail, siteState) {
     super([
       `Private GitHub Pages is not available for ${repository} (${detail}).`,
       'Access-controlled Pages requires the repository owner to be an organization on GitHub Enterprise Cloud; it cannot be enabled through the API.',
-      removedSite
-        ? 'Setup removed the unrestricted Pages site it had just created, so no dashboard can be published.'
-        : 'The existing Pages site was left unchanged and is not access-controlled; unpublish it in Settings > Pages before running the dashboard workflow.',
-      'To publish the dashboard, either move the control repository to an organization on GitHub Enterprise Cloud (or upgrade the owner), then run cao setup again,',
-      'or continue without a published dashboard. Do not make Pages public for a private control repository.',
+      UNRESTRICTED_SITE_GUIDANCE[siteState],
+      'To publish the dashboard, move the control repository to an organization on GitHub Enterprise Cloud (or upgrade the owner) and run cao setup again.',
+      'Do not make Pages public for a private control repository.',
     ].join('\n'));
     this.name = 'DashboardPagesAccessUnsupportedError';
-    this.removedSite = removedSite;
+    this.siteState = siteState;
+    this.removedSite = siteState === 'removed';
   }
 }
 
@@ -220,12 +225,12 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
     result = request(['-X', 'PUT', '-F', 'public=false']);
     if (!result.error && PRIVATE_PAGES_UNSUPPORTED.test(result.stderr || '')) {
       const detail = commandFailureMessage(result, 'gh api failed');
-      let removedSite = false;
+      let siteState = 'existing';
       if (created) {
         const removal = request(['-X', 'DELETE']);
-        removedSite = !removal.error && removal.status === 0;
+        siteState = !removal.error && removal.status === 0 ? 'removed' : 'removal-failed';
       }
-      throw new DashboardPagesAccessUnsupportedError(repository, detail, { removedSite });
+      throw new DashboardPagesAccessUnsupportedError(repository, detail, siteState);
     }
     if (result.error || result.status !== 0) {
       throw new Error(
@@ -436,7 +441,7 @@ export async function setupCaoControlPlane({
     try {
       configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
     } catch (error) {
-      if (!(error instanceof DashboardPagesAccessUnsupportedError)) throw error;
+      if (!(error instanceof DashboardPagesAccessUnsupportedError) || !error.removedSite) throw error;
       interactive.note(`\n${error.message}\n`);
       if (!await interactive.confirm('Continue setup without a published dashboard?')) {
         return { command: 'setup', cancelled: true, reason: 'private-pages-unsupported' };

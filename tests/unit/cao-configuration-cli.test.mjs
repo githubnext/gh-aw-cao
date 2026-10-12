@@ -252,10 +252,55 @@ test("cao setup never deletes a pre-existing Pages site when private Pages is un
       execute: unsupportedPagesExecutor(calls, { existing: { build_type: "workflow", public: true } }),
     }),
     (error) => error instanceof DashboardPagesAccessUnsupportedError
-      && error.removedSite === false
+      && error.siteState === "existing"
       && /unpublish it/.test(error.message),
   );
   assert.equal(calls.some((arguments_) => arguments_.includes("DELETE")), false);
+});
+
+test("cao setup reports a created Pages site it could not remove", () => {
+  const pages = unsupportedPagesExecutor([]);
+  assert.throws(
+    () => configureDashboardPages({
+      repository: "acme/control",
+      visibility: "private",
+      execute: (command, arguments_) => (arguments_.includes("DELETE")
+        ? { status: 1, stderr: "gh: Forbidden (HTTP 403)" }
+        : pages(command, arguments_)),
+    }),
+    (error) => error.siteState === "removal-failed" && /could not remove it/.test(error.message),
+  );
+});
+
+test("cao setup does not offer to continue while an unrestricted Pages site remains", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-pages-existing-"));
+  const policyPath = path.join(root, "cao.json");
+  const original = JSON.stringify({
+    version: 1,
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+      campaigns: {},
+    },
+  });
+  await writeFile(policyPath, original);
+  const inspect = setupExecutor({
+    "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+  });
+  const pages = unsupportedPagesExecutor([], { existing: { build_type: "workflow", public: true } });
+  try {
+    await assert.rejects(
+      setupCaoControlPlane({
+        policyPath,
+        prompt: scriptedSetupPrompt({ repositories: "", profile: "github-app", confirm: [true, true] }),
+        execute: (command, arguments_) => (arguments_[0] === "api" ? pages : inspect)(command, arguments_),
+        setupAuthentication: () => assert.fail("setup must not configure credentials while a public site remains"),
+      }),
+      DashboardPagesAccessUnsupportedError,
+    );
+    assert.equal(await readFile(policyPath, "utf8"), original);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 for (const [description, confirm, expectCompleted] of [
