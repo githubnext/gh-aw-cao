@@ -35,11 +35,11 @@
       "false_negative_count": 0,
       "false_positive_count": 0,
       "readiness_for_target": "not-applicable",
-      "reason": "No barrel/re-export smoke-test file with a symbol-shape-only scope comment exists in githubnext/gh-aw-cao. Not applicable here regardless of the rule's readiness elsewhere (needs-work on github/gh-aw-firewall).",
-      "target_commit": "f6ebad6ab3c5701e302319dad5f5568e78a5f53a",
+      "reason": "Re-confirmed on HEAD d00b985: searched all *.test.ts and *.test.js files for 're-export'/'barrel'/'does not duplicate' header-comment conventions; no barrel/re-export smoke-test files exist in this repository, matching every prior evaluation.",
+      "target_commit": "d00b98537d7f477e8c2d421f806b795f703e080f",
       "target_repo": "githubnext/gh-aw-cao",
       "true_positive_count": 0,
-      "txn_id": "refiner-37499745280-3"
+      "txn_id": "refiner-37796381362-3"
     },
     {
       "false_negative_count": 0,
@@ -72,14 +72,19 @@
       "txn_id": "refiner-37662241728-2"
     },
     {
+      "evaluation_method": "manual inspection of src/docker-manager.test.ts against src/capability-filter.test.ts at target HEAD b179fef889d1bd335c5cce329aee4a4cb37d20e7",
       "false_negative_count": 0,
       "false_positive_count": 2,
+      "missing_suppression_count": 1,
+      "performance_regression": false,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 98959bdb: docker-manager.test.ts's 'filterCapDrop with explicit bounding set' block (lines 89-117) duplicates capability-filter.test.ts's bounding-set assertions against the file's own stated barrel-only contract (true positive); 'filterCapDrop via barrel' and 'getHostCapabilityBoundingSet via barrel' blocks remain false positives (pass-through wiring only). No drift since refiner-37662241728-2.",
-      "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
+      "reason": "Re-confirmed unchanged on HEAD b179fef: docker-manager.test.ts's header comment still documents the file as verifying only barrel re-export shape 'without duplicating the underlying module tests', yet the 'filterCapDrop with explicit bounding set' describe block re-implements real bounding-set filtering assertions duplicating capability-filter.test.ts's own coverage. The other two blocks remain false positives. No suppression convention exists. No drift since refiner-37977147256-2.",
+      "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 1,
-      "txn_id": "refiner-37977147256-2"
+      "unclear_diagnostic_count": 0,
+      "unsafe_autofix_count": 0,
+      "txn_id": "refiner-38110386121-2"
     }
   ],
   "affected_paths": [
@@ -161,7 +166,7 @@
   ],
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "language": "typescript",
-  "last_seen_at": "2026-10-11T10:03:17Z",
+  "last_seen_at": "2026-10-11T04:07:34Z",
   "last_updated": "2026-10-11T10:03:17Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38129431751",
   "last_updated_target_repo": "github/gh-aw-firewall",

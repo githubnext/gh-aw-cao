@@ -67,11 +67,11 @@
       "false_negative_count": 1,
       "false_positive_count": 4,
       "readiness_for_target": "needs-work",
-      "reason": "Re-confirmed unchanged on HEAD 98959bdb (#9771, sandbox-backend feature unrelated to chmod call sites): artifact-preservation.ts:167 execa.sync('chmod',['-R','a+rX',directory]) still widens permissions on a directory populated via fs.openSync(...,0o600) in main-action.ts persistConfigAuditArtifact() (true positive, byte-for-byte unchanged since refiner-37560505197-1); 4 other chmod -R sites remain false positives; config-writer.ts:645's 0o600 dockerComposePath write has no corresponding widening call found (false negative in grep-only method).",
-      "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6",
+      "reason": "Re-confirmed unchanged on HEAD b179fef (#9792, ARC/DinD boundary coverage, unrelated to chmod call sites): execa.sync('chmod',['-R','a+rX',auditDir]) at artifact-preservation.ts:167 still widens permissions on the directory that main-action.ts persistConfigAuditArtifact() populates via fs.openSync(configArtifactPath,'wx',0o600); code is byte-for-byte unchanged since refiner-37560505197-1. 4 other chmod -R sites remain false positives; config-writer.ts's 0o600 write has no corresponding widening call found (false negative in grep-only method). No drift since refiner-37977147256-3.",
+      "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 1,
-      "txn_id": "refiner-37977147256-3"
+      "txn_id": "refiner-38110386121-3"
     }
   ],
   "affected_paths": [
