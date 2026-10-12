@@ -1,68 +1,7 @@
 {
   "source_sha": "b56d73723daceacca67a961d071f650e7f76eedd",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-12T12:52:37Z",
-      "worker_run_id": 38251437789,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38251472551,
-        38246827163,
-        38246085728,
-        38245573739,
-        38244949504,
-        38244377938,
-        38242770728,
-        38242463446,
-        38240194752,
-        38239976555,
-        38239267392,
-        38238852563,
-        38237113002,
-        38236917010,
-        38234162053,
-        38233846092,
-        38231706101,
-        38231365866,
-        38227094573,
-        38226880235
-      ],
-      "docs_window": {
-        "start": "2026-10-12T08:58:23Z",
-        "end": "2026-10-12T12:49:30Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 0,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 19.0,
-        "workflow_p90_s": 21.299999999999997,
-        "schedule_freshness_median_s": 14.0,
-        "schedule_freshness_p90_s": 16.0,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "dashboard_window": {
-        "start": "2026-10-12T03:51:08Z",
-        "end": "2026-10-12T12:49:25Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_current_sha_success_count": 0,
-      "dashboard_metrics": {
-        "build_median_s": null,
-        "build_p90_s": null,
-        "cache_median_s": null,
-        "cache_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T08:58:23Z through 2026-10-12T12:49:30Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 19.0s/21.3s, and schedule-freshness job median/p90 was 14.0s/16.0s. Trusted job metadata for every successful docs run showed build and deploy skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T03:51:08Z through 2026-10-12T12:49:25Z contained 0 successful dashboard builds and therefore provided no comparable dashboard execution sample on source SHA b56d73723daceacca67a961d071f650e7f76eedd in this bounded window. Because the bounded sample contains 0 comparable successful deployed docs runs and 0 successful dashboard builds, no safe evidence-backed artifact-transfer or Pages-packaging recommendation is actionable in this cycle."
-    },
     {
       "evaluated_at": "2026-10-12T11:30:03Z",
       "worker_run_id": 38242651902,
@@ -1060,6 +999,67 @@
         38141189411
       ],
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA 5ace72fac5d2afd76feedf41c7ef423e81039b23. Within the latest 20 completed docs.yml runs from 2026-10-11T12:56:25Z through 2026-10-11T15:23:25Z, 11 runs concluded success and all 11 were schedule-triggered freshness-only passes on the same source SHA; the other 9 completed runs were skipped workflow_run invocations. Trusted job metadata showed 0 comparable successful build-bearing docs runs, below the required minimum of 5. Across all 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 19.0s/22.0s, schedule-freshness job median/p90 was 16.0s/18.0s, and the Check documentation and dashboard freshness step median/p90 was 12.0s/13.0s. A bounded log read of run 38151066091 confirmed the freshness-skip path and the summary-script line \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T09:56:12Z through 2026-10-11T15:20:23Z contained 0 successful dashboard builds and 20 skipped workflow_run invocations, so artifact transfer, Pages packaging, dashboard generation, deployment timings, and cache-hit evidence for build-bearing paths were not available from comparable successful runs in the bounded window. Because the bounded sample contains 0 comparable successful build-bearing docs runs and 0 successful dashboard builds, no safe evidence-backed artifact-transfer or Pages-packaging recommendation is actionable in this cycle."
+    },
+    {
+      "evaluated_at": "2026-10-12T13:51:01Z",
+      "worker_run_id": 38258061729,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38255322565,
+        38255032935,
+        38251939476,
+        38251472551,
+        38246827163,
+        38246085728,
+        38245573739,
+        38244949504,
+        38244377938,
+        38242770728,
+        38242463446,
+        38240194752,
+        38239976555,
+        38239267392,
+        38238852563,
+        38237113002,
+        38236917010,
+        38234162053,
+        38233846092,
+        38231706101
+      ],
+      "docs_window": {
+        "start": "2026-10-12T09:43:19Z",
+        "end": "2026-10-12T13:23:11Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 0,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 20.0,
+        "workflow_p90_s": 24.0,
+        "schedule_freshness_median_s": 15.0,
+        "schedule_freshness_p90_s": 16.0,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "dashboard_window": {
+        "start": "2026-10-12T04:08:20Z",
+        "end": "2026-10-12T13:20:40Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_current_sha_success_count": 0,
+      "dashboard_metrics": {
+        "build_median_s": null,
+        "build_p90_s": null,
+        "cache_median_s": null,
+        "cache_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T09:43:19Z through 2026-10-12T13:23:11Z, 11 runs concluded success and all 11 successful runs were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 9 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 20.0s/24.0s, and schedule-freshness median/p90 was 15.0s/16.0s. Trusted job metadata for every successful docs run showed build and deploy skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T04:08:20Z through 2026-10-12T13:20:40Z contained 0 successful dashboard builds; 19 were skipped workflow_run invocations and 1 was a skipped push invocation, so the bounded window provides no comparable dashboard execution sample for scheduling analysis. Because the bounded sample contains 0 comparable successful deployed docs runs and 0 successful dashboard builds, no safe evidence-backed scheduling, concurrency, or avoidable-rebuild recommendation is actionable in this cycle."
     }
   ]
 }
