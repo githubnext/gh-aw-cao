@@ -43,6 +43,7 @@
     "activity/run-activity.mjs",
     "activity/run-health-snapshot.mjs",
     "activity/setup.mjs",
+    "activity/setup-prompt.mjs",
     "activity/sqlite-retention.mjs",
     "activity/token-intervention-lifecycle.mjs",
     "activity/upgrade-gh-aw.mjs",

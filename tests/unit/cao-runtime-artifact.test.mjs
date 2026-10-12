@@ -9,6 +9,7 @@ import {
   downloadCaoRuntimeArtifact, extractCaoArchive, materializeCao, validateCaoRuntimeArtifact,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
+import { setupTerminalFixture, walkSetupTerminal } from "../helpers/setup-terminal.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
 const revision = "1".repeat(40);
@@ -74,6 +75,13 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.equal(metadata.revision, revision);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.js"]);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
+  assert.ok(metadata.files["activity/setup-prompt.mjs"]);
+  const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
+  for (const dependency of ["@clack/prompts", "@clack/core", "fast-string-width", "fast-string-truncated-width", "fast-wrap-ansi", "sisteransi"]) {
+    assert.ok(prompt.includes(`Bundled dependency: ${dependency}`), `${dependency} retains its license`);
+  }
+  assert.doesNotMatch(prompt, /from ['"]@clack\/|import\(['"]@clack\//);
+  assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
   assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
@@ -83,6 +91,19 @@ test("producer archives are reproducible across temporary build directories", ()
   const rebuilt = buildCaoRuntime(catalog, path.join(temporary, "rebuilt"), revision);
   assert.equal(rebuilt.digest, artifact.digest);
   assert.deepEqual(readFileSync(rebuilt.archive), readFileSync(artifact.archive));
+});
+
+test("the prebuilt archive runs keyboard setup without consumer npm dependencies", { skip: process.platform === "win32" }, async (t) => {
+  const root = unpack(t);
+  const fixture = setupTerminalFixture(t, path.join(root, "activity/setup.mjs"));
+  const result = await walkSetupTerminal(fixture, [
+    ["Repositories CAO should read", "\r"],
+    ["How should CAO authenticate?", "\r"],
+    ["Apply this setup?", "\r"],
+  ]);
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /"cancelled":true/);
+  assert.ok(!fixture.calls().some(([command]) => command === "connect" || command === "api"));
 });
 
 test("artifact verification rejects altered, missing and unowned runtime files", (t) => {

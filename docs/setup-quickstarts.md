@@ -3,7 +3,7 @@ title: Set Up CAO
 description: Create one control repository, install CAO, and follow the interactive setup.
 ---
 
-## 1. Open the Control Repository
+## 1. Check Prerequisites
 
 Use a private repository unless every target and all future operational data may be public.
 
@@ -18,25 +18,54 @@ you plan to enroll. If you are not signed in, run `gh auth login` (add
 gh auth status
 ```
 
-If you already have a **empty** local control-repository checkout, open a terminal at its
-root. Otherwise, clone an existing repository:
+## 2. Install and Set Up
+
+Choose one entry point. Neither commits, pushes, installs an operational
+campaign, or dispatches a workflow.
+
+### New private control repository
+
+From the directory where you want the checkout, create a private repository,
+install CAO into its clone, and open guided setup in one command:
+
+```bash
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- --create-repo OWNER/CONTROL_REPOSITORY --setup
+```
+
+`--create-repo` explicitly authorizes repository creation. The installer checks
+tools and sign-in first, refuses an existing clone directory, and never creates
+a public repository. After it finishes, open the printed checkout directory:
+
+```bash
+cd CONTROL_REPOSITORY
+```
+
+### Existing control repository
+
+Open a terminal at the checkout's root. Clone it first if needed:
 
 ```bash
 gh repo clone OWNER/CONTROL_REPOSITORY
 cd CONTROL_REPOSITORY
 ```
 
-Create one when needed:
+Install and enter guided setup:
 
 ```bash
-gh repo create OWNER/CONTROL_REPOSITORY --private --clone
-cd CONTROL_REPOSITORY
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- --setup
 ```
 
 Replace uppercase placeholders with your values. `CONTROL_REPOSITORY` is the
-repository name without its owner in the `cd` command.
+repository name without its owner in the `cd` command. Omitting `--setup`
+installs without opening the wizard; run `./cao.sh setup` later. Both paths
+preserve existing policy. Setup itself requires a bare control plane with
+no declared campaigns, not an already enrolled fleet.
 
-## 2. Install and Set Up
+### What gets installed
 
 The installer adds a curated production runtime under `.github/`, `activity/`,
 and `dashboard/`, plus `cao.sh`. It does not copy dashboard tests, screenshots,
@@ -54,26 +83,45 @@ expired, or unverifiable, installation stops: wait for the build or choose a
 published version rather than substituting another runtime revision. Dashboard
 builds still install their existing production npm dependencies.
 
-```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash
+### Guided setup
 
-./cao.sh setup
-```
+Setup uses keyboard-driven prompts with three visible sections:
 
-The setup command:
-
-1. asks which repositories CAO should read; enter exact `owner/repository`
+1. **Repositories:** choose which repositories CAO should read; enter exact `owner/repository`
    names or `*` wildcards in either component (for example, `acme*/service-*`
-   or `*/service-*`); `*` means `*/*`;
-2. expands patterns against your accessible organization list and saves only
-   exact matched repositories in policy, then checks visibility and owners;
-3. offers authentication choices based on that scope; verify each profile's
-   prerequisites in the [authentication profile guide](control-plane-authentication.md);
-4. shows the exact plan before changing policy, credentials, or Pages settings;
-5. configures the control repository's Pages source as GitHub Actions (requires permission to manage Pages settings) without changing the site's visibility. If the site is public, setup warns that anyone can read the published dashboard and asks whether that is OK; declining removes a site that setup just created and leaves policy and credentials unchanged. To keep it private, restrict access in **Settings > Pages** (requires an organization on GitHub Enterprise Cloud);
-6. installs no campaign and runs no workflow.
+   or `*/service-*`); `*` means `*/*`. Patterns expand against your accessible
+   organizations; only exact matched names are saved. The control repository
+   remains included, and visibility is checked.
+2. **Connections:** setup offers authentication choices based on that scope.
+   Select with the arrow keys and verify the selected profile's
+   prerequisites in the
+   [authentication profile guide](control-plane-authentication.md).
+3. **Review and apply:** review the exact scope, credential profile, and Pages
+   settings. Confirmation defaults to **No**. After confirmation, setup
+   configures and verifies the Pages source, checks dashboard visibility,
+   connects credentials, and atomically
+   saves policy. It installs no campaign and runs no workflow.
+
+Setup requires permission to manage Pages settings and preserves the site's
+visibility. If the dashboard is public, a separate **default-No** confirmation
+warns that anyone can read published data, including private repository
+activity. Consent is required **before changing credentials**. Declining or
+Ctrl-C at that question removes a site that setup just created, when possible;
+an existing site is left in place with instructions to restrict or unpublish
+it. To make Pages private, restrict access in **Settings > Pages** (requires an
+organization on GitHub Enterprise Cloud).
+
+Invalid repository input stays in the prompt so you can correct it. Ctrl-C or
+declining review cancels without applying setup. Failures after application
+starts report the stopped stage: local policy remains unchanged, but Pages
+settings or credentials may already have changed. Fix the reported problem and
+rerun `./cao.sh setup`; external changes are not presented as transactional.
+
+For a basic terminal, use `TERM=dumb ./cao.sh setup` for numbered, plain-text
+prompts. Setup requires an interactive terminal; use `./cao.sh setup-auth` for
+scripted authentication. `./cao.sh setup --json` retains a structured result on
+stdout while prompts remain on stderr. The prompt library is bundled into the
+verified runtime; operators still do not run npm.
 
 ## 3. Validate, Review, and Save
 

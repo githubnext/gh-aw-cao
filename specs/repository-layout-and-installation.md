@@ -184,6 +184,25 @@ root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging
 declarations.
 
+The installer MUST check tools, Node.js 24+, GitHub sign-in, and checkout-root
+readiness before installation or upgrade. Creating a control repository MUST
+require explicit `--create-repo OWNER/NAME`, create a private repository, and
+refuse an existing clone directory. `--setup` MUST open guided setup on the
+controlling terminal without allowing streamed children to consume installer
+source from stdin.
+
+Guided setup MUST separate prompt presentation from policy authority, show the
+exact plan with default-No confirmation before applying settings, verify the
+Pages source without changing visibility, require separate default-No consent
+for a public dashboard before changing credentials, and atomically save policy only after both
+succeed. Cancellation before application MUST leave policy, credentials, and
+Pages unchanged. Declining or cancelling public-dashboard consent MUST remove
+only a newly created site where possible and leave an existing site with
+restriction or unpublication guidance. Failures after application starts MUST disclose possible
+partial external changes rather than imply rollback. Setup MUST NOT install
+campaigns, dispatch workflows, commit, or push. The UI and its license notices
+MUST be bundled so installed setup does not need npm or consumer node_modules.
+
 `cao update` without a ref MUST retain release-based selection. An explicit
 `main`, `master`, `latest`, or commit SHA MUST resolve once to a full catalog
 commit SHA before any package is reapplied. Every selected installed CAO package MUST be reapplied

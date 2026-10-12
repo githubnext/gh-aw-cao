@@ -17,7 +17,7 @@ export const unitTestAreas = {
   tooling: [
     /^cao-/, /^ops-publish/, /^optimization-/, /^dependabot-/,
     /^eslint-rules-/, /^actions-context\./, /^agent-plugin\./,
-    /^install-script\./, /^repository-/, /^no-hardcoded-github-actions-url\./,
+    /^install-script\./, /^setup-terminal\./, /^repository-/, /^no-hardcoded-github-actions-url\./,
     /^token-optimization-data-contract\./, /^unit-area-selection\./,
     /^backfill-stress-report\./, /^source-map-compat\./,
   ],

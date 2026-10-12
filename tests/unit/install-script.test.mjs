@@ -11,6 +11,7 @@ import vm from "node:vm";
 import { parse } from "yaml";
 import { materializeCaoFromSource } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
+import { runTerminal } from "../helpers/terminal.mjs";
 
 const executeFile = promisify(execFile);
 const catalog = path.resolve(".");
@@ -106,6 +107,18 @@ test("installer fixture archive contains every tracked runtime source and no gen
 // unset the lookup fails as it does outside a GitHub repository checkout.
 const fakeGh = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ "$*" == "auth status" ]]; then
+  [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "repo create" ]]; then
+  [[ "$*" == "repo create $FAKE_CONTROL_REPOSITORY --private --clone" ]] || exit 2
+  echo "create-private" >> "$FAKE_COMMAND_LOG"
+  mkdir "\${3#*/}"
+  git -C "\${3#*/}" init --quiet
+  git -C "\${3#*/}" remote add origin "https://github.com/\${3}.git"
+  exit 0
+fi
 if [[ "\${1:-}" == api && "$*" == *"/actions/workflows/cao-runtime.yml/runs?"* ]]; then
   printf '%s\\n' '[{"workflow_runs":[{"id":42,"head_sha":"${revision}","conclusion":"success","event":"push"}]}]'
   exit 0
@@ -133,6 +146,10 @@ if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
     exit 1
   fi
   printf '%s\\n' "$FAKE_CONTROL_REPOSITORY"
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "repo view" && "\${3:-}" == "$FAKE_CONTROL_REPOSITORY" ]]; then
+  printf '{"nameWithOwner":"%s","visibility":"PRIVATE"}\\n' "$3"
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
@@ -188,6 +205,8 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
   const ghAwInstalled = path.join(root, "gh-aw-installed");
   await mkdir(bin);
   await mkdir(consumer);
+  await executeFile("git", ["init", "--quiet", consumer]);
+  await executeFile("git", ["-C", consumer, "remote", "add", "origin", `https://github.com/${repository}.git`]);
   await writeFile(log, "");
   for (const [name, source] of [
     ["gh", fakeGh],
@@ -259,13 +278,7 @@ async function streamInstaller(cwd, env, installerArguments) {
 // script(1) gives the streamed installer a controlling terminal that receives the answer.
 function runWithTerminal(cwd, env, answer) {
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
-  return new Promise((resolve, reject) => {
-    const child = spawn("script", ["-q", "-e", "-c", `cat ${quoted} | bash`, "/dev/null"], {
-      cwd, env, timeout, detached: true,
-    });
-    collect(child, resolve, reject);
-    child.stdin.end(`${answer}\n`);
-  });
+  return runTerminal("bash", ["-c", `cat ${quoted} | bash`], { cwd, env, timeout, input: `${answer}\n` });
 }
 
 function runFile(cwd, env, installerArguments = []) {
@@ -662,10 +675,87 @@ for (const [description, repository] of [
     const lookupEnv = repository === undefined ? withoutLookup : { ...env, FAKE_CONTROL_REPOSITORY: repository };
     const result = await runStreamed(consumer, lookupEnv);
     assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /Unable to determine control repository: .*Run cao init from a GitHub repository checkout with a configured remote\./s);
-    assert.equal(await log(), "add\n");
-    assert.equal(await exists(path.join(consumer, policyPath)), false);
-    await executeFile(process.execPath, [materializer, "verify", "activity"], { cwd: consumer, env, timeout });
+    assert.match(result.stderr, /Open an existing GitHub repository checkout, or rerun with --create-repo OWNER\/NAME/);
+    assert.equal(await log(), "");
+    await assertNothingInstalled(consumer);
+  });
+}
+
+test("install.sh creates only an explicitly requested private repository and installs inside its clone", async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const result = await streamInstaller(consumer, env, ["--create-repo", repository]);
+  assert.equal(await log(), "create-private\nadd\n");
+  assert.match(result.stdout, /Open the new checkout: cd control/);
+  await assertNothingInstalled(consumer);
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
+});
+
+test("install.sh checks sign-in before upgrading gh-aw, creating repositories, or writing files", async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, ["--create-repo", "alpha-org/control"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /gh auth login/);
+  assert.equal(await log(), "");
+  assert.equal(await exists(path.join(consumer, "control")), false);
+  await assertNothingInstalled(consumer);
+});
+
+test("streamed new-repository installation enters bundled setup without consuming script stdin", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  let step = 0;
+  const steps = ["Repositories CAO should read", "How should CAO authenticate?", "Apply this setup?"];
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo ${repository} --setup`], {
+    cwd: consumer, env: { ...env, TERM: "xterm-256color", FORCE_COLOR: "0", CI: "" }, timeout,
+    onOutput(output, write) {
+      if (steps[step] && output.includes(steps[step])) {
+        step += 1;
+        write("\r");
+      }
+    },
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.equal(step, 3);
+  assert.match(result.stdout, /Setup cancelled/);
+  assert.match(result.stdout, /Open the new checkout: cd control/);
+  assert.doesNotMatch(result.stdout, /"command": "setup"/);
+  assert.equal(await log(), "create-private\nadd\n");
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
+});
+
+test("install.sh refuses non-root checkout directories before installing or upgrading anything", async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const nested = path.join(consumer, "nested");
+  await mkdir(nested);
+  const result = await runStreamed(nested, env);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /root of a GitHub repository checkout/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(nested);
+});
+
+test("install.sh refuses to create a repository when its clone directory already exists", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await mkdir(path.join(consumer, "control"));
+  const result = await runStreamed(consumer, env, ["--create-repo", "alpha-org/control"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Cannot clone into existing path/);
+  assert.equal(await log(), "");
+});
+
+for (const arguments_ of [
+  ["--create-repo"],
+  ["--create-repo", "not-a-coordinate"],
+  ["--create-repo", "owner/../escape"],
+  ["--unknown"],
+  ["--setup"],
+]) {
+  test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, env, arguments_);
+    assert.notEqual(result.code, 0);
+    assert.equal(await log(), "");
+    await assertNothingInstalled(consumer);
   });
 }
 

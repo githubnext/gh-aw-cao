@@ -411,8 +411,11 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 Activity and Dashboard use the standard npm `files` contract in the dedicated
 `runtime/package.json`, rather than copying their development directories
 wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
-command packs with lifecycle scripts disabled, bundles the YAML parser with
-esbuild and its license, and seals an exact-revision inventory and checksums.
+command packs with lifecycle scripts disabled, bundles the YAML parser and the
+Clack setup prompt adapter with esbuild and their dependency license notices,
+and seals an exact-revision inventory and checksums. Explicit developer source
+packing also bundles the prompt adapter; installed setup never resolves it from
+a consumer's node_modules.
 Filesystem-relative CLI modules, workers, and build inputs remain at their
 canonical paths rather than being forced into a single-file executable.
 The conventional `cao-runtime.yml` pipeline builds on main pushes and stable
@@ -446,6 +449,30 @@ checkout, including the operator CLI, local runtime and policy verification,
 the bundled YAML parser without node_modules, and a dashboard build using only
 production dependencies. The test requires npm
 registry access, but does not create credentials or dispatch workflows.
+
+### Operator onboarding
+
+`install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+readiness before installing or upgrading anything. Repository creation and
+cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
+existing clone directories are never overwritten. `--setup` attaches guided
+setup to the controlling terminal after verified materialization, while streamed
+bootstrap children otherwise retain null stdin.
+
+`activity/setup.mjs` owns scope resolution and authentication orchestration.
+`activity/setup-prompt.mjs` is a presentation adapter: Clack provides keyboard
+prompts, inline validation, and cancellation; `TERM=dumb` uses plain numbered
+prompts. The injectable prompt contract keeps authority decisions outside UI.
+Setup shows Repositories, Connections, and Review/apply, with default-No
+confirmation before Pages, credential, or policy changes. The Pages source is
+verified without changing visibility, with separate default-No consent to a
+public dashboard before credentials are changed. Declining or cancelling that
+consent removes only a newly created site where possible; an existing site is
+left in place with restriction/unpublication guidance. Policy is written atomically only
+after both succeed. Failures disclose possible partial external changes rather
+than claim rollback. Setup does not install campaigns, dispatch workflows,
+commit, or push. The CLI prints next actions by default and retains structured
+stdout with `setup --json`; non-interactive setup fails with explicit guidance.
 
 ## Architectural boundaries
 

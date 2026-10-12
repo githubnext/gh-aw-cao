@@ -48,6 +48,12 @@ async function main() {
       process.stdout.write(`${formatSetupAuthenticationSummary(output)}\n`);
       return;
     }
+    if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
+      if (!output.cancelled) {
+        process.stdout.write('Next: ./cao.sh validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN.\n');
+      }
+      return;
+    }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
     if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
   } catch (error) {

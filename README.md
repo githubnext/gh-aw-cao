@@ -16,12 +16,20 @@ Bootstrap an empty control repository with:
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash
-
-./cao.sh setup
+  bash -s -- --setup
 ```
 
-The installer adds gh-aw and the core CAO runtime, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Interactive setup then asks which repositories CAO should read and offers authentication choices that fit that scope. It installs no user-facing campaign. Install the Agent Plugin separately when you want the portable CAO skills.
+To create a new private control repository as well, add
+`--create-repo OWNER/CONTROL_REPOSITORY` after `--setup`. The installer refuses
+an existing clone directory; follow its printed `cd` command afterward.
+
+The installer checks tools, sign-in, and checkout readiness before writing CAO
+files, adds gh-aw and the core runtime, and preserves an existing policy.
+Guided setup walks through **Repositories → Connections → Review and apply**
+with arrow-key selections, inline validation, and default-No confirmation.
+It installs no user-facing campaign and runs no workflow. Omit `--setup` to
+install first and run `./cao.sh setup` later. Install the Agent Plugin separately
+when you want the portable CAO skills.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
