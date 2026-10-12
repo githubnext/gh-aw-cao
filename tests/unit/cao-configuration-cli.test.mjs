@@ -171,6 +171,74 @@ test("cao setup fails on denied Pages access or an unverified Actions source", (
   );
 });
 
+function publicPagesSetup({ existing, confirm }) {
+  const calls = [];
+  let site = existing;
+  const inspect = setupExecutor({
+    "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+  });
+  const execute = (command, arguments_) => {
+    if (arguments_[0] !== "api") return inspect(command, arguments_);
+    calls.push(arguments_);
+    const method = arguments_[1] === "-X" ? arguments_[2] : "GET";
+    if (method === "GET") {
+      return site ? { status: 0, stdout: JSON.stringify(site) } : { status: 1, stderr: "gh: Not Found (HTTP 404)" };
+    }
+    if (method === "POST") site = { build_type: "workflow", public: true, html_url: "https://acme.github.io/control/" };
+    if (method === "DELETE") site = undefined;
+    return { status: 0, stdout: JSON.stringify(site ?? {}) };
+  };
+  return { calls, execute, prompt: scriptedSetupPrompt({ repositories: "", profile: "github-app", confirm }) };
+}
+
+for (const [description, existing, confirm] of [
+  ["continues with a public dashboard after consent", undefined, true],
+  ["removes the public site it created when declined", undefined, [true, false]],
+  ["leaves an existing public site when declined", { build_type: "workflow", public: true }, [true, false]],
+]) {
+  test(`cao setup warns about public Pages and ${description}`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-public-pages-"));
+    const policyPath = path.join(root, "cao.json");
+    const original = JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+        campaigns: {},
+      },
+    });
+    await writeFile(policyPath, original);
+    const answers = Array.isArray(confirm) ? [...confirm] : undefined;
+    const { calls, execute, prompt } = publicPagesSetup({ existing, confirm });
+    if (answers) prompt.confirm = async () => answers.shift() ?? false;
+    let authenticated = false;
+    try {
+      const result = await setupCaoControlPlane({
+        policyPath,
+        prompt,
+        execute,
+        setupAuthentication: () => {
+          authenticated = true;
+          return { command: "setup-auth" };
+        },
+      });
+      assert.ok(prompt.notes.some((note) => /Warning: the dashboard Pages site for acme\/control is public/.test(note)));
+      const deleted = calls.some((arguments_) => arguments_.includes("DELETE"));
+      if (confirm === true) {
+        assert.equal(result.dashboardPages, "public");
+        assert.equal(authenticated, true);
+        assert.equal(deleted, false);
+      } else {
+        assert.deepEqual(result, { command: "setup", cancelled: true, reason: "public-pages-declined" });
+        assert.equal(authenticated, false);
+        assert.equal(deleted, existing === undefined);
+        assert.equal(await readFile(policyPath, "utf8"), original);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test("cao init writes the minimal control-plane policy scoped to the current repository", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-"));
   const previousDirectory = process.cwd();
@@ -290,6 +358,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
       repositories: ["acme/control", "acme/service", "octo/library"],
       profile: "token",
       authentication: { command: "setup-auth", profile: "token" },
+      dashboardPages: "private",
       campaigns: [],
     });
     assert.deepEqual(prompt.selections[0].choices.map(({ value }) => value), [
