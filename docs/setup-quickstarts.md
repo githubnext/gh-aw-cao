@@ -72,7 +72,7 @@ The setup command:
 3. offers authentication choices based on that scope; verify each profile's
    prerequisites in the [authentication profile guide](control-plane-authentication.md);
 4. shows the exact plan before changing policy, credentials, or Pages settings;
-5. configures the control repository's Pages source as GitHub Actions and, for a private repository, restricts the site to repository readers (requires Pages access control support and permission to manage Pages settings);
+5. configures the control repository's Pages source as GitHub Actions and, for a private repository, restricts the site to repository readers (requires Pages access control support and permission to manage Pages settings). If the owner's plan does not support private Pages (GitHub Enterprise Cloud is required), setup removes any site it just created, explains how to enable private Pages, and asks whether to continue without a published dashboard; declining leaves policy and credentials unchanged;
 6. installs no campaign and runs no workflow.
 
 ## 3. Validate, Review, and Save

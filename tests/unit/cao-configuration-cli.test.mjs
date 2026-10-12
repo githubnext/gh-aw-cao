@@ -18,7 +18,7 @@ import {
   upgradeGhAw,
 } from "../../activity/cao.mjs";
 import { checkLiveWriteAuthentication, confirmExistingPatSecret } from "../../activity/authentication.mjs";
-import { configureDashboardPages } from "../../activity/setup.mjs";
+import { configureDashboardPages, DashboardPagesAccessUnsupportedError } from "../../activity/setup.mjs";
 
 // gh-aw writes `gh aw version` output to stderr.
 const versionResult = {
@@ -57,7 +57,7 @@ function scriptedSetupPrompt({ repositories, profile, confirm = true, clientIds 
       return profile;
     },
     async confirm() {
-      return confirm;
+      return Array.isArray(confirm) ? confirm.shift() ?? false : confirm;
     },
   };
 }
@@ -202,6 +202,109 @@ test("cao setup configures public Pages without requesting private access", () =
   assert.equal(calls.some((arguments_) => arguments_.includes("public=false")), false);
 });
 
+const unsupportedPrivatePages = {
+  status: 1,
+  stderr: "gh: Current plan does not support private GitHub Pages (HTTP 422)",
+};
+
+function unsupportedPagesExecutor(calls, { existing } = {}) {
+  let site = existing;
+  return (_, arguments_) => {
+    calls.push(arguments_);
+    const method = arguments_[1] === "-X" ? arguments_[2] : "GET";
+    if (method === "GET") {
+      return site ? { status: 0, stdout: JSON.stringify(site) } : { status: 1, stderr: "gh: Not Found (HTTP 404)" };
+    }
+    if (method === "POST") {
+      site = { build_type: "workflow", public: true };
+      return { status: 0, stdout: JSON.stringify(site) };
+    }
+    if (method === "DELETE") {
+      site = undefined;
+      return { status: 0, stdout: "" };
+    }
+    return unsupportedPrivatePages;
+  };
+}
+
+test("cao setup explains unsupported private Pages and removes the site it created", () => {
+  const calls = [];
+  assert.throws(
+    () => configureDashboardPages({
+      repository: "acme/control",
+      visibility: "private",
+      execute: unsupportedPagesExecutor(calls),
+    }),
+    (error) => error instanceof DashboardPagesAccessUnsupportedError
+      && error.removedSite === true
+      && /GitHub Enterprise Cloud/.test(error.message)
+      && /run cao setup again/.test(error.message),
+  );
+  assert.deepEqual(calls.at(-1), ["api", "-X", "DELETE", "repos/acme/control/pages"]);
+});
+
+test("cao setup never deletes a pre-existing Pages site when private Pages is unsupported", () => {
+  const calls = [];
+  assert.throws(
+    () => configureDashboardPages({
+      repository: "acme/control",
+      visibility: "private",
+      execute: unsupportedPagesExecutor(calls, { existing: { build_type: "workflow", public: true } }),
+    }),
+    (error) => error instanceof DashboardPagesAccessUnsupportedError
+      && error.removedSite === false
+      && /unpublish it/.test(error.message),
+  );
+  assert.equal(calls.some((arguments_) => arguments_.includes("DELETE")), false);
+});
+
+for (const [description, confirm, expectCompleted] of [
+  ["continues without a published dashboard after consent", [true, true], true],
+  ["stops before credentials when consent is declined", [true, false], false],
+]) {
+  test(`cao setup ${description} when private Pages is unsupported`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-pages-unsupported-"));
+    const policyPath = path.join(root, "cao.json");
+    const original = JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+        campaigns: {},
+      },
+    });
+    await writeFile(policyPath, original);
+    const inspect = setupExecutor({
+      "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+    });
+    const pages = unsupportedPagesExecutor([]);
+    const prompt = scriptedSetupPrompt({ repositories: "", profile: "github-app", confirm });
+    let authenticated = false;
+    try {
+      const result = await setupCaoControlPlane({
+        policyPath,
+        prompt,
+        execute: (command, arguments_) => (arguments_[0] === "api" ? pages : inspect)(command, arguments_),
+        setupAuthentication: () => {
+          authenticated = true;
+          return { command: "setup-auth" };
+        },
+      });
+      assert.ok(prompt.notes.some((note) => /GitHub Enterprise Cloud/.test(note)));
+      if (expectCompleted) {
+        assert.equal(result.dashboardPages, "skipped");
+        assert.equal(authenticated, true);
+        assert.notEqual(await readFile(policyPath, "utf8"), original);
+      } else {
+        assert.deepEqual(result, { command: "setup", cancelled: true, reason: "private-pages-unsupported" });
+        assert.equal(authenticated, false);
+        assert.equal(await readFile(policyPath, "utf8"), original);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test("cao init writes the minimal control-plane policy scoped to the current repository", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-"));
   const previousDirectory = process.cwd();
@@ -321,6 +424,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
       repositories: ["acme/control", "acme/service", "octo/library"],
       profile: "token",
       authentication: { command: "setup-auth", profile: "token" },
+      dashboardPages: "configured",
       campaigns: [],
     });
     assert.deepEqual(prompt.selections[0].choices.map(({ value }) => value), [

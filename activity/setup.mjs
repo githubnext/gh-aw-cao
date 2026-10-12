@@ -173,6 +173,24 @@ function inspectRepository(repository, execute) {
   };
 }
 
+export class DashboardPagesAccessUnsupportedError extends Error {
+  constructor(repository, detail, { removedSite = false } = {}) {
+    super([
+      `Private GitHub Pages is not available for ${repository} (${detail}).`,
+      'Access-controlled Pages requires the repository owner to be an organization on GitHub Enterprise Cloud; it cannot be enabled through the API.',
+      removedSite
+        ? 'Setup removed the unrestricted Pages site it had just created, so no dashboard can be published.'
+        : 'The existing Pages site was left unchanged and is not access-controlled; unpublish it in Settings > Pages before running the dashboard workflow.',
+      'To publish the dashboard, either move the control repository to an organization on GitHub Enterprise Cloud (or upgrade the owner), then run cao setup again,',
+      'or continue without a published dashboard. Do not make Pages public for a private control repository.',
+    ].join('\n'));
+    this.name = 'DashboardPagesAccessUnsupportedError';
+    this.removedSite = removedSite;
+  }
+}
+
+const PRIVATE_PAGES_UNSUPPORTED = /does not support private GitHub Pages|private pages.*not (?:available|supported)/i;
+
 export function configureDashboardPages({ repository, visibility, execute = spawnSync }) {
   const endpoint = `repos/${repository}/pages`;
   const request = (arguments_) => execute('gh', ['api', ...arguments_, endpoint], { encoding: 'utf8' });
@@ -187,6 +205,7 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   };
 
   let { site, result } = read();
+  const created = !site;
   if (!site) {
     if (result.error || !/\bHTTP 404\b/.test(result.stderr || '')) {
       throw new Error(`Unable to inspect dashboard Pages site: ${commandFailureMessage(result, 'gh api failed')}`);
@@ -199,6 +218,15 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
 
   if (visibility !== 'public' && site?.public !== false) {
     result = request(['-X', 'PUT', '-F', 'public=false']);
+    if (!result.error && PRIVATE_PAGES_UNSUPPORTED.test(result.stderr || '')) {
+      const detail = commandFailureMessage(result, 'gh api failed');
+      let removedSite = false;
+      if (created) {
+        const removal = request(['-X', 'DELETE']);
+        removedSite = !removal.error && removal.status === 0;
+      }
+      throw new DashboardPagesAccessUnsupportedError(repository, detail, { removedSite });
+    }
     if (result.error || result.status !== 0) {
       throw new Error(
         `Unable to restrict dashboard Pages access; do not deploy the dashboard: ${commandFailureMessage(result, 'gh api failed')}`,
@@ -404,8 +432,18 @@ export async function setupCaoControlPlane({
       return { command: 'setup', cancelled: true };
     }
 
+    let dashboardPages = 'configured';
+    try {
+      configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
+    } catch (error) {
+      if (!(error instanceof DashboardPagesAccessUnsupportedError)) throw error;
+      interactive.note(`\n${error.message}\n`);
+      if (!await interactive.confirm('Continue setup without a published dashboard?')) {
+        return { command: 'setup', cancelled: true, reason: 'private-pages-unsupported' };
+      }
+      dashboardPages = 'skipped';
+    }
     const authentication = setupAuthentication(profile, authenticationArguments, { execute });
-    configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
     return {
       command: 'setup',
@@ -414,6 +452,7 @@ export async function setupCaoControlPlane({
       repositories,
       profile,
       authentication,
+      dashboardPages,
       campaigns: [],
     };
   } finally {
