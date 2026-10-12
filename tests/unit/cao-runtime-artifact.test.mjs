@@ -195,6 +195,10 @@ test("the trusted runtime pipeline separates building, attestation and stable as
   assert.equal(workflow.on.workflow_dispatch, undefined);
   assert.equal(workflow.jobs.build.permissions.contents, "read");
   assert.equal(workflow.jobs.build.permissions["id-token"], undefined);
+  const setupNode = workflow.jobs.build.steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
+  assert.ok(setupNode);
+  assert.equal(setupNode.with.cache, undefined);
+  assert.equal(setupNode.with["package-manager-cache"], false);
   assert.equal(workflow.jobs.attest.permissions["id-token"], "write");
   assert.equal(workflow.jobs.publish.permissions.contents, "write");
   assert.equal(workflow.jobs.publish.if, "github.event_name == 'release'");
