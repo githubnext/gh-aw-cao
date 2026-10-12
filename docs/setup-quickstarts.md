@@ -7,7 +7,9 @@ description: Create one control repository, install CAO, and follow the interact
 
 Use a private repository unless every target and all future operational data may be public.
 
-You need GitHub CLI (`gh`), Git, Bash, `curl`, and Node.js 24 or newer. Use a
+You need GitHub CLI (`gh`) with `gh attestation verify` support (including
+`--source-digest` and `--signer-digest`), Git, Bash, `curl`, and Node.js 24 or
+newer. Normal installation does not need npm. Use a
 GitHub CLI account that can access the control repository and the repositories
 you plan to enroll. If you are not signed in, run `gh auth login` (add
 `--hostname HOST` for a non-default GitHub host), then confirm your session:
@@ -35,6 +37,22 @@ Replace uppercase placeholders with your values. `CONTROL_REPOSITORY` is the
 repository name without its owner in the `cd` command.
 
 ## 2. Install and Set Up
+
+The installer adds a curated production runtime under `.github/`, `activity/`,
+and `dashboard/`, plus `cao.sh`. It does not copy dashboard tests, screenshots,
+contributor tooling, or the Agent Plugin. Install the plugin separately in your
+agent client when you want portable skills or the Canvas integration.
+
+The runtime is built before installation, not packed on your machine. Stable
+version references download release assets; main/SHA references download
+successful Actions build artifacts retained for 90 days. Both must match the
+exact revision resolved by gh-aw and pass signed provenance and file checks.
+Sign in to `github.com` for catalog artifact and attestation access, even if
+your control repository uses another GitHub host. Main/SHA installs also need
+Actions read access to the catalog. If that build is still running, missing,
+expired, or unverifiable, installation stops: wait for the build or choose a
+published version rather than substituting another runtime revision. Dashboard
+builds still install their existing production npm dependencies.
 
 ```bash
 curl --fail --silent --show-error --location \

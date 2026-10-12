@@ -124,16 +124,14 @@ export async function generateDashboardLlms({ outputPath, activityDataPath } = {
   return output;
 }
 
-export async function validateDashboardAgentArtifacts({ sitePath, repositoryPath } = {}) {
+export async function validateDashboardAgentArtifacts({ sitePath } = {}) {
   const site = resolve(sitePath);
-  const repository = resolve(repositoryPath);
   const llms = await readFile(join(site, "llms.txt"), "utf8");
   if (!llms.trim()) throw new Error("dashboard llms.txt is empty");
   for (const section of REQUIRED_SECTIONS) {
     if (!llms.includes(section)) throw new Error(`dashboard llms.txt is missing section: ${section}`);
   }
   for (const [, name] of SKILLS) {
-    await access(join(repository, "skills", name, "SKILL.md"));
     if (!llms.includes(`https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/skills/${name}/SKILL.md`)) {
       throw new Error(`dashboard llms.txt is missing raw skill URL: ${name}`);
     }
@@ -163,13 +161,12 @@ async function runCli() {
   if (command === "validate" && firstPath) {
     await validateDashboardAgentArtifacts({
       sitePath: firstPath,
-      repositoryPath: secondPath ?? ".",
     });
     return;
   }
   throw new Error(
     "usage: node dashboard/site/scripts/llms.mjs "
-    + "generate OUTPUT_PATH [ACTIVITY_DATA_PATH] | validate SITE_PATH [REPOSITORY_PATH]",
+    + "generate OUTPUT_PATH [ACTIVITY_DATA_PATH] | validate SITE_PATH",
   );
 }
 

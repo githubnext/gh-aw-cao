@@ -48,9 +48,9 @@ control repository, or more than one of those roles.
 | `<campaign>/` | CAO catalog or materializer | Canonical executable campaign runtime |
 | `activity/` | CAO catalog or materializer | Canonical Activity runtime |
 | `dashboard/` | CAO catalog or materializer | Canonical Dashboard runtime |
-| `plugin.json` | CAO catalog or materializer | Portable Agent Plugin manifest |
-| `com.github.copilot/extensions/cao-dashboard/` | CAO catalog or materializer | Copilot CLI extension and Dashboard canvas runtime |
-| `specs/dashboard-data.md` | CAO catalog or materializer | Canonical data specification bundled with the Dashboard extension |
+| `plugin.json` | CAO catalog or Agent Plugin installer | Separately installed portable Agent Plugin manifest |
+| `com.github.copilot/extensions/cao-dashboard/` | CAO catalog or Agent Plugin installer | Separately installed Copilot CLI extension and Dashboard canvas runtime |
+| `specs/dashboard-data.md` | CAO catalog or Agent Plugin installer | Canonical data specification bundled with the separate Dashboard extension |
 | `.github/workflows/` | Control repository and gh-aw | Workflow sources, generated locks, and CAO policy |
 | `.github/workflows/cao.json` | Control repository | Persistent non-secret rollout policy |
 | `.github/workflows/shared/materialize-cao.mjs` | CAO bootstrap | Trusted canonical-runtime materializer |
@@ -101,10 +101,23 @@ catalog repository. Each selected record MUST contain a full, 40-character
 `resolvedCommit` SHA. Missing, shortened, tag-only, mutable, or otherwise
 invalid provenance MUST fail closed.
 
-The materializer MUST acquire the source archive by that immutable revision and
-MUST validate every resource in every selected bundle before replacing any
-destination. It MUST NOT fetch a branch, tag, or alternate runtime layout
-during workflow execution.
+For Activity, Dashboard, and root installation, the materializer MUST acquire
+the prebuilt `cao-runtime-<resolvedCommit>.tgz` archive. Exact stable `vX.Y.Z`
+source references use that release's assets; other references use an unexpired
+artifact from a successful `cao-runtime.yml` push or release run at that SHA.
+The materializer MUST verify GitHub's signed build provenance with `gh
+attestation verify`, requiring the catalog repository, the
+`.github/workflows/cao-runtime.yml` signer, matching source and signer commit
+digests, and a GitHub-hosted runner before extracting the archive. It MUST then
+validate the revision-bound file inventory, checksums, bounded ownership, and
+required runtime resources in every selected bundle before replacing any
+destination. Missing, expired, mismatched, or unverifiable artifacts MUST fail
+closed, without latest-release or install-time source/npm fallback.
+
+Operational campaigns retain source-archive acquisition by their immutable
+revision. Workflow execution MUST NOT fetch a branch, tag, or alternate runtime
+layout. Local developer source materialization is a separate, explicit path
+that may use npm packing.
 
 When the root record and exact focused Activity or Dashboard records coexist,
 the focused record MUST own its corresponding canonical directory. The root
@@ -114,8 +127,6 @@ preflighted before the first replacement.
 ### 4.2 Replacement
 
 Root materialization owns `activity/`, `dashboard/`, `cao.sh`,
-`plugin.json`, `com.github.copilot/extensions/cao-dashboard/`,
-`specs/dashboard-data.md`,
 `.github/actions/setup-cao-runtime/`, `.github/actions/setup-gh-aw/`, and
 `.github/cao/instructions.md`. Every repository-local action referenced by a
 workflow that the root campaign installs MUST be provided at its canonical path
@@ -125,20 +136,41 @@ Focused Activity or Dashboard materialization owns the corresponding canonical
 directory. Operational campaign materialization owns its complete
 `<campaign>/` directory.
 
-Root materialization MUST include the complete Copilot CLI extension and canvas
-runtime, its plugin manifest, and its bundled data specification at their
-canonical source paths. Other extensions under `com.github.copilot/extensions/`
-and other specifications under `specs/` MUST NOT be replaced. Materialization
-provides the plugin files; it does not install or enable the plugin in a user's
-Copilot CLI.
+Activity and Dashboard materialization MUST copy only the production resources
+selected at build time by `npm pack` using the dedicated
+`runtime/package.json` manifest's `files` field. The package MUST include the operator CLI, collection and query
+modules, local preview runtime,
+dashboard build inputs, production browser sources, and required dependency
+manifests at their canonical source paths. Compatible libraries may be bundled
+with esbuild, retaining their license notices; filesystem-relative CLI modules,
+workers, and build inputs MUST retain their canonical paths. Packing MUST disable
+lifecycle scripts and MUST NOT install dependencies or publish to a registry. Package
+metadata MUST remain in temporary staging rather than replacing a consumer's
+root `package.json`. It MUST NOT copy dashboard tests, fixtures, screenshots,
+development plans, lint/test configuration, or catalog-only component
+manifests. Production runtime directories selected by the package's `files`
+field MUST NOT contain development-only resources.
 
-Root materialization MUST remove CAO plugin skills installed under
-`.github/skills/`. It MUST preserve skills not owned by the CAO plugin. Portable
-CAO skills are distributed through compatible Agent Plugin installers, not
-through the CAO control-plane installer.
+The producer workflow MUST build and test with read-only repository permission,
+then attest in a separate job that does not check out or execute source code.
+Stable release assets MUST be published separately, without overwriting
+existing assets, only for a published non-prerelease `vX.Y.Z` tag matching the
+build SHA on main history. Main artifacts are retained for 90 days; release
+assets are the durable distribution path. Normal installation requires Node.js
+and an authenticated GitHub CLI with attestation verification support, but MUST
+NOT invoke npm. Existing dashboard build dependency installation is unchanged
+apart from omitting development dependencies.
+
+The control-plane installer MUST NOT install the Agent Plugin manifest,
+portable skills, Copilot extension, bundled specification documents, or
+repository-only dashboard authoring skills. Those resources belong to the
+separate Agent Plugin or catalog authoring installation. Root materialization
+MUST preserve pre-existing resources outside its owned destination set,
+including separately installed plugin resources and skills.
 
 For each selected owned destination, materialization MUST remove the existing
-destination and copy the complete selected source destination. This replacement
+destination and copy the complete selected production bundle. Operational
+campaigns retain complete-directory replacement. This replacement
 rule ensures that a file removed by a newer selected revision cannot remain
 executable. The materializer MUST NOT remove paths outside the bounded owned
 destination set.
@@ -217,9 +249,9 @@ A conforming implementation MUST test:
 7. installation and update behavior for canonical destinations; and
 8. rejection or documentation of unsupported campaign removal until a
    transactional removal lifecycle exists; and
-9. complete Copilot CLI extension and canvas resources, executable bundled
-   query and specification tools, stale extension-file removal, and preservation
-   of consumer-owned extensions and specifications.
+9. exclusion of development-only and Agent Plugin resources from new control
+   installations, preservation of separately installed plugin resources, and
+   completeness of the documented installation commit in a fresh checkout.
 
 Generated workflow lock files are implementation artifacts. Conformance tests
 MUST validate the editable workflow sources and MUST NOT require hand edits to

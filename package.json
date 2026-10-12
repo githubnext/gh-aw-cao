@@ -44,6 +44,8 @@
     "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/activity-discovery-cli.test.mjs tests/integration/cao-configuration-cli.test.mjs tests/integration/cao-issue-status.test.mjs tests/integration/cao-operational-value-local.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs tests/integration/dashboard-bootstrap.test.mjs tests/integration/dashboard-inventory-ingestion.test.mjs tests/integration/dashboard-query-cost.test.mjs",
     "test:campaign-lifecycle": "node --test --test-concurrency=1 tests/integration/campaign-lifecycle.test.mjs",
     "test:campaign-root": "node --test --test-concurrency=1 --test-name-pattern=\"^root campaign bootstraps\" tests/integration/campaign-lifecycle.test.mjs",
+    "test:runtime-install": "node --test tests/integration/cao-runtime-installation.test.mjs",
+    "runtime:pack": "node scripts/build-cao-runtime.mjs",
     "test:load": "node --test tests/load/*.test.mjs",
     "check:svg": "node scripts/check-svg-visual-language.mjs",
     "compile": "gh aw compile --strict --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao",

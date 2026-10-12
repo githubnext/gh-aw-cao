@@ -1,23 +1,16 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 const repository = 'githubnext/gh-aw-cao';
 const rootResources = [
   'activity',
   'dashboard',
-  'skills',
   'cao.sh',
-  'plugin.json',
-  'com.github.copilot/extensions/cao-dashboard',
-  'specs/dashboard-data.md',
-  'docs/dashboard-language-specification.md',
-  '.github/skills/generate-dashboard-ir',
-  '.github/skills/dashboard-authoring/SKILL.md',
-  '.github/skills/author-dashboard-intent/SKILL.md',
   '.github/actions/setup-cao-runtime',
   '.github/actions/setup-gh-aw',
   '.github/cao/instructions.md',
@@ -64,7 +57,7 @@ function resolvedRevision(record) {
   if (!/^[0-9a-f]{40}$/i.test(revision)) {
     throw new Error(`CAO package record must contain a full resolvedCommit SHA: ${revision || '(missing)'}`);
   }
-  return revision;
+  return revision.toLowerCase();
 }
 
 function exactRecordFor(records, campaign) {
@@ -167,8 +160,12 @@ export function extractCaoArchive(archive, directory, native = process.platform 
       if (type === '5') {
         mkdirSync(destination, { recursive: true });
       } else if (type === '\0' || type === '0') {
+        const encodedMode = tarString(header, 100, 8).trim();
+        if (!/^[0-7]*$/.test(encodedMode)) throw new Error('CAO archive has an invalid file mode');
+        const mode = 0o644 | (Number.parseInt(encodedMode || '0', 8) & 0o111);
         mkdirSync(path.dirname(destination), { recursive: true });
-        writeFileSync(destination, payload);
+        writeFileSync(destination, payload, { mode });
+        chmodSync(destination, mode);
       } else {
         throw new Error(`CAO archive has unsupported entry type: ${type}`);
       }
@@ -216,19 +213,6 @@ function materializeCampaignIntelligence(campaign, repositoryRoot) {
   cpSync(source, destination, { force: true });
 }
 
-function removeUndeployedRootResources(sourceRoot, repositoryRoot) {
-  const portableSkills = readdirSync(path.join(sourceRoot, 'skills'));
-  for (const skill of portableSkills) {
-    rmSync(path.join(repositoryRoot, '.github', 'skills', skill), { force: true, recursive: true });
-  }
-  const skillsDirectory = path.join(repositoryRoot, '.github', 'skills');
-  try {
-    if (readdirSync(skillsDirectory).length === 0) rmSync(skillsDirectory);
-  } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
-  }
-}
-
 function validateResources(sourceRoot, resources) {
   for (const resource of resources) {
     const source = path.join(sourceRoot, ...resource.split('/'));
@@ -243,13 +227,177 @@ function validateResources(sourceRoot, resources) {
   }
 }
 
+export function packCaoRuntime(sourceRoot, destination, { tracked = false, prepare } = {}) {
+  const manifestPath = path.join(sourceRoot, 'runtime', 'package.json');
+  validateResources(sourceRoot, ['runtime/package.json']);
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!Array.isArray(manifest.files) || manifest.files.some((file) => (
+    typeof file !== 'string' || file.split('/').some((part) => part === '.' || part === '..')
+    || !rootResources.some((resource) => (
+      file === resource || file.startsWith(`${resource}/`)
+    ))
+  ))) {
+    throw new Error('CAO runtime package must declare files within its owned runtime destinations');
+  }
+  validateResources(sourceRoot, [...rootResources, ...manifest.files]);
+  const staging = path.join(destination, 'source');
+  const unpacked = path.join(destination, 'unpacked');
+  mkdirSync(staging, { recursive: true });
+  mkdirSync(unpacked, { recursive: true });
+  for (const resource of rootResources) {
+    if (tracked) copyTrackedResource(sourceRoot, staging, resource);
+    else copyResource(sourceRoot, staging, resource);
+  }
+  cpSync(manifestPath, path.join(staging, 'package.json'));
+  const npmArguments = [
+    'pack', '--ignore-scripts', '--json', '--pack-destination', destination,
+    '--cache', path.join(destination, 'cache'),
+  ];
+  if (process.platform === 'win32') {
+    npmArguments.unshift(process.env.npm_execpath ?? path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+  }
+  const pack = (cwd) => {
+    const result = spawnSync(process.platform === 'win32' ? process.execPath : 'npm', npmArguments, {
+      cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to pack CAO runtime: ${(result.stderr || result.error?.message || `exit ${result.status}`).trim()}`);
+    }
+    const [packed] = JSON.parse(result.stdout);
+    if (!packed?.filename || path.basename(packed.filename) !== packed.filename) {
+      throw new Error('npm pack did not produce a valid CAO runtime archive');
+    }
+    return packed;
+  };
+  let packed = pack(staging);
+  extractCaoArchive(path.join(destination, packed.filename), unpacked);
+  const packedRoot = archiveRoot(unpacked);
+  validateResources(packedRoot, [...rootResources, ...manifest.files]);
+  if (prepare) {
+    prepare(packedRoot);
+    packed = pack(packedRoot);
+  }
+  return {
+    sourceRoot: packedRoot,
+    archive: path.join(destination, packed.filename),
+    files: packed.files.map(({ path }) => path),
+  };
+}
+
+function runtimeFiles(directory, prefix = '') {
+  return readdirSync(path.join(directory, prefix), { withFileTypes: true }).flatMap((entry) => {
+    const file = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return runtimeFiles(directory, file);
+    if (!entry.isFile()) throw new Error(`CAO runtime contains a non-regular file: ${file}`);
+    return [file];
+  }).sort();
+}
+
+export function sealCaoRuntime(sourceRoot, revision) {
+  if (!/^[0-9a-f]{40}$/.test(revision)) throw new Error('CAO runtime requires a full lowercase revision SHA');
+  const files = runtimeFiles(sourceRoot).filter((file) => file !== 'package.json' && file !== 'cao-runtime.json');
+  const metadata = {
+    schemaVersion: 1, repository, revision,
+    files: Object.fromEntries(files.map((file) => [
+      file, createHash('sha256').update(readFileSync(path.join(sourceRoot, file))).digest('hex'),
+    ])),
+  };
+  writeFileSync(path.join(sourceRoot, 'cao-runtime.json'), `${JSON.stringify(metadata, null, 2)}\n`);
+  const manifestPath = path.join(sourceRoot, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  manifest.files = [...manifest.files, 'cao-runtime.json'];
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+export function validateCaoRuntimeArtifact(sourceRoot, revision) {
+  validateResources(sourceRoot, ['cao-runtime.json', ...rootResources]);
+  const metadata = JSON.parse(readFileSync(path.join(sourceRoot, 'cao-runtime.json'), 'utf8'));
+  if (metadata.schemaVersion !== 1 || metadata.repository !== repository || metadata.revision !== revision) {
+    throw new Error(`CAO runtime artifact provenance does not match ${repository}@${revision}`);
+  }
+  if (!metadata.files || typeof metadata.files !== 'object' || Array.isArray(metadata.files)) {
+    throw new Error('CAO runtime artifact has no valid file inventory');
+  }
+  const files = runtimeFiles(sourceRoot).filter((file) => file !== 'package.json' && file !== 'cao-runtime.json');
+  if (JSON.stringify(files) !== JSON.stringify(Object.keys(metadata.files).sort())) {
+    throw new Error('CAO runtime artifact file inventory does not match its contents');
+  }
+  for (const file of files) {
+    if (!rootResources.some((resource) => file === resource || file.startsWith(`${resource}/`))) {
+      throw new Error(`CAO runtime artifact contains an unowned path: ${file}`);
+    }
+    const digest = createHash('sha256').update(readFileSync(path.join(sourceRoot, file))).digest('hex');
+    if (metadata.files[file] !== digest) throw new Error(`CAO runtime artifact checksum mismatch: ${file}`);
+  }
+  for (const bundle of ['activity', 'dashboard']) verifyCaoRuntime(bundle, sourceRoot);
+}
+
+function gh(arguments_) {
+  const result = spawnSync('gh', arguments_, {
+    encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 120_000,
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to acquire or verify prebuilt CAO runtime: ${(result.stderr || result.error?.message || `gh exited ${result.status}`).trim()}`);
+  }
+  return result.stdout;
+}
+
+function githubApi(endpoint) {
+  return JSON.parse(gh(['api', '--hostname', 'github.com', '--paginate', '--slurp', endpoint]));
+}
+
+export function downloadCaoRuntimeArtifact(record, directory) {
+  const revision = resolvedRevision(record);
+  const name = `cao-runtime-${revision}`;
+  mkdirSync(directory, { recursive: true });
+  const ref = typeof record.source === 'string' ? record.source.split('@')[1] : '';
+  if (/^v\d+\.\d+\.\d+$/.test(ref ?? '')) {
+    gh(['release', 'download', ref, '--repo', `github.com/${repository}`, '--pattern', `${name}.tgz`, '--dir', directory]);
+  } else {
+    const runs = githubApi(`repos/${repository}/actions/workflows/cao-runtime.yml/runs?head_sha=${revision}&status=success&per_page=100`)
+      .flatMap((page) => page.workflow_runs);
+    let run;
+    for (const candidate of runs) {
+      if (candidate.head_sha !== revision || candidate.conclusion !== 'success'
+        || !['push', 'release'].includes(candidate.event) || !Number.isSafeInteger(candidate.id)) continue;
+      const artifacts = githubApi(`repos/${repository}/actions/runs/${candidate.id}/artifacts?per_page=100`)
+        .flatMap((page) => page.artifacts);
+      if (artifacts.some((artifact) => artifact.name === name && artifact.expired === false)) {
+        run = candidate;
+        break;
+      }
+    }
+    if (!run) {
+      throw new Error(`No successful, unexpired prebuilt CAO runtime is available for ${revision}. Wait for the CAO runtime build or select a published release; source/npm fallback is disabled.`);
+    }
+    gh(['run', 'download', String(run.id), '--repo', `github.com/${repository}`, '--name', name, '--dir', directory]);
+  }
+  const archive = path.join(directory, `${name}.tgz`);
+  validateResources(directory, [`${name}.tgz`]);
+  gh([
+    'attestation', 'verify', archive, '--hostname', 'github.com', '--repo', repository,
+    '--signer-workflow', `${repository}/.github/workflows/cao-runtime.yml`,
+    '--source-digest', revision, '--signer-digest', revision, '--deny-self-hosted-runners',
+  ]);
+  return archive;
+}
+
 export function materializeCaoFromSource(campaign, sourceRoot, repositoryRoot) {
   validateCampaign(campaign);
   const resources = campaign === 'root' ? rootResources : [campaign];
   validateResources(sourceRoot, resources);
-  for (const resource of resources) copyTrackedResource(sourceRoot, repositoryRoot, resource);
+  if (campaign === 'root' || campaign === 'activity' || campaign === 'dashboard') {
+    const temporaryDirectory = mkdtempSync(path.join(tmpdir(), 'cao-pack-'));
+    try {
+      const packed = packCaoRuntime(sourceRoot, temporaryDirectory, { tracked: true });
+      for (const resource of resources) copyResource(packed.sourceRoot, repositoryRoot, resource);
+    } finally {
+      rmSync(temporaryDirectory, { force: true, recursive: true });
+    }
+  } else {
+    for (const resource of resources) copyTrackedResource(sourceRoot, repositoryRoot, resource);
+  }
   if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
-  if (campaign === 'root') removeUndeployedRootResources(sourceRoot, repositoryRoot);
   return resources;
 }
 
@@ -289,16 +437,19 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
       let sourceRoot = sourceRoots.get(plan.revision);
       if (!sourceRoot) {
         const extractionDirectory = path.join(temporaryDirectory, String(index));
-        const archiveName = `${index}.tar.gz`;
-        const archive = path.join(temporaryDirectory, archiveName);
         mkdirSync(extractionDirectory);
-        await downloadArchive(plan.revision, archive);
+        const runtime = ['root', 'activity', 'dashboard'].includes(plan.campaign);
+        const archive = runtime
+          ? downloadCaoRuntimeArtifact(plan.record, path.join(temporaryDirectory, `download-${index}`))
+          : path.join(temporaryDirectory, `${index}.tar.gz`);
+        if (!runtime) await downloadArchive(plan.revision, archive);
         try {
-          extractCaoArchive(archive, extractionDirectory);
+          extractCaoArchive(archive, extractionDirectory, runtime || process.platform === 'win32');
         } catch (error) {
           throw new Error(`Unable to extract CAO ${plan.revision}: ${error.message}`, { cause: error });
         }
         sourceRoot = archiveRoot(extractionDirectory);
+        if (runtime) validateCaoRuntimeArtifact(sourceRoot, plan.revision);
         sourceRoots.set(plan.revision, sourceRoot);
       }
       plan.sourceRoot = sourceRoot;
@@ -308,7 +459,6 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
       for (const resource of plan.resources) copyResource(plan.sourceRoot, repositoryRoot, resource);
     }
     if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
-    if (campaign === 'root') removeUndeployedRootResources(plans[0].sourceRoot, repositoryRoot);
     return {
       campaign,
       revision: plans[0].revision,

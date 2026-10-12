@@ -261,6 +261,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
   assert.doesNotMatch(dashboardManifest, /^resources:/m);
   assert.match(materializer, /rootResources = \[[\s\S]*?'activity'[\s\S]*?'dashboard'/);
+  assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?'--omit=dev'/);
   assert.match(runtimeAction, /materialize-cao\.mjs" verify "\$CAO_RUNTIME_BUNDLE"/);
   assert.match(canonicalPolicyResolver, /export function parsePolicy/);
   assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_DAYS/);

@@ -408,6 +408,45 @@ complete standalone installation entry points because gh-aw cannot invoke the
 materialization hook. Source-managed and installed control repositories
 therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 
+Activity and Dashboard use the standard npm `files` contract in the dedicated
+`runtime/package.json`, rather than copying their development directories
+wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
+command packs with lifecycle scripts disabled, bundles the YAML parser with
+esbuild and its license, and seals an exact-revision inventory and checksums.
+Filesystem-relative CLI modules, workers, and build inputs remain at their
+canonical paths rather than being forced into a single-file executable.
+The conventional `cao-runtime.yml` pipeline builds on main pushes and stable
+release publication. Read-only build/test, source-free attestation, and stable
+release asset publication use separate jobs. Stable tag sources use release
+assets; main/SHA sources use successful, unexpired Actions artifacts retained
+for 90 days. The operator materializer verifies GitHub signed provenance bound
+to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
+runner before extraction, then checks the inventory, checksums and ownership.
+Missing or unverifiable artifacts fail closed, without source/npm packing or
+latest-release fallback. Explicit local source materialization remains a
+developer path using npm. Normal operator installation needs Node.js and
+authenticated GitHub CLI artifact/attestation access, not npm.
+The materializer installs only owned canonical destinations from the archive
+and does not replace consumer-owned root package metadata. Installed control
+repositories keep the
+repository-local operator CLI, collection and query runtime, local preview,
+dashboard production sources, build inputs, and dependency manifests. Tests,
+fixtures, screenshots, contributor tooling, and catalog-only component
+manifests stay in the catalog. Dashboard workflow builds install production
+dependencies only.
+
+The Agent Plugin is a separate distribution: the control-plane installer does
+not copy its manifest, portable skills, Copilot extension, bundled specification
+documents, or repository-only dashboard authoring skills. Materialization
+preserves pre-existing plugin resources outside its owned runtime destinations.
+
+`npm run test:runtime-install` builds the actual producer archive and validates
+its installation commit from a fresh
+checkout, including the operator CLI, local runtime and policy verification,
+the bundled YAML parser without node_modules, and a dashboard build using only
+production dependencies. The test requires npm
+registry access, but does not create credentials or dispatch workflows.
+
 ## Architectural boundaries
 
 ### Authority and execution

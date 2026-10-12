@@ -6,7 +6,6 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
-  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -14,17 +13,18 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 import { parse } from "yaml";
 import {
   extractCaoArchive,
   materializeCaoFromSource,
+  packCaoRuntime,
   planCaoMaterialization,
   verifyCaoRuntime,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..", "..");
+const runtimeManifest = JSON.parse(readFileSync(path.join(sourceRoot, "runtime", "package.json"), "utf8"));
 
 function filesBelow(root, prefix = "") {
   return readdirSync(path.join(root, prefix)).flatMap((name) => {
@@ -37,10 +37,11 @@ function filesBelow(root, prefix = "") {
 
 function tarArchive(entries) {
   const blocks = [];
-  for (const { name, content = "", directory = false } of entries) {
+  for (const { name, content = "", directory = false, mode = 0o644 } of entries) {
     const data = Buffer.from(content);
     const header = Buffer.alloc(512);
     header.write(name);
+    header.write(mode.toString(8).padStart(7, "0"), 100);
     header.write(data.length.toString(8).padStart(11, "0"), 124);
     header[156] = directory ? 53 : 48;
     blocks.push(header, data, Buffer.alloc((512 - data.length % 512) % 512));
@@ -66,7 +67,43 @@ test("Windows CAO extraction does not invoke tar and rejects unsafe archive path
   }
 });
 
-test("CAO materialization preserves canonical source paths", async () => {
+test("native extraction preserves executable bits without restoring special or world-writable permissions", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-modes-"));
+  const archive = path.join(destination, "cao.tar.gz");
+  try {
+    writeFileSync(archive, tarArchive([
+      { name: "package/cao.sh", content: "#!/bin/sh\n", mode: 0o6757 },
+      { name: "package/data.json", content: "{}", mode: 0o666 },
+    ]));
+    extractCaoArchive(archive, destination, true);
+    if (process.platform !== "win32") {
+      assert.equal(statSync(path.join(destination, "package/cao.sh")).mode & 0o7777, 0o755);
+      assert.equal(statSync(path.join(destination, "package/data.json")).mode & 0o7777, 0o644);
+    }
+  } finally {
+    rmSync(destination, { force: true, recursive: true });
+  }
+});
+
+test("the runtime package uses npm files selection without shipping development or plugin resources", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "cao-runtime-package-"));
+  try {
+    const packed = packCaoRuntime(sourceRoot, destination, { tracked: true });
+    assert.ok(packed.files.includes("activity/cao.mjs"));
+    assert.ok(packed.files.includes("dashboard/site/scripts/build.mjs"));
+    assert.ok(packed.files.includes("dashboard/site/src/data-worker.js"));
+    assert.ok(packed.files.includes("dashboard/site/package-lock.json"));
+    assert.deepEqual(JSON.parse(readFileSync(path.join(packed.sourceRoot, "package.json"), "utf8")), runtimeManifest);
+    for (const file of packed.files) {
+      assert.doesNotMatch(file, /(?:^|\/)(?:test|tests|fixtures|screenshots|skills|com\.github\.copilot)(?:\/|$)/);
+      assert.doesNotMatch(file, /(?:^|\/)(?:PLAN\.md|eslint\.config\.mjs|vitest\.config\.mjs|playwright\.config\.mjs|plugin\.json)$/);
+    }
+  } finally {
+    rmSync(destination, { force: true, recursive: true });
+  }
+});
+
+test("CAO materialization preserves canonical production paths without installing the agent plugin", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-layout-"));
   try {
     const installedCaoSkills = ["setup-cao", "debug-cao"].map((skill) =>
@@ -75,13 +112,14 @@ test("CAO materialization preserves canonical source paths", async () => {
     const consumerSkill = path.join(destination, ".github", "skills", "consumer-skill", "SKILL.md");
     const consumerExtension = path.join(destination, "com.github.copilot", "extensions", "consumer-extension", "extension.mjs");
     const consumerSpecification = path.join(destination, "specs", "consumer.md");
+    const consumerPackage = path.join(destination, "package.json");
     for (const installedCaoSkill of installedCaoSkills) {
       mkdirSync(path.dirname(installedCaoSkill), { recursive: true });
       writeFileSync(installedCaoSkill, "installed");
     }
     mkdirSync(path.dirname(consumerSkill), { recursive: true });
     writeFileSync(consumerSkill, "consumer-owned");
-    for (const file of [consumerExtension, consumerSpecification]) {
+    for (const file of [consumerExtension, consumerSpecification, consumerPackage]) {
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, "consumer-owned");
     }
@@ -90,12 +128,10 @@ test("CAO materialization preserves canonical source paths", async () => {
     materializeCaoFromSource("dependabot", sourceRoot, destination);
     const staleRootFile = path.join(destination, "activity", "removed-runtime.mjs");
     const staleCampaignFile = path.join(destination, "dependabot", "removed-runtime.mjs");
-    const staleExtensionFile = path.join(destination, "com.github.copilot", "extensions", "cao-dashboard", "removed-canvas.mjs");
     const intelligenceDeclaration = path.join(destination, ".github", "cao", "intelligence", "dependabot.json");
     writeFileSync(staleRootFile, "stale");
     mkdirSync(path.dirname(staleCampaignFile), { recursive: true });
     writeFileSync(staleCampaignFile, "stale");
-    writeFileSync(staleExtensionFile, "stale");
     writeFileSync(intelligenceDeclaration, "stale");
 
     materializeCaoFromSource("root", sourceRoot, destination);
@@ -105,7 +141,6 @@ test("CAO materialization preserves canonical source paths", async () => {
     verifyCaoRuntime("dashboard", destination);
     assert.equal(existsSync(staleRootFile), false);
     assert.equal(existsSync(staleCampaignFile), false);
-    assert.equal(existsSync(staleExtensionFile), false);
     assert.ok(existsSync(path.join(destination, "activity", "cao.mjs")));
     const cliModules = filesBelow(sourceRoot, "activity/cli");
     assert.deepEqual(filesBelow(destination, "activity/cli").sort(), cliModules.sort());
@@ -121,7 +156,7 @@ test("CAO materialization preserves canonical source paths", async () => {
     }
     assert.ok(existsSync(path.join(destination, "activity", "normalized-phase.mjs")));
     assert.ok(existsSync(path.join(destination, "dashboard", "site", "package.json")));
-    assert.ok(existsSync(path.join(destination, "skills", "setup-cao", "SKILL.md")));
+    assert.equal(existsSync(path.join(destination, "skills")), false);
     assert.ok(existsSync(path.join(destination, "dependabot", "cao.json")));
     assert.equal(
       readFileSync(intelligenceDeclaration, "utf8"),
@@ -136,52 +171,43 @@ test("CAO materialization preserves canonical source paths", async () => {
     assert.match(readFileSync(path.join(destination, "cao.sh"), "utf8"), /activity\/cao\.mjs/);
     const trackedDashboardFiles = spawnSync(
       "git",
-      ["-C", sourceRoot, "ls-files", "--", "dashboard"],
+      ["-C", sourceRoot, "ls-files", "--", ...runtimeManifest.files.filter((file) => file.startsWith("dashboard/"))],
       { encoding: "utf8" },
     ).stdout.trim().split("\n");
     assert.deepEqual(
       filesBelow(destination, "dashboard").sort(),
       trackedDashboardFiles.sort(),
     );
-    const extensionDirectory = "com.github.copilot/extensions/cao-dashboard";
-    const trackedExtensionFiles = spawnSync(
-      "git",
-      ["-C", sourceRoot, "ls-files", "--", extensionDirectory],
-      { encoding: "utf8" },
-    ).stdout.trim().split("\n");
-    assert.deepEqual(filesBelow(destination, extensionDirectory).sort(), trackedExtensionFiles.sort());
-    for (const file of ["plugin.json", "specs/dashboard-data.md", ...trackedExtensionFiles]) {
-      assert.deepEqual(
-        readFileSync(path.join(destination, file)),
-        readFileSync(path.join(sourceRoot, file)),
-      );
+    for (const file of [
+      "plugin.json",
+      "specs/dashboard-data.md",
+      "docs/dashboard-language-specification.md",
+      "com.github.copilot/extensions/cao-dashboard",
+      ".github/skills/generate-dashboard-ir",
+      ".github/skills/dashboard-authoring",
+      ".github/skills/author-dashboard-intent",
+      "activity/README.md",
+      "activity/aw.yml",
+      "dashboard/aw.yml",
+      "dashboard/site/PLAN.md",
+      "dashboard/site/test",
+      "dashboard/site/screenshots",
+      "dashboard/site/eslint.config.mjs",
+      "dashboard/site/vitest.config.mjs",
+      "dashboard/site/playwright.config.mjs",
+      "dashboard/site/scripts/validate-corpus.mjs",
+    ]) {
+      assert.equal(existsSync(path.join(destination, file)), false, `${file} is not runtime`);
     }
-    const { bundledResources, resolveBundledResource } = await import(
-      pathToFileURL(path.join(destination, extensionDirectory, "bundled-resources.mjs")).href
-    );
-    for (const [name, resource] of Object.entries(bundledResources)) {
-      assert.equal(await resolveBundledResource(name), realpathSync(path.join(destination, resource)));
-    }
-    const { executeDashboardQueryRequest, readDashboardDataSpecification } = await import(
-      pathToFileURL(path.join(destination, extensionDirectory, "dashboard-agent-tools.mjs")).href
-    );
-    assert.deepEqual(JSON.parse(await executeDashboardQueryRequest({
-      queries: [{ name: "failed", from: "runs", filter: { predicates: [{ field: "conclusion", equals: "failure" }] } }],
-      sources: { runs: [{ conclusion: "failure" }, { conclusion: "success" }] },
-    })).failed.rows, [{ conclusion: "failure" }]);
-    assert.equal(JSON.parse(await readDashboardDataSpecification({
-      startLine: 1,
-      endLine: 5,
-    })).endLine, 5);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "instructions.md")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "activity")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dashboard")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dependabot")), false);
     for (const installedCaoSkill of installedCaoSkills) {
-      assert.equal(existsSync(installedCaoSkill), false);
+      assert.equal(readFileSync(installedCaoSkill, "utf8"), "installed");
     }
     assert.equal(readFileSync(consumerSkill, "utf8"), "consumer-owned");
-    for (const file of [consumerExtension, consumerSpecification]) {
+    for (const file of [consumerExtension, consumerSpecification, consumerPackage]) {
       assert.equal(readFileSync(file, "utf8"), "consumer-owned");
     }
   } finally {
@@ -208,14 +234,35 @@ test("CAO materialization validates the complete source bundle before replacing 
   }
 });
 
+test("root materialization leaves separately installed plugin resources untouched", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-separate-plugin-"));
+  const pluginFiles = [
+    "plugin.json",
+    "skills/setup-cao/SKILL.md",
+    "com.github.copilot/extensions/cao-dashboard/extension.mjs",
+    "specs/dashboard-data.md",
+    ".github/skills/generate-dashboard-ir/SKILL.md",
+  ];
+  try {
+    for (const file of pluginFiles) {
+      mkdirSync(path.dirname(path.join(destination, file)), { recursive: true });
+      writeFileSync(path.join(destination, file), "separately installed");
+    }
+    materializeCaoFromSource("root", sourceRoot, destination);
+    for (const file of pluginFiles) {
+      assert.equal(readFileSync(path.join(destination, file), "utf8"), "separately installed");
+    }
+  } finally {
+    rmSync(destination, { force: true, recursive: true });
+  }
+});
+
 for (const missingResource of [
-  "plugin.json",
-  "com.github.copilot/extensions/cao-dashboard",
-  "specs/dashboard-data.md",
-  "docs/dashboard-language-specification.md",
-  ".github/skills/generate-dashboard-ir",
-  ".github/skills/dashboard-authoring/SKILL.md",
-  ".github/skills/author-dashboard-intent/SKILL.md",
+  "activity/setup.mjs",
+  "activity/cli",
+  "dashboard/site/src",
+  "dashboard/site/scripts/build.mjs",
+  "dashboard/site/package-lock.json",
 ]) {
   test(`CAO materialization rejects a bundle missing ${missingResource} before replacement`, () => {
     const source = mkdtempSync(path.join(tmpdir(), "cao-materialize-incomplete-plugin-"));
@@ -225,7 +272,7 @@ for (const missingResource of [
         name: "githubnext/gh-aw-cao",
         record: { resolvedCommit: "1".repeat(40) },
       }], "root");
-      for (const resource of resources) {
+      for (const resource of [...resources, ...runtimeManifest.files]) {
         if (resource === missingResource) continue;
         const target = path.join(source, resource);
         if (statSync(path.join(sourceRoot, resource)).isDirectory()) {
@@ -235,6 +282,8 @@ for (const missingResource of [
           writeFileSync(target, "source");
         }
       }
+      mkdirSync(path.join(source, "runtime"));
+      writeFileSync(path.join(source, "runtime", "package.json"), JSON.stringify(runtimeManifest));
       const existingRuntime = path.join(destination, "activity", "existing-runtime.mjs");
       const existingExtension = path.join(destination, "com.github.copilot", "extensions", "cao-dashboard", "extension.mjs");
       for (const file of [existingRuntime, existingExtension]) {
@@ -284,15 +333,7 @@ test("root materialization preserves exact focused package revisions", () => {
         revision: rootRevision,
         resources: [
           "dashboard",
-          "skills",
           "cao.sh",
-          "plugin.json",
-          "com.github.copilot/extensions/cao-dashboard",
-          "specs/dashboard-data.md",
-          "docs/dashboard-language-specification.md",
-          ".github/skills/generate-dashboard-ir",
-          ".github/skills/dashboard-authoring/SKILL.md",
-          ".github/skills/author-dashboard-intent/SKILL.md",
           ".github/actions/setup-cao-runtime",
           ".github/actions/setup-gh-aw",
           ".github/cao/instructions.md",

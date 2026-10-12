@@ -10,6 +10,7 @@ import test from "node:test";
 import vm from "node:vm";
 import { parse } from "yaml";
 import { materializeCaoFromSource } from "../../.github/workflows/shared/materialize-cao.mjs";
+import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
 
 const executeFile = promisify(execFile);
 const catalog = path.resolve(".");
@@ -37,10 +38,12 @@ const addedFiles = [
 const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-"));
 const archive = path.join(fixtureRoot, "gh-aw-cao.tar.gz");
 const archiveName = path.basename(archive);
+const runtimeArchive = buildCaoRuntime(catalog, fixtureRoot, revision).archive;
 const mockFetch = path.join(fixtureRoot, "mock-fetch.mjs");
 const archiveResources = [
   "activity",
   "dashboard",
+  "runtime/package.json",
   "cao.sh",
   "skills",
   "plugin.json",
@@ -58,7 +61,10 @@ const archiveResources = [
   ".github/workflows/shared/review-bundle.md",
 ];
 const { stdout: trackedArchiveFiles } = await executeFile("git", ["ls-files", "-z", "--", ...archiveResources], { cwd: catalog });
-const archiveMembers = trackedArchiveFiles.split("\0").filter(Boolean).map((member) => `${path.basename(catalog)}/${member}`);
+const archiveMembers = [...new Set([
+  ...trackedArchiveFiles.split("\0").filter(Boolean),
+  "runtime/package.json",
+])].map((member) => `${path.basename(catalog)}/${member}`);
 // Keep the tracked inventory out of Windows' bounded process command line.
 const archiveMembersName = "archive-members.txt";
 await writeFile(path.join(fixtureRoot, archiveMembersName), `${archiveMembers.join("\0")}\0`);
@@ -100,6 +106,27 @@ test("installer fixture archive contains every tracked runtime source and no gen
 // unset the lookup fails as it does outside a GitHub repository checkout.
 const fakeGh = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ "\${1:-}" == api && "$*" == *"/actions/workflows/cao-runtime.yml/runs?"* ]]; then
+  printf '%s\\n' '[{"workflow_runs":[{"id":42,"head_sha":"${revision}","conclusion":"success","event":"push"}]}]'
+  exit 0
+fi
+if [[ "\${1:-}" == api && "$*" == *"/actions/runs/42/artifacts?"* ]]; then
+  printf '%s\\n' '[{"artifacts":[{"name":"cao-runtime-${revision}","expired":false}]}]'
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "run download" ]]; then
+  [[ "\${FAKE_CAO_ARCHIVE_STATUS:-200}" == 200 ]] || { echo "HTTP 503" >&2; exit 1; }
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == --dir ]]; then destination="$2"; break; fi
+    shift
+  done
+  cp "$FAKE_CAO_RUNTIME_ARCHIVE" "$destination/cao-runtime-${revision}.tgz"
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "attestation verify" ]]; then
+  [[ -z "\${FAKE_CAO_ATTESTATION_FAILURE:-}" ]] || { echo "attestation rejected" >&2; exit 1; }
+  exit 0
+fi
 if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
   if [[ -z "\${FAKE_CONTROL_REPOSITORY+set}" ]]; then
     echo "none of the git remotes configured for this repository point to a known GitHub host" >&2
@@ -167,6 +194,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     ["gh.cmd", "@echo off\r\nbash \"%~dp0gh\" %*\r\n"],
     ["curl", fakeCurl],
     ["curl.exe", fakeCurl],
+    ["npm", "#!/usr/bin/env bash\necho 'npm must not run during installation' >&2\nexit 1\n"],
   ]) {
     await writeFile(path.join(bin, name), source);
     await chmod(path.join(bin, name), 0o755);
@@ -187,6 +215,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     FAKE_CATALOG: catalog,
     FAKE_GH_SCRIPT: path.join(bin, "gh"),
     FAKE_CAO_ARCHIVE: archive,
+    FAKE_CAO_RUNTIME_ARCHIVE: runtimeArchive,
     FAKE_COMMAND_LOG: log,
     FAKE_GH_AW_INSTALLED: ghAwInstalled,
     FAKE_CONTROL_REPOSITORY: repository,
@@ -284,11 +313,11 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository) {
     "plugin.json",
     "com.github.copilot/extensions/cao-dashboard/extension.mjs",
     "specs/dashboard-data.md",
+    "skills",
+    "dashboard/site/test",
+    "dashboard/site/screenshots",
   ]) {
-    assert.deepEqual(
-      await readFile(path.join(consumer, file)),
-      await readFile(path.join(catalog, file)),
-    );
+    assert.equal(await exists(path.join(consumer, file)), false, `${file} is not runtime`);
   }
 }
 
@@ -419,6 +448,30 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
     await assertCompleteInstall(consumer, env, expectedVersion, repository);
   });
 }
+
+test("documented staging preserves the complete curated runtime in a fresh checkout", async (t) => {
+  const { root, consumer, repository, env } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, env);
+  await executeFile("git", ["init", "--quiet"], { cwd: consumer });
+  await executeFile("git", ["add", ".github", "activity", "dashboard", "cao.sh"], { cwd: consumer });
+  const { stdout: untracked } = await executeFile("git", ["ls-files", "--others", "--exclude-standard"], { cwd: consumer });
+  assert.equal(untracked, "", "the documented commit must include every installed resource");
+  await executeFile("git", [
+    "-c", "user.name=CAO installation test",
+    "-c", "user.email=cao-test@example.invalid",
+    "-c", "commit.gpgsign=false",
+    "-c", "core.hooksPath=/dev/null",
+    "commit", "--quiet", "-m", "Install curated CAO runtime",
+  ], { cwd: consumer });
+  const checkout = path.join(root, "fresh-checkout");
+  await executeFile("git", ["clone", "--quiet", "--no-local", consumer, checkout]);
+  await assertCompleteInstall(checkout, env, supportedGhAw, repository);
+  await executeFile(process.execPath, [
+    ".github/workflows/shared/control.mjs", "validate-policy", policyPath,
+  ], { cwd: checkout, env, timeout });
+  const { stdout: status } = await executeFile("git", ["status", "--porcelain"], { cwd: checkout });
+  assert.equal(status, "", "using the installed CLI must not modify the checkout");
+});
 
 test("install.sh reports useful progress and does not silence curl", async (t) => {
   const { consumer, env } = await createConsumer(t);
@@ -586,6 +639,7 @@ test("install.sh reruns restore missing policy and launcher mode without replaci
 for (const [failure, environment, expectedLog] of [
   ["campaign add fails", { FAKE_ADD_FAILURE: "1" }, "add\n"],
   ["the immutable archive download fails", { FAKE_CAO_ARCHIVE_STATUS: "503" }, "add\n"],
+  ["runtime provenance verification fails", { FAKE_CAO_ATTESTATION_FAILURE: "1" }, "add\n"],
 ]) {
   test(`install.sh exits nonzero without policy when ${failure}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);

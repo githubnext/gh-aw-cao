@@ -48,6 +48,9 @@ structure:
   decisions: adr/
   tests: tests/
   utilities: scripts/
+  runtime_package: runtime/package.json
+  runtime_builder: scripts/build-cao-runtime.mjs
+  runtime_distribution: .github/workflows/cao-runtime.yml
 
 architecture:
   style: policy-governed central control plane with catalog campaigns and bounded workers
@@ -430,6 +433,10 @@ invariants:
   - "Generated workflow lock files MUST NOT be edited directly."
   - "The trusted CAO materializer MUST replace bounded campaign-owned destinations with executable resources at the same top-level paths used by their catalog sources; .github/aw MUST remain exclusively gh-aw-owned and MUST NOT become a parallel CAO runtime tree."
   - "CAO runtime materialization MUST use a full immutable resolvedCommit SHA, MUST fail closed for tag-only or missing provenance, and MUST preserve exact focused Activity or Dashboard package ownership when root materialization runs."
+  - "Activity and Dashboard artifacts MUST use producer-side npm pack with lifecycle scripts disabled and runtime/package.json files selection, bundle compatible libraries with esbuild and license notices, retain filesystem-relative CLI, worker and build paths, and exclude development resources; packing MUST NOT publish, install dependencies or replace consumer-owned root package metadata."
+  - "Normal root, Activity and Dashboard materialization MUST consume an exact-SHA prebuilt archive from stable release assets or successful unexpired Actions artifacts, verify catalog and signer identity plus source and signer SHA through GitHub signed provenance on GitHub-hosted runners before extraction, then validate the inventory, checksums, ownership and required resources before any replacement; missing or unverifiable artifacts MUST fail without latest-release or source/npm fallback."
+  - "The runtime pipeline MUST separate read-only build/test from source-free attestation and stable release asset publication; stable tags must match the build SHA on main history, existing assets must not be overwritten, and main artifacts have 90-day retention. Normal installation requires Node.js and authenticated GitHub CLI artifact and attestation access, not npm; explicit developer source materialization may use npm, and dashboard builds retain production dependency installation."
+  - "The Agent Plugin is distributed separately; control-plane materialization MUST NOT install its manifest, portable skills, Copilot extension, bundled specifications or repository-only dashboard authoring skills, and MUST preserve pre-existing plugin resources outside owned runtime destinations."
   - "Activity and Dashboard manifests are root-package components; direct component installation is incomplete because gh-aw cannot invoke canonical runtime materialization."
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
@@ -543,6 +550,12 @@ generation:
   dashboard_server_package:
     path: .github/workflows/cao-package.yml
     output: ghcr.io/githubnext/gh-aw-cao/cao-server
+  control_runtime_package:
+    source: runtime/package.json
+    builder: scripts/build-cao-runtime.mjs
+    workflow: .github/workflows/cao-runtime.yml
+    output: cao-runtime-<resolvedCommit>.tgz
+    command: npm run runtime:pack -- DESTINATION REVISION
   dashboard_postgres_schema:
     source: server/spec/storage.tsp
     emitter: server/spec/postgres-emitter.mjs
@@ -578,6 +591,7 @@ commands:
       integration_tests: npm run test:integration
       campaign_lifecycle_tests: npm run test:campaign-lifecycle
       campaign_root_tests: npm run test:campaign-root
+      runtime_installation_tests: npm run test:runtime-install
       load_tests: npm run test:load
       svg_check: npm run check:svg
       workflow_compile: npm run compile

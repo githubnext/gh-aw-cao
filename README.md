@@ -23,6 +23,16 @@ curl --fail --silent --show-error --location \
 
 The installer adds gh-aw and the core CAO runtime, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Interactive setup then asks which repositories CAO should read and offers authentication choices that fit that scope. It installs no user-facing campaign. Install the Agent Plugin separately when you want the portable CAO skills.
 
+Control repositories receive only the curated production runtime, not dashboard
+tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
+keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
+Normal installation downloads a prebuilt archive for gh-aw's exact resolved
+SHA and verifies signed build provenance before replacing runtime files; it
+does not run npm. Stable versions use release assets, while main/SHA installs
+use successful Actions artifacts retained for 90 days. Node.js 24+ and an
+authenticated GitHub CLI with artifact and attestation access are still
+required. Dashboard builds retain their existing production npm dependencies.
+
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 
 - **Reach more repositories:** deterministically discover and batch inventories of 100,000+ repositories while keeping each run bounded.
