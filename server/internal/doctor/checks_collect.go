@@ -840,12 +840,45 @@ func binaryPresence(name string) string {
 	return resolved
 }
 
+// directorySizeReadFailure classifies why directorySize's os.ReadDir call did
+// not return entries, so an unreadable lake directory is diagnosable without
+// logging the directory path itself.
+type directorySizeReadFailure string
+
+const (
+	directorySizeReadFailureNone    directorySizeReadFailure = "none"
+	directorySizeReadFailureMissing directorySizeReadFailure = "missing"
+	directorySizeReadFailureOther   directorySizeReadFailure = "other"
+)
+
+// classifyDirectorySizeReadFailure distinguishes a directory that does not
+// exist, which is the unpopulated-lake state checkLake already reports, from
+// any other read failure, such as a permissions error, which is worth
+// surfacing as a diagnostic. It is a pure function extracted from
+// directorySize so this distinction is testable against constructed errors
+// without touching the filesystem.
+func classifyDirectorySizeReadFailure(err error) directorySizeReadFailure {
+	switch {
+	case err == nil:
+		return directorySizeReadFailureNone
+	case os.IsNotExist(err):
+		return directorySizeReadFailureMissing
+	default:
+		return directorySizeReadFailureOther
+	}
+}
+
 // directorySize counts the files and bytes in one lake directory. A missing
 // directory reports zero rather than an error, because an unpopulated lake is
-// a state the caller reports, not a failure to observe it.
+// a state the caller reports, not a failure to observe it. Any other read
+// failure, such as a permissions error, is logged so it is diagnosable
+// without being promoted to a check failure.
 func directorySize(directory string) (files int, bytes int64) {
 	entries, err := os.ReadDir(directory)
-	if err != nil {
+	if failure := classifyDirectorySizeReadFailure(err); failure != directorySizeReadFailureNone {
+		if failure == directorySizeReadFailureOther {
+			doctorLog.Printf("lake directory read failed")
+		}
 		return 0, 0
 	}
 	for _, entry := range entries {
