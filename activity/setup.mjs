@@ -282,7 +282,7 @@ export async function setupCaoControlPlane({
 
     interactive.note(`Control repository: ${control.repository} (${control.visibility})\nNo campaign will be installed, enabled, or run.\nEnter comma-separated owner/repository names or * wildcards.\nPatterns are expanded now; only exact names are saved.`, '1 / 3  Repositories');
     const targetAnswer = await interactive.text(
-      'Repositories CAO should read',
+      'Repositories CAO should read (comma-separated names or * wildcards)',
       control.repository,
       repositoryInputError,
     );

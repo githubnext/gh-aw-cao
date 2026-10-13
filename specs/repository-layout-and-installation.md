@@ -198,15 +198,24 @@ them as availability. A Git checkout without remotes MUST be connected in place;
 a directory without a Git checkout MUST receive a new clone. The terminal prompt
 MUST provide keyboard-driven selection and MUST fall back to numbered plain text
 when `ACCESSIBLE` or `NO_COLOR` is set or `TERM=dumb`. It MUST create a private
-repository and refuse an existing clone directory. `--setup` MUST open guided
-setup on the controlling terminal without allowing streamed children to consume
-installer source from stdin.
+repository and refuse an existing clone directory. After a successful
+interactive installation without `--setup`, it MUST offer a default-Yes handoff
+to guided setup. Declining or reaching end-of-input MUST leave the completed
+installation intact and print the setup command for later; a non-interactive
+installation MUST print that command without prompting. `--setup` MUST open
+guided setup on the controlling terminal without a handoff prompt or allowing
+streamed children to consume installer source from stdin. Informational status
+lines SHOULD remain aligned with completed steps while using muted styling to
+distinguish existing state from completed work.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the
 Pages source without changing visibility, require separate default-No consent
 for a public dashboard before changing credentials, and atomically save policy only after both
-succeed. Cancellation before application MUST leave policy, credentials, and
+succeed. The repository-scope prompt MUST state that comma-separated names and
+`*` wildcard patterns are accepted; wildcard patterns MUST be expanded before
+review so only exact repository names are saved. Cancellation before
+application MUST leave policy, credentials, and
 Pages unchanged. Declining or cancelling public-dashboard consent MUST remove
 only a newly created site where possible and leave an existing site with
 restriction or unpublication guidance. Failures after application starts MUST disclose possible

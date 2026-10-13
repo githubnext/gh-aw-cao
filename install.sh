@@ -12,7 +12,7 @@ info() {
 
 note() {
   if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]; then
-    printf '\033[36m•\033[0m %s\n' "$1"
+    printf '\033[36m•\033[0m \033[2m%s\033[0m\n' "$1"
   else
     printf '==> %s\n' "$1"
   fi
@@ -173,6 +173,27 @@ styled_prompt_enabled() {
 
 terminal_available() {
   { : < /dev/tty; } 2>/dev/null
+}
+
+confirm_guided_setup() {
+  local answer
+  printf '\n' > /dev/tty
+  while true; do
+    if styled_prompt_enabled; then
+      printf '\033[35m?\033[0m Continue to guided setup? \033[2m(Y/n)\033[0m ' > /dev/tty
+    else
+      printf 'Continue to guided setup? [Y/n] ' > /dev/tty
+    fi
+    if ! IFS= read -r answer < /dev/tty; then
+      printf '\n' > /dev/tty
+      return 1
+    fi
+    case "$answer" in
+      ""|[Yy]|[Yy][Ee][Ss]) return 0 ;;
+      [Nn]|[Nn][Oo]) return 1 ;;
+      *) printf 'Please answer yes or no.\n' > /dev/tty ;;
+    esac
+  done
 }
 
 confirm_repository_creation() {
@@ -713,6 +734,9 @@ main() {
     note "Existing CAO policy preserved."
   fi
   success "CAO installation complete."
+  if [[ "$setup" == false ]] && terminal_available && confirm_guided_setup; then
+    setup=true
+  fi
   if [[ "$setup" == true ]]; then
     "$cao_command" setup < /dev/tty
   fi

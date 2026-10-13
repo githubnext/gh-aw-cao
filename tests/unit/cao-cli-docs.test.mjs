@@ -44,7 +44,7 @@ test("CAO command guide explains the workflow execution boundary", () => {
 
 test("quickstart uses the interactive setup command and stops before campaigns", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
-  const setup = quickstart.indexOf("--setup");
+  const setup = quickstart.indexOf("offers to continue into guided setup");
   const validation = quickstart.indexOf("./cao.sh validate");
   const review = quickstart.indexOf("git diff --check");
 
@@ -57,10 +57,11 @@ test("quickstart uses the interactive setup command and stops before campaigns",
   assert.match(quickstart, /gh auth status/);
   assert.match(quickstart, /stage only the setup files you\s+reviewed/);
   assert.match(quickstart, /Adding a campaign installs its\s+workflows but does not run them/);
-  assert.match(quickstart, /bash -s -- --create-repo --setup/);
-  assert.match(quickstart, /bash -s -- --setup/);
+  assert.match(quickstart, /bash -s -- --create-repo/);
+  assert.match(quickstart, /offers to continue into guided setup/);
+  assert.match(quickstart, /Pass `--setup` to the installer/);
   assert.match(quickstart, /never creates\s+a public repository/);
-  assert.match(quickstart, /run\s+`\.\/cao\.sh setup` later/);
+  assert.match(quickstart, /then run setup later/);
   assert.match(quickstart, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
   assert.doesNotMatch(quickstart, /gh repo create acme\//);
 });

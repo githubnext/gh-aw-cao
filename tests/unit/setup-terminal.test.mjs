@@ -17,6 +17,7 @@ test("setup keyboard walkthrough validates scope, selects with arrows, and appli
   ]);
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /1 \/ 3  Repositories/);
+  assert.match(result.stdout, /Repositories CAO should read \(comma-separated names or \* wildcards\)/);
   assert.match(result.stdout, /2 \/ 3  Connections/);
   assert.match(result.stdout, /3 \/ 3  Review and apply/);
   assert.match(result.stdout, /Configuration saved/);

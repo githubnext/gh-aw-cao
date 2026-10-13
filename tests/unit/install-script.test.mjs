@@ -310,7 +310,7 @@ async function streamInstaller(cwd, env, installerArguments) {
 // script(1) gives the streamed installer a controlling terminal that receives the answer.
 function runWithTerminal(cwd, env, answer) {
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
-  return runTerminal("bash", ["-c", `cat ${quoted} | bash`], { cwd, env, timeout, input: `${answer}\n` });
+  return runTerminal("bash", ["-c", `cat ${quoted} | bash`], { cwd, env, timeout, input: `${answer}\nn\n` });
 }
 
 function runFile(cwd, env, installerArguments = []) {
@@ -528,6 +528,8 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.match(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
   assert.match(result.stdout, /CAO installation complete/);
+  assert.match(result.stdout, /Next: \.\/cao\.sh setup/);
+  assert.doesNotMatch(result.stdout, /Continue to guided setup/);
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
 
@@ -729,7 +731,7 @@ test("install.sh interactively selects an eligible owner and repository name", {
     cwd: consumer,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "\x1b[B\ncontrol\n",
+    input: "\x1b[B\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Prerequisites and GitHub sign-in verified/);
@@ -752,7 +754,7 @@ test("install.sh suggests the available cao repository name", { skip: process.pl
     cwd: consumer,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "\x1b[B\n\n",
+    input: "\x1b[B\n\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Repository name\s+cao/);
@@ -773,7 +775,7 @@ test("install.sh does not suggest cao when that repository exists", { skip: proc
       FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
     },
     timeout,
-    input: "\x1b[B\ncontrol\n",
+    input: "\x1b[B\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.doesNotMatch(result.stdout, /Repository name\s+cao/);
@@ -817,7 +819,7 @@ test("install.sh offers to create a private GitHub repository for a checkout wit
       FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
     },
     timeout,
-    input: "y\n\x1b[B\ncontrol\n",
+    input: "y\n\x1b[B\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /No GitHub control repository found/);
@@ -852,7 +854,7 @@ test("install.sh offers to create and clone from outside a Git checkout", { skip
     cwd: start,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "y\n\x1b[B\ncontrol\n",
+    input: "y\n\x1b[B\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Create and clone a new private control repository/);
@@ -867,7 +869,7 @@ test("install.sh uses numbered repository-owner prompts in accessible mode", { s
     cwd: consumer,
     env: { ...env, TERM: "dumb", ACCESSIBLE: "1", NO_COLOR: "1" },
     timeout,
-    input: "2\ncontrol\n",
+    input: "2\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /1\) alpha-user/);
@@ -908,6 +910,35 @@ test("install.sh uses one restrained spinner for a slow sign-in check", { skip: 
   assert.doesNotMatch(result.stdout, /Prerequisites and GitHub sign-in verified/);
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
+});
+
+test("interactive installation offers and enters guided setup by default", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const steps = [
+    "Continue to guided setup?",
+    "Repositories CAO should read",
+    "How should CAO authenticate?",
+    "Apply this setup?",
+  ];
+  let step = 0;
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash`], {
+    cwd: consumer,
+    env: { ...env, TERM: "xterm-256color", FORCE_COLOR: "0", CI: "" },
+    timeout,
+    onOutput(output, write) {
+      if (steps[step] && output.includes(steps[step])) {
+        step += 1;
+        write("\r");
+      }
+    },
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.equal(step, steps.length);
+  assert.match(result.stdout, /Setup cancelled/);
+  assert.doesNotMatch(result.stdout, /Next: \.\/cao\.sh setup/);
+  assert.equal(await log(), "add\n");
+  await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
 
 test(`install.sh rejects GitHub CLI older than ${supportedGh} before sign-in or writes`, async (t) => {

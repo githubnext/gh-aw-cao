@@ -35,15 +35,15 @@ repository and start guided setup:
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --create-repo --setup
+  bash -s -- --create-repo
 ```
 
 The installer lists your personal account and organizations where GitHub says
 you can create repositories. Use the arrow keys to choose an owner, enter a
-repository name, and follow the printed `cd` command when setup finishes. If
-`OWNER/cao` is available, press Enter to accept `cao` as the suggested name.
-The installer never creates a public repository and refuses an existing clone
-directory.
+repository name, then press Enter when it offers to continue into guided setup.
+Follow the printed `cd` command when setup finishes. If `OWNER/cao` is
+available, press Enter to accept `cao` as the suggested name. The installer
+never creates a public repository and refuses an existing clone directory.
 
 ### Existing control repository
 
@@ -58,12 +58,13 @@ cd "${CONTROL_REPOSITORY#*/}"
 
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --setup
+  bash
 ```
 
 If the current Git checkout has no GitHub remote, the installer asks whether to
 create a private GitHub repository for it. The confirmation defaults to **No**;
 if accepted, choose an eligible owner and enter the repository name.
+After installation, press Enter when prompted to continue into guided setup.
 
 ## 2. Complete Guided Setup
 
@@ -149,12 +150,15 @@ also need Actions read access to the catalog.
 
 ## Alternate Setup and Recovery
 
-Omit `--setup` to install without opening the wizard and run
-`./cao.sh setup` later:
+Answer **No** at the post-install handoff to finish without opening the wizard,
+then run setup later:
 
 ```bash
 ./cao.sh setup
 ```
+
+Pass `--setup` to the installer to enter guided setup immediately without the
+handoff prompt.
 
 Setup requires a bare control plane with no declared campaigns. For a basic
 terminal, run `TERM=dumb ./cao.sh setup`. Use `./cao.sh setup --json` to keep a

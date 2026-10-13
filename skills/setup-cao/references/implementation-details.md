@@ -9,9 +9,11 @@ makes `./cao.sh` executable, and runs `./cao.sh init` only when policy is absent
 It preserves an existing `.github/workflows/cao.json`.
 Tools, Node.js 24+, sign-in, and checkout-root readiness are checked before
 installation or upgrade. `--create-repo OWNER/NAME` explicitly creates and
-clones a private repository, refusing an existing clone directory. `--setup`
-then opens guided setup on the controlling terminal; other streamed children
-retain null stdin.
+clones a private repository, refusing an existing clone directory. After a
+successful interactive installation, a default-Yes handoff offers to open
+guided setup on the controlling terminal; declining prints the command for
+later. `--setup` opens guided setup without that handoff prompt. Other streamed
+children retain null stdin.
 
 The producer uses the dedicated `runtime/package.json` `files` field and
 `npm pack --ignore-scripts`, bundles the YAML parser and Clack prompt adapter
