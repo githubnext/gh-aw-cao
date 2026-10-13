@@ -47,15 +47,8 @@ jobs:
           node-version: "24"
           package-manager-cache: false
       - run: npm ci --ignore-scripts
-      - name: Validate packaging and installation
-        run: |
-          npm run lint
-          npm run typecheck:cao
-          node --test \
-            tests/unit/cao-materialize.test.mjs \
-            tests/unit/cao-runtime-artifact.test.mjs \
-            tests/unit/install-script.test.mjs
-          npm run test:runtime-install
+      - name: Validate runtime production
+        run: npm run test:runtime-producer
       - name: Build and seal runtime
         env:
           REVISION: ${{ github.sha }}

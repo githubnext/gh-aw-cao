@@ -70,4 +70,3 @@ export function workflowCampaignMembership(workflow) {
   const name = text(workflow['campaign-name'] ?? workflow.campaign).trim();
   return id && name ? { id, name } : null;
 }
-

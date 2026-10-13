@@ -74,6 +74,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     writeFileSync(path.join(installed, ".github/workflows/cao.json"), JSON.stringify(minimalPolicy(manifest["min-version"], "example/control")));
     run("git", ["init", "--quiet"], installed);
     run("git", ["add", ".github", "activity", "dashboard", "cao.sh"], installed);
+    run("git", ["diff", "--cached", "--check"], installed);
     assert.equal(run("git", ["ls-files", "--others", "--exclude-standard"], installed), "");
     run("git", [
       "-c", "user.name=CAO runtime test", "-c", "user.email=cao-test@example.invalid",

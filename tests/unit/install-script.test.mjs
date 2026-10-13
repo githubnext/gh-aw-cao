@@ -548,7 +548,8 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
   assert.match(result.stdout, /Installs 3 workflows, 5 shared control plane resources, and project settings\./);
   assert.match(result.stdout, /Installing CAO control plane components from/);
-  assert.match(result.stdout, /Materializing the CAO runtime/);
+  assert.match(result.stdout, /A newly published catalog revision may wait for its exact verified runtime build/);
+  assert.match(result.stdout, /Acquiring and verifying the exact CAO runtime/);
   assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
   assert.match(result.stdout, /CAO installed and verified/);

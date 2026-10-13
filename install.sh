@@ -734,8 +734,9 @@ main() {
       return 1
     fi
   else
+    note "A newly published catalog revision may wait for its exact verified runtime build."
     if ! run_quiet_command \
-      "Materializing the CAO runtime..." \
+      "Acquiring and verifying the exact CAO runtime..." \
       "CAO runtime materialized and verified." \
       node "$materializer" materialize root; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2

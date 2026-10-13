@@ -35,6 +35,7 @@ async function quickstartFixture(t, {
   status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n?? .vscode/settings.json\n',
   headStatus = 128,
   visibility = 'PRIVATE',
+  diffCheck = success(),
 } = {}) {
   const calls = [];
   const runRecords = {
@@ -88,6 +89,7 @@ async function quickstartFixture(t, {
       return success(`${JSON.stringify({ nameWithOwner: 'acme/cao', visibility })}\n`);
     }
     if (command === 'git' && arguments_[0] === 'status') return success(status);
+    if (command === 'git' && arguments_[0] === 'diff' && arguments_.includes('--check')) return diffCheck;
     if (command === 'gh' && arguments_[0] === 'api' && arguments_[1] === 'user') {
       return success('{"login":"octocat","id":1}\n');
     }
@@ -131,6 +133,33 @@ async function quickstartFixture(t, {
     },
   };
 }
+
+test('quickstart reports staged whitespace errors', async (t) => {
+  const fixture = await quickstartFixture(t, {
+    diffCheck: {
+      status: 2,
+      stdout: 'dashboard/site/src/components/workflow-badges.js:73: new blank line at EOF.\n',
+      stderr: '',
+    },
+  });
+  const policyPath = await fixture.policyPath();
+
+  await assert.rejects(runCaoQuickstart({
+    policyPath,
+    execute: fixture.execute,
+    addCampaign: async () => {
+      const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+      policy['control-plane'].campaigns['bug-bash'] = {
+        orchestrator: 'bug-bash',
+        workers: { investigation: { workflow: 'bug-bash-investigation' } },
+      };
+      await writeFile(policyPath, JSON.stringify(policy));
+    },
+    configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+    progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  }), /git diff --cached --check failed: dashboard\/site\/src\/components\/workflow-badges\.js:73: new blank line at EOF/);
+});
 
 test('quickstart configures, commits, runs, collects, and reports first dashboard data', async (t) => {
   const fixture = await quickstartFixture(t);
