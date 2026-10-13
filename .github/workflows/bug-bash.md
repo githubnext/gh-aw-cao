@@ -49,7 +49,7 @@ env:
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || '' }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
   STARTER_REPO: githubnext/gh-aw-cao-bug-bash
-  STARTER_REVISION: 098c42c73276bc20c4a1a8e0f334e08c3871a84d
+  STARTER_REVISION: fcd09c9307ee0d9d6be0698ac10e9356e2406c19
   BUG_BASH_HYPOTHESIS_ID: explicit-zero-default
   BUG_BASH_HYPOTHESIS_VERSION: 1.0.0
 
@@ -129,7 +129,7 @@ Rank eligible repositories from `candidate_repositories`:
 5. A small, self-contained module with few external dependencies, so bounded screening and one investigation fit inside the worker's budget with its verification reserve intact.
 6. No completed work record for the same hypothesis and repository revision, and no open Bug Bash finding awaiting a maintainer decision.
 
-Prefer the starter target `githubnext/gh-aw-cao-bug-bash` when it is an admitted candidate and no explicit `target_repo` was supplied. It is public, pins a small rollout-policy surface with executable tests, and documents the meaning of explicit zero values. The starter supplies a known hypothesis opportunity so a first run exercises screening, investigation, verification, and delivery rather than an arbitrary open-ended audit.
+Prefer the starter target `githubnext/gh-aw-cao-bug-bash` when it is an admitted candidate and no explicit `target_repo` was supplied. It is public and pins a fictional incident where an emergency `0%` rollout request prepared ten production services—including four tier-0 services—and three retries while the normal suite remained green. The repository includes current and legacy normalizers, different valid-zero contracts, red herrings, an executable incident replay, and incomplete tests. The starter supplies a known hypothesis opportunity so a first run exercises screening, investigation, verification, and delivery rather than an arbitrary open-ended audit.
 
 Exclude archived or disabled repositories, repositories with no resolvable default branch, repositories whose required data could not be precomputed, and repositories with no stated contract to check a failure against.
 

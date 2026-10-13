@@ -63,9 +63,13 @@ export const INVESTIGATION_OUTCOMES = Object.freeze([
  */
 export const STARTER_TARGET = Object.freeze({
   repository: "githubnext/gh-aw-cao-bug-bash",
-  revision: "098c42c73276bc20c4a1a8e0f334e08c3871a84d",
+  revision: "fcd09c9307ee0d9d6be0698ac10e9356e2406c19",
   focusPaths: Object.freeze([
+    "incidents/INC-2026-014.md",
     "docs/policy-contract.md",
+    "examples/incident-2026-014.json",
+    "config/production-fleet.json",
+    "scripts/replay-incident.mjs",
     "src/policy.mjs",
     "src/rollout.mjs",
     "src/notifications.mjs",

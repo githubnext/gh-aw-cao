@@ -87,10 +87,11 @@ control repositories, broader existing policy, or installed campaigns.
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
 Explicit quickstart is also terminal-independent. Without `--target`, it uses
-the pinned public `githubnext/gh-aw-cao-bug-bash` revision with intentional
-explicit-zero defaulting defects; `--target OWNER/REPO` selects another
-existing public repository. The checkout, target-visibility, source-revision,
-and default-branch preflight remain fail-closed.
+the pinned public `githubnext/gh-aw-cao-bug-bash` emergency-rollout incident:
+an explicit zero-percent pause prepares tier-0 services and retries while the
+normal suite remains green. `--target OWNER/REPO` selects another existing
+public repository. The checkout, target-visibility, source-revision, and
+default-branch preflight remain fail-closed.
 
 ## Control Campaigns
 

@@ -51,8 +51,8 @@ env:
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
   STARTER_REPO: githubnext/gh-aw-cao-bug-bash
-  STARTER_REVISION: 098c42c73276bc20c4a1a8e0f334e08c3871a84d
-  STARTER_FOCUS_PATHS: "docs/policy-contract.md src/policy.mjs src/rollout.mjs src/notifications.mjs legacy/batch-options.cjs test"
+  STARTER_REVISION: fcd09c9307ee0d9d6be0698ac10e9356e2406c19
+  STARTER_FOCUS_PATHS: "incidents/INC-2026-014.md docs/policy-contract.md examples/incident-2026-014.json config/production-fleet.json scripts/replay-incident.mjs src/policy.mjs src/rollout.mjs src/notifications.mjs legacy/batch-options.cjs test"
   BUG_BASH_HYPOTHESIS_ID: explicit-zero-default
   BUG_BASH_HYPOTHESIS_VERSION: 1.0.0
   BUG_BASH_BUNDLE_ROOT: /tmp/gh-aw/agent/review-bundles/bug-bash-investigation
@@ -163,7 +163,7 @@ If the model is unavailable or the run has no entitlement to the configured mode
 
 Before deeper investigation, perform a bounded screen for the fixed hypothesis:
 
-1. For the canonical starter repository or any target whose source revision equals `STARTER_REVISION`, inspect only `STARTER_FOCUS_PATHS`.
+1. For the canonical starter repository or any target whose source revision equals `STARTER_REVISION`, inspect only `STARTER_FOCUS_PATHS`. Treat the incident report as the source of the hypothesis and operational impact, not as proof of root cause or repair correctness. Run the incident replay only after the normal test baseline is green.
 2. Otherwise, identify the smallest contract-bearing configuration or option-normalization surface. Search only that surface for numeric settings whose documentation admits zero, truthiness-based defaulting or normalization nearby, and tests that cover omission or positive values but omit explicit zero.
 3. Record candidate paths and why each signal is relevant. A textual `||` or fallback is not a defect by itself; reject candidates whose contract excludes zero or whose fallback is unreachable for valid input.
 4. If no candidate survives the bounded screen, stop with `no-finding`, reason `no-candidate-within-budget`. Do not broaden to another hypothesis.

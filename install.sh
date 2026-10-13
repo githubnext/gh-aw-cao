@@ -641,7 +641,7 @@ main() {
     if [[ -n "$target_repository" ]]; then
       note "Quickstart reviews $target_repository, publishes a public dashboard, and may use up to 700 AI credits."
     else
-      note "Quickstart reviews githubnext/gh-aw-cao-bug-bash, publishes a public dashboard, and may use up to 700 AI credits."
+      note "Quickstart investigates the canonical emergency-pause incident in githubnext/gh-aw-cao-bug-bash, publishes a public dashboard, and may use up to 700 AI credits."
     fi
   fi
   if [[ "$create_repository_requested" == false ]]; then

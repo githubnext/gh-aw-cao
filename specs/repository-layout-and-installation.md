@@ -275,10 +275,10 @@ or private control repository, default to creating the private
 `USERNAME/cao` control repository outside a checkout, or create another private
 control repository only when `--create-repo OWNER/NAME` requests it. It MUST
 disclose before execution that it publishes a public dashboard, creates the
-private `USERNAME/cao` control repository when needed, targets the pinned public
-`githubnext/gh-aw-cao-bug-bash` repository with intentional explicit-zero
-defaulting bugs unless `--target OWNER/REPO` selects another existing public
-target, runs Bug Bash against
+private `USERNAME/cao` control repository when needed, targets a pinned
+fictional emergency-rollout incident in the public
+`githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
+another existing public target, runs Bug Bash against
 that target in review mode, and may consume up to 700 AI credits. The flag itself
 authorizes the bounded campaign installation, commit, push, dispatch,
 collection, and deployment effects in interactive and headless use; the

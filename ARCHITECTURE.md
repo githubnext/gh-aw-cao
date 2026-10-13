@@ -519,12 +519,15 @@ installer defaults to the signed-in user's available private `cao` control
 repository; explicit `--create-repo OWNER/NAME` selects another coordinate.
 Quickstart selects an immutable revision of the public
 `githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
-another existing public repository. The shared starter is a deliberately messy,
-dependency-free change-window coordinator for the versioned
-`explicit-zero-default` hypothesis, with current and legacy modules, mixed
-fallback semantics, team overrides, red herrings, an executable scenario, and
-passing but incomplete tests. Quickstart verifies that the pinned revision is
-still available and never creates or copies a target repository. Quickstart
+another existing public repository. The shared starter replays a fictional
+incident where an emergency zero-percent rollout request prepares ten services,
+including four tier-0 services, and three retries while its normal suite remains
+green. Current and legacy modules, different valid-zero contracts, a
+production-like fleet inventory, red herrings, and an executable replay force
+the versioned `explicit-zero-default` campaign to screen, reproduce, repair,
+and independently verify rather than report a textual match. Quickstart
+verifies that the pinned revision is still available and never creates or
+copies a target repository. Quickstart
 installs Bug Bash at the selected catalog revision, configures exact
 review-only authority for the selected target, requires public Pages, commits
 and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and

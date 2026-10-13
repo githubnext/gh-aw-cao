@@ -276,7 +276,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(result.mode, 'review');
   assert.equal(result.targetRepository, QUICKSTART_STARTER_TARGET.repository);
   assert.equal(result.starterTarget, true);
-  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/githubnext\/gh-aw-cao-bug-bash \(canonical messy Bug Bash sample\)/);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/githubnext\/gh-aw-cao-bug-bash \(canonical emergency-pause incident sample\)/);
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
   assert.deepEqual(policy['control-plane'].activity.repositories, ['acme/cao']);
   assert.deepEqual(policy['control-plane'].scope['allowed-repositories'], [
@@ -291,7 +291,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
   assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
   assert.ok(progress.includes(
-    `Canonical Bug Bash sample selected: ${QUICKSTART_STARTER_TARGET.repository}@${QUICKSTART_STARTER_TARGET.revision}`,
+    `Canonical Bug Bash incident selected: ${QUICKSTART_STARTER_TARGET.repository}@${QUICKSTART_STARTER_TARGET.revision}`,
   ));
   assert.ok(progress.includes(`Bug Bash campaign installed in review mode for ${QUICKSTART_STARTER_TARGET.repository}`));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
@@ -366,7 +366,7 @@ test('quickstart rejects a canonical sample revision mismatch before installing 
     addCampaign: async () => { campaignInstalled = true; },
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
-  }), /Canonical Bug Bash sample resolved to f{40} instead of 098c42c73276bc20c4a1a8e0f334e08c3871a84d/);
+  }), /Canonical Bug Bash sample resolved to f{40} instead of fcd09c9307ee0d9d6be0698ac10e9356e2406c19/);
   assert.equal(campaignInstalled, false);
 });
 

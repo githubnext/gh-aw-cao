@@ -1,16 +1,20 @@
 ---
 title: CAO Quickstart
-description: Target the shared messy Bug Bash sample and open your first CAO dashboard.
+description: Reproduce an emergency rollout-control defect and open your first CAO dashboard.
 ---
 
-Your first Central Agentic Ops (CAO) run targets a shared canonical sample, so
-you can see the complete experience without pointing CAO at your own code. One
-command pins the sample revision, runs a review-only Bug Bash, and builds your
-first data-bearing dashboard.
+Your first Central Agentic Ops (CAO) run investigates a fictional production
+incident without pointing CAO at your own code. An operator requested an
+emergency `0%` rollout with retries disabled. The coordinator instead prepared
+ten services—including four tier-0 services—and three retries, while its normal
+test suite remained green.
+
+One command pins that incident revision, runs a review-only Bug Bash, and builds
+your first data-bearing dashboard.
 
 **Time:** 15-25 minutes
-**You get:** a private control repository, a bounded investigation of a public
-messy sample with intentional bugs, and a public GitHub Pages dashboard.
+**You get:** a private control repository, independently verified review
+evidence for one high-impact defect, and a public GitHub Pages dashboard.
 
 ## 1. Check your tools
 
@@ -40,12 +44,17 @@ Then watch CAO:
 1. Create private `USERNAME/cao`, your control repository.
 2. Select the pinned
    [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
-   revision. The sample is a deliberately messy change-window coordinator with
-   current and legacy code, mixed fallback semantics, team overrides, red
-   herrings, and passing but intentionally incomplete tests.
-3. Install Bug Bash and run at most one investigation in `review` mode.
-4. Collect a CAO Activity snapshot and require at least one collected run.
-5. Wait for the data-bearing dashboard deployment.
+   incident revision.
+3. Install Bug Bash in `review` mode for that exact target.
+4. Use incident, language, path, contract, and test evidence to screen the
+   fixed explicit-zero hypothesis.
+5. Dispatch one repository-isolated worker to reproduce the defect and prepare
+   separate test and production patches.
+6. Reserve compute for an adversarial verification phase that tries to reject
+   the contract, reproduction, and repair.
+7. Deliver review evidence only to your control repository.
+8. Collect a CAO Activity snapshot and require at least one collected run.
+9. Wait for the data-bearing dashboard deployment.
 
 The command shows progress while GitHub Actions does the longer work.
 Quickstart works without a terminal and when `CI` is set.
@@ -63,7 +72,7 @@ Quickstart waits for real Activity data and prints a summary like this:
 ```text
 CAO quickstart complete.
 Dashboard: https://USERNAME.github.io/cao/
-Target: https://github.com/githubnext/gh-aw-cao-bug-bash (canonical messy Bug Bash sample)
+Target: https://github.com/githubnext/gh-aw-cao-bug-bash (canonical emergency-pause incident sample)
 Bug Bash: https://github.com/USERNAME/cao/actions/runs/... (success)
 Activity: https://github.com/USERNAME/cao/actions/runs/... (... collected runs)
 Control repository: https://github.com/USERNAME/cao
@@ -71,7 +80,20 @@ Control repository: https://github.com/USERNAME/cao
 
 Open **Dashboard**. You have just run your first CAO campaign.
 
-The canonical sample is designed to produce a reproducible explicit-zero
+## What this demonstrates
+
+- **A proven incident supplies the hypothesis, not the answer.** CAO must still
+  distinguish valid-zero settings from legacy and string fallbacks.
+- **The unit of work is schedulable.** Repository, immutable revision,
+  hypothesis version, and harness version form a deduplicable identity.
+- **Investigation and verification are separate.** A generated failing test or
+  passing patch is insufficient by itself.
+- **Review capacity is protected.** The target receives no branch, issue, pull
+  request, or notification; evidence lands only in your control repository.
+- **Scope one uses the fleet machinery.** Expanding later changes enrollment,
+  screening budgets, and scheduling—not the worker or evidence contract.
+
+The canonical incident is designed to produce a reproducible explicit-zero
 finding, but every verification gate still applies and `no-finding` remains a
 valid successful run. CAO reports missing access or failed workflows as blocked
 or failed instead of pretending they succeeded.

@@ -24,10 +24,13 @@ including headlessly. Outside a checkout, it creates the private control
 repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects another
 existing public repository, quickstart targets
 [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
-at a pinned revision. The shared starter is a deliberately messy change-window
-coordinator with current and legacy modules, mixed fallback semantics,
-operational fixtures, red herrings, executable tests, and intentional
-functional defects. Quickstart runs Bug Bash against it in review mode.
+at a pinned revision. The shared starter replays a fictional production
+incident: an emergency `0%` rollout request prepared ten services—including
+four tier-0 services—and three retries while the normal test suite remained
+green. Current and legacy modules, different zero-value contracts, and red
+herrings force Bug Bash to screen, reproduce, repair, and independently verify
+the finding rather than report a textual match. Quickstart runs that campaign
+in review mode.
 It commits and pushes the bounded CAO paths, collects Activity, and waits for a
 public GitHub Pages dashboard with first data. This one run can use up to 700 AI
 credits. CAO never modifies the target.

@@ -8,7 +8,7 @@ import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
 const SAMPLE_SEED_REPOSITORY = 'githubnext/gh-aw-cao-bug-bash';
-const SAMPLE_SEED_REVISION = '098c42c73276bc20c4a1a8e0f334e08c3871a84d';
+const SAMPLE_SEED_REVISION = 'fcd09c9307ee0d9d6be0698ac10e9356e2406c19';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/bug-bash';
 const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
 const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
@@ -157,7 +157,7 @@ export function formatQuickstartSummary(result) {
   return [
     'CAO quickstart complete.',
     `Dashboard: ${result.dashboard.url}`,
-    `Target: https://github.com/${result.targetRepository}${result.starterTarget ? ' (canonical messy Bug Bash sample)' : ''}`,
+    `Target: https://github.com/${result.targetRepository}${result.starterTarget ? ' (canonical emergency-pause incident sample)' : ''}`,
     `Bug Bash: ${result.bugBash.url} (${result.bugBash.conclusion})`,
     `Activity: ${result.activity.url} (${result.activity.uniqueRuns} collected runs)`,
     `Control repository: https://github.com/${result.controlRepository}`,
@@ -239,7 +239,7 @@ async function executeCaoQuickstart({
         `Canonical Bug Bash sample resolved to ${resolvedRevision || 'no revision'} instead of ${SAMPLE_SEED_REVISION}`,
       );
     }
-    ui.success?.(`Canonical Bug Bash sample selected: ${selectedTarget}@${SAMPLE_SEED_REVISION}`);
+    ui.success?.(`Canonical Bug Bash incident selected: ${selectedTarget}@${SAMPLE_SEED_REVISION}`);
   }
 
   await ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
