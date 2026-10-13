@@ -150,13 +150,38 @@ review outputs are also public.
 
 ## Next: run Bug Bash on your repository
 
-After the controlled starter, replace the sample with one exact public target
-for a meaningful test on your own code:
+After the controlled starter, reuse the same control repository and installed
+Bug Bash campaign. Do not run the installer or `cao add` again.
+
+In the control repository, edit `.github/workflows/cao.json`:
+
+1. Add `OWNER` to `control-plane.scope.allowed-owners`.
+2. Replace the sample repository with `OWNER/REPOSITORY` in
+   `control-plane.scope.allowed-repositories`, retaining `USERNAME/cao`.
+3. Replace the sample entry under
+   `control-plane.campaigns.bug-bash.targets` with
+   `"OWNER/REPOSITORY": { "mode": "review" }`.
+
+Keep `control-plane.activity.repositories` set to `USERNAME/cao`; Activity
+collects the control-plane runs, not source data from the target.
+
+Validate, commit, and push the reviewed policy change:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --quickstart --target OWNER/REPOSITORY
+./cao.sh validate
+git add .github/workflows/cao.json
+git commit -m "Target Bug Bash at OWNER/REPOSITORY"
+git push
+```
+
+Then run the already-installed campaign:
+
+```bash
+gh aw run bug-bash --ref main \
+  --raw-field target_repo="OWNER/REPOSITORY" \
+  --raw-field max_repos="1" \
+  --raw-field rollout_percent="100" \
+  --raw-field safe_output_mode="review"
 ```
 
 CAO still runs in `review` mode and never modifies the target.
