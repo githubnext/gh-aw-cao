@@ -9,9 +9,8 @@ metadata:
 
 ## Procedure
 
-1. Follow the pinned gh-aw
-   [workflow creation guidance](https://github.com/github/gh-aw/blob/v0.91.5/.github/aw/create-agentic-workflow.md)
-   for every workflow. Inspect `.github/workflows/shared/control.md`, the
+1. Load the installed `agentic-workflows` skill and follow its new-workflow
+   route for every workflow. Inspect `.github/workflows/shared/control.md`, the
    effective `.github/workflows/cao.json`, and the nearest maintained campaign.
 2. Define the campaign slug, outcome, discovery and ranking signals, workers,
    triggers, rollout expectations, permissions, tools, network, credentials,
@@ -32,14 +31,19 @@ metadata:
 7. Add package problem clustering only when the campaign has a deterministic,
    bounded problem definition not covered by built-in computations; follow
    [Computations](https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md).
-8. Compile editable workflow sources with `npm run compile`. Never edit generated
-   `.lock.yml` files directly. Run focused tests, package-completeness tests, and
-   clean-room lifecycle tests when credentials are available.
+8. Compile editable workflow sources with `npm run compile`, then run
+   `./cao.sh validate`. Never edit generated `.lock.yml` files directly. Run
+   focused tests, package-completeness tests, and clean-room lifecycle tests
+   when credentials are available.
 9. Compare intended state with policy and the dashboard control-plane view.
    Report the campaign files, workers, safety capabilities, review-mode proof,
    evaluator status, validation, and unresolved prerequisites.
 
 ## Guardrails
+
+- Keep campaign design, worker decomposition, prompts, and safety tradeoffs
+  agentic. Use `gh aw` compilation and repository validation commands for
+  parsing, generation, and verification; do not reproduce compiler behavior.
 
 - CAO decides whether and where work runs; gh-aw decides how an authorized
   workflow executes. Neither authority substitutes for the other.

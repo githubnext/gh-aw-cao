@@ -8,6 +8,7 @@ includes:
   - dashboard/aw.yml
   - .github/workflows/cao-validate.yml
 skills:
+  - .github/skills/agentic-workflows
   - skills/setup-cao
   - skills/add-cao-campaign
   - skills/create-cao-campaign

@@ -18,6 +18,14 @@ metadata:
 Choose and install an existing CAO operational campaign from the current
 catalog. Never rely on a hard-coded list or silently select or install one.
 
+## Deterministic boundary
+
+The agent may interpret intent, compare candidates, and explain safety
+tradeoffs. After selection, `./cao.sh add` owns package resolution,
+installation, policy merging, and installed-declaration validation. Use
+`./cao.sh validate` and `gh aw doctor --dir .` for postconditions; do not
+reimplement package or policy mutation.
+
 ## Boundaries
 
 - Use `create-cao-campaign` to author a new campaign or when none fits.

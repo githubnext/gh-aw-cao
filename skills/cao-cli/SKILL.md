@@ -9,6 +9,13 @@ metadata:
 
 # Use the `cao` CLI
 
+## Deterministic boundary
+
+This skill routes intent; the CLI owns parsing, validation, mutation, querying,
+and result serialization. Read `--help`, invoke the narrowest existing command,
+and report its real output. Do not emulate a command in shell snippets or
+rewrite its behavior in agent-authored code.
+
 ## Procedure
 
 1. Identify the task before running a command:

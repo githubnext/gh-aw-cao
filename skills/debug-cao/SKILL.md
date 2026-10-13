@@ -7,6 +7,14 @@ metadata:
 
 # Debug Central Agentic Ops
 
+## Deterministic boundary
+
+Use `gh run view`, `gh aw logs`, `./cao.sh validate --json`, and existing CAO
+query or diagnostic commands to collect structured evidence. Do not reconstruct
+run metadata, package identity, policy validity, or query results manually. The
+agent owns boundary classification, falsifiable hypotheses, evidence
+interpretation, and the next bounded observation.
+
 ## Procedure
 
 1. Start read-only. Preserve the failed attempt before rerunning, updating,

@@ -13,8 +13,10 @@ Repository overlay (optional):
 - If `.github/aw/instructions.md` exists, load it with `@.github/aw/instructions.md` after loading the matched prompt/skill.
 - Precedence: repository overlay instructions override upstream defaults when they conflict.
 
-Read only the files you need:
-Load these files from `github/gh-aw` (they are not available locally).
+Read only the files you need. Load the matching file from
+`github/gh-aw@v0.91.5`; these files are not available locally. The canonical
+raw URL prefix is
+`https://raw.githubusercontent.com/github/gh-aw/v0.91.5/`.
 - `.github/aw/action-container-substitutions.md`
 - `.github/aw/agent-runtime-instructions.md`
 - `.github/aw/agentic-chat.md`
@@ -112,3 +114,15 @@ After loading the matching workflow prompt or skill, follow it directly:
 - Add skills or agent plugins requested by the user (`skills:` / `plugins:` frontmatter, never on-the-fly installs): `.github/aw/skills.md`
 
 When the task involves OTEL, OTLP, traces, observability backends, or telemetry-driven analysis, also read and follow `skills/otel-queries/SKILL.md` after loading the matching workflow prompt or skill.
+
+## Deterministic boundary
+
+- Use `gh aw` for workflow creation, compilation, validation, upgrades, runs,
+  and logs. Do not reproduce command behavior with ad hoc file or API logic.
+- Use repository-provided package managers, linters, and tests for mechanical
+  edits and validation.
+- Keep intent classification, architecture selection, safety tradeoffs, and
+  diagnosis agentic. Keep parsing, mutation, compilation, and verification
+  deterministic.
+- Do not fetch guidance from a mutable branch when a package-supported version
+  is available.

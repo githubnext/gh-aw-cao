@@ -21,6 +21,14 @@ metadata:
 
 Use this skill when a user asks to inspect, analyze, investigate, or summarize Central Agentic Ops activity data from the deployed dashboard snapshot or another published dashboard data URL.
 
+## Deterministic boundary
+
+Use `cao download`, `cao audit-jsonl`, `cao doctor`, and reviewed `cao query`
+commands for acquisition, validation, filtering, and projection. The agent
+chooses the question and interprets availability, freshness, completeness, and
+results. Do not reproduce Dashboard Language queries or filter canonical rows
+in ad hoc code when an existing CLI query can answer the request.
+
 ## Data contract
 
 - Treat downloaded data as local, disposable development evidence, not schema authority.

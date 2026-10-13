@@ -19,6 +19,14 @@ Create or reuse one bare CAO control plane. Successful setup leaves:
 
 Campaign discovery and installation are a separate task for `add-cao-campaign`.
 
+## Deterministic boundary
+
+Use the repository-local `./cao.sh setup` and `./cao.sh validate` commands for
+policy construction, authentication setup, external checks, mutation, and
+postcondition validation. The agent owns topology clarification, exact scope,
+tradeoff explanation, approval, and diff review. Do not recreate setup logic or
+write policy JSON directly.
+
 ## Invariants
 
 - Establish exact repository scope before selecting authentication. Capability

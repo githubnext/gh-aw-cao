@@ -335,6 +335,7 @@ test("root campaign provides default control-repository agent context", () => {
   assert.equal(rootManifest.resources.length, 5);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
   assert.deepEqual(rootManifest.skills, [
+    ".github/skills/agentic-workflows",
     "skills/setup-cao",
     "skills/add-cao-campaign",
     "skills/create-cao-campaign",
@@ -349,7 +350,10 @@ test("root campaign provides default control-repository agent context", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort(),
-    rootManifest.skills.map((skill) => skill.slice("skills/".length)).sort(),
+    rootManifest.skills
+      .filter((skill) => skill.startsWith("skills/"))
+      .map((skill) => skill.slice("skills/".length))
+      .sort(),
   );
   for (const file of MarkdownFiles(join(root, "skills"))) {
     const source = readFileSync(file, "utf8");
@@ -588,6 +592,11 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
 
   assert.match(agent, /\.github\/aw\/instructions\.md/);
   assert.match(agenticWorkflowsSkill, /\.github\/aw\/instructions\.md/);
+  assert.match(agenticWorkflowsSkill, /github\/gh-aw@v0\.91\.5/);
+  assert.doesNotMatch(agent, /github\/gh-aw\/main/);
+  assert.doesNotMatch(agenticWorkflowsSkill, /github\/gh-aw\/main/);
+  assert.match(agenticWorkflowsSkill, /## Deterministic boundary/);
+  assert.match(campaignSkill, /installed `agentic-workflows` skill/);
   assert.match(campaignSkill, /## Deterministic Add-on Exception/);
   assert.match(campaignSkill, /github\/gh-aw\/blob\/v0\.91\.5\/\.github\/aw\/create-agentic-workflow\.md/);
   assert.match(campaignSkill, /Workflow creation is an agent workflow/);

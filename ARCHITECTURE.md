@@ -447,7 +447,10 @@ pre-existing plugin resources outside its owned runtime destinations. The
 installer adds the repository-root `aw.yml` package. That manifest explicitly
 composes only the Activity, dashboard, and validation workflows, five shared
 control-plane resources, six portable control-repository skills, one Agentic
-Workflows agent, and the gh-aw project settings. The nonempty `agents`
+Workflows router skill, one Agentic Workflows agent, and the gh-aw project
+settings. The router loads only task-relevant guidance pinned to the supported
+gh-aw version and delegates deterministic operations to `gh aw`, `cao`, and
+repository validation commands. The nonempty `agents`
 declaration prevents agent auto-discovery from installing repository-only
 agents. gh-aw v0.91.5 still auto-scans the root `skills/` directory after
 resolving explicit skill declarations, so that directory contains only the six
