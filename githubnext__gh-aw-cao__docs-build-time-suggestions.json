@@ -1,7 +1,51 @@
 {
-  "source_sha": "42c44fc0aaa363e54f1995a1236d46251aba166d",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "91978d1d5c9f5f0913df7c754173d50f08fae4de",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-13T20:04:00Z",
+      "worker_run_id": 38458098454,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38458358383,
+        38457519442,
+        38456838271,
+        38456805249,
+        38455784325,
+        38455311564,
+        38455289771,
+        38454215177,
+        38453879574,
+        38451570256,
+        38450855138,
+        38450836113,
+        38450501752,
+        38450190808,
+        38447656535,
+        38447350323,
+        38447114616,
+        38446129254,
+        38443639763,
+        38443530483
+      ],
+      "docs_window": {
+        "start": "2026-10-13T18:02:29Z",
+        "end": "2026-10-13T19:52:52Z"
+      },
+      "docs_success_count": 10,
+      "docs_comparable_success_count": 8,
+      "docs_deployed_success_count": 3,
+      "dashboard_window": {
+        "start": "2026-10-07T22:30:42Z",
+        "end": "2026-10-13T14:05:19Z"
+      },
+      "dashboard_success_count": 20,
+      "dashboard_comparable_success_count": 20,
+      "decision": "noop_existing_open_issue",
+      "related_open_issue": 16825,
+      "suggestion_fingerprint": "cache-upgraded-cao-activity-snapshots-across-repeated-cao-dashboard-builds",
+      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 91978d1d5c9f5f0913df7c754173d50f08fae4de. In the latest 20 completed docs.yml runs from 2026-10-13T18:02:29Z through 2026-10-13T19:52:52Z, 10 runs succeeded and 8 were comparable successful builds, with 3 successful deploy jobs; 2 additional successful schedule runs skipped the build because deployed docs and dashboard were current, 6 workflow_run callbacks were skipped, 3 builds failed, and 1 workflow_run callback ended action_required and was disclosed but excluded from timing comparisons. Trusted job metadata showed comparable docs workflow queue median/p90 0s/0s, execution median/p90 58s/91.1s, build-job median/p90 45s/51.9s, deploy-job median/p90 27s/28.6s, and freshness-only schedule-freshness median/p90 7s/7.8s. Step timings inside the 8 comparable build jobs showed Restore node_modules median/p90 5s/8.2s, Build documentation median/p90 12.5s/14.3s, Restore cached CAO Dashboard median/p90 1.5s/3s, and Upload Pages artifact median/p90 5.5s/7.3s; Install dependencies remained skipped in all 8 runs. Bounded logs for docs runs 38457519442 and 38456805249 confirmed repeated cache hits for the ~283 MB node_modules cache, the ~293 MB setup-node npm cache, and the ~26 MB central-agentic-ops-dashboard cache, with 72 pages built in 8.08s and Pagefind indexing in 240ms on the latest schedule deploy run. Like-for-like same-SHA samples remained flat on the consumer side: push/schedule pairs on SHAs 91978d1d5c9f5f0913df7c754173d50f08fae4de, 42c44fc0aaa363e54f1995a1236d46251aba166d, and 84723fff744e08c73292dc88ce4a7de20f493502 all restored the dashboard cache and kept Build documentation at 10-14s. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:05:19Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893s/1447.5s, Restore collected activity data median/p90 108.5s/177.3s, Upgrade fallback activity data median/p90 712s/1257.1s, Assemble Dashboard Language site median/p90 4s/8.1s, and Upload dashboard artifact median/p90 10s/13s. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed repeated restore-key hits for the same raw snapshot key cao-activity-v5-37765769970-1, repeated validation of a 785.1 MiB working database, repeated publication of a 105.6-107.1 MiB sqlite payload plus 510 shards totaling 463.1 MiB, and repeated rebuild costs with Upgrade fallback activity data durations of 982s, 1242s, and 1272s before the small 2-4s dashboard assembly step. The actionable recommendation remains the same as open issue #16825 (reuse upgraded CAO activity snapshots across repeated CAO Dashboard builds), so no new issue was created."
+    },
     {
       "evaluated_at": "2026-10-13T19:45:00Z",
       "worker_run_id": 38456389919,
@@ -1201,48 +1245,6 @@
       "dashboard_comparable_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. In the latest 20 completed docs.yml runs from 2026-10-12T23:22:26Z through 2026-10-13T03:42:58Z, 10 schedule runs succeeded but 0 successful runs reached a successful build job, so there were not 5 comparable successful docs samples. Trusted job metadata showed every successful docs run was a same-SHA freshness-only pass on 5263be0 with workflow queue median/p90 0.0s/0.0s, full workflow median/p90 15.5s/18.1s, execution median/p90 15.5s/18.1s, schedule-freshness median/p90 12.0s/14.0s, and freshness-step median/p90 8.5s/9.1s. A bounded log read from run 38342989666 confirmed the workflow summary still reports \"Documentation build skipped because the deployed docs and dashboard are current.\" The same docs window also contained 10 skipped workflow_run runs, all excluded from comparability. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T20:58:04Z through 2026-10-13T03:41:31Z contained 0 successful dashboard builds (19 skipped workflow_run runs and 1 push run that ended action_required), so no trusted dependency-cache, dashboard-generation, artifact-transfer, or Pages-packaging timings were available. Because the bounded evidence window still lacks 5 comparable successful runs, no evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T03:12:20Z",
-      "worker_run_id": 38340211143,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38339749801,
-        38339268694,
-        38336260561,
-        38336053619,
-        38334459112,
-        38334004784,
-        38333931988,
-        38333543594,
-        38330571927,
-        38330354668,
-        38325426873,
-        38324703451,
-        38324080226,
-        38323715765,
-        38322946641,
-        38321980105,
-        38321786109,
-        38321743710,
-        38320841010,
-        38320841392
-      ],
-      "docs_window": {
-        "start": "2026-10-12T23:11:46Z",
-        "end": "2026-10-13T03:02:02Z"
-      },
-      "docs_success_count": 8,
-      "docs_comparable_success_count": 0,
-      "docs_deployed_success_count": 0,
-      "dashboard_window": {
-        "start": "2026-10-12T20:48:18Z",
-        "end": "2026-10-13T03:01:58Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. In the latest 20 completed docs.yml runs from 2026-10-12T23:11:46Z through 2026-10-13T03:02:02Z, 8 schedule runs succeeded but 0 successful runs reached a successful build job, so there were not 5 comparable successful docs samples. Trusted job metadata showed all successful docs runs were same-SHA freshness-only passes on 5263be0, with workflow queue median/p90 0.0s/0.0s, full workflow median/p90 15.0s/18.0s, execution median/p90 15.0s/18.0s, and schedule-freshness median/p90 12.0s/14.0s; the latest sample log (run 38339268694) confirmed the build was skipped because the deployed docs and dashboard were current. The same 20-run window also contained 9 skipped workflow_run runs and 3 workflow_run runs that ended action_required. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T20:48:18Z through 2026-10-13T03:01:58Z contained 0 successful dashboard builds (19 skipped workflow_run runs and 1 action_required push run), so no trusted dependency-cache, dashboard-generation, or artifact-transfer measurements were available. No evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
