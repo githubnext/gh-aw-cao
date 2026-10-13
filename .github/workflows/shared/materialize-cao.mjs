@@ -5,7 +5,6 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
 
 const repository = 'githubnext/gh-aw-cao';
 const rootPackageNames = [`${repository}/control-plane`, repository];
@@ -239,36 +238,6 @@ function validateResources(sourceRoot, resources) {
   }
 }
 
-function bundleSetupPrompt(sourceRoot, staging) {
-  const require = createRequire(path.join(sourceRoot, 'package.json'));
-  const { buildSync } = require('esbuild');
-  const outfile = path.join(staging, 'activity/setup-prompt.mjs');
-  const { metafile } = buildSync({
-    absWorkingDir: sourceRoot,
-    entryPoints: [path.join(sourceRoot, 'activity/setup-prompt.mjs')],
-    outfile, bundle: true, format: 'esm', platform: 'node', target: 'node24',
-    legalComments: 'eof', metafile: true,
-    banner: { js: 'import { createRequire as createBundleRequire } from "node:module"; const require = createBundleRequire(import.meta.url);' },
-  });
-  const packages = new Map();
-  for (const file of Object.keys(metafile.inputs)) {
-    if (!file.includes('node_modules/')) continue;
-    let directory = path.dirname(path.resolve(sourceRoot, file));
-    while (!existsSync(path.join(directory, 'package.json'))) {
-      const parent = path.dirname(directory);
-      if (parent === directory) throw new Error(`Unable to find bundled dependency metadata: ${file}`);
-      directory = parent;
-    }
-    const metadata = JSON.parse(readFileSync(path.join(directory, 'package.json'), 'utf8'));
-    const license = readdirSync(directory).find((name) => /^licen[cs]e(?:\.[^.]+)?$/i.test(name));
-    if (!license) throw new Error(`Bundled setup dependency is missing its license: ${metadata.name}`);
-    packages.set(metadata.name, readFileSync(path.join(directory, license), 'utf8'));
-  }
-  const licenses = [...packages].sort(([left], [right]) => left.localeCompare(right, 'en'))
-    .map(([name, license]) => `/*!\nBundled dependency: ${name}\n${license.replaceAll('*/', '* /')}\n*/`);
-  writeFileSync(outfile, `${readFileSync(outfile, 'utf8')}\n${licenses.join('\n')}\n`);
-}
-
 export function packCaoRuntime(sourceRoot, destination, { tracked = false, prepare } = {}) {
   const manifestPath = path.join(sourceRoot, 'runtime', 'package.json');
   validateResources(sourceRoot, ['runtime/package.json']);
@@ -290,7 +259,6 @@ export function packCaoRuntime(sourceRoot, destination, { tracked = false, prepa
     if (tracked) copyTrackedResource(sourceRoot, staging, resource);
     else copyResource(sourceRoot, staging, resource);
   }
-  bundleSetupPrompt(sourceRoot, staging);
   cpSync(manifestPath, path.join(staging, 'package.json'));
   const npmArguments = [
     'pack', '--ignore-scripts', '--json', '--pack-destination', destination,

@@ -473,8 +473,9 @@ to the controlling terminal after verified materialization, while streamed
 bootstrap children otherwise retain null stdin.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
-`activity/setup-prompt.mjs` is a presentation adapter: Clack provides keyboard
-prompts, inline validation, and cancellation; terminals without styling
+`activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
+Node terminal primitives. It provides keyboard prompts, inline validation,
+cancellation, and restrained elapsed progress; terminals without styling
 support, `NO_COLOR`, `ACCESSIBLE`, and CI use plain numbered prompts without
 animation. The injectable prompt contract keeps authority decisions outside UI.
 Setup shows Repositories, Connections, and Review/apply, with default-No

@@ -63,13 +63,13 @@ test("importing the CAO entry point does not execute the CLI", async () => {
   assert.equal(stderr, "");
 });
 
-test("non-interactive commands do not load the prompt UI dependency", async (t) => {
+test("non-interactive commands do not load the prompt adapter", async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "cao-cli-loader-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const loader = path.join(directory, "reject-prompt-loader.mjs");
   await writeFile(loader, `
 export async function resolve(specifier, context, nextResolve) {
-  if (specifier === "@clack/prompts") throw new Error("prompt UI dependency loaded");
+  if (specifier.endsWith("setup-prompt.mjs")) throw new Error("prompt adapter loaded");
   return nextResolve(specifier, context);
 }
 `);

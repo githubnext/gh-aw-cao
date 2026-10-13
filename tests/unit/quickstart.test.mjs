@@ -3,8 +3,10 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { runCaoQuickstart } from '../../activity/quickstart.mjs';
 import { createQuickstartProgress } from '../../activity/setup-prompt.mjs';
+import { runTerminal } from '../helpers/terminal.mjs';
 
 function success(stdout = '') {
   return { status: 0, stdout, stderr: '' };
@@ -29,6 +31,36 @@ test('plain quickstart progress starts with the first operation', () => {
     '',
   ].join('\n'));
   assert.doesNotMatch(output, /Complete the CAO quickstart/);
+});
+
+test('styled quickstart progress renders immediately without a UI dependency', {
+  skip: process.platform === 'win32',
+}, async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'cao-quickstart-progress-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const driver = path.join(directory, 'driver.mjs');
+  await writeFile(driver, `
+import { createQuickstartProgress } from ${JSON.stringify(pathToFileURL(path.resolve('activity/setup-prompt.mjs')).href)};
+const progress = createQuickstartProgress();
+await progress.step('Installing Bug Bash campaign');
+progress.success('Bug Bash campaign installed');
+progress.finish('Dashboard ready');
+`);
+  const result = await runTerminal(process.execPath, [driver], {
+    cwd: directory,
+    env: {
+      ...process.env,
+      TERM: 'xterm-256color',
+      ACCESSIBLE: '',
+      NO_COLOR: '',
+      CI: '',
+    },
+  });
+
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Installing Bug Bash campaign · 0s elapsed/);
+  assert.match(result.stdout, /Bug Bash campaign installed \[0s\]/);
+  assert.match(result.stdout, /Dashboard ready/);
 });
 
 async function quickstartFixture(t, {

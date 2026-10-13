@@ -87,10 +87,10 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
   assert.ok(metadata.files["activity/setup-prompt.mjs"]);
   const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
-  for (const dependency of ["@clack/prompts", "@clack/core", "fast-string-width", "fast-string-truncated-width", "fast-wrap-ansi", "sisteransi"]) {
-    assert.ok(prompt.includes(`Bundled dependency: ${dependency}`), `${dependency} retains its license`);
-  }
-  assert.doesNotMatch(prompt, /from ['"]@clack\/|import\(['"]@clack\//);
+  const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
+  assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);
+  assert.match(prompt, /from 'node:readline'/);
+  assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
