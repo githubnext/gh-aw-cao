@@ -19,12 +19,12 @@ test('plain quickstart progress starts with the first operation', () => {
 
   progress.start();
   progress.step('Installing Bug Bash');
-  progress.success('Bug Bash installed');
+  progress.success('Bug Bash campaign installed');
   progress.finish('Dashboard ready');
 
   assert.equal(output, [
     '==> Installing Bug Bash',
-    'OK: Bug Bash installed',
+    'OK: Bug Bash campaign installed',
     'Dashboard ready',
     '',
   ].join('\n'));
@@ -32,7 +32,7 @@ test('plain quickstart progress starts with the first operation', () => {
 });
 
 async function quickstartFixture(t, {
-  status = '?? .github/workflows/cao.json\n?? cao.sh\n',
+  status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n',
   headStatus = 128,
   visibility = 'PRIVATE',
 } = {}) {
@@ -178,36 +178,41 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(policy['control-plane'].campaigns['bug-bash'].mode, 'review');
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run bug-bash.lock.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
-  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh'));
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh .gitattributes'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
   assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
-  assert.ok(progress.includes('Bug Bash installed in review mode for one public starter repository'));
+  assert.ok(progress.includes('Bug Bash campaign installed in review mode for one public starter repository'));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
   assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
   assert.ok(progress.some((message) => message.includes('up to 700 AI credits')));
 });
 
-test('quickstart refuses to commit unrelated files', async (t) => {
-  const fixture = await quickstartFixture(t, { status: '?? secrets.txt\n' });
-  const policyPath = await fixture.policyPath();
+for (const [name, status, message] of [
+  ['unrelated files', '?? secrets.txt\n', /refuses to commit unrelated path: secrets\.txt/],
+  ['descendants of owned root files', '?? .gitattributes/secret\n', /refuses to commit unrelated path: \.gitattributes\/secret/],
+]) {
+  test(`quickstart refuses to commit ${name}`, async (t) => {
+    const fixture = await quickstartFixture(t, { status });
+    const policyPath = await fixture.policyPath();
 
-  await assert.rejects(runCaoQuickstart({
-    policyPath,
-    execute: fixture.execute,
-    addCampaign: async () => {
-      const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-      policy['control-plane'].campaigns['bug-bash'] = {
-        orchestrator: 'bug-bash',
-        workers: { investigation: { workflow: 'bug-bash-investigation' } },
-      };
-      await writeFile(policyPath, JSON.stringify(policy));
-    },
-    configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
-    progress: {},
-    resolveRootRevision: () => 'a'.repeat(40),
-  }), /refuses to commit unrelated path: secrets\.txt/);
-  assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call[1] === 'commit'));
-});
+    await assert.rejects(runCaoQuickstart({
+      policyPath,
+      execute: fixture.execute,
+      addCampaign: async () => {
+        const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+        policy['control-plane'].campaigns['bug-bash'] = {
+          orchestrator: 'bug-bash',
+          workers: { investigation: { workflow: 'bug-bash-investigation' } },
+        };
+        await writeFile(policyPath, JSON.stringify(policy));
+      },
+      configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+      progress: {},
+      resolveRootRevision: () => 'a'.repeat(40),
+    }), message);
+    assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call[1] === 'commit'));
+  });
+}
 
 for (const [name, options, message] of [
   ['an existing commit', { headStatus: 0 }, /requires a new control repository with no commits/],

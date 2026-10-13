@@ -261,8 +261,8 @@ The quickstart MUST:
 - select repository-local workflow-token mode and require public GitHub Pages
   with GitHub Actions as its source;
 - refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
-  `dashboard/`, `bug-bash/`, and `cao.sh`, then create and push one commit on
-  the repository default branch;
+  `dashboard/`, `bug-bash/`, `cao.sh`, and gh-aw's root `.gitattributes`, then
+  create and push one commit on the repository default branch;
 - dispatch one Bug Bash orchestrator and at most one investigation worker,
   preserving a blocked or failed outcome rather than converting it to
   `no-finding`;

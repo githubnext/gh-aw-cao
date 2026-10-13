@@ -14,7 +14,8 @@ const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
 const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
 const ACTIVITY_WORKFLOW = 'cao-activity.yml';
 const DASHBOARD_WORKFLOW = 'cao-dashboard.yml';
-const QUICKSTART_PATHS = ['.github', 'activity', 'dashboard', 'bug-bash', 'cao.sh'];
+const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'bug-bash'];
+const QUICKSTART_PATHS = [...QUICKSTART_DIRECTORIES, 'cao.sh', '.gitattributes'];
 
 function resultText(result) {
   return `${result?.stdout ?? ''}\n${result?.stderr ?? ''}`.trim();
@@ -52,7 +53,7 @@ function repositoryPathFromStatus(line) {
 }
 
 function assertQuickstartPath(file) {
-  if (file === 'cao.sh' || QUICKSTART_PATHS.some((prefix) => prefix !== 'cao.sh' && file.startsWith(`${prefix}/`))) {
+  if (QUICKSTART_PATHS.includes(file) || QUICKSTART_DIRECTORIES.some((directory) => file.startsWith(`${directory}/`))) {
     return;
   }
   throw new Error(`Quickstart refuses to commit unrelated path: ${file}`);
@@ -225,7 +226,7 @@ async function executeCaoQuickstart({
     'validate-policy',
     policyPath,
   ]);
-  ui.success?.('Bug Bash installed in review mode for one public starter repository');
+  ui.success?.('Bug Bash campaign installed in review mode for one public starter repository');
 
   ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
