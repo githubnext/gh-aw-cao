@@ -47,7 +47,7 @@ function runJson(execute, command, arguments_) {
 }
 
 function wait(milliseconds) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function repositoryPathFromStatus(line) {
@@ -81,7 +81,7 @@ function listRuns(execute, repository, workflow, event, created) {
   return runs;
 }
 
-function findRun({
+async function findRun({
   execute,
   repository,
   workflow,
@@ -98,13 +98,13 @@ function findRun({
       .filter((run) => !titleIncludes || String(run.displayTitle || '').includes(titleIncludes))
       .sort((left, right) => Date.parse(right.createdAt || 0) - Date.parse(left.createdAt || 0));
     if (runs[0]) return runs[0];
-    if (attempt + 1 < attempts) pause(waitMilliseconds);
+    if (attempt + 1 < attempts) await pause(waitMilliseconds);
   }
   if (!required) return null;
   throw new Error(`Timed out waiting for ${workflow} to start`);
 }
 
-function watchRun(
+async function watchRun(
   execute,
   repository,
   runRecord,
@@ -117,12 +117,12 @@ function watchRun(
       '--json', 'databaseId,displayTitle,status,conclusion,createdAt,updatedAt,url',
     ]);
     if (current?.status === 'completed') return current;
-    if (attempt + 1 < attempts) pause(waitMilliseconds);
+    if (attempt + 1 < attempts) await pause(waitMilliseconds);
   }
   throw new Error(`Timed out waiting for workflow run ${runRecord.url || runRecord.databaseId}`);
 }
 
-function dispatchWorkflow({
+async function dispatchWorkflow({
   execute,
   repository,
   workflow,
@@ -141,7 +141,7 @@ function dispatchWorkflow({
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     result = execute('gh', arguments_, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     if (!result?.error && result?.status === 0) return;
-    if (attempt + 1 < attempts) pause(2000);
+    if (attempt + 1 < attempts) await pause(2000);
   }
   throw new Error(`gh ${arguments_.join(' ')} failed: ${commandFailureMessage(result, `exit ${result?.status ?? 'unknown'}`)}`);
 }
@@ -192,7 +192,7 @@ async function executeCaoQuickstart({
     throw new Error('Unable to resolve the signed-in GitHub user for the quickstart commit');
   }
 
-  ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
+  await ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
   await addCampaign(selectedCampaign, [], { policyPath, execute });
   const policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
@@ -228,7 +228,7 @@ async function executeCaoQuickstart({
   ]);
   ui.success?.('Bug Bash campaign installed in review mode for one public starter repository');
 
-  ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
+  await ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
   if (!pages.public) {
     throw new Error('CAO quickstart requires public GitHub Pages; use ./cao.sh setup for a private dashboard profile');
@@ -246,7 +246,7 @@ async function executeCaoQuickstart({
   if (status.length === 0) throw new Error('Quickstart produced no files to commit');
   status.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
 
-  ui.step?.('Committing and pushing the bounded control-plane configuration');
+  await ui.step?.('Committing and pushing the bounded control-plane configuration');
   run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS]);
   run(execute, 'git', ['diff', '--cached', '--check']);
   const branch = run(execute, 'gh', [
@@ -264,8 +264,8 @@ async function executeCaoQuickstart({
   ui.success?.(`Control plane pushed to ${controlRepository}`);
 
   const bugBashCreated = isoBefore(now);
-  ui.step?.('Running one bounded Bug Bash investigation in review mode (up to 700 AI credits)');
-  dispatchWorkflow({
+  await ui.step?.('Running one bounded Bug Bash investigation in review mode (up to 700 AI credits)');
+  await dispatchWorkflow({
     execute,
     repository: controlRepository,
     workflow: BUG_BASH_WORKFLOW,
@@ -279,7 +279,7 @@ async function executeCaoQuickstart({
       safe_output_mode: 'review',
     },
   });
-  const bugBashRun = findRun({
+  const bugBashRun = await findRun({
     execute,
     repository: controlRepository,
     workflow: BUG_BASH_WORKFLOW,
@@ -288,12 +288,12 @@ async function executeCaoQuickstart({
     titleIncludes: STARTER_REPOSITORY,
     pause,
   });
-  const bugBash = watchRun(execute, controlRepository, bugBashRun, { pause });
+  const bugBash = await watchRun(execute, controlRepository, bugBashRun, { pause });
   if (bugBash.conclusion === 'success') ui.success?.('Bug Bash orchestrator completed');
   else ui.warning?.(`Bug Bash orchestrator concluded ${bugBash.conclusion || bugBash.status}`);
 
-  ui.step?.('Waiting for one bounded Bug Bash investigation');
-  const workerRun = findRun({
+  await ui.step?.('Waiting for one bounded Bug Bash investigation');
+  const workerRun = await findRun({
     execute,
     repository: controlRepository,
     workflow: BUG_BASH_WORKER,
@@ -306,7 +306,7 @@ async function executeCaoQuickstart({
   });
   let worker;
   if (workerRun) {
-    worker = watchRun(execute, controlRepository, workerRun, { pause });
+    worker = await watchRun(execute, controlRepository, workerRun, { pause });
     if (worker.conclusion === 'success') ui.success?.('Bug Bash investigation completed');
     else ui.warning?.(`Bug Bash investigation concluded ${worker.conclusion || worker.status}`);
   } else {
@@ -315,8 +315,8 @@ async function executeCaoQuickstart({
 
   const requestId = `quickstart-${bugBash.databaseId}`;
   const activityCreated = isoBefore(now);
-  ui.step?.('Collecting the first CAO Activity snapshot');
-  dispatchWorkflow({
+  await ui.step?.('Collecting the first CAO Activity snapshot');
+  await dispatchWorkflow({
     execute,
     repository: controlRepository,
     workflow: ACTIVITY_WORKFLOW,
@@ -324,7 +324,7 @@ async function executeCaoQuickstart({
     pause,
     fields: { 'request-id': requestId },
   });
-  const activityRun = findRun({
+  const activityRun = await findRun({
     execute,
     repository: controlRepository,
     workflow: ACTIVITY_WORKFLOW,
@@ -333,7 +333,7 @@ async function executeCaoQuickstart({
     titleIncludes: requestId,
     pause,
   });
-  const activity = watchRun(execute, controlRepository, activityRun, { pause });
+  const activity = await watchRun(execute, controlRepository, activityRun, { pause });
   if (activity.conclusion !== 'success') {
     throw new Error(`CAO Activity concluded ${activity.conclusion || activity.status}: ${activity.url}`);
   }
@@ -347,8 +347,8 @@ async function executeCaoQuickstart({
   }
   ui.success?.(`Activity collected ${stats.summary.totalUniqueRuns} workflow runs`);
 
-  ui.step?.('Waiting for the data-bearing dashboard deployment');
-  const dashboardRun = findRun({
+  await ui.step?.('Waiting for the data-bearing dashboard deployment');
+  const dashboardRun = await findRun({
     execute,
     repository: controlRepository,
     workflow: DASHBOARD_WORKFLOW,
@@ -356,7 +356,7 @@ async function executeCaoQuickstart({
     created: activityCreated,
     pause,
   });
-  const dashboard = watchRun(execute, controlRepository, dashboardRun, { pause });
+  const dashboard = await watchRun(execute, controlRepository, dashboardRun, { pause });
   if (dashboard.conclusion !== 'success') {
     throw new Error(`CAO Dashboard concluded ${dashboard.conclusion || dashboard.status}: ${dashboard.url}`);
   }

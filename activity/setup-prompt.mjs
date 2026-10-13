@@ -113,10 +113,12 @@ export function createQuickstartProgress({
     };
     return {
       start() {},
-      step(message) {
+      async step(message) {
         clear();
         active = ui.spinner({ ...options, indicator: 'timer' });
         active.start(message);
+        // Clack schedules its first frame; yield before synchronous Git/GitHub work.
+        await new Promise((resolve) => setTimeout(resolve, 100));
       },
       success(message) {
         if (active) active.stop(message);

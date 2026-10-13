@@ -166,9 +166,15 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   const policyPath = await fixture.policyPath();
   const progress = [];
   let installedCampaign;
+  let activeBugBashPhaseRendered = false;
   const result = await runCaoQuickstart({
     policyPath,
-    execute: fixture.execute,
+    execute: (command, arguments_) => {
+      if (command === 'gh' && arguments_[0] === 'workflow' && arguments_[1] === 'run') {
+        assert.equal(activeBugBashPhaseRendered, true);
+      }
+      return fixture.execute(command, arguments_);
+    },
     addCampaign: async (campaign) => {
       installedCampaign = campaign;
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
@@ -184,7 +190,13 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
     }),
     progress: {
       start() {},
-      step: (message) => progress.push(message),
+      step: async (message) => {
+        progress.push(message);
+        if (message.startsWith('Running one bounded Bug Bash')) {
+          await Promise.resolve();
+          activeBugBashPhaseRendered = true;
+        }
+      },
       success: (message) => progress.push(message),
       warning: (message) => progress.push(message),
       finish: (message) => progress.push(message),
