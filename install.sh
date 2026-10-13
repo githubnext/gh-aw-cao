@@ -676,7 +676,7 @@ main() {
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
     note "Includes Activity, Dashboard, and shared control components."
     if ! run_quiet_command \
-      "Installing CAO control-plane components; this may take a minute..." \
+      "Installing CAO control-plane components; this can take a few minutes..." \
       "CAO control-plane components installed from $catalog_source." \
       gh aw add "$catalog_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -685,7 +685,7 @@ main() {
   elif [[ "$explicit_source" == true ]]; then
     note "Refreshes Activity, Dashboard, and shared control components."
     if ! run_quiet_command \
-      "Refreshing CAO control-plane components; this may take a minute..." \
+      "Refreshing CAO control-plane components; this can take a few minutes..." \
       "CAO control-plane components refreshed from $catalog_source." \
       gh aw add "$catalog_source" --force --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
