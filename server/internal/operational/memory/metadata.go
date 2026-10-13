@@ -5,7 +5,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var metadataLog = logger.New("cao:operational:memory:metadata")
 
 func (s *Store) AddMembers(ctx context.Context, name string, members ...string) (int64, error) {
 	if err := s.enter(ctx); err != nil {
@@ -202,6 +206,30 @@ func (s *Store) Clear(ctx context.Context, name string) error {
 	return nil
 }
 
+// ownerTransferDecision is what one repository's existing owner attribute
+// implies for TransferOwners: whether it holds a distinct, previously
+// enrolled installation that must lose membership, and if so the old
+// installation's logical set name.
+type ownerTransferDecision struct {
+	transfers bool
+	oldSet    string
+}
+
+// decideOwnerTransfer inspects one repository's previous owner attribute
+// value and reports whether its membership in the old installation's
+// logical set must be removed. It is a pure function extracted from
+// TransferOwners's loop so the previous-owner parsing and eligibility rules
+// (a blank or non-positive value, or one already matching installation) are
+// independently testable against constructed attribute values, without a
+// Store.
+func decideOwnerTransfer(installationPrefix, installationSuffix string, installation int64, previous string) ownerTransferDecision {
+	oldID, err := strconv.ParseInt(previous, 10, 64)
+	if err != nil || oldID <= 0 || oldID == installation {
+		return ownerTransferDecision{}
+	}
+	return ownerTransferDecision{transfers: true, oldSet: installationPrefix + previous + installationSuffix}
+}
+
 // TransferOwners changes ownership attributes and removes stale memberships.
 // Enrollment separately adds the new installation/global memberships. Prefix
 // and suffix construct a logical name, not a physical storage key.
@@ -234,14 +262,12 @@ func (s *Store) TransferOwners(ctx context.Context, owners, installationPrefix, 
 		if _, duplicate := changes[key]; duplicate {
 			continue
 		}
-		previous := s.attributes[owners][repo]
-		oldID, err := strconv.ParseInt(previous, 10, 64)
-		if err == nil && oldID > 0 && oldID != installation {
-			oldSet := installationPrefix + previous + installationSuffix
-			if err := s.name(oldSet); err != nil {
+		decision := decideOwnerTransfer(installationPrefix, installationSuffix, installation, s.attributes[owners][repo])
+		if decision.transfers {
+			if err := s.name(decision.oldSet); err != nil {
 				return 0, err
 			}
-			member := recordKey{"member", oldSet, repo}
+			member := recordKey{"member", decision.oldSet, repo}
 			changes[member] = 0
 			remove[member] = struct{}{}
 			transferred++
@@ -262,5 +288,6 @@ func (s *Store) TransferOwners(ctx context.Context, owners, installationPrefix, 
 			s.attributes[owners][strings.Clone(k.field)] = owner
 		}
 	}
+	metadataLog.Printf("owner transfer completed repositories=%d transferred=%d", len(repositories), transferred)
 	return transferred, nil
 }
