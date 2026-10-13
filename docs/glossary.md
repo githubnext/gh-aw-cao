@@ -42,6 +42,10 @@ Continuous centralized agentic work that pursues your goals for your enterprise 
 
 The consistent entities, identities, and relationships produced by applying the dashboard data model to published activity evidence. Canonical data is source-neutral derived state, not a new source of authority.
 
+## CAO runtime
+
+The curated production bundle of canonical Activity and Dashboard code that a control repository installs and executes. It is packaged from `runtime/package.json` by `npm run runtime:pack -- DESTINATION REVISION` (see `scripts/build-cao-runtime.mjs`) and published by `.github/workflows/cao-runtime.yml` as a verified prebuilt artifact: stable release assets for stable version references, or successful Actions artifacts retained for 90 days for main/SHA references. The trusted materializer verifies GitHub signed build provenance for the catalog, signer workflow, and source and signer SHAs on a GitHub-hosted runner before replacing an installed repository's bounded canonical destinations, failing closed without source or npm fallback when an artifact is missing or unverifiable. Normal installation needs Node.js and authenticated GitHub CLI artifact/attestation access, not npm; explicit local source materialization remains a developer path using npm. See [Repository Layout and Installation](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md).
+
 ## CAO validation
 
 The read-only `./cao.sh validate` command that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
