@@ -1,7 +1,49 @@
 {
-  "source_sha": "a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2",
-  "next_category": "Astro documentation generation",
+  "source_sha": "cf42f81b0d259054c70c400ddee4d321fd8b5c87",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-13T11:07:00Z",
+      "worker_run_id": 38386982559,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38386990137,
+        38386507579,
+        38385730238,
+        38384061593,
+        38383687059,
+        38381179728,
+        38380727519,
+        38380271571,
+        38379730110,
+        38378183836,
+        38377967674,
+        38375876934,
+        38374713740,
+        38372948086,
+        38371476283,
+        38370801432,
+        38367695852,
+        38367093197,
+        38366126749,
+        38365190500
+      ],
+      "docs_window": {
+        "start": "2026-10-13T07:49:52Z",
+        "end": "2026-10-13T10:58:30Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 1,
+      "docs_deployed_success_count": 0,
+      "dashboard_window": {
+        "start": "2026-10-13T03:41:20Z",
+        "end": "2026-10-13T10:58:17Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_comparable_success_count": 0,
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA cf42f81b0d259054c70c400ddee4d321fd8b5c87. In the latest 20 completed docs.yml runs from 2026-10-13T07:49:52Z through 2026-10-13T10:58:30Z, 11 runs succeeded but only 1 reached a successful build job (38386507579) and 0 reached a successful deploy job, so fewer than 5 comparable successful docs samples were available. Trusted job metadata showed the 10 successful schedule runs on a71b0e0 were freshness-only skips with schedule-freshness median/p90 10.5s/12.1s and successful workflow median/p90 16.0s/17.0s. The lone comparable docs build on cf42f81 took 36s with deploy skipped because it was push-triggered; a bounded log read confirmed a node_modules cache hit restored ~283 MB before npm run docs:build, which itself completed in about 10s, and the cached CAO Dashboard restore step also hit. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T03:41:20Z through 2026-10-13T10:58:17Z contained 0 successful dashboard builds and 1 push failure (38353436671); trusted step metadata for that failure showed a 158s Restore collected activity data step and a 1s Upgrade fallback activity data failure before Assemble Dashboard Language site could start. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard runs, no evidence-backed recommendation is actionable for Astro documentation generation in this cycle."
+    },
     {
       "evaluated_at": "2026-10-13T09:38:01Z",
       "worker_run_id": 38377194307,
@@ -1206,48 +1248,6 @@
       "dashboard_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"reusable dashboard generation\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T15:48:35Z through 2026-10-12T18:32:06Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 24.5s/26.1s, and schedule-freshness median/p90 was 19.5s/21.0s. Trusted job metadata for every successful docs run showed build and deploy skipped; a bounded log read of run 38291512976 confirmed the freshness-only summary path reporting that the deployed docs and dashboard are current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T11:01:07Z through 2026-10-12T18:29:37Z contained 0 successful dashboard builds and 20 skipped runs, including 19 workflow_run skips and 1 push-triggered skip outside the dashboard workflow's eligible default-branch conditions. Because the bounded sample contains 0 comparable successful deployed docs runs and 0 successful dashboard builds, no safe evidence-backed reusable-dashboard recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T10:32:20Z",
-      "worker_run_id": 38383470143,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38383687059,
-        38381179728,
-        38380727519,
-        38380271571,
-        38379730110,
-        38378183836,
-        38377967674,
-        38375876934,
-        38374713740,
-        38372948086,
-        38371476283,
-        38370801432,
-        38367695852,
-        38367093197,
-        38366126749,
-        38365190500,
-        38361915714,
-        38361499803,
-        38358813042,
-        38358518368
-      ],
-      "docs_window": {
-        "start": "2026-10-13T06:45:24Z",
-        "end": "2026-10-13T10:29:35Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 0,
-      "docs_deployed_success_count": 0,
-      "dashboard_window": {
-        "start": "2026-10-13T02:32:16Z",
-        "end": "2026-10-13T10:07:17Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T06:45:24Z through 2026-10-13T10:29:35Z, 11 runs succeeded but all 11 were schedule freshness-only skips, so 0 successful runs reached a successful build job and fewer than 5 comparable successful docs builds were available. Trusted job metadata showed workflow queue median/p90 0.0s/0.0s, successful workflow median/p90 14.0s/17.0s, and successful schedule-freshness median/p90 10.0s/11.0s. A bounded log read for docs run 38383687059 confirmed the summary \"Documentation build skipped because the deployed docs and dashboard are current.\" The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T02:32:16Z through 2026-10-13T10:07:17Z contained 0 successful dashboard builds and 2 push failures: run 38353436671 spent 158s restoring a 2.17 GiB activity cache, 2s in npm ci for dashboard/site, then failed in Upgrade fallback activity data with ERR_MODULE_NOT_FOUND for @clack/prompts before any dashboard artifact assembly or upload, and run 38337349456 was a 3h17m non-main outlier with no retained build-job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard build samples, no evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
