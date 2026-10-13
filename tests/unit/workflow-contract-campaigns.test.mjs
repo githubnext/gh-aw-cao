@@ -335,7 +335,7 @@ test("root campaign provides default control-repository agent context", () => {
   assert.equal(rootManifest.resources.length, 5);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
   assert.deepEqual(rootManifest.skills, [
-    ".github/skills/agentic-workflows",
+    "skills/agentic-workflows",
     "skills/setup-cao",
     "skills/add-cao-campaign",
     "skills/create-cao-campaign",
@@ -361,10 +361,18 @@ test("root campaign provides default control-repository agent context", () => {
       assert.equal(existsSync(join(dirname(file), match[1])), true, `${file} links to missing ${match[1]}`);
     }
   }
-  for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
+  for (const skill of [
+    "agentic-workflows",
+    "setup-cao",
+    "add-cao-campaign",
+    "create-cao-campaign",
+    "debug-cao",
+    "analyze-cao",
+    "cao-cli",
+  ]) {
     const portableSkill = join(root, "skills", skill);
     assert.equal(lstatSync(portableSkill).isDirectory(), true);
-    assert.equal(existsSync(join(root, ".github", "skills", skill)), false);
+    assert.equal(existsSync(join(root, ".github", "skills", skill, "SKILL.md")), false);
     assert.match(
       readFileSync(join(portableSkill, "SKILL.md"), "utf8"),
       new RegExp(`^---\\r?\\nname: ${skill}\\r?\\n`),
@@ -578,7 +586,7 @@ test("compiled workflow locks are not ignored", () => {
 
 test("Agent customizations preserve deterministic core campaign boundaries", () => {
   const agent = readFileSync(join(root, ".github", "agents", "agentic-workflows.md"), "utf8");
-  const agenticWorkflowsSkill = readFileSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"), "utf8");
+  const agenticWorkflowsSkill = portableSkill("agentic-workflows");
   const campaignSkill = portableSkill("create-cao-campaign");
   const workflowContract = readFileSync(
     join(root, "skills", "create-cao-campaign", "references", "workflow-contract.md"),
@@ -590,11 +598,16 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   );
   const repositoryInstructions = readFileSync(join(root, ".github", "cao", "instructions.md"), "utf8");
 
-  assert.match(agent, /\.github\/aw\/instructions\.md/);
+  assert.match(agent, /installed `agentic-workflows` skill/);
+  assert.doesNotMatch(agent, /github\/gh-aw\/(?:blob|raw|tree)\/|raw\.githubusercontent\.com\/github\/gh-aw/);
   assert.match(agenticWorkflowsSkill, /\.github\/aw\/instructions\.md/);
-  assert.match(agenticWorkflowsSkill, /github\/gh-aw@v0\.91\.5/);
-  assert.doesNotMatch(agent, /github\/gh-aw\/main/);
-  assert.doesNotMatch(agenticWorkflowsSkill, /github\/gh-aw\/main/);
+  assert.match(
+    agenticWorkflowsSkill,
+    /https:\/\/github\.com\/github\/gh-aw\/blob\/main\/\.github\/skills\/agentic-workflows\/SKILL\.md/,
+  );
+  assert.match(agenticWorkflowsSkill, /Do not copy or reconstruct its\s+routing table locally/);
+  assert.match(agenticWorkflowsSkill, /policy-pinned `gh aw` version/);
+  assert.doesNotMatch(agenticWorkflowsSkill, /github\/gh-aw@v\d|github\/gh-aw\/blob\/v\d/);
   assert.match(agenticWorkflowsSkill, /## Deterministic boundary/);
   assert.match(campaignSkill, /installed `agentic-workflows` skill/);
   assert.match(campaignSkill, /## Deterministic Add-on Exception/);

@@ -174,17 +174,22 @@ pre-existing resources outside its owned destination set, including separately
 installed plugin resources and skills.
 The installer MUST add the repository-root `aw.yml` package. That manifest MUST
 explicitly compose only the Activity, dashboard, and validation workflows, the
-five shared control-plane resources, six portable control-repository skills,
-one Agentic Workflows router skill, one Agentic Workflows agent, and the gh-aw
-project settings. The router skill and agent MUST load behavior-defining gh-aw
-guidance from the supported pinned gh-aw version rather than a mutable branch,
-and shipped CAO skills MUST delegate parsing, mutation, compilation, querying,
-and verification to existing deterministic `gh aw`, `cao`, and repository
+five shared control-plane resources, seven portable control-repository skills
+(including the Agentic Workflows router), one Agentic Workflows agent, and the
+gh-aw project settings. The router skill MUST load current routing guidance
+through the canonical upstream Agentic Workflows skill on `main` instead of
+copying its routing table. The custom agent MUST delegate to the installed
+router skill instead of maintaining a second routing table.
+If canonical guidance cannot be loaded, the router MUST fail explicitly rather
+than use stale remembered guidance. Version-sensitive workflow behavior MUST
+remain constrained by the control repository's policy-pinned `gh aw` CLI, and
+shipped CAO skills MUST delegate parsing, mutation, compilation, querying, and
+verification to existing deterministic `gh aw`, `cao`, and repository
 validation commands. It MUST declare only
 `.github/agents/agentic-workflows.md` in its nonempty `agents` list so agent
 auto-discovery cannot install repository-only agents. Because gh-aw v0.91.5
 auto-scans root `skills/` even when `skills` entries are explicit, that
-directory MUST contain only the six portable skills declared by the root
+directory MUST contain only the seven portable skills declared by the root
 manifest. Additional package manifests MUST live only in campaign or component
 directories.
 

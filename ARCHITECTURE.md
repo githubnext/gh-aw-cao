@@ -446,16 +446,20 @@ repository-only dashboard authoring skills. Materialization preserves
 pre-existing plugin resources outside its owned runtime destinations. The
 installer adds the repository-root `aw.yml` package. That manifest explicitly
 composes only the Activity, dashboard, and validation workflows, five shared
-control-plane resources, six portable control-repository skills, one Agentic
-Workflows router skill, one Agentic Workflows agent, and the gh-aw project
-settings. The router loads only task-relevant guidance pinned to the supported
-gh-aw version and delegates deterministic operations to `gh aw`, `cao`, and
-repository validation commands. The nonempty `agents`
+control-plane resources, seven portable control-repository skills (including
+the Agentic Workflows router), one Agentic Workflows agent, and the gh-aw
+project settings. The portable router is a thin adapter to the current
+canonical upstream Agentic Workflows skill on `main`, rather than a copied
+routing table, and delegates deterministic operations to `gh aw`, `cao`, and
+repository validation commands. Version-sensitive behavior remains constrained
+by the control repository's policy-pinned `gh aw` CLI. The custom agent
+delegates to that installed skill instead of maintaining a second router. The
+nonempty `agents`
 declaration prevents agent auto-discovery from installing repository-only
 agents. gh-aw v0.91.5 still auto-scans the root `skills/` directory after
-resolving explicit skill declarations, so that directory contains only the six
-skills intended for control repositories and a contract test locks its exact
-inventory.
+resolving explicit skill declarations, so that directory contains only the
+seven skills intended for control repositories and a contract test locks its
+exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
 resources; they do not import the root catalog package. `cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
