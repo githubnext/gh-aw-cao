@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "id": "firewall-evidence-readiness",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "Firewall evidence readiness for the dependency snapshot workflow in githubnext/gh-aw-cao",
+    "intent": "Determine whether the dependency snapshot workflow is activating, producing reviewable firewall evidence for network-touching runs, and surfacing any missing-evidence exceptions before the operator trusts its outbound access.",
+    "activationConditions": [
+      "A repository operator enables the standalone dependency snapshot workflow on githubnext/gh-aw-cao.",
+      "A workflow run for .github/workflows/dependency-snapshot.yml is observed in the selected horizon.",
+      "At least one firewall observation for that workflow reports firewall-expected true, showing that the run needed outbound-access evidence."
+    ],
+    "requiredEffects": [
+      "Each network-touching run publishes firewall observations with run provenance and destination decisions for the same workflow.",
+      "Runs that expected firewall evidence but did not publish it remain visible as actionable exceptions rather than disappearing from the queue.",
+      "The workflow's direct attainment metric remains separate from raw run counts, run conclusions, and destination decisions."
+    ],
+    "noopConditions": [
+      "No dependency snapshot run is observed in the selected horizon.",
+      "Observed runs publish only firewall-expected false observations, so the workflow had no network-touching opportunity that required evidence review.",
+      "The workflow does not publish a matured attainment observation for the selected horizon; the dashboard must report missing metric evidence rather than fabricate attainment."
+    ],
+    "successConditions": [
+      "The operator can verify that the workflow is activating and can inspect bounded firewall evidence for the same workflow and repository.",
+      "Missing-evidence exceptions are listed with run provenance and destination context so the operator knows which run to investigate.",
+      "The dashboard preserves the native direct metric values or nulls exactly as published by gh-aw."
+    ],
+    "uncertainties": [
+      "A successful workflow run does not by itself prove firewall evidence was collected and reviewable.",
+      "A blocked or allowed destination decision is not the same thing as attained operational value.",
+      "A missing attainment observation must remain null rather than becoming zero."
+    ]
+  },
+  "operationalValue": {
+    "upstream": "gh-aw",
+    "stableOpportunity": "One terminal run of .github/workflows/dependency-snapshot.yml with firewall-expected true in githubnext/gh-aw-cao.",
+    "repositories": [
+      "githubnext/gh-aw-cao"
+    ],
+    "acceptedRepositoryEvidence": [
+      "The workflow run and conclusion for the same repository, workflow, and run identity.",
+      "Firewall observations or explicit evidence-state observations attributed to that run.",
+      "The direct gh-aw attainment metric for that same run under firewall-evidence-attainment."
+    ],
+    "orderedMetrics": [
+      {
+        "id": "firewall-evidence-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
+    ],
+    "directMetric": {
+      "id": "firewall-evidence-attainment",
+      "range": "[0,1]",
+      "opportunityBinding": "Bind each hypothetical run to the same repository, workflow, and run identity; do not merge multiple runs into one opportunity.",
+      "maturation": "A run matures when gh-aw publishes a terminal attainment observation together with firewall evidence or an explicit missing-evidence observation for that same run.",
+      "zero": "Use 0 when a matured run expected firewall evidence but published no available evidence for operator review.",
+      "missingEvidence": "Use null when the run has not yet published a matured attainment observation or when the firewall evidence state for that run is unavailable."
+    },
+    "baseline": {
+      "kind": "attainment-only",
+      "value": null,
+      "cutoff": null
+    },
+    "preservation": "Preserve the upstream metric identity, ordering, native value or null, unit, and direction; missing evidence is not zero and run counts are not substitutes for the direct metric."
+  },
+  "logicalSources": {
+    "workflows": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "workflow-name": "Dependency snapshot",
+          "workflow-role": "standalone",
+          "workflow-active": "true",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-01T00:00:00Z",
+          "repository-link": {
+            "relation": "repository",
+            "href": "https://github.com/githubnext/gh-aw-cao",
+            "label": "githubnext/gh-aw-cao"
+          },
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/workflows/dependency-snapshot.yml",
+            "label": "Dependency snapshot"
+          }
+        }
+      ]
+    },
+    "runs": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9401",
+          "started-at": "2026-09-02T01:00:00Z",
+          "ended-at": "2026-09-02T01:08:00Z",
+          "run-status": "completed",
+          "run-conclusion": "success",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9401",
+            "label": "Run 9401"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9402",
+          "started-at": "2026-09-03T01:00:00Z",
+          "ended-at": "2026-09-03T01:05:00Z",
+          "run-status": "completed",
+          "run-conclusion": "failure",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9402",
+            "label": "Run 9402"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9403",
+          "started-at": "2026-09-04T01:00:00Z",
+          "ended-at": "2026-09-04T01:09:00Z",
+          "run-status": "completed",
+          "run-conclusion": "success",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9403",
+            "label": "Run 9403"
+          }
+        }
+      ]
+    },
+    "firewall-observations": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9401",
+          "firewall-observation": "fw-9401-1",
+          "run-conclusion": "success",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-02T01:06:00Z",
+          "firewall-expected": true,
+          "firewall-enabled": true,
+          "firewall-evidence-available": true,
+          "evidence-state": "complete",
+          "domain": "api.github.com",
+          "host": "api.github.com",
+          "port": 443,
+          "protocol": "https",
+          "decision": "allow",
+          "request-count": 12,
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9401",
+            "label": "Run 9401"
+          },
+          "evidence-link": {
+            "relation": "evidence",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9401#firewall",
+            "label": "Firewall evidence for Run 9401"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9402",
+          "firewall-observation": "fw-9402-1",
+          "run-conclusion": "failure",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-03T01:04:00Z",
+          "firewall-expected": true,
+          "firewall-enabled": true,
+          "firewall-evidence-available": false,
+          "evidence-state": "unavailable",
+          "domain": "objects.githubusercontent.com",
+          "host": "objects.githubusercontent.com",
+          "port": 443,
+          "protocol": "https",
+          "decision": "blocked",
+          "request-count": 1,
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9402",
+            "label": "Run 9402"
+          },
+          "evidence-link": {
+            "relation": "evidence",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9402#firewall",
+            "label": "Firewall evidence for Run 9402"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9403",
+          "firewall-observation": "fw-9403-1",
+          "run-conclusion": "success",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-04T01:07:00Z",
+          "firewall-expected": true,
+          "firewall-enabled": true,
+          "firewall-evidence-available": true,
+          "evidence-state": "complete",
+          "domain": "github.com",
+          "host": "github.com",
+          "port": 443,
+          "protocol": "https",
+          "decision": "allow",
+          "request-count": 4,
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9403",
+            "label": "Run 9403"
+          },
+          "evidence-link": {
+            "relation": "evidence",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9403#firewall",
+            "label": "Firewall evidence for Run 9403"
+          }
+        }
+      ]
+    },
+    "grader-observations": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9401",
+          "grader": "firewall-evidence-attainment",
+          "value": 1,
+          "status": "pass",
+          "role": "direct",
+          "unit": "ratio",
+          "direction": "higher_is_better",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-02T01:08:00Z",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9401",
+            "label": "Run 9401"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9402",
+          "grader": "firewall-evidence-attainment",
+          "value": 0,
+          "status": "fail",
+          "role": "direct",
+          "unit": "ratio",
+          "direction": "higher_is_better",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-03T01:05:00Z",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9402",
+            "label": "Run 9402"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dependency-snapshot.yml",
+          "run": "9403",
+          "grader": "firewall-evidence-attainment",
+          "value": 1,
+          "status": "pass",
+          "role": "direct",
+          "unit": "ratio",
+          "direction": "higher_is_better",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-04T01:09:00Z",
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9403",
+            "label": "Run 9403"
+          }
+        }
+      ]
+    }
+  },
+  "dashboard": "firewall-evidence-readiness.dashboard.yml"
+}

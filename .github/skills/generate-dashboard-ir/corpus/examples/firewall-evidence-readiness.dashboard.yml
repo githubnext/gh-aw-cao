@@ -1,0 +1,212 @@
+language-version: "0.1.0"
+dashboard:
+  id: firewall-evidence-readiness
+  title: Firewall evidence readiness
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+      workflows:
+        - .github/workflows/dependency-snapshot.yml
+    time:
+      range: 30d
+  queries:
+    - name: workflow-firewall-attainment
+      subject: Native firewall evidence attainment observations for the dependency snapshot workflow.
+      objective: Scope the direct attainment metric to the synthetic workflow without mixing in other graders or workflows.
+      acceptance: Return only observations for the selected workflow and the firewall-evidence-attainment metric.
+      from: grader-observations
+      filter:
+        predicates:
+          - field: workflow
+            equals: ".github/workflows/dependency-snapshot.yml"
+          - field: grader
+            equals: firewall-evidence-attainment
+      select:
+        - field: observed-at
+        - field: value
+        - field: run
+        - field: run-link
+      order-by:
+        - field: observed-at
+          direction: asc
+      limit: 100
+    - name: workflow-runs
+      subject: Recent dependency snapshot runs for the synthetic workflow.
+      objective: Scope activation evidence to only the workflow under review.
+      acceptance: Return only runs for the selected workflow in deterministic time order.
+      from: runs
+      filter:
+        predicates:
+          - field: workflow
+            equals: ".github/workflows/dependency-snapshot.yml"
+      select:
+        - field: started-at
+        - field: run
+        - field: run-link
+      order-by:
+        - field: started-at
+          direction: asc
+      limit: 100
+    - name: workflow-firewall-decisions
+      subject: Firewall observations for expected outbound-access evidence on the dependency snapshot workflow.
+      objective: Scope firewall execution evidence to the selected workflow and only the runs that expected outbound-access review.
+      acceptance: Return only expected firewall observations for the selected workflow.
+      from: firewall-observations
+      filter:
+        predicates:
+          - field: workflow
+            equals: ".github/workflows/dependency-snapshot.yml"
+          - field: firewall-expected
+            equals: true
+      select:
+        - field: firewall-observation
+        - field: decision
+        - field: run
+        - field: run-conclusion
+        - field: domain
+        - field: observed-at
+        - field: run-link
+      order-by:
+        - field: observed-at
+          direction: asc
+      limit: 100
+    - name: workflow-missing-firewall-evidence
+      subject: Expected firewall observations for the dependency snapshot workflow that did not publish available evidence.
+      objective: Surface a bounded queue of missing-evidence exceptions for operator follow-up.
+      acceptance: Return only missing-evidence observations for the selected workflow, newest first.
+      from: firewall-observations
+      filter:
+        predicates:
+          - field: workflow
+            equals: ".github/workflows/dependency-snapshot.yml"
+          - field: firewall-expected
+            equals: true
+          - field: firewall-evidence-available
+            equals: false
+      select:
+        - field: run
+        - field: run-conclusion
+        - field: domain
+        - field: decision
+        - field: observed-at
+        - field: run-link
+      order-by:
+        - field: observed-at
+          direction: desc
+        - field: run
+          direction: asc
+      limit: 20
+  pages:
+    - id: firewall-evidence-readiness
+      kind: custom
+      title: Firewall evidence readiness
+      description: Shows whether the dependency snapshot workflow is activating, emitting firewall decisions, surfacing missing evidence, and preserving its native attainment metric.
+      sections:
+        - id: firewall-summary
+          title: Firewall summary
+          description: Summary of recent execution, destination decisions, attainment, and missing evidence for the workflow.
+          layout: full
+          views:
+            - firewall-attainment
+            - firewall-activation-trend
+            - firewall-decision-distribution
+            - missing-firewall-evidence
+      views:
+        - id: firewall-attainment
+          subject: Native firewall evidence attainment metric for the selected workflow.
+          objective: Show whether recent runs preserved expected firewall evidence for operator review.
+          acceptance: Display the native attainment values without normalization or fabricated zeros.
+          title: Firewall evidence attainment
+          description: Mean direct attainment for runs of the dependency snapshot workflow in the selected horizon.
+          data:
+            source: workflow-firewall-attainment
+          mark: metric
+          layout: third
+          disclosure: essential
+          encoding:
+            value:
+              field: value
+              type: quantitative
+              aggregate: mean
+              title: Mean attainment
+        - id: firewall-activation-trend
+          subject: Recent dependency snapshot runs for the selected workflow.
+          objective: Show whether the workflow is activating on recent opportunities.
+          acceptance: Count only runs of the selected workflow and preserve temporal order.
+          title: Activation trend
+          description: Daily run counts show whether the dependency snapshot workflow is executing.
+          data:
+            source: workflow-runs
+          mark: chart
+          chart: line
+          layout: third
+          disclosure: essential
+          encoding:
+            x:
+              field: started-at
+              type: temporal
+              time-unit: day
+              title: Started
+            y:
+              field: run
+              type: quantitative
+              aggregate: distinct-count
+              title: Runs
+        - id: firewall-decision-distribution
+          subject: Destination decisions observed for the selected workflow.
+          objective: Show whether recent network-touching runs produced reviewable firewall decisions.
+          acceptance: Count only firewall observations for the selected workflow that expected outbound-access evidence.
+          title: Decision distribution
+          description: Firewall observations grouped by destination decision for the dependency snapshot workflow.
+          data:
+            source: workflow-firewall-decisions
+          mark: chart
+          chart: pie
+          layout: third
+          disclosure: essential
+          encoding:
+            x:
+              field: decision
+              type: nominal
+              title: Decision
+            y:
+              field: firewall-observation
+              type: quantitative
+              aggregate: count
+              title: Observations
+        - id: missing-firewall-evidence
+          subject: Runs of the selected workflow that expected firewall evidence but did not publish it.
+          objective: Give the operator a bounded queue of missing-evidence exceptions to investigate.
+          acceptance: Show only missing-evidence observations for the selected workflow, newest first, with run provenance and destination context.
+          title: Missing firewall evidence
+          description: Review queue for dependency snapshot runs that expected firewall evidence but did not publish it.
+          data:
+            source: workflow-missing-firewall-evidence
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No missing firewall evidence was observed in the selected horizon.
+          encoding:
+            href:
+              field: run-link
+              type: nominal
+            columns:
+              - field: run
+                type: nominal
+                title: Run
+                display: run-link
+              - field: run-conclusion
+                type: ordinal
+                title: Run conclusion
+                display: status
+              - field: domain
+                type: nominal
+                title: Domain
+              - field: decision
+                type: nominal
+                title: Decision
+              - field: observed-at
+                type: temporal
+                title: Observed
