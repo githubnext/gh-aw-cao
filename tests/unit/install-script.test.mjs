@@ -261,6 +261,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
   const env = {
     ...inheritedEnv,
     PATH: `${bin}${path.delimiter}${systemPath}`,
+    CI: "",
     ...(process.platform === "win32" ? { PATHEXT: ".CMD;.COM;.EXE;.BAT" } : {}),
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(mockFetch).href}`].filter(Boolean).join(" "),
     FAKE_CATALOG: catalog,
