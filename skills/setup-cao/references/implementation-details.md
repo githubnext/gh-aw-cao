@@ -39,8 +39,8 @@ untouched; review them separately rather than deleting client-owned resources
 as part of a runtime update.
 
 Guided setup separates Repositories, Connections, and Review/apply. Arrow-key
-prompts validate input inline; `TERM=dumb`, `NO_COLOR`, `ACCESSIBLE`, and CI
-select plain numbered prompts without animation.
+prompts validate input inline; terminals without styling support, `NO_COLOR`,
+`ACCESSIBLE`, and CI select plain numbered prompts without animation.
 Confirmation defaults to No. After confirmation, the Pages source is verified
 without changing visibility. Public dashboards require separate default-No
 consent before credentials are configured. Declining or cancelling that consent

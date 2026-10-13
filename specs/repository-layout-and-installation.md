@@ -197,15 +197,17 @@ repository with that name, and MUST surface lookup failures rather than treating
 them as availability. A Git checkout without remotes MUST be connected in place;
 a directory without a Git checkout MUST receive a new clone. The terminal prompt
 MUST provide keyboard-driven selection and MUST fall back to numbered plain text
-when `ACCESSIBLE` or `NO_COLOR` is set or `TERM=dumb`. It MUST create a private
-repository and refuse an existing clone directory. After a successful
+when `ACCESSIBLE` or `NO_COLOR` is set or the terminal reports no styling
+support. It MUST create a private repository and refuse an existing clone
+directory. After a successful
 installation without `--setup` or `--quickstart`, it MUST finish without
 another prompt and print the setup command for later. `--setup` MUST open
 guided setup directly on the controlling terminal without allowing streamed
 children to consume installer source from stdin. Informational status
 lines SHOULD remain aligned with completed steps while using muted styling to
 distinguish existing state from completed work. Animated presentation MUST be
-disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or `TERM=dumb`.
+disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports
+no styling support.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the

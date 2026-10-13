@@ -3,7 +3,7 @@
 set -euo pipefail
 
 info() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
+  if [[ -t 1 ]] && styled_prompt_enabled; then
     printf '\033[33m…\033[0m %s\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -11,7 +11,7 @@ info() {
 }
 
 note() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
+  if [[ -t 1 ]] && styled_prompt_enabled; then
     printf '\033[36m•\033[0m \033[2m%s\033[0m\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -19,7 +19,7 @@ note() {
 }
 
 success() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
+  if [[ -t 1 ]] && styled_prompt_enabled; then
     printf '\033[32m✓\033[0m %s\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -27,7 +27,7 @@ success() {
 }
 
 next_step() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
+  if [[ -t 1 ]] && styled_prompt_enabled; then
     printf '\033[35m→\033[0m %s\n' "$1"
   else
     printf '%s\n' "$1"

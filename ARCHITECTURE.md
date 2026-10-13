@@ -462,9 +462,9 @@ bootstrap children otherwise retain null stdin.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a presentation adapter: Clack provides keyboard
-prompts, inline validation, and cancellation; `TERM=dumb`, `NO_COLOR`,
-`ACCESSIBLE`, and CI use plain numbered prompts without animation. The
-injectable prompt contract keeps authority decisions outside UI.
+prompts, inline validation, and cancellation; terminals without styling
+support, `NO_COLOR`, `ACCESSIBLE`, and CI use plain numbered prompts without
+animation. The injectable prompt contract keeps authority decisions outside UI.
 Setup shows Repositories, Connections, and Review/apply, with default-No
 confirmation before Pages, credential, or policy changes. The Pages source is
 verified without changing visibility, with separate default-No consent to a
