@@ -8,6 +8,8 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const repository = 'githubnext/gh-aw-cao';
+const rootPackageNames = [`${repository}/control-plane`, repository];
+const runtimeWaitArray = new Int32Array(new SharedArrayBuffer(4));
 const rootResources = [
   'activity',
   'dashboard',
@@ -62,8 +64,12 @@ function resolvedRevision(record) {
 }
 
 function exactRecordFor(records, campaign) {
-  const name = campaign === 'root' ? repository : `${repository}/${campaign}`;
-  return records.find((candidate) => candidate.name === name)?.record;
+  if (campaign === 'root') {
+    return rootPackageNames
+      .map((name) => records.find((candidate) => candidate.name === name)?.record)
+      .find(Boolean);
+  }
+  return records.find((candidate) => candidate.name === `${repository}/${campaign}`)?.record;
 }
 
 function recordFor(records, campaign) {
@@ -71,8 +77,8 @@ function recordFor(records, campaign) {
   const exact = exactRecordFor(records, campaign);
   if (exact) return exact;
   if (campaign === 'activity' || campaign === 'dashboard') {
-    const root = records.find((candidate) => candidate.name === repository);
-    if (root) return root.record;
+    const root = exactRecordFor(records, 'root');
+    if (root) return root;
   }
   throw new Error(`No installed CAO package record found for ${name}`);
 }
@@ -383,7 +389,11 @@ function githubApi(endpoint) {
   return JSON.parse(gh(['api', '--hostname', 'github.com', '--paginate', '--slurp', endpoint]));
 }
 
-export function downloadCaoRuntimeArtifact(record, directory) {
+export function downloadCaoRuntimeArtifact(record, directory, {
+  attempts = 60,
+  intervalMs = 5_000,
+  wait = (milliseconds) => Atomics.wait(runtimeWaitArray, 0, 0, milliseconds),
+} = {}) {
   const revision = resolvedRevision(record);
   const name = `cao-runtime-${revision}`;
   mkdirSync(directory, { recursive: true });
@@ -391,21 +401,36 @@ export function downloadCaoRuntimeArtifact(record, directory) {
   if (/^v\d+\.\d+\.\d+$/.test(ref ?? '')) {
     gh(['release', 'download', ref, '--repo', `github.com/${repository}`, '--pattern', `${name}.tgz`, '--dir', directory]);
   } else {
-    const runs = githubApi(`repos/${repository}/actions/workflows/cao-runtime.yml/runs?head_sha=${revision}&status=success&per_page=100`)
-      .flatMap((page) => page.workflow_runs);
     let run;
-    for (const candidate of runs) {
-      if (candidate.head_sha !== revision || candidate.conclusion !== 'success'
-        || !['push', 'release'].includes(candidate.event) || !Number.isSafeInteger(candidate.id)) continue;
-      const artifacts = githubApi(`repos/${repository}/actions/runs/${candidate.id}/artifacts?per_page=100`)
-        .flatMap((page) => page.artifacts);
-      if (artifacts.some((artifact) => artifact.name === name && artifact.expired === false)) {
-        run = candidate;
-        break;
+    for (let attempt = 0; attempt <= attempts; attempt += 1) {
+      const runs = githubApi(`repos/${repository}/actions/workflows/cao-runtime.yml/runs?head_sha=${revision}&per_page=100`)
+        .flatMap((page) => page.workflow_runs)
+        .filter((candidate) => candidate.head_sha === revision
+          && ['push', 'release'].includes(candidate.event)
+          && Number.isSafeInteger(candidate.id));
+      for (const candidate of runs.filter((item) => item.conclusion === 'success')) {
+        const artifacts = githubApi(`repos/${repository}/actions/runs/${candidate.id}/artifacts?per_page=100`)
+          .flatMap((page) => page.artifacts);
+        if (artifacts.some((artifact) => artifact.name === name && artifact.expired === false)) {
+          run = candidate;
+          break;
+        }
       }
-    }
-    if (!run) {
-      throw new Error(`No successful, unexpired prebuilt CAO runtime is available for ${revision}. Wait for the CAO runtime build or select a published release; source/npm fallback is disabled.`);
+      if (run) break;
+      const active = runs.some((candidate) =>
+        ['queued', 'in_progress', 'pending', 'requested', 'waiting'].includes(candidate.status));
+      if (!active) {
+        const failed = runs.find((candidate) =>
+          candidate.status === 'completed' && candidate.conclusion && candidate.conclusion !== 'success');
+        if (failed) {
+          throw new Error(`The CAO runtime build for ${revision} completed with ${failed.conclusion}. Use a revision with a successful runtime build.`);
+        }
+        throw new Error(`No successful, unexpired prebuilt CAO runtime is available for ${revision}. Wait for the CAO runtime build or select a published release; source/npm fallback is disabled.`);
+      }
+      if (attempt === attempts) {
+        throw new Error(`The CAO runtime build for ${revision} is still running after ${Math.ceil((attempts * intervalMs) / 60_000)} minutes. Rerun the installer after the build completes.`);
+      }
+      wait(intervalMs);
     }
     gh(['run', 'download', String(run.id), '--repo', `github.com/${repository}`, '--name', name, '--dir', directory]);
   }
@@ -559,17 +584,22 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [command, argument = 'root', sourceRoot] = process.argv.slice(2);
-  if (command === 'materialize') {
-    const result = await materializeCao(argument);
-    console.log(`Materialized CAO ${result.campaign} ${result.revision}: ${result.resources.join(', ')}`);
-  } else if (command === 'materialize-source') {
-    if (!sourceRoot) throw new Error('materialize-source requires a source directory');
-    const resources = materializeCaoFromSource(argument, path.resolve(sourceRoot), process.cwd());
-    console.log(`Materialized CAO ${argument} from ${path.resolve(sourceRoot)}: ${resources.join(', ')}`);
-  } else if (command === 'verify') {
-    verifyCaoRuntime(argument);
-  } else {
-    throw new Error('Usage: materialize-cao.mjs <materialize CAMPAIGN|materialize-source CAMPAIGN SOURCE|verify BUNDLE>');
+  try {
+    const [command, argument = 'root', sourceRoot] = process.argv.slice(2);
+    if (command === 'materialize') {
+      const result = await materializeCao(argument);
+      console.log(`Materialized CAO ${result.campaign} ${result.revision}: ${result.resources.join(', ')}`);
+    } else if (command === 'materialize-source') {
+      if (!sourceRoot) throw new Error('materialize-source requires a source directory');
+      const resources = materializeCaoFromSource(argument, path.resolve(sourceRoot), process.cwd());
+      console.log(`Materialized CAO ${argument} from ${path.resolve(sourceRoot)}: ${resources.join(', ')}`);
+    } else if (command === 'verify') {
+      verifyCaoRuntime(argument);
+    } else {
+      throw new Error('Usage: materialize-cao.mjs <materialize CAMPAIGN|materialize-source CAMPAIGN SOURCE|verify BUNDLE>');
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
   }
 }

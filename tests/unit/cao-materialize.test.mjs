@@ -316,7 +316,7 @@ test("root materialization preserves exact focused package revisions", () => {
   const activityRevision = "2".repeat(40);
   const plans = planCaoMaterialization([
     {
-      name: "githubnext/gh-aw-cao",
+      name: "githubnext/gh-aw-cao/control-plane",
       record: { resolvedCommit: rootRevision },
     },
     {
@@ -356,15 +356,20 @@ test("root installation provides every local action used by its installed workfl
   const workflows = [];
   const visit = (manifestPath) => {
     const manifest = parse(readFileSync(path.join(sourceRoot, manifestPath), "utf8"));
+    const manifestDirectory = path.posix.dirname(manifestPath);
     for (const { destination } of manifest.resources ?? []) installed.add(destination);
     for (const include of manifest.includes ?? []) {
-      if (path.posix.basename(include) === "aw.yml") visit(include);
-      else workflows.push(include);
+      const source = typeof include === "string" ? include : include.source;
+      const resolved = source.startsWith(".github/")
+        ? source
+        : path.posix.normalize(path.posix.join(manifestDirectory, source));
+      if (path.posix.basename(resolved) === "aw.yml") visit(resolved);
+      else workflows.push(resolved);
     }
   };
   visit("aw.yml");
   const [{ resources }] = planCaoMaterialization([{
-    name: "githubnext/gh-aw-cao",
+    name: "githubnext/gh-aw-cao/control-plane",
     record: { resolvedCommit: "1".repeat(40) },
   }], "root");
   const provided = (file) =>

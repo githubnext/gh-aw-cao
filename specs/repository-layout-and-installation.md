@@ -168,6 +168,12 @@ repository-only dashboard authoring skills. Those resources belong to the
 separate Agent Plugin or catalog authoring installation. Root materialization
 MUST preserve pre-existing resources outside its owned destination set,
 including separately installed plugin resources and skills.
+The installer MUST add the nested `control-plane/aw.yml` package rather than
+the repository-root catalog package. The nested package MUST install only the
+Activity, dashboard, and validation workflows, the five shared control-plane
+resources, and the gh-aw project settings. The root manifest MUST compose the
+same control-plane manifests without making root-package skill or agent
+auto-discovery part of a control-repository installation.
 
 For each selected owned destination, materialization MUST remove the existing
 destination and copy the complete selected production bundle. Operational
@@ -179,7 +185,10 @@ destination set.
 ### 4.3 Lifecycle entry points
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw
-has resolved the root campaign record. `cao add` MUST materialize a selected
+has resolved the control-plane package record. For a main or SHA source, the
+materializer MUST wait at most five minutes when the exact runtime build is
+queued or running, then fail closed if it does not complete successfully; it
+MUST NOT substitute another revision or build from source. `cao add` MUST materialize a selected
 non-root campaign before reading its declaration. `cao add` MUST reject the
 root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging

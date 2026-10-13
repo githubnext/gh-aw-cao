@@ -18,6 +18,8 @@ const catalog = path.resolve(".");
 const installScript = path.join(catalog, "install.sh");
 const installerSource = await readFile(installScript, "utf8");
 const manifest = parse(await readFile(path.join(catalog, "aw.yml"), "utf8"));
+const controlPlaneManifest = parse(await readFile(path.join(catalog, ".github/workflows/aw.yml"), "utf8"));
+const instructionManifest = parse(await readFile(path.join(catalog, ".github/aw/aw.yml"), "utf8"));
 const supportedGh = "v2.68.0";
 const olderGh = "v2.67.0";
 const supportedGhAw = manifest["min-version"];
@@ -33,8 +35,19 @@ const curlCommand = "curl --fail --show-error --location";
 const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
-  ...manifest.resources.map(({ source, destination }) => ({ source, destination })),
-  ...[".github/workflows/cao-activity.yml", ".github/workflows/cao-dashboard.yml"]
+  ...controlPlaneManifest.resources.map(({ source, destination }) => ({
+    source: path.normalize(path.join(".github/workflows", source)),
+    destination,
+  })),
+  ...instructionManifest.resources.map(({ source, destination }) => ({
+    source: path.normalize(path.join(".github/aw", source)),
+    destination,
+  })),
+  {
+    source: "control-plane/.github/workflows/aw.json",
+    destination: ".github/workflows/aw.json",
+  },
+  ...[".github/workflows/cao-activity.yml", ".github/workflows/cao-dashboard.yml", ".github/workflows/cao-validate.yml"]
     .map((file) => ({ source: file, destination: file })),
 ];
 
@@ -142,9 +155,11 @@ if [[ "\${1:-} \${2:-}" == "repo create" ]]; then
     mkdir "\${3#*/}"
     git -C "\${3#*/}" init --quiet
     git -C "\${3#*/}" remote add origin "https://github.com/\${3}.git"
+    printf 'Created repository %s on github.com\\n  https://github.com/%s\\n' "\${3}" "\${3}"
   elif [[ "$*" == "repo create $FAKE_CONTROL_REPOSITORY --private --source=. --remote=origin" ]]; then
     echo "create-private-current" >> "$FAKE_COMMAND_LOG"
     git remote add origin "https://github.com/$FAKE_CONTROL_REPOSITORY.git"
+    printf 'Created repository %s on github.com\\n  https://github.com/%s\\n' "$FAKE_CONTROL_REPOSITORY" "$FAKE_CONTROL_REPOSITORY"
   else
     exit 2
   fi
@@ -190,6 +205,7 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
+  [[ "\${3:-}" == githubnext/gh-aw-cao/control-plane* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
   stdin_bytes="$(wc -c | tr -d ' ')"
   entry=add
   [[ "\${4:-}" != "--force" ]] || entry=add-force
@@ -208,7 +224,7 @@ ${addedFiles.map(({ source, destination }) => `  mkdir -p "$(dirname '${destinat
   cp "$FAKE_CATALOG/${source}" '${destination}'`).join("\n")}
   mkdir -p .github/aw/packages
   cat > .github/aw/packages/githubnext-gh-aw-cao-c6b3479204cc.json <<'EOF'
-{"package":"githubnext/gh-aw-cao","source":"githubnext/gh-aw-cao@${revision}","resolvedCommit":"${revision}"}
+{"package":"githubnext/gh-aw-cao/control-plane","source":"githubnext/gh-aw-cao/control-plane@${revision}","resolvedCommit":"${revision}"}
 EOF
   exit 0
 fi
@@ -524,7 +540,7 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   const result = await streamInstaller(consumer, env);
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
-  assert.match(result.stdout, /Installs 3 workflows \(activity, dashboard, and validation\) plus shared control plane resources\./);
+  assert.match(result.stdout, /Installs 3 workflows, 5 shared control plane resources, and project settings\./);
   assert.match(result.stdout, /Installing CAO control plane components from/);
   assert.match(result.stdout, /Materializing the CAO runtime/);
   assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
@@ -721,6 +737,8 @@ test("install.sh creates only an explicitly requested private repository and ins
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const result = await streamInstaller(consumer, env, ["--create-repo", repository]);
   assert.equal(await log(), "create-private\nadd\n");
+  assert.match(result.stdout, new RegExp(`Created private control repository ${repository.replace("/", "\\/")}\\.`));
+  assert.doesNotMatch(result.stdout, new RegExp(`https://github\\.com/${repository.replace("/", "\\/")}`));
   assert.match(result.stdout, /Open the new checkout: cd control/);
   await assertNothingInstalled(consumer);
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);

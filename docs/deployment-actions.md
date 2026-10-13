@@ -53,7 +53,10 @@ For more information, see [Configure authentication](authentication.md).
 
 ## Deploying the dashboard
 
-1. Install the dashboard. You can install the root campaign, which includes the dashboard, or install only the Activity and dashboard campaigns. Unpinned package coordinates resolve the latest release automatically.
+1. Install the dashboard. The supported CAO installer includes it through the
+   narrow control-plane package. Advanced users can install only the Activity
+   and dashboard components; unpinned package coordinates resolve the latest
+   release automatically.
 
    ```bash
    gh aw add githubnext/gh-aw-cao/activity

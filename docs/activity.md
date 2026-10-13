@@ -102,5 +102,5 @@ restoring this snapshot, so they can query the normalized database directly.
 ## Installation
 
 `activity/aw.yml` installs the Activity and maintenance workflows plus the
-shared JSONL parser. The root CAO campaign installs Activity and the dashboard
-ingestion runtime automatically.
+shared JSONL parser. The installer-managed CAO control-plane package installs
+Activity and the dashboard ingestion runtime automatically.

@@ -493,6 +493,7 @@ main() {
   local required_gh="v2.68.0"
   local required_gh_aw="v0.91.5"
   local catalog_source="githubnext/gh-aw-cao"
+  local control_plane_source
   local explicit_source=false
   local setup=false
   local quickstart=false
@@ -640,6 +641,15 @@ main() {
   if [[ -d "$catalog_source" ]]; then
     catalog_source="$(cd "$catalog_source" && pwd)"
   fi
+  if [[ -d "$catalog_source" ]]; then
+    control_plane_source="$catalog_source/control-plane/aw.yml"
+  elif [[ "$catalog_source" =~ ^([^@]+)@(.+)$ ]]; then
+    control_plane_source="${BASH_REMATCH[1]}/control-plane@${BASH_REMATCH[2]}"
+  elif [[ "$catalog_source" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    control_plane_source="$catalog_source/control-plane"
+  else
+    control_plane_source="$catalog_source"
+  fi
   if [[ "$catalog_source" == "githubnext/gh-aw-cao" && -f aw.yml ]]; then
     manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
     if [[ -n "$manifest_required_gh_aw" ]]; then
@@ -658,14 +668,21 @@ main() {
   fi
 
   if [[ -n "$create_repository" ]]; then
-    info "Creating private control repository $create_repository..."
     if [[ "$create_repository_in_place" == true ]]; then
-      if ! gh repo create "$create_repository" --private --source=. --remote=origin; then
+      if ! run_quiet_command \
+        "Creating private control repository $create_repository..." \
+        "Created private control repository $create_repository." \
+        gh repo create "$create_repository" --private --source=. --remote=origin; then
+        [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
         printf 'Repository creation failed. No CAO files were written; check whether %s was created before retrying.\n' "$create_repository" >&2
         return 1
       fi
     else
-      if ! gh repo create "$create_repository" --private --clone; then
+      if ! run_quiet_command \
+        "Creating private control repository $create_repository..." \
+        "Created private control repository $create_repository." \
+        gh repo create "$create_repository" --private --clone; then
+        [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
         printf 'Creation or cloning failed. If %s was created, clone it with gh repo clone and rerun the installer inside that checkout without --create-repo.\n' "$create_repository" >&2
         return 1
       fi
@@ -676,20 +693,20 @@ main() {
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
-    note "Installs 3 workflows (activity, dashboard, and validation) plus shared control plane resources."
+    note "Installs 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \
       "Installing CAO control plane components from $catalog_source..." \
       "CAO control plane components installed from $catalog_source." \
-      gh aw add "$catalog_source" --no-security-scanner; then
+      gh aw add "$control_plane_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
   elif [[ "$explicit_source" == true ]]; then
-    note "Refreshes 3 workflows (activity, dashboard, and validation) plus shared control plane resources."
+    note "Refreshes 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \
       "Refreshing CAO control plane components from $catalog_source..." \
       "CAO control plane components refreshed from $catalog_source." \
-      gh aw add "$catalog_source" --force --no-security-scanner; then
+      gh aw add "$control_plane_source" --force --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi

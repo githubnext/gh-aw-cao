@@ -86,9 +86,9 @@ Setup creates one atomic control-plane revision:
 3. Declare the installed campaign and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, campaign records, and policy together, then push before running the campaign.
 
-The Bash installer installs the root CAO campaign and creates the consumer-owned policy. The campaign provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Set Up CAO](setup-quickstarts.md) to bootstrap the repository and configure its exact scope interactively.
+The Bash installer installs the narrow CAO control-plane package and creates the consumer-owned policy. The package provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Set Up CAO](setup-quickstarts.md) to bootstrap the repository and configure its exact scope interactively.
 
-Root campaign installation does not declare a campaign in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
+Control-plane installation does not declare an operational campaign in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
 The [Configuration Reference](configuration.md) defines every policy field. The phase that uses each group is:
 
@@ -106,7 +106,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 
 | Reason | Check marked ❌ | Configuration or setup to check |
 | --- | --- | --- |
-| Cannot read or execute CAO runtime | Runtime revision | Verify that the root CAO campaign installed `.github/workflows/shared/control.mjs` and `policy.mjs` and that both exist at the workflow revision. |
+| Cannot read or execute CAO runtime | Runtime revision | Verify that the CAO control-plane package installed `.github/workflows/shared/control.mjs` and `policy.mjs` and that both exist at the workflow revision. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
 | `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |

@@ -158,8 +158,9 @@ quickstart commit.
 The runtime must match the exact revision resolved by gh-aw and pass signed
 provenance, inventory, and checksum verification. Stable versions use release
 assets; main and commit references use successful Actions artifacts retained
-for 90 days. Installation fails closed if the matching runtime is missing,
-expired, or unverifiable.
+for 90 days. If the exact runtime build is already queued or running, the
+installer waits for it for up to five minutes. Installation fails closed if the
+matching runtime is missing, failed, expired, timed out, or unverifiable.
 
 If quickstart stops after creating the repository, follow the reported recovery
 guidance from that checkout. It never reports a dashboard URL until the

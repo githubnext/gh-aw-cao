@@ -44,13 +44,24 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     const packedRoot = path.join(unpacked, "package");
     validateCaoRuntimeArtifact(packedRoot, revision);
     const manifest = parse(readFileSync(path.join(catalog, "aw.yml"), "utf8"));
-    for (const { source, destination } of manifest.resources) {
-      const target = path.join(installed, destination);
-      mkdirSync(path.dirname(target), { recursive: true });
-      cpSync(path.join(catalog, source), target);
+    const controlPlaneManifest = parse(readFileSync(path.join(catalog, ".github/workflows/aw.yml"), "utf8"));
+    const instructionManifest = parse(readFileSync(path.join(catalog, ".github/aw/aw.yml"), "utf8"));
+    for (const [base, resources] of [
+      [".github/workflows", controlPlaneManifest.resources],
+      [".github/aw", instructionManifest.resources],
+    ]) {
+      for (const { source, destination } of resources) {
+        const target = path.join(installed, destination);
+        mkdirSync(path.dirname(target), { recursive: true });
+        cpSync(path.join(catalog, base, source), target);
+      }
     }
+    cpSync(
+      path.join(catalog, "control-plane/.github/workflows/aw.json"),
+      path.join(installed, ".github/workflows/aw.json"),
+    );
     const [{ resources }] = planCaoMaterialization([{
-      name: "githubnext/gh-aw-cao", record: { resolvedCommit: revision },
+      name: "githubnext/gh-aw-cao/control-plane", record: { resolvedCommit: revision },
     }], "root");
     for (const resource of resources) {
       const target = path.join(installed, resource);

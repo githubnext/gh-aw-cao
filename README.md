@@ -42,7 +42,8 @@ keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
 Normal installation downloads a prebuilt archive for gh-aw's exact resolved
 SHA and verifies signed build provenance before replacing runtime files; it
 does not run npm. Stable versions use release assets, while main/SHA installs
-use successful Actions artifacts retained for 90 days. Node.js 24+ and an
+use successful Actions artifacts retained for 90 days and wait up to five
+minutes for an already active exact-SHA runtime build. Node.js 24+ and an
 authenticated GitHub CLI with artifact and attestation access are still
 required. Dashboard builds retain their existing production npm dependencies.
 

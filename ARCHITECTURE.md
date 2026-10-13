@@ -425,10 +425,12 @@ assets; main/SHA sources use successful, unexpired Actions artifacts retained
 for 90 days. The operator materializer verifies GitHub signed provenance bound
 to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
 runner before extraction, then checks the inventory, checksums and ownership.
-Missing or unverifiable artifacts fail closed, without source/npm packing or
-latest-release fallback. Explicit local source materialization remains a
-developer path using npm. Normal operator installation needs Node.js and
-authenticated GitHub CLI artifact/attestation access, not npm.
+When the exact main/SHA runtime build is queued or running, materialization
+waits for it for at most five minutes; failed, missing, expired, timed-out, or
+unverifiable artifacts fail closed without source/npm packing or latest-release
+fallback. Explicit local source materialization remains a developer path using
+npm. Normal operator installation needs Node.js and authenticated GitHub CLI
+artifact/attestation access, not npm.
 The materializer installs only owned canonical destinations from the archive
 and does not replace consumer-owned root package metadata. Installed control
 repositories keep the
@@ -442,6 +444,11 @@ The Agent Plugin is a separate distribution: the control-plane installer does
 not copy its manifest, portable skills, Copilot extension, bundled specification
 documents, or repository-only dashboard authoring skills. Materialization
 preserves pre-existing plugin resources outside its owned runtime destinations.
+The installer adds the nested `control-plane/aw.yml` package rather than the
+repository-root catalog package. That package composes only the Activity,
+dashboard, and validation workflows, five shared control-plane resources, and
+the gh-aw project settings. This avoids gh-aw's root-package skill and agent
+auto-discovery while the root `aw.yml` remains the public catalog composition.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh

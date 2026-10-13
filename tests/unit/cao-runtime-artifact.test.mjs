@@ -24,19 +24,29 @@ function unpack(t) {
   return path.join(destination, "package");
 }
 
-function fakeGithub(t, { expired = false, missing = false, rejection = false } = {}) {
+function fakeGithub(t, {
+  expired = false,
+  missing = false,
+  pendingBeforeSuccess = 0,
+  rejection = false,
+} = {}) {
   const root = mkdtempSync(path.join(temporary, "github-"));
   const log = path.join(root, "commands.jsonl");
   const fake = path.join(root, "gh");
-  const script = `import { appendFileSync, cpSync } from "node:fs";
+  const script = `import { appendFileSync, cpSync, existsSync, readFileSync } from "node:fs";
 const args = process.argv.slice(2);
+const previous = existsSync(${JSON.stringify(log)}) ? readFileSync(${JSON.stringify(log)}, "utf8").trim().split("\\n").filter(Boolean).map(JSON.parse) : [];
+const workflowQueries = previous.filter((entry) => entry[0] === "api" && entry.at(-1).includes("/actions/workflows/")).length;
 appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + "\\n");
 if (args[0] === "api" && args.at(-1).includes("/actions/workflows/")) {
-  console.log(JSON.stringify([{ workflow_runs: ${missing ? "[]" : JSON.stringify([
-    { id: 7, head_sha: "2".repeat(40), conclusion: "success", event: "push" },
-    { id: 8, head_sha: revision, conclusion: "success", event: "pull_request" },
-    { id: 9, head_sha: revision, conclusion: "success", event: "push" },
-  ])} }]));
+  const pending = workflowQueries < ${pendingBeforeSuccess};
+  console.log(JSON.stringify([{ workflow_runs: ${missing ? "[]" : `pending ? ${JSON.stringify([
+    { id: 9, head_sha: revision, conclusion: null, event: "push", status: "in_progress" },
+  ])} : ${JSON.stringify([
+    { id: 7, head_sha: "2".repeat(40), conclusion: "success", event: "push", status: "completed" },
+    { id: 8, head_sha: revision, conclusion: "success", event: "pull_request", status: "completed" },
+    { id: 9, head_sha: revision, conclusion: "success", event: "push", status: "completed" },
+  ])}`} }]));
 } else if (args[0] === "api") {
   console.log(JSON.stringify([{ artifacts: [{ name: "cao-runtime-${revision}", expired: ${expired} }] }]));
 } else if (args[0] === "run" || args[0] === "release") {
@@ -146,6 +156,21 @@ for (const [description, ref, downloadCommand] of [
     assert.ok(verification.includes("--deny-self-hosted-runners"));
   });
 }
+
+test("main/SHA acquisition waits for the active exact runtime build", (t) => {
+  const { root, commands } = fakeGithub(t, { pendingBeforeSuccess: 2 });
+  const waits = [];
+  const archive = downloadCaoRuntimeArtifact({
+    source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+  }, path.join(root, "download"), {
+    attempts: 2,
+    intervalMs: 5_000,
+    wait: (milliseconds) => waits.push(milliseconds),
+  });
+  assert.deepEqual(readFileSync(archive), readFileSync(artifact.archive));
+  assert.deepEqual(waits, [5_000, 5_000]);
+  assert.equal(commands().filter((args) => args[0] === "api" && args.at(-1).includes("/actions/workflows/")).length, 3);
+});
 
 for (const [description, options] of [
   ["missing", { missing: true }],
