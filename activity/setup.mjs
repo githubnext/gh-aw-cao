@@ -230,12 +230,17 @@ export function removeDashboardPages({ repository, execute = spawnSync }) {
 export async function setupCaoControlPlane({
   input = process.stdin,
   output = process.stderr,
+  environment = process.env,
   prompt,
   execute = spawnSync,
   policyPath = DEFAULT_POLICY_PATH,
   setupAuthentication,
   UsageError = Error,
 } = {}) {
+  if (prompt === undefined && (!input.isTTY || !output.isTTY || environment.CI)) {
+    output.write('Guided setup skipped: no interactive terminal or CI is set. Defaulting to No; policy, credentials, and Pages settings are unchanged. Run ./cao.sh setup from a terminal outside CI to configure connections.\n');
+    return { command: 'setup', cancelled: true, reason: 'non-interactive' };
+  }
   if (typeof setupAuthentication !== 'function') {
     throw new Error('CAO setup authentication handler is unavailable');
   }

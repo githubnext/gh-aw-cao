@@ -133,6 +133,18 @@ Guided setup installs no campaign and runs no workflow; it never commits or
 pushes. Bare installation also stops without a prompt and prints
 `Next: ./cao.sh setup`.
 
+In a headless environment (no interactive terminal, or `CI` set), `--setup`
+and `./cao.sh setup` take the default **No** without asking for input. The
+installer completes the bare installation; guided setup reports that it was
+skipped and leaves policy, credentials, and Pages unchanged. Fresh policy
+authorizes only the control repository, uses its workflow token for Activity,
+and declares no operational campaigns. Existing policy is preserved.
+
+Headless creation must name the exact repository with `--create-repo OWNER/NAME`;
+the installer never chooses an owner or repository on your behalf. An outdated
+installed gh-aw fails with manual-upgrade guidance rather than prompting,
+upgrading without consent, or reporting installation success.
+
 Start with **Bug Bash** after a manual setup when you want to review and commit
 each stage yourself:
 

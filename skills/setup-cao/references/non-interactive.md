@@ -1,7 +1,27 @@
 # Non-interactive setup
 
-Load this reference only when `./cao.sh setup` cannot run in an interactive
-terminal. This is a constrained fallback, not a second setup flow.
+Load this reference when no user is available, `CI` is set, or `./cao.sh setup`
+cannot run in an interactive terminal. This is a constrained fallback, not a
+second setup flow.
+
+## No user available
+
+Take the safe default without asking questions or waiting for input. An
+explicitly requested bare installation in the selected control checkout may
+use `install.sh` (with or without `--setup`); guided setup defaults to **No**
+and reports a successful skip. Fresh policy scopes Activity to only that
+control repository using its workflow token and leaves campaigns empty.
+Preserve an existing policy; do not infer authority to narrow or expand it.
+
+Do not create a repository without an explicitly authorized exact coordinate,
+configure credentials or Pages, open a browser, commit, push, install or enable
+campaigns, or dispatch workflows. Missing prerequisites, unclear repository
+selection, and incompatible existing scope/authentication are blockers, not
+permission to guess or broaden access. An outdated installed gh-aw must be
+upgraded explicitly before retrying. Report the skipped configuration and any
+blocker plainly.
+
+## Explicit broader setup with a user available
 
 1. Run `gh auth status` and resolve the control repository with `gh repo view`.
 2. Ask for the exact comma-separated `OWNER/REPOSITORY` read scope.

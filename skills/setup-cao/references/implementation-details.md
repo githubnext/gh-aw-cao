@@ -13,7 +13,10 @@ clones a private repository, refusing an existing clone directory. Bare
 installation stops and prints `./cao.sh setup`; `--setup` opens guided setup
 directly on the controlling terminal. `--quickstart` creates a new private
 control repository and delegates to the explicit end-to-end quickstart after
-verified installation. Other streamed children retain null stdin.
+verified installation. Without a terminal or when `CI` is set, guided setup
+defaults to No and skips configuration successfully; repository creation
+requires an explicit exact coordinate, and an outdated installed gh-aw fails
+with manual-upgrade guidance. Other streamed children retain null stdin.
 
 The producer uses the dedicated `runtime/package.json` `files` field and
 `npm pack --ignore-scripts`, bundles the YAML parser and Clack prompt adapter
@@ -40,7 +43,7 @@ as part of a runtime update.
 
 Guided setup separates Repositories, Connections, and Review/apply. Arrow-key
 prompts validate input inline; terminals without styling support, `NO_COLOR`,
-`ACCESSIBLE`, and CI select plain numbered prompts without animation.
+and `ACCESSIBLE` select plain numbered prompts without animation.
 Confirmation defaults to No. After confirmation, the Pages source is verified
 without changing visibility. Public dashboards require separate default-No
 consent before credentials are configured. Declining or cancelling that consent
@@ -48,8 +51,8 @@ removes only a newly created site where possible; existing sites remain with
 restriction or unpublication guidance. Policy is saved atomically afterward.
 Failures report partial external effects honestly; rerun setup after fixing
 the reported problem. The default CLI output gives next actions; `setup --json`
-keeps structured stdout. Setup requires a terminal and never commits, pushes,
-installs a campaign, or dispatches a workflow.
+keeps structured stdout. Setup never commits, pushes, installs a campaign, or
+dispatches a workflow.
 
 `activity/quickstart.mjs` is a separate, explicit effectful flow. It requires an
 uncommitted private control repository with no existing commit, installs Bug

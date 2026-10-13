@@ -38,6 +38,15 @@ default-No confirmation and never installs a campaign, dispatches a workflow,
 commits, or pushes. Install the Agent Plugin separately when you want the
 portable CAO skills.
 
+Without an interactive terminal, or when `CI` is set, `--setup` and
+`./cao.sh setup` default to **No** and skip guided configuration successfully.
+Fresh installation keeps exact control-repository scope, an empty campaign
+map, and repository-local workflow-token Activity access; it does not configure
+credentials or Pages. An existing policy is preserved. Headless repository
+creation still requires `--create-repo OWNER/NAME`, and missing prerequisites
+(including an installed gh-aw that is too old) fail instead of reporting a
+completed installation.
+
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
 keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
