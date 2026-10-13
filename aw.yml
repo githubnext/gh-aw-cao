@@ -4,17 +4,4 @@ description: Central agentic workflow control plane for reusable campaigns at th
 min-version: v0.91.5
 experimental: true
 includes:
-  - activity/aw.yml
-  - dashboard/aw.yml
-  - .github/workflows/cao-validate.yml
-resources:
-  - source: .github/workflows/shared/control.mjs
-    destination: .github/workflows/shared/control.mjs
-  - source: .github/workflows/shared/policy.mjs
-    destination: .github/workflows/shared/policy.mjs
-  - source: .github/workflows/shared/setup-github-apps.mjs
-    destination: .github/workflows/shared/setup-github-apps.mjs
-  - source: .github/workflows/shared/materialize-cao.mjs
-    destination: .github/workflows/shared/materialize-cao.mjs
-  - source: .github/aw/instructions.md
-    destination: .github/aw/instructions.md
+  - control-plane/aw.yml

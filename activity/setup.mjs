@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import { createTerminalPrompt, SetupCancelled } from './setup-prompt.mjs';
 
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -54,8 +54,15 @@ function parseRepositoryList(value, fallback, UsageError) {
     if (!REPOSITORY_PATTERN.test(repository)) {
       throw new UsageError(`Repository must use owner/repository format with optional * wildcards: ${repository}`);
     }
+
   }
   return [...new Set(selected)];
+}
+
+function repositoryInputError(value) {
+  const invalid = String(value || '').split(',').map((entry) => entry.trim())
+    .find((entry) => entry && entry !== '*' && !REPOSITORY_PATTERN.test(entry));
+  if (invalid) return `Use owner/repository names or * wildcards: ${invalid}`;
 }
 
 function listOrganizations(execute) {
@@ -173,7 +180,7 @@ function inspectRepository(repository, execute) {
   };
 }
 
-export function configureDashboardPages({ repository, visibility, execute = spawnSync }) {
+export function configureDashboardPages({ repository, execute = spawnSync }) {
   const endpoint = `repos/${repository}/pages`;
   const request = (arguments_) => execute('gh', ['api', ...arguments_, endpoint], { encoding: 'utf8' });
   const read = () => {
@@ -187,6 +194,7 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   };
 
   let { site, result } = read();
+  const created = !site;
   if (!site) {
     if (result.error || !/\bHTTP 404\b/.test(result.stderr || '')) {
       throw new Error(`Unable to inspect dashboard Pages site: ${commandFailureMessage(result, 'gh api failed')}`);
@@ -197,14 +205,6 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
     }
   }
 
-  if (visibility !== 'public' && site?.public !== false) {
-    result = request(['-X', 'PUT', '-F', 'public=false']);
-    if (result.error || result.status !== 0) {
-      throw new Error(
-        `Unable to restrict dashboard Pages access; do not deploy the dashboard: ${commandFailureMessage(result, 'gh api failed')}`,
-      );
-    }
-  }
   if (site && site.build_type !== 'workflow') {
     result = request(['-X', 'PUT', '-f', 'build_type=workflow']);
     if (result.error || result.status !== 0) {
@@ -213,44 +213,19 @@ export function configureDashboardPages({ repository, visibility, execute = spaw
   }
 
   ({ site } = read());
-  if (!site || site.build_type !== 'workflow' || (visibility !== 'public' && site.public !== false)) {
+  if (!site || site.build_type !== 'workflow') {
     throw new Error('Dashboard Pages configuration could not be verified; do not deploy the dashboard');
   }
+  return {
+    created,
+    public: site.public !== false,
+    url: typeof site.html_url === 'string' ? site.html_url : undefined,
+  };
 }
 
-function createTerminalPrompt({ input, output, UsageError }) {
-  if (!input.isTTY || !output.isTTY) {
-    throw new UsageError('cao setup requires an interactive terminal');
-  }
-  const terminal = createInterface({ input, output });
-  const text = async (message, defaultValue = '') => {
-    const suffix = defaultValue ? ` [${defaultValue}]` : '';
-    const answer = (await terminal.question(`${message}${suffix}: `)).trim();
-    return answer || defaultValue;
-  };
-  return {
-    text,
-    note(message) {
-      output.write(`${message}\n`);
-    },
-    async select(message, choices) {
-      output.write(`${message}\n`);
-      choices.forEach((choice, index) => output.write(`  ${index + 1}. ${choice.label}\n`));
-      while (true) {
-        const answer = await text('Choose', '1');
-        const index = Number.parseInt(answer, 10) - 1;
-        if (Number.isInteger(index) && choices[index]) return choices[index].value;
-        output.write(`Enter a number from 1 to ${choices.length}.\n`);
-      }
-    },
-    async confirm(message) {
-      const answer = (await terminal.question(`${message} [y/N]: `)).trim().toLowerCase();
-      return answer === 'y' || answer === 'yes';
-    },
-    close() {
-      terminal.close();
-    },
-  };
+export function removeDashboardPages({ repository, execute = spawnSync }) {
+  const result = execute('gh', ['api', '-X', 'DELETE', `repos/${repository}/pages`], { encoding: 'utf8' });
+  return !result.error && result.status === 0;
 }
 
 export async function setupCaoControlPlane({
@@ -268,25 +243,48 @@ export async function setupCaoControlPlane({
   const interactive = prompt || createTerminalPrompt({ input, output, UsageError });
   const ownsPrompt = prompt === undefined;
   let temporaryDirectory;
+  let applyStage;
+  let policySaved = false;
+  let pages;
+  let control;
+  const declinePublicPages = () => {
+    const removed = pages.created && removeDashboardPages({ repository: control.repository, execute });
+    interactive.note(pages.created
+      ? (removed
+          ? 'Removed the Pages site created by setup.'
+          : 'Could not remove the Pages site created by setup; unpublish it in Settings > Pages.')
+      : 'Left the existing Pages site in place; restrict or unpublish it in Settings > Pages before running the dashboard workflow.');
+    interactive.cancel?.('Setup cancelled. Policy and credentials are unchanged.');
+    return { command: 'setup', cancelled: true, reason: 'public-pages-declined' };
+  };
   try {
+    interactive.start?.();
+    interactive.step?.('Checking GitHub sign-in and this checkout');
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
-      throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
+      throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then ./cao.sh setup again.`);
     }
 
     const controlRepository = resolveControlRepository(execute);
-    const control = inspectRepository(controlRepository, execute);
-    const policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
+    control = inspectRepository(controlRepository, execute);
+    let policy;
+    try {
+      policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
+    } catch (error) {
+      if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run ./cao.sh init, then ./cao.sh setup.');
+      if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun ./cao.sh setup.');
+      throw error;
+    }
     const campaigns = policy?.['control-plane']?.campaigns;
     if (!isMapping(campaigns) || Object.keys(campaigns).length > 0) {
       throw new Error('cao setup only configures a bare control plane with no declared campaigns');
     }
 
-    interactive.note('\nSet up this CAO control plane');
-    interactive.note('No campaign will be installed, enabled, or run.\n');
+    interactive.note(`Control repository: ${control.repository} (${control.visibility})\nNo campaign will be installed, enabled, or run.\nWildcard patterns are expanded now; only exact names are saved.`, '1 / 3  Repositories');
     const targetAnswer = await interactive.text(
-      'Repositories CAO should be able to read (comma-separated owner/repository names or * wildcards; * means */*)',
+      'Repositories CAO should read (comma-separated names or * wildcards)',
       control.repository,
+      repositoryInputError,
     );
     const requestedRepositories = parseRepositoryList(targetAnswer, [control.repository], UsageError);
     const inspected = [control];
@@ -343,18 +341,22 @@ export async function setupCaoControlPlane({
       throw new Error('A public control repository cannot be configured for non-public repository evidence; use a private control repository');
     }
 
+    interactive.note(`${repositories.length} repositories across ${owners.length} resource owners.\nRead and review-output credentials stay separate.`, '2 / 3  Connections');
     const choices = [owners.length === 1
       ? {
           value: 'github-app',
-          label: 'Organization GitHub Apps - private or privileged repository data',
+          label: 'Organization GitHub Apps',
+          hint: 'Recommended for one organization',
         }
       : {
           value: 'enterprise-app',
-          label: 'Enterprise GitHub Apps - organizations in one enterprise',
+          label: 'Enterprise GitHub Apps',
+          hint: 'Organizations in one enterprise',
         },
       {
         value: 'token',
-        label: 'Fine-grained PATs - separate user-bound credentials for each resource owner',
+        label: 'Fine-grained personal access tokens',
+        hint: 'User-bound; separate credentials per owner',
       }];
 
     const profile = await interactive.select('How should CAO authenticate?', choices);
@@ -379,8 +381,9 @@ export async function setupCaoControlPlane({
     }
     if (profile === 'enterprise-app') {
       authenticationArguments.push('--policy', intendedPolicyPath);
-      const readClientId = await interactive.text('Read App client ID');
-      const writeClientId = await interactive.text('Write App client ID');
+      const requiredClientId = (value) => value ? undefined : 'Enter the App client ID.';
+      const readClientId = await interactive.text('Read App client ID', '', requiredClientId);
+      const writeClientId = await interactive.text('Write App client ID', '', requiredClientId);
       if (!readClientId || !writeClientId) {
         throw new UsageError('Enterprise App setup requires both client IDs');
       }
@@ -393,20 +396,44 @@ export async function setupCaoControlPlane({
       authenticationArguments.push('--expires-in', '30');
     }
 
-    interactive.note('\nSetup plan');
-    interactive.note(`  Control repository: ${control.repository} (${control.visibility})`);
-    interactive.note(`  Read scope: ${repositories.join(', ')}`);
-    interactive.note(`  Review output write scope: ${control.repository}`);
-    interactive.note(`  Authentication: ${profile}`);
-    interactive.note('  Campaigns: none');
-    interactive.note(`  Dashboard Pages: GitHub Actions source${control.visibility === 'public' ? ' (public)' : ' (repository-restricted access required)'}`);
+    interactive.note([
+      `Control repository: ${control.repository} (${control.visibility})`,
+      `Read scope: ${repositories.join(', ')}`,
+      `Review output write scope: ${control.repository}`,
+      `Authentication: ${profile}`,
+      'Campaigns: none',
+      'Dashboard Pages: GitHub Actions source; public visibility requires consent',
+      'Pages settings and credentials may be changed; no commit or push is made.',
+    ].join('\n'), '3 / 3  Review and apply');
     if (!await interactive.confirm('Apply this setup?')) {
+      interactive.cancel?.('Setup cancelled. Policy, credentials, and Pages settings are unchanged.');
       return { command: 'setup', cancelled: true };
     }
 
-    const authentication = setupAuthentication(profile, authenticationArguments, { execute });
-    configureDashboardPages({ repository: control.repository, visibility: control.visibility, execute });
+    applyStage = 'dashboard Pages';
+    interactive.step?.('Configuring and verifying the dashboard Pages source');
+    pages = configureDashboardPages({ repository: control.repository, execute });
+    if (pages.public) {
+      applyStage = 'public dashboard consent';
+      interactive.note([
+        `Warning: the dashboard Pages site for ${control.repository} is public${pages.url ? ` (${pages.url})` : ''}.`,
+        'Anyone on the internet will be able to read published dashboard data, including activity from',
+        `${control.visibility === 'public' ? 'the selected repositories' : 'this private control repository and the selected repositories'}.`,
+        'To keep it private, restrict access in Settings > Pages (requires an organization on GitHub Enterprise Cloud).',
+      ].join('\n'), 'Dashboard visibility');
+      if (!await interactive.confirm('Is a public dashboard OK?')) {
+        return declinePublicPages();
+      }
+    }
+    applyStage = 'credentials';
+    interactive.step?.('Connecting read and review-output credentials');
+    const authentication = await setupAuthentication(profile, authenticationArguments, { execute });
+    if (authentication?.cancelled) throw new SetupCancelled();
+    applyStage = 'policy';
+    interactive.step?.('Saving the exact repository scope');
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
+    policySaved = true;
+    interactive.finish?.();
     return {
       command: 'setup',
       controlRepository: control.repository,
@@ -414,8 +441,28 @@ export async function setupCaoControlPlane({
       repositories,
       profile,
       authentication,
+      dashboardPages: pages.public ? 'public' : 'private',
       campaigns: [],
     };
+  } catch (error) {
+    if (error instanceof SetupCancelled) {
+      if (applyStage === 'public dashboard consent') return declinePublicPages();
+      interactive.cancel?.(policySaved
+        ? 'Configuration was saved before cancellation. Run ./cao.sh validate, then review the installed files.'
+        : applyStage
+        ? 'Setup cancelled. The local policy is unchanged; Pages settings or credentials may have changed. Rerun ./cao.sh setup to finish.'
+        : 'Setup cancelled. Policy, credentials, and Pages settings are unchanged.');
+      return { command: 'setup', cancelled: true };
+    }
+    interactive.failure?.();
+    if (applyStage) {
+      const recovery = policySaved
+        ? 'Configuration was saved, but completion could not be displayed. Run ./cao.sh validate, then review the installed files.'
+        : `Setup stopped during ${applyStage}; the local policy was not changed. Pages settings or credentials may already have changed. Fix the reported problem and rerun ./cao.sh setup; existing settings will be inspected again.`;
+      throw new UsageError(`${error.message}\n${recovery}`, { cause: error });
+    }
+    if (ownsPrompt && !(error instanceof UsageError)) throw new UsageError(error.message, { cause: error });
+    throw error;
   } finally {
     if (temporaryDirectory) await rm(temporaryDirectory, { recursive: true, force: true });
     if (ownsPrompt) interactive.close();

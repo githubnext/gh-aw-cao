@@ -408,6 +408,110 @@ complete standalone installation entry points because gh-aw cannot invoke the
 materialization hook. Source-managed and installed control repositories
 therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 
+Activity and Dashboard use the standard npm `files` contract in the dedicated
+`runtime/package.json`, rather than copying their development directories
+wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
+command packs with lifecycle scripts disabled, bundles the YAML parser and the
+Clack setup prompt adapter with esbuild and their dependency license notices,
+and seals an exact-revision inventory and checksums. Explicit developer source
+packing also bundles the prompt adapter; installed setup never resolves it from
+a consumer's node_modules.
+Filesystem-relative CLI modules, workers, and build inputs remain at their
+canonical paths rather than being forced into a single-file executable.
+The conventional `cao-runtime.yml` pipeline builds on main pushes and stable
+release publication. Read-only build/test, source-free attestation, and stable
+release asset publication use separate jobs. Stable tag sources use release
+assets; main/SHA sources use successful, unexpired Actions artifacts retained
+for 90 days. The operator materializer verifies GitHub signed provenance bound
+to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
+runner before extraction, then checks the inventory, checksums and ownership.
+When the exact main/SHA runtime build is queued or running, materialization
+waits for it for at most five minutes; failed, missing, expired, timed-out, or
+unverifiable artifacts fail closed without source/npm packing or latest-release
+fallback. Explicit local source materialization remains a developer path using
+npm. Normal operator installation needs Node.js and authenticated GitHub CLI
+artifact/attestation access, not npm.
+The materializer installs only owned canonical destinations from the archive
+and does not replace consumer-owned root package metadata. Installed control
+repositories keep the
+repository-local operator CLI, collection and query runtime, local preview,
+dashboard production sources, build inputs, and dependency manifests. Tests,
+fixtures, screenshots, contributor tooling, and catalog-only component
+manifests stay in the catalog. Dashboard workflow builds install production
+dependencies only.
+
+The Agent Plugin is a separate distribution: the control-plane installer does
+not copy its manifest, portable skills, Copilot extension, bundled specification
+documents, or repository-only dashboard authoring skills. Materialization
+preserves pre-existing plugin resources outside its owned runtime destinations.
+The installer adds the nested `control-plane/aw.yml` package rather than the
+repository-root catalog package. That package composes only the Activity,
+dashboard, and validation workflows, five shared control-plane resources, and
+the gh-aw project settings. This avoids gh-aw's root-package skill and agent
+auto-discovery while the root `aw.yml` remains the public catalog composition.
+Operational campaign manifests contain only their owned workflows and catalog
+resources; they do not import the root catalog package. `cao add` is the
+supported lifecycle boundary after control-plane installation and materializes
+the selected campaign's canonical runtime without reinstalling control-plane or
+Agent Plugin resources.
+
+`npm run test:runtime-install` builds the actual producer archive and validates
+its installation commit from a fresh
+checkout, including the operator CLI, local runtime and policy verification,
+the bundled YAML parser without node_modules, and a dashboard build using only
+production dependencies. The test requires npm
+registry access, but does not create credentials or dispatch workflows.
+
+### Operator onboarding
+
+`install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+readiness before installing or upgrading anything. Repository creation and
+cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
+existing clone directories are never overwritten. Bare installation ends with
+the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
+to the controlling terminal after verified materialization, while streamed
+bootstrap children otherwise retain null stdin.
+
+`activity/setup.mjs` owns scope resolution and authentication orchestration.
+`activity/setup-prompt.mjs` is a presentation adapter: Clack provides keyboard
+prompts, inline validation, and cancellation; terminals without styling
+support, `NO_COLOR`, `ACCESSIBLE`, and CI use plain numbered prompts without
+animation. The injectable prompt contract keeps authority decisions outside UI.
+Setup shows Repositories, Connections, and Review/apply, with default-No
+confirmation before Pages, credential, or policy changes. The Pages source is
+verified without changing visibility, with separate default-No consent to a
+public dashboard before credentials are changed. Declining or cancelling that
+consent removes only a newly created site where possible; an existing site is
+left in place with restriction/unpublication guidance. Policy is written atomically only
+after both succeed. Failures disclose possible partial external changes rather
+than claim rollback. Setup does not install campaigns, dispatch workflows,
+commit, or push. The CLI prints next actions by default and retains structured
+stdout with `setup --json`; non-interactive setup fails with explicit guidance.
+
+`activity/quickstart.mjs` owns a distinct explicit first-success flow. It
+requires a new private control repository with no commit, installs Bug Bash at
+the selected catalog revision, configures exact review-only starter authority,
+requires public Pages, commits and pushes only the bounded CAO paths plus
+gh-aw's root `.gitattributes` and `.vscode/settings.json` project settings,
+dispatches one orchestrator and at most one worker, collects Activity, and waits
+for the Activity-triggered dashboard deployment. It reports Bug Bash blocked and
+failed outcomes without converting them to findings, and does not report success
+until the Activity artifact contains at least one unique run and the dashboard
+deployment succeeds. Installer handoff preserves the controlling terminal,
+uses elapsed progress for each long operation, and suppresses Node's
+experimental-runtime diagnostic rather than mixing it into user progress.
+`--quickstart` is the authorization boundary for these effects; ordinary
+install and `cao setup` retain their non-effectful boundaries.
+
+The policy may declare `control-plane.activity.repositories` as an exact,
+nonempty subset of globally allowed repositories. This separates evidence
+collection scope from campaign rollout authority without silently narrowing
+either. Authentication planning uses the declared subset when present and
+otherwise preserves its existing fail-closed behavior. The public quickstart
+uses this contract to admit the public Bug Bash target while collecting
+workflow evidence only from the private control repository with its
+repository-provided token.
+
 ## Architectural boundaries
 
 ### Authority and execution

@@ -58,6 +58,7 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
+| `./cao.sh quickstart` | Complete the explicit public starter journey: install review-only Bug Bash, commit and push bounded CAO paths, collect first Activity, and wait for the public dashboard. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -67,7 +68,13 @@ gh aw run dependabot --ref main \
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
-Use `./cao.sh setup` for initial configuration. The individual `setup-auth` commands remain available for manual and non-interactive administration.
+Use `./cao.sh quickstart` only in the new private repository created by the
+installer's explicit `--quickstart` path. It can consume up to 700 AI credits
+and owns the bounded commit, push, workflow dispatches, and public dashboard
+deployment documented in the [quickstart](setup-quickstarts.md). Use
+`./cao.sh setup` for review-before-apply configuration. The individual
+`setup-auth` commands remain available for manual and non-interactive
+administration.
 
 ## Control Campaigns
 
@@ -150,6 +157,9 @@ Manual inputs may narrow checked-in policy for one run; they never widen it.
 For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
 is not a `cao mode` command or a campaign configuration.
+
+CLI failures print one actionable message by default. Set `CAO_DEBUG=1` only
+when diagnosing the CLI itself and an internal stack trace is needed.
 
 ## Inspect Activity
 

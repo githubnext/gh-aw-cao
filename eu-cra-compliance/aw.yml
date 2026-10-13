@@ -5,7 +5,6 @@ min-version: v0.91.5
 private: true
 experimental: true
 includes:
-  - ../aw.yml
   - .github/workflows/eu-cra-compliance.md
   - .github/workflows/eu-cra-compliance-campaign-maintainer.md
   - .github/workflows/eu-cra-compliance-scope-classifier.md

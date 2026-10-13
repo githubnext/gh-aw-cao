@@ -4,7 +4,6 @@ description: Evidence-backed central ESLint rule library for enrolled JavaScript
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
   - .github/workflows/eslint-rules-applier.md
   - .github/workflows/eslint-rules-inventory.md
   - .github/workflows/eslint-rules-librarian.md

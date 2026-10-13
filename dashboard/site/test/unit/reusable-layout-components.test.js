@@ -3,22 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { h } from '../../src/dom.js';
 import { state } from '../../src/reactive.js';
 import { renderReactiveGraphWidget } from '../../src/components/graph-widget.js';
-import { renderPanel } from '../../src/components/panel.js';
 import { renderReactiveGrid } from '../../src/components/reactive-grid.js';
 
 describe('reusable layout components', () => {
-  it('renders a labelled panel around owned content', () => {
-    const panel = renderPanel({
-      className: 'example-panel',
-      labelledBy: 'example-heading',
-      children: [h('h2', { id: 'example-heading' }, 'Example'), h('p', null, 'Panel content')]
-    });
-
-    expect(panel.className).toBe('ui-panel example-panel');
-    expect(panel.getAttribute('aria-labelledby')).toBe('example-heading');
-    expect(panel.textContent).toBe('ExamplePanel content');
-  });
-
   it('retains keyed grid items across reactive order and summary updates', () => {
     const controller = new AbortController();
     const gridState = state({

@@ -1,0 +1,7 @@
+{
+  "campaign": "bug-bash",
+  "orchestrator": "bug-bash",
+  "workers": {
+    "investigation": "bug-bash-investigation"
+  }
+}

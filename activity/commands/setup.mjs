@@ -5,7 +5,9 @@ export function runSetup({
   UsageError,
   input,
 }) {
-  if (arguments_.length > 0) throw new UsageError(`Unexpected argument: ${arguments_[0]}`);
+  for (const argument of arguments_) {
+    if (argument !== '--json') throw new UsageError(`Unexpected argument: ${argument}`);
+  }
   return setupCaoControlPlane({
     input,
     UsageError,

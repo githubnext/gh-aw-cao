@@ -238,8 +238,12 @@ export function activityCollectionPlan(controlSettings, {
     );
   }
 
-  const configuredRepositories = controlSettings?.allowed_repositories ?? [];
-  const configuredOwners = controlSettings?.allowed_owners ?? [];
+  const configuredActivityRepositories = controlSettings?.activity_repositories;
+  const hasExplicitActivityScope = Array.isArray(configuredActivityRepositories);
+  const configuredRepositories = hasExplicitActivityScope
+    ? configuredActivityRepositories
+    : controlSettings?.allowed_repositories ?? [];
+  const configuredOwners = hasExplicitActivityScope ? [] : controlSettings?.allowed_owners ?? [];
   const repositories = [...new Map(
     [controlRepository, ...configuredRepositories].map((repository) => [
       String(repository).toLowerCase(),

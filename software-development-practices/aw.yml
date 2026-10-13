@@ -5,7 +5,6 @@ min-version: v0.91.5
 private: true
 experimental: true
 includes:
-  - ../aw.yml
   - .github/workflows/software-development-practices.md
   - .github/workflows/software-development-practices-github-well-architected.md
   - .github/workflows/software-development-practices-nist-ssdf.md

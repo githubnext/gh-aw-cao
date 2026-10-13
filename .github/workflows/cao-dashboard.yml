@@ -172,6 +172,7 @@ jobs:
               '--prefix',
               'dashboard/site',
               '--ignore-scripts',
+              '--omit=dev',
             ])
             core.info('Dashboard build dependencies installed')
 
@@ -359,7 +360,6 @@ jobs:
               'dashboard/site/scripts/llms.mjs',
               'validate',
               process.env.REPORT_OUTPUT,
-              process.env.GITHUB_WORKSPACE,
             ])
             core.info(`Copied ${publishedShardCount} activity shards `
               + `(${formatFileSize(publishedShardBytes)})`)

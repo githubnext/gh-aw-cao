@@ -1,0 +1,8 @@
+name: CAO control plane instructions
+icon: ":workflow:"
+description: Agent instructions installed with the CAO control plane
+min-version: v0.91.5
+experimental: true
+resources:
+  - source: instructions.md
+    destination: .github/aw/instructions.md

@@ -76,6 +76,17 @@
           }
         }
       },
+      "bug-bash": {
+        "icon": "rocket",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "investigation": {
+            "workflow": "bug-bash-investigation",
+            "max-mode": "review"
+          }
+        }
+      },
       "dependabot": {
         "icon": "dependabot",
         "mode": "review",

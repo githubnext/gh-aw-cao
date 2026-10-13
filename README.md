@@ -11,17 +11,43 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
-Bootstrap an empty control repository with:
+Reach a first data-bearing dashboard from a new private control repository with:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash
-
-./cao.sh setup
+  bash -s -- --quickstart
 ```
 
-The installer adds gh-aw and the core CAO runtime, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Interactive setup then asks which repositories CAO should read and offers authentication choices that fit that scope. It installs no user-facing campaign. Install the Agent Plugin separately when you want the portable CAO skills.
+The installer lists eligible repository owners, asks for the repository name,
+creates a private control repository, installs Bug Bash in review mode for the
+pinned public starter target, commits and pushes the bounded CAO paths, collects
+Activity, and waits for a public GitHub Pages dashboard with first data. This
+one run can use up to 700 AI credits and never modifies the starter repository.
+Elapsed progress distinguishes the short local installation phases from the
+longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
+For non-interactive creation, also pass
+`--create-repo OWNER/CONTROL_REPOSITORY`.
+
+The installer checks tools, sign-in, and checkout readiness before writing CAO
+files, adds gh-aw and the core runtime, and preserves an existing policy.
+Without `--quickstart`, installation remains non-greedy: bare installation
+stops with `Next: ./cao.sh setup`, and `--setup` opens
+**Repositories → Connections → Review and apply** directly. Guided setup uses
+default-No confirmation and never installs a campaign, dispatches a workflow,
+commits, or pushes. Install the Agent Plugin separately when you want the
+portable CAO skills.
+
+Control repositories receive only the curated production runtime, not dashboard
+tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
+keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
+Normal installation downloads a prebuilt archive for gh-aw's exact resolved
+SHA and verifies signed build provenance before replacing runtime files; it
+does not run npm. Stable versions use release assets, while main/SHA installs
+use successful Actions artifacts retained for 90 days and wait up to five
+minutes for an already active exact-SHA runtime build. Node.js 24+ and an
+authenticated GitHub CLI with artifact and attestation access are still
+required. Dashboard builds retain their existing production npm dependencies.
 
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 
@@ -115,7 +141,7 @@ The default Central Agentic Ops campaign installs the dashboard builder and manu
 
 1. Open **Settings > Pages** in the control repository.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Restrict Pages access to the intended audience before publishing control-plane data.
+3. Optionally, restrict Pages access to the intended audience if your plan supports private Pages; the dashboard can also be published publicly.
 
 The dashboard workflow remains manual and does not enable Pages automatically.
 

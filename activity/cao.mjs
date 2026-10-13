@@ -2,9 +2,8 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { formatSetupAuthenticationSummary } from './authentication.mjs';
-import { NamedQueryError } from './agent-catalog.mjs';
-import { UsageError } from './cli/options.mjs';
 import { runCli } from './cli/run.mjs';
+import { formatQuickstartSummary } from './quickstart.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
@@ -48,6 +47,16 @@ async function main() {
       process.stdout.write(`${formatSetupAuthenticationSummary(output)}\n`);
       return;
     }
+    if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
+      if (!output.cancelled) {
+        process.stdout.write('Next: ./cao.sh validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN.\n');
+      }
+      return;
+    }
+    if (typeof output === 'object' && output?.command === 'quickstart' && !arguments_.includes('--json')) {
+      process.stdout.write(`${formatQuickstartSummary(output)}\n`);
+      return;
+    }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
     if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
   } catch (error) {
@@ -61,11 +70,9 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    const message = error instanceof UsageError || error instanceof NamedQueryError
-      ? `Error: ${error.message}`
-      : error instanceof Error
-        ? error.stack || `${error.name}: ${error.message}`
-        : String(error);
+    const message = process.env.CAO_DEBUG === '1' && error instanceof Error && error.stack
+      ? error.stack
+      : `Error: ${error instanceof Error ? error.message : String(error)}`;
     process.stderr.write(`${message}\n`);
     process.exitCode = 1;
   });

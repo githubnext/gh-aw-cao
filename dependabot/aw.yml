@@ -4,7 +4,6 @@ description: Durable repository-scoped Dependabot update planning with human-con
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
   - operational-value.mjs
   - operational-value/dependabot-update-planner.mjs
   - .github/workflows/dependabot.md

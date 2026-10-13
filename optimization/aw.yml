@@ -4,7 +4,6 @@ description: Evidence-bounded audits and recommendations for GitHub Agentic Work
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
   - README.md
   - .github/workflows/optimization-token-auditor.md
   - .github/workflows/optimization-token-optimizer.md

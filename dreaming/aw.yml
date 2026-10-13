@@ -4,6 +4,5 @@ description: Evidence-bounded curation of AGENTS.md and other ambient agentic co
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
   - .github/workflows/dreaming-agents-md-curator.md
   - .github/workflows/dreaming.md

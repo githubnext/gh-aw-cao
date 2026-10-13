@@ -1,0 +1,100 @@
+{
+  "$comment": "HISTORICAL PILOT EVIDENCE. Labeled, non-authoritative, maintainer-unreviewed. Not a benchmark, forecast, service level, or promise that a run will find a bug.",
+  "label": "historical-pilot-evidence",
+  "campaign": "bug-bash",
+  "recordVersion": 1,
+  "authoritative": false,
+  "reviewState": "maintainer-unreviewed",
+  "producedBy": "pre-release manual pilot",
+  "producedByThisHarness": false,
+  "harnessVersion": null,
+  "reproducedByShippedHarness": false,
+  "disclaimer": [
+    "This record exists so adopters can see the prior evidence behind the Bug Bash design instead of an unsourced claim.",
+    "It describes one historical pilot run by maintainers before this campaign existed. The shipped harness did not produce it and has not reproduced it.",
+    "No maintainer confirmed either candidate as a defect. Treat both as unreviewed hypotheses, not as known bugs in the named projects.",
+    "Counts below describe that single pilot only. They are not an expected yield, a success rate, or a commitment that any run surfaces a finding.",
+    "The expected outcome of a first Bug Bash run is no-finding."
+  ],
+  "excluded": {
+    "reason": "Fixtures must never seed live source, reproductions, or repairs into a new investigation.",
+    "fields": [
+      "source files",
+      "test patches",
+      "production patches",
+      "minimal reproductions",
+      "stack traces",
+      "validation logs"
+    ]
+  },
+  "scope": {
+    "repositoriesPinned": 3,
+    "repositoriesIdentifiedInThisRecord": 2,
+    "pinnedRevisionsRecorded": false,
+    "existingTestsSelected": 998,
+    "testsAuthoredByThePilot": 0,
+    "selectionBasis": "existing tests already present in the pinned revisions",
+    "candidatesSurfaced": 2,
+    "candidatesConfirmedByMaintainers": 0,
+    "upstreamIssuesOpened": 0,
+    "upstreamPullRequestsOpened": 0,
+    "merges": 0
+  },
+  "repositories": [
+    {
+      "project": "Central Agentic Ops",
+      "repository": "githubnext/gh-aw-cao",
+      "revision": null,
+      "revisionRecorded": false
+    },
+    {
+      "project": "Boltons",
+      "repository": null,
+      "repositoryRecorded": false,
+      "revision": null,
+      "revisionRecorded": false,
+      "note": "Identified in the pilot only by project name; no repository identifier or revision was carried into this record."
+    },
+    {
+      "project": null,
+      "repository": null,
+      "repositoryRecorded": false,
+      "revision": null,
+      "revisionRecorded": false,
+      "note": "Third pinned repository counted in the pilot; no identifier was carried into this record."
+    }
+  ],
+  "candidates": [
+    {
+      "id": "pilot-candidate-1",
+      "project": "Central Agentic Ops",
+      "summary": "Impossible calendar dates were accepted where a validated date was expected.",
+      "contractClaimed": "A date-shaped value that cannot exist on the calendar should be rejected rather than normalized or stored.",
+      "reviewState": "maintainer-unreviewed",
+      "confirmed": false,
+      "fixProposed": false,
+      "fixReviewed": false,
+      "fixMerged": false,
+      "reproductionIncludedInThisRecord": false
+    },
+    {
+      "id": "pilot-candidate-2",
+      "project": "Boltons",
+      "summary": "Chunking an empty input produced a result that disagreed with the documented boundary behavior.",
+      "contractClaimed": "A chunking helper given empty input should return the documented empty-input result rather than a differently shaped value.",
+      "reviewState": "maintainer-unreviewed",
+      "confirmed": false,
+      "fixProposed": false,
+      "fixReviewed": false,
+      "fixMerged": false,
+      "reproductionIncludedInThisRecord": false
+    }
+  ],
+  "designLessons": [
+    "A failing test is not a bug: both candidates needed a stated contract before a failure meant anything.",
+    "A reproduction must be replayed on the original pinned revision in a fresh environment before it is believable.",
+    "Setup and environment failures dominated early noise and must be classified separately from product behavior.",
+    "Passing tests after a patch are not evidence that the repair is correct; boundaries must be challenged and weakened tests detected.",
+    "Unbounded search starves verification, so verification budget is reserved up front."
+  ]
+}
