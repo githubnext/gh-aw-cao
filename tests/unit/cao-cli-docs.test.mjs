@@ -49,13 +49,16 @@ test("quickstart documents the complete bounded first-success journey", () => {
   const campaign = quickstart.indexOf("Install Bug Bash");
   const activity = quickstart.indexOf("Collect a CAO Activity snapshot");
   const dashboard = quickstart.indexOf("Wait for the data-bearing dashboard deployment");
+  const nextStep = quickstart.indexOf("## Next: run Bug Bash on your repository");
+  const firstSuccess = quickstart.slice(0, nextStep);
 
   assert.ok(installer > 0);
   assert.ok(command > installer);
   assert.ok(campaign > command);
   assert.ok(activity > campaign);
   assert.ok(dashboard > activity);
-  assert.doesNotMatch(quickstart, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
+  assert.ok(nextStep > dashboard);
+  assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*700 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
@@ -66,7 +69,11 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
-  assert.match(quickstart, /bash -s -- --quickstart --target OWNER\/REPOSITORY/);
+  assert.match(quickstart, /Do not run the installer or `cao add` again/);
+  assert.match(quickstart, /control-plane\.scope\.allowed-owners/);
+  assert.match(quickstart, /control-plane\.scope\.allowed-repositories/);
+  assert.match(quickstart, /control-plane\.campaigns\.bug-bash\.targets/);
+  assert.match(quickstart, /gh aw run bug-bash/);
   assert.match(quickstart, /Guided setup installs no campaign and runs no workflow; it never commits or\s+pushes/);
   assert.match(quickstart, /Bare installation also stops without a prompt/);
   assert.doesNotMatch(quickstart, /gh repo create acme\//);
