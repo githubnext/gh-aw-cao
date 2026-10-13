@@ -24,18 +24,19 @@ including headlessly. Outside a checkout, it creates the private control
 repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects another
 existing public repository, quickstart targets
 [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
-at a pinned revision. The shared starter replays a fictional production
-incident: an emergency `0%` rollout request prepared ten services—including
-four tier-0 services—and three retries while the normal test suite remained
-green. The campaign supplies that hypothesis externally; the target repository
-contains neutral product documentation and no explanation of the seeded
-defect. Current and legacy modules, different zero-value contracts, and red
-herrings force Bug Bash to screen, reproduce, repair, and independently verify
-the finding rather than report a textual match. Quickstart runs that campaign in
-review mode.
-It commits and pushes the bounded CAO paths, collects Activity, and waits for a
-public GitHub Pages dashboard with first data. This one run can use up to 700 AI
-credits. CAO never modifies the target.
+at a pinned revision. The shared starter is a guided investigation of a
+fictional production incident, not discovery of an unknown production bug: an
+emergency `0%` rollout request still prepared ten services—including four
+tier-0 services—and three retries while the normal test suite remained green.
+A small truthiness fallback turns the intentional zero into a default. The
+campaign supplies that hypothesis externally; the target repository contains
+neutral product documentation and no explanation of the seeded defect. Current
+and legacy modules, different zero-value contracts, and red herrings force Bug
+Bash to screen, reproduce, repair, and independently verify the finding rather
+than report a textual match. Quickstart runs that campaign in review mode.
+The investigation is the first useful result; Activity collection and the
+public GitHub Pages dashboard follow. This one run can use up to 700 AI credits.
+CAO never modifies the target.
 Elapsed progress distinguishes the short local installation phases from the
 longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
 Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control

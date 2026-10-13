@@ -3,14 +3,24 @@ title: CAO Quickstart
 description: Reproduce an emergency rollout-control defect and open your first CAO dashboard.
 ---
 
-Your first Central Agentic Ops (CAO) run investigates a fictional production
-incident without pointing CAO at your own code. An operator requested an
-emergency `0%` rollout with retries disabled. The coordinator instead prepared
-ten services—including four tier-0 services—and three retries, while its normal
-test suite remained green.
+Your first Central Agentic Ops (CAO) run is a guided investigation of a
+fictional production incident, not discovery of an unknown bug in your code.
+An operator paused a rollout by requesting `0%`. The coordinator still
+scheduled ten services. It also enabled three retries and included four tier-0
+services, while its normal test suite remained green.
 
-One command pins that incident revision, runs a review-only Bug Bash, and builds
-your first data-bearing dashboard.
+| Setting | Requested | Buggy result | Correct result |
+| --- | ---: | ---: | ---: |
+| Services selected for rollout | 0 | 10 | 0 |
+| Retries | 0 | 3 | 0 |
+
+The defect is intentionally small: a numeric option uses
+`numericValue || defaultValue`, so an intentional zero becomes the default.
+The visible consequence makes the contract, failing reproduction, patch, and
+passing verification easy to understand.
+
+One command pins that incident revision, supplies the explicit-zero hypothesis,
+runs a review-only Bug Bash, and builds your first data-bearing dashboard.
 
 **Time:** 15-25 minutes
 **You get:** a private control repository, independently verified review
@@ -59,6 +69,12 @@ Then watch CAO:
 The command shows progress while GitHub Actions does the longer work.
 Quickstart works without a terminal and when `CI` is set.
 
+> [!TIP]
+> **The investigation is the first useful result.** When progress reports
+> `Bug Bash investigation completed`, inspect the control repository's Issues
+> and Actions tabs. Any new review issue and sealed evidence bundle are already
+> available; Activity collection and dashboard deployment continue afterward.
+
 > [!NOTE]
 > Quickstart publishes a public dashboard and can consume up to **700 AI credits**.
 > There is no second confirmation: `--quickstart` is your approval
@@ -103,10 +119,14 @@ modifying the target.
 
 ## What this demonstrates
 
-- **A proven incident supplies the hypothesis, not the answer.** The campaign
-  carries it separately; the target contains no incident explanation or
-  root-cause hint. CAO must distinguish valid-zero settings from legacy and
-  string fallbacks.
+- **This is a guided incident investigation.** A proven incident supplies the
+  hypothesis, not the answer. The target contains no incident explanation or
+  root-cause hint; CAO must establish the contract, reproduce the behavior,
+  prepare the repair, and verify it independently.
+- **The small fix is not the main demonstration.** A coding assistant can
+  replace the faulty fallback. CAO selects bounded work, isolates execution,
+  preserves the target revision, verifies the evidence, and routes one
+  reviewable result through the control repository.
 - **The unit of work is schedulable.** Repository, immutable revision,
   hypothesis version, and harness version form a deduplicable identity.
 - **Investigation and verification are separate.** A generated failing test or
@@ -128,9 +148,10 @@ Installer-created control repositories remain private.
 In a public control repository, policy, workflow runs, dashboard data, and
 review outputs are also public.
 
-## Want to use your own public repository?
+## Next: run Bug Bash on your repository
 
-Replace the shared sample with one exact public target:
+After the controlled starter, replace the sample with one exact public target
+for a meaningful test on your own code:
 
 ```bash
 curl --fail --silent --show-error --location \
