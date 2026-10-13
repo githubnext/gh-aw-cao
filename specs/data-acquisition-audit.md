@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-10-13 (refreshed)
+**Audit date:** 2026-10-13 (refreshed again)
 
 The control bootstrap checks out the control repository's `.github` tree at `github.workflow_sha`. The CAO shared runtime keeps its catalog source path under `.github/workflows/shared`, so every control-repository topology uses that single checkout without fetching a second copy.
 
@@ -167,6 +167,8 @@ This profile's live collection shape mirrors the Actions profile's `gh aw logs` 
 
 Administrative setup (`.github/workflows/shared/setup-github-apps.mjs`), release workflows, CI checks, and e2e scripts also use GitHub APIs. They are interactive or repository-maintenance traffic rather than operational collection, but they share the caller's quota and should not be scheduled concurrently with large audits when they use the same token.
 
+**New:** `install.sh --quickstart`/`activity/quickstart.mjs` (operator CLI, not a scheduled or dispatched workflow) now creates a public `USERNAME/cao-sample` target repository by default instead of pointing Bug Bash at the shared `githubnext/gh-aw-cao` starter repository. `createQuickstartSampleRepository` issues one `gh repo create --public --clone` call, writes the fixed sample checkout-calculator fixture files locally, resolves the new repository's default branch with one `gh api repos/{repository} --jq .default_branch` read, then commits and pushes with plain `git`. When a `--target` is supplied instead, quickstart validates it with one `gh repo view --json nameWithOwner,visibility` call and skips repository creation. The main quickstart flow itself also added one `gh api repos/{selectedTarget}` existence probe (expecting an HTTP 404) before creating the default sample repository, and now resolves the control repository's default branch and signed-in user up front regardless of whether the local checkout already has commits, since quickstart no longer requires a brand-new, commit-free control repository. This is new per-invocation GitHub write/read traffic (one repository creation, one default-branch read, one existence probe, one optional target-validation read) scoped to a single manual quickstart run; it does not add scheduled or dispatched collection and does not change the Bug Bash campaign's own `gh aw logs`/API acquisition shape once installed. Separately, `activity/setup.mjs`'s non-interactive path (`./cao.sh setup` without a TTY or with `CI` set) now calls `gh auth status` and the same repository-inspection/Pages-configuration/variable-set helpers the interactive path already used, applying fixed public-repository workflow-token defaults instead of prompting; this reuses existing request shapes under a new non-interactive trigger condition rather than adding a new one. See §5 item 33.
+
 **New:** `cao mode live <campaign>` (`activity/cao.mjs`'s `setCaoCampaignMode`, operator CLI only, not invoked by any scheduled or dispatched workflow) now runs a best-effort live-write credential preflight (`activity/authentication.mjs`'s `checkLiveWriteAuthentication`) before writing the `live` policy change. It issues one `gh repo view` call, then (via `setup-github-apps.mjs`'s `repositoryState`) two paginated `GET /repos/{owner}/{repo}/actions/variables` and `GET /repos/{owner}/{repo}/actions/secrets` listings (100/page), and up to two further `GET /repos/{owner}/{repo}/actions/variables/{name}` reads to resolve the configured auth mode and write-role App/PAT variable value. Failures (missing `gh`, no repository match, or any API error) are swallowed and treated as "best-effort unknown," only emitting a warning in CI; this is a one-time, operator-triggered administrative check, not a new per-run or per-dispatch collection path, so it does not change §5/§6 duplicate-work or bottleneck counts.
 
 ## 4. Cache and index topology
@@ -218,6 +220,7 @@ The activity snapshot is the shared collection boundary. It persists the bounded
 30. **A previously undocumented SelfCare worker, `self-care-hosted-health`, adds no GitHub collection but is gated by its own independent cadence check.** Its evidence is bounded `curl` health checks plus hosted `cao`/`otel` MCP calls against the separately hosted `cao.githubnext.com` service, not GitHub; `self-care.md`'s four-hour cadence gate (up to 20 runs) duplicates the shape of its sibling cadence gates (item 12) without any worker-side counterpart, and it is the only worker ever dispatched when the resolved mode is `review`. **Corrected:** the former `self-care-redis-query-optimization` worker was retired (dispatch list and `dispatch_max`/`safe-outputs.dispatch-workflow.max` dropped from 22 to 21), so `self-care-hosted-health` is now the twenty-first and final SelfCare worker rather than the twenty-second.
 31. **The optional server collector's new memory operational-storage adapter re-pays full cold-start enumeration on every process restart, not only on a genuinely empty evidence lake.** `server/internal/collect/backfill.go`'s `Backfill.Run` normally skips `ListInstallations`/`ListRepositories` enumeration when the on-disk evidence lake already replays successfully; the memory adapter's launcher wiring (`server/internal/server/collecting.go`) sets `ReconstructScope = true` unconditionally, forcing a full `reconstructScope` enumeration (paginated, 100/page, across every installation and repository) before every lake replay. A deployment that selects memory for its operational store therefore repeats this enumeration cost on every restart (for example, every redeploy), whereas the default Redis adapter and a populated lake together make that cold-start request family a one-time, genuinely-empty-lake-only event. This is new, adapter-conditional request volume layered on the already-documented cold-start enumeration (item 26, §3.4), not a change to the per-request pagination shape, the live per-repository `gh aw logs` call, or `enqueueHistoricalRuns`'s separate run-history discovery (item 29).
 32. **The new `bug-bash` campaign's worker duplicates the full-unshallow-checkout acquisition shape already recorded for `pr-sous-chef.md`/`repo-assist`.** `bug-bash-investigation.md` checks out `TARGET_REPO` with `fetch-depth: 0` into a `target/` path to build and replay a reproduction, the same git-history acquisition cost item 10/28 already record for other workers that fix or investigate code in place; unlike those workers, `bug-bash-investigation.md` is `review`-mode-only (no `live` option), capped at one repository and one worker dispatch per orchestrator run with no schedule, so its overall acquisition volume stays small even though the per-dispatch checkout shape is not new.
+33. **The quickstart operator CLI now creates its own public Bug Bash target repository instead of pointing at the shared `githubnext/gh-aw-cao` starter repository.** `activity/quickstart.mjs`'s `createQuickstartSampleRepository` adds one `gh repo create --public --clone` write, one `gh api repos/{repository} --jq .default_branch` read, and the existing push/commit calls per manual `--quickstart` invocation; the main flow also adds one `gh api repos/{selectedTarget}` existence probe before creating the default sample, and an optional `--target` path adds one `gh repo view` validation read instead. This is new one-time, operator-triggered repository-creation traffic distinct from every scheduled or dispatched acquisition path recorded elsewhere in this audit, and it does not change the Bug Bash campaign's own request shape once installed (§3.4).
 
 ## 6. Rate-limit bottlenecks
 
@@ -306,6 +309,9 @@ flowchart LR
     bborch["bug-bash.md<br/>rank ≤1 candidate, no gh aw logs"]
     bbworker["bug-bash-investigation.md<br/>issue search dedup + full checkout"]
   end
+  subgraph Quickstart["install.sh --quickstart (operator CLI, manual)"]
+    qssample["createQuickstartSampleRepository<br/>gh repo create + default_branch read"]
+  end
   subgraph ServerCollector["Optional server collector (mutually exclusive with Activity)"]
     webhook["events.go Admitter<br/>webhook intents"]
     queue[("queue.go Redis stream<br/>debounced per-repo tasks")]
@@ -344,6 +350,7 @@ flowchart LR
   raissue -.->|duplicates pattern of| soschef
   rapr -.->|duplicates pattern of| soschef
   bborch -->|dispatches ≤1 worker| bbworker
+  qssample -.->|installs and dispatches, one-time| bborch
   bbworker -.->|duplicates checkout pattern of| soschef
   webhook -->|enqueues| queue
   queue -->|leases task| runner
