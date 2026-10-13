@@ -170,7 +170,10 @@ query($endCursor: String) {
 }
 
 styled_prompt_enabled() {
-  [[ "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]
+  local colors
+  colors="$(tput colors 2>/dev/null || printf '0')"
+  [[ -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" &&
+    "$colors" =~ ^[0-9]+$ && "$colors" -ge 8 ]]
 }
 
 terminal_available() {

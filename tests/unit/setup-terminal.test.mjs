@@ -56,7 +56,7 @@ test("setup plain terminal rejects partial menu numbers and keeps safe defaults"
     ["Choose [1]:", "1x\r"],
     ["Enter a number from 1 to 2.", "1\r"],
     ["Apply this setup?", "\r"],
-  ], "dumb");
+  ], "");
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /"cancelled":true/);
   assert.deepEqual(f.saved(), f.policy);

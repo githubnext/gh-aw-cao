@@ -867,7 +867,7 @@ test("install.sh uses numbered repository-owner prompts in accessible mode", { s
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
     cwd: consumer,
-    env: { ...env, TERM: "dumb", ACCESSIBLE: "1", NO_COLOR: "1" },
+    env: { ...env, TERM: "", ACCESSIBLE: "1", NO_COLOR: "1" },
     timeout,
     input: "2\ncontrol\nn\n",
   });

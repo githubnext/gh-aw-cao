@@ -1,13 +1,21 @@
 import * as ui from '@clack/prompts';
+import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 
 export class SetupCancelled extends Error {}
 
 function styledPromptsEnabled({ input, output, environment = process.env }) {
+  const capability = spawnSync('tput', ['colors'], {
+    encoding: 'utf8',
+    env: environment,
+    timeout: 1000,
+  });
+  const colorCount = capability.status === 0 ? Number.parseInt(capability.stdout.trim(), 10) : 0;
   return Boolean(
     input?.isTTY
     && output?.isTTY
-    && environment.TERM !== 'dumb'
+    && Number.isInteger(colorCount)
+    && colorCount >= 8
     && !environment.NO_COLOR
     && !environment.ACCESSIBLE
     && !environment.CI
