@@ -65,7 +65,6 @@ test("setup plain terminal rejects partial menu numbers and keeps safe defaults"
 for (const [name, environment] of [
   ["ACCESSIBLE", { ACCESSIBLE: "1" }],
   ["NO_COLOR", { NO_COLOR: "1" }],
-  ["CI", { CI: "1" }],
 ]) {
   test(`setup uses plain non-animated prompts when ${name} is set`, terminal, async (t) => {
     const f = fixture(t);
@@ -128,11 +127,23 @@ test("setup credential failures disclose partial effects and preserve local poli
   assert.deepEqual(f.saved(), f.policy);
 });
 
-test("setup without a terminal fails with guidance before any GitHub command", (t) => {
+test("setup without a terminal defaults to No before any GitHub command", (t) => {
   const f = fixture(t);
   const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /requires an interactive terminal/);
+  assert.equal(result.status, 0);
+  assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
+  assert.match(result.stdout, /"reason":"non-interactive"/);
+  assert.deepEqual(f.calls(), []);
+  assert.deepEqual(f.saved(), f.policy);
+});
+
+test("setup in CI defaults to No even with a controlling terminal", terminal, async (t) => {
+  const f = fixture(t);
+  const result = await walk(f, [], "xterm-256color", { CI: "1" });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Guided setup skipped.*Defaulting to No/);
+  assert.match(result.stdout, /"reason":"non-interactive"/);
+  assert.doesNotMatch(result.stdout, /Repositories CAO should read|How should CAO authenticate/);
   assert.deepEqual(f.calls(), []);
   assert.deepEqual(f.saved(), f.policy);
 });

@@ -99,7 +99,7 @@ usage() {
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
-    '--setup opens the guided setup after installation (requires a terminal).' \
+    '--setup opens guided setup after installation; without a terminal or in CI, it safely declines changes.' \
     '--quickstart creates a private control repository, runs Bug Bash in review mode (up to 700 AI credits),' \
     'commits and pushes CAO files, collects Activity, and deploys a public dashboard.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
@@ -184,6 +184,7 @@ styled_prompt_enabled() {
 }
 
 terminal_available() {
+  [[ -z "${CI:-}" ]] || return 1
   { : < /dev/tty; } 2>/dev/null
 }
 
@@ -480,11 +481,15 @@ verify_gh_aw_version() {
 }
 
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
-# declined prompt, or no usable terminal, stops the installer successfully with
-# manual-upgrade guidance; a confirmed upgrade that fails still fails the run.
+# declined prompt stops successfully with manual-upgrade guidance; no usable
+# terminal or a confirmed upgrade that fails still fails the run.
 upgrade_gh_aw() {
   local answer
   local upgrade_command="curl --fail --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw"
+  if ! terminal_available; then
+    printf 'gh-aw was not upgraded. Run `%s`, then rerun the CAO installer.\n' "$upgrade_command" >&2
+    return 1
+  fi
   if { printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with %s? [y/N] ' "$upgrade_command" > /dev/tty; } 2>/dev/null &&
     IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
     if ! install_gh_aw; then
@@ -586,9 +591,9 @@ main() {
       "$required_gh" "${current_gh:-unknown}" >&2
     return 1
   fi
-  if { [[ "$setup" == true ]] || { [[ "$create_repository_requested" == true ]] && [[ -z "$create_repository" ]]; }; } &&
+  if [[ "$create_repository_requested" == true && -z "$create_repository" ]] &&
     ! terminal_available; then
-    printf '%s\n' 'Interactive repository creation and --setup require a terminal. Pass --create-repo OWNER/NAME for non-interactive creation.' >&2
+    printf '%s\n' 'Interactive repository creation requires a terminal outside CI. Pass --create-repo OWNER/NAME for non-interactive creation.' >&2
     return 1
   fi
   if ! run_quiet_command \
@@ -767,7 +772,11 @@ main() {
   fi
   success "CAO installed and verified."
   if [[ "$setup" == true ]]; then
-    "$cao_command" setup < /dev/tty
+    if terminal_available; then
+      "$cao_command" setup < /dev/tty
+    else
+      "$cao_command" setup
+    fi
   elif [[ "$quickstart" == true ]]; then
     if [[ -d "$catalog_source" ]]; then
       run_cao_quickstart "$cao_command" quickstart --campaign "$catalog_source/bug-bash"

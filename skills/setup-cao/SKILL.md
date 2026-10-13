@@ -24,7 +24,9 @@ Campaign discovery and installation are a separate task for `add-cao-campaign`.
 - Establish exact repository scope before selecting authentication. Capability
   is not consent, and credential reach never widens policy.
 - Ask before repository creation or reuse, runtime installation, credential
-  configuration, commit, or push.
+  configuration, commit, or push unless already explicitly authorized. If no
+  user is available, take the safe defaults in the non-interactive reference
+  instead of asking or waiting; absence of a user grants no additional effects.
 - Keep rollout authority only in `.github/workflows/cao.json`. Keep credentials
   out of files, chat, command arguments, workflow inputs, and commits.
 - Fail closed when scope, authority, access, credentials, installation, or
@@ -85,8 +87,9 @@ runtime copying.
    [authentication](references/authentication.md) only when selecting or
    troubleshooting an authentication profile.
 6. If interaction is unavailable, read
-   [non-interactive setup](references/non-interactive.md) and reproduce only the
-   required scope and authentication decisions.
+   [non-interactive setup](references/non-interactive.md) and take its safe
+   defaults. Do not infer broader scope or configure credentials without
+   explicit authorization.
 7. Validate policy and repository state:
 
    ```bash

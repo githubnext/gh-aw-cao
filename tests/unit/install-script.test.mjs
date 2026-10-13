@@ -565,10 +565,12 @@ test("streamed install.sh scopes policy to gh's current repository, not the ambi
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
 
-test(`streamed install.sh with gh-aw ${olderGhAw} and no terminal stops with upgrade guidance`, async (t) => {
+test(`streamed install.sh with gh-aw ${olderGhAw} and no terminal fails with upgrade guidance`, async (t) => {
   const { consumer, env, log, installedGhAw } = await createConsumer(t, olderGhAw);
-  const result = await streamInstaller(consumer, env);
-  assert.match(result.stdout, manualUpgrade(supportedGhAw));
+  const result = await runStreamed(consumer, env);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, manualUpgrade(supportedGhAw));
+  assert.doesNotMatch(result.stdout, /CAO installed and verified/);
   assert.equal(await log(), "");
   assert.equal(await installedGhAw(), `${olderGhAw}\n`);
   await assertNothingInstalled(consumer);
@@ -577,8 +579,9 @@ test(`streamed install.sh with gh-aw ${olderGhAw} and no terminal stops with upg
 test(`streamed install.sh requires the local aw.yml min-version ${manifestGhAw} before adding`, async (t) => {
   const { consumer, env, log, installedGhAw } = await createConsumer(t, supportedGhAw);
   await writeFile(path.join(consumer, "aw.yml"), `min-version: ${manifestGhAw}\n`);
-  const result = await streamInstaller(consumer, env);
-  assert.match(result.stdout, manualUpgrade(manifestGhAw));
+  const result = await runStreamed(consumer, env);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, manualUpgrade(manifestGhAw));
   assert.equal(await log(), "");
   assert.equal(await installedGhAw(), `${supportedGhAw}\n`);
   await assertNothingInstalled(consumer);
@@ -1055,12 +1058,67 @@ test("install.sh refuses to create a repository when its clone directory already
   assert.equal(await log(), "");
 });
 
+for (const [name, environment, arguments_] of [
+  ["bare installation in CI", { CI: "1" }, []],
+  ["guided installation without a terminal", {}, ["--setup"]],
+  ["guided installation in CI", { CI: "1" }, ["--setup"]],
+  ["exact repository creation with guided setup", {}, ["--create-repo", "alpha-org/new-control", "--setup"]],
+  ["exact repository creation with guided setup in CI", { CI: "1" }, ["--create-repo", "alpha-org/new-control", "--setup"]],
+]) {
+  test(`headless install.sh completes safe ${name}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const creating = arguments_.includes("--create-repo");
+    const repository = creating ? "alpha-org/new-control" : env.FAKE_CONTROL_REPOSITORY;
+    const installEnv = { ...env, ...environment, FAKE_CONTROL_REPOSITORY: repository };
+    const result = await streamInstaller(consumer, installEnv, arguments_);
+    assert.equal(await log(), creating ? "create-private\nadd\n" : "add\n");
+    assert.match(result.stdout, /CAO installed and verified/);
+    if (arguments_.includes("--setup")) {
+      assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
+      assert.doesNotMatch(result.stdout + result.stderr, /Repositories CAO should read|Apply this setup\?/);
+    }
+    await assertCompleteInstall(creating ? path.join(consumer, "new-control") : consumer, installEnv, supportedGhAw, repository);
+  });
+}
+
+test("headless guided reinstallation preserves operator-owned policy", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, env);
+  const customPolicy = '{"version":1,"gh-aw-version":"v9.9.9","control-plane":{"campaigns":{"custom":{}}}}\n';
+  await writeFile(path.join(consumer, policyPath), customPolicy);
+  const result = await streamInstaller(consumer, { ...env, CI: "1" }, ["--setup"]);
+  assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
+  assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
+  assert.equal(await log(), "add\n");
+});
+
+test("install.sh in CI never prompts on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runTerminal("bash", [installScript, "--setup"], {
+    cwd: consumer, env: { ...env, CI: "1" }, timeout, input: "",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Guided setup skipped.*Defaulting to No/);
+  assert.equal(await log(), "add\n");
+});
+
+test("install.sh in CI fails an old gh-aw without reading the controlling terminal", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t, olderGhAw);
+  const result = await runTerminal("bash", [installScript], {
+    cwd: consumer, env: { ...env, CI: "1" }, timeout, input: "",
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, manualUpgrade(supportedGhAw));
+  assert.doesNotMatch(result.stdout, /Upgrade it now/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
 for (const arguments_ of [
   ["--create-repo"],
   ["--create-repo", "not-a-coordinate"],
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
-  ["--setup"],
   ["--quickstart"],
   ["--setup", "--quickstart"],
 ]) {

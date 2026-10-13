@@ -76,6 +76,13 @@ deployment documented in the [quickstart](setup-quickstarts.md). Use
 `setup-auth` commands remain available for manual and non-interactive
 administration.
 
+Without an interactive terminal or when `CI` is set, `./cao.sh setup` defaults
+to **No**, reports that guided setup was skipped, and exits successfully without
+GitHub calls or changes to policy, credentials, or Pages. `./cao.sh setup --json`
+returns `{"command":"setup","cancelled":true,"reason":"non-interactive"}`.
+Bare installation remains usable with exact control-repository scope, no
+operational campaigns, and repository-local workflow-token Activity access.
+
 ## Control Campaigns
 
 ```bash
