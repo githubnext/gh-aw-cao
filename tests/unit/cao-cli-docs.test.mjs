@@ -66,7 +66,7 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
-  assert.match(quickstart, /bash -s -- --quickstart --create-repo "\$CONTROL_REPOSITORY"/);
+  assert.match(quickstart, /bash -s -- --quickstart --target OWNER\/REPOSITORY/);
   assert.match(quickstart, /Guided setup installs no campaign and runs no workflow; it never commits or\s+pushes/);
   assert.match(quickstart, /Bare installation also stops without a prompt/);
   assert.doesNotMatch(quickstart, /gh repo create acme\//);
