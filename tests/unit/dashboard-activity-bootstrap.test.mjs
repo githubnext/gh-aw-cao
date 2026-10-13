@@ -151,8 +151,10 @@ test("dashboard caches successful builds and preserves the Pages deployment poli
   assert.equal(upload.with["if-no-files-found"], "error");
   assert.equal(jobs.cache.needs, "build");
   assert.equal(jobs.cache.if, undefined);
-  assert.equal(jobs.deploy.needs, "build");
+  assert.equal(jobs.pages.needs, "build");
+  assert.equal(jobs.pages.if, "needs.build.outputs.deploy == 'true'");
+  assert.deepEqual(jobs.deploy.needs, ["build", "pages"]);
   assert.equal(jobs.deploy.if, "needs.build.outputs.deploy == 'true'");
   assert.equal(jobs["notify-failure"].if,
-    "${{ always() && (needs.build.result == 'failure' || needs.cache.result == 'failure' || needs.deploy.result == 'failure') }}");
+    "${{ always() && (needs.build.result == 'failure' || needs.cache.result == 'failure' || needs.pages.result == 'failure' || needs.deploy.result == 'failure') }}");
 });
