@@ -3,6 +3,79 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-13T04:38:37Z",
+      "worker_run_id": 38347086501,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38347163805,
+        38344629298,
+        38344577806,
+        38342989666,
+        38342905028,
+        38340745458,
+        38339749801,
+        38339268694,
+        38336260561,
+        38336053619,
+        38334459112,
+        38334004784,
+        38333931988,
+        38333543594,
+        38330571927,
+        38330354668,
+        38325426873,
+        38324703451,
+        38324080226,
+        38323715765
+      ],
+      "docs_window": {
+        "start": "2026-10-12T23:44:35Z",
+        "end": "2026-10-13T04:35:33Z"
+      },
+      "docs_success_count": 10,
+      "docs_comparable_success_count": 0,
+      "docs_deployed_success_count": 0,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 16.5,
+        "workflow_p90_s": 19.0,
+        "execution_median_s": 16.5,
+        "execution_p90_s": 19.0,
+        "schedule_freshness_median_s": 12.0,
+        "schedule_freshness_p90_s": 14.0,
+        "check_freshness_step_median_s": 9.0,
+        "check_freshness_step_p90_s": 10.0,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "dashboard_window": {
+        "start": "2026-10-12T21:19:48Z",
+        "end": "2026-10-13T04:03:34Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_current_sha_success_count": 0,
+      "dashboard_comparable_success_count": 0,
+      "dashboard_metrics": {
+        "queue_median_s": null,
+        "queue_p90_s": null,
+        "workflow_median_s": null,
+        "workflow_p90_s": null,
+        "execution_median_s": null,
+        "execution_p90_s": null,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "cache_median_s": null,
+        "cache_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. In the latest 20 completed docs.yml runs from 2026-10-12T23:44:35Z through 2026-10-13T04:35:33Z, 10 schedule runs succeeded but 0 successful runs reached a successful build job, so there were not 5 comparable successful docs samples. Trusted job metadata showed all successful docs runs were same-SHA schedule-triggered freshness-only passes on 5263be0, with workflow queue median/p90 0.0s/0.0s, full workflow median/p90 16.5s/19.0s, execution median/p90 16.5s/19.0s, schedule-freshness job median/p90 12.0s/14.0s, and freshness-check step median/p90 9.0s/10.0s. The same 20-run docs window also contained 10 skipped workflow_run runs, disclosed but excluded from comparability. A bounded log read from docs run 38347163805 confirmed the freshness gate is the only executed path in successful samples. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T21:19:48Z through 2026-10-13T04:03:34Z contained 0 successful dashboard builds (19 skipped workflow_run runs and 1 push run that ended action_required), so no trusted dependency-cache, dashboard-generation, artifact-transfer, or Pages-packaging timings were available. Because the bounded evidence window still lacks 5 comparable successful runs, no evidence-backed recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-13T04:02:00Z",
       "worker_run_id": 38343725984,
       "category": "dependency installation and caching",
@@ -1824,66 +1897,6 @@
         "deploy_p90_s": null
       },
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"reusable dashboard generation\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T05:33:59Z through 2026-10-12T10:34:06Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 10 successful docs runs, workflow queue median/p90 was 3.0s/4.5s, full workflow execution median/p90 was 16.0s/18.6s, and schedule-freshness job median/p90 was 12.0s/13.1s. Trusted job metadata for every successful docs run showed build and deploy skipped. The paired latest 30 completed cao-dashboard.yml runs from 2026-10-11T21:55:03Z through 2026-10-12T10:31:54Z contained 1 successful push-triggered dashboard build and 29 skipped non-comparable invocations; only 1 successful dashboard build used the current source SHA b56d73723daceacca67a961d071f650e7f76eedd. Trusted step metadata for dashboard run 38182741457 showed a 1447.0s build job and 11.0s cache job, dominated by Restore collected activity data at 152.0s and Upgrade fallback activity data at 1257.0s; bounded log reads verified a cache restore hit with a ~2165 MB payload and final published data copies of 178.4 MiB for gh-aw-logs.sqlite plus 463.1 MiB across 510 activity shards. Because the bounded window contains 0 comparable successful deployed docs runs and only 1 successful dashboard build, no safe evidence-backed reusable-dashboard-generation recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-12T08:51:46Z",
-      "worker_run_id": 38225683818,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38222896878,
-        38222309577,
-        38220493696,
-        38217307151,
-        38216521228,
-        38214993782,
-        38212349296,
-        38212071323,
-        38210543480,
-        38210167185,
-        38209088538,
-        38208485637,
-        38206579857,
-        38206236039,
-        38204649439,
-        38203244952,
-        38202566836,
-        38202235263,
-        38201398248,
-        38200435421
-      ],
-      "docs_window": {
-        "start": "2026-10-12T03:36:45Z",
-        "end": "2026-10-12T08:20:01Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 0,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 14.5,
-        "workflow_p90_s": 16.2,
-        "schedule_freshness_median_s": 11.0,
-        "schedule_freshness_p90_s": 12.1,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "dashboard_window": {
-        "start": "2026-10-11T23:01:38Z",
-        "end": "2026-10-12T08:13:52Z"
-      },
-      "dashboard_success_count": 1,
-      "dashboard_current_sha_success_count": 1,
-      "dashboard_metrics": {
-        "build_median_s": 1447.0,
-        "build_p90_s": 1447.0,
-        "cache_median_s": 11.0,
-        "cache_p90_s": 11.0,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"reusable dashboard generation\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T03:36:45Z through 2026-10-12T08:20:01Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 14.5s/16.2s, and schedule-freshness job median/p90 was 11.0s/12.1s. A bounded log read of docs run 38222896878 confirmed the freshness-skip summary path with the message that the deployed docs and dashboard are current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-11T23:01:38Z through 2026-10-12T08:13:52Z contained 1 successful push-triggered dashboard build on the same source SHA and 19 skipped non-comparable invocations. Trusted step metadata for dashboard run 38182741457 showed a 1447.0s build job and 11.0s cache job, dominated by Restore collected activity data at 152.0s and Upgrade fallback activity data at 1257.0s; bounded log reads verified a cache restore hit from the cao-activity-v5 restore key with a ~2165 MB payload and final published data copies of 178.4 MiB for gh-aw-logs.sqlite and 463.1 MiB across 510 activity shards. Because the bounded window contains 0 comparable successful deployed docs runs and only 1 successful dashboard build, no safe evidence-backed reusable-dashboard-generation recommendation is actionable in this cycle."
     }
   ]
 }
