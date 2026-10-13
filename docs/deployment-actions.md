@@ -28,12 +28,22 @@ Queries run in each viewer's browser, in a web worker over a local IndexedDB dat
 | `github-pages` environment | Created automatically by GitHub Pages. You can protect it with required reviewers. |
 | Browser | A current browser that supports web workers, IndexedDB, and JavaScript modules. The browser downloads and indexes the data on first load. |
 
-The dashboard build and deploy jobs don't need any additional secrets. The build job uses the automatic `github.token` with `actions: read` and `contents: read` permissions. The deploy job uses OpenID Connect (OIDC) with `pages: write` and `id-token: write` permissions.
+The dashboard build, Pages artifact, and deploy jobs don't need additional
+secrets. The build job uses the automatic `github.token` with `actions: read`
+and `contents: read` permissions. A separate job packages and uploads the Pages
+artifact before the deploy job uses OpenID Connect (OIDC) with `pages: write`
+and `id-token: write` permissions.
 
 > [!NOTE]
 > Don't create a `REPORT_PAGES_TOKEN` secret. The current dashboard doesn't use it.
 
-The deploy job relies on the standard Pages actions to report configuration and deployment errors; it does not separately verify Pages visibility with the Actions token. The Configure Pages step sets `ignore-if-missing: true`, but the pinned action does not currently support that input, so it can still fail when Pages settings are unavailable. Confirm the publishing source and intended access boundary in **Settings > Pages** before deployment.
+The Pages artifact and deploy jobs rely on the standard Pages actions to report
+configuration and deployment errors; they do not separately verify Pages
+visibility with the Actions token. The Configure Pages step sets
+`ignore-if-missing: true`, but the pinned action does not currently support
+that input, so it can still fail when Pages settings are unavailable. Confirm
+the publishing source and intended access boundary in **Settings > Pages**
+before deployment.
 
 ## Choosing a credential profile
 
@@ -126,7 +136,8 @@ This option has no server, so there's no server-side OpenTelemetry endpoint to c
 
 - **Exact source.** The site is built from the exact workflow commit (`github.workflow_sha`). It publishes only the payload files listed in the manifest.
 - **Complete payloads.** Every payload file is hash-verified before the browser loads it. If the payload is incomplete, the build fails instead of publishing partial data.
-- **No long-lived credentials.** The build and deploy jobs don't hold long-lived credentials. The deploy job uses OIDC.
+- **No long-lived credentials.** The build, Pages artifact, and deploy jobs
+  don't hold long-lived credentials. The deploy job uses OIDC.
 - **One deployment at a time.** A running dashboard build finishes publishing its snapshot without being cancelled by newer triggers. GitHub Actions keeps at most one pending eligible build, replacing it when a newer eligible run arrives. Ineligible triggers use separate concurrency groups and cannot displace that pending build.
 - **Safe failures.** If a build or deployment fails, the previously deployed site stays in place.
 
