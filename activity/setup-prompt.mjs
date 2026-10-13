@@ -3,6 +3,17 @@ import { createInterface } from 'node:readline/promises';
 
 export class SetupCancelled extends Error {}
 
+function styledPromptsEnabled({ input, output, environment = process.env }) {
+  return Boolean(
+    input?.isTTY
+    && output?.isTTY
+    && environment.TERM !== 'dumb'
+    && !environment.NO_COLOR
+    && !environment.ACCESSIBLE
+    && !environment.CI
+  );
+}
+
 export function createTerminalPrompt({ input, output, UsageError }) {
   if (!input.isTTY || !output.isTTY) {
     throw new UsageError('cao setup requires an interactive terminal. Run ./cao.sh setup from a terminal; use ./cao.sh setup-auth for scripted authentication.');
@@ -13,7 +24,7 @@ export function createTerminalPrompt({ input, output, UsageError }) {
     if (ui.isCancel(value)) throw new SetupCancelled();
     return value;
   };
-  if (process.env.TERM !== 'dumb') {
+  if (styledPromptsEnabled({ input, output })) {
     return {
       start: () => ui.intro('Set up Central Agentic Ops', options),
       step: (message) => ui.log.step(message, options),
@@ -77,5 +88,55 @@ export function createTerminalPrompt({ input, output, UsageError }) {
     finish: () => note('Configuration saved. No campaigns installed or run.'),
     failure: () => note('Setup stopped. See the recovery guidance below.'),
     close: () => terminal.close(),
+  };
+}
+
+export function createQuickstartProgress({
+  input = process.stdin,
+  output = process.stderr,
+  environment = process.env,
+} = {}) {
+  const options = { input, output };
+  if (styledPromptsEnabled({ input, output, environment })) {
+    let active;
+    const clear = () => {
+      active?.clear();
+      active = undefined;
+    };
+    return {
+      start: () => ui.intro('Complete the CAO quickstart', options),
+      step(message) {
+        clear();
+        active = ui.spinner(options);
+        active.start(message);
+      },
+      success(message) {
+        if (active) active.stop(message);
+        else ui.log.success(message, options);
+        active = undefined;
+      },
+      warning(message) {
+        clear();
+        ui.log.warn(message, options);
+      },
+      failure() {
+        if (active) active.error('Quickstart stopped');
+        else ui.cancel('Quickstart stopped', options);
+        active = undefined;
+      },
+      finish(message) {
+        clear();
+        ui.outro(message, options);
+      },
+    };
+  }
+  const write = (message) => output.write(`${message}\n`);
+  return {
+    start: () => write('Complete the CAO quickstart'),
+    step: (message) => write(`==> ${message}`),
+    success: (message) => write(`OK: ${message}`),
+    warning: (message) => write(`Warning: ${message}`),
+    failure: () => write('Quickstart stopped'),
+    finish: write,
   };
 }

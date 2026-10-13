@@ -3,7 +3,7 @@
 set -euo pipefail
 
 info() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]; then
+  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
     printf '\033[33m…\033[0m %s\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -11,7 +11,7 @@ info() {
 }
 
 note() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]; then
+  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
     printf '\033[36m•\033[0m \033[2m%s\033[0m\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -19,7 +19,7 @@ note() {
 }
 
 success() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]; then
+  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
     printf '\033[32m✓\033[0m %s\n' "$1"
   else
     printf '==> %s\n' "$1"
@@ -27,7 +27,7 @@ success() {
 }
 
 next_step() {
-  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]; then
+  if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]; then
     printf '\033[35m→\033[0m %s\n' "$1"
   else
     printf '%s\n' "$1"
@@ -81,19 +81,21 @@ run_quiet_command() {
     printf '\r\033[2K'
   fi
   if [[ "$status" -eq 0 ]]; then
-    success "$success_message"
+    [[ -z "$success_message" ]] || success "$success_message"
   fi
   return "$status"
 }
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
+    'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens the guided setup after installation (requires a terminal).' \
-    'Existing policy and unrelated files are preserved. No campaign is added or run.'
+    '--quickstart creates a private control repository, runs Bug Bash in review mode (up to 700 AI credits),' \
+    'commits and pushes CAO files, collects Activity, and deploys a public dashboard.' \
+    'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
 version_at_least() {
@@ -168,32 +170,11 @@ query($endCursor: String) {
 }
 
 styled_prompt_enabled() {
-  [[ "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" ]]
+  [[ "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" && -z "${ACCESSIBLE:-}" && -z "${CI:-}" ]]
 }
 
 terminal_available() {
   { : < /dev/tty; } 2>/dev/null
-}
-
-confirm_guided_setup() {
-  local answer
-  printf '\n' > /dev/tty
-  while true; do
-    if styled_prompt_enabled; then
-      printf '\033[35m?\033[0m Continue to guided setup? \033[2m(Y/n)\033[0m ' > /dev/tty
-    else
-      printf 'Continue to guided setup? [Y/n] ' > /dev/tty
-    fi
-    if ! IFS= read -r answer < /dev/tty; then
-      printf '\n' > /dev/tty
-      return 1
-    fi
-    case "$answer" in
-      ""|[Yy]|[Yy][Ee][Ss]) return 0 ;;
-      [Nn]|[Nn][Oo]) return 1 ;;
-      *) printf 'Please answer yes or no.\n' > /dev/tty ;;
-    esac
-  done
 }
 
 confirm_repository_creation() {
@@ -509,6 +490,7 @@ main() {
   local catalog_source="githubnext/gh-aw-cao"
   local explicit_source=false
   local setup=false
+  local quickstart=false
   local repository_creation_prompt_started=false
   local create_repository_requested=false
   local create_repository=""
@@ -527,6 +509,7 @@ main() {
     case "$1" in
       --help|-h) usage; return ;;
       --setup) setup=true; shift ;;
+      --quickstart) quickstart=true; shift ;;
       --create-repo)
         create_repository_requested=true
         if [[ $# -ge 2 && "$2" != -* ]]; then
@@ -556,6 +539,13 @@ main() {
         ;;
     esac
   done
+  if [[ "$setup" == true && "$quickstart" == true ]]; then
+    printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
+    return 1
+  fi
+  if [[ "$quickstart" == true ]]; then
+    create_repository_requested=true
+  fi
 
   for tool in node gh git curl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -586,6 +576,9 @@ main() {
     printf '%s\n' "$authentication_status" >&2
     printf 'Sign in with gh auth login, then rerun this command. No CAO files were written.\n' >&2
     return 1
+  fi
+  if [[ "$quickstart" == true ]]; then
+    note "Quickstart uses a private control repository, a public dashboard, and up to 700 AI credits."
   fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -714,11 +707,8 @@ main() {
     fi
   fi
 
-  if ! run_quiet_command \
-    "Making the CAO launcher executable..." \
-    "CAO launcher is executable." \
-    chmod +x "$cao_command"; then
-    [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
+  if ! chmod +x "$cao_command"; then
+    printf 'Unable to make %s executable.\n' "$cao_command" >&2
     return 1
   fi
 
@@ -733,17 +723,20 @@ main() {
   else
     note "Existing CAO policy preserved."
   fi
-  success "CAO installation complete."
-  if [[ "$setup" == false ]] && terminal_available && confirm_guided_setup; then
-    setup=true
-  fi
+  success "CAO installed and verified."
   if [[ "$setup" == true ]]; then
     "$cao_command" setup < /dev/tty
+  elif [[ "$quickstart" == true ]]; then
+    if [[ -d "$catalog_source" ]]; then
+      "$cao_command" quickstart --campaign "$catalog_source/bug-bash"
+    else
+      "$cao_command" quickstart
+    fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
     printf 'Open the new checkout: cd %q\n' "$directory"
   fi
-  if [[ "$setup" == false ]]; then
+  if [[ "$setup" == false && "$quickstart" == false ]]; then
     next_step "Next: ./cao.sh setup"
   fi
 }

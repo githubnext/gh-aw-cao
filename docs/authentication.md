@@ -51,7 +51,10 @@ The supported control-plane credentials are:
 
 `GH_AW_GITHUB_AUTH_MODE` explicitly selects `app`, `pat`, or the repository-local
 `workflow-token` mode. With no mode configured, Activity uses `GITHUB_TOKEN`
-when the exact collection scope contains only the control repository. GitHub App setup
+when the exact collection scope contains only the control repository. An
+explicit `control-plane.activity.repositories` list narrows evidence collection
+within the global allowed-repository scope without narrowing campaign rollout
+authority. GitHub App setup
 writes `app` as soon as the read App credentials and selected-repository
 installations are verified, so Activity can run while write-App setup is still
 in progress. PAT setup writes `pat` only after the complete selected profile is
@@ -81,6 +84,32 @@ than the larger App/PAT reserves, so they fit the standard 1,000-request
 workflow-token quota. Owner-wide or cross-repository Activity scopes require
 `app` or `pat`; Activity rejects those scopes rather than silently collecting
 only the control repository.
+
+The public quickstart has broader rollout scope because Bug Bash reads its
+public starter target, but the agentic workflows themselves run in the control
+repository. It declares the narrower Activity scope explicitly:
+
+```json
+{
+  "control-plane": {
+    "scope": {
+      "allowed-repositories": [
+        "acme/cao",
+        "githubnext/gh-aw-cao"
+      ]
+    },
+    "activity": {
+      "repositories": ["acme/cao"]
+    }
+  }
+}
+```
+
+Every Activity repository must remain within `allowed-owners` and, when
+`control-plane.scope.allowed-repositories` is present, must also appear in that
+exact allowlist. The field accepts exact `OWNER/REPOSITORY` coordinates only.
+Omitting it preserves the fail-closed rule: workflow-token mode rejects broader
+collection scope rather than inferring a control-repository-only subset.
 
 ### Automated App setup
 

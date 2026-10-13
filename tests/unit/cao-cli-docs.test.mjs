@@ -10,6 +10,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init",
     "setup",
+    "quickstart",
     "setup-auth github-app",
     "setup-auth enterprise-app",
     "setup-auth token",
@@ -42,26 +43,29 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /different from `gh aw doctor`/);
 });
 
-test("quickstart uses the interactive setup command and stops before campaigns", () => {
+test("quickstart documents the complete bounded first-success journey", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
-  const setup = quickstart.indexOf("offers to continue into guided setup");
-  const validation = quickstart.indexOf("./cao.sh validate");
-  const review = quickstart.indexOf("git diff --check");
+  const command = quickstart.indexOf("bash -s -- --quickstart");
+  const campaign = quickstart.indexOf("Install Bug Bash");
+  const activity = quickstart.indexOf("Collect a CAO Activity snapshot");
+  const dashboard = quickstart.indexOf("Wait for the data-bearing dashboard deployment");
 
   assert.ok(installer > 0);
-  assert.ok(setup > installer);
-  assert.ok(validation > setup);
-  assert.ok(review > setup);
+  assert.ok(command > installer);
+  assert.ok(campaign > command);
+  assert.ok(activity > campaign);
+  assert.ok(dashboard > activity);
   assert.doesNotMatch(quickstart, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
-  assert.match(quickstart, /installs no campaign and runs no workflow/);
+  assert.match(quickstart, /up to \*\*700 AI\s+credits\*\*/);
+  assert.match(quickstart, /public GitHub Pages dashboard/);
+  assert.match(quickstart, /Review outputs remain in your private control repository/);
+  assert.match(quickstart, /starter target is never modified/);
+  assert.match(quickstart, /require at least one collected run/);
+  assert.match(quickstart, /There is no second confirmation/);
+  assert.match(quickstart, /never\s+creates a public control repository/);
   assert.match(quickstart, /gh auth status/);
-  assert.match(quickstart, /stage only the setup files you\s+reviewed/);
-  assert.match(quickstart, /Adding a campaign installs its\s+workflows but does not run them/);
-  assert.match(quickstart, /bash -s -- --create-repo/);
-  assert.match(quickstart, /offers to continue into guided setup/);
-  assert.match(quickstart, /Pass `--setup` to the installer/);
-  assert.match(quickstart, /never creates\s+a public repository/);
-  assert.match(quickstart, /then run setup later/);
-  assert.match(quickstart, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
+  assert.match(quickstart, /bash -s -- --quickstart --create-repo "\$CONTROL_REPOSITORY"/);
+  assert.match(quickstart, /Guided setup installs no campaign and runs no workflow; it never commits or\s+pushes/);
+  assert.match(quickstart, /Bare installation also stops without a prompt/);
   assert.doesNotMatch(quickstart, /gh repo create acme\//);
 });

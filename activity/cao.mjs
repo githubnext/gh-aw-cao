@@ -5,6 +5,7 @@ import { formatSetupAuthenticationSummary } from './authentication.mjs';
 import { NamedQueryError } from './agent-catalog.mjs';
 import { UsageError } from './cli/options.mjs';
 import { runCli } from './cli/run.mjs';
+import { formatQuickstartSummary } from './quickstart.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
@@ -52,6 +53,10 @@ async function main() {
       if (!output.cancelled) {
         process.stdout.write('Next: ./cao.sh validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN.\n');
       }
+      return;
+    }
+    if (typeof output === 'object' && output?.command === 'quickstart' && !arguments_.includes('--json')) {
+      process.stdout.write(`${formatQuickstartSummary(output)}\n`);
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);

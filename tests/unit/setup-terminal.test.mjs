@@ -62,6 +62,25 @@ test("setup plain terminal rejects partial menu numbers and keeps safe defaults"
   assert.deepEqual(f.saved(), f.policy);
 });
 
+for (const [name, environment] of [
+  ["ACCESSIBLE", { ACCESSIBLE: "1" }],
+  ["NO_COLOR", { NO_COLOR: "1" }],
+  ["CI", { CI: "1" }],
+]) {
+  test(`setup uses plain non-animated prompts when ${name} is set`, terminal, async (t) => {
+    const f = fixture(t);
+    const result = await walk(f, [
+      ["Repositories CAO should read", "\r"],
+      ["Choose [1]:", "\r"],
+      ["Apply this setup?", "\r"],
+    ], "xterm-256color", environment);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.doesNotMatch(result.stdout, /\u001b\[/);
+    assert.match(result.stdout, /Set up Central Agentic Ops/);
+    assert.match(result.stdout, /"cancelled":true/);
+  });
+}
+
 for (const [name, settings, answer, expectedCode, expectedDeletion] of [
   ["accepting public visibility", { publicPages: true }, "\u001b[D\r", 0, false],
   ["declining a new public site", { publicPages: true, newPages: true }, "\r", 0, true],

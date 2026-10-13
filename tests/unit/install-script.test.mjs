@@ -525,9 +525,9 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
   assert.match(result.stdout, /Installing the CAO campaign/);
   assert.match(result.stdout, /Materializing the CAO runtime/);
-  assert.match(result.stdout, /Making the CAO launcher executable/);
+  assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
-  assert.match(result.stdout, /CAO installation complete/);
+  assert.match(result.stdout, /CAO installed and verified/);
   assert.match(result.stdout, /Next: \.\/cao\.sh setup/);
   assert.doesNotMatch(result.stdout, /Continue to guided setup/);
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
@@ -912,31 +912,40 @@ test("install.sh uses one restrained spinner for a slow sign-in check", { skip: 
   await assertNothingInstalled(consumer);
 });
 
-test("interactive installation offers and enters guided setup by default", { skip: process.platform === "win32" }, async (t) => {
+test("install.sh disables spinner animation in CI", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo alpha-org/control`], {
+    cwd: consumer,
+    env: {
+      ...env,
+      TERM: "xterm-256color",
+      ACCESSIBLE: "",
+      NO_COLOR: "",
+      CI: "1",
+      FAKE_AUTH_DELAY: "0.2",
+      FAKE_AUTH_FAILURE: "1",
+    },
+    timeout,
+  });
+  assert.notEqual(result.code, 0);
+  assert.doesNotMatch(result.stdout, /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|\u001b\[/);
+  assert.match(result.stdout, /==> Checking tools and GitHub sign-in/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test("interactive bare installation stops cleanly with an explicit setup next step", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
-  const steps = [
-    "Continue to guided setup?",
-    "Repositories CAO should read",
-    "How should CAO authenticate?",
-    "Apply this setup?",
-  ];
-  let step = 0;
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash`], {
     cwd: consumer,
     env: { ...env, TERM: "xterm-256color", FORCE_COLOR: "0", CI: "" },
     timeout,
-    onOutput(output, write) {
-      if (steps[step] && output.includes(steps[step])) {
-        step += 1;
-        write("\r");
-      }
-    },
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.equal(step, steps.length);
-  assert.match(result.stdout, /Setup cancelled/);
-  assert.doesNotMatch(result.stdout, /Next: \.\/cao\.sh setup/);
+  assert.doesNotMatch(result.stdout, /Continue to guided setup|Repositories CAO should read/);
+  assert.match(result.stdout, /Next: \.\/cao\.sh setup/);
   assert.equal(await log(), "add\n");
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
@@ -1022,6 +1031,8 @@ for (const arguments_ of [
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
   ["--setup"],
+  ["--quickstart"],
+  ["--setup", "--quickstart"],
 ]) {
   test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t);

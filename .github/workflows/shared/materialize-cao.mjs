@@ -77,6 +77,11 @@ function recordFor(records, campaign) {
   throw new Error(`No installed CAO package record found for ${name}`);
 }
 
+export function installedCaoRevision(campaign = 'root', repositoryRoot = process.cwd()) {
+  validateCampaign(campaign);
+  return resolvedRevision(recordFor(installedRecords(repositoryRoot), campaign));
+}
+
 async function downloadArchive(revision, destination) {
   const response = await fetch(`https://codeload.github.com/${repository}/tar.gz/${encodeURIComponent(revision)}`);
   if (!response.ok) throw new Error(`Unable to download CAO ${revision}: HTTP ${response.status}`);
@@ -532,7 +537,9 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
       'activity/collect-logs.sh',
       'activity/marketplace.mjs',
       'activity/problem-clustering.mjs',
+      'activity/quickstart.mjs',
       'activity/repository-memory.mjs',
+      'activity/commands/quickstart.mjs',
     ],
     dashboard: ['dashboard/site/package.json', 'dashboard/report/aic-usage.mjs'],
   }[bundle];

@@ -199,14 +199,13 @@ a directory without a Git checkout MUST receive a new clone. The terminal prompt
 MUST provide keyboard-driven selection and MUST fall back to numbered plain text
 when `ACCESSIBLE` or `NO_COLOR` is set or `TERM=dumb`. It MUST create a private
 repository and refuse an existing clone directory. After a successful
-interactive installation without `--setup`, it MUST offer a default-Yes handoff
-to guided setup. Declining or reaching end-of-input MUST leave the completed
-installation intact and print the setup command for later; a non-interactive
-installation MUST print that command without prompting. `--setup` MUST open
-guided setup on the controlling terminal without a handoff prompt or allowing
-streamed children to consume installer source from stdin. Informational status
+installation without `--setup` or `--quickstart`, it MUST finish without
+another prompt and print the setup command for later. `--setup` MUST open
+guided setup directly on the controlling terminal without allowing streamed
+children to consume installer source from stdin. Informational status
 lines SHOULD remain aligned with completed steps while using muted styling to
-distinguish existing state from completed work.
+distinguish existing state from completed work. Animated presentation MUST be
+disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or `TERM=dumb`.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the
@@ -222,6 +221,43 @@ restriction or unpublication guidance. Failures after application starts MUST di
 partial external changes rather than imply rollback. Setup MUST NOT install
 campaigns, dispatch workflows, commit, or push. The UI and its license notices
 MUST be bundled so installed setup does not need npm or consumer node_modules.
+
+`--quickstart` MUST be a separate, explicit end-to-end path rather than an
+implicit continuation of install or setup. It MUST create a new private control
+repository and disclose before execution that it publishes a public dashboard,
+runs Bug Bash in review mode against the pinned public starter target, and may
+consume up to 700 AI credits. The flag itself authorizes the bounded campaign
+installation, commit, push, dispatch, collection, and deployment effects; the
+installer MUST NOT add a redundant post-install confirmation.
+
+The quickstart MUST:
+
+- require a private repository with no existing commit;
+- configure exact global scope for the control repository and public starter
+  target while declaring `control-plane.activity.repositories` as only the
+  control repository;
+- set Bug Bash to `review`, cap selection at one repository, set rollout to
+  100 percent for the exact starter target, and cap its worker at `review`;
+- select repository-local workflow-token mode and require public GitHub Pages
+  with GitHub Actions as its source;
+- refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
+  `dashboard/`, `bug-bash/`, and `cao.sh`, then create and push one commit on
+  the repository default branch;
+- dispatch one Bug Bash orchestrator and at most one investigation worker,
+  preserving a blocked or failed outcome rather than converting it to
+  `no-finding`;
+- dispatch Activity with a correlatable request ID, require a successful
+  data-bearing Activity artifact with at least one unique run, then require the
+  corresponding dashboard deployment to succeed; and
+- print the dashboard, workflow-run, and control-repository URLs only after
+  those success conditions are verified.
+
+`control-plane.activity.repositories`, when present, MUST contain exact
+repository coordinates, contain at least one entry, remain within
+`control-plane.scope.allowed-owners`, and, when an exact repository allowlist is
+present, be its subset. Activity authentication MUST use that declared
+collection subset instead of silently narrowing broader rollout scope. Without
+the field, existing fail-closed authentication behavior remains unchanged.
 
 `cao update` without a ref MUST retain release-based selection. An explicit
 `main`, `master`, `latest`, or commit SHA MUST resolve once to a full catalog
