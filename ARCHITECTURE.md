@@ -488,6 +488,14 @@ authentication. Private/internal repositories, broader existing policy, or
 installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
+An implicit `--quickstart` resolves the latest stable CAO `vX.Y.Z` release
+after prerequisite and checkout validation but before repository creation or
+file installation, then installs or refreshes the owned catalog resources and
+verified runtime at that release's immutable commit. Missing, inaccessible, or non-stable release
+resolution fails without mutation or fallback to `main`. Any explicit catalog
+source, including `@main`, a tag, a SHA, or a local directory, is preserved.
+Bare installation and guided setup retain their existing unversioned source
+behavior.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
@@ -517,6 +525,9 @@ uses a clean public, private, or internal control repository on its checked-out
 default branch, preserving any existing commits. Outside a checkout the
 installer defaults to the signed-in user's available private `cao` control
 repository; explicit `--create-repo OWNER/NAME` selects another coordinate.
+Unless the operator supplies a catalog source, the installer pins quickstart to
+the latest stable CAO release before this flow begins; Bug Bash is then pinned
+to the same installed CAO commit.
 Quickstart selects an immutable revision of the public
 `githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
 another existing public repository. The shared starter replays a fictional

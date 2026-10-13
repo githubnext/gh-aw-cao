@@ -100,7 +100,7 @@ usage() {
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart uses a clean current control repository or creates USERNAME/cao, then targets the public' \
+    '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao, then targets the public' \
     'githubnext/gh-aw-cao-bug-bash sample. Pass --target OWNER/REPO to use another public target.' \
     'It runs Bug Bash in review mode (up to 700 AI credits), collects Activity, and deploys a public dashboard.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
@@ -500,6 +500,19 @@ verify_gh_aw_version() {
   fi
 }
 
+resolve_latest_cao_release() {
+  local release
+  if ! release="$(gh release view --repo github.com/githubnext/gh-aw-cao --json tagName --jq .tagName)" ||
+    [[ ! "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf '%s\n' \
+      'Unable to resolve the latest stable CAO release.' \
+      'Retry after GitHub release access is restored, or pass an explicit source such as githubnext/gh-aw-cao@main.' \
+      'No CAO files were written.' >&2
+    return 1
+  fi
+  printf '%s\n' "$release"
+}
+
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
 # declined prompt stops successfully with manual-upgrade guidance; no usable
 # terminal or a confirmed upgrade that fails still fails the run.
@@ -554,6 +567,7 @@ main() {
   local current_gh_aw
   local authentication_status
   local quickstart_status
+  local quickstart_release
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -718,6 +732,15 @@ main() {
       printf 'Cannot clone into existing path %s. Open that checkout or choose another repository name.\n' "$directory" >&2
       return 1
     fi
+  fi
+
+  if [[ "$quickstart" == true && "$explicit_source" == false ]]; then
+    if ! quickstart_release="$(resolve_latest_cao_release)"; then
+      return 1
+    fi
+    catalog_source="githubnext/gh-aw-cao@$quickstart_release"
+    explicit_source=true
+    note "Quickstart selected stable CAO release $quickstart_release."
   fi
 
   if [[ -d "$catalog_source" ]]; then

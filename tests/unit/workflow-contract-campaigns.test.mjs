@@ -452,7 +452,9 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.match(quickstart, /\.\/cao\.sh setup/);
   assert.match(quickstart, /installs no campaign and runs no workflow/);
-  assert.doesNotMatch(quickstart, /githubnext\/gh-aw-cao@main|commits\/main|full commit SHA/);
+  assert.match(quickstart, /latest stable CAO `vX\.Y\.Z`\s+release/);
+  assert.match(quickstart, /development build by passing `githubnext\/gh-aw-cao@main`/);
+  assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /\.\/cao\.sh update --major --cool-down 0/);
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);

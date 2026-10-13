@@ -49,22 +49,30 @@ curl --fail --silent --show-error --location \
   bash -s -- --quickstart
 ```
 
+With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
+release and pins the control plane, Bug Bash campaign, and verified release
+runtime to its immutable commit. It fails closed if a stable release cannot be
+resolved; it never silently falls back to `main`. Maintainers can opt into the
+development build by passing `githubnext/gh-aw-cao@main` before
+`--quickstart`.
+
 Then watch CAO:
 
-1. Create private `USERNAME/cao`, your control repository.
-2. Select the pinned
+1. Pin the latest stable CAO release.
+2. Create private `USERNAME/cao`, your control repository.
+3. Select the pinned
    [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
    incident revision.
-3. Install Bug Bash in `review` mode for that exact target.
-4. Use incident, language, path, contract, and test evidence to screen the
+4. Install Bug Bash in `review` mode for that exact target.
+5. Use incident, language, path, contract, and test evidence to screen the
    fixed explicit-zero hypothesis.
-5. Dispatch one repository-isolated worker to reproduce the defect and prepare
+6. Dispatch one repository-isolated worker to reproduce the defect and prepare
    separate test and production patches.
-6. Reserve compute for an adversarial verification phase that tries to reject
+7. Reserve compute for an adversarial verification phase that tries to reject
    the contract, reproduction, and repair.
-7. Deliver review evidence only to your control repository.
-8. Collect a CAO Activity snapshot and require at least one collected run.
-9. Wait for the data-bearing dashboard deployment.
+8. Deliver review evidence only to your control repository.
+9. Collect a CAO Activity snapshot and require at least one collected run.
+10. Wait for the data-bearing dashboard deployment.
 
 The command shows progress while GitHub Actions does the longer work.
 Quickstart works without a terminal and when `CI` is set.

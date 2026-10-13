@@ -61,6 +61,9 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*700 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);
+  assert.match(quickstart, /resolves the latest stable CAO `vX\.Y\.Z`\s+release/);
+  assert.match(quickstart, /never silently falls back to `main`/);
+  assert.match(quickstart, /githubnext\/gh-aw-cao@main/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
   assert.match(quickstart, /starter target is never modified/);
   assert.match(quickstart, /require at least one collected run/);

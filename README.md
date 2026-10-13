@@ -21,7 +21,11 @@ curl --fail --silent --show-error --location \
 
 At a repository root, the installer uses that clean default-branch checkout,
 including headlessly. Outside a checkout, it creates the private control
-repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects another
+repository `USERNAME/cao`. With no catalog source, quickstart resolves and pins
+the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
+release discovery fails. Pass an explicit source such as
+`githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
+that selection. Unless `--target OWNER/REPO` selects another
 existing public repository, quickstart targets
 [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
 at a pinned revision. The shared starter is a guided investigation of a

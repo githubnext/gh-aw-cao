@@ -39,6 +39,7 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
   assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
   assert.match(installerSource, /default_quickstart_control_repository/);
   assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
+  assert.match(installerSource, /Quickstart selected stable CAO release \$quickstart_release/);
 });
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
@@ -134,6 +135,11 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
+if [[ "$*" == "release view --repo github.com/githubnext/gh-aw-cao --json tagName --jq .tagName" ]]; then
+  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
+  printf '%s\\n' "\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}"
+  exit 0
+fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   [[ "$*" == *"viewerCanCreateRepositories"* ]] || exit 2
   [[ -z "\${FAKE_OWNER_DISCOVERY_FAILURE:-}" ]] || { echo "owner lookup failed" >&2; exit 1; }
@@ -221,6 +227,8 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
 fi
 if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
   [[ "\${3:-}" == githubnext/gh-aw-cao || "\${3:-}" == githubnext/gh-aw-cao@* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
+  [[ -z "\${FAKE_EXPECT_CAO_SOURCE:-}" || "\${3:-}" == "$FAKE_EXPECT_CAO_SOURCE" ]] ||
+    { echo "expected CAO package $FAKE_EXPECT_CAO_SOURCE, got \${3:-}" >&2; exit 2; }
   stdin_bytes="$(wc -c | tr -d ' ')"
   entry=add
   [[ "\${4:-}" != "--force" ]] || entry=add-force
@@ -261,7 +269,7 @@ EOF
 
 async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control" } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }));
   const bin = path.join(root, "bin");
   const consumer = path.join(root, "consumer");
   const log = path.join(root, "commands.log");
@@ -1136,6 +1144,88 @@ test("headless quickstart selects the current checkout and validates it before m
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /requires a clean control-repository checkout/);
   assert.doesNotMatch(result.stderr, /Interactive repository creation requires a terminal/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test("implicit quickstart pins the latest stable CAO release", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_ADD_FAILURE: "1",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+  }, ["--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
+  assert.equal(await log(), "add\n");
+});
+
+test("implicit quickstart refreshes an existing control plane to the stable release", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, env);
+  await executeFile("git", ["add", "."], { cwd: consumer });
+  await executeFile("git", [
+    "-c", "user.name=CAO installation test",
+    "-c", "user.email=cao-test@example.invalid",
+    "-c", "commit.gpgsign=false",
+    "-c", "core.hooksPath=/dev/null",
+    "commit", "--quiet", "-m", "Install CAO",
+  ], { cwd: consumer });
+
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_ADD_FAILURE: "1",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+  }, ["--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Refreshing control plane components/);
+  assert.equal(await log(), "add\nadd-force\n");
+});
+
+test("quickstart preserves an explicit main source", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_ADD_FAILURE: "1",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@main",
+    FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
+  }, ["githubnext/gh-aw-cao@main", "--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest stable CAO release/);
+  assert.equal(await log(), "add\n");
+});
+
+test("quickstart fails closed when no stable CAO release can be resolved", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
+  }, ["--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
+  assert.match(result.stderr, /No CAO files were written/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test("quickstart rejects a prerelease as the implicit stable source", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_LATEST_CAO_RELEASE: "v1.2.3-rc.1",
+  }, ["--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
 });
