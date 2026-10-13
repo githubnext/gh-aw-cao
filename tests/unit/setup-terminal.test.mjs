@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import test from "node:test";
 import { SetupCancelled } from "../../activity/setup-prompt.mjs";
 import { setupCaoControlPlane } from "../../activity/setup.mjs";
@@ -127,24 +128,61 @@ test("setup credential failures disclose partial effects and preserve local poli
   assert.deepEqual(f.saved(), f.policy);
 });
 
-test("setup without a terminal defaults to No before any GitHub command", (t) => {
-  const f = fixture(t);
+test("setup without a terminal applies public repository workflow-token defaults", (t) => {
+  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
   const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
   assert.equal(result.status, 0);
-  assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
-  assert.match(result.stdout, /"reason":"non-interactive"/);
-  assert.deepEqual(f.calls(), []);
+  assert.match(result.stderr, /Applying non-interactive setup defaults/);
+  assert.match(result.stderr, /Authentication: repository GITHUB_TOKEN \(workflow-token\)/);
+  assert.match(result.stdout, /"profile":"workflow-token"/);
+  assert.match(result.stdout, /"nonInteractive":true/);
+  assert.doesNotMatch(result.stdout + result.stderr, /\u001b\[/);
+  assert.ok(f.calls().some((args) => args.join(" ") === "variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token"));
+  assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
+});
+
+test("setup in CI applies public repository workflow-token defaults without prompting", terminal, async (t) => {
+  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
+  const result = await walk(f, [], "xterm-256color", { CI: "1" });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Applying non-interactive setup defaults/);
+  assert.match(result.stdout, /"profile":"workflow-token"/);
+  assert.doesNotMatch(result.stdout, /Repositories CAO should read|How should CAO authenticate/);
+  assert.doesNotMatch(result.stdout, /\u001b\[/);
+  assert.ok(f.calls().some((args) => args.join(" ") === "variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token"));
+  assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
+});
+
+test("non-interactive setup refuses a private repository before Pages or authentication changes", (t) => {
+  const f = fixture(t);
+  const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /requires a public control repository/);
+  assert.ok(!f.calls().some((args) => args[0] === "api" || args[0] === "variable"));
   assert.deepEqual(f.saved(), f.policy);
 });
 
-test("setup in CI defaults to No even with a controlling terminal", terminal, async (t) => {
-  const f = fixture(t);
-  const result = await walk(f, [], "xterm-256color", { CI: "1" });
-  assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Guided setup skipped.*Defaulting to No/);
-  assert.match(result.stdout, /"reason":"non-interactive"/);
-  assert.doesNotMatch(result.stdout, /Repositories CAO should read|How should CAO authenticate/);
-  assert.deepEqual(f.calls(), []);
+test("non-interactive setup refuses broader existing scope before external changes", (t) => {
+  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
+  f.policy["control-plane"].scope["allowed-repositories"].push("acme/service");
+  writeFileSync(f.policyPath, JSON.stringify(f.policy));
+  const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /refuses to replace existing repository scope/);
+  assert.ok(!f.calls().some((args) => args[0] === "api" || args[0] === "variable"));
+  assert.deepEqual(f.saved(), f.policy);
+});
+
+test("non-interactive setup reports partial external effects and preserves policy on variable failure", (t) => {
+  const f = fixture(t, setupModule, {
+    controlVisibility: "PUBLIC",
+    publicPages: true,
+    workflowTokenFails: true,
+  });
+  const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stopped during workflow-token authentication/);
+  assert.match(result.stderr, /local policy was not changed/);
   assert.deepEqual(f.saved(), f.policy);
 });
 

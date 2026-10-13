@@ -7,7 +7,12 @@ import { runTerminal } from "./terminal.mjs";
 export const setupModule = path.resolve(import.meta.dirname, "../../activity/setup.mjs");
 
 export function setupTerminalFixture(t, module = setupModule, {
-  publicPages = false, newPages = false, deletionFails = false, credentialsFail = false,
+  publicPages = false,
+  newPages = false,
+  deletionFails = false,
+  credentialsFail = false,
+  controlVisibility = "PRIVATE",
+  workflowTokenFails = false,
 } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), "cao-setup-terminal-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -34,7 +39,7 @@ try {
         return { status: 0, stdout: "acme/control" };
       }
       if (args[0] === "repo" && args[1] === "view") {
-        return { status: 0, stdout: JSON.stringify({ nameWithOwner: args[2], visibility: "PRIVATE" }) };
+        return { status: 0, stdout: JSON.stringify({ nameWithOwner: args[2], visibility: ${JSON.stringify(controlVisibility)} }) };
       }
       if (args[0] === "api" && args.at(-1) === "repos/acme/control/pages") {
         if (args.includes("POST")) site = configuredSite;
@@ -45,6 +50,11 @@ try {
         }
         return site ? { status: 0, stdout: JSON.stringify(site) }
           : { status: 1, stderr: "gh: Not Found (HTTP 404)" };
+      }
+      if (args.join(" ") === "variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token") {
+        return ${workflowTokenFails}
+          ? { status: 1, stderr: "variable denied" }
+          : { status: 0 };
       }
       throw new Error("Unexpected command: " + args.join(" "));
     },

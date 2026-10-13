@@ -1,12 +1,13 @@
 ---
 title: CAO Quickstart
-description: Create a private control repository and reach a data-bearing CAO dashboard with one command.
+description: Use a clean public or private control repository and reach a data-bearing CAO dashboard with one command.
 ---
 
-Central Agentic Ops (CAO) runs bounded agentic operations from a private
-control repository. This quickstart creates that repository, runs one
-review-only Bug Bash against a pinned public target, collects the resulting
-Activity, and deploys a public dashboard containing the first data.
+Central Agentic Ops (CAO) runs bounded agentic operations from a control
+repository. This quickstart can use a clean existing public or private
+repository, or create a new private repository. It runs one review-only Bug Bash
+against a pinned public target, collects the resulting Activity, and deploys a
+public dashboard containing the first data.
 
 **Estimated time: 15-25 minutes**
 
@@ -14,8 +15,9 @@ Activity, and deploys a public dashboard containing the first data.
 
 You need:
 
-- **GitHub account:** Permission to create a private repository and GitHub
-  Pages site.
+- **GitHub account:** Permission to push the selected control repository's
+  default branch and configure its GitHub Pages site, or to create a private
+  repository.
 - **GitHub CLI:** `gh` v2.68.0 or newer. [Install it](https://cli.github.com/)
   and check with `gh --version`.
 - **GitHub CLI sign-in:** Check with `gh auth status`; run `gh auth login` if
@@ -26,14 +28,16 @@ You need:
 
 The quickstart publishes a **public GitHub Pages dashboard**. Its starter
 repository, `githubnext/gh-aw-cao`, is public and pinned to an immutable
-revision. Review outputs remain in your private control repository and the
-starter target is never modified. Do not use this path if the resulting
-dashboard data must remain private; use [Guided setup](#guided-setup-instead)
-instead.
+revision. The starter target is never modified. In a public control repository,
+the checked-in policy, workflow runs, dashboard data, and review outputs are
+also public. Do not use this path if any resulting evidence must remain
+private; use [Guided setup](#guided-setup-instead) in a private control
+repository instead.
 
 ## Run the quickstart
 
-From the directory where you want the new checkout:
+From the root of a clean public or private control repository checkout on its
+default branch:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -41,9 +45,14 @@ curl --fail --silent --show-error --location \
   bash -s -- --quickstart
 ```
 
-Choose the repository owner and accept the suggested `cao` name, or enter
-another available name. The quickstart creates a private repository; it never
-creates a public control repository.
+This path works without a terminal and when `CI` is set. Existing commits are
+preserved; quickstart creates one bounded CAO commit on top. It stops before
+installation when the checkout has staged, unstaged, or untracked changes.
+
+To create a new repository interactively instead, run the same command outside
+a Git checkout. Choose the repository owner and accept the suggested `cao`
+name, or enter another available name. Installer-created control repositories
+remain private.
 
 The explicit `--quickstart` flag authorizes one bounded first-success journey:
 
@@ -63,13 +72,14 @@ before the GitHub Actions work. Most of the estimated time is the bounded Bug
 Bash investigation, Activity collection, and dashboard deployment running on
 GitHub; the quickstart keeps the active phase and elapsed time visible.
 
-There is no second confirmation after repository creation: `--quickstart` is
-the explicit authorization for these effects. A `no-finding` Bug Bash result is
-still successful. Missing model entitlement, missing permissions, workflow
-failure, or an empty Activity artifact is reported as blocked or failed rather
-than as success.
+There is no second confirmation after repository selection: `--quickstart` is
+the explicit authorization for these effects, including in headless use. A
+`no-finding` Bug Bash result is still successful. Missing model entitlement,
+missing permissions, workflow failure, or an empty Activity artifact is
+reported as blocked or failed rather than as success.
 
-For non-interactive repository creation, provide the exact coordinate:
+For non-interactive creation of a new private repository, provide the exact
+coordinate:
 
 ```bash
 CONTROL_REPOSITORY="OWNER/cao"
@@ -93,7 +103,8 @@ Control repository: https://github.com/OWNER/cao
 ```
 
 Open the dashboard URL. Bug Bash review evidence, including a possible
-`no-finding` result, remains in the private control repository.
+`no-finding` result, remains in the control repository and is public when that
+repository is public.
 
 ## Guided setup instead
 
@@ -134,16 +145,29 @@ pushes. Bare installation also stops without a prompt and prints
 `Next: ./cao.sh setup`.
 
 In a headless environment (no interactive terminal, or `CI` set), `--setup`
-and `./cao.sh setup` take the default **No** without asking for input. The
-installer completes the bare installation; guided setup reports that it was
-skipped and leaves policy, credentials, and Pages unchanged. Fresh policy
-authorizes only the control repository, uses its workflow token for Activity,
-and declares no operational campaigns. Existing policy is preserved.
+and `./cao.sh setup` apply a single agent-safe profile without asking for input:
+
+- the control repository must be public;
+- existing policy must have no campaigns and no broader scope than the exact
+  control repository;
+- read and Activity scope remain exactly that repository;
+- authentication uses the repository `GITHUB_TOKEN` (`workflow-token`); and
+- GitHub Pages must be public and use GitHub Actions as its source.
+
+Setup writes policy only after Pages and the authentication-mode variable
+succeed. A private/internal control repository, broader existing scope, or
+non-empty campaign map fails closed with interactive-setup guidance.
+
+Use explicit `--quickstart` instead when the desired headless scope is exactly
+the documented public starter journey. It accepts a clean public or private
+control repository on its default branch and needs no interactive answers.
 
 Headless creation must name the exact repository with `--create-repo OWNER/NAME`;
-the installer never chooses an owner or repository on your behalf. An outdated
-installed gh-aw fails with manual-upgrade guidance rather than prompting,
-upgrading without consent, or reporting installation success.
+the installer never chooses an owner or repository on your behalf. Because
+installer-created repositories are private, run their setup interactively or
+run headless setup in an existing public repository. An outdated installed
+gh-aw fails with manual-upgrade guidance rather than prompting, upgrading
+without consent, or reporting installation success.
 
 Start with **Bug Bash** after a manual setup when you want to review and commit
 each stage yourself:

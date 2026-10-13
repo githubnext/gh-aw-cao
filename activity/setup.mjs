@@ -227,6 +227,138 @@ export function removeDashboardPages({ repository, execute = spawnSync }) {
   return !result.error && result.status === 0;
 }
 
+async function setupNonInteractivePublicControl({
+  output,
+  execute,
+  policyPath,
+  UsageError,
+}) {
+  output.write('Applying non-interactive setup defaults for the current public control repository.\n');
+  const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
+  if (auth.error || auth.status !== 0) {
+    throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then ./cao.sh setup again.`);
+  }
+
+  const controlRepository = resolveControlRepository(execute);
+  const control = inspectRepository(controlRepository, execute);
+  if (control.visibility !== 'public') {
+    throw new UsageError(
+      `Non-interactive setup requires a public control repository; ${control.repository} is ${control.visibility}. `
+      + 'Run ./cao.sh setup from an interactive terminal for a private or internal repository.',
+    );
+  }
+
+  let policy;
+  try {
+    policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run ./cao.sh init, then ./cao.sh setup.');
+    if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun ./cao.sh setup.');
+    throw error;
+  }
+  const controlPlane = policy?.['control-plane'];
+  const campaigns = controlPlane?.campaigns;
+  if (!isMapping(campaigns) || Object.keys(campaigns).length > 0) {
+    throw new UsageError('Non-interactive setup requires a bare control plane with no declared campaigns');
+  }
+  const owner = control.repository.split('/')[0];
+  const scope = controlPlane.scope;
+  if (scope !== undefined) {
+    const owners = scope?.['allowed-owners'];
+    const repositories = scope?.['allowed-repositories'];
+    const exactScope = isMapping(scope)
+      && Object.keys(scope).every((key) => ['allowed-owners', 'allowed-repositories'].includes(key))
+      && Array.isArray(owners)
+      && owners.length === 1
+      && typeof owners[0] === 'string'
+      && owners[0].toLowerCase() === owner.toLowerCase()
+      && Array.isArray(repositories)
+      && repositories.length === 1
+      && typeof repositories[0] === 'string'
+      && repositories[0].toLowerCase() === control.repository.toLowerCase();
+    if (!exactScope) {
+      throw new UsageError(
+        'Non-interactive setup refuses to replace existing repository scope; '
+        + 'run ./cao.sh setup from an interactive terminal to review it',
+      );
+    }
+  }
+  const activity = controlPlane.activity;
+  if (activity !== undefined) {
+    const repositories = activity?.repositories;
+    const exactActivity = isMapping(activity)
+      && Array.isArray(repositories)
+      && repositories.length === 1
+      && typeof repositories[0] === 'string'
+      && repositories[0].toLowerCase() === control.repository.toLowerCase();
+    if (!exactActivity) {
+      throw new UsageError(
+        'Non-interactive setup refuses to replace existing Activity scope; '
+        + 'run ./cao.sh setup from an interactive terminal to review it',
+      );
+    }
+  }
+
+  const intendedPolicy = structuredClone(policy);
+  intendedPolicy['control-plane'].scope = {
+    'allowed-owners': [owner],
+    'allowed-repositories': [control.repository],
+  };
+  intendedPolicy['control-plane'].activity = {
+    ...(isMapping(activity) ? activity : {}),
+    repositories: [control.repository],
+  };
+
+  let applyStage = 'dashboard Pages';
+  try {
+    const pages = configureDashboardPages({ repository: control.repository, execute });
+    if (!pages.public) {
+      throw new Error('Non-interactive setup requires public GitHub Pages for the public control repository');
+    }
+
+    applyStage = 'workflow-token authentication';
+    const authentication = execute('gh', [
+      'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE',
+      '--repo', control.repository,
+      '--body', 'workflow-token',
+    ], { encoding: 'utf8' });
+    if (authentication.error || authentication.status !== 0) {
+      throw new Error(`Unable to select repository workflow-token authentication: ${commandFailureMessage(authentication, 'gh variable set failed')}`);
+    }
+
+    applyStage = 'policy';
+    await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
+    output.write([
+      `Non-interactive setup applied to ${control.repository}.`,
+      `Read and Activity scope: ${control.repository}`,
+      'Authentication: repository GITHUB_TOKEN (workflow-token)',
+      `Dashboard Pages: public${pages.url ? ` (${pages.url})` : ''}`,
+      'Campaigns: none',
+      '',
+    ].join('\n'));
+    return {
+      command: 'setup',
+      controlRepository: control.repository,
+      visibility: control.visibility,
+      repositories: [control.repository],
+      profile: 'workflow-token',
+      authentication: {
+        mode: 'workflow-token',
+        repository: control.repository,
+      },
+      dashboardPages: 'public',
+      campaigns: [],
+      nonInteractive: true,
+    };
+  } catch (error) {
+    throw new UsageError(
+      `${error.message}\nNon-interactive setup stopped during ${applyStage}; `
+      + 'the local policy was not changed, but Pages settings or the authentication-mode variable may already have changed.',
+      { cause: error },
+    );
+  }
+}
+
 export async function setupCaoControlPlane({
   input = process.stdin,
   output = process.stderr,
@@ -238,8 +370,12 @@ export async function setupCaoControlPlane({
   UsageError = Error,
 } = {}) {
   if (prompt === undefined && (!input.isTTY || !output.isTTY || environment.CI)) {
-    output.write('Guided setup skipped: no interactive terminal or CI is set. Defaulting to No; policy, credentials, and Pages settings are unchanged. Run ./cao.sh setup from a terminal outside CI to configure connections.\n');
-    return { command: 'setup', cancelled: true, reason: 'non-interactive' };
+    return setupNonInteractivePublicControl({
+      output,
+      execute,
+      policyPath,
+      UsageError,
+    });
   }
   if (typeof setupAuthentication !== 'function') {
     throw new Error('CAO setup authentication handler is unavailable');

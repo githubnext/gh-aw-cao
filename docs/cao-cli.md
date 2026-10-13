@@ -68,20 +68,27 @@ gh aw run dependabot --ref main \
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
-Use `./cao.sh quickstart` only in the new private repository created by the
-installer's explicit `--quickstart` path. It can consume up to 700 AI credits
-and owns the bounded commit, push, workflow dispatches, and public dashboard
-deployment documented in the [quickstart](setup-quickstarts.md). Use
-`./cao.sh setup` for review-before-apply configuration. The individual
-`setup-auth` commands remain available for manual and non-interactive
-administration.
+Use `./cao.sh quickstart` only immediately after verified installation in a
+clean public or private control repository on its default branch. Existing
+commits are allowed; the quickstart adds one bounded CAO commit. It can consume
+up to 700 AI credits and owns the bounded commit, push, workflow dispatches,
+and public dashboard deployment documented in the
+[quickstart](setup-quickstarts.md). Use `./cao.sh setup` for
+review-before-apply configuration. The individual `setup-auth` commands remain
+available for manual and non-interactive administration.
 
-Without an interactive terminal or when `CI` is set, `./cao.sh setup` defaults
-to **No**, reports that guided setup was skipped, and exits successfully without
-GitHub calls or changes to policy, credentials, or Pages. `./cao.sh setup --json`
-returns `{"command":"setup","cancelled":true,"reason":"non-interactive"}`.
-Bare installation remains usable with exact control-repository scope, no
-operational campaigns, and repository-local workflow-token Activity access.
+Without an interactive terminal or when `CI` is set, `./cao.sh setup` applies
+only the agent-safe public profile: exact current-repository read and Activity
+scope, no campaigns, public Actions-backed Pages, and repository
+`GITHUB_TOKEN` (`workflow-token`) authentication. It refuses private/internal
+control repositories, broader existing policy, or installed campaigns.
+`./cao.sh setup --json` returns the applied profile with
+`"nonInteractive": true`. Bare installation remains usable before setup with
+exact control-repository scope, no operational campaigns, and
+repository-local workflow-token Activity access.
+Explicit quickstart is also terminal-independent: `--quickstart` authorizes its
+fixed public-starter scope and effects, while the checkout and default-branch
+preflight remain fail-closed.
 
 ## Control Campaigns
 

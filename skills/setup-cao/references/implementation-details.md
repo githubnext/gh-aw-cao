@@ -11,12 +11,17 @@ Tools, Node.js 24+, sign-in, and checkout-root readiness are checked before
 installation or upgrade. `--create-repo OWNER/NAME` explicitly creates and
 clones a private repository, refusing an existing clone directory. Bare
 installation stops and prints `./cao.sh setup`; `--setup` opens guided setup
-directly on the controlling terminal. `--quickstart` creates a new private
-control repository and delegates to the explicit end-to-end quickstart after
-verified installation. Without a terminal or when `CI` is set, guided setup
-defaults to No and skips configuration successfully; repository creation
-requires an explicit exact coordinate, and an outdated installed gh-aw fails
-with manual-upgrade guidance. Other streamed children retain null stdin.
+directly on the controlling terminal. `--quickstart` uses a clean current
+public or private checkout, or creates a private control repository when run
+interactively outside a checkout, then delegates to the explicit end-to-end
+quickstart after verified installation. Without a terminal or when `CI` is set,
+setup applies only the exact public-control-repository profile with
+repository-workflow-token authentication, public Actions-backed Pages, no
+campaigns, and exact self-only Activity scope. Private/internal repositories or
+incompatible policy fail closed. Quickstart can use the clean current default
+branch, repository creation requires an explicit exact coordinate, and an
+outdated installed gh-aw fails with manual-upgrade guidance. Other streamed
+children retain null stdin.
 The repository-root `aw.yml` explicitly composes Activity, dashboard,
 validation, shared runtime resources, instructions, and project settings. Empty
 `skills` and `agents` declarations keep Agent Plugin and repository-only
@@ -60,14 +65,15 @@ keeps structured stdout. Setup never commits, pushes, installs a campaign, or
 dispatches a workflow.
 
 `activity/quickstart.mjs` is a separate, explicit effectful flow. It requires an
-uncommitted private control repository with no existing commit, installs Bug
-Bash in review mode for the pinned public starter target, declares Activity
-collection only for the control repository, configures public Pages and
-repository-local workflow-token mode, validates and commits only CAO-owned
-paths, pushes the default branch, runs at most one investigation, collects
-Activity, and waits for the data-bearing dashboard deployment. It reports
-non-success Bug Bash outcomes honestly and fails unless Activity contains a
-run and the dashboard deployment succeeds.
+installed public, private, or internal control repository on its checked-out
+default branch, installs Bug Bash in review mode for the pinned public starter
+target, declares Activity collection only for the control repository,
+configures public Pages and repository-local workflow-token mode, validates and
+commits only CAO-owned paths, pushes the default branch, runs at most one
+investigation, collects Activity, and waits for the data-bearing dashboard
+deployment. Existing commits are preserved. It reports non-success Bug Bash
+outcomes honestly and fails unless Activity contains a run and the dashboard
+deployment succeeds.
 
 Canonical runtime files live together under `.github/workflows/shared/`,
 including `control.md`, `control.mjs`, `policy.mjs`, the policy schema, the

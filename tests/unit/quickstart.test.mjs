@@ -67,6 +67,8 @@ async function quickstartFixture(t, {
   status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n?? .vscode/settings.json\n',
   headStatus = 128,
   visibility = 'PRIVATE',
+  currentBranch = 'main',
+  defaultBranch = 'main',
   diffCheck = success(),
 } = {}) {
   const calls = [];
@@ -117,6 +119,9 @@ async function quickstartFixture(t, {
     if (command === 'git' && arguments_[0] === 'rev-parse') {
       return { status: headStatus, stdout: headStatus === 0 ? 'a'.repeat(40) : '', stderr: headStatus === 0 ? '' : 'no HEAD' };
     }
+    if (command === 'git' && arguments_[0] === 'branch' && arguments_[1] === '--show-current') {
+      return success(`${currentBranch}\n`);
+    }
     if (command === 'gh' && arguments_[0] === 'repo') {
       return success(`${JSON.stringify({ nameWithOwner: 'acme/cao', visibility })}\n`);
     }
@@ -126,7 +131,7 @@ async function quickstartFixture(t, {
       return success('{"login":"octocat","id":1}\n');
     }
     if (command === 'gh' && arguments_[0] === 'api' && arguments_.includes('--jq')) {
-      return success('main\n');
+      return success(`${defaultBranch}\n`);
     }
     if (command === 'gh' && arguments_[0] === 'run' && arguments_[1] === 'list') {
       const workflow = arguments_[arguments_.indexOf('--workflow') + 1];
@@ -265,15 +270,18 @@ for (const [name, status, message] of [
   ['unrelated files', '?? secrets.txt\n', /refuses to commit unrelated path: secrets\.txt/],
   ['descendants of owned root files', '?? .gitattributes/secret\n', /refuses to commit unrelated path: \.gitattributes\/secret/],
   ['other editor settings', '?? .vscode/extensions.json\n', /refuses to commit unrelated path: \.vscode\/extensions\.json/],
+  ['pre-staged files', 'A  .github/workflows/cao.json\n', /refuses pre-staged changes/],
 ]) {
   test(`quickstart refuses to commit ${name}`, async (t) => {
     const fixture = await quickstartFixture(t, { status });
     const policyPath = await fixture.policyPath();
+    let campaignInstalled = false;
 
     await assert.rejects(runCaoQuickstart({
       policyPath,
       execute: fixture.execute,
       addCampaign: async () => {
+        campaignInstalled = true;
         const policy = JSON.parse(await readFile(policyPath, 'utf8'));
         policy['control-plane'].campaigns['bug-bash'] = {
           orchestrator: 'bug-bash',
@@ -285,13 +293,27 @@ for (const [name, status, message] of [
       progress: {},
       resolveRootRevision: () => 'a'.repeat(40),
     }), message);
+    assert.equal(campaignInstalled, false);
     assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call[1] === 'commit'));
   });
 }
 
+test('quickstart accepts a public control repository with an existing default-branch commit', async (t) => {
+  const fixture = await quickstartFixture(t, { headStatus: 0, visibility: 'PUBLIC' });
+  const expected = new Error('campaign reached');
+  await assert.rejects(runCaoQuickstart({
+    execute: fixture.execute,
+    addCampaign: async () => { throw expected; },
+    progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  }), (error) => error === expected);
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git branch --show-current'));
+  assert.ok(!fixture.calls.some((call) => call.join(' ') === 'git branch -M main'));
+});
+
 for (const [name, options, message] of [
-  ['an existing commit', { headStatus: 0 }, /requires a new control repository with no commits/],
-  ['a non-private control repository', { visibility: 'PUBLIC' }, /requires a private control repository/],
+  ['a non-default branch', { headStatus: 0, currentBranch: 'feature' }, /requires the checked-out default branch main/],
+  ['unknown repository visibility', { visibility: '' }, /resolve the control repository visibility/],
 ]) {
   test(`quickstart rejects ${name} before campaign installation`, async (t) => {
     const fixture = await quickstartFixture(t, options);

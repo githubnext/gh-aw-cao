@@ -99,9 +99,10 @@ usage() {
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
-    '--setup opens guided setup after installation; without a terminal or in CI, it safely declines changes.' \
-    '--quickstart creates a private control repository, runs Bug Bash in review mode (up to 700 AI credits),' \
-    'commits and pushes CAO files, collects Activity, and deploys a public dashboard.' \
+    '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
+    '--quickstart uses a clean current public or private control repository, or creates a private one when needed,' \
+    'then runs Bug Bash in review mode (up to 700 AI credits), commits and pushes CAO files, collects Activity,' \
+    'and deploys a public dashboard. In headless use, open the checkout or pass --create-repo OWNER/NAME.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
@@ -532,6 +533,7 @@ main() {
   local current_gh
   local current_gh_aw
   local authentication_status
+  local quickstart_status
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -571,9 +573,6 @@ main() {
     printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
     return 1
   fi
-  if [[ "$quickstart" == true ]]; then
-    create_repository_requested=true
-  fi
 
   for tool in node gh git curl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -606,7 +605,7 @@ main() {
     return 1
   fi
   if [[ "$quickstart" == true ]]; then
-    note "Quickstart uses a private control repository, a public dashboard, and up to 700 AI credits."
+    note "Quickstart uses only public starter evidence, a public dashboard, and up to 700 AI credits."
   fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -617,6 +616,8 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
+    elif [[ "$quickstart" == true ]] && terminal_available; then
+      create_repository_requested=true
     elif terminal_available &&
       confirm_repository_creation 'Create and clone a new private control repository?'; then
       create_repository_requested=true
@@ -644,6 +645,19 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
+    fi
+  fi
+  if [[ "$quickstart" == true && "$create_repository_requested" == false ]]; then
+    if ! quickstart_status="$(git status --porcelain=v1 --untracked-files=all)"; then
+      printf '%s\n' 'Unable to inspect the current checkout before quickstart. No CAO files were written.' >&2
+      return 1
+    fi
+    if [[ -n "$quickstart_status" ]]; then
+      printf '%s\n' \
+        'Quickstart requires a clean control-repository checkout before installation.' \
+        'Commit, stash, or remove existing changes, then rerun --quickstart.' \
+        'No CAO files were written.' >&2
+      return 1
     fi
   fi
 

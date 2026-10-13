@@ -6,20 +6,29 @@ second setup flow.
 
 ## No user available
 
-Take the safe default without asking questions or waiting for input. An
-explicitly requested bare installation in the selected control checkout may
-use `install.sh` (with or without `--setup`); guided setup defaults to **No**
-and reports a successful skip. Fresh policy scopes Activity to only that
-control repository using its workflow token and leaves campaigns empty.
-Preserve an existing policy; do not infer authority to narrow or expand it.
+Take the safe default without asking questions or waiting for input. Bare
+installation may use `install.sh` without `--setup` and leaves exact
+control-repository scope with no campaigns. Explicit `--setup` may apply only
+when the control repository is public, the campaign map is empty, and existing
+scope is absent or already exactly the control repository. It configures public
+Actions-backed Pages, selects repository `GITHUB_TOKEN` (`workflow-token`),
+and records Activity scope for exactly the control repository. It preserves all
+other policy fields and writes policy only after external settings succeed.
 
 Do not create a repository without an explicitly authorized exact coordinate,
-configure credentials or Pages, open a browser, commit, push, install or enable
-campaigns, or dispatch workflows. Missing prerequisites, unclear repository
-selection, and incompatible existing scope/authentication are blockers, not
-permission to guess or broaden access. An outdated installed gh-aw must be
-upgraded explicitly before retrying. Report the skipped configuration and any
-blocker plainly.
+open a browser, commit, push, install or enable campaigns, or dispatch
+workflows. Refuse non-interactive setup for a private/internal control
+repository, non-empty campaign map, or broader existing scope; do not silently
+narrow it. Missing prerequisites, unclear repository selection, and
+incompatible existing scope/authentication are blockers, not permission to
+guess or broaden access. An outdated installed gh-aw must be upgraded
+explicitly before retrying. Report the applied defaults or blocker plainly.
+
+`install.sh --quickstart` is the only exception: the explicit flag authorizes
+its fixed public-starter campaign, public Pages, bounded commit and push, and
+workflow dispatches. It may run without prompts from a clean public or private
+control-repository checkout on the default branch. Creating a new repository
+still requires exact `--create-repo OWNER/NAME` authorization.
 
 ## Explicit broader setup with a user available
 

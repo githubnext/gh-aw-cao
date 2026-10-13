@@ -471,11 +471,13 @@ cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with
 the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
 to the controlling terminal after verified materialization when one is
-available. Without a terminal or when `CI` is set, installation completes and
-guided setup takes its default No without changing policy, credentials, or
-Pages. Headless repository creation still requires an exact
-`--create-repo OWNER/NAME`, and missing prerequisites fail rather than appearing
-successful. Streamed bootstrap children otherwise retain null stdin.
+available. Without a terminal or when `CI` is set, setup applies only an exact
+public-control-repository profile: self-only read and Activity scope, no
+campaigns, public Actions-backed Pages, and repository workflow-token
+authentication. Private/internal repositories, broader existing policy, or
+installed campaigns fail closed. Headless repository creation still requires
+an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
+appearing successful. Streamed bootstrap children otherwise retain null stdin.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
@@ -493,24 +495,30 @@ after both succeed. Failures disclose possible partial external changes rather
 than claim rollback. Setup does not install campaigns, dispatch workflows,
 commit, or push. The CLI prints next actions by default and retains structured
 stdout with `setup --json`. Non-interactive setup, including setup in CI,
-returns a successful cancelled result with reason `non-interactive` before any
-GitHub call or mutation. A fresh bare installation remains scoped to the exact
-control repository with no campaigns, including when that repository is public.
+requires a public control repository with empty campaigns and absent or exact
+self-only scope. It verifies public Actions-backed Pages, selects repository
+workflow-token mode, records self-only Activity scope, and writes policy last.
+Private/internal repositories and incompatible existing policy fail before
+Pages or authentication changes. A fresh bare installation remains scoped to
+the exact control repository with no campaigns before setup.
 
 `activity/quickstart.mjs` owns a distinct explicit first-success flow. It
-requires a new private control repository with no commit, installs Bug Bash at
-the selected catalog revision, configures exact review-only starter authority,
-requires public Pages, commits and pushes only the bounded CAO paths plus
-gh-aw's root `.gitattributes` and `.vscode/settings.json` project settings,
+uses a clean public, private, or internal control repository on its checked-out
+default branch, preserving any existing commits. The installer can instead
+create a new private repository when explicitly requested. Quickstart installs
+Bug Bash at the selected catalog revision, configures exact review-only starter
+authority, requires public Pages, commits and pushes only the bounded CAO paths
+plus gh-aw's root `.gitattributes` and `.vscode/settings.json` project settings,
 dispatches one orchestrator and at most one worker, collects Activity, and waits
-for the Activity-triggered dashboard deployment. It reports Bug Bash blocked and
-failed outcomes without converting them to findings, and does not report success
-until the Activity artifact contains at least one unique run and the dashboard
-deployment succeeds. Installer handoff preserves the controlling terminal,
-uses elapsed progress for each long operation, and suppresses Node's
-experimental-runtime diagnostic rather than mixing it into user progress.
-`--quickstart` is the authorization boundary for these effects; ordinary
-install and `cao setup` retain their non-effectful boundaries.
+for the Activity-triggered dashboard deployment. It reports Bug Bash blocked
+and failed outcomes without converting them to findings, and does not report
+success until the Activity artifact contains at least one unique run and the
+dashboard deployment succeeds. Installer handoff preserves the controlling
+terminal when present and otherwise uses plain headless progress, uses elapsed
+progress for each long operation, and suppresses Node's experimental-runtime
+diagnostic rather than mixing it into user progress. `--quickstart` is the
+authorization boundary for these effects in interactive and headless use;
+ordinary install and `cao setup` retain their non-effectful boundaries.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence
@@ -518,8 +526,10 @@ collection scope from campaign rollout authority without silently narrowing
 either. Authentication planning uses the declared subset when present and
 otherwise preserves its existing fail-closed behavior. The public quickstart
 uses this contract to admit the public Bug Bash target while collecting
-workflow evidence only from the private control repository with its
-repository-provided token.
+workflow evidence only from the selected control repository with its
+repository-provided token. A public control repository is safe for this exact
+path because the starter target, evidence, dashboard, and review outputs are
+all public; that does not authorize non-public targets or other campaigns.
 
 ## Architectural boundaries
 

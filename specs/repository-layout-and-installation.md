@@ -218,12 +218,15 @@ installation without `--setup` or `--quickstart`, it MUST finish without
 another prompt and print the setup command for later. `--setup` MUST open
 guided setup directly on the controlling terminal without allowing streamed
 children to consume installer source from stdin. Interactive `--quickstart`
-MUST preserve that controlling terminal for its progress UI, while exact
-non-interactive repository creation MUST retain plain progress. Informational status
-lines SHOULD remain aligned with completed steps while using muted styling to
-distinguish existing state from completed work. Animated presentation MUST be
-disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports
-no styling support.
+MUST preserve that controlling terminal for its progress UI. `--quickstart`
+MUST also run with plain progress from a clean current public or private
+control-repository checkout when no terminal is available or `CI` is set,
+while exact non-interactive repository creation MUST retain plain progress and
+require `--create-repo OWNER/NAME`. Informational status lines SHOULD remain
+aligned with completed steps while using muted styling to distinguish existing
+state from completed work. Animated presentation MUST be disabled when
+`ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports no styling
+support.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the
@@ -240,12 +243,26 @@ partial external changes rather than imply rollback. Setup MUST NOT install
 campaigns, dispatch workflows, commit, or push. The UI and its license notices
 MUST be bundled so installed setup does not need npm or consumer node_modules.
 
+Without an interactive terminal or when `CI` is set, setup MUST apply only a
+deterministic public-control-repository profile. It MUST require the control
+repository to be public, require an empty campaign map, and require existing
+scope to be absent or already exactly the control repository. It MUST configure
+and verify public GitHub Pages with GitHub Actions as its source, select
+repository `GITHUB_TOKEN` (`workflow-token`) authentication, set exact
+self-only Activity scope, preserve unrelated policy fields, and write policy
+last. It MUST fail before external mutation for private/internal repositories,
+broader existing scope, or non-empty campaigns. It MUST use plain unstyled
+output and MUST NOT prompt, open a browser, install a campaign, dispatch,
+commit, or push.
+
 `--quickstart` MUST be a separate, explicit end-to-end path rather than an
-implicit continuation of install or setup. It MUST create a new private control
-repository and disclose before execution that it publishes a public dashboard,
-runs Bug Bash in review mode against the pinned public starter target, and may
-consume up to 700 AI credits. The flag itself authorizes the bounded campaign
-installation, commit, push, dispatch, collection, and deployment effects; the
+implicit continuation of install or setup. It MUST use a clean current public
+or private control repository, or create a private control repository when
+creation is requested, and disclose before execution that it publishes a
+public dashboard, runs Bug Bash in review mode against the pinned public
+starter target, and may consume up to 700 AI credits. The flag itself
+authorizes the bounded campaign installation, commit, push, dispatch,
+collection, and deployment effects in interactive and headless use; the
 installer MUST NOT add a redundant post-install confirmation.
 Each potentially long quickstart phase MUST expose elapsed progress and end in
 an explicit success, warning, or failure state. Node experimental-runtime
@@ -253,7 +270,11 @@ diagnostics MUST NOT be mixed into normal quickstart progress.
 
 The quickstart MUST:
 
-- require a private repository with no existing commit;
+- require the checked-out default branch and refuse any pre-install working-tree
+  change; it MAY add its bounded commit on top of existing repository history;
+- accept public, private, and internal control repositories because its target
+  and collected evidence are public, without widening that visibility exception
+  to another target or campaign;
 - configure exact global scope for the control repository and public starter
   target while declaring `control-plane.activity.repositories` as only the
   control repository;
@@ -263,8 +284,8 @@ The quickstart MUST:
   with GitHub Actions as its source;
 - refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
   `dashboard/`, `bug-bash/`, `cao.sh`, gh-aw's root `.gitattributes`, and its
-  `.vscode/settings.json` project settings, then create and push one commit on
-  the repository default branch;
+  `.vscode/settings.json` project settings, refuse pre-staged changes, then
+  create and push one commit on the repository default branch;
 - dispatch one Bug Bash orchestrator and at most one investigation worker,
   preserving a blocked or failed outcome rather than converting it to
   `no-finding`;

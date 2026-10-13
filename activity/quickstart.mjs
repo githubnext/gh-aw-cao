@@ -172,21 +172,37 @@ async function executeCaoQuickstart({
 
   const root = path.resolve(run(execute, 'git', ['rev-parse', '--show-toplevel']).stdout.trim());
   if (root !== path.resolve('.')) {
-    throw new Error('Run CAO quickstart from the root of its newly created control repository');
+    throw new Error('Run CAO quickstart from the root of the control repository');
   }
   const head = execute('git', ['rev-parse', '--verify', 'HEAD'], { encoding: 'utf8' });
-  if (!head?.error && head?.status === 0) {
-    throw new Error('CAO quickstart requires a new control repository with no commits');
-  }
+  const hasHead = !head?.error && head?.status === 0;
 
   const repository = runJson(execute, 'gh', ['repo', 'view', '--json', 'nameWithOwner,visibility']);
   if (!/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(repository?.nameWithOwner || '')) {
-    throw new Error('Unable to resolve the new control repository');
+    throw new Error('Unable to resolve the control repository');
   }
-  if (repository.visibility !== 'PRIVATE') {
-    throw new Error('CAO quickstart requires a private control repository');
+  const visibility = String(repository.visibility || '').toUpperCase();
+  if (!['PUBLIC', 'PRIVATE', 'INTERNAL'].includes(visibility)) {
+    throw new Error('Unable to resolve the control repository visibility');
   }
   const controlRepository = repository.nameWithOwner;
+  const branch = run(execute, 'gh', [
+    'api', `repos/${controlRepository}`,
+    '--jq', '.default_branch',
+  ]).stdout.trim() || 'main';
+  if (hasHead) {
+    const currentBranch = run(execute, 'git', ['branch', '--show-current']).stdout.trim();
+    if (!currentBranch || currentBranch !== branch) {
+      throw new Error(`CAO quickstart requires the checked-out default branch ${branch}`);
+    }
+  }
+  const initialStatus = run(execute, 'git', ['status', '--porcelain=v1', '--untracked-files=all']).stdout
+    .split(/\r?\n/)
+    .filter(Boolean);
+  initialStatus.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
+  if (initialStatus.some((line) => ![' ', '?'].includes(line[0]))) {
+    throw new Error('CAO quickstart refuses pre-staged changes; unstage them and retry');
+  }
   const user = runJson(execute, 'gh', ['api', 'user']);
   if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(user?.login || '') || !Number.isSafeInteger(user?.id)) {
     throw new Error('Unable to resolve the signed-in GitHub user for the quickstart commit');
@@ -249,11 +265,7 @@ async function executeCaoQuickstart({
   await ui.step?.('Committing and pushing the bounded control-plane configuration');
   run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS]);
   run(execute, 'git', ['diff', '--cached', '--check']);
-  const branch = run(execute, 'gh', [
-    'api', `repos/${controlRepository}`,
-    '--jq', '.default_branch',
-  ]).stdout.trim() || 'main';
-  run(execute, 'git', ['branch', '-M', branch]);
+  if (!hasHead) run(execute, 'git', ['branch', '-M', branch]);
   run(execute, 'git', [
     '-c', `user.name=${user.login}`,
     '-c', `user.email=${user.id}+${user.login}@users.noreply.github.com`,

@@ -36,6 +36,8 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
   assert.match(installerSource, /run_cao_quickstart\(\)[\s\S]*?terminal_available[\s\S]*?< \/dev\/tty/);
   assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
   assert.match(installerSource, /run_cao_quickstart "\$cao_command" quickstart/);
+  assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
+  assert.doesNotMatch(installerSource, /if \[\[ "\$quickstart" == true \]\]; then\s+create_repository_requested=true/);
 });
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
@@ -138,6 +140,10 @@ if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   printf '%b\\n' "\${FAKE_REPOSITORY_OWNERS:-alpha-user\\\\nalpha-org}"
   exit 0
 fi
+if [[ "\${1:-}" == api && "\${2:-}" == repos/*/pages ]]; then
+  printf '{"build_type":"workflow","public":true,"html_url":"https://example.invalid/cao/"}\\n'
+  exit 0
+fi
 if [[ "\${1:-}" == api && "\${2:-}" == repos/* && "$#" -eq 2 ]]; then
   if [[ -n "\${FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE:-}" ]]; then
     echo "gh: service unavailable (HTTP 503)" >&2
@@ -196,7 +202,11 @@ if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "repo view" && "\${3:-}" == "$FAKE_CONTROL_REPOSITORY" ]]; then
-  printf '{"nameWithOwner":"%s","visibility":"PRIVATE"}\\n' "$3"
+  printf '{"nameWithOwner":"%s","visibility":"%s"}\\n' "$3" "\${FAKE_CONTROL_VISIBILITY:-PRIVATE}"
+  exit 0
+fi
+if [[ "$*" == "variable set GH_AW_GITHUB_AUTH_MODE --repo \${FAKE_CONTROL_REPOSITORY:-} --body workflow-token" ]]; then
+  echo "setup-workflow-token" >> "$FAKE_COMMAND_LOG"
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
@@ -348,12 +358,13 @@ async function assertExecutable(file) {
   if (process.platform !== "win32") assert.notEqual((await stat(file)).mode & 0o111, 0);
 }
 
-async function assertCompleteInstall(consumer, env, ghAwVersion, repository) {
+async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { activity = false } = {}) {
   const policy = JSON.parse(await readFile(path.join(consumer, policyPath), "utf8"));
   assert.equal(policy.version, 1);
   assert.equal(policy["gh-aw-version"], ghAwVersion);
   assert.deepEqual(policy["control-plane"], {
     scope: { "allowed-owners": [repository.split("/")[0]], "allowed-repositories": [repository] },
+    ...(activity ? { activity: { repositories: [repository] } } : {}),
     marketplace: {
       registries: [{
         id: "official",
@@ -1054,10 +1065,8 @@ test("install.sh refuses to create a repository when its clone directory already
 
 for (const [name, environment, arguments_] of [
   ["bare installation in CI", { CI: "1" }, []],
-  ["guided installation without a terminal", {}, ["--setup"]],
-  ["guided installation in CI", { CI: "1" }, ["--setup"]],
-  ["exact repository creation with guided setup", {}, ["--create-repo", "alpha-org/new-control", "--setup"]],
-  ["exact repository creation with guided setup in CI", { CI: "1" }, ["--create-repo", "alpha-org/new-control", "--setup"]],
+  ["guided installation without a terminal", { FAKE_CONTROL_VISIBILITY: "PUBLIC" }, ["--setup"]],
+  ["guided installation in CI", { CI: "1", FAKE_CONTROL_VISIBILITY: "PUBLIC" }, ["--setup"]],
 ]) {
   test(`headless install.sh completes safe ${name}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);
@@ -1065,35 +1074,78 @@ for (const [name, environment, arguments_] of [
     const repository = creating ? "alpha-org/new-control" : env.FAKE_CONTROL_REPOSITORY;
     const installEnv = { ...env, ...environment, FAKE_CONTROL_REPOSITORY: repository };
     const result = await streamInstaller(consumer, installEnv, arguments_);
-    assert.equal(await log(), creating ? "create-private\nadd\n" : "add\n");
+    const setup = arguments_.includes("--setup");
+    assert.equal(await log(), `${creating ? "create-private\n" : ""}add\n${setup ? "setup-workflow-token\n" : ""}`);
     assert.match(result.stdout, /CAO installed and verified/);
-    if (arguments_.includes("--setup")) {
-      assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
+    if (setup) {
+      assert.match(result.stderr, /Non-interactive setup applied/);
+      assert.match(result.stderr, /repository GITHUB_TOKEN \(workflow-token\)/);
       assert.doesNotMatch(result.stdout + result.stderr, /Repositories CAO should read|Apply this setup\?/);
     }
-    await assertCompleteInstall(creating ? path.join(consumer, "new-control") : consumer, installEnv, supportedGhAw, repository);
+    await assertCompleteInstall(
+      creating ? path.join(consumer, "new-control") : consumer,
+      installEnv,
+      supportedGhAw,
+      repository,
+      { activity: setup },
+    );
   });
 }
 
-test("headless guided reinstallation preserves operator-owned policy", async (t) => {
+for (const environment of [{}, { CI: "1" }]) {
+  test(`headless setup refuses an explicitly created private repository${environment.CI ? " in CI" : ""}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const result = await runStreamed(consumer, {
+      ...env,
+      ...environment,
+      FAKE_CONTROL_REPOSITORY: "alpha-org/new-control",
+    }, [
+      "--create-repo", "alpha-org/new-control", "--setup",
+    ]);
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /requires a public control repository/);
+    assert.equal(await log(), "create-private\nadd\n");
+  });
+}
+
+test("headless guided reinstallation preserves incompatible operator-owned policy", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   const customPolicy = '{"version":1,"gh-aw-version":"v9.9.9","control-plane":{"campaigns":{"custom":{}}}}\n';
   await writeFile(path.join(consumer, policyPath), customPolicy);
-  const result = await streamInstaller(consumer, { ...env, CI: "1" }, ["--setup"]);
-  assert.match(result.stderr, /Guided setup skipped.*Defaulting to No/);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_CONTROL_VISIBILITY: "PUBLIC",
+  }, ["--setup"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /requires a bare control plane with no declared campaigns/);
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
   assert.equal(await log(), "add\n");
 });
 
-test("install.sh in CI never prompts on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
+test("headless quickstart selects the current checkout and validates it before mutation", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await writeFile(path.join(consumer, "README.md"), "existing change\n");
+  const result = await runStreamed(consumer, { ...env, CI: "1" }, ["--quickstart"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /requires a clean control-repository checkout/);
+  assert.doesNotMatch(result.stderr, /Interactive repository creation requires a terminal/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test("install.sh in CI applies public defaults without prompting on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runTerminal("bash", [installScript, "--setup"], {
-    cwd: consumer, env: { ...env, CI: "1" }, timeout, input: "",
+    cwd: consumer,
+    env: { ...env, CI: "1", FAKE_CONTROL_VISIBILITY: "PUBLIC" },
+    timeout,
+    input: "",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Guided setup skipped.*Defaulting to No/);
-  assert.equal(await log(), "add\n");
+  assert.match(result.stdout, /Non-interactive setup applied/);
+  assert.equal(await log(), "add\nsetup-workflow-token\n");
 });
 
 test("install.sh in CI fails an old gh-aw without reading the controlling terminal", { skip: process.platform === "win32" }, async (t) => {
@@ -1113,7 +1165,6 @@ for (const arguments_ of [
   ["--create-repo", "not-a-coordinate"],
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
-  ["--quickstart"],
   ["--setup", "--quickstart"],
 ]) {
   test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {

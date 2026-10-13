@@ -58,11 +58,13 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.doesNotMatch(quickstart, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*700 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);
-  assert.match(quickstart, /Review outputs remain in your private control repository/);
+  assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
   assert.match(quickstart, /starter target is never modified/);
   assert.match(quickstart, /require at least one collected run/);
   assert.match(quickstart, /There is no second confirmation/);
-  assert.match(quickstart, /never\s+creates a public control repository/);
+  assert.match(quickstart, /Installer-created control repositories\s+remain private/);
+  assert.match(quickstart, /works without a terminal and when `CI` is set/);
+  assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
   assert.match(quickstart, /bash -s -- --quickstart --create-repo "\$CONTROL_REPOSITORY"/);
   assert.match(quickstart, /Guided setup installs no campaign and runs no workflow; it never commits or\s+pushes/);
