@@ -5,7 +5,6 @@ import { activityWorkflowStats } from './cli/activity-stats.mjs';
 import { addCaoCampaign } from './cli/campaigns.mjs';
 import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
-import { createQuickstartProgress } from './setup-prompt.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
 const STARTER_REPOSITORY = 'githubnext/gh-aw-cao';
@@ -147,10 +146,6 @@ function dispatchWorkflow({
   throw new Error(`gh ${arguments_.join(' ')} failed: ${commandFailureMessage(result, `exit ${result?.status ?? 'unknown'}`)}`);
 }
 
-function quickstartProgress(progress) {
-  return progress ?? createQuickstartProgress();
-}
-
 export function formatQuickstartSummary(result) {
   return [
     'CAO quickstart complete.',
@@ -173,7 +168,7 @@ async function executeCaoQuickstart({
   pause = wait,
   resolveRootRevision = installedCaoRevision,
 } = {}) {
-  const ui = quickstartProgress(progress);
+  const ui = progress ?? {};
 
   const root = path.resolve(run(execute, 'git', ['rev-parse', '--show-toplevel']).stdout.trim());
   if (root !== path.resolve('.')) {
@@ -400,7 +395,8 @@ async function executeCaoQuickstart({
 }
 
 export async function runCaoQuickstart(options = {}) {
-  const ui = quickstartProgress(options.progress);
+  const ui = options.progress
+    ?? (await import('./setup-prompt.mjs')).createQuickstartProgress();
   ui.start?.();
   try {
     return await executeCaoQuickstart({ ...options, progress: ui });

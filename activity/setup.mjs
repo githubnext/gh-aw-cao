@@ -2,7 +2,6 @@ import { spawnSync } from 'node:child_process';
 import { readFile, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createTerminalPrompt, SetupCancelled } from './setup-prompt.mjs';
 
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -240,6 +239,7 @@ export async function setupCaoControlPlane({
   if (typeof setupAuthentication !== 'function') {
     throw new Error('CAO setup authentication handler is unavailable');
   }
+  const { createTerminalPrompt, SetupCancelled } = await import('./setup-prompt.mjs');
   const interactive = prompt || createTerminalPrompt({ input, output, UsageError });
   const ownsPrompt = prompt === undefined;
   let temporaryDirectory;
