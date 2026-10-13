@@ -259,6 +259,17 @@ test("doctor failures are warnings", () => {
   assert.equal(doctorFindings(".", execute)[0].severity, "warning");
 });
 
+test("CI validation uses the installed runtime without consumer npm metadata", async () => {
+  const workflow = parse(await readFile(".github/workflows/cao-validate.yml", "utf8"));
+  const steps = workflow.jobs.validate.steps;
+  const setupNode = steps.find(({ uses }) => uses?.startsWith("actions/setup-node@"));
+
+  assert.equal(setupNode.with["node-version"], 24);
+  assert.equal(setupNode.with["package-manager-cache"], false);
+  assert.equal(setupNode.with.cache, undefined);
+  assert.ok(!steps.some(({ run }) => /\bnpm (?:ci|install)\b/.test(run ?? "")));
+});
+
 test("CI validation does not dirty a fresh checkout with its own report", async (t) => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "cao-validation-workflow-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
