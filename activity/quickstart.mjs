@@ -15,7 +15,12 @@ const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
 const ACTIVITY_WORKFLOW = 'cao-activity.yml';
 const DASHBOARD_WORKFLOW = 'cao-dashboard.yml';
 const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'bug-bash'];
-const QUICKSTART_PATHS = [...QUICKSTART_DIRECTORIES, 'cao.sh', '.gitattributes'];
+const QUICKSTART_PATHS = [
+  ...QUICKSTART_DIRECTORIES,
+  'cao.sh',
+  '.gitattributes',
+  '.vscode/settings.json',
+];
 
 function resultText(result) {
   return `${result?.stdout ?? ''}\n${result?.stderr ?? ''}`.trim();

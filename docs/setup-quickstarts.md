@@ -53,7 +53,7 @@ The explicit `--quickstart` flag authorizes one bounded first-success journey:
    control-repository operations.
 4. Configure public GitHub Pages with GitHub Actions as its source.
 5. Commit and push only `.github/`, `activity/`, `dashboard/`, `bug-bash/`,
-   `cao.sh`, and gh-aw's `.gitattributes`.
+   `cao.sh`, and gh-aw's `.gitattributes` and `.vscode/settings.json`.
 6. Dispatch one Bug Bash orchestrator and at most one investigation worker.
 7. Collect a CAO Activity snapshot and require at least one collected run.
 8. Wait for the data-bearing dashboard deployment and print its URL.
@@ -156,9 +156,10 @@ for private organization Apps, enterprise Apps, and fine-grained PATs.
 ## Installation and recovery
 
 The installer places the production runtime under `.github/`, `activity/`, and
-`dashboard/`, plus `cao.sh` and gh-aw's `.gitattributes`. It preserves existing
-policy in normal install and setup modes. It refuses existing clone directories
-and unrelated files in the quickstart commit.
+`dashboard/`, plus `cao.sh`, gh-aw's `.gitattributes`, and its
+`.vscode/settings.json` project settings. It preserves existing policy in normal
+install and setup modes. It refuses existing clone directories and unrelated
+files in the quickstart commit.
 
 The runtime must match the exact revision resolved by gh-aw and pass signed
 provenance, inventory, and checksum verification. Stable versions use release

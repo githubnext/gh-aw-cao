@@ -492,11 +492,11 @@ stdout with `setup --json`; non-interactive setup fails with explicit guidance.
 requires a new private control repository with no commit, installs Bug Bash at
 the selected catalog revision, configures exact review-only starter authority,
 requires public Pages, commits and pushes only the bounded CAO paths plus
-gh-aw's root `.gitattributes`, dispatches one orchestrator and at most one
-worker, collects Activity, and waits for the Activity-triggered dashboard
-deployment. It reports Bug Bash blocked and failed
-outcomes without converting them to findings, and does not report success until
-the Activity artifact contains at least one unique run and the dashboard
+gh-aw's root `.gitattributes` and `.vscode/settings.json` project settings,
+dispatches one orchestrator and at most one worker, collects Activity, and waits
+for the Activity-triggered dashboard deployment. It reports Bug Bash blocked and
+failed outcomes without converting them to findings, and does not report success
+until the Activity artifact contains at least one unique run and the dashboard
 deployment succeeds. Installer handoff preserves the controlling terminal,
 uses elapsed progress for each long operation, and suppresses Node's
 experimental-runtime diagnostic rather than mixing it into user progress.

@@ -32,7 +32,7 @@ test('plain quickstart progress starts with the first operation', () => {
 });
 
 async function quickstartFixture(t, {
-  status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n',
+  status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n?? .vscode/settings.json\n',
   headStatus = 128,
   visibility = 'PRIVATE',
 } = {}) {
@@ -178,7 +178,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(policy['control-plane'].campaigns['bug-bash'].mode, 'review');
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run bug-bash.lock.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
-  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh .gitattributes'));
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh .gitattributes .vscode/settings.json'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
   assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
   assert.ok(progress.includes('Bug Bash campaign installed in review mode for one public starter repository'));
@@ -190,6 +190,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
 for (const [name, status, message] of [
   ['unrelated files', '?? secrets.txt\n', /refuses to commit unrelated path: secrets\.txt/],
   ['descendants of owned root files', '?? .gitattributes/secret\n', /refuses to commit unrelated path: \.gitattributes\/secret/],
+  ['other editor settings', '?? .vscode/extensions.json\n', /refuses to commit unrelated path: \.vscode\/extensions\.json/],
 ]) {
   test(`quickstart refuses to commit ${name}`, async (t) => {
     const fixture = await quickstartFixture(t, { status });
