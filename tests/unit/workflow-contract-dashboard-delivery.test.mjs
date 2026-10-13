@@ -242,7 +242,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const dashboardBuildJob = dashboardWorkflow.match(/\n  build:\n([\s\S]*?)\n  cache:\n/)?.[1];
-  const dashboardCacheJob = dashboardWorkflow.match(/\n  cache:\n([\s\S]*?)\n  deploy:\n/)?.[1];
+  const dashboardCacheJob = dashboardWorkflow.match(/\n  cache:\n([\s\S]*?)\n  pages:\n/)?.[1];
+  const dashboardPagesJob = dashboardWorkflow.match(/\n  pages:\n([\s\S]*?)\n  deploy:\n/)?.[1];
   const dashboardDeployJob = dashboardWorkflow.match(/\n  deploy:\n([\s\S]*?)\n  notify-failure:\n/)?.[1];
   const dashboardNotifyFailureJob = dashboardWorkflow.match(/\n  notify-failure:\n([\s\S]*)/)?.[1];
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
@@ -366,25 +367,34 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.campaigns\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
   assert.ok(dashboardBuildJob);
   assert.ok(dashboardCacheJob);
+  assert.ok(dashboardPagesJob);
   assert.ok(dashboardDeployJob);
   assert.ok(dashboardNotifyFailureJob);
   assert.doesNotMatch(dashboardBuildJob, /actions: write|pages: write|id-token: write|configure-pages|upload-pages-artifact|deploy-pages/);
   assert.doesNotMatch(dashboardBuildJob, /issues: write/);
-  assert.match(dashboardDeployJob, /actions: read[\s\S]*?id-token: write[\s\S]*?pages: write/);
-  assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
-  assert.doesNotMatch(dashboardDeployJob, /Verify dashboard Pages access|getPages|pages-access|continue-on-error/);
+  assert.match(dashboardPagesJob, /needs: build[\s\S]*?Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact/);
+  assert.doesNotMatch(dashboardPagesJob, /deploy-pages|id-token: write/);
+  assert.match(dashboardDeployJob, /needs: \[build, pages\][\s\S]*?actions: read[\s\S]*?id-token: write[\s\S]*?pages: write/);
+  assert.match(dashboardDeployJob, /Deploy Pages[\s\S]*?actions\/deploy-pages@[0-9a-f]{40}/);
+  assert.doesNotMatch(dashboardDeployJob, /Download dashboard artifact|Configure Pages|Upload Pages artifact|upload-pages-artifact/);
+  assert.doesNotMatch(dashboardPagesJob, /Verify dashboard Pages access|getPages|pages-access|continue-on-error/);
+  const dashboardPagesSteps = parse(dashboardWorkflow).jobs.pages.steps;
   const dashboardDeploySteps = parse(dashboardWorkflow).jobs.deploy.steps;
+  for (const step of dashboardPagesSteps) {
+    assert.equal(step.if, undefined, step.name);
+  }
   for (const step of dashboardDeploySteps) {
     assert.equal(step.if, undefined, step.name);
   }
   assert.equal(
-    dashboardDeploySteps.find(({ name }) => name === "Configure Pages").with["ignore-if-missing"],
+    dashboardPagesSteps.find(({ name }) => name === "Configure Pages").with["ignore-if-missing"],
     true,
   );
-  assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
-  assert.match(dashboardNotifyFailureJob, /needs: \[build, cache, deploy\]/);
+  assert.match(dashboardWorkflow, /pages:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
+  assert.match(dashboardWorkflow, /deploy:\n\s+needs: \[build, pages\]\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
+  assert.match(dashboardNotifyFailureJob, /needs: \[build, cache, pages, deploy\]/);
   assert.match(dashboardNotifyFailureJob, /permissions:\n\s+issues: write/);
-  assert.match(dashboardNotifyFailureJob, /CAO_DASHBOARD_BUILD_FAILED[\s\S]*?CAO_DASHBOARD_CACHE_FAILED[\s\S]*?CAO_DASHBOARD_DEPLOY_FAILED/);
+  assert.match(dashboardNotifyFailureJob, /CAO_DASHBOARD_BUILD_FAILED[\s\S]*?CAO_DASHBOARD_CACHE_FAILED[\s\S]*?CAO_DASHBOARD_PAGES_ARTIFACT_FAILED[\s\S]*?CAO_DASHBOARD_DEPLOY_FAILED/);
   assert.match(dashboardNotifyFailureJob, /Assign this issue to an agent/);
   assert.match(dashboardNotifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(dashboardNotifyFailureJob, /cancelled/);
