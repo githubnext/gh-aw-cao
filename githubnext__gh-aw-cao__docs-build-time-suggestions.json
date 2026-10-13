@@ -1,7 +1,49 @@
 {
-  "source_sha": "18792d7f0a888c986075a76c2d3dee2d92f16eea",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "335af01fd641ce940886c6353cca26c86f6d3069",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-13T11:44:06Z",
+      "worker_run_id": 38391825605,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38391728815,
+        38390600304,
+        38390225537,
+        38389160070,
+        38387912214,
+        38387495490,
+        38386990137,
+        38386507579,
+        38385730238,
+        38384061593,
+        38383687059,
+        38381179728,
+        38380727519,
+        38380271571,
+        38379730110,
+        38378183836,
+        38377967674,
+        38375876934,
+        38374713740,
+        38372948086
+      ],
+      "docs_window": {
+        "start": "2026-10-13T08:39:55Z",
+        "end": "2026-10-13T11:40:57Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 3,
+      "dashboard_window": {
+        "start": "2026-10-13T05:06:26Z",
+        "end": "2026-10-13T11:29:41Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_comparable_success_count": 0,
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 335af01fd641ce940886c6353cca26c86f6d3069. In the latest 20 completed docs.yml runs from 2026-10-13T08:39:55Z through 2026-10-13T11:40:57Z, 11 runs succeeded but only 4 reached a successful build job (38391728815, 38390225537, 38387495490, 38386507579), with 3 successful deploy jobs, so the window still lacks the required 5 comparable successful runs. Trusted job metadata showed queue median/p90 0s/0s, comparable workflow execution median/p90 85s/111s, build-job median/p90 42s/52s, deploy-job median/p90 19s/49s, and schedule-freshness median/p90 7s/11s. Within those four comparable docs builds, Build documentation took 10-14s, Restore cached CAO Dashboard took 1-3s from a 29.1 MB cache hit, and Upload Pages artifact took 5-8s; bounded logs for run 38391728815 confirmed setup-node restored a ~293 MB npm cache, Restore node_modules restored a ~283 MB cache hit, and Upload Pages artifact uploaded a 36.4 MB Pages bundle, while run 38390225537 spent 49s in Deploy Pages mostly waiting for deployment_queued to clear. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T05:06:26Z through 2026-10-13T11:29:41Z contained 0 successful runs and 0 comparable dashboard build successes; the only non-skipped sample, push failure 38353436671, spent 158s restoring a 2.27 GB activity cache before failing in Upgrade fallback activity data with ERR_MODULE_NOT_FOUND. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard build samples, no evidence-backed artifact-transfer or Pages-packaging recommendation is actionable in this cycle."
+    },
     {
       "evaluated_at": "2026-10-13T11:29:35Z",
       "worker_run_id": 38389967399,
@@ -1209,47 +1251,6 @@
       "dashboard_success_count": 1,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on source SHA 4494a0a27142127fd0929626f6b2edf2e965f40b. Within the latest 20 completed docs.yml runs from 2026-10-12T17:49:54Z through 2026-10-12T19:56:22Z, 10 runs concluded success, 4 reached a successful build job, and 3 reached successful deploy; the deployed build-path sample spans two source SHAs (4494a0a and 5693e12) and three triggers (schedule, workflow_run, push), below the required minimum of 5 comparable successful runs. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 24.5s/84.1s, and schedule-freshness median/p90 was 8.0s/22.0s. Across the 4 successful docs build runs, build median/p90 was 40.0s/49.1s; deploy median/p90 was 21.0s/29.8s across the 3 deployed runs. Bounded log reads from docs run 38298601008 confirmed all three caches hit (setup-node npm cache ~293 MB, node_modules cache ~283 MB, and CAO Dashboard cache ~28 MB), skipping npm ci. A bounded log read from dashboard run 38292945328 showed the dashboard activity cache hit restored ~2.27 GB in about 152s, dashboard dependency installation added 3 packages in about 1s, and upgrading fallback activity data consumed about 1234s; the paired latest 20 completed cao-dashboard.yml runs contained only 1 successful dashboard build and 0 successful dashboard builds on the current source SHA. Because dependency caches are already hitting and the bounded sample still lacks 5 comparable successful docs deployments, no evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-12T19:42:09Z",
-      "worker_run_id": 38298754234,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38298619934,
-        38298604444,
-        38298601008,
-        38298392428,
-        38297249708,
-        38296938896,
-        38295636229,
-        38295052298,
-        38294142402,
-        38293910757,
-        38292945371,
-        38291512976,
-        38291273591,
-        38288439251,
-        38288176425,
-        38287492797,
-        38286820810,
-        38286381933,
-        38285492437,
-        38284119540
-      ],
-      "docs_window": {
-        "start": "2026-10-12T17:25:36Z",
-        "end": "2026-10-12T19:36:22Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 4,
-      "docs_deployed_success_count": 3,
-      "dashboard_window": {
-        "start": "2026-10-12T13:20:40Z",
-        "end": "2026-10-12T19:35:06Z"
-      },
-      "dashboard_success_count": 1,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA 4494a0a27142127fd0929626f6b2edf2e965f40b. Within the latest 20 completed docs.yml runs from 2026-10-12T17:25:36Z through 2026-10-12T19:36:22Z, 11 runs concluded success, 4 reached a successful build job, and 3 reached successful deploy; the successful build-path sample spans two source SHAs (4494a0a and 5693e12) and three triggers (schedule, workflow_run, push), below the required minimum of 5 comparable successful runs. Across the 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 25.0s/82.0s, and schedule-freshness median/p90 was 19.0s/21.5s. Across the 4 successful build-path docs runs, build median/p90 was 40.0s/49.1s; deploy median/p90 was 21.0s/29.8s across the 3 deployed runs. Bounded log reads from docs run 38298601008 confirmed both npm dependency caches hit (setup-node npm cache ~293 MB and node_modules cache ~283 MB), skipping npm ci, and that the CAO dashboard cache hit restored ~28 MB in about 1.4s. A bounded log read from dashboard run 38292945328 showed dashboard dependency installation added 3 packages in about 1s, while restoring the 2.27 GB activity cache took about 151s and upstream activity-data upgrade consumed about 1234s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T13:20:40Z through 2026-10-12T19:35:06Z contained 1 successful dashboard build and 0 successful dashboard builds on the current source SHA. Because dependency and dashboard caches are already hitting and the bounded sample still lacks 5 comparable successful docs build runs, no evidence-backed dependency-installation or caching recommendation is actionable in this cycle."
     }
   ]
 }
