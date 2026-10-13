@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
-import { estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
+import {
+  estimateRetainedBytes,
+  measureDashboardQueryCost,
+  QUERY_COST_PAGE_LIMIT,
+  selectCostlyQueries,
+} from "../helpers/dashboard-query-cost.mjs";
 import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
 import { postgresQueryCostMarkdown } from "../helpers/dashboard-query-cost-report.mjs";
 
@@ -37,6 +42,28 @@ test("retained byte estimate counts shared rows once", () => {
   assert.ok(estimateRetainedBytes([row, { ...row }]) > estimateRetainedBytes([row, row]));
 });
 
+test("query cost measures a bounded page without truncating input computation", () => {
+  const rows = Array.from({ length: QUERY_COST_PAGE_LIMIT * 3 }, (_, id) => ({ id }));
+  const definition = {
+    name: "paged-events",
+    from: "events",
+    "order-by": [{ field: "id", direction: "desc" }],
+  };
+  const measurement = measureDashboardQueryCost(definition, {
+    events: { rows, metadata: { availability: "available" } },
+  });
+  assert.equal(measurement.status, "available", measurement.failure);
+  assert.equal(measurement.rows, QUERY_COST_PAGE_LIMIT);
+  assert.equal(measurement["total-rows"], rows.length);
+  assert.equal(measurement["input-row-total"], rows.length);
+  assert.ok(measurement.operations >= rows.length);
+  assert.equal(
+    measurement["result-bytes"],
+    estimateRetainedBytes(rows.toReversed().slice(0, QUERY_COST_PAGE_LIMIT)),
+  );
+  assert.equal(rows.length, QUERY_COST_PAGE_LIMIT * 3);
+});
+
 test("deployed integration runs both SQLite and Postgres query cost benchmarks", async () => {
   const workflow = await readFile(".github/workflows/dashboard-deployed-integration.yml", "utf8");
   assert.match(workflow, /tests\/performance\/dashboard-query-cost\.test\.mjs/);
@@ -47,7 +74,7 @@ test("deployed integration runs both SQLite and Postgres query cost benchmarks",
   assert.match(workflow, /run: npm run test:performance:dashboard-query-cost-postgres/);
   assert.match(workflow, /image: postgres:16-alpine/);
   assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_RUN_RETENTION_DAYS, "90");
-  assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_LINKED_RETENTION_DAYS, "90");
+  assert.equal(parse(workflow).jobs["query-cost"].env.CAO_POSTGRES_LINKED_RETENTION_DAYS, "7");
   assert.match(workflow, /go -C server build -o \.\.\/\.tmp\/cao-dashboard/);
   assert.match(workflow, /name: dashboard-query-cost\n/);
   const manifest = JSON.parse(await readFile("package.json", "utf8"));

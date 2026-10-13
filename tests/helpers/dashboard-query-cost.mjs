@@ -25,6 +25,7 @@ import {
   dashboardQueryDefects,
   queryInputNames,
   resolveDashboardQuerySources,
+  paginateDashboardSources,
 } from "../../dashboard/site/src/data/queries/declarative.js";
 import {
   queryDatabaseSources,
@@ -39,6 +40,7 @@ import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sq
 const CAO_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
 
 export const DEFAULT_QUERY_COST_CANDIDATES = 10;
+export const QUERY_COST_PAGE_LIMIT = 500;
 // Generous bounds: the benchmark measures cost instead of enforcing the
 // production budget, and the deployed snapshot is larger than a browser page.
 const BENCHMARK_TIMEOUT_MS = 600_000;
@@ -252,9 +254,15 @@ export function measureDashboardQueryCost(definition, sources, defect) {
   let rows = [];
   let status = "available";
   let failure;
+  let totalRows = 0;
   try {
     const result = executeDashboardQuery(definition, sources, defect, budget);
-    rows = result.rows;
+    const page = paginateDashboardSources(
+      { [definition.name]: result },
+      { [definition.name]: { limit: QUERY_COST_PAGE_LIMIT } },
+    )[definition.name];
+    rows = page.rows;
+    totalRows = Number(page.metadata?.["total-row-count"] ?? 0);
     status = String(result.metadata?.availability ?? "available");
     if (status === "unavailable") {
       failure = String(result.metadata?.["query-diagnostic"] ?? "query is unavailable");
@@ -281,6 +289,7 @@ export function measureDashboardQueryCost(definition, sources, defect) {
     "input-rows": inputRows,
     "input-row-total": Object.values(inputRows).reduce((total, count) => total + count, 0),
     rows: rows.length,
+    "total-rows": totalRows,
     "result-bytes": resultBytes,
     "bytes-per-row": rows.length === 0 ? 0 : Math.round(resultBytes / rows.length),
     "retained-heap-bytes": retainedHeapBytes,
@@ -347,6 +356,7 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
       dashboard: typeof dashboard?.id === "string" ? dashboard.id : "dashboard",
       queries: definitions.length,
       candidates: measurements.length,
+      "page-limit": QUERY_COST_PAGE_LIMIT,
       database: {
         path: path.resolve(databasePath),
         "duration-ms": Number(databaseMs.toFixed(3)),
@@ -443,6 +453,7 @@ export function dashboardQueryCostMarkdown(report) {
     "### Dashboard query cost (deployed SQLite snapshot)",
     "",
     `Measured the **${report.candidates} most expensive of ${report.queries} queries** chosen by the static query cost evaluator (${report["static-model"]}, ${formatCount(report["static-materialize-all-row-read-units"])} normalized row-read units to materialize all queries).`,
+    `Each measurement retains the first **${report["page-limit"]} result rows**; computational cost includes execution over the complete inputs.`,
     "",
     `Canonical projection read **${formatCount(report.database["records-read"])} records** across **${report.database.sources} sources** in **${report.database["duration-ms"].toFixed(2)} ms**.`,
     ...(report.database["records-read"] > 0
