@@ -21,12 +21,16 @@ curl --fail --silent --show-error --location \
 
 At a repository root, the installer uses that clean default-branch checkout,
 including headlessly. Outside a checkout, it creates the private control
-repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects an existing
-public repository, quickstart also creates the public `USERNAME/cao-sample`
-repository with intentional bugs and runs Bug Bash against it in review mode.
+repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects another
+existing public repository, quickstart targets
+[`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
+at a pinned revision. The shared starter is a deliberately messy change-window
+coordinator with current and legacy modules, mixed fallback semantics,
+operational fixtures, red herrings, executable tests, and intentional
+functional defects. Quickstart runs Bug Bash against it in review mode.
 It commits and pushes the bounded CAO paths, collects Activity, and waits for a
 public GitHub Pages dashboard with first data. This one run can use up to 700 AI
-credits. After initial sample creation, CAO never modifies the target.
+credits. CAO never modifies the target.
 Elapsed progress distinguishes the short local installation phases from the
 longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
 Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
@@ -48,12 +52,12 @@ repository, and campaigns must be empty. Setup configures public Actions-backed
 Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
 Activity scope for only that repository. Private/internal repositories or
 broader existing policy require interactive setup. Headless guided-setup
-repository creation still requires `--create-repo OWNER/NAME`; quickstart alone
-may create only the signed-in user's `cao` and `cao-sample` repositories.
+repository creation still requires `--create-repo OWNER/NAME`; quickstart may
+create only the signed-in user's `cao` control repository.
 Missing prerequisites (including an installed gh-aw that is too old) fail
 instead of reporting success. Explicit `--quickstart` is the bounded headless
-first-success path and performs the documented sample-target effects without
-prompting.
+first-success path and performs the documented control-repository and workflow
+effects without prompting.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime

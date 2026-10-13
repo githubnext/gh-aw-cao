@@ -275,8 +275,10 @@ or private control repository, default to creating the private
 `USERNAME/cao` control repository outside a checkout, or create another private
 control repository only when `--create-repo OWNER/NAME` requests it. It MUST
 disclose before execution that it publishes a public dashboard, creates the
-public `USERNAME/cao-sample` target with intentional bugs unless
-`--target OWNER/REPO` selects an existing public target, runs Bug Bash against
+private `USERNAME/cao` control repository when needed, targets the pinned public
+`githubnext/gh-aw-cao-bug-bash` repository with intentional explicit-zero
+defaulting bugs unless `--target OWNER/REPO` selects another existing public
+target, runs Bug Bash against
 that target in review mode, and may consume up to 700 AI credits. The flag itself
 authorizes the bounded campaign installation, commit, push, dispatch,
 collection, and deployment effects in interactive and headless use; the
@@ -292,10 +294,10 @@ The quickstart MUST:
 - accept public, private, and internal control repositories because its target
   and collected evidence are public, without widening that visibility exception
   to another target or campaign;
-- validate an explicit target as public, or fail if `USERNAME/cao-sample`
-  already exists before creating that public repository with a production
-  warning and deterministic functional defects; it MUST NOT reuse, overwrite,
-  delete, or choose a suffixed default repository name;
+- validate an explicit target as public, or select
+  `githubnext/gh-aw-cao-bug-bash` and verify that its configured immutable
+  revision remains available; it MUST NOT create, fork, copy, or otherwise
+  mutate a target repository and MUST NOT fall back to a mutable branch;
 - configure exact global scope for the control repository and selected public
   target while declaring `control-plane.activity.repositories` as only the
   control repository;
@@ -313,8 +315,7 @@ The quickstart MUST:
 - dispatch Activity with a correlatable request ID, require a successful
   data-bearing Activity artifact with at least one unique run, then require the
   corresponding dashboard deployment to succeed; and
-- never modify the selected target after initial sample creation, and disclose
-  that a created sample may remain if a later phase fails; and
+- never modify the selected target; and
 - print the target, dashboard, workflow-run, and control-repository URLs only after
   those success conditions are verified.
 

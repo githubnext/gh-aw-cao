@@ -95,7 +95,7 @@ control repository. It declares the narrower Activity scope explicitly:
     "scope": {
       "allowed-repositories": [
         "acme/cao",
-        "octocat/cao-sample"
+        "githubnext/gh-aw-cao-bug-bash"
       ]
     },
     "activity": {

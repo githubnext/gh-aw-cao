@@ -5,9 +5,9 @@
 > [!NOTE]
 > **Experimental campaign:** Worker boundaries, verification gates, and output contracts may change as review evidence accumulates.
 
-Bug Bash is the recommended getting-started campaign for a new Central Agentic Ops control repository. It does one small thing end to end: pick one repository, run one bounded defect investigation, verify the result adversarially, and hand a maintainer either one reviewable finding or an honest `no-finding`.
+Bug Bash is the recommended getting-started campaign for a new Central Agentic Ops control repository. It does one small thing end to end: select one repository for one versioned defect hypothesis, screen it cheaply, run one bounded investigation, verify the result adversarially, and hand a maintainer either one reviewable finding or an honest `no-finding`.
 
-It is deliberately the least ambitious campaign in the catalog. Nothing is written to the investigated repository, the whole run is review evidence in your own control repository, and a first run that finds nothing is a success, not a failure.
+It is deliberately the smallest scope of the same campaign machinery intended for a fleet. The unit of work is a hypothesis against one repository revision; expanding later changes scope and budgets, not the investigation and verification contract. Nothing is written to the investigated repository, and the whole run is review evidence in your own control repository.
 
 ## Campaign Contents
 
@@ -61,7 +61,7 @@ A schedule is opt-in. Add one only after you have read several runs and decided 
 
 1. Open the generated **Bug Bash** workflow in your control repository's **Actions** tab.
 2. Select **Run workflow**.
-3. Set `target_repo` to `githubnext/gh-aw-cao`, or leave it blank to let discovery choose an admitted candidate.
+3. Set `target_repo` to `githubnext/gh-aw-cao-bug-bash`, or leave it blank to let discovery choose an admitted candidate.
 4. Keep `max_repos` at `1` and `safe_output_mode` at `review`.
 5. Read the dispatched investigation's issue in the control repository, and the review bundle artifact when one was published.
 
@@ -69,11 +69,14 @@ A schedule is opt-in. Add one only after you have read several runs and decided 
 
 | Field | Value |
 | --- | --- |
-| Repository | `githubnext/gh-aw-cao` |
-| Revision | `5263be06676f6b3509a55bd2937a488c941c6aac` |
-| Focus | `eslint-rules/rules-db.mjs`, `tests/unit/eslint-rules-db.test.mjs` |
+| Repository | `githubnext/gh-aw-cao-bug-bash` |
+| Revision | `098c42c73276bc20c4a1a8e0f334e08c3871a84d` |
+| Hypothesis | An explicit numeric zero accepted by a public contract is replaced by a nonzero default. |
+| Focus | `docs/policy-contract.md`, current and legacy normalizers, rollout code, and `test/` |
 
-The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. The focus is a small standard-library-only module with an existing test file, so the run fits the budget and two runs are comparable.
+The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. Quickstart targets this shared repository directly and never forks, copies, or modifies it. The sample is a deliberately messy dependency-free change-window coordinator: current and legacy modules, mixed fallback semantics, team overrides, operational fixtures, red herrings, an executable scenario, and a passing but intentionally incomplete test suite.
+
+The starter contains a known opportunity for the declared hypothesis, so it is designed to exercise screening, reproduction, repair, and independent verification. That does not waive any verification gate or guarantee a model result. On any ordinary target, `no-finding` remains a valid and expected outcome.
 
 ## Outcomes
 
@@ -106,7 +109,7 @@ A `review-ready` outcome publishes one artifact containing `summary.md`, `contra
 
 | Concept | Definition |
 | --- | --- |
-| Work identity | repository + revision + hypothesis version + harness version. Repeating the same work is skipped. |
+| Work identity | repository + revision + hypothesis identity + hypothesis version + harness version. Repeating the same work is skipped. |
 | Finding identity | repository + violated contract + symptom signature + entry point. Independent of revision and harness, so a repeat investigation on a later commit recognizes the same defect instead of filing a near-duplicate. |
 | Concurrency | One investigation at a time, one per run, at most one surfaced finding. |
 | Retry | Bounded attempts with explicit backoff for transient faults only. Exhausted credits, rate limits, denied admission, and unavailable model access are terminal. |
@@ -140,7 +143,7 @@ Read it as design evidence only, and read the disclaimers it carries:
 - The exercise was **not** run by this harness, so its results are not a baseline for this campaign and not a prediction of what a run will produce.
 - It contains no source, no patches, no reproductions, and no logs. It is scope and lessons, not seeded findings.
 
-The expected outcome of your first Bug Bash run is `no-finding`.
+The canonical starter is intended to produce a reproducible explicit-zero finding, while preserving `no-finding` when the worker cannot support the hypothesis with contract and runtime evidence. Do not interpret dispatch, a textual fallback match, or a generated failing test as a confirmed defect.
 
 ## Pause or Stop
 

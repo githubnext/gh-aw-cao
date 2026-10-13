@@ -66,16 +66,16 @@ dispatches a workflow.
 
 `activity/quickstart.mjs` is a separate, explicit effectful flow. It requires an
 installed public, private, or internal control repository on its checked-out
-default branch, creates the signed-in user's public `cao-sample` repository
-with intentional bugs unless `--target OWNER/REPO` selects an existing public
-target, installs Bug Bash in review mode for only that target, declares
+default branch, selects the pinned public `githubnext/gh-aw-cao-bug-bash`
+revision with intentional explicit-zero defaulting defects unless
+`--target OWNER/REPO` selects another existing public target, installs Bug Bash
+in review mode for only that target, declares
 Activity collection only for the control repository,
 configures public Pages and repository-local workflow-token mode, validates and
 commits only CAO-owned paths, pushes the default branch, runs at most one
 investigation, collects Activity, and waits for the data-bearing dashboard
-deployment. Existing commits are preserved. Default repository collisions fail
-without reuse or renaming, and a created sample may remain after a later
-failure. It reports non-success Bug Bash outcomes honestly and fails unless
+deployment. Existing commits are preserved. It reports non-success Bug Bash
+outcomes honestly and fails unless
 Activity contains a run and the dashboard deployment succeeds.
 
 Canonical runtime files live together under `.github/workflows/shared/`,

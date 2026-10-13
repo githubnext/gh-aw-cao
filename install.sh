@@ -100,8 +100,8 @@ usage() {
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart uses a clean current control repository or creates USERNAME/cao, then creates the public' \
-    'USERNAME/cao-sample target with intentional bugs. Pass --target OWNER/REPO to use another public target.' \
+    '--quickstart uses a clean current control repository or creates USERNAME/cao, then targets the public' \
+    'githubnext/gh-aw-cao-bug-bash sample. Pass --target OWNER/REPO to use another public target.' \
     'It runs Bug Bash in review mode (up to 700 AI credits), collects Activity, and deploys a public dashboard.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
@@ -641,7 +641,7 @@ main() {
     if [[ -n "$target_repository" ]]; then
       note "Quickstart reviews $target_repository, publishes a public dashboard, and may use up to 700 AI credits."
     else
-      note "Quickstart creates USERNAME/cao-sample with intentional bugs, publishes a public dashboard, and may use up to 700 AI credits."
+      note "Quickstart reviews githubnext/gh-aw-cao-bug-bash, publishes a public dashboard, and may use up to 700 AI credits."
     fi
   fi
   if [[ "$create_repository_requested" == false ]]; then

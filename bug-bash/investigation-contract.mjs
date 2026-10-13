@@ -20,10 +20,24 @@
 import { createHash } from "node:crypto";
 
 /** Version of the investigation harness. Part of stable work identity. */
-export const HARNESS_VERSION = "1.0.0";
+export const HARNESS_VERSION = "1.1.0";
 
-/** Version of the hypothesis template the worker applies. Part of stable work identity. */
+/** Stable identity of the hypothesis the worker applies. */
+export const HYPOTHESIS_ID = "explicit-zero-default";
+
+/** Version of the hypothesis the worker applies. Part of stable work identity. */
 export const HYPOTHESIS_VERSION = "1.0.0";
+
+export const DEFAULT_HYPOTHESIS = Object.freeze({
+  id: HYPOTHESIS_ID,
+  version: HYPOTHESIS_VERSION,
+  statement: "An explicit numeric zero accepted by a public contract is replaced by a nonzero default.",
+  screeningSignals: Object.freeze([
+    "numeric configuration or option fields with documented zero semantics",
+    "truthiness-based fallback or normalization near those fields",
+    "existing tests that cover omission and positive values but not explicit zero",
+  ]),
+});
 
 /**
  * Closed set of investigation outcomes.
@@ -48,12 +62,17 @@ export const INVESTIGATION_OUTCOMES = Object.freeze([
  * self-contained, standard-library-only surface with an existing test file.
  */
 export const STARTER_TARGET = Object.freeze({
-  repository: "githubnext/gh-aw-cao",
-  revision: "5263be06676f6b3509a55bd2937a488c941c6aac",
+  repository: "githubnext/gh-aw-cao-bug-bash",
+  revision: "098c42c73276bc20c4a1a8e0f334e08c3871a84d",
   focusPaths: Object.freeze([
-    "eslint-rules/rules-db.mjs",
-    "tests/unit/eslint-rules-db.test.mjs",
+    "docs/policy-contract.md",
+    "src/policy.mjs",
+    "src/rollout.mjs",
+    "src/notifications.mjs",
+    "legacy/batch-options.cjs",
+    "test",
   ]),
+  hypothesis: DEFAULT_HYPOTHESIS,
 });
 
 /**
@@ -112,14 +131,14 @@ function requireString(value, field) {
 }
 
 /**
- * Stable work identity: repository, revision, hypothesis version, harness version.
+ * Stable work identity: repository, revision, hypothesis identity and version, harness version.
  *
  * Two runs with the same work identity investigate the same question against
  * the same code with the same method, so the second may be skipped. Changing
  * the hypothesis or the harness produces new work even on an unchanged revision.
  *
- * @param {{repository: string, revision: string, hypothesisVersion?: string, harnessVersion?: string}} work
- * @returns {{id: string, label: string, repository: string, revision: string, hypothesisVersion: string, harnessVersion: string}}
+ * @param {{repository: string, revision: string, hypothesisId?: string, hypothesisVersion?: string, harnessVersion?: string}} work
+ * @returns {{id: string, label: string, repository: string, revision: string, hypothesisId: string, hypothesisVersion: string, harnessVersion: string}}
  */
 export function workIdentity(work) {
   const repository = requireString(work?.repository, "repository");
@@ -127,14 +146,16 @@ export function workIdentity(work) {
   if (!/^[0-9a-f]{40}$/.test(revision)) {
     throw new TypeError("revision must be a 40-character commit SHA, not a branch or tag");
   }
+  const hypothesisId = requireString(work?.hypothesisId ?? HYPOTHESIS_ID, "hypothesisId");
   const hypothesisVersion = requireString(work?.hypothesisVersion ?? HYPOTHESIS_VERSION, "hypothesisVersion");
   const harnessVersion = requireString(work?.harnessVersion ?? HARNESS_VERSION, "harnessVersion");
-  const label = [repository, revision, hypothesisVersion, harnessVersion].join("@");
+  const label = [repository, revision, hypothesisId, hypothesisVersion, harnessVersion].join("@");
   return Object.freeze({
     id: `work:${digest(label).slice(0, 32)}`,
     label,
     repository,
     revision,
+    hypothesisId,
     hypothesisVersion,
     harnessVersion,
   });
@@ -303,6 +324,7 @@ export function reviewBundleManifest(files, record) {
     campaign: "bug-bash",
     worker: "investigation",
     harnessVersion: HARNESS_VERSION,
+    hypothesisId: HYPOTHESIS_ID,
     hypothesisVersion: HYPOTHESIS_VERSION,
     workId: record?.workId ?? "",
     findingId: record?.findingId ?? "",
@@ -364,8 +386,9 @@ function parseFlags(argv) {
 const USAGE = `Usage: node bug-bash/investigation-contract.mjs <command>
 
   starter                     Print the pinned starter target.
+  hypothesis                  Print the fixed, versioned campaign hypothesis.
   budget                      Print the credit and time split that reserves verification.
-  identity --repository R --revision SHA [--hypothesis-version V] [--harness-version V]
+  identity --repository R --revision SHA [--hypothesis-id ID] [--hypothesis-version V] [--harness-version V]
   finding --repository R --contract C --symptom S --entry-point E
   classify <signals.json>     Print the verification decision for recorded signals.
   seal <bundle-dir> <record.json>
@@ -387,12 +410,15 @@ export function runCommand(argv, io) {
   switch (command) {
     case "starter":
       return print(STARTER_TARGET);
+    case "hypothesis":
+      return print(DEFAULT_HYPOTHESIS);
     case "budget":
       return print(investigationBudget());
     case "identity":
       return print(workIdentity({
         repository: flags.repository,
         revision: flags.revision,
+        hypothesisId: flags.hypothesisId,
         hypothesisVersion: flags.hypothesisVersion,
         harnessVersion: flags.harnessVersion,
       }));

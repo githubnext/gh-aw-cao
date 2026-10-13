@@ -3,7 +3,7 @@
   "campaign": "bug-bash",
   "fields": {
     "repositoryNativeProblem": {
-      "statement": "A repository can contain a real defect that its existing tests do not cover, while the cost of looking for one is a maintainer's attention rather than compute.",
+      "statement": "A proven defect class can recur where explicit numeric zero is valid but truthiness-based normalization replaces it with a nonzero default, while existing tests cover omission and positive values but miss the zero boundary.",
       "evidence": [
         "Stated contracts in documentation, type signatures, docstrings, and existing test expectations",
         "The repository's own test suite and the commands it already runs",
@@ -11,8 +11,8 @@
       ]
     },
     "eligibleOpportunity": {
-      "identity": "One authorized public repository at one immutable revision, with a bounded focus surface that states a checkable behavioral contract and has an existing test command.",
-      "predicate": "The repository is explicitly within CAO policy scope, its focus files are readable with the available token, and the campaign can set up and run the repository's own tests.",
+      "identity": "The explicit-zero-default hypothesis at version 1.0.0 against one authorized public repository at one immutable revision.",
+      "predicate": "The repository is explicitly within CAO policy scope, a bounded screen finds numeric defaulting behavior with a stated zero-value contract, and the campaign can set up and run the repository's own tests.",
       "missingEvidence": "An unreadable repository, an unresolvable revision, or a failed environment setup is blocked, not an eligible zero and not a no-finding."
     },
     "intendedOutcome": {
@@ -40,7 +40,7 @@
     },
     "targetPopulation": {
       "scope": "Repositories explicitly authorized by the reviewed CAO control policy, defaulting to one.",
-      "eligibility": "Public repositories readable with the built-in workflow token whose focus surface has a stated contract and a runnable test command."
+      "eligibility": "Public repositories readable with the built-in workflow token whose language, dependency, path, or prior-outcome evidence is relevant to numeric configuration defaults and whose screened focus surface has a stated zero-value contract and runnable test command."
     },
     "interventionClass": "defect-investigation-and-verification",
     "triggerAndSchedule": {
@@ -68,7 +68,7 @@
     },
     "overlapIdentity": {
       "domain": "defect-investigation",
-      "workKey": "repository + immutable revision + hypothesis version + harness version",
+      "workKey": "repository + immutable revision + hypothesis identity + hypothesis version + harness version",
       "opportunityKey": "repository + violated contract + symptom signature + entry point",
       "rationale": "Work identity changes when the code or the method changes, so a new revision is new work. Finding identity excludes revision, harness, and run so the same defect is recognized across repeat investigations instead of surfacing near-duplicates."
     },

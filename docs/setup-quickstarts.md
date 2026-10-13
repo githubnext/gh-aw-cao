@@ -1,16 +1,16 @@
 ---
 title: CAO Quickstart
-description: Find intentional bugs in a disposable sample and open your first CAO dashboard.
+description: Target the shared messy Bug Bash sample and open your first CAO dashboard.
 ---
 
-Your first Central Agentic Ops (CAO) run uses a disposable sample, so you can
-see the complete experience without pointing CAO at real work. One command
-creates the sample, runs a review-only Bug Bash, and builds your first
-data-bearing dashboard.
+Your first Central Agentic Ops (CAO) run targets a shared canonical sample, so
+you can see the complete experience without pointing CAO at your own code. One
+command pins the sample revision, runs a review-only Bug Bash, and builds your
+first data-bearing dashboard.
 
 **Time:** 15-25 minutes
-**You get:** a private control repository, a public sample with intentional
-bugs, and a public GitHub Pages dashboard.
+**You get:** a private control repository, a bounded investigation of a public
+messy sample with intentional bugs, and a public GitHub Pages dashboard.
 
 ## 1. Check your tools
 
@@ -38,7 +38,11 @@ curl --fail --silent --show-error --location \
 Then watch CAO:
 
 1. Create private `USERNAME/cao`, your control repository.
-2. Create public `USERNAME/cao-sample` with clearly marked intentional bugs.
+2. Select the pinned
+   [`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
+   revision. The sample is a deliberately messy change-window coordinator with
+   current and legacy code, mixed fallback semantics, team overrides, red
+   herrings, and passing but intentionally incomplete tests.
 3. Install Bug Bash and run at most one investigation in `review` mode.
 4. Collect a CAO Activity snapshot and require at least one collected run.
 5. Wait for the data-bearing dashboard deployment.
@@ -47,9 +51,9 @@ The command shows progress while GitHub Actions does the longer work.
 Quickstart works without a terminal and when `CI` is set.
 
 > [!NOTE]
-> Quickstart creates public sample data and a public dashboard, and can consume
-> up to **700 AI credits**. There is no second confirmation: `--quickstart` is
-> your approval for the repository creation, bounded commit and push, and
+> Quickstart publishes a public dashboard and can consume up to **700 AI credits**.
+> There is no second confirmation: `--quickstart` is your approval
+> for control-repository creation when needed, the bounded commit and push, and
 > workflow runs.
 
 ## 3. Open your dashboard
@@ -59,7 +63,7 @@ Quickstart waits for real Activity data and prints a summary like this:
 ```text
 CAO quickstart complete.
 Dashboard: https://USERNAME.github.io/cao/
-Target: https://github.com/USERNAME/cao-sample (sample with intentional bugs)
+Target: https://github.com/githubnext/gh-aw-cao-bug-bash (canonical messy Bug Bash sample)
 Bug Bash: https://github.com/USERNAME/cao/actions/runs/... (success)
 Activity: https://github.com/USERNAME/cao/actions/runs/... (... collected runs)
 Control repository: https://github.com/USERNAME/cao
@@ -67,19 +71,21 @@ Control repository: https://github.com/USERNAME/cao
 
 Open **Dashboard**. You have just run your first CAO campaign.
 
-A `no-finding` result is still a successful run. CAO reports missing access or
-failed workflows as blocked or failed instead of pretending they succeeded.
+The canonical sample is designed to produce a reproducible explicit-zero
+finding, but every verification gate still applies and `no-finding` remains a
+valid successful run. CAO reports missing access or failed workflows as blocked
+or failed instead of pretending they succeeded.
 
 CAO configures Pages and repository `GITHUB_TOKEN` access, then commits only
 its runtime and policy to the control repository.
-After creation, the starter target is never modified.
+The shared starter target is never modified.
 Installer-created control repositories remain private.
 In a public control repository, policy, workflow runs, dashboard data, and
 review outputs are also public.
 
 ## Want to use your own public repository?
 
-Replace the disposable sample with one exact public target:
+Replace the shared sample with one exact public target:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -124,10 +130,9 @@ for advanced authentication choices.
 
 - **`USERNAME/cao` already exists:** run quickstart from its clean checkout or
   choose another name with `--create-repo OWNER/NAME`.
-- **`USERNAME/cao-sample` already exists:** delete it before retrying or reuse
-  it explicitly with `--target USERNAME/cao-sample`.
-- **A later step fails:** the public sample may remain. The error tells you
-  whether to inspect, delete, or reuse it.
+- **The canonical sample revision is unavailable:** retry after repository
+  access or GitHub availability is restored; quickstart does not fall back to a
+  mutable branch.
 
 Quickstart never reports a dashboard URL until Activity contains real run data
 and the matching dashboard deployment succeeds.
