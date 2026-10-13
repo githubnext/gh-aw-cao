@@ -674,18 +674,18 @@ main() {
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
-    note "Includes activity, dashboard, and shared control plane components."
+    note "Includes activity, dashboard, and validation workflows plus shared control plane resources."
     if ! run_quiet_command \
-      "Installing CAO control plane components; this can take a few minutes..." \
+      "Installing CAO control plane components from $catalog_source..." \
       "CAO control plane components installed from $catalog_source." \
       gh aw add "$catalog_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
   elif [[ "$explicit_source" == true ]]; then
-    note "Refreshes activity, dashboard, and shared control plane components."
+    note "Refreshes activity, dashboard, and validation workflows plus shared control plane resources."
     if ! run_quiet_command \
-      "Refreshing CAO control plane components; this can take a few minutes..." \
+      "Refreshing CAO control plane components from $catalog_source..." \
       "CAO control plane components refreshed from $catalog_source." \
       gh aw add "$catalog_source" --force --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
