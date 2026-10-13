@@ -19,9 +19,10 @@ requires an explicit exact coordinate, and an outdated installed gh-aw fails
 with manual-upgrade guidance. Other streamed children retain null stdin.
 
 The producer uses the dedicated `runtime/package.json` `files` field and
-`npm pack --ignore-scripts`, bundles the YAML parser and Clack prompt adapter
-with esbuild and their license notices, and seals a revision-bound file inventory.
-Explicit source packing also bundles prompts. The materializer downloads
+`npm pack --ignore-scripts`, bundles the YAML parser with esbuild and its license
+notice, preserves the dependency-free prompt adapter as portable source, and
+seals a revision-bound file inventory. Explicit source packing preserves the
+same prompt source. The materializer downloads
 the prebuilt archive matching gh-aw's full `resolvedCommit`: stable `vX.Y.Z`
 references use release assets, while main/SHA references use successful,
 unexpired `cao-runtime.yml` Actions artifacts retained for 90 days.

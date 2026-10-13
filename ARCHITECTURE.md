@@ -411,11 +411,11 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 Activity and Dashboard use the standard npm `files` contract in the dedicated
 `runtime/package.json`, rather than copying their development directories
 wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
-command packs with lifecycle scripts disabled, bundles the YAML parser and the
-Clack setup prompt adapter with esbuild and their dependency license notices,
-and seals an exact-revision inventory and checksums. Explicit developer source
-packing also bundles the prompt adapter; installed setup never resolves it from
-a consumer's node_modules.
+command packs with lifecycle scripts disabled, bundles the YAML parser with
+esbuild and its dependency license notices, preserves the dependency-free setup
+prompt adapter as portable source, and seals an exact-revision inventory and
+checksums. Explicit developer source packing preserves the same adapter;
+installed setup never resolves it from a consumer's node_modules.
 Filesystem-relative CLI modules, workers, and build inputs remain at their
 canonical paths rather than being forced into a single-file executable.
 The conventional `cao-runtime.yml` pipeline builds on main pushes and stable
@@ -469,14 +469,18 @@ readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with
 the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
-to the controlling terminal after verified materialization, while streamed
-bootstrap children otherwise retain null stdin.
+to the controlling terminal after verified materialization when one is
+available. Without a terminal or when `CI` is set, installation completes and
+guided setup takes its default No without changing policy, credentials, or
+Pages. Headless repository creation still requires an exact
+`--create-repo OWNER/NAME`, and missing prerequisites fail rather than appearing
+successful. Streamed bootstrap children otherwise retain null stdin.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
 Node terminal primitives. It provides keyboard prompts, inline validation,
 cancellation, and restrained elapsed progress; terminals without styling
-support, `NO_COLOR`, `ACCESSIBLE`, and CI use plain numbered prompts without
+support, `NO_COLOR`, and `ACCESSIBLE` use plain numbered prompts without
 animation. The injectable prompt contract keeps authority decisions outside UI.
 Setup shows Repositories, Connections, and Review/apply, with default-No
 confirmation before Pages, credential, or policy changes. The Pages source is
@@ -487,7 +491,10 @@ left in place with restriction/unpublication guidance. Policy is written atomica
 after both succeed. Failures disclose possible partial external changes rather
 than claim rollback. Setup does not install campaigns, dispatch workflows,
 commit, or push. The CLI prints next actions by default and retains structured
-stdout with `setup --json`; non-interactive setup fails with explicit guidance.
+stdout with `setup --json`. Non-interactive setup, including setup in CI,
+returns a successful cancelled result with reason `non-interactive` before any
+GitHub call or mutation. A fresh bare installation remains scoped to the exact
+control repository with no campaigns, including when that repository is public.
 
 `activity/quickstart.mjs` owns a distinct explicit first-success flow. It
 requires a new private control repository with no commit, installs Bug Bash at
