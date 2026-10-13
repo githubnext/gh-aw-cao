@@ -3,6 +3,79 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-13T06:54:13Z",
+      "worker_run_id": 38358817811,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38358813042,
+        38358518368,
+        38356195199,
+        38355222384,
+        38354714993,
+        38354172987,
+        38353758914,
+        38353710512,
+        38353436676,
+        38353435555,
+        38352524537,
+        38352209741,
+        38350660177,
+        38349759434,
+        38349759517,
+        38349759638,
+        38349759763,
+        38349760350,
+        38349721449,
+        38348989096
+      ],
+      "docs_window": {
+        "start": "2026-10-13T04:57:41Z",
+        "end": "2026-10-13T06:48:26Z"
+      },
+      "docs_success_count": 7,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 1,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 19.0,
+        "workflow_p90_s": 66.4,
+        "execution_median_s": 19.0,
+        "execution_p90_s": 66.4,
+        "schedule_freshness_median_s": 14.5,
+        "schedule_freshness_p90_s": 15.0,
+        "build_median_s": 43.5,
+        "build_p90_s": 51.1,
+        "deploy_median_s": 19.0,
+        "deploy_p90_s": 19.0,
+        "check_freshness_step_median_s": 11.0,
+        "check_freshness_step_p90_s": 11.0
+      },
+      "dashboard_window": {
+        "start": "2026-10-12T23:22:22Z",
+        "end": "2026-10-13T06:48:22Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_current_sha_success_count": 0,
+      "dashboard_comparable_success_count": 0,
+      "dashboard_metrics": {
+        "queue_median_s": null,
+        "queue_p90_s": null,
+        "workflow_median_s": null,
+        "workflow_p90_s": null,
+        "execution_median_s": null,
+        "execution_p90_s": null,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "cache_median_s": null,
+        "cache_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T04:57:41Z through 2026-10-13T06:48:26Z, 7 runs succeeded but only 2 reached a successful build job (38353758914, 38353436676), so there were not 5 comparable successful docs samples. Trusted job metadata showed five successful schedule runs on 5263be0 or a71b0e0 were freshness-only skips, while the two current-SHA build samples on a71b0e0 were one push run with deploy skipped and one schedule run with deploy success; queue median/p90 were 0.0s/0.0s, workflow median/p90 were 19.0s/66.4s, successful build-job median/p90 were 43.5s/51.1s, successful deploy-job median/p90 were 19.0s/19.0s, and schedule-freshness median/p90 were 14.5s/15.0s. Bounded log reads for docs runs 38353758914 and 38353436676 confirmed cache restores for the setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; trusted step metadata also showed Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in both build samples, consistent with cache hits rather than repeated installation or artifact download. The same docs window also contained 7 skipped workflow_run runs and 6 workflow_run runs that ended action_required; these were disclosed but excluded from comparability. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T23:22:22Z through 2026-10-13T06:48:22Z contained 0 successful dashboard builds (18 skipped workflow_run runs and 2 push failures). Trusted job metadata for failure 38353436671 showed build failed after a 158s Restore collected activity data step and a 1s Upgrade fallback activity data step failure, while failure 38337349456 was a 3h17m outlier with no retained job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard samples, no evidence-backed recommendation is actionable in this cycle."
+    },
+    {
       "evaluated_at": "2026-10-13T06:00:30Z",
       "worker_run_id": 38354152582,
       "category": "dependency installation and caching",
@@ -1889,53 +1962,6 @@
       },
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"Astro documentation generation\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T11:01:20Z through 2026-10-12T15:05:47Z, 11 runs concluded success and all 11 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 9 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 11 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 21.0s/25.0s, and schedule-freshness median/p90 was 16.0s/19.0s. Trusted job metadata for every successful docs run showed build and deploy skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T05:41:55Z through 2026-10-12T14:54:01Z contained 0 successful dashboard builds and therefore provided no comparable dashboard execution sample in this bounded window. Because the bounded sample contains 0 comparable successful deployed docs runs, no safe evidence-backed Astro-generation recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-12T14:36:59Z",
-      "worker_run_id": 38263775263,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38263541067,
-        38262162815,
-        38259367074,
-        38259137708,
-        38255322565,
-        38255032935,
-        38251939476,
-        38251472551,
-        38246827163,
-        38246085728,
-        38245573739,
-        38244949504,
-        38244377938,
-        38242770728,
-        38242463446,
-        38240194752,
-        38239976555,
-        38239267392,
-        38238852563,
-        38237113002
-      ],
-      "docs_window": {
-        "start": "2026-10-12T10:33:50Z",
-        "end": "2026-10-12T14:31:28Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 0,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 17.0,
-        "workflow_p90_s": 22.300000000000004,
-        "schedule_freshness_median_s": 16.0,
-        "schedule_freshness_p90_s": 19.0,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T10:33:50Z through 2026-10-12T14:31:28Z, 11 runs concluded success and 9 were skipped. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. All successful runs used source SHA b56d73723daceacca67a961d071f650e7f76eedd; their workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 17.0s/22.3s, and schedule-freshness median/p90 was 16.0s/19.0s. Trusted job metadata for every successful run showed build and deploy skipped; a bounded log read of run 38262162815 confirmed the freshness-only summary path reporting that the deployed docs and dashboard are current. Because the bounded sample contains 0 comparable successful deployed docs runs, no evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
