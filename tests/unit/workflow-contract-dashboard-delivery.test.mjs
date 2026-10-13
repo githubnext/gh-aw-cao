@@ -221,12 +221,11 @@ test("dashboard CI runs the campaign quality gates", () => {
 
 test("Dashboard campaign builds artifacts and deploys Pages in one workflow", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
-  const controlPlaneManifest = readFileSync(join(root, ".github", "workflows", "aw.yml"), "utf8");
+  const controlPlaneManifest = rootManifest;
   const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const materializer = readFileSync(join(root, ".github", "workflows", "shared", "materialize-cao.mjs"), "utf8");
   const runtimeAction = readFileSync(join(root, ".github", "actions", "setup-cao-runtime", "action.yml"), "utf8");
-  const rootCampaign = parse(rootManifest);
   const controlPlaneCampaign = parse(controlPlaneManifest);
   const dashboardCampaign = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
@@ -255,10 +254,9 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
-  assert.ok(rootCampaign.includes.includes("control-plane/aw.yml"));
-  assert.ok(controlPlaneCampaign.includes.includes("../../dashboard/aw.yml"));
+  assert.ok(controlPlaneCampaign.includes.includes("dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
-  assert.match(controlPlaneManifest, /^\s+- \.\.\/\.\.\/dashboard\/aw\.yml$/m);
+  assert.match(controlPlaneManifest, /^\s+- dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
   assert.doesNotMatch(dashboardManifest, /cao-dashboard-build|dispatch-workflow/);
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
@@ -469,7 +467,6 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
 
 test("Activity campaign owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const controlPlaneManifest = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8"));
   const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
@@ -481,8 +478,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
     ".github/workflows/cao-activity.yml",
   ]);
   assert.equal(activityManifest.resources, undefined);
-  assert.ok(rootManifest.includes.includes("control-plane/aw.yml"));
-  assert.ok(controlPlaneManifest.includes.includes("../../activity/aw.yml"));
+  assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);

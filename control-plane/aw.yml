@@ -1,8 +1,0 @@
-name: Central Agentic Ops control plane
-icon: ":workflow:"
-description: Minimal control-plane installation package without separately distributed Agent Plugin resources
-min-version: v0.91.5
-experimental: true
-includes:
-  - ../.github/workflows/aw.yml
-  - ../.github/aw/aw.yml

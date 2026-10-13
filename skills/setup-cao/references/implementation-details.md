@@ -17,6 +17,10 @@ verified installation. Without a terminal or when `CI` is set, guided setup
 defaults to No and skips configuration successfully; repository creation
 requires an explicit exact coordinate, and an outdated installed gh-aw fails
 with manual-upgrade guidance. Other streamed children retain null stdin.
+The repository-root `aw.yml` explicitly composes Activity, dashboard,
+validation, shared runtime resources, instructions, and project settings. Empty
+`skills` and `agents` declarations keep Agent Plugin and repository-only
+authoring resources out of control-repository installation.
 
 The producer uses the dedicated `runtime/package.json` `files` field and
 `npm pack --ignore-scripts`, bundles the YAML parser with esbuild and its license

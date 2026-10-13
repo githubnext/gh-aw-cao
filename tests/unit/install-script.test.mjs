@@ -18,8 +18,6 @@ const catalog = path.resolve(".");
 const installScript = path.join(catalog, "install.sh");
 const installerSource = await readFile(installScript, "utf8");
 const manifest = parse(await readFile(path.join(catalog, "aw.yml"), "utf8"));
-const controlPlaneManifest = parse(await readFile(path.join(catalog, ".github/workflows/aw.yml"), "utf8"));
-const instructionManifest = parse(await readFile(path.join(catalog, ".github/aw/aw.yml"), "utf8"));
 const supportedGh = "v2.68.0";
 const olderGh = "v2.67.0";
 const supportedGhAw = manifest["min-version"];
@@ -41,16 +39,12 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
 });
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
-  ...controlPlaneManifest.resources.map(({ source, destination }) => ({
-    source: path.normalize(path.join(".github/workflows", source)),
-    destination,
-  })),
-  ...instructionManifest.resources.map(({ source, destination }) => ({
-    source: path.normalize(path.join(".github/aw", source)),
+  ...manifest.resources.map(({ source, destination }) => ({
+    source: path.normalize(source),
     destination,
   })),
   {
-    source: "control-plane/.github/workflows/aw.json",
+    source: ".github/workflows/aw.json",
     destination: ".github/workflows/aw.json",
   },
   ...[".github/workflows/cao-activity.yml", ".github/workflows/cao-dashboard.yml", ".github/workflows/cao-validate.yml"]
@@ -211,7 +205,7 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
-  [[ "\${3:-}" == githubnext/gh-aw-cao/control-plane* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
+  [[ "\${3:-}" == githubnext/gh-aw-cao || "\${3:-}" == githubnext/gh-aw-cao@* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
   stdin_bytes="$(wc -c | tr -d ' ')"
   entry=add
   [[ "\${4:-}" != "--force" ]] || entry=add-force
@@ -230,7 +224,7 @@ ${addedFiles.map(({ source, destination }) => `  mkdir -p "$(dirname '${destinat
   cp "$FAKE_CATALOG/${source}" '${destination}'`).join("\n")}
   mkdir -p .github/aw/packages
   cat > .github/aw/packages/githubnext-gh-aw-cao-c6b3479204cc.json <<'EOF'
-{"package":"githubnext/gh-aw-cao/control-plane","source":"githubnext/gh-aw-cao/control-plane@${revision}","resolvedCommit":"${revision}"}
+{"package":"githubnext/gh-aw-cao","source":"githubnext/gh-aw-cao@${revision}","resolvedCommit":"${revision}"}
 EOF
   exit 0
 fi

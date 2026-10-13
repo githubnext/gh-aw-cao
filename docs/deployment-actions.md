@@ -54,7 +54,7 @@ For more information, see [Configure authentication](authentication.md).
 ## Deploying the dashboard
 
 1. Install the dashboard. The supported CAO installer includes it through the
-   narrow control-plane package. Advanced users can install only the Activity
+   explicit root package. Advanced users can install only the Activity
    and dashboard components; unpinned package coordinates resolve the latest
    release automatically.
 

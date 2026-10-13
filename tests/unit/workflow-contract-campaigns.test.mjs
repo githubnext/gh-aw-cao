@@ -219,8 +219,8 @@ test("campaign manifests exclude repository-only tests", () => {
 });
 
 test("activity and dashboard campaigns include every local JavaScript dependency", () => {
-  const rootResources = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8")).resources
-    .map(({ source }) => join(".github/workflows", source))
+  const rootResources = parse(readFileSync(join(root, "aw.yml"), "utf8")).resources
+    .map(({ source }) => source)
     .filter((source) => /\.(?:c|m)?js$/.test(source));
   const bundled = new Set([
     ...["activity", "dashboard"].flatMap((directory) => JavaScriptFiles(join(root, directory))),
@@ -319,15 +319,15 @@ test("root campaign keeps GitHub App setup opt-in", () => {
 test("root campaign provides default control-repository agent context", () => {
   const rootManifestSource = readFileSync(join(root, "aw.yml"), "utf8");
   const rootManifest = parse(rootManifestSource);
-  const controlPlaneManifest = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8"));
   const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
   const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.equal((rootManifest.resources ?? []).length, 0);
-  assert.equal(controlPlaneManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
-  assert.equal(rootManifest.skills, undefined);
+  assert.equal(rootManifest.resources.length, 5);
+  assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
+  assert.deepEqual(rootManifest.skills, []);
+  assert.deepEqual(rootManifest.agents, []);
   assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
   for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
     const portableSkill = join(root, "skills", skill);
@@ -364,13 +364,8 @@ test("root campaign installs the CAO CLI helper", () => {
 });
 
 test("root campaign resolves the single CAO bootstrap runtime", () => {
-  const rootManifestSources = [
-    "aw.yml",
-    "control-plane/aw.yml",
-    ".github/workflows/aw.yml",
-  ].map((file) => readFileSync(join(root, file), "utf8"));
-  const rootManifest = rootManifestSources.join("\n");
-  const controlPlaneManifest = parse(rootManifestSources.at(-1));
+  const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
+  const controlPlaneManifest = parse(rootManifest);
   const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "setup-quickstarts.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
@@ -401,7 +396,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
       controlPlaneManifest.resources.find(({ destination }) =>
         destination === `.github/workflows/shared/${path}`),
       {
-        source: `shared/${path}`,
+        source: `.github/workflows/shared/${path}`,
         destination: `.github/workflows/shared/${path}`,
       },
     );
@@ -431,7 +426,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
-  assert.match(admission, /Bash installer installs the narrow CAO control-plane package and creates the consumer-owned policy/i);
+  assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
 });
 
 test("root campaign CAO helper stays portable across POSIX-family shells", {
@@ -500,25 +495,22 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
 
 test("root campaign composes its operational campaigns through manifests", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const installerManifest = parse(readFileSync(join(root, "control-plane/aw.yml"), "utf8"));
-  const componentManifest = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8"));
-  const instructionManifest = parse(readFileSync(join(root, ".github/aw/aw.yml"), "utf8"));
 
-  assert.deepEqual(rootManifest.includes, ["control-plane/aw.yml"]);
-  assert.deepEqual(installerManifest.includes, ["../.github/workflows/aw.yml", "../.github/aw/aw.yml"]);
-  assert.deepEqual(componentManifest.includes.map((include) =>
-    typeof include === "string" ? include : include.source), [
-    "../../activity/aw.yml",
-    "../../dashboard/aw.yml",
-    "cao-validate.yml",
+  assert.deepEqual(rootManifest.includes, [
+    "activity/aw.yml",
+    "dashboard/aw.yml",
+    ".github/workflows/cao-validate.yml",
   ]);
-  assert.deepEqual(instructionManifest.resources, [{
-    source: "instructions.md",
-    destination: ".github/aw/instructions.md",
-  }]);
+  assert.ok(!existsSync(join(root, ".github/workflows/aw.yml")));
+  assert.ok(!existsSync(join(root, ".github/workflows/shared/aw.yml")));
+  assert.ok(!existsSync(join(root, ".github/aw/aw.yml")));
+  assert.ok(!existsSync(join(root, "control-plane/aw.yml")));
+  assert.equal(rootManifest.resources.length, 5);
+  assert.deepEqual(
+    rootManifest.resources.find(({ destination }) => destination === ".github/aw/instructions.md"),
+    { source: ".github/aw/instructions.md", destination: ".github/aw/instructions.md" },
+  );
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
-  const installerProject = JSON.parse(readFileSync(join(root, "control-plane", ".github", "workflows", "aw.json"), "utf8"));
-  assert.deepEqual(installerProject, project);
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);
 });
 

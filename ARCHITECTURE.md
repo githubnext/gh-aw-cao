@@ -444,11 +444,12 @@ The Agent Plugin is a separate distribution: the control-plane installer does
 not copy its manifest, portable skills, Copilot extension, bundled specification
 documents, or repository-only dashboard authoring skills. Materialization
 preserves pre-existing plugin resources outside its owned runtime destinations.
-The installer adds the nested `control-plane/aw.yml` package rather than the
-repository-root catalog package. That package composes only the Activity,
-dashboard, and validation workflows, five shared control-plane resources, and
-the gh-aw project settings. This avoids gh-aw's root-package skill and agent
-auto-discovery while the root `aw.yml` remains the public catalog composition.
+The installer adds the repository-root `aw.yml` package. That manifest
+explicitly composes only the Activity, dashboard, and validation workflows,
+five shared control-plane resources, and the gh-aw project settings. Its empty
+`skills` and `agents` declarations disable root-package auto-discovery, so
+Agent Plugin and repository-only authoring resources remain separate without
+additional package manifests.
 Operational campaign manifests contain only their owned workflows and catalog
 resources; they do not import the root catalog package. `cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
