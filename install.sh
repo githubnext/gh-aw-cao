@@ -675,8 +675,8 @@ main() {
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
     if ! run_quiet_command \
-      "Installing the CAO campaign from $catalog_source..." \
-      "CAO campaign installed from $catalog_source." \
+      "Installing the CAO control plane from $catalog_source..." \
+      "CAO control plane installed from $catalog_source." \
       gh aw add "$catalog_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
@@ -690,7 +690,7 @@ main() {
       return 1
     fi
   else
-    note "CAO campaign files are already installed."
+    note "CAO control-plane files are already installed."
   fi
   if [[ -d "$catalog_source" ]]; then
     if ! run_quiet_command \
