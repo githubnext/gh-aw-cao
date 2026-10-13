@@ -9,7 +9,8 @@ metadata:
 
 Create or reuse one bare CAO control plane. Setup leaves the runtime (including
 `./cao.sh`), exact repository scope and compatible authentication installed,
-`control-plane.campaigns` empty, and no campaign, live rollout, or dispatch.
+`control-plane.campaigns` as an empty object, and no user-facing campaign installed or enabled, no live rollout, and no workflow
+dispatch.
 
 Campaign discovery and installation are a separate task for `add-cao-campaign`.
 
@@ -55,8 +56,7 @@ control repository or selecting a non-public target.
 ## Preferred human flow
 
 For a separate control repository, prefer repository-local interactive setup.
-For a new repository, use the review-before-apply [setup
-quickstart](https://github.com/githubnext/gh-aw-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
+For a new repository, use the review-before-apply [setup quickstart](https://github.com/githubnext/gh-aw-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 The installer's `--setup` flag enters `./cao.sh setup` directly.
 
 ```bash
@@ -65,8 +65,9 @@ curl --fail --silent --show-error --location \
   bash -s -- --create-repo --setup
 ```
 
-Interactive setup discovers the repository, exact scope, ownership, visibility,
-and scope-compatible authentication, then shows its plan before mutation.
+Interactive setup discovers the repository, exact scope, ownership, and
+visibility, offers authentication choices based on that scope, then shows its
+plan before mutation.
 Verify profile prerequisites in the authentication reference before approving;
 the prompt does not establish whether selected organizations share an
 enterprise. Do not replace it with an independent questionnaire or ad hoc
