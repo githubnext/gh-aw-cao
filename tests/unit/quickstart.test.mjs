@@ -224,6 +224,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
   assert.ok(progress.includes('Bug Bash campaign installed in review mode for one public starter repository'));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
+  assert.ok(progress.some((message) => message.startsWith('Running one bounded Bug Bash campaign in review mode')));
   assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
   assert.ok(progress.some((message) => message.includes('up to 700 AI credits')));
 });

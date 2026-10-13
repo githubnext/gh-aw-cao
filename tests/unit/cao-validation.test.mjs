@@ -264,6 +264,7 @@ test("CI validation uses the installed runtime without consumer npm metadata", a
   const steps = workflow.jobs.validate.steps;
   const setupNode = steps.find(({ uses }) => uses?.startsWith("actions/setup-node@"));
 
+  assert.equal(workflow["run-name"], "CAO validation / ${{ github.run_id }}");
   assert.equal(setupNode.with["node-version"], 24);
   assert.equal(setupNode.with["package-manager-cache"], false);
   assert.equal(setupNode.with.cache, undefined);

@@ -547,9 +547,9 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
   assert.match(result.stdout, /Installs 3 workflows, 5 shared control plane resources, and project settings\./);
-  assert.match(result.stdout, /Installing CAO control plane components from/);
+  assert.match(result.stdout, /Installing control plane components/);
   assert.match(result.stdout, /A newly published catalog revision may wait for its exact verified runtime build/);
-  assert.match(result.stdout, /Acquiring and verifying the exact CAO runtime/);
+  assert.match(result.stdout, /Verifying exact CAO runtime/);
   assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
   assert.match(result.stdout, /CAO installed and verified/);
@@ -933,7 +933,9 @@ test("install.sh uses one restrained spinner for a slow sign-in check", { skip: 
     timeout,
   });
   assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+  const frames = [...result.stdout.matchAll(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][^\r\n]*?· (\d+)s elapsed/gu)];
+  assert.ok(frames.length >= 1);
+  assert.equal(frames.length, new Set(frames.map((match) => match[1])).size);
   assert.match(result.stdout, /\d+s elapsed/);
   assert.doesNotMatch(result.stdout, /Prerequisites and GitHub sign-in verified/);
   assert.equal(await log(), "");

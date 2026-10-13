@@ -1,5 +1,7 @@
 name: CAO validation
 
+run-name: CAO validation / ${{ github.run_id }}
+
 on:
   workflow_dispatch:
   pull_request:

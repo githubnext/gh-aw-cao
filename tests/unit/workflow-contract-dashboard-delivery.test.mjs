@@ -293,6 +293,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /push:\n\s+branches: \[main\]\n\s+paths:\n\s+- \.github\/workflows\/cao\.json\n\s+- \.github\/workflows\/cao-activity\.yml/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
+  assert.match(dashboardWorkflow, /run-name: CAO Dashboard \/ \$\{\{ github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v5-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(activityPlanJob, /GH_AW_GITHUB_AUTH_MODE[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?activityCollectionPlan/);
   const collectionStrategy = parse(activityWorkflow).jobs.collect.strategy;

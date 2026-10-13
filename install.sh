@@ -53,6 +53,7 @@ run_quiet_command() {
   local styled=false
   local frame=0
   local started_at="$SECONDS"
+  local last_elapsed=-1
   local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
   trap 'kill "$command_pid" 2>/dev/null || true; rm -f "$output_file"; exit 130' INT TERM
 
@@ -60,11 +61,15 @@ run_quiet_command() {
     styled=true
     sleep 0.1
     while kill -0 "$command_pid" 2>/dev/null; do
-      animated=true
-      printf '\r\033[2K\033[36m%s\033[0m %s \033[2m· %ss elapsed\033[0m' \
-        "${frames[$frame]}" "$progress_message" "$((SECONDS - started_at))"
-      frame="$(((frame + 1) % ${#frames[@]}))"
-      sleep 0.08
+      local elapsed="$((SECONDS - started_at))"
+      if [[ "$elapsed" -ne "$last_elapsed" ]]; then
+        animated=true
+        printf '\r\033[2K\033[36m%s\033[0m %s \033[2m· %ss elapsed\033[0m' \
+          "${frames[$frame]}" "$progress_message" "$elapsed"
+        frame="$(((frame + 1) % ${#frames[@]}))"
+        last_elapsed="$elapsed"
+      fi
+      sleep 0.1
     done
   else
     info "$progress_message"
@@ -682,7 +687,7 @@ main() {
   if [[ -n "$create_repository" ]]; then
     if [[ "$create_repository_in_place" == true ]]; then
       if ! run_quiet_command \
-        "Creating private control repository $create_repository..." \
+        "Creating private control repository..." \
         "Created private control repository $create_repository." \
         gh repo create "$create_repository" --private --source=. --remote=origin; then
         [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -691,7 +696,7 @@ main() {
       fi
     else
       if ! run_quiet_command \
-        "Creating private control repository $create_repository..." \
+        "Creating private control repository..." \
         "Created private control repository $create_repository." \
         gh repo create "$create_repository" --private --clone; then
         [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -707,7 +712,7 @@ main() {
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
     note "Installs 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \
-      "Installing CAO control plane components from $catalog_source..." \
+      "Installing control plane components..." \
       "CAO control plane components installed from $catalog_source." \
       gh aw add "$control_plane_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -716,7 +721,7 @@ main() {
   elif [[ "$explicit_source" == true ]]; then
     note "Refreshes 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \
-      "Refreshing CAO control plane components from $catalog_source..." \
+      "Refreshing control plane components..." \
       "CAO control plane components refreshed from $catalog_source." \
       gh aw add "$control_plane_source" --force --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -727,7 +732,7 @@ main() {
   fi
   if [[ -d "$catalog_source" ]]; then
     if ! run_quiet_command \
-      "Materializing the CAO runtime..." \
+      "Materializing CAO runtime..." \
       "CAO runtime materialized and verified." \
       node "$materializer" materialize-source root "$catalog_source"; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
@@ -736,7 +741,7 @@ main() {
   else
     note "A newly published catalog revision may wait for its exact verified runtime build."
     if ! run_quiet_command \
-      "Acquiring and verifying the exact CAO runtime..." \
+      "Verifying exact CAO runtime..." \
       "CAO runtime materialized and verified." \
       node "$materializer" materialize root; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2

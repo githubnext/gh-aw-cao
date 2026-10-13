@@ -264,7 +264,7 @@ async function executeCaoQuickstart({
   ui.success?.(`Control plane pushed to ${controlRepository}`);
 
   const bugBashCreated = isoBefore(now);
-  await ui.step?.('Running one bounded Bug Bash investigation in review mode (up to 700 AI credits)');
+  await ui.step?.('Running one bounded Bug Bash campaign in review mode (up to 700 AI credits)');
   await dispatchWorkflow({
     execute,
     repository: controlRepository,

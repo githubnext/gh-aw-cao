@@ -1,5 +1,7 @@
 name: CAO Dashboard
 
+run-name: CAO Dashboard / ${{ github.run_id }}
+
 on:
   workflow_dispatch:
   workflow_run: # zizmor: ignore[dangerous-triggers] - The build job accepts only successful default-branch Activity runs and checks out the trusted dashboard workflow revision.
