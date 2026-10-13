@@ -148,7 +148,22 @@ git push --set-upstream origin HEAD
 
 ## Next: Add a Campaign
 
-Choose and install the first operation as a separate change:
+Start with **Bug Bash**. It is the smallest complete campaign in the catalog and
+the recommended way to see the control plane work end to end:
+
+```bash
+./cao.sh add githubnext/gh-aw-cao/bug-bash
+```
+
+Bug Bash promises one thing — *find a bug you can reproduce, review a fix you can
+understand* — and keeps the first run bounded: one repository, one investigation,
+at most one surfaced finding, review mode only, no schedule, and nothing written
+to the investigated repository. Its starter target is a public repository pinned
+to an immutable commit, so no additional GitHub credentials are required, and a
+first run that reports `no-finding` is a success. Model entitlement and AI
+credits are still consumed; see the [authentication guide](authentication.md).
+
+To install a different operation instead:
 
 ```bash
 ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN

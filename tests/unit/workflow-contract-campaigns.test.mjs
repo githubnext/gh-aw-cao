@@ -37,6 +37,7 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
     "aw.yml",
     "activity/aw.yml",
     "uk-ai-advisory/aw.yml",
+    "bug-bash/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
@@ -112,6 +113,7 @@ test("catalog campaigns declare their current experimental maturity", () => {
     "aw.yml",
     "activity/aw.yml",
     "uk-ai-advisory/aw.yml",
+    "bug-bash/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
@@ -205,7 +207,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
 });
 
 test("campaign manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("dreaming", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("bug-bash", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("dreaming", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
@@ -270,6 +272,7 @@ test("focused campaign manifests do not cross-own campaign files", () => {
 
 test("operational campaigns install declarations matching their workflow identities", () => {
   const campaignNames = [
+    "bug-bash",
     "cao-evolution",
     "dependabot",
     "dreaming",

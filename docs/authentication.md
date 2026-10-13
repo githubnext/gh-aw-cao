@@ -257,6 +257,10 @@ Keep this profile within these boundaries:
 
 The workflow token is scoped to the repository containing the workflow. Public checkout does not grant target-repository write access, and a public repository's visibility does not expand the token's Actions, security, issue, or pull-request permissions. If a worker cannot read required target evidence with the available token, it must report incomplete and produce no speculative result.
 
+:::caution[No additional GitHub credentials is not the same as free]
+The built-in token removes a *GitHub credential* requirement. It does not remove *model* cost or entitlement. Every agentic run still consumes the configured engine's model entitlement and the campaign's AI credit budget, which are provisioned, billed, and rate-limited separately from GitHub permissions. A control repository can therefore satisfy this profile completely and still be unable to run: `copilot-requests: write` must be granted, the account or organization must be entitled to the configured model, and `max-ai-credits` plus any `monthly-ai-credit-budget` must have headroom. Treat missing model access as a blocked run with its own reason, never as an absence of findings.
+:::
+
 ## Credential Boundary
 
 - Each App client ID lives in its control-repository Actions variable, and each private key or PAT lives in its corresponding Actions secret.
