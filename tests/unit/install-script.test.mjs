@@ -18,6 +18,8 @@ const catalog = path.resolve(".");
 const installScript = path.join(catalog, "install.sh");
 const installerSource = await readFile(installScript, "utf8");
 const manifest = parse(await readFile(path.join(catalog, "aw.yml"), "utf8"));
+const supportedGh = "v2.68.0";
+const olderGh = "v2.67.0";
 const supportedGhAw = manifest["min-version"];
 const [major, minor, patch] = supportedGhAw.slice(1).split(".").map(Number);
 const olderGhAw = patch > 0 ? `v${major}.${minor}.${patch - 1}` : `${supportedGhAw}-rc.1`;
@@ -107,16 +109,45 @@ test("installer fixture archive contains every tracked runtime source and no gen
 // unset the lookup fails as it does outside a GitHub repository checkout.
 const fakeGh = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ "$*" == "--version" ]]; then
+  echo "gh version \${FAKE_GH_VERSION:-${supportedGh}} (fake)"
+  exit 0
+fi
 if [[ "$*" == "auth status" ]]; then
+  [[ -z "\${FAKE_AUTH_DELAY:-}" ]] || sleep "$FAKE_AUTH_DELAY"
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
+if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
+  [[ "$*" == *"viewerCanCreateRepositories"* ]] || exit 2
+  [[ -z "\${FAKE_OWNER_DISCOVERY_FAILURE:-}" ]] || { echo "owner lookup failed" >&2; exit 1; }
+  echo "owners-query" >> "$FAKE_COMMAND_LOG"
+  printf '%b\\n' "\${FAKE_REPOSITORY_OWNERS:-alpha-user\\\\nalpha-org}"
+  exit 0
+fi
+if [[ "\${1:-}" == api && "\${2:-}" == repos/* && "$#" -eq 2 ]]; then
+  if [[ -n "\${FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE:-}" ]]; then
+    echo "gh: service unavailable (HTTP 503)" >&2
+    exit 1
+  fi
+  if [[ -n "\${FAKE_DEFAULT_REPOSITORY_EXISTS:-}" ]]; then
+    exit 0
+  fi
+  echo "gh: Not Found (HTTP 404)" >&2
+  exit 1
+fi
 if [[ "\${1:-} \${2:-}" == "repo create" ]]; then
-  [[ "$*" == "repo create $FAKE_CONTROL_REPOSITORY --private --clone" ]] || exit 2
-  echo "create-private" >> "$FAKE_COMMAND_LOG"
-  mkdir "\${3#*/}"
-  git -C "\${3#*/}" init --quiet
-  git -C "\${3#*/}" remote add origin "https://github.com/\${3}.git"
+  if [[ "$*" == "repo create $FAKE_CONTROL_REPOSITORY --private --clone" ]]; then
+    echo "create-private" >> "$FAKE_COMMAND_LOG"
+    mkdir "\${3#*/}"
+    git -C "\${3#*/}" init --quiet
+    git -C "\${3#*/}" remote add origin "https://github.com/\${3}.git"
+  elif [[ "$*" == "repo create $FAKE_CONTROL_REPOSITORY --private --source=. --remote=origin" ]]; then
+    echo "create-private-current" >> "$FAKE_COMMAND_LOG"
+    git remote add origin "https://github.com/$FAKE_CONTROL_REPOSITORY.git"
+  else
+    exit 2
+  fi
   exit 0
 fi
 if [[ "\${1:-}" == api && "$*" == *"/actions/workflows/cao-runtime.yml/runs?"* ]]; then
@@ -141,7 +172,8 @@ if [[ "\${1:-} \${2:-}" == "attestation verify" ]]; then
   exit 0
 fi
 if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
-  if [[ -z "\${FAKE_CONTROL_REPOSITORY+set}" ]]; then
+  if { [[ -n "\${FAKE_REPOSITORY_LOOKUP_FAILURE:-}" ]] && ! git remote get-url origin >/dev/null 2>&1; } ||
+    [[ -z "\${FAKE_CONTROL_REPOSITORY+set}" ]]; then
     echo "none of the git remotes configured for this repository point to a known GitHub host" >&2
     exit 1
   fi
@@ -690,11 +722,221 @@ test("install.sh creates only an explicitly requested private repository and ins
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
+test("install.sh interactively selects an eligible owner and repository name", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
+    cwd: consumer,
+    env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
+    timeout,
+    input: "\x1b[B\ncontrol\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Prerequisites and GitHub sign-in verified/);
+  assert.match(result.stdout, /Create a private CAO control repository/);
+  assert.match(result.stdout, /alpha-user/);
+  assert.match(result.stdout, /> alpha-org/);
+  assert.match(result.stdout, /enter select/);
+  assert.match(result.stdout, /Repository owner\s+alpha-org/);
+  assert.match(result.stdout, /Repository name\s+control/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+  await assertNothingInstalled(consumer);
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
+});
+
+test("install.sh suggests the available cao repository name", { skip: process.platform === "win32" }, async (t) => {
+  const repository = "alpha-org/cao";
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw, { repository });
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
+    cwd: consumer,
+    env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
+    timeout,
+    input: "\x1b[B\n\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Repository name\s+cao/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+  await assertCompleteInstall(path.join(consumer, "cao"), env, supportedGhAw, repository);
+});
+
+test("install.sh does not suggest cao when that repository exists", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
+    cwd: consumer,
+    env: {
+      ...env,
+      TERM: "xterm-256color",
+      ACCESSIBLE: "",
+      NO_COLOR: "",
+      FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
+    },
+    timeout,
+    input: "\x1b[B\ncontrol\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.doesNotMatch(result.stdout, /Repository name\s+cao/);
+  assert.match(result.stdout, /Repository name\s+control/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
+});
+
+test("install.sh reports default-name availability failures before creating files", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
+    cwd: consumer,
+    env: {
+      ...env,
+      TERM: "xterm-256color",
+      ACCESSIBLE: "",
+      NO_COLOR: "",
+      FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE: "1",
+    },
+    timeout,
+    input: "\x1b[B\n",
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout + result.stderr, /Unable to check whether alpha-org\/cao is available/);
+  assert.equal(await log(), "owners-query\n");
+  await assertNothingInstalled(consumer);
+});
+
+test("install.sh offers to create a private GitHub repository for a checkout without remotes", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash`], {
+    cwd: consumer,
+    env: {
+      ...env,
+      TERM: "xterm-256color",
+      ACCESSIBLE: "",
+      NO_COLOR: "",
+      FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
+    },
+    timeout,
+    input: "y\n\x1b[B\ncontrol\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /No GitHub control repository found/);
+  assert.match(result.stdout, /Create a new private GitHub repository for this checkout/);
+  assert.match(result.stdout, /Create a private GitHub control repository/);
+  assert.equal(await log(), "owners-query\ncreate-private-current\nadd\n");
+  await assertCompleteInstall(consumer, env, supportedGhAw, repository);
+});
+
+test("install.sh defaults missing-remote repository creation to no", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash`], {
+    cwd: consumer,
+    env: { ...env, FAKE_REPOSITORY_LOOKUP_FAILURE: "1" },
+    timeout,
+    input: "\n",
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Repository creation cancelled/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test("install.sh offers to create and clone from outside a Git checkout", { skip: process.platform === "win32" }, async (t) => {
+  const { root, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const start = path.join(root, "start");
+  await mkdir(start);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash`], {
+    cwd: start,
+    env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
+    timeout,
+    input: "y\n\x1b[B\ncontrol\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Create and clone a new private control repository/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+  await assertCompleteInstall(path.join(start, "control"), env, supportedGhAw, repository);
+});
+
+test("install.sh uses numbered repository-owner prompts in accessible mode", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
+    cwd: consumer,
+    env: { ...env, TERM: "dumb", ACCESSIBLE: "1", NO_COLOR: "1" },
+    timeout,
+    input: "2\ncontrol\n",
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /1\) alpha-user/);
+  assert.match(result.stdout, /2\) alpha-org/);
+  assert.doesNotMatch(result.stdout, /enter select/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+  await assertNothingInstalled(consumer);
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
+});
+
 test("install.sh checks sign-in before upgrading gh-aw, creating repositories, or writing files", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, ["--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /gh auth login/);
+  assert.equal(await log(), "");
+  assert.equal(await exists(path.join(consumer, "control")), false);
+  await assertNothingInstalled(consumer);
+});
+
+test("install.sh uses one restrained spinner for a slow sign-in check", { skip: process.platform === "win32" }, async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
+  const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo alpha-org/control`], {
+    cwd: consumer,
+    env: {
+      ...env,
+      TERM: "xterm-256color",
+      ACCESSIBLE: "",
+      NO_COLOR: "",
+      FAKE_AUTH_DELAY: "0.35",
+      FAKE_AUTH_FAILURE: "1",
+    },
+    timeout,
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+  assert.doesNotMatch(result.stdout, /Prerequisites and GitHub sign-in verified/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(consumer);
+});
+
+test(`install.sh rejects GitHub CLI older than ${supportedGh} before sign-in or writes`, async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const result = await runStreamed(consumer, {
+    ...env,
+    FAKE_GH_VERSION: olderGh,
+    FAKE_AUTH_FAILURE: "1",
+  }, ["--create-repo", "alpha-org/control"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, new RegExp(`requires GitHub CLI ${supportedGh.replaceAll(".", "\\.")} or newer`));
+  assert.match(result.stderr, new RegExp(`current: ${olderGh.replaceAll(".", "\\.")}`));
+  assert.doesNotMatch(result.stderr, /gh auth login/);
+  assert.equal(await log(), "");
+  assert.equal(await exists(path.join(consumer, "control")), false);
+  await assertNothingInstalled(consumer);
+});
+
+test("install.sh rejects an unparseable GitHub CLI version before sign-in or writes", async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const result = await runStreamed(consumer, {
+    ...env,
+    FAKE_GH_VERSION: "unknown",
+    FAKE_AUTH_FAILURE: "1",
+  }, ["--create-repo", "alpha-org/control"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, new RegExp(`requires GitHub CLI ${supportedGh.replaceAll(".", "\\.")} or newer`));
+  assert.match(result.stderr, /current: unknown/);
+  assert.doesNotMatch(result.stderr, /gh auth login/);
   assert.equal(await log(), "");
   assert.equal(await exists(path.join(consumer, "control")), false);
   await assertNothingInstalled(consumer);

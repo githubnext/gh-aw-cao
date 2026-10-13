@@ -156,10 +156,11 @@ then attest in a separate job that does not check out or execute source code.
 Stable release assets MUST be published separately, without overwriting
 existing assets, only for a published non-prerelease `vX.Y.Z` tag matching the
 build SHA on main history. Main artifacts are retained for 90 days; release
-assets are the durable distribution path. Normal installation requires Node.js
-and an authenticated GitHub CLI with attestation verification support, but MUST
-NOT invoke npm. Existing dashboard build dependency installation is unchanged
-apart from omitting development dependencies.
+assets are the durable distribution path. Normal installation requires Node.js 24 or newer and GitHub CLI v2.68.0 or
+newer, authenticated before repository access. The installer MUST reject older
+or unparseable versions before repository creation or file writes. Installation
+MUST NOT invoke npm. Existing dashboard build dependency installation is
+unchanged apart from omitting development dependencies.
 
 The control-plane installer MUST NOT install the Agent Plugin manifest,
 portable skills, Copilot extension, bundled specification documents, or
@@ -186,10 +187,20 @@ declarations.
 
 The installer MUST check tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installation or upgrade. Creating a control repository MUST
-require explicit `--create-repo OWNER/NAME`, create a private repository, and
-refuse an existing clone directory. `--setup` MUST open guided setup on the
-controlling terminal without allowing streamed children to consume installer
-source from stdin.
+require either explicit `--create-repo` or default-No confirmation on a
+controlling terminal when no GitHub checkout or remote is available. An exact
+`OWNER/NAME` argument MUST support non-interactive use. Interactive creation
+MUST list the signed-in user and organizations for which GitHub reports
+repository-creation permission, and require an explicit owner selection and
+valid repository name. It SHOULD suggest `cao` when the selected owner has no
+repository with that name, and MUST surface lookup failures rather than treating
+them as availability. A Git checkout without remotes MUST be connected in place;
+a directory without a Git checkout MUST receive a new clone. The terminal prompt
+MUST provide keyboard-driven selection and MUST fall back to numbered plain text
+when `ACCESSIBLE` or `NO_COLOR` is set or `TERM=dumb`. It MUST create a private
+repository and refuse an existing clone directory. `--setup` MUST open guided
+setup on the controlling terminal without allowing streamed children to consume
+installer source from stdin.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the

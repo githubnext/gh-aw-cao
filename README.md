@@ -16,12 +16,13 @@ Bootstrap an empty control repository with:
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --setup
+  bash -s -- --create-repo --setup
 ```
 
-To create a new private control repository as well, add
-`--create-repo OWNER/CONTROL_REPOSITORY` after `--setup`. The installer refuses
-an existing clone directory; follow its printed `cd` command afterward.
+The installer lists eligible repository owners, asks for the repository name,
+and creates a private control repository. For non-interactive use, pass
+`--create-repo OWNER/CONTROL_REPOSITORY`. It refuses an existing clone
+directory; follow its printed `cd` command afterward.
 
 The installer checks tools, sign-in, and checkout readiness before writing CAO
 files, adds gh-aw and the core runtime, and preserves an existing policy.

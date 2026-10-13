@@ -57,10 +57,10 @@ test("quickstart uses the interactive setup command and stops before campaigns",
   assert.match(quickstart, /gh auth status/);
   assert.match(quickstart, /stage only the setup files you\s+reviewed/);
   assert.match(quickstart, /Adding a campaign installs its\s+workflows but does not run them/);
-  assert.match(quickstart, /bash -s -- --create-repo OWNER\/CONTROL_REPOSITORY --setup/);
+  assert.match(quickstart, /bash -s -- --create-repo --setup/);
   assert.match(quickstart, /bash -s -- --setup/);
   assert.match(quickstart, /never creates\s+a public repository/);
-  assert.match(quickstart, /run `\.\/cao\.sh setup` later/);
+  assert.match(quickstart, /run\s+`\.\/cao\.sh setup` later/);
   assert.match(quickstart, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
   assert.doesNotMatch(quickstart, /gh repo create acme\//);
 });
