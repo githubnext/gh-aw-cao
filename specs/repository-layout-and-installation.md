@@ -108,7 +108,7 @@ invalid provenance MUST fail closed.
 For Activity, Dashboard, and root installation, the materializer MUST acquire
 the prebuilt `cao-runtime-<resolvedCommit>.tgz` archive. Exact stable `vX.Y.Z`
 source references use that release's assets; other references use an unexpired
-artifact from a successful `cao-runtime.yml` push or release run at that SHA.
+artifact from a successful `cao-runtime.yml` push run at that SHA.
 The materializer MUST verify GitHub's signed build provenance with `gh
 attestation verify`, requiring the catalog repository, the
 `.github/workflows/cao-runtime.yml` signer, matching source and signer commit
@@ -155,12 +155,19 @@ development plans, lint/test configuration, or catalog-only component
 manifests. Production runtime directories selected by the package's `files`
 field MUST NOT contain development-only resources.
 
-The producer workflow MUST build and test with read-only repository permission,
-then attest in a separate job that does not check out or execute source code.
-Stable release assets MUST be published separately, without overwriting
-existing assets, only for a published non-prerelease `vX.Y.Z` tag matching the
-build SHA on main history. Main artifacts are retained for 90 days; release
-assets are the durable distribution path. Normal installation requires Node.js 24 or newer and GitHub CLI v2.68.0 or
+The producer workflow MUST build and test on each main push with read-only
+repository permission, then attest in a separate job that does not check out
+or execute source code. The release workflow MUST create a draft `vX.Y.Z`
+release whose tag and target match an exact main SHA, wait for the successful
+`cao-runtime.yml` push run at that SHA, download its prebuilt archive, verify
+the checksum and signed provenance, and attach exactly the archive and checksum
+to the draft. Missing, failed, mismatched, self-hosted, incomplete, or
+unverifiable runtime evidence MUST leave the release unpublished. A maintainer
+MUST publish the draft only after the release workflow succeeds and the notes
+and assets are reviewed. Release assets MUST NOT be added or overwritten after
+publication; publication makes the tag and assets immutable. Main artifacts
+are retained for 90 days; release assets are the durable distribution path.
+Normal installation requires Node.js 24 or newer and GitHub CLI v2.68.0 or
 newer, authenticated before repository access. The installer MUST reject older
 or unparseable versions before repository creation or file writes. Installation
 MUST NOT invoke npm. Existing dashboard build dependency installation is

@@ -3,8 +3,6 @@ name: CAO runtime package
 on:
   push:
     branches: [main]
-  release:
-    types: [released]
 
 permissions:
   contents: read
@@ -28,20 +26,10 @@ jobs:
       - name: Validate immutable source
         env:
           REVISION: ${{ github.sha }}
-          EVENT: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
-          RELEASE_DRAFT: ${{ github.event.release.draft }}
         run: |
           set -euo pipefail
           [[ "${REVISION}" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse HEAD)" == "${REVISION}" ]]
-          if [[ "${EVENT}" == release ]]; then
-            [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-            [[ "${RELEASE_PRERELEASE}" == false && "${RELEASE_DRAFT}" == false ]]
-            git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
-            git merge-base --is-ancestor "${REVISION}" refs/remotes/origin/main
-          fi
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
@@ -82,38 +70,3 @@ jobs:
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ runner.temp }}/runtime/cao-runtime-${{ github.sha }}.tgz
-
-  publish:
-    if: github.event_name == 'release'
-    needs: attest
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: cao-runtime-${{ github.sha }}
-          path: ${{ runner.temp }}/runtime
-      - name: Verify source and publish immutable release assets
-        working-directory: ${{ runner.temp }}/runtime
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          REVISION: ${{ github.sha }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -euo pipefail
-          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$(gh release view "${RELEASE_TAG}" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)')" == true ]]
-          object="$(gh api "repos/${GH_REPO}/git/ref/tags/${RELEASE_TAG}" --jq '.object | [.type, .sha] | @tsv')"
-          for (( depth=0; depth<8; depth++ )); do
-            read -r type sha <<< "${object}"
-            [[ "${type}" == tag ]] || break
-            object="$(gh api "repos/${GH_REPO}/git/tags/${sha}" --jq '.object | [.type, .sha] | @tsv')"
-          done
-          [[ "${type}" == commit && "${sha}" == "${REVISION}" ]]
-          sha256sum --check "cao-runtime-${REVISION}.tgz.sha256"
-          gh release upload "${RELEASE_TAG}" \
-            "cao-runtime-${REVISION}.tgz" "cao-runtime-${REVISION}.tgz.sha256"

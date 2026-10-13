@@ -232,11 +232,11 @@ test("remote materialization consumes the prebuilt package and does not invoke n
   assert.equal(existsSync(path.join(consumer, "cao-runtime.json")), false);
 });
 
-test("the trusted runtime pipeline separates building, attestation and stable asset publication", () => {
+test("the trusted runtime pipeline separates building and attestation from draft asset publication", () => {
   const source = readFileSync(path.join(catalog, ".github/workflows/cao-runtime.yml"), "utf8");
   const workflow = parse(source);
   assert.deepEqual(workflow.on.push.branches, ["main"]);
-  assert.deepEqual(workflow.on.release.types, ["released"]);
+  assert.equal(workflow.on.release, undefined);
   assert.equal(workflow.on.pull_request, undefined);
   assert.equal(workflow.on.workflow_dispatch, undefined);
   assert.equal(workflow.jobs.build.permissions.contents, "read");
@@ -246,16 +246,12 @@ test("the trusted runtime pipeline separates building, attestation and stable as
   assert.equal(setupNode.with.cache, undefined);
   assert.equal(setupNode.with["package-manager-cache"], false);
   assert.equal(workflow.jobs.attest.permissions["id-token"], "write");
-  assert.equal(workflow.jobs.publish.permissions.contents, "write");
-  assert.equal(workflow.jobs.publish.if, "github.event_name == 'release'");
+  assert.equal(workflow.jobs.publish, undefined);
   assert.match(source, /github\.repository == 'githubnext\/gh-aw-cao'/);
-  assert.match(source, /git merge-base --is-ancestor/);
   assert.match(source, /retention-days: 90/);
-  assert.doesNotMatch(source, /--clobber|npm publish/);
-  for (const name of ["attest", "publish"]) {
-    const job = workflow.jobs[name];
-    assert.ok(!job.steps.some((step) => step.uses?.startsWith("actions/checkout")));
-    assert.doesNotMatch(job.steps.map((step) => step.run ?? "").join("\n"), /npm|node |tar |bash .*\.sh/);
-  }
+  assert.doesNotMatch(source, /gh release upload|--clobber|npm publish/);
+  const attest = workflow.jobs.attest;
+  assert.ok(!attest.steps.some((step) => step.uses?.startsWith("actions/checkout")));
+  assert.doesNotMatch(attest.steps.map((step) => step.run ?? "").join("\n"), /npm|node |tar |bash .*\.sh/);
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) assert.match(match[1], /^[0-9a-f]{40}$/);
 });

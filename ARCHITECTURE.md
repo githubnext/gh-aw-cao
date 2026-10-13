@@ -418,11 +418,15 @@ checksums. Explicit developer source packing preserves the same adapter;
 installed setup never resolves it from a consumer's node_modules.
 Filesystem-relative CLI modules, workers, and build inputs remain at their
 canonical paths rather than being forced into a single-file executable.
-The conventional `cao-runtime.yml` pipeline builds on main pushes and stable
-release publication. Read-only build/test, source-free attestation, and stable
-release asset publication use separate jobs. Stable tag sources use release
-assets; main/SHA sources use successful, unexpired Actions artifacts retained
-for 90 days. The operator materializer verifies GitHub signed provenance bound
+The conventional `cao-runtime.yml` pipeline builds on main pushes. Read-only
+build/test and source-free attestation use separate jobs, producing exact-SHA
+Actions artifacts retained for 90 days. The Release workflow creates a draft
+stable tag at an exact main SHA, waits for that SHA's successful runtime push
+run, verifies its checksum and signed provenance, and attaches the archive and
+checksum before a maintainer publishes the completed draft. Publication locks
+the tag and assets through immutable releases; no workflow mutates release
+assets afterward. Stable tag sources use release assets; main/SHA sources use
+the successful, unexpired Actions artifacts. The operator materializer verifies GitHub signed provenance bound
 to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
 runner before extraction, then checks the inventory, checksums and ownership.
 When the exact main/SHA runtime build is queued or running, materialization

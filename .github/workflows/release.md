@@ -2,7 +2,7 @@
 private: true
 emoji: "🚀"
 name: Release
-description: Prepare a version-tagged prerelease, then add human-friendly release highlights
+description: Prepare a version-tagged draft with verified runtime assets, then add human-friendly release highlights
 intent: Help maintainers publish trustworthy releases whose descriptions clearly explain user-facing changes.
 
 on:
@@ -148,7 +148,7 @@ jobs:
             core.setOutput('release_tag', releaseTag);
 
   prepare-release:
-    name: Prepare prerelease
+    name: Prepare draft release
     needs: resolve-version
     runs-on: ubuntu-latest
     permissions:
@@ -157,7 +157,7 @@ jobs:
       release_id: ${{ steps.release.outputs.release_id }}
       release_tag: ${{ steps.release.outputs.release_tag }}
     steps:
-      - name: Generate prerelease notes without assets
+      - name: Generate draft release notes
         id: release
         uses: actions/github-script@v9
         env:
@@ -166,7 +166,7 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const releaseTag = process.env.RELEASE_TAG;
-            core.info(`Creating prerelease ${releaseTag}.`);
+            core.info(`Creating draft release ${releaseTag}.`);
             await github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -179,8 +179,8 @@ jobs:
               tag_name: releaseTag,
               target_commitish: context.sha,
               name: releaseTag,
-              draft: false,
-              prerelease: true,
+              draft: true,
+              prerelease: false,
               make_latest: 'false',
               generate_release_notes: true,
             });
@@ -191,9 +191,9 @@ jobs:
             core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The release highlights agent will update this prerelease. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release from the GitHub website. Control repositories install or update this campaign only with gh aw add or gh aw update.')
+              .addRaw('The workflow will attach the verified runtime and update this draft with release highlights. After the workflow succeeds, a maintainer must review the complete draft, publish it, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
-              .addLink('Review prerelease', release.html_url);
+              .addLink('Review draft', release.html_url);
             await core.summary.write();
       - name: Persist prepared release context
         env:
@@ -217,6 +217,109 @@ jobs:
           path: ${{ runner.temp }}/release-context/
           retention-days: 1
 
+  attach-runtime-assets:
+    name: Attach verified runtime assets
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+    outputs:
+      runtime_archive: ${{ steps.attach.outputs.runtime_archive }}
+    steps:
+      - name: Attach verified runtime assets to draft release
+        id: attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "${REVISION}" =~ ^[0-9a-f]{40}$ ]]
+
+          runtime_name="cao-runtime-${REVISION}"
+          run_id=""
+          for (( attempt=0; attempt<60; attempt++ )); do
+            run_id="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/cao-runtime.yml/runs?head_sha=${REVISION}&event=push&per_page=100" \
+              --jq ".workflow_runs | map(select(.head_sha == \"${REVISION}\" and .event == \"push\" and .conclusion == \"success\")) | first | .id // empty")"
+            [[ -z "${run_id}" ]] || break
+            sleep 5
+          done
+          if [[ -z "${run_id}" ]]; then
+            echo "No successful exact-SHA CAO runtime build is available for ${REVISION}." >&2
+            exit 1
+          fi
+
+          runtime_dir="${RUNNER_TEMP}/release-runtime"
+          mkdir -p "${runtime_dir}"
+          gh run download "${run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "${runtime_name}" \
+            --dir "${runtime_dir}"
+
+          archive="${runtime_dir}/${runtime_name}.tgz"
+          checksum="${archive}.sha256"
+          [[ -s "${archive}" && -s "${checksum}" ]]
+          [[ "$(find "${runtime_dir}" -maxdepth 1 -type f | wc -l)" -eq 2 ]]
+          (
+            cd "${runtime_dir}"
+            sha256sum --check "${runtime_name}.tgz.sha256"
+          )
+          gh attestation verify "${archive}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-runtime.yml" \
+            --source-digest "${REVISION}" \
+            --signer-digest "${REVISION}" \
+            --deny-self-hosted-runners
+
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+          jq -e \
+            --arg tag "${RELEASE_TAG}" \
+            --arg revision "${REVISION}" \
+            '.draft == true
+              and .prerelease == false
+              and .tag_name == $tag
+              and .target_commitish == $revision
+              and (.assets | length == 0)' \
+            <<< "${release_json}" >/dev/null
+
+          object="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object | [.type, .sha] | @tsv')"
+          for (( depth=0; depth<8; depth++ )); do
+            read -r type sha <<< "${object}"
+            [[ "${type}" == tag ]] || break
+            object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${sha}" --jq '.object | [.type, .sha] | @tsv')"
+          done
+          [[ "${type}" == commit && "${sha}" == "${REVISION}" ]]
+
+          gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+            "${archive}" "${checksum}"
+
+          assets="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")"
+          jq -e \
+            --arg archive "${runtime_name}.tgz" \
+            --arg checksum "${runtime_name}.tgz.sha256" \
+            'length == 2
+              and (map(.name) | sort) == ([$archive, $checksum] | sort)
+              and all(.[]; .state == "uploaded" and .size > 0)' \
+            <<< "${assets}" >/dev/null
+
+          echo "runtime_archive=${runtime_name}.tgz" >> "${GITHUB_OUTPUT}"
+          {
+            echo "## Runtime assets attached"
+            echo
+            echo "- Draft release: ${RELEASE_TAG}"
+            echo "- Source revision: ${REVISION}"
+            echo "- Runtime archive: ${runtime_name}.tgz"
+            echo
+            echo "Review and publish the draft only after this workflow succeeds."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
 steps:
   - name: Download prepared release context
     uses: actions/download-artifact@v8.0.1
@@ -227,11 +330,13 @@ steps:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+      RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
     run: |
       set -euo pipefail
       mkdir -p /tmp/gh-aw/agent/release-data
 
       test -s /tmp/gh-aw/agent/release-data/current_release.json
+      test "$RUNTIME_ARCHIVE" = "cao-runtime-${GITHUB_SHA}.tgz"
 
       gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
         jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
@@ -318,15 +423,15 @@ steps:
 
 # Release Highlights
 
-Update the newly created prerelease identified by `current_release.json` with a concise, human-friendly summary.
+Update the newly created draft identified by `current_release.json` with a concise, human-friendly summary.
 
-The release publishing job has already created the tag and prerelease. Do not create, promote, or otherwise change the release state. Your only write is the release-description update through the safe output.
+The release preparation jobs have already created the tag and draft and attached the verified runtime assets. Do not create, publish, promote, or otherwise change the release state. Your only write is the release-description update through the safe output. A maintainer will review and publish the completed draft after this workflow succeeds.
 
 ## Available evidence
 
 Read the files under `/tmp/gh-aw/agent/release-data/`:
 
-- `current_release.json`: the prerelease, including GitHub-generated notes
+- `current_release.json`: the draft release, including GitHub-generated notes
 - `previous_release.json`: the previous published stable release, or an empty object
 - `pull_requests.json`: pull requests merged in the release window
 - `release_adrs.md`: ADRs changed by those pull requests, if any
@@ -352,4 +457,4 @@ Call `safeoutputs/update_release` exactly once with:
 - `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 
-If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created prerelease needs a human-friendly introductory summary.
+If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created draft needs a human-friendly introductory summary.
