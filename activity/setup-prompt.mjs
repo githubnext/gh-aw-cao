@@ -1,8 +1,21 @@
-import * as ui from '@clack/prompts';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 
+const require = createRequire(import.meta.url);
+
 export class SetupCancelled extends Error {}
+
+function loadPromptUi() {
+  try {
+    return require('@clack/prompts');
+  } catch (error) {
+    if (error.code === 'MODULE_NOT_FOUND' && error.message.includes("Cannot find module '@clack/prompts'")) {
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 function styledPromptsEnabled({ input, output, environment = process.env }) {
   const capability = spawnSync('tput', ['colors'], {
@@ -32,7 +45,8 @@ export function createTerminalPrompt({ input, output, UsageError }) {
     if (ui.isCancel(value)) throw new SetupCancelled();
     return value;
   };
-  if (styledPromptsEnabled({ input, output })) {
+  const ui = styledPromptsEnabled({ input, output }) ? loadPromptUi() : undefined;
+  if (ui) {
     return {
       start: () => ui.intro('Set up Central Agentic Ops', options),
       step: (message) => ui.log.step(message, options),
@@ -105,7 +119,8 @@ export function createQuickstartProgress({
   environment = process.env,
 } = {}) {
   const options = { input, output };
-  if (styledPromptsEnabled({ input, output, environment })) {
+  const ui = styledPromptsEnabled({ input, output, environment }) ? loadPromptUi() : undefined;
+  if (ui) {
     let active;
     const clear = () => {
       active?.clear();
