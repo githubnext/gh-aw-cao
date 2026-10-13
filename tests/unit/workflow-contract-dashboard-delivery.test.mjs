@@ -272,9 +272,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Activity[\s\S]*?types:[\s\S]*?- completed/);
   const dashboardConcurrency = parse(dashboardWorkflow).concurrency;
   assert.equal(dashboardConcurrency["cancel-in-progress"], false,
-    "new pushes and Activity completions must not cancel a dashboard build before it publishes");
+    "Activity completions must not cancel a dashboard build before it publishes");
   assert.match(dashboardConcurrency.group, /github\.event_name == 'workflow_run'[\s\S]*?github\.event\.workflow_run\.conclusion != 'success'[\s\S]*?github\.event\.workflow_run\.head_branch != github\.event\.repository\.default_branch/);
-  assert.match(dashboardConcurrency.group, /github\.event_name == 'push' && github\.ref_name != github\.event\.repository\.default_branch/);
   assert.match(dashboardConcurrency.group, /format\('central-agentic-ops-dashboard-ineligible-\{0\}', github\.run_id\)[\s\S]*?\|\| 'central-agentic-ops-dashboard'/);
   assert.doesNotMatch(dashboardWorkflow, /DISPATCH_WORKFLOW: activity\.yml|Dispatch activity refresh|inputs\.mode/);
   assert.match(dashboardBuildJob, /actions: read[\s\S]*?contents: read/);
@@ -290,6 +289,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /push:\n\s+branches: \[main\]\n\s+paths:\n\s+- \.github\/workflows\/cao\.json\n\s+- \.github\/workflows\/cao-activity\.yml/);
+  assert.match(activityWorkflow, /\.github\/workflows\/cao-dashboard\.yml[\s\S]*?"dashboard\/\*\*"[\s\S]*?"\*\/dashboard\.json"/);
+  assert.match(activityWorkflow, /schedule:\n\s+- cron: "7 \* \* \* \*"/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(dashboardWorkflow, /run-name: CAO Dashboard \/ \$\{\{ github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v5-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
@@ -388,11 +389,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardNotifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(dashboardNotifyFailureJob, /cancelled/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
-  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.doesNotMatch(dashboardWorkflow, /\n  push:/);
   assert.match(dashboardWorkflow, /github\.event_name == 'workflow_run'[\s\S]*?github\.event\.workflow_run\.conclusion == 'success'[\s\S]*?github\.event\.workflow_run\.head_branch == github\.event\.repository\.default_branch/);
   assert.doesNotMatch(dashboardWorkflow, /\.github\/aw\/dashboards|\.github\/aw\/dashboard/);
-  assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
-  assert.match(dashboardWorkflow, /github\.event_name == 'push' && github\.ref_name == github\.event\.repository\.default_branch/);
+  assert.doesNotMatch(dashboardWorkflow, /github\.event_name == 'push'/);
   assert.match(dashboardWorkflow, /enablement: false/);
   assert.match(dashboardWorkflow, /pages: write/);
   assert.match(dashboardWorkflow, /id-token: write/);

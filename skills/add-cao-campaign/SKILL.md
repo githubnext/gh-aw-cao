@@ -9,19 +9,19 @@ metadata:
 
 ## Procedure
 
-1. Verify the control plane exists and resolve one immutable catalog commit.
+1. Verify the control plane and resolve one immutable catalog commit.
 2. Discover eligible campaigns from structured manifests at that commit.
 3. Recommend at most three matches with safety tradeoffs and `None of these`.
 4. Require selection and explicit installation approval.
 5. Install through `./cao.sh add`, validate policy preservation, and report.
 
-Choose and install an existing CAO operational campaign from the current
-catalog. Never rely on a hard-coded list or silently select or install one.
+Choose from the current catalog. Never use a hard-coded list or silently select
+or install a campaign.
 
 ## Deterministic boundary
 
-The agent may interpret intent, compare candidates, and explain safety
-tradeoffs. After selection, `./cao.sh add` owns package resolution,
+The agent interprets intent, compares candidates, and explains tradeoffs.
+After selection, `./cao.sh add` owns package resolution,
 installation, policy merging, and installed-declaration validation. Use
 `./cao.sh validate` and `gh aw doctor --dir .` for postconditions; do not
 reimplement package or policy mutation.
@@ -29,20 +29,24 @@ reimplement package or policy mutation.
 ## Boundaries
 
 - Use `create-cao-campaign` to author a new campaign or when none fits.
-- Require `.github/workflows/cao.json` and executable `./cao.sh` in the intended
-  control repository; hand off to `setup-cao` when it is not initialized.
-- Keep catalog discovery read-only. Do not install anything until the user explicitly selects a campaign after seeing the recommendation and safety summary.
-- Install through `cao add`, not the underlying campaign installer directly. The CAO wrapper validates the installed declaration and merges its orchestrator and workers into policy without enabling live mode or broadening repository scope.
+- Require `.github/workflows/cao.json` and executable `./cao.sh`; hand off to
+  `setup-cao` when the control repository is not initialized.
+- Keep discovery read-only until the user sees the recommendation and safety
+  summary, selects a campaign, and approves installation.
+- Install through `cao add`, whose wrapper validates the declaration and merges
+  policy without enabling live mode or broadening scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
 - Treat all installed campaign package sources as immutable. Add requested prompt guidance only through the consumer-owned `.github/cao/<campaign-slug>.md` file loaded by the installed workflows' optional `runtime-import`; do not patch installed workflow Markdown or other package-owned files.
 
 ## Discover the Catalog
 
 1. Verify GitHub authentication with `gh auth status`.
-2. Resolve the default-branch commit for `githubnext/gh-aw-cao` once. Use it for every manifest, declaration, README, and workflow inspected to prevent mixed-revision recommendations.
+2. Resolve the `githubnext/gh-aw-cao` default-branch commit once and use it for
+   every inspected file to prevent mixed-revision recommendations.
 3. Enumerate top-level directories at that commit. A candidate operational campaign must contain both `aw.yml` and `cao.json` in the same directory.
 4. Parse each candidate's `aw.yml` as YAML and `cao.json` as JSON. Do not infer metadata with regular expressions. Exclude campaigns with `private: true`; label campaigns with `experimental: true` clearly.
-5. Read each remaining campaign's manifest description, README, CAO declaration, orchestrator source, and worker sources from the same commit. Derive outcomes and tradeoffs from those files rather than campaign names.
+5. Read each remaining manifest, README, CAO declaration, orchestrator, and
+   worker from the same commit. Derive outcomes from files, not names.
 
 If authentication, catalog access, parsing, or revision consistency fails, stop
 and report discovery as incomplete. Do not guess from partial catalog data.
@@ -57,7 +61,9 @@ When no campaign is named, ask for the operational outcome. Recommend no more th
 - notable permissions, network access, credentials, and safe outputs;
 - the main tradeoff or reason it may not fit.
 
-Include `None of these` as a choice. Require the user to select one exact campaign; do not treat a vague outcome, the first recommendation, or lack of response as consent. If no campaign fits, offer the `create-cao-campaign` handoff without installing anything.
+Include `None of these`. Require one exact selection; a vague outcome, first
+recommendation, or no response is not consent. If none fits, offer the
+`create-cao-campaign` handoff without installing.
 
 When the user names a campaign, verify it against the same catalog process and still present its safety summary before asking for installation approval.
 
