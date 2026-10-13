@@ -368,6 +368,29 @@ test("CAO Activity workflow token rejects broader collection instead of silently
   }), /Activity repository scope must contain exact OWNER\/REPOSITORY values/);
 });
 
+test("CAO Activity workflow token honors an explicit control-repository collection subset", () => {
+  assert.deepEqual(activityCollectionPlan({
+    allowed_repositories: ["acme/control", "githubnext/gh-aw-cao"],
+    allowed_owners: ["acme", "githubnext"],
+    activity_repositories: ["ACME/CONTROL"],
+  }, {
+    authMode: "workflow-token",
+    controlRepository: "acme/control",
+  }), [{
+    owner: "acme",
+    repositories: ["acme/control"],
+    credentialRepository: "acme/control",
+    artifact: "acme",
+  }]);
+
+  assert.throws(() => activityCollectionPlan({
+    activity_repositories: ["githubnext/gh-aw-cao"],
+  }, {
+    authMode: "workflow-token",
+    controlRepository: "acme/control",
+  }), /GITHUB_TOKEN can collect CAO Activity only for the control repository/);
+});
+
 test("CAO Activity workflow-token API reserves fit its standard 1000-request quota", () => {
   const activity = parse(workflow("cao-activity.yml"));
   const steps = activity.jobs.collect.steps;

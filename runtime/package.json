@@ -38,6 +38,7 @@
     "activity/normalized-shards.mjs",
     "activity/operational-value.mjs",
     "activity/problem-clustering.mjs",
+    "activity/quickstart.mjs",
     "activity/repository-memory.mjs",
     "activity/repository-visibility.mjs",
     "activity/run-activity.mjs",

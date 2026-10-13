@@ -5,8 +5,9 @@ export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
+const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
+const ACTIVITY_KEYS = ["repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
 const HOST_KEYS = ["target", "redis", "operational-store", "cors"];
@@ -263,6 +264,7 @@ function validateControlPlane(control) {
   assertMapping(control, "control-plane");
   assertKeys(control, CONTROL_KEYS, "control-plane");
   if ("scope" in control) validateScope(control.scope);
+  if ("activity" in control) validateActivity(control.activity, control.scope);
   if ("inventory" in control) validateInventory(control.inventory);
   if ("web" in control) validateWeb(control.web);
   if ("defaults" in control) validateDefaults(control.defaults, "control-plane.defaults");
@@ -326,6 +328,39 @@ function validateScope(scope) {
   }
   if ("allowed-repositories" in scope) {
     assertUniqueStrings(scope["allowed-repositories"], "control-plane.scope.allowed-repositories", REPOSITORY_PATTERN);
+  }
+}
+
+function validateActivity(activity, scope = {}) {
+  const path = "control-plane.activity";
+  assertMapping(activity, path);
+  assertKeys(activity, ACTIVITY_KEYS, path);
+  if (!("repositories" in activity)) throw new PolicyError(`${path}.repositories is required`);
+  assertUniqueStrings(activity.repositories, `${path}.repositories`, REPOSITORY_PATTERN);
+  if (activity.repositories.length === 0) {
+    throw new PolicyError(`${path}.repositories must contain at least one repository`);
+  }
+  const allowedRepositories = new Set(
+    (scope?.["allowed-repositories"] ?? []).map((repository) => repository.toLowerCase()),
+  );
+  if (allowedRepositories.size > 0) {
+    const outsideScope = activity.repositories.find(
+      (repository) => !allowedRepositories.has(repository.toLowerCase()),
+    );
+    if (outsideScope) {
+      throw new PolicyError(`${path} repository ${outsideScope} is outside control-plane.scope.allowed-repositories`);
+    }
+  }
+  const allowedOwners = new Set(
+    (scope?.["allowed-owners"] ?? []).map((owner) => owner.toLowerCase()),
+  );
+  if (allowedOwners.size > 0) {
+    const outsideOwner = activity.repositories.find(
+      (repository) => !allowedOwners.has(repository.toLowerCase().split("/", 1)[0]),
+    );
+    if (outsideOwner) {
+      throw new PolicyError(`${path} repository ${outsideOwner} is outside control-plane.scope.allowed-owners`);
+    }
   }
 }
 
@@ -795,6 +830,7 @@ export function controlSettings(document, controlRepository) {
   return {
     allowed_owners: scope["allowed-owners"] ?? [controlRepository.split("/", 1)[0]],
     allowed_repositories: scope["allowed-repositories"] ?? [],
+    ...(control.activity ? { activity_repositories: control.activity.repositories } : {}),
     web: {
       experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",

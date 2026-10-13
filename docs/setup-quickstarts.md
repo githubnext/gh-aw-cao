@@ -1,57 +1,110 @@
 ---
-title: Set Up CAO
-description: Create one control repository, install CAO, and follow the interactive setup.
+title: CAO Quickstart
+description: Create a private control repository and reach a data-bearing CAO dashboard with one command.
 ---
 
-## 1. Check Prerequisites
+Central Agentic Ops (CAO) runs bounded agentic operations from a private
+control repository. This quickstart creates that repository, runs one
+review-only Bug Bash against a pinned public target, collects the resulting
+Activity, and deploys a public dashboard containing the first data.
 
-Use a private repository unless every target and all future operational data may be public.
+**Estimated time: 15-25 minutes**
 
-You need GitHub CLI (`gh`) with `gh attestation verify` support (including
-`--source-digest` and `--signer-digest`), Git, Bash, `curl`, and Node.js 24 or
-newer. Normal installation does not need npm. Use a
-GitHub CLI account that can access the control repository and the repositories
-you plan to enroll. If you are not signed in, run `gh auth login` (add
-`--hostname HOST` for a non-default GitHub host), then confirm your session:
+## Before you start
 
-```bash
-gh auth status
-```
+You need:
 
-## 2. Install and Set Up
+- **GitHub account:** Permission to create a private repository and GitHub
+  Pages site.
+- **GitHub CLI:** `gh` v2.68.0 or newer. [Install it](https://cli.github.com/)
+  and check with `gh --version`.
+- **GitHub CLI sign-in:** Check with `gh auth status`; run `gh auth login` if
+  needed.
+- **Local tools:** Git, Bash, `curl`, and Node.js v24 or newer.
+- **GitHub Models access:** The Bug Bash run can consume up to **700 AI
+  credits**: 200 for selection and 500 for one investigation.
 
-Choose one entry point. Neither commits, pushes, installs an operational
-campaign, or dispatches a workflow.
+The quickstart publishes a **public GitHub Pages dashboard**. Its starter
+repository, `githubnext/gh-aw-cao`, is public and pinned to an immutable
+revision. Review outputs remain in your private control repository and the
+starter target is never modified. Do not use this path if the resulting
+dashboard data must remain private; use [Guided setup](#guided-setup-instead)
+instead.
 
-### New private control repository
+## Run the quickstart
 
-From the directory where you want the checkout, create a private repository,
-install CAO into its clone, and open guided setup in one command:
+From the directory where you want the new checkout:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --create-repo OWNER/CONTROL_REPOSITORY --setup
+  bash -s -- --quickstart
 ```
 
-`--create-repo` explicitly authorizes repository creation. The installer checks
-tools and sign-in first, refuses an existing clone directory, and never creates
-a public repository. After it finishes, open the printed checkout directory:
+Choose the repository owner and accept the suggested `cao` name, or enter
+another available name. The quickstart creates a private repository; it never
+creates a public control repository.
+
+The explicit `--quickstart` flag authorizes one bounded first-success journey:
+
+1. Install and verify the CAO runtime.
+2. Install Bug Bash in `review` mode for only `githubnext/gh-aw-cao`.
+3. Configure repository-local `GITHUB_TOKEN` access for public source reads and
+   control-repository operations.
+4. Configure public GitHub Pages with GitHub Actions as its source.
+5. Commit and push only `.github/`, `activity/`, `dashboard/`, `bug-bash/`, and
+   `cao.sh`.
+6. Dispatch one Bug Bash orchestrator and at most one investigation worker.
+7. Collect a CAO Activity snapshot and require at least one collected run.
+8. Wait for the data-bearing dashboard deployment and print its URL.
+
+There is no second confirmation after repository creation: `--quickstart` is
+the explicit authorization for these effects. A `no-finding` Bug Bash result is
+still successful. Missing model entitlement, missing permissions, workflow
+failure, or an empty Activity artifact is reported as blocked or failed rather
+than as success.
+
+For non-interactive repository creation, provide the exact coordinate:
 
 ```bash
-cd CONTROL_REPOSITORY
+CONTROL_REPOSITORY="OWNER/cao"
+
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- --quickstart --create-repo "$CONTROL_REPOSITORY"
 ```
 
-### Existing control repository
+## Confirm first success
 
-Open a terminal at the checkout's root. Clone it first if needed:
+The command finishes only after the dashboard workflow succeeds and Activity
+contains at least one run. Its final summary includes:
+
+```text
+CAO quickstart complete.
+Dashboard: https://OWNER.github.io/cao/
+Bug Bash: https://github.com/OWNER/cao/actions/runs/... (success)
+Activity: https://github.com/OWNER/cao/actions/runs/... (... collected runs)
+Control repository: https://github.com/OWNER/cao
+```
+
+Open the dashboard URL. Bug Bash review evidence, including a possible
+`no-finding` result, remains in the private control repository.
+
+## Guided setup instead
+
+Use guided setup when you need private targets, a private dashboard, a broader
+repository fleet, GitHub App or PAT credentials, or review before any commit,
+push, campaign installation, or workflow dispatch.
+
+Create a new private control repository and enter setup directly:
 
 ```bash
-gh repo clone OWNER/CONTROL_REPOSITORY
-cd CONTROL_REPOSITORY
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- --create-repo --setup
 ```
 
-Install and enter guided setup:
+For an existing checkout, run:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -59,71 +112,32 @@ curl --fail --silent --show-error --location \
   bash -s -- --setup
 ```
 
-Replace uppercase placeholders with your values. `CONTROL_REPOSITORY` is the
-repository name without its owner in the `cd` command. Omitting `--setup`
-installs without opening the wizard; run `./cao.sh setup` later. Both paths
-preserve existing policy. Setup itself requires a bare control plane with
-no declared campaigns, not an already enrolled fleet.
+Setup has three sections:
 
-### What gets installed
+1. **Repositories:** Enter comma-separated exact `owner/repository` names or
+   `*` wildcard patterns. Patterns are expanded before review; only exact names
+   are saved.
+2. **Connections:** Choose and verify an authentication profile.
+3. **Review and apply:** Review the exact scope, credentials, and Pages
+   settings. Confirmation defaults to **No**.
 
-The installer adds a curated production runtime under `.github/`, `activity/`,
-and `dashboard/`, plus `cao.sh`. It does not copy dashboard tests, screenshots,
-contributor tooling, or the Agent Plugin. Install the plugin separately in your
-agent client when you want portable skills or the Canvas integration.
+Setup offers authentication choices based on that scope and shows each
+profile's prerequisites before application.
 
-The runtime is built before installation, not packed on your machine. Stable
-version references download release assets; main/SHA references download
-successful Actions build artifacts retained for 90 days. Both must match the
-exact revision resolved by gh-aw and pass signed provenance and file checks.
-Sign in to `github.com` for catalog artifact and attestation access, even if
-your control repository uses another GitHub host. Main/SHA installs also need
-Actions read access to the catalog. If that build is still running, missing,
-expired, or unverifiable, installation stops: wait for the build or choose a
-published version rather than substituting another runtime revision. Dashboard
-builds still install their existing production npm dependencies.
+Guided setup installs no campaign and runs no workflow; it never commits or
+pushes. Bare installation also stops without a prompt and prints
+`Next: ./cao.sh setup`.
 
-### Guided setup
+Start with **Bug Bash** after a manual setup when you want to review and commit
+each stage yourself:
 
-Setup uses keyboard-driven prompts with three visible sections:
+```bash
+./cao.sh add githubnext/gh-aw-cao/bug-bash
+```
 
-1. **Repositories:** choose which repositories CAO should read; enter exact `owner/repository`
-   names or `*` wildcards in either component (for example, `acme*/service-*`
-   or `*/service-*`); `*` means `*/*`. Patterns expand against your accessible
-   organizations; only exact matched names are saved. The control repository
-   remains included, and visibility is checked.
-2. **Connections:** setup offers authentication choices based on that scope.
-   Select with the arrow keys and verify the selected profile's
-   prerequisites in the
-   [authentication profile guide](control-plane-authentication.md).
-3. **Review and apply:** review the exact scope, credential profile, and Pages
-   settings. Confirmation defaults to **No**. After confirmation, setup
-   configures and verifies the Pages source, checks dashboard visibility,
-   connects credentials, and atomically
-   saves policy. It installs no campaign and runs no workflow.
+This installs the campaign but does not run it.
 
-Setup requires permission to manage Pages settings and preserves the site's
-visibility. If the dashboard is public, a separate **default-No** confirmation
-warns that anyone can read published data, including private repository
-activity. Consent is required **before changing credentials**. Declining or
-Ctrl-C at that question removes a site that setup just created, when possible;
-an existing site is left in place with instructions to restrict or unpublish
-it. To make Pages private, restrict access in **Settings > Pages** (requires an
-organization on GitHub Enterprise Cloud).
-
-Invalid repository input stays in the prompt so you can correct it. Ctrl-C or
-declining review cancels without applying setup. Failures after application
-starts report the stopped stage: local policy remains unchanged, but Pages
-settings or credentials may already have changed. Fix the reported problem and
-rerun `./cao.sh setup`; external changes are not presented as transactional.
-
-For a basic terminal, use `TERM=dumb ./cao.sh setup` for numbered, plain-text
-prompts. Setup requires an interactive terminal; use `./cao.sh setup-auth` for
-scripted authentication. `./cao.sh setup --json` retains a structured result on
-stdout while prompts remain on stderr. The prompt library is bundled into the
-verified runtime; operators still do not run npm.
-
-## 3. Validate, Review, and Save
+After setup, validate and stage only the files you reviewed:
 
 ```bash
 ./cao.sh validate
@@ -131,45 +145,24 @@ git diff --check
 git status --short
 ```
 
-Validation checks the installed control plane; the expected result is a valid
-policy with the exact repository scope you selected. Setup installs no
-user-facing campaign and runs no workflow.
+See [Control Plane Authentication Profiles](control-plane-authentication.md)
+for private organization Apps, enterprise Apps, and fine-grained PATs.
 
-Review the complete status and diff before committing. The following command
-stages every change under these paths, so use it only in a clean checkout. If
-you are reusing a repository with other work, stage only the setup files you
-reviewed.
+## Installation and recovery
 
-```bash
-git add .github activity dashboard cao.sh
-git commit -m "Install Central Agentic Ops control plane"
-git push --set-upstream origin HEAD
-```
+The installer places the production runtime under `.github/`, `activity/`, and
+`dashboard/`, plus `cao.sh`. It preserves existing policy in normal install and
+setup modes. It refuses existing clone directories and unrelated files in the
+quickstart commit.
 
-## Next: Add a Campaign
+The runtime must match the exact revision resolved by gh-aw and pass signed
+provenance, inventory, and checksum verification. Stable versions use release
+assets; main and commit references use successful Actions artifacts retained
+for 90 days. If the exact runtime build is already queued or running, the
+installer waits for it for up to five minutes. Installation fails closed if the
+matching runtime is missing, failed, expired, timed out, or unverifiable.
 
-Start with **Bug Bash**. It is the smallest complete campaign in the catalog and
-the recommended way to see the control plane work end to end:
-
-```bash
-./cao.sh add githubnext/gh-aw-cao/bug-bash
-```
-
-Bug Bash promises one thing — *find a bug you can reproduce, review a fix you can
-understand* — and keeps the first run bounded: one repository, one investigation,
-at most one surfaced finding, review mode only, no schedule, and nothing written
-to the investigated repository. Its starter target is a public repository pinned
-to an immutable commit, so no additional GitHub credentials are required, and a
-first run that reports `no-finding` is a success. Model entitlement and AI
-credits are still consumed; see the [authentication guide](authentication.md).
-
-To install a different operation instead:
-
-```bash
-./cao.sh add githubnext/gh-aw-cao/CAMPAIGN
-```
-
-Replace `CAMPAIGN` with a campaign slug from [Browse campaigns](catalog.md).
-Read the campaign guide before installing it. Adding a campaign installs its
-workflows but does not run them. For manual or non-interactive authentication,
-use the detailed [authentication guide](authentication.md).
+If quickstart stops after creating the repository, follow the reported recovery
+guidance from that checkout. It never reports a dashboard URL until the
+Activity snapshot is data-bearing and the corresponding dashboard deployment
+succeeds.

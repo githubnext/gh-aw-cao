@@ -65,10 +65,10 @@ finally { writeFileSync(${JSON.stringify(callsPath)}, JSON.stringify(calls)); }
   };
 }
 
-export function walkSetupTerminal(f, steps, term = "xterm-256color") {
+export function walkSetupTerminal(f, steps, term = "xterm-256color", environment = {}) {
   let step = 0;
   return runTerminal(process.execPath, [f.driver], {
-    cwd: f.root, env: { ...process.env, TERM: term, FORCE_COLOR: "0", CI: "" },
+    cwd: f.root, env: { ...process.env, TERM: term, FORCE_COLOR: "0", CI: "", ...environment },
     onOutput(output, write) {
       const next = steps[step];
       if (next && output.includes(next[0])) {

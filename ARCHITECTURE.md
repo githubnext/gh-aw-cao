@@ -425,10 +425,12 @@ assets; main/SHA sources use successful, unexpired Actions artifacts retained
 for 90 days. The operator materializer verifies GitHub signed provenance bound
 to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
 runner before extraction, then checks the inventory, checksums and ownership.
-Missing or unverifiable artifacts fail closed, without source/npm packing or
-latest-release fallback. Explicit local source materialization remains a
-developer path using npm. Normal operator installation needs Node.js and
-authenticated GitHub CLI artifact/attestation access, not npm.
+When the exact main/SHA runtime build is queued or running, materialization
+waits for it for at most five minutes; failed, missing, expired, timed-out, or
+unverifiable artifacts fail closed without source/npm packing or latest-release
+fallback. Explicit local source materialization remains a developer path using
+npm. Normal operator installation needs Node.js and authenticated GitHub CLI
+artifact/attestation access, not npm.
 The materializer installs only owned canonical destinations from the archive
 and does not replace consumer-owned root package metadata. Installed control
 repositories keep the
@@ -442,6 +444,11 @@ The Agent Plugin is a separate distribution: the control-plane installer does
 not copy its manifest, portable skills, Copilot extension, bundled specification
 documents, or repository-only dashboard authoring skills. Materialization
 preserves pre-existing plugin resources outside its owned runtime destinations.
+The installer adds the nested `control-plane/aw.yml` package rather than the
+repository-root catalog package. That package composes only the Activity,
+dashboard, and validation workflows, five shared control-plane resources, and
+the gh-aw project settings. This avoids gh-aw's root-package skill and agent
+auto-discovery while the root `aw.yml` remains the public catalog composition.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh
@@ -455,14 +462,16 @@ registry access, but does not create credentials or dispatch workflows.
 `install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
-existing clone directories are never overwritten. `--setup` attaches guided
-setup to the controlling terminal after verified materialization, while streamed
+existing clone directories are never overwritten. Bare installation ends with
+the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
+to the controlling terminal after verified materialization, while streamed
 bootstrap children otherwise retain null stdin.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a presentation adapter: Clack provides keyboard
-prompts, inline validation, and cancellation; `TERM=dumb` uses plain numbered
-prompts. The injectable prompt contract keeps authority decisions outside UI.
+prompts, inline validation, and cancellation; terminals without styling
+support, `NO_COLOR`, `ACCESSIBLE`, and CI use plain numbered prompts without
+animation. The injectable prompt contract keeps authority decisions outside UI.
 Setup shows Repositories, Connections, and Review/apply, with default-No
 confirmation before Pages, credential, or policy changes. The Pages source is
 verified without changing visibility, with separate default-No consent to a
@@ -473,6 +482,26 @@ after both succeed. Failures disclose possible partial external changes rather
 than claim rollback. Setup does not install campaigns, dispatch workflows,
 commit, or push. The CLI prints next actions by default and retains structured
 stdout with `setup --json`; non-interactive setup fails with explicit guidance.
+
+`activity/quickstart.mjs` owns a distinct explicit first-success flow. It
+requires a new private control repository with no commit, installs Bug Bash at
+the selected catalog revision, configures exact review-only starter authority,
+requires public Pages, commits and pushes only the bounded CAO paths, dispatches
+one orchestrator and at most one worker, collects Activity, and waits for the
+Activity-triggered dashboard deployment. It reports Bug Bash blocked and failed
+outcomes without converting them to findings, and does not report success until
+the Activity artifact contains at least one unique run and the dashboard
+deployment succeeds. `--quickstart` is the authorization boundary for these
+effects; ordinary install and `cao setup` retain their non-effectful boundaries.
+
+The policy may declare `control-plane.activity.repositories` as an exact,
+nonempty subset of globally allowed repositories. This separates evidence
+collection scope from campaign rollout authority without silently narrowing
+either. Authentication planning uses the declared subset when present and
+otherwise preserves its existing fail-closed behavior. The public quickstart
+uses this contract to admit the public Bug Bash target while collecting
+workflow evidence only from the private control repository with its
+repository-provided token.
 
 ## Architectural boundaries
 

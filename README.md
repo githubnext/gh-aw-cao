@@ -11,25 +11,30 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
-Bootstrap an empty control repository with:
+Reach a first data-bearing dashboard from a new private control repository with:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --setup
+  bash -s -- --quickstart
 ```
 
-To create a new private control repository as well, add
-`--create-repo OWNER/CONTROL_REPOSITORY` after `--setup`. The installer refuses
-an existing clone directory; follow its printed `cd` command afterward.
+The installer lists eligible repository owners, asks for the repository name,
+creates a private control repository, installs Bug Bash in review mode for the
+pinned public starter target, commits and pushes the bounded CAO paths, collects
+Activity, and waits for a public GitHub Pages dashboard with first data. This
+one run can use up to 700 AI credits and never modifies the starter repository.
+For non-interactive creation, also pass
+`--create-repo OWNER/CONTROL_REPOSITORY`.
 
 The installer checks tools, sign-in, and checkout readiness before writing CAO
 files, adds gh-aw and the core runtime, and preserves an existing policy.
-Guided setup walks through **Repositories → Connections → Review and apply**
-with arrow-key selections, inline validation, and default-No confirmation.
-It installs no user-facing campaign and runs no workflow. Omit `--setup` to
-install first and run `./cao.sh setup` later. Install the Agent Plugin separately
-when you want the portable CAO skills.
+Without `--quickstart`, installation remains non-greedy: bare installation
+stops with `Next: ./cao.sh setup`, and `--setup` opens
+**Repositories → Connections → Review and apply** directly. Guided setup uses
+default-No confirmation and never installs a campaign, dispatches a workflow,
+commits, or pushes. Install the Agent Plugin separately when you want the
+portable CAO skills.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
@@ -37,7 +42,8 @@ keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
 Normal installation downloads a prebuilt archive for gh-aw's exact resolved
 SHA and verifies signed build provenance before replacing runtime files; it
 does not run npm. Stable versions use release assets, while main/SHA installs
-use successful Actions artifacts retained for 90 days. Node.js 24+ and an
+use successful Actions artifacts retained for 90 days and wait up to five
+minutes for an already active exact-SHA runtime build. Node.js 24+ and an
 authenticated GitHub CLI with artifact and attestation access are still
 required. Dashboard builds retain their existing production npm dependencies.
 

@@ -214,8 +214,8 @@ test("campaign manifests exclude repository-only tests", () => {
 });
 
 test("activity and dashboard campaigns include every local JavaScript dependency", () => {
-  const rootResources = parse(readFileSync(join(root, "aw.yml"), "utf8")).resources
-    .map(({ source }) => source)
+  const rootResources = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8")).resources
+    .map(({ source }) => join(".github/workflows", source))
     .filter((source) => /\.(?:c|m)?js$/.test(source));
   const bundled = new Set([
     ...["activity", "dashboard"].flatMap((directory) => JavaScriptFiles(join(root, directory))),
@@ -314,12 +314,14 @@ test("root campaign keeps GitHub App setup opt-in", () => {
 test("root campaign provides default control-repository agent context", () => {
   const rootManifestSource = readFileSync(join(root, "aw.yml"), "utf8");
   const rootManifest = parse(rootManifestSource);
+  const controlPlaneManifest = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8"));
   const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
   const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
+  assert.equal((rootManifest.resources ?? []).length, 0);
+  assert.equal(controlPlaneManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
   assert.equal(rootManifest.skills, undefined);
   assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
   for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
@@ -349,7 +351,7 @@ test("root campaign installs the CAO CLI helper", () => {
   const helper = readFileSync(join(root, "cao.sh"), "utf8");
   const materializer = readFileSync(join(root, ".github", "workflows", "shared", "materialize-cao.mjs"), "utf8");
 
-  assert.equal(rootManifest.resources.some(({ source }) => source === "cao.sh"), false);
+  assert.equal((rootManifest.resources ?? []).some(({ source }) => source === "cao.sh"), false);
   assert.match(materializer, /'cao\.sh'/);
   assert.match(helper, /^#!\/bin\/sh/);
   assert.match(helper, /activity\/cao\.mjs/);
@@ -357,7 +359,13 @@ test("root campaign installs the CAO CLI helper", () => {
 });
 
 test("root campaign resolves the single CAO bootstrap runtime", () => {
-  const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
+  const rootManifestSources = [
+    "aw.yml",
+    "control-plane/aw.yml",
+    ".github/workflows/aw.yml",
+  ].map((file) => readFileSync(join(root, file), "utf8"));
+  const rootManifest = rootManifestSources.join("\n");
+  const controlPlaneManifest = parse(rootManifestSources.at(-1));
   const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "setup-quickstarts.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
@@ -384,9 +392,13 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.equal(policy.campaign, "dependabot");
   assert.doesNotMatch(rootManifest, /\.github\/aw\/cao\//);
   for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
-    assert.match(
-      rootManifest,
-      new RegExp(`source: \\.github/workflows/shared/${path.replace(".", "\\.")}[\\s\\S]*?destination: \\.github/workflows/shared/${path.replace(".", "\\.")}`),
+    assert.deepEqual(
+      controlPlaneManifest.resources.find(({ destination }) =>
+        destination === `.github/workflows/shared/${path}`),
+      {
+        source: `shared/${path}`,
+        destination: `.github/workflows/shared/${path}`,
+      },
     );
   }
   for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
@@ -414,7 +426,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
-  assert.match(admission, /Bash installer installs the root CAO campaign and creates the consumer-owned policy/i);
+  assert.match(admission, /Bash installer installs the narrow CAO control-plane package and creates the consumer-owned policy/i);
 });
 
 test("root campaign CAO helper stays portable across POSIX-family shells", {
@@ -483,13 +495,25 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
 
 test("root campaign composes its operational campaigns through manifests", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
+  const installerManifest = parse(readFileSync(join(root, "control-plane/aw.yml"), "utf8"));
+  const componentManifest = parse(readFileSync(join(root, ".github/workflows/aw.yml"), "utf8"));
+  const instructionManifest = parse(readFileSync(join(root, ".github/aw/aw.yml"), "utf8"));
 
-  assert.deepEqual(rootManifest.includes, [
-    "activity/aw.yml",
-    "dashboard/aw.yml",
-    ".github/workflows/cao-validate.yml",
+  assert.deepEqual(rootManifest.includes, ["control-plane/aw.yml"]);
+  assert.deepEqual(installerManifest.includes, ["../.github/workflows/aw.yml", "../.github/aw/aw.yml"]);
+  assert.deepEqual(componentManifest.includes.map((include) =>
+    typeof include === "string" ? include : include.source), [
+    "../../activity/aw.yml",
+    "../../dashboard/aw.yml",
+    "cao-validate.yml",
   ]);
+  assert.deepEqual(instructionManifest.resources, [{
+    source: "instructions.md",
+    destination: ".github/aw/instructions.md",
+  }]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
+  const installerProject = JSON.parse(readFileSync(join(root, "control-plane", ".github", "workflows", "aw.json"), "utf8"));
+  assert.deepEqual(installerProject, project);
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);
 });
 

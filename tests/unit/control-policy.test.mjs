@@ -614,6 +614,35 @@ test("control policy exposes scope and publishing defaults to deterministic add-
   });
 });
 
+test("control policy validates and exposes an explicit Activity collection subset", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].scope["allowed-repositories"].push("acme/control");
+  policy["control-plane"].activity = { repositories: ["acme/control"] };
+
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.deepEqual(
+    controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").activity_repositories,
+    ["acme/control"],
+  );
+
+  policy["control-plane"].activity.repositories = ["octo/outside-scope"];
+  const outsideScope = validate(JSON.stringify(policy));
+  assert.notEqual(outsideScope.status, 0);
+  assert.match(outsideScope.stderr, /outside control-plane\.scope\.allowed-repositories/);
+
+  delete policy["control-plane"].scope["allowed-repositories"];
+  policy["control-plane"].scope["allowed-owners"] = ["acme"];
+  policy["control-plane"].activity.repositories = ["octo/outside-owner"];
+  const outsideOwner = validate(JSON.stringify(policy));
+  assert.notEqual(outsideOwner.status, 0);
+  assert.match(outsideOwner.stderr, /outside control-plane\.scope\.allowed-owners/);
+
+  policy["control-plane"].activity.repositories = [];
+  const empty = validate(JSON.stringify(policy));
+  assert.notEqual(empty.status, 0);
+  assert.match(empty.stderr, /must contain at least one repository/);
+});
+
 test("control policy validates and exposes web presentation settings", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {

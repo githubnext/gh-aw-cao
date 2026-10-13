@@ -53,15 +53,14 @@ using a public control repository or when any selected target is non-public.
 For a separate control repository, prefer the repository-local interactive
 setup:
 
-If creating a new repository, follow the approved creation steps in the
-[setup quickstart](../../docs/setup-quickstarts.md), then run setup from its
-root.
+If creating a new repository, use the review-before-apply path in the
+[setup quickstart](../../docs/setup-quickstarts.md#guided-setup-instead). The
+installer's `--setup` flag enters `./cao.sh setup` directly.
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash
-./cao.sh setup
+  bash -s -- --create-repo --setup
 ```
 
 The interactive setup discovers the control repository, obtains exact scope,

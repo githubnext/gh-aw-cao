@@ -3,6 +3,7 @@ import path from 'node:path';
 import { doctorSqliteDatabase } from '../../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { operationalValueReserve, REPOSITORY_COORDINATE, runOperationalValue } from '../operational-value.mjs';
 import { runProblemClustering } from '../problem-clustering.mjs';
+import { runCaoQuickstart } from '../quickstart.mjs';
 import { hasComputation, queryComputation } from '../computations/index.mjs';
 import { DEFAULT_DATABASE_PATH, DEFAULT_SHARDS_PATH, USAGE } from '../cli-usage.mjs';
 import { commandHandlers } from '../commands/index.mjs';
@@ -25,7 +26,7 @@ import { discoverWorkflows, pruneDashboardFile, analyzeDashboardComplexityFile }
 // Commands whose first argument may be an identifier instead of an option.
 const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query', 'prompt']);
 
-const COMMANDS = new Set(['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup', 'quickstart', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
@@ -35,13 +36,14 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
   }
   const handler = commandHandlers.get(command);
   if (!handler) throw new UsageError(`Unknown command: ${command}`);
-  if (['init', 'setup', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable'].includes(command)) {
+  if (['init', 'setup', 'quickstart', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable'].includes(command)) {
     return handler({
       arguments_: rawOptionArguments,
       input,
       UsageError,
       initializeCaoPolicy,
       setupCaoControlPlane,
+      runCaoQuickstart,
       setupCaoAuthentication,
       addCaoCampaign,
       updateCaoCampaigns,

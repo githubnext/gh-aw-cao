@@ -156,10 +156,11 @@ then attest in a separate job that does not check out or execute source code.
 Stable release assets MUST be published separately, without overwriting
 existing assets, only for a published non-prerelease `vX.Y.Z` tag matching the
 build SHA on main history. Main artifacts are retained for 90 days; release
-assets are the durable distribution path. Normal installation requires Node.js
-and an authenticated GitHub CLI with attestation verification support, but MUST
-NOT invoke npm. Existing dashboard build dependency installation is unchanged
-apart from omitting development dependencies.
+assets are the durable distribution path. Normal installation requires Node.js 24 or newer and GitHub CLI v2.68.0 or
+newer, authenticated before repository access. The installer MUST reject older
+or unparseable versions before repository creation or file writes. Installation
+MUST NOT invoke npm. Existing dashboard build dependency installation is
+unchanged apart from omitting development dependencies.
 
 The control-plane installer MUST NOT install the Agent Plugin manifest,
 portable skills, Copilot extension, bundled specification documents, or
@@ -167,6 +168,12 @@ repository-only dashboard authoring skills. Those resources belong to the
 separate Agent Plugin or catalog authoring installation. Root materialization
 MUST preserve pre-existing resources outside its owned destination set,
 including separately installed plugin resources and skills.
+The installer MUST add the nested `control-plane/aw.yml` package rather than
+the repository-root catalog package. The nested package MUST install only the
+Activity, dashboard, and validation workflows, the five shared control-plane
+resources, and the gh-aw project settings. The root manifest MUST compose the
+same control-plane manifests without making root-package skill or agent
+auto-discovery part of a control-repository installation.
 
 For each selected owned destination, materialization MUST remove the existing
 destination and copy the complete selected production bundle. Operational
@@ -178,7 +185,10 @@ destination set.
 ### 4.3 Lifecycle entry points
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw
-has resolved the root campaign record. `cao add` MUST materialize a selected
+has resolved the control-plane package record. For a main or SHA source, the
+materializer MUST wait at most five minutes when the exact runtime build is
+queued or running, then fail closed if it does not complete successfully; it
+MUST NOT substitute another revision or build from source. `cao add` MUST materialize a selected
 non-root campaign before reading its declaration. `cao add` MUST reject the
 root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging
@@ -186,22 +196,79 @@ declarations.
 
 The installer MUST check tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installation or upgrade. Creating a control repository MUST
-require explicit `--create-repo OWNER/NAME`, create a private repository, and
-refuse an existing clone directory. `--setup` MUST open guided setup on the
-controlling terminal without allowing streamed children to consume installer
-source from stdin.
+require either explicit `--create-repo` or default-No confirmation on a
+controlling terminal when no GitHub checkout or remote is available. An exact
+`OWNER/NAME` argument MUST support non-interactive use. Interactive creation
+MUST list the signed-in user and organizations for which GitHub reports
+repository-creation permission, and require an explicit owner selection and
+valid repository name. It SHOULD suggest `cao` when the selected owner has no
+repository with that name, and MUST surface lookup failures rather than treating
+them as availability. A Git checkout without remotes MUST be connected in place;
+a directory without a Git checkout MUST receive a new clone. The terminal prompt
+MUST provide keyboard-driven selection and MUST fall back to numbered plain text
+when `ACCESSIBLE` or `NO_COLOR` is set or the terminal reports no styling
+support. It MUST create a private repository and refuse an existing clone
+directory. After a successful
+installation without `--setup` or `--quickstart`, it MUST finish without
+another prompt and print the setup command for later. `--setup` MUST open
+guided setup directly on the controlling terminal without allowing streamed
+children to consume installer source from stdin. Informational status
+lines SHOULD remain aligned with completed steps while using muted styling to
+distinguish existing state from completed work. Animated presentation MUST be
+disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports
+no styling support.
 
 Guided setup MUST separate prompt presentation from policy authority, show the
 exact plan with default-No confirmation before applying settings, verify the
 Pages source without changing visibility, require separate default-No consent
 for a public dashboard before changing credentials, and atomically save policy only after both
-succeed. Cancellation before application MUST leave policy, credentials, and
+succeed. The repository-scope prompt MUST state that comma-separated names and
+`*` wildcard patterns are accepted; wildcard patterns MUST be expanded before
+review so only exact repository names are saved. Cancellation before
+application MUST leave policy, credentials, and
 Pages unchanged. Declining or cancelling public-dashboard consent MUST remove
 only a newly created site where possible and leave an existing site with
 restriction or unpublication guidance. Failures after application starts MUST disclose possible
 partial external changes rather than imply rollback. Setup MUST NOT install
 campaigns, dispatch workflows, commit, or push. The UI and its license notices
 MUST be bundled so installed setup does not need npm or consumer node_modules.
+
+`--quickstart` MUST be a separate, explicit end-to-end path rather than an
+implicit continuation of install or setup. It MUST create a new private control
+repository and disclose before execution that it publishes a public dashboard,
+runs Bug Bash in review mode against the pinned public starter target, and may
+consume up to 700 AI credits. The flag itself authorizes the bounded campaign
+installation, commit, push, dispatch, collection, and deployment effects; the
+installer MUST NOT add a redundant post-install confirmation.
+
+The quickstart MUST:
+
+- require a private repository with no existing commit;
+- configure exact global scope for the control repository and public starter
+  target while declaring `control-plane.activity.repositories` as only the
+  control repository;
+- set Bug Bash to `review`, cap selection at one repository, set rollout to
+  100 percent for the exact starter target, and cap its worker at `review`;
+- select repository-local workflow-token mode and require public GitHub Pages
+  with GitHub Actions as its source;
+- refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
+  `dashboard/`, `bug-bash/`, and `cao.sh`, then create and push one commit on
+  the repository default branch;
+- dispatch one Bug Bash orchestrator and at most one investigation worker,
+  preserving a blocked or failed outcome rather than converting it to
+  `no-finding`;
+- dispatch Activity with a correlatable request ID, require a successful
+  data-bearing Activity artifact with at least one unique run, then require the
+  corresponding dashboard deployment to succeed; and
+- print the dashboard, workflow-run, and control-repository URLs only after
+  those success conditions are verified.
+
+`control-plane.activity.repositories`, when present, MUST contain exact
+repository coordinates, contain at least one entry, remain within
+`control-plane.scope.allowed-owners`, and, when an exact repository allowlist is
+present, be its subset. Activity authentication MUST use that declared
+collection subset instead of silently narrowing broader rollout scope. Without
+the field, existing fail-closed authentication behavior remains unchanged.
 
 `cao update` without a ref MUST retain release-based selection. An explicit
 `main`, `master`, `latest`, or commit SHA MUST resolve once to a full catalog
