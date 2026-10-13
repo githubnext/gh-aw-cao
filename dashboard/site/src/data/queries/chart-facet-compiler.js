@@ -1,4 +1,7 @@
 import { chartFacet } from '../../chart-facet.js';
+import { createDebug } from '../../debug.js';
+
+const debugChartFacetCompiler = createDebug('chart-facet-compiler');
 
 /**
  * Compiles chart encoding aggregation before the terminal facet projection.
@@ -10,7 +13,10 @@ import { chartFacet } from '../../chart-facet.js';
  */
 export function compileChartFacetQuery(view, query) {
   const facet = chartFacet(view);
-  if (!facet) return [query];
+  if (!facet) {
+    debugChartFacetCompiler({ operation: 'compile', status: 'passthrough' });
+    return [query];
+  }
   const inputName = `${query.name}:facet-input`;
   const partitioned = {
     name: query.name,
@@ -20,7 +26,10 @@ export function compileChartFacetQuery(view, query) {
       as: 'facet-rows'
     }
   };
-  if (view.layer !== undefined) return [{ ...query, name: inputName }, partitioned];
+  if (view.layer !== undefined) {
+    debugChartFacetCompiler({ operation: 'compile', status: 'layer', facetChannelCount: Object.keys(facet).length });
+    return [{ ...query, name: inputName }, partitioned];
+  }
   const encoding = mapping(view.encoding) ? view.encoding : {};
   const definitions = Object.entries(encoding).flatMap(([channel, value]) => {
     if (['facet', 'row', 'column', 'actions'].includes(channel)) return [];
@@ -60,7 +69,7 @@ export function compileChartFacetQuery(view, query) {
     encoding.color, encoding.section, ...(Array.isArray(encoding.columns) ? encoding.columns : []),
     ...Object.values(facet)
   ].filter(mapping).filter((definition) => definition.aggregate === undefined || definition.aggregate === 'none');
-  prepared['order-by'] = [
+  const orderBy = [
     ...declaredOrder,
     ...dimensions.filter((definition) => {
       if (orderedFields.has(definition.field)) return false;
@@ -68,7 +77,14 @@ export function compileChartFacetQuery(view, query) {
       return true;
     }).map((definition) => ({ field: definition.field }))
   ];
+  prepared['order-by'] = orderBy;
   if (Number.isSafeInteger(data.limit)) prepared.limit = data.limit;
+  debugChartFacetCompiler({
+    operation: 'compile',
+    status: 'faceted',
+    aggregateCount: aggregates.length,
+    orderByCount: orderBy.length
+  });
   return [
     { ...query, name: inputName },
     prepared,
