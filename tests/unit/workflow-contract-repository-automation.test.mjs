@@ -52,6 +52,16 @@ test("Actions lint failures create new pull request comments without comment loo
   assert.doesNotMatch(pullRequestReporter, /listComments|updateComment|deleteComment/);
 });
 
+test("workflow linters exclude gh-aw package manifests", () => {
+  for (const name of ["action-lint.yml", "cao-package.yml"]) {
+    const source = workflow(name);
+    const scans = source.match(/find \.github\/workflows -type f/g) ?? [];
+    const exclusions = source.match(/! -name 'aw\.yml'/g) ?? [];
+    assert.ok(scans.length > 0, `${name} must scan checked-in workflows`);
+    assert.equal(exclusions.length, scans.length, `${name} must exclude each gh-aw package manifest`);
+  }
+});
+
 test("comment-writing workflow actions are explicitly inventoried", () => {
   const commentWriters = readdirSync(join(root, ".github", "workflows"))
     .filter((name) => name.endsWith(".yml"))

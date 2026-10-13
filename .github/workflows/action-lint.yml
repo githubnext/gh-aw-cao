@@ -38,7 +38,7 @@ jobs:
           mapfile -d '' workflow_files < <(
             find .github/workflows -type f \
               \( -name '*.yml' -o -name '*.yaml' \) \
-              ! -name '*.lock.yml' -print0 | sort -z
+              ! -name '*.lock.yml' ! -name 'aw.yml' -print0 | sort -z
           )
           set +e
           set -o pipefail
