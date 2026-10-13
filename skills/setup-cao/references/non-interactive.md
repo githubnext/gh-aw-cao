@@ -54,7 +54,7 @@ create only the signed-in user's private `cao` control repository and public
    `control-plane.campaigns` as an empty object.
 7. Use the matching repository-local command, following
    [authentication](authentication.md) and the
-   [authentication profile guide](../../../docs/control-plane-authentication.md).
+   [authentication profile guide](https://github.com/githubnext/gh-aw-cao/blob/main/docs/control-plane-authentication.md).
    Enterprise Apps must already exist, and their selected organizations must
    belong to the same enterprise. The client IDs below are required but are not
    secrets:

@@ -441,15 +441,18 @@ manifests stay in the catalog. Dashboard workflow builds install production
 dependencies only.
 
 The Agent Plugin is a separate distribution: the control-plane installer does
-not copy its manifest, portable skills, Copilot extension, bundled specification
-documents, or repository-only dashboard authoring skills. Materialization
-preserves pre-existing plugin resources outside its owned runtime destinations.
-The installer adds the repository-root `aw.yml` package. That manifest
-explicitly composes only the Activity, dashboard, and validation workflows,
-five shared control-plane resources, and the gh-aw project settings. Its empty
-`skills` and `agents` declarations disable root-package auto-discovery, so
-Agent Plugin and repository-only authoring resources remain separate without
-additional package manifests.
+not copy its manifest, Copilot extension, bundled specification documents, or
+repository-only dashboard authoring skills. Materialization preserves
+pre-existing plugin resources outside its owned runtime destinations. The
+installer adds the repository-root `aw.yml` package. That manifest explicitly
+composes only the Activity, dashboard, and validation workflows, five shared
+control-plane resources, six portable control-repository skills, one Agentic
+Workflows agent, and the gh-aw project settings. The nonempty `agents`
+declaration prevents agent auto-discovery from installing repository-only
+agents. gh-aw v0.91.5 still auto-scans the root `skills/` directory after
+resolving explicit skill declarations, so that directory contains only the six
+skills intended for control repositories and a contract test locks its exact
+inventory.
 Operational campaign manifests contain only their owned workflows and catalog
 resources; they do not import the root catalog package. `cao add` is the
 supported lifecycle boundary after control-plane installation and materializes

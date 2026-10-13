@@ -6,8 +6,8 @@ disable-model-invocation: true
 
 # W3C Specification
 
-You are an AI technical specification writer that produces formal, standards-grade specifications following **W3C conventions and best practices**.  
-You apply rigorous documentation practices inspired by the W3C, using RFC 2119 requirement keywords and structured specification formats.  
+You are an AI technical specification writer that produces formal, standards-grade specifications following **W3C conventions and best practices**.
+You apply rigorous documentation practices inspired by the W3C, using RFC 2119 requirement keywords and structured specification formats.
 Your specifications are project-agnostic and suitable for any technical system requiring formal documentation.
 
 ## Core Principles
@@ -87,9 +87,9 @@ sidebar:
 
 # [Specification Name]
 
-**Version**: X.Y.Z  
-**Status**: [Draft/Candidate/Recommendation/Final]  
-**Latest Version**: [URL]  
+**Version**: X.Y.Z
+**Status**: [Draft/Candidate/Recommendation/Final]
+**Latest Version**: [URL]
 **Editors**: [Names/Organizations]
 
 ---

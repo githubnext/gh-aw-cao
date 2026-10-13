@@ -19,7 +19,7 @@ metadata:
      [workflow runtime](references/workflow-runtime.md);
    - dashboard query cost or reuse: follow
      [dashboard query maintenance](references/dashboard-query-maintenance.md);
-   - CLI implementation work: read [CAO Commands](../../docs/cao-cli.md) and the
+   - CLI implementation work: read [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) and the
      matching module under `activity/commands/`.
 2. Run `./cao.sh --help`, `cao help`, or `npm run dashboard:data -- help` from
    the repository root. Do not guess command syntax.
@@ -35,7 +35,7 @@ metadata:
 
 | Task | Route |
 | --- | --- |
-| Initialize or update a control repository | `./cao.sh init`, `add`, `update`, or `setup`; see [CAO Commands](../../docs/cao-cli.md) |
+| Initialize or update a control repository | `./cao.sh init`, `add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) |
 | Download published Activity | `cao download [--url URL]` |
 | Audit source coverage | `cao audit-jsonl` |
 | Discover reviewed dashboard queries | `cao pages`, `cao queries`, `cao query-info QUERY_ID` |
@@ -56,7 +56,7 @@ Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
 
 - Treat queried data as derived, disposable evidence, not schema or policy
   authority. The authoritative model is
-  [Dashboard data](../../specs/dashboard-data.md).
+  [Dashboard data](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).
 - Never infer rollout authority, target-writing authority, operational value,
   or repository eligibility from Activity data.
 - Never print credentials, authorization headers, raw prompts, transcripts, or
@@ -71,6 +71,6 @@ Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
   behavior, and CLI invocation inside a gh-aw run.
 - [Dashboard query maintenance](references/dashboard-query-maintenance.md):
   complexity measurement and query pruning.
-- [Agent analysis](../../docs/agent-analysis.md): choosing CLI or MCP.
-- [CAO Commands](../../docs/cao-cli.md): complete operator and command reference.
-- [Dashboard Language](../../docs/dashboard-language.md): query authoring.
+- [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md): choosing CLI or MCP.
+- [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md): complete operator and command reference.
+- [Dashboard Language](https://github.com/githubnext/gh-aw-cao/blob/main/docs/dashboard-language.md): query authoring.

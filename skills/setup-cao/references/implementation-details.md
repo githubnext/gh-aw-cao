@@ -94,5 +94,5 @@ in `.github/cao/instructions.md`; the gh-aw overlay under
 `.github/cao/<campaign-slug>.md` only after a campaign exists and the user asks
 for custom prompting, so setup must not create it.
 
-Use [CAO Commands](../../../docs/cao-cli.md) for current command behavior and
+Use [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) for current command behavior and
 the installed `./cao.sh --help` output for exact syntax.

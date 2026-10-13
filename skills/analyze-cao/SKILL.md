@@ -41,7 +41,7 @@ Do you have shell access?
 
 Without a shell, the workflow has already installed CAO, downloaded the snapshot,
 and started the read-only MCP server; call `cao_catalog` and `cao_query` instead of
-running commands. See [Agent analysis](../../docs/agent-analysis.md).
+running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md).
 
 1. Confirm the repository has dependencies installed. If the `cao` binary is unavailable, use `npm run dashboard:data --` from the repository root.
 2. Download the current published activity snapshot:

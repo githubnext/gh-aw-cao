@@ -56,7 +56,7 @@ For a separate control repository, prefer the repository-local interactive
 setup:
 
 If creating a new repository, use the review-before-apply path in the
-[setup quickstart](../../docs/setup-quickstarts.md#guided-setup-instead). The
+[setup quickstart](https://github.com/githubnext/gh-aw-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead). The
 installer's `--setup` flag enters `./cao.sh setup` directly.
 
 ```bash
