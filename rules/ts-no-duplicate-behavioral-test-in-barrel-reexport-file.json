@@ -140,6 +140,16 @@
       "txn_id": "refiner-38313694983-3",
       "target_repo": "github/gh-aw-actions",
       "target_commit": "a0486bb9f7e2d8b990201dc43e34e7d668f191a4"
+    },
+    {
+      "txn_id": "refiner-38434456740-1",
+      "readiness_for_target": "not-applicable",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "target_commit": "dda6e4ad3194da3253b9b944f447aa590aa4e377",
+      "target_repo": "githubnext/gh-aw-cao",
+      "reason": "Re-confirmed on HEAD dda6e4a: searched every *.test.ts/*.test.js/*.test.mjs file for a barrel index.mjs/index.ts re-export module paired with a shape-only smoke test; none exists. tests/unit/cao-cli.test.mjs and tests/unit/activity-index.test.mjs both assert real behavior, not shape-only re-export identity. Unchanged since refiner-37796381362-3."
     }
   ],
   "affected_paths": [
@@ -221,7 +231,7 @@
   ],
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "language": "typescript",
-  "last_seen_at": "2026-10-12T22:03:43Z",
+  "last_seen_at": "2026-10-13T16:57:20Z",
   "last_updated": "2026-10-11T10:03:17Z",
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38129431751",
   "last_updated_target_repo": "github/gh-aw-firewall",

@@ -128,7 +128,7 @@
   },
   "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38065270021",
   "last_updated_target_repo": "githubnext/gh-aw-cao",
-  "last_seen_at": "2026-10-10T15:55:15Z",
+  "last_seen_at": "2026-10-13T16:57:20Z",
   "additional_target_evaluations": [
     {
       "true_positive_count": 0,
@@ -159,6 +159,16 @@
       "target_repo": "github/gh-aw",
       "txn_id": "refiner-37835259305-4",
       "reason": "Searched all *.test.ts/*.test.js/*.test.cjs/*.test.mjs files under github/gh-aw for assert.match/toMatch/toContain assertions against hex color literals or color-mix() expressions copied from an actively-tuned themed source: zero hits. Not applicable here regardless of the rule's central deprecated status."
+    },
+    {
+      "txn_id": "refiner-38434456740-2",
+      "readiness_for_target": "needs-work",
+      "true_positive_count": 0,
+      "false_positive_count": 17,
+      "false_negative_count": 0,
+      "target_commit": "dda6e4ad3194da3253b9b944f447aa590aa4e377",
+      "target_repo": "githubnext/gh-aw-cao",
+      "reason": "Re-confirmed on HEAD dda6e4a: 15 prior false positives in tests/unit/landing-page-diagram.test.mjs and tests/unit/docs-accessibility.test.mjs unchanged, plus 2 newly surveyed false positives in dashboard/site/test/unit/scaffold.test.js and tests/unit/svg-visual-language.test.mjs asserting literal hex theme/SVG tokens. All brittle structural-equivalent-to-literal assertions against tunable design tokens, no suppression convention available. 0 true positives."
     }
   ],
   "normalization": {
