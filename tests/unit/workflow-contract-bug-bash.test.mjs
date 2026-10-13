@@ -136,9 +136,9 @@ test("bug bash installs as a complete, self-describing campaign package", () => 
   assert.match(readme, /canonical starter is intended to produce a reproducible explicit-zero finding/i);
   assert.match(readme, /`no-finding` remains a valid and expected outcome/);
   assert.equal(STARTER_TARGET.repository, "githubnext/gh-aw-cao-bug-bash");
-  assert.equal(STARTER_TARGET.revision, "fcd09c9307ee0d9d6be0698ac10e9356e2406c19");
-  assert.ok(STARTER_TARGET.focusPaths.includes("incidents/INC-2026-014.md"));
-  assert.ok(STARTER_TARGET.focusPaths.includes("scripts/replay-incident.mjs"));
+  assert.equal(STARTER_TARGET.revision, "49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9");
+  assert.ok(STARTER_TARGET.focusPaths.includes("examples/paused-rollout.json"));
+  assert.ok(STARTER_TARGET.focusPaths.includes("src/demo.mjs"));
   assert.deepEqual(STARTER_TARGET.hypothesis, DEFAULT_HYPOTHESIS);
 });
 

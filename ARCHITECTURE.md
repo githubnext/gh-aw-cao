@@ -522,10 +522,13 @@ Quickstart selects an immutable revision of the public
 another existing public repository. The shared starter replays a fictional
 incident where an emergency zero-percent rollout request prepares ten services,
 including four tier-0 services, and three retries while its normal suite remains
-green. Current and legacy modules, different valid-zero contracts, a
-production-like fleet inventory, red herrings, and an executable replay force
-the versioned `explicit-zero-default` campaign to screen, reproduce, repair,
-and independently verify rather than report a textual match. Quickstart
+green. The campaign supplies that hypothesis externally. The target itself has
+neutral product documentation and a clean single-commit history with no
+incident explanation, root-cause hint, failing reproduction, or intentional-bug
+warning. Current and legacy modules, different valid-zero contracts, a
+production-like fleet inventory, a paused-rollout scenario, and red herrings
+force the versioned `explicit-zero-default` campaign to screen, reproduce,
+repair, and independently verify rather than report a textual match. Quickstart
 verifies that the pinned revision is still available and never creates or
 copies a target repository. Quickstart
 installs Bug Bash at the selected catalog revision, configures exact

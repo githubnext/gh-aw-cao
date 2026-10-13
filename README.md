@@ -27,10 +27,12 @@ existing public repository, quickstart targets
 at a pinned revision. The shared starter replays a fictional production
 incident: an emergency `0%` rollout request prepared ten services—including
 four tier-0 services—and three retries while the normal test suite remained
-green. Current and legacy modules, different zero-value contracts, and red
+green. The campaign supplies that hypothesis externally; the target repository
+contains neutral product documentation and no explanation of the seeded
+defect. Current and legacy modules, different zero-value contracts, and red
 herrings force Bug Bash to screen, reproduce, repair, and independently verify
-the finding rather than report a textual match. Quickstart runs that campaign
-in review mode.
+the finding rather than report a textual match. Quickstart runs that campaign in
+review mode.
 It commits and pushes the bounded CAO paths, collects Activity, and waits for a
 public GitHub Pages dashboard with first data. This one run can use up to 700 AI
 credits. CAO never modifies the target.

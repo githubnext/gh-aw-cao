@@ -366,7 +366,7 @@ test('quickstart rejects a canonical sample revision mismatch before installing 
     addCampaign: async () => { campaignInstalled = true; },
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
-  }), /Canonical Bug Bash sample resolved to f{40} instead of fcd09c9307ee0d9d6be0698ac10e9356e2406c19/);
+  }), /Canonical Bug Bash sample resolved to f{40} instead of 49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9/);
   assert.equal(campaignInstalled, false);
 });
 

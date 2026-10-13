@@ -8,7 +8,7 @@ import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
 const SAMPLE_SEED_REPOSITORY = 'githubnext/gh-aw-cao-bug-bash';
-const SAMPLE_SEED_REVISION = 'fcd09c9307ee0d9d6be0698ac10e9356e2406c19';
+const SAMPLE_SEED_REVISION = '49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/bug-bash';
 const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
 const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';

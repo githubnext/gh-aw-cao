@@ -298,6 +298,10 @@ The quickstart MUST:
   `githubnext/gh-aw-cao-bug-bash` and verify that its configured immutable
   revision remains available; it MUST NOT create, fork, copy, or otherwise
   mutate a target repository and MUST NOT fall back to a mutable branch;
+- supply the canonical starter hypothesis from the campaign contract rather
+  than target content; the pinned target and its reachable history MUST NOT
+  contain the incident explanation, root-cause hint, failing reproduction, or
+  intentional-bug warning that would reveal the seeded defect;
 - configure exact global scope for the control repository and selected public
   target while declaring `control-plane.activity.repositories` as only the
   control repository;

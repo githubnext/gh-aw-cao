@@ -82,8 +82,10 @@ Open **Dashboard**. You have just run your first CAO campaign.
 
 ## What this demonstrates
 
-- **A proven incident supplies the hypothesis, not the answer.** CAO must still
-  distinguish valid-zero settings from legacy and string fallbacks.
+- **A proven incident supplies the hypothesis, not the answer.** The campaign
+  carries it separately; the target contains no incident explanation or
+  root-cause hint. CAO must distinguish valid-zero settings from legacy and
+  string fallbacks.
 - **The unit of work is schedulable.** Repository, immutable revision,
   hypothesis version, and harness version form a deduplicable identity.
 - **Investigation and verification are separate.** A generated failing test or

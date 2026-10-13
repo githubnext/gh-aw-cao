@@ -70,11 +70,11 @@ A schedule is opt-in. Add one only after you have read several runs and decided 
 | Field | Value |
 | --- | --- |
 | Repository | `githubnext/gh-aw-cao-bug-bash` |
-| Revision | `fcd09c9307ee0d9d6be0698ac10e9356e2406c19` |
+| Revision | `49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9` |
 | Hypothesis | An explicit numeric zero accepted by a public contract is replaced by a nonzero default. |
-| Focus | Incident report and replay, production-like fleet inventory, policy contract, current and legacy normalizers, and `test/` |
+| Focus | Paused-rollout scenario, production-like fleet inventory, policy contract, current and legacy normalizers, and `test/` |
 
-The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. Quickstart targets this shared repository directly and never forks, copies, or modifies it. The sample replays a fictional incident where an emergency `0%` rollout request prepared ten services—including four tier-0 services—and three retries while the normal suite remained green. Its current and legacy modules, different zero-value contracts, production-like fleet inventory, and red herrings require evidence-backed screening rather than a search-and-replace fix.
+The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. Quickstart targets this shared repository directly and never forks, copies, or modifies it. The campaign supplies the emergency-pause hypothesis externally. The target itself is a neutral change-window codebase with no incident explanation, root-cause hint, failing reproduction, or intentional-bug warning. Its current and legacy modules, different zero-value contracts, production-like fleet inventory, paused-rollout scenario, and red herrings require the worker to earn the reproduction from code and contract evidence.
 
 The starter contains a known opportunity for the declared hypothesis, so it is designed to exercise screening, reproduction, repair, and independent verification. That does not waive any verification gate or guarantee a model result. On any ordinary target, `no-finding` remains a valid and expected outcome.
 
