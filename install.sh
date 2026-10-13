@@ -52,6 +52,7 @@ run_quiet_command() {
   local animated=false
   local styled=false
   local frame=0
+  local started_at="$SECONDS"
   local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
   trap 'kill "$command_pid" 2>/dev/null || true; rm -f "$output_file"; exit 130' INT TERM
 
@@ -60,7 +61,8 @@ run_quiet_command() {
     sleep 0.1
     while kill -0 "$command_pid" 2>/dev/null; do
       animated=true
-      printf '\r\033[2K\033[36m%s\033[0m %s' "${frames[$frame]}" "$progress_message"
+      printf '\r\033[2K\033[36m%s\033[0m %s \033[2m· %ss elapsed\033[0m' \
+        "${frames[$frame]}" "$progress_message" "$((SECONDS - started_at))"
       frame="$(((frame + 1) % ${#frames[@]}))"
       sleep 0.08
     done
@@ -674,7 +676,7 @@ main() {
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
-    note "Includes activity, dashboard, and validation workflows plus shared control plane resources."
+    note "Installs 3 workflows (activity, dashboard, and validation) plus shared control plane resources."
     if ! run_quiet_command \
       "Installing CAO control plane components from $catalog_source..." \
       "CAO control plane components installed from $catalog_source." \
@@ -683,7 +685,7 @@ main() {
       return 1
     fi
   elif [[ "$explicit_source" == true ]]; then
-    note "Refreshes activity, dashboard, and validation workflows plus shared control plane resources."
+    note "Refreshes 3 workflows (activity, dashboard, and validation) plus shared control plane resources."
     if ! run_quiet_command \
       "Refreshing CAO control plane components from $catalog_source..." \
       "CAO control plane components refreshed from $catalog_source." \

@@ -524,7 +524,7 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   const result = await streamInstaller(consumer, env);
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, new RegExp(`Installing gh-aw ${supportedGhAw.replaceAll(".", "\\.")}`));
-  assert.match(result.stdout, /Includes activity, dashboard, and validation workflows plus shared control plane resources\./);
+  assert.match(result.stdout, /Installs 3 workflows \(activity, dashboard, and validation\) plus shared control plane resources\./);
   assert.match(result.stdout, /Installing CAO control plane components from/);
   assert.match(result.stdout, /Materializing the CAO runtime/);
   assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
@@ -909,6 +909,7 @@ test("install.sh uses one restrained spinner for a slow sign-in check", { skip: 
   });
   assert.notEqual(result.code, 0);
   assert.match(result.stdout, /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+  assert.match(result.stdout, /\d+s elapsed/);
   assert.doesNotMatch(result.stdout, /Prerequisites and GitHub sign-in verified/);
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
