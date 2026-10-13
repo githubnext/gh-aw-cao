@@ -4,10 +4,5 @@ description: Find a bug you can reproduce. Review a fix you can understand. One 
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
-  - README.md
-  - intelligence.json
-  - investigation-contract.mjs
-  - fixtures/historical-pilot.json
   - .github/workflows/bug-bash-investigation.md
   - .github/workflows/bug-bash.md

@@ -182,6 +182,18 @@ terminal_available() {
   { : < /dev/tty; } 2>/dev/null
 }
 
+run_cao_quickstart() {
+  local node_options="${NODE_OPTIONS:-}"
+  if [[ " $node_options " != *" --disable-warning=ExperimentalWarning "* ]]; then
+    node_options="${node_options:+$node_options }--disable-warning=ExperimentalWarning"
+  fi
+  if terminal_available; then
+    NODE_OPTIONS="$node_options" "$@" < /dev/tty
+  else
+    NODE_OPTIONS="$node_options" "$@"
+  fi
+}
+
 confirm_repository_creation() {
   local message="$1"
   local answer
@@ -752,9 +764,9 @@ main() {
     "$cao_command" setup < /dev/tty
   elif [[ "$quickstart" == true ]]; then
     if [[ -d "$catalog_source" ]]; then
-      "$cao_command" quickstart --campaign "$catalog_source/bug-bash"
+      run_cao_quickstart "$cao_command" quickstart --campaign "$catalog_source/bug-bash"
     else
-      "$cao_command" quickstart
+      run_cao_quickstart "$cao_command" quickstart
     fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then

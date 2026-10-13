@@ -72,7 +72,11 @@ defined by the control architecture specification.
 
 The root `aw.yml` MUST include Activity and Dashboard as the deterministic
 components of a complete CAO installation. Operational campaign manifests
-MUST identify the workflows and catalog resources that they own.
+MUST identify only the workflows and catalog resources that they own and MUST
+NOT import the root catalog package. Operational campaigns MUST be installed
+through `cao add` after control-plane installation so the lifecycle command can
+materialize their canonical runtime without reinstalling control-plane or Agent
+Plugin resources.
 
 Activity and Dashboard component manifests are root-campaign components. Direct
 `gh aw add` of either component MAY install its supported manifest resources,
@@ -212,7 +216,9 @@ directory. After a successful
 installation without `--setup` or `--quickstart`, it MUST finish without
 another prompt and print the setup command for later. `--setup` MUST open
 guided setup directly on the controlling terminal without allowing streamed
-children to consume installer source from stdin. Informational status
+children to consume installer source from stdin. Interactive `--quickstart`
+MUST preserve that controlling terminal for its progress UI, while exact
+non-interactive repository creation MUST retain plain progress. Informational status
 lines SHOULD remain aligned with completed steps while using muted styling to
 distinguish existing state from completed work. Animated presentation MUST be
 disabled when `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports
@@ -240,6 +246,9 @@ runs Bug Bash in review mode against the pinned public starter target, and may
 consume up to 700 AI credits. The flag itself authorizes the bounded campaign
 installation, commit, push, dispatch, collection, and deployment effects; the
 installer MUST NOT add a redundant post-install confirmation.
+Each potentially long quickstart phase MUST expose elapsed progress and end in
+an explicit success, warning, or failure state. Node experimental-runtime
+diagnostics MUST NOT be mixed into normal quickstart progress.
 
 The quickstart MUST:
 

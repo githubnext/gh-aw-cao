@@ -24,6 +24,8 @@ creates a private control repository, installs Bug Bash in review mode for the
 pinned public starter target, commits and pushes the bounded CAO paths, collects
 Activity, and waits for a public GitHub Pages dashboard with first data. This
 one run can use up to 700 AI credits and never modifies the starter repository.
+Elapsed progress distinguishes the short local installation phases from the
+longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
 For non-interactive creation, also pass
 `--create-repo OWNER/CONTROL_REPOSITORY`.
 

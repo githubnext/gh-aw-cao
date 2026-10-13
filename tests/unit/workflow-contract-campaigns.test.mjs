@@ -138,7 +138,7 @@ test("optimization package includes its README", () => {
   assert.ok(manifest.includes.includes("README.md"));
 });
 
-test("operational workflows use the transitive CAO campaign bundle", () => {
+test("operational packages own their workflows without reinstalling the control plane", () => {
   const control = workflow("shared/control.md");
   const policyCampaigns = JSON.parse(
     readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
@@ -150,6 +150,11 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
     }
     const descriptor = JSON.parse(readFileSync(descriptorPath, "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
+    assert.equal(
+      manifest.includes.includes("../aw.yml"),
+      false,
+      `${campaignName} must be installed through cao add without importing the root catalog package`,
+    );
     const declaredWorkflowIds = [descriptor.orchestrator, ...Object.values(descriptor.workers)].sort();
     const declaredWorkflowPaths = declaredWorkflowIds
       .map((workflowId) => `.github/workflows/${workflowId}.md`)

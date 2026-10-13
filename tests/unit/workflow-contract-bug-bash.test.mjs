@@ -102,20 +102,23 @@ test("bug bash installs as a complete, self-describing campaign package", () => 
   assert.equal(declaration.orchestrator, "bug-bash");
   assert.deepEqual(declaration.workers, { investigation: "bug-bash-investigation" });
 
-  for (const include of [
-    "../aw.yml",
+  assert.deepEqual(manifest.includes.toSorted(), [
+    ".github/workflows/bug-bash.md",
+    ".github/workflows/bug-bash-investigation.md",
+  ].sort());
+  assert.ok(!manifest.includes.includes("../aw.yml"), "cao add must not reinstall the control plane");
+  for (const include of manifest.includes) {
+    const source = join(root, include);
+    assert.ok(existsSync(source), `manifest include must exist: ${include}`);
+  }
+  for (const resource of [
     "README.md",
+    "cao.json",
     "intelligence.json",
     "investigation-contract.mjs",
     "fixtures/historical-pilot.json",
-    ".github/workflows/bug-bash.md",
-    ".github/workflows/bug-bash-investigation.md",
   ]) {
-    assert.ok(manifest.includes.includes(include), `manifest must install ${include}`);
-  }
-  for (const include of manifest.includes.filter((entry) => entry !== "../aw.yml")) {
-    const source = include.startsWith(".github/") ? join(root, include) : join(campaignDirectory, include);
-    assert.ok(existsSync(source), `manifest include must exist: ${include}`);
+    assert.ok(existsSync(join(campaignDirectory, resource)), `materialized campaign resource must exist: ${resource}`);
   }
 
   const readme = readFileSync(join(campaignDirectory, "README.md"), "utf8");

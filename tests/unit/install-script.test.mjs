@@ -33,6 +33,12 @@ const policyPath = path.join(".github", "workflows", "cao.json");
 const materializer = path.join(".github", "workflows", "shared", "materialize-cao.mjs");
 const curlCommand = "curl --fail --show-error --location";
 const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
+
+test("quickstart keeps terminal presentation and filters Node experimental warnings", () => {
+  assert.match(installerSource, /run_cao_quickstart\(\)[\s\S]*?terminal_available[\s\S]*?< \/dev\/tty/);
+  assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
+  assert.match(installerSource, /run_cao_quickstart "\$cao_command" quickstart/);
+});
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
   ...controlPlaneManifest.resources.map(({ source, destination }) => ({

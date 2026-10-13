@@ -113,6 +113,7 @@ test("reports a runtime failure without appending help", async () => {
       assert.equal(error.stdout, "");
       assert.match(error.stderr, /Dashboard data URL must use HTTP or HTTPS/);
       assert.doesNotMatch(error.stderr, /Usage:|cao init/);
+      assert.doesNotMatch(error.stderr, /\n\s+at /);
       return true;
     },
   );

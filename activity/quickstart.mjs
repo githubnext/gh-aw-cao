@@ -191,7 +191,7 @@ async function executeCaoQuickstart({
     throw new Error('Unable to resolve the signed-in GitHub user for the quickstart commit');
   }
 
-  ui.step?.('Installing the review-only Bug Bash campaign');
+  ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
   await addCampaign(selectedCampaign, [], { policyPath, execute });
   const policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
@@ -291,6 +291,7 @@ async function executeCaoQuickstart({
   if (bugBash.conclusion === 'success') ui.success?.('Bug Bash orchestrator completed');
   else ui.warning?.(`Bug Bash orchestrator concluded ${bugBash.conclusion || bugBash.status}`);
 
+  ui.step?.('Waiting for one bounded Bug Bash investigation');
   const workerRun = findRun({
     execute,
     repository: controlRepository,

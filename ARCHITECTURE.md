@@ -449,6 +449,11 @@ repository-root catalog package. That package composes only the Activity,
 dashboard, and validation workflows, five shared control-plane resources, and
 the gh-aw project settings. This avoids gh-aw's root-package skill and agent
 auto-discovery while the root `aw.yml` remains the public catalog composition.
+Operational campaign manifests contain only their owned workflows and catalog
+resources; they do not import the root catalog package. `cao add` is the
+supported lifecycle boundary after control-plane installation and materializes
+the selected campaign's canonical runtime without reinstalling control-plane or
+Agent Plugin resources.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh
@@ -491,8 +496,11 @@ one orchestrator and at most one worker, collects Activity, and waits for the
 Activity-triggered dashboard deployment. It reports Bug Bash blocked and failed
 outcomes without converting them to findings, and does not report success until
 the Activity artifact contains at least one unique run and the dashboard
-deployment succeeds. `--quickstart` is the authorization boundary for these
-effects; ordinary install and `cao setup` retain their non-effectful boundaries.
+deployment succeeds. Installer handoff preserves the controlling terminal,
+uses elapsed progress for each long operation, and suppresses Node's
+experimental-runtime diagnostic rather than mixing it into user progress.
+`--quickstart` is the authorization boundary for these effects; ordinary
+install and `cao setup` retain their non-effectful boundaries.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence

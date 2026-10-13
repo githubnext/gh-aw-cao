@@ -58,6 +58,11 @@ The explicit `--quickstart` flag authorizes one bounded first-success journey:
 7. Collect a CAO Activity snapshot and require at least one collected run.
 8. Wait for the data-bearing dashboard deployment and print its URL.
 
+The local installation phases show elapsed progress and should finish well
+before the GitHub Actions work. Most of the estimated time is the bounded Bug
+Bash investigation, Activity collection, and dashboard deployment running on
+GitHub; the quickstart keeps the active phase and elapsed time visible.
+
 There is no second confirmation after repository creation: `--quickstart` is
 the explicit authorization for these effects. A `no-finding` Bug Bash result is
 still successful. Missing model entitlement, missing permissions, workflow

@@ -4,10 +4,32 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { runCaoQuickstart } from '../../activity/quickstart.mjs';
+import { createQuickstartProgress } from '../../activity/setup-prompt.mjs';
 
 function success(stdout = '') {
   return { status: 0, stdout, stderr: '' };
 }
+
+test('plain quickstart progress starts with the first operation', () => {
+  let output = '';
+  const progress = createQuickstartProgress({
+    input: { isTTY: false },
+    output: { isTTY: false, write: (value) => { output += value; } },
+  });
+
+  progress.start();
+  progress.step('Installing Bug Bash');
+  progress.success('Bug Bash installed');
+  progress.finish('Dashboard ready');
+
+  assert.equal(output, [
+    '==> Installing Bug Bash',
+    'OK: Bug Bash installed',
+    'Dashboard ready',
+    '',
+  ].join('\n'));
+  assert.doesNotMatch(output, /Complete the CAO quickstart/);
+});
 
 async function quickstartFixture(t, {
   status = '?? .github/workflows/cao.json\n?? cao.sh\n',
@@ -158,6 +180,10 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
+  assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
+  assert.ok(progress.includes('Bug Bash installed in review mode for one public starter repository'));
+  assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
+  assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
   assert.ok(progress.some((message) => message.includes('up to 700 AI credits')));
 });
 

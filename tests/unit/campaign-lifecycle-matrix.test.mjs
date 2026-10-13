@@ -39,7 +39,7 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
 });
 
 test("campaign lifecycle matrix selects a campaign and its dependents when its manifest changes", () => {
-  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot", "Optimization"]);
+  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
 });

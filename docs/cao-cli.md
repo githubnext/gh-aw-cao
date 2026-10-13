@@ -158,6 +158,9 @@ For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
 is not a `cao mode` command or a campaign configuration.
 
+CLI failures print one actionable message by default. Set `CAO_DEBUG=1` only
+when diagnosing the CLI itself and an internal stack trace is needed.
+
 ## Inspect Activity
 
 First download the JSONL shards and SQLite snapshot published by your deployed CAO dashboard:

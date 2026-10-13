@@ -2,8 +2,6 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { formatSetupAuthenticationSummary } from './authentication.mjs';
-import { NamedQueryError } from './agent-catalog.mjs';
-import { UsageError } from './cli/options.mjs';
 import { runCli } from './cli/run.mjs';
 import { formatQuickstartSummary } from './quickstart.mjs';
 
@@ -72,11 +70,9 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    const message = error instanceof UsageError || error instanceof NamedQueryError
-      ? `Error: ${error.message}`
-      : error instanceof Error
-        ? error.stack || `${error.name}: ${error.message}`
-        : String(error);
+    const message = process.env.CAO_DEBUG === '1' && error instanceof Error && error.stack
+      ? error.stack
+      : `Error: ${error instanceof Error ? error.message : String(error)}`;
     process.stderr.write(`${message}\n`);
     process.exitCode = 1;
   });

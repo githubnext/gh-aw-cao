@@ -112,10 +112,10 @@ export function createQuickstartProgress({
       active = undefined;
     };
     return {
-      start: () => ui.intro('Complete the CAO quickstart', options),
+      start() {},
       step(message) {
         clear();
-        active = ui.spinner(options);
+        active = ui.spinner({ ...options, indicator: 'timer' });
         active.start(message);
       },
       success(message) {
@@ -134,13 +134,13 @@ export function createQuickstartProgress({
       },
       finish(message) {
         clear();
-        ui.outro(message, options);
+        ui.log.success(message, options);
       },
     };
   }
   const write = (message) => output.write(`${message}\n`);
   return {
-    start: () => write('Complete the CAO quickstart'),
+    start() {},
     step: (message) => write(`==> ${message}`),
     success: (message) => write(`OK: ${message}`),
     warning: (message) => write(`Warning: ${message}`),

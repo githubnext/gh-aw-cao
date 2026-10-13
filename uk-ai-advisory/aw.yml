@@ -5,6 +5,5 @@ min-version: v0.91.5
 private: true
 experimental: true
 includes:
-  - ../aw.yml
   - .github/workflows/uk-ai-advisory.md
   - .github/workflows/uk-ai-advisory-campaign-maintainer.md
