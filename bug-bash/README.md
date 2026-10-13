@@ -25,8 +25,10 @@ It is deliberately the least ambitious campaign in the catalog. Nothing is writt
 ## Install
 
 ```bash
-gh aw add githubnext/gh-aw-cao/bug-bash
+./cao.sh add githubnext/gh-aw-cao/bug-bash
 ```
+
+Use the control repository's `./cao.sh add` lifecycle command, not a direct `gh aw add`. `cao add` materializes the complete canonical runtime — including `.github/workflows/cao.json` policy — that a direct gh-aw install does not produce. See [repository layout and installation §4.3](../specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 The campaign is runnable once the campaign is declared in checked-in policy. There is no schedule: every run is an explicit decision.
 

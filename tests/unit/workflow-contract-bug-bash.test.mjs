@@ -120,7 +120,12 @@ test("bug bash installs as a complete, self-describing campaign package", () => 
 
   const readme = readFileSync(join(campaignDirectory, "README.md"), "utf8");
   assert.match(readme, /Find a bug you can reproduce\. Review a fix you can understand\./);
-  assert.match(readme, /gh aw add githubnext\/gh-aw-cao\/bug-bash/);
+  assert.match(readme, /\.\/cao\.sh add githubnext\/gh-aw-cao\/bug-bash/);
+  assert.doesNotMatch(
+    readme,
+    /^gh aw add githubnext\/gh-aw-cao\/bug-bash/m,
+    "the README must not prescribe a direct gh-aw install as a complete CAO installation",
+  );
   assert.match(readme, /no additional GitHub credentials/i);
   assert.match(readme, /is not the same as "free"|not the same as .free./i);
   assert.match(readme, /expected outcome of your first Bug Bash run is `no-finding`/);
