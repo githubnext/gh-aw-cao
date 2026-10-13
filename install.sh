@@ -674,25 +674,25 @@ main() {
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
-    note "Resolving the catalog and installing the base workflows; this may take a minute."
+    note "Includes Activity, Dashboard, and shared control components."
     if ! run_quiet_command \
-      "Installing the CAO control plane from $catalog_source..." \
-      "CAO control plane installed from $catalog_source." \
+      "Installing CAO control-plane components; this may take a minute..." \
+      "CAO control-plane components installed from $catalog_source." \
       gh aw add "$catalog_source" --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
   elif [[ "$explicit_source" == true ]]; then
-    note "Resolving the catalog and refreshing the base workflows; this may take a minute."
+    note "Refreshes Activity, Dashboard, and shared control components."
     if ! run_quiet_command \
-      "Refreshing the CAO control plane from $catalog_source..." \
-      "CAO control plane refreshed from $catalog_source." \
+      "Refreshing CAO control-plane components; this may take a minute..." \
+      "CAO control-plane components refreshed from $catalog_source." \
       gh aw add "$catalog_source" --force --no-security-scanner; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
   else
-    note "CAO control-plane files are already installed."
+    note "CAO control-plane components are already installed."
   fi
   if [[ -d "$catalog_source" ]]; then
     if ! run_quiet_command \
