@@ -21,12 +21,26 @@ curl --fail --silent --show-error --location \
 
 At a repository root, the installer uses that clean default-branch checkout,
 including headlessly. Outside a checkout, it creates the private control
-repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects an existing
-public repository, quickstart also creates the public `USERNAME/cao-sample`
-repository with intentional bugs and runs Bug Bash against it in review mode.
-It commits and pushes the bounded CAO paths, collects Activity, and waits for a
-public GitHub Pages dashboard with first data. This one run can use up to 700 AI
-credits. After initial sample creation, CAO never modifies the target.
+repository `USERNAME/cao`. With no catalog source, quickstart resolves and pins
+the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
+release discovery fails. Pass an explicit source such as
+`githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
+that selection. Unless `--target OWNER/REPO` selects another
+existing public repository, quickstart targets
+[`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
+at a pinned revision. The shared starter is a guided investigation of a
+fictional production incident, not discovery of an unknown production bug: an
+emergency `0%` rollout request still prepared ten services—including four
+tier-0 services—and three retries while the normal test suite remained green.
+A small truthiness fallback turns the intentional zero into a default. The
+campaign supplies that hypothesis externally; the target repository contains
+neutral product documentation and no explanation of the seeded defect. Current
+and legacy modules, different zero-value contracts, and red herrings force Bug
+Bash to screen, reproduce, repair, and independently verify the finding rather
+than report a textual match. Quickstart runs that campaign in review mode.
+The investigation is the first useful result; Activity collection and the
+public GitHub Pages dashboard follow. This one run can use up to 700 AI credits.
+CAO never modifies the target.
 Elapsed progress distinguishes the short local installation phases from the
 longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
 Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
@@ -48,12 +62,12 @@ repository, and campaigns must be empty. Setup configures public Actions-backed
 Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
 Activity scope for only that repository. Private/internal repositories or
 broader existing policy require interactive setup. Headless guided-setup
-repository creation still requires `--create-repo OWNER/NAME`; quickstart alone
-may create only the signed-in user's `cao` and `cao-sample` repositories.
+repository creation still requires `--create-repo OWNER/NAME`; quickstart may
+create only the signed-in user's `cao` control repository.
 Missing prerequisites (including an installed gh-aw that is too old) fail
 instead of reporting success. Explicit `--quickstart` is the bounded headless
-first-success path and performs the documented sample-target effects without
-prompting.
+first-success path and performs the documented control-repository and workflow
+effects without prompting.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime

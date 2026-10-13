@@ -21,6 +21,14 @@ metadata:
 
 Use this skill when a user asks to inspect, analyze, investigate, or summarize Central Agentic Ops activity data from the deployed dashboard snapshot or another published dashboard data URL.
 
+## Deterministic boundary
+
+Use `cao download`, `cao audit-jsonl`, `cao doctor`, and reviewed `cao query`
+commands for acquisition, validation, filtering, and projection. The agent
+chooses the question and interprets availability, freshness, completeness, and
+results. Do not reproduce Dashboard Language queries or filter canonical rows
+in ad hoc code when an existing CLI query can answer the request.
+
 ## Data contract
 
 - Treat downloaded data as local, disposable development evidence, not schema authority.
@@ -41,7 +49,7 @@ Do you have shell access?
 
 Without a shell, the workflow has already installed CAO, downloaded the snapshot,
 and started the read-only MCP server; call `cao_catalog` and `cao_query` instead of
-running commands. See [Agent analysis](../../docs/agent-analysis.md).
+running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md).
 
 1. Confirm the repository has dependencies installed. If the `cao` binary is unavailable, use `npm run dashboard:data --` from the repository root.
 2. Download the current published activity snapshot:

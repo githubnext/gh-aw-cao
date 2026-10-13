@@ -167,18 +167,31 @@ MUST NOT invoke npm. Existing dashboard build dependency installation is
 unchanged apart from omitting development dependencies.
 
 The control-plane installer MUST NOT install the Agent Plugin manifest,
-portable skills, Copilot extension, bundled specification documents, or
-repository-only dashboard authoring skills. Those resources belong to the
-separate Agent Plugin or catalog authoring installation. Root materialization
-MUST preserve pre-existing resources outside its owned destination set,
-including separately installed plugin resources and skills.
+Copilot extension, bundled specification documents, or repository-only
+dashboard authoring skills. Those resources belong to the separate Agent
+Plugin or catalog authoring installation. Root materialization MUST preserve
+pre-existing resources outside its owned destination set, including separately
+installed plugin resources and skills.
 The installer MUST add the repository-root `aw.yml` package. That manifest MUST
 explicitly compose only the Activity, dashboard, and validation workflows, the
-five shared control-plane resources, and the gh-aw project settings. It MUST
-declare empty `skills` and `agents` arrays so root-package auto-discovery cannot
-make Agent Plugin or repository-only authoring resources part of a
-control-repository installation. Additional package manifests MUST live only in
-campaign or component directories.
+five shared control-plane resources, seven portable control-repository skills
+(including the Agentic Workflows router), one Agentic Workflows agent, and the
+gh-aw project settings. The router skill MUST load current routing guidance
+through the canonical upstream Agentic Workflows skill on `main` instead of
+copying its routing table. The custom agent MUST delegate to the installed
+router skill instead of maintaining a second routing table.
+If canonical guidance cannot be loaded, the router MUST fail explicitly rather
+than use stale remembered guidance. Version-sensitive workflow behavior MUST
+remain constrained by the control repository's policy-pinned `gh aw` CLI, and
+shipped CAO skills MUST delegate parsing, mutation, compilation, querying, and
+verification to existing deterministic `gh aw`, `cao`, and repository
+validation commands. It MUST declare only
+`.github/agents/agentic-workflows.md` in its nonempty `agents` list so agent
+auto-discovery cannot install repository-only agents. Because gh-aw v0.91.5
+auto-scans root `skills/` even when `skills` entries are explicit, that
+directory MUST contain only the seven portable skills declared by the root
+manifest. Additional package manifests MUST live only in campaign or component
+directories.
 
 For each selected owned destination, materialization MUST remove the existing
 destination and copy the complete selected production bundle. Operational
@@ -262,8 +275,10 @@ or private control repository, default to creating the private
 `USERNAME/cao` control repository outside a checkout, or create another private
 control repository only when `--create-repo OWNER/NAME` requests it. It MUST
 disclose before execution that it publishes a public dashboard, creates the
-public `USERNAME/cao-sample` target with intentional bugs unless
-`--target OWNER/REPO` selects an existing public target, runs Bug Bash against
+private `USERNAME/cao` control repository when needed, targets a pinned
+fictional emergency-rollout incident in the public
+`githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
+another existing public target, runs Bug Bash against
 that target in review mode, and may consume up to 700 AI credits. The flag itself
 authorizes the bounded campaign installation, commit, push, dispatch,
 collection, and deployment effects in interactive and headless use; the
@@ -279,10 +294,14 @@ The quickstart MUST:
 - accept public, private, and internal control repositories because its target
   and collected evidence are public, without widening that visibility exception
   to another target or campaign;
-- validate an explicit target as public, or fail if `USERNAME/cao-sample`
-  already exists before creating that public repository with a production
-  warning and deterministic functional defects; it MUST NOT reuse, overwrite,
-  delete, or choose a suffixed default repository name;
+- validate an explicit target as public, or select
+  `githubnext/gh-aw-cao-bug-bash` and verify that its configured immutable
+  revision remains available; it MUST NOT create, fork, copy, or otherwise
+  mutate a target repository and MUST NOT fall back to a mutable branch;
+- supply the canonical starter hypothesis from the campaign contract rather
+  than target content; the pinned target and its reachable history MUST NOT
+  contain the incident explanation, root-cause hint, failing reproduction, or
+  intentional-bug warning that would reveal the seeded defect;
 - configure exact global scope for the control repository and selected public
   target while declaring `control-plane.activity.repositories` as only the
   control repository;
@@ -300,8 +319,7 @@ The quickstart MUST:
 - dispatch Activity with a correlatable request ID, require a successful
   data-bearing Activity artifact with at least one unique run, then require the
   corresponding dashboard deployment to succeed; and
-- never modify the selected target after initial sample creation, and disclose
-  that a created sample may remain if a later phase fails; and
+- never modify the selected target; and
 - print the target, dashboard, workflow-run, and control-repository URLs only after
   those success conditions are verified.
 

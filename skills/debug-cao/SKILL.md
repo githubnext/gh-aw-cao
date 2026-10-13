@@ -7,6 +7,14 @@ metadata:
 
 # Debug Central Agentic Ops
 
+## Deterministic boundary
+
+Use `gh run view`, `gh aw logs`, `./cao.sh validate --json`, and existing CAO
+query or diagnostic commands to collect structured evidence. Do not reconstruct
+run metadata, package identity, policy validity, or query results manually. The
+agent owns boundary classification, falsifiable hypotheses, evidence
+interpretation, and the next bounded observation.
+
 ## Procedure
 
 1. Start read-only. Preserve the failed attempt before rerunning, updating,
@@ -30,7 +38,7 @@ metadata:
    `<observation>` would confirm or reject it.
 8. Reproduce only when it stays bounded and review-safe, holding workflow,
    policy, compiler, target, and inputs constant and changing one boundary.
-   For a local worker loop, follow [Local Worker Debugging](../../docs/local-debugging.md):
+   For a local worker loop, follow [Local Worker Debugging](https://github.com/githubnext/gh-aw-cao/blob/main/docs/local-debugging.md):
    use `gh aw run WORKER --repo CONTROL --ref REF` with explicit
    `target_repo`, matching `safe_output_repo`, and `safe_output_mode=debug`
    through `--raw-field`. Omit dispatcher correlation inputs. Use the human
@@ -63,8 +71,8 @@ metadata:
   source locations, and diagnostics.
 - [Diagnostic report](references/diagnostic-report.md): issue fields and
   completion checklist.
-- [Monitor, Recover, and Maintain](../../docs/operations.md): operational
+- [Monitor, Recover, and Maintain](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operations.md): operational
   recovery.
-- [Authentication](../../docs/authentication.md): credential profiles.
-- [Execution and Safety](../../docs/execution-and-safety.md): authority and
+- [Authentication](https://github.com/githubnext/gh-aw-cao/blob/main/docs/authentication.md): credential profiles.
+- [Execution and Safety](https://github.com/githubnext/gh-aw-cao/blob/main/docs/execution-and-safety.md): authority and
   worker boundaries.

@@ -86,10 +86,12 @@ control repositories, broader existing policy, or installed campaigns.
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
-Explicit quickstart is also terminal-independent. Without `--target`, it creates
-the signed-in user's public `cao-sample` repository with intentional bugs;
-`--target OWNER/REPO` selects one existing public repository instead. The
-checkout, target-visibility, and default-branch preflight remain fail-closed.
+Explicit quickstart is also terminal-independent. Without `--target`, it uses
+the pinned public `githubnext/gh-aw-cao-bug-bash` emergency-rollout incident:
+an explicit zero-percent pause prepares tier-0 services and retries while the
+normal suite remains green. `--target OWNER/REPO` selects another existing
+public repository. The checkout, target-visibility, source-revision, and
+default-branch preflight remain fail-closed.
 
 ## Control Campaigns
 

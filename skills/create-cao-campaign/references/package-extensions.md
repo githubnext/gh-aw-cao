@@ -1,11 +1,12 @@
 # Campaign package extensions
 
 Workflow creation is an agent workflow. Follow
-`.github/aw/create-agentic-workflow.md`, then apply the CAO contract.
+[gh-aw v0.91.5 workflow creation guidance](https://github.com/github/gh-aw/blob/v0.91.5/.github/aw/create-agentic-workflow.md),
+then apply the CAO contract.
 
-Use the upstream `github/gh-aw`
-`.github/skills/operational-value-designer/SKILL.md`. Adopt a measurable worker
-and its evaluator together in one commit.
+Use the pinned upstream
+[operational-value designer](https://github.com/github/gh-aw/blob/v0.91.5/.github/skills/operational-value-designer/SKILL.md).
+Adopt a measurable worker and its evaluator together in one commit.
 
 ## Engine authentication
 

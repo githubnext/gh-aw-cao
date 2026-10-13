@@ -6,7 +6,9 @@ import test from "node:test";
 import { parse } from "yaml";
 
 import {
+  DEFAULT_HYPOTHESIS,
   HARNESS_VERSION,
+  HYPOTHESIS_ID,
   HYPOTHESIS_VERSION,
   INVESTIGATION_OUTCOMES,
   RESOURCE_ENVELOPE,
@@ -131,7 +133,13 @@ test("bug bash installs as a complete, self-describing campaign package", () => 
   );
   assert.match(readme, /no additional GitHub credentials/i);
   assert.match(readme, /is not the same as "free"|not the same as .free./i);
-  assert.match(readme, /expected outcome of your first Bug Bash run is `no-finding`/);
+  assert.match(readme, /canonical starter is intended to produce a reproducible explicit-zero finding/i);
+  assert.match(readme, /`no-finding` remains a valid and expected outcome/);
+  assert.equal(STARTER_TARGET.repository, "githubnext/gh-aw-cao-bug-bash");
+  assert.equal(STARTER_TARGET.revision, "49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9");
+  assert.ok(STARTER_TARGET.focusPaths.includes("examples/paused-rollout.json"));
+  assert.ok(STARTER_TARGET.focusPaths.includes("src/demo.mjs"));
+  assert.deepEqual(STARTER_TARGET.hypothesis, DEFAULT_HYPOTHESIS);
 });
 
 test("bug bash is the recommended getting-started campaign in the docs", () => {
@@ -377,6 +385,7 @@ test("repeat investigations are suppressed by stable work and finding identity",
   const repeat = workIdentity({
     repository: STARTER_TARGET.repository,
     revision: STARTER_TARGET.revision,
+    hypothesisId: HYPOTHESIS_ID,
     hypothesisVersion: HYPOTHESIS_VERSION,
     harnessVersion: HARNESS_VERSION,
   });
@@ -387,14 +396,16 @@ test("repeat investigations are suppressed by stable work and finding identity",
   });
 
   assert.equal(first.id, repeat.id, "the same question on the same revision is the same work");
+  assert.equal(first.hypothesisId, HYPOTHESIS_ID);
+  assert.equal(first.hypothesisVersion, HYPOTHESIS_VERSION);
   assert.notEqual(first.id, newHarness.id, "a new harness is new work");
   assert.throws(() => workIdentity({ repository: "acme/widgets", revision: "main" }), /40-character commit SHA/);
 
   const defect = {
     repository: STARTER_TARGET.repository,
-    contract: "rules database rejects malformed lines",
-    symptom: "malformed line accepted",
-    entryPoint: "buildDatabase",
+    contract: "an explicit zero rollout percentage pauses deployments",
+    symptom: "zero rollout percentage selects every service",
+    entryPoint: "buildRolloutPlan",
   };
   assert.equal(
     findingIdentity(defect).id,
@@ -492,6 +503,26 @@ test("only a review-ready outcome publishes a complete, sealed review bundle", (
   assert.match(investigation, /Stands alone\./);
 });
 
+test("investigation issues present the decision before machine metadata", () => {
+  const finding = investigation.indexOf("`## Finding`");
+  const action = investigation.indexOf("`## Maintainer action`");
+  const fix = investigation.indexOf("`## Proposed fix`");
+  const verification = investigation.indexOf("`## Verification`");
+  const metadata = investigation.indexOf("<details><summary>Investigation metadata</summary>");
+
+  assert.ok(finding > 0);
+  assert.ok(action > finding);
+  assert.ok(fix > action);
+  assert.ok(verification > fix);
+  assert.ok(metadata > verification);
+  assert.match(investigation, /operational consequence on its own `\*\*Impact:\*\*` line/);
+  assert.match(investigation, /checklist with no more than three concrete steps/);
+  assert.match(investigation, /`\*\*Acceptance check:\*\*` line/);
+  assert.match(investigation, /Markdown table with `Check` and `Result` columns/);
+  assert.match(investigation, /GitHub note containing `\*\*Uncertainty:\*\*`/);
+  assert.match(investigation, /machine-oriented identifiers here instead of in the opening summary/);
+});
+
 test("the sealing command writes digests and rejects an incomplete bundle", () => {
   const directory = mkdtempSync(join(tmpdir(), "bug-bash-bundle-"));
   try {
@@ -523,6 +554,7 @@ test("the sealing command writes digests and rejects an incomplete bundle", () =
     assert.equal(sealed.status, 0);
     const contract = JSON.parse(readFileSync(join(directory, "bundle-contract.json"), "utf8"));
     assert.equal(contract.campaign, "bug-bash");
+      assert.equal(contract.hypothesisId, HYPOTHESIS_ID);
     assert.equal(contract.outcome, "review-ready");
     assert.equal(Object.keys(contract.digests).length, REVIEW_BUNDLE_FILES.length);
 

@@ -1,6 +1,6 @@
 name: Bug Bash
 icon: ":rocket:"
-description: Find a bug you can reproduce. Review a fix you can understand. One bounded, separately verified investigation on one repository, in review mode.
+description: Find a bug you can reproduce. Review a fix you can understand. Test one versioned explicit-zero-default hypothesis against one repository revision.
 min-version: v0.91.5
 experimental: true
 includes:
