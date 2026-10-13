@@ -58,7 +58,7 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `./cao.sh quickstart` | Complete the explicit public starter journey: install review-only Bug Bash, commit and push bounded CAO paths, collect first Activity, and wait for the public dashboard. |
+| `./cao.sh quickstart [--target OWNER/REPO]` | Create the default public sample or select an existing public target, install review-only Bug Bash, commit and push bounded CAO paths, collect first Activity, and wait for the public dashboard. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -86,9 +86,10 @@ control repositories, broader existing policy, or installed campaigns.
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
-Explicit quickstart is also terminal-independent: `--quickstart` authorizes its
-fixed public-starter scope and effects, while the checkout and default-branch
-preflight remain fail-closed.
+Explicit quickstart is also terminal-independent. Without `--target`, it creates
+the signed-in user's public `cao-sample` repository with intentional bugs;
+`--target OWNER/REPO` selects one existing public repository instead. The
+checkout, target-visibility, and default-branch preflight remain fail-closed.
 
 ## Control Campaigns
 

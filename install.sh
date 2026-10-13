@@ -95,14 +95,14 @@ run_quiet_command() {
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]]' \
+    'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]] [--target OWNER/REPO]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart uses a clean current public or private control repository, or creates a private one when needed,' \
-    'then runs Bug Bash in review mode (up to 700 AI credits), commits and pushes CAO files, collects Activity,' \
-    'and deploys a public dashboard. In headless use, open the checkout or pass --create-repo OWNER/NAME.' \
+    '--quickstart uses a clean current control repository or creates USERNAME/cao, then creates the public' \
+    'USERNAME/cao-sample target with intentional bugs. Pass --target OWNER/REPO to use another public target.' \
+    'It runs Bug Bash in review mode (up to 700 AI credits), collects Activity, and deploys a public dashboard.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
@@ -455,6 +455,25 @@ prompt_create_repository() {
   printf '%s/%s\n' "$owner" "$name"
 }
 
+default_quickstart_control_repository() {
+  local owner
+  if ! owner="$(gh api user --jq .login)" ||
+    [[ ! "$owner" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
+    printf 'Unable to resolve the signed-in GitHub username for the default quickstart repository.\n' >&2
+    return 1
+  fi
+  local name
+  if ! name="$(default_repository_name "$owner")"; then
+    return 1
+  fi
+  if [[ -z "$name" ]]; then
+    printf '%s/%s already exists. Run quickstart from its checkout or pass --create-repo OWNER/NAME.\n' \
+      "$owner" "cao" >&2
+    return 1
+  fi
+  printf '%s/%s\n' "$owner" "$name"
+}
+
 install_gh_aw() {
   info "Installing gh-aw $required_gh_aw..."
   curl --fail --show-error --location \
@@ -523,6 +542,7 @@ main() {
   local repository_creation_prompt_started=false
   local create_repository_requested=false
   local create_repository=""
+  local target_repository=""
   local create_repository_in_place=false
   local control_repository
   local directory=""
@@ -540,6 +560,15 @@ main() {
       --help|-h) usage; return ;;
       --setup) setup=true; shift ;;
       --quickstart) quickstart=true; shift ;;
+      --target)
+        if [[ $# -lt 2 || "$2" == -* ||
+          ! "$2" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+          printf 'Provide an exact public OWNER/REPOSITORY after --target.\n' >&2
+          return 1
+        fi
+        target_repository="$2"
+        shift 2
+        ;;
       --create-repo)
         create_repository_requested=true
         if [[ $# -ge 2 && "$2" != -* ]]; then
@@ -571,6 +600,10 @@ main() {
   done
   if [[ "$setup" == true && "$quickstart" == true ]]; then
     printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
+    return 1
+  fi
+  if [[ -n "$target_repository" && "$quickstart" == false ]]; then
+    printf '%s\n' '--target requires --quickstart.' >&2
     return 1
   fi
 
@@ -605,7 +638,11 @@ main() {
     return 1
   fi
   if [[ "$quickstart" == true ]]; then
-    note "Quickstart uses only public starter evidence, a public dashboard, and up to 700 AI credits."
+    if [[ -n "$target_repository" ]]; then
+      note "Quickstart reviews $target_repository, publishes a public dashboard, and may use up to 700 AI credits."
+    else
+      note "Quickstart creates USERNAME/cao-sample with intentional bugs, publishes a public dashboard, and may use up to 700 AI credits."
+    fi
   fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -616,8 +653,11 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
-    elif [[ "$quickstart" == true ]] && terminal_available; then
+    elif [[ "$quickstart" == true ]]; then
       create_repository_requested=true
+      if ! create_repository="$(default_quickstart_control_repository)"; then
+        return 1
+      fi
     elif terminal_available &&
       confirm_repository_creation 'Create and clone a new private control repository?'; then
       create_repository_requested=true
@@ -635,10 +675,16 @@ main() {
       :
     else
       git_remotes="$(git remote)"
-      if [[ -z "$git_remotes" ]] && terminal_available &&
-        confirm_repository_creation 'Create a new private GitHub repository for this checkout?'; then
+      if [[ -z "$git_remotes" && "$quickstart" == true ]]; then
+        if ! create_repository="$(default_quickstart_control_repository)"; then
+          return 1
+        fi
         create_repository_requested=true
         create_repository_in_place=true
+      elif [[ -z "$git_remotes" ]] && terminal_available &&
+        confirm_repository_creation 'Create a new private GitHub repository for this checkout?'; then
+          create_repository_requested=true
+          create_repository_in_place=true
       else
         printf '%s\n' \
           'Open an existing GitHub repository checkout, or rerun with --create-repo OWNER/NAME to create a private control repository.' \
@@ -788,10 +834,15 @@ main() {
       "$cao_command" setup
     fi
   elif [[ "$quickstart" == true ]]; then
+    local -a quickstart_arguments=(quickstart)
+    if [[ -n "$target_repository" ]]; then
+      quickstart_arguments+=(--target "$target_repository")
+    fi
     if [[ -d "$catalog_source" ]]; then
-      run_cao_quickstart "$cao_command" quickstart --campaign "$catalog_source/bug-bash"
+      quickstart_arguments+=(--campaign "$catalog_source/bug-bash")
+      run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"
     else
-      run_cao_quickstart "$cao_command" quickstart
+      run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"
     fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then

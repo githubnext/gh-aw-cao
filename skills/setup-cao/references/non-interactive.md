@@ -15,8 +15,8 @@ Actions-backed Pages, selects repository `GITHUB_TOKEN` (`workflow-token`),
 and records Activity scope for exactly the control repository. It preserves all
 other policy fields and writes policy only after external settings succeed.
 
-Do not create a repository without an explicitly authorized exact coordinate,
-open a browser, commit, push, install or enable campaigns, or dispatch
+During setup, do not create a repository without an explicitly authorized
+exact coordinate, open a browser, commit, push, install or enable campaigns, or dispatch
 workflows. Refuse non-interactive setup for a private/internal control
 repository, non-empty campaign map, or broader existing scope; do not silently
 narrow it. Missing prerequisites, unclear repository selection, and
@@ -25,10 +25,13 @@ guess or broaden access. An outdated installed gh-aw must be upgraded
 explicitly before retrying. Report the applied defaults or blocker plainly.
 
 `install.sh --quickstart` is the only exception: the explicit flag authorizes
-its fixed public-starter campaign, public Pages, bounded commit and push, and
+its selected public-target campaign, public Pages, bounded commit and push, and
 workflow dispatches. It may run without prompts from a clean public or private
-control-repository checkout on the default branch. Creating a new repository
-still requires exact `--create-repo OWNER/NAME` authorization.
+control-repository checkout on the default branch. Outside a checkout it may
+create only the signed-in user's private `cao` control repository and public
+`cao-sample` target; another control coordinate requires exact
+`--create-repo OWNER/NAME`, and another target requires exact
+`--target OWNER/REPO`.
 
 ## Explicit broader setup with a user available
 

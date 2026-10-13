@@ -504,21 +504,29 @@ the exact control repository with no campaigns before setup.
 
 `activity/quickstart.mjs` owns a distinct explicit first-success flow. It
 uses a clean public, private, or internal control repository on its checked-out
-default branch, preserving any existing commits. The installer can instead
-create a new private repository when explicitly requested. Quickstart installs
-Bug Bash at the selected catalog revision, configures exact review-only starter
-authority, requires public Pages, commits and pushes only the bounded CAO paths
-plus gh-aw's root `.gitattributes` and `.vscode/settings.json` project settings,
-dispatches one orchestrator and at most one worker, collects Activity, and waits
-for the Activity-triggered dashboard deployment. It reports Bug Bash blocked
-and failed outcomes without converting them to findings, and does not report
-success until the Activity artifact contains at least one unique run and the
-dashboard deployment succeeds. Installer handoff preserves the controlling
-terminal when present and otherwise uses plain headless progress, uses elapsed
-progress for each long operation, and suppresses Node's experimental-runtime
-diagnostic rather than mixing it into user progress. `--quickstart` is the
-authorization boundary for these effects in interactive and headless use;
-ordinary install and `cao setup` retain their non-effectful boundaries.
+default branch, preserving any existing commits. Outside a checkout the
+installer defaults to the signed-in user's available private `cao` control
+repository; explicit `--create-repo OWNER/NAME` selects another coordinate.
+Quickstart creates the signed-in user's public `cao-sample` repository with
+warning-marked deterministic functional defects, unless `--target OWNER/REPO`
+selects an existing public repository. Default-name collisions fail rather
+than reusing, overwriting, deleting, or suffixing repositories. Quickstart
+installs Bug Bash at the selected catalog revision, configures exact
+review-only authority for the selected target, requires public Pages, commits
+and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
+`.vscode/settings.json` project settings, dispatches one orchestrator and at
+most one worker, collects Activity, and waits for the Activity-triggered
+dashboard deployment. Campaign execution never modifies the target. A failed
+later phase may leave the initially created sample in place and reports that
+partial effect. Quickstart reports Bug Bash blocked and failed outcomes without
+converting them to findings, and does not report success until the Activity
+artifact contains at least one unique run and the dashboard deployment
+succeeds. Installer handoff preserves the controlling terminal when present
+and otherwise uses plain headless progress, uses elapsed progress for each long
+operation, and suppresses Node's experimental-runtime diagnostic rather than
+mixing it into user progress. `--quickstart` is the authorization boundary for
+these effects in interactive and headless use; ordinary install and `cao setup`
+retain their non-effectful boundaries.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence
@@ -528,7 +536,7 @@ otherwise preserves its existing fail-closed behavior. The public quickstart
 uses this contract to admit the public Bug Bash target while collecting
 workflow evidence only from the selected control repository with its
 repository-provided token. A public control repository is safe for this exact
-path because the starter target, evidence, dashboard, and review outputs are
+path because the selected target, evidence, dashboard, and review outputs are
 all public; that does not authorize non-public targets or other campaigns.
 
 ## Architectural boundaries

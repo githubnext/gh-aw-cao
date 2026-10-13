@@ -1,16 +1,35 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { runCaoQuickstart } from '../../activity/quickstart.mjs';
+import {
+  createQuickstartSampleRepository,
+  formatQuickstartSummary,
+  runCaoQuickstart,
+} from '../../activity/quickstart.mjs';
+import { runQuickstart as runQuickstartCommand } from '../../activity/commands/quickstart.mjs';
 import { createQuickstartProgress } from '../../activity/setup-prompt.mjs';
 import { runTerminal } from '../helpers/terminal.mjs';
 
 function success(stdout = '') {
   return { status: 0, stdout, stderr: '' };
 }
+
+test('quickstart command forwards an explicit target and JSON progress', async () => {
+  let options;
+  await runQuickstartCommand({
+    arguments_: ['--target', 'acme/project', '--json'],
+    runCaoQuickstart: async (value) => { options = value; },
+    UsageError: Error,
+  });
+  assert.deepEqual(options, {
+    targetRepository: 'acme/project',
+    progress: {},
+  });
+});
 
 test('plain quickstart progress starts with the first operation', () => {
   let output = '';
@@ -70,12 +89,15 @@ async function quickstartFixture(t, {
   currentBranch = 'main',
   defaultBranch = 'main',
   diffCheck = success(),
+  sampleExists = false,
 } = {}) {
   const calls = [];
+  const sampleTargets = [];
+  const targetRepository = 'octocat/cao-sample';
   const runRecords = {
     'bug-bash.lock.yml': {
       databaseId: 101,
-      displayTitle: 'Bug Bash: githubnext/gh-aw-cao',
+      displayTitle: `Bug Bash: ${targetRepository}`,
       status: 'completed',
       conclusion: 'success',
       createdAt: '2026-01-01T00:00:00Z',
@@ -84,7 +106,7 @@ async function quickstartFixture(t, {
     },
     'bug-bash-investigation.lock.yml': {
       databaseId: 102,
-      displayTitle: 'Investigate githubnext/gh-aw-cao',
+      displayTitle: `Investigate ${targetRepository}`,
       status: 'completed',
       conclusion: 'success',
       createdAt: '2026-01-01T00:00:10Z',
@@ -122,13 +144,21 @@ async function quickstartFixture(t, {
     if (command === 'git' && arguments_[0] === 'branch' && arguments_[1] === '--show-current') {
       return success(`${currentBranch}\n`);
     }
-    if (command === 'gh' && arguments_[0] === 'repo') {
+    if (command === 'gh' && arguments_.join(' ') === 'repo view --json nameWithOwner,visibility') {
       return success(`${JSON.stringify({ nameWithOwner: 'acme/cao', visibility })}\n`);
+    }
+    if (command === 'gh' && arguments_[0] === 'repo' && arguments_[1] === 'view') {
+      return success(`${JSON.stringify({ nameWithOwner: arguments_[2], visibility: 'PUBLIC' })}\n`);
     }
     if (command === 'git' && arguments_[0] === 'status') return success(status);
     if (command === 'git' && arguments_[0] === 'diff' && arguments_.includes('--check')) return diffCheck;
     if (command === 'gh' && arguments_[0] === 'api' && arguments_[1] === 'user') {
       return success('{"login":"octocat","id":1}\n');
+    }
+    if (command === 'gh' && arguments_[0] === 'api' && arguments_[1] === `repos/${targetRepository}` && !arguments_.includes('--jq')) {
+      return sampleExists
+        ? success('{"nameWithOwner":"octocat/cao-sample","visibility":"PUBLIC"}\n')
+        : { status: 1, stdout: '', stderr: 'gh: Not Found (HTTP 404)' };
     }
     if (command === 'gh' && arguments_[0] === 'api' && arguments_.includes('--jq')) {
       return success(`${defaultBranch}\n`);
@@ -152,6 +182,11 @@ async function quickstartFixture(t, {
   return {
     calls,
     execute,
+    sampleTargets,
+    createSampleTarget: async ({ repository }) => {
+      sampleTargets.push(repository);
+      return { repository, url: `https://github.com/${repository}` };
+    },
     async policyPath() {
       const value = path.join(directory, 'cao.json');
       await writeFile(value, JSON.stringify({
@@ -193,6 +228,7 @@ test('quickstart reports staged whitespace errors', async (t) => {
       await writeFile(policyPath, JSON.stringify(policy));
     },
     configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+    createSampleTarget: fixture.createSampleTarget,
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
   }), /git diff --cached --check failed: dashboard\/site\/src\/components\/workflow-badges\.js:73: new blank line at EOF/);
@@ -222,6 +258,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
       await writeFile(policyPath, JSON.stringify(policy));
     },
     configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+    createSampleTarget: fixture.createSampleTarget,
     collectActivityStats: async () => ({
       summary: { runsWithArtifact: 1, totalUniqueRuns: 4 },
     }),
@@ -247,19 +284,25 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(result.dashboard.url, 'https://acme.github.io/cao/');
   assert.equal(result.activity.uniqueRuns, 4);
   assert.equal(result.mode, 'review');
+  assert.equal(result.targetRepository, 'octocat/cao-sample');
+  assert.equal(result.sampleCreated, true);
+  assert.deepEqual(fixture.sampleTargets, ['octocat/cao-sample']);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/octocat\/cao-sample \(sample with intentional bugs\)/);
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
   assert.deepEqual(policy['control-plane'].activity.repositories, ['acme/cao']);
   assert.deepEqual(policy['control-plane'].scope['allowed-repositories'], [
     'acme/cao',
-    'githubnext/gh-aw-cao',
+    'octocat/cao-sample',
   ]);
+  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'octocat']);
   assert.equal(policy['control-plane'].campaigns['bug-bash'].mode, 'review');
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run bug-bash.lock.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh .gitattributes .vscode/settings.json'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
   assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
-  assert.ok(progress.includes('Bug Bash campaign installed in review mode for one public starter repository'));
+  assert.ok(progress.includes('Public sample target created: octocat/cao-sample'));
+  assert.ok(progress.includes('Bug Bash campaign installed in review mode for octocat/cao-sample'));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
   assert.ok(progress.some((message) => message.startsWith('Running one bounded Bug Bash campaign in review mode')));
   assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
@@ -290,6 +333,7 @@ for (const [name, status, message] of [
         await writeFile(policyPath, JSON.stringify(policy));
       },
       configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+      createSampleTarget: fixture.createSampleTarget,
       progress: {},
       resolveRootRevision: () => 'a'.repeat(40),
     }), message);
@@ -309,6 +353,33 @@ test('quickstart accepts a public control repository with an existing default-br
   }), (error) => error === expected);
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'git branch --show-current'));
   assert.ok(!fixture.calls.some((call) => call.join(' ') === 'git branch -M main'));
+});
+
+test('quickstart uses an explicit public target without creating the sample repository', async (t) => {
+  const fixture = await quickstartFixture(t);
+  const expected = new Error('campaign reached');
+  await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
+    execute: fixture.execute,
+    addCampaign: async () => { throw expected; },
+    createSampleTarget: fixture.createSampleTarget,
+    progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  }), (error) => error === expected);
+  assert.deepEqual(fixture.sampleTargets, []);
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'gh repo view acme/project --json nameWithOwner,visibility'));
+});
+
+test('quickstart refuses to overwrite the default sample repository before installing the campaign', async (t) => {
+  const fixture = await quickstartFixture(t, { sampleExists: true });
+  let campaignInstalled = false;
+  await assert.rejects(runCaoQuickstart({
+    execute: fixture.execute,
+    addCampaign: async () => { campaignInstalled = true; },
+    progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  }), /Default sample repository octocat\/cao-sample already exists/);
+  assert.equal(campaignInstalled, false);
 });
 
 for (const [name, options, message] of [
@@ -342,9 +413,47 @@ test('quickstart rejects private Pages before setting credentials or committing'
       await writeFile(policyPath, JSON.stringify(policy));
     },
     configurePages: () => ({ url: 'https://acme.github.io/cao/', public: false }),
+    createSampleTarget: fixture.createSampleTarget,
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
-  }), /requires public GitHub Pages/);
+  }), (error) => {
+    assert.match(error.message, /requires public GitHub Pages/);
+    assert.match(error.message, /public sample repository octocat\/cao-sample remains in place/);
+    return true;
+  });
   assert.ok(!fixture.calls.some((call) => call[0] === 'gh' && call[1] === 'variable'));
   assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call.includes('commit')));
+});
+
+test('sample repository creation writes the intentional-bug fixture and pushes its default branch', async (t) => {
+  const temporaryDirectoryRoot = await mkdtemp(path.join(os.tmpdir(), 'cao-sample-target-test-'));
+  t.after(() => rm(temporaryDirectoryRoot, { recursive: true, force: true }));
+  const calls = [];
+  const execute = (command, arguments_, options = {}) => {
+    calls.push([command, ...arguments_]);
+    if (command === 'gh' && arguments_[0] === 'repo' && arguments_[1] === 'create') {
+      mkdirSync(path.join(options.cwd, 'cao-sample'));
+      return success();
+    }
+    if (command === 'gh' && arguments_[0] === 'api') return success('main\n');
+    if (command === 'git' && arguments_[0] === 'add') {
+      const readme = readFileSync(path.join(options.cwd, 'README.md'), 'utf8');
+      const source = readFileSync(path.join(options.cwd, 'src/checkout.mjs'), 'utf8');
+      assert.match(readme, /intentionally contains bugs/);
+      assert.match(source, /total \+ Number\(item\.price\)/);
+      assert.match(source, /inventoryCount >= 0/);
+    }
+    return success();
+  };
+
+  const result = await createQuickstartSampleRepository({
+    repository: 'octocat/cao-sample',
+    user: { login: 'octocat', id: 1 },
+    execute,
+    temporaryDirectoryRoot,
+  });
+
+  assert.equal(result.url, 'https://github.com/octocat/cao-sample');
+  assert.ok(calls.some((call) => call.join(' ').includes('gh repo create octocat/cao-sample --public --clone')));
+  assert.ok(calls.some((call) => call.join(' ') === 'git push --set-upstream origin HEAD'));
 });

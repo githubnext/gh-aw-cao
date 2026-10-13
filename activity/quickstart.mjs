@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { activityWorkflowStats } from './cli/activity-stats.mjs';
 import { addCaoCampaign } from './cli/campaigns.mjs';
@@ -7,7 +8,7 @@ import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
-const STARTER_REPOSITORY = 'githubnext/gh-aw-cao';
+const SAMPLE_REPOSITORY_NAME = 'cao-sample';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/bug-bash';
 const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
 const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
@@ -20,6 +21,49 @@ const QUICKSTART_PATHS = [
   '.gitattributes',
   '.vscode/settings.json',
 ];
+const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
+const SAMPLE_DESCRIPTION = 'Disposable CAO quickstart sample with intentional bugs for Bug Bash.';
+const SAMPLE_SOURCE_IMPORT = '../src/checkout.mjs';
+const SAMPLE_FILES = {
+  'README.md': `# CAO sample
+
+> [!WARNING]
+> This repository intentionally contains bugs for the Central Agentic Ops
+> quickstart. Do not use its code in production.
+
+This small checkout calculator demonstrates a bounded Bug Bash review. Orders
+may contain multiple units of an item, discounts are percentages, and inventory
+must be positive before an order can ship.
+`,
+  'package.json': `${JSON.stringify({
+    name: 'cao-sample',
+    version: '1.0.0',
+    private: true,
+    type: 'module',
+    scripts: { test: 'node --test' },
+  }, null, 2)}\n`,
+  'src/checkout.mjs': `export function calculateOrderTotal(items, discountPercent = 0) {
+  const subtotal = items.reduce((total, item) => total + Number(item.price), 0);
+  return Math.max(0, subtotal - discountPercent);
+}
+
+export function canShip(inventoryCount) {
+  return inventoryCount >= 0;
+}
+`,
+  'test/checkout.test.mjs': `import assert from 'node:assert/strict';
+import test from 'node:test';
+import { calculateOrderTotal, canShip } from '${SAMPLE_SOURCE_IMPORT}';
+
+test('calculates an undiscounted single-item order', () => {
+  assert.equal(calculateOrderTotal([{ price: 12.5, quantity: 1 }]), 12.5);
+});
+
+test('ships an item with available inventory', () => {
+  assert.equal(canShip(1), true);
+});
+`,
+};
 
 function resultText(result) {
   return `${result?.stdout ?? ''}\n${result?.stderr ?? ''}`.trim();
@@ -43,6 +87,52 @@ function runJson(execute, command, arguments_) {
     return JSON.parse(result.stdout || 'null');
   } catch (error) {
     throw new Error(`${command} ${arguments_.join(' ')} returned invalid JSON: ${error.message}`);
+  }
+}
+
+export async function createQuickstartSampleRepository({
+    repository,
+    user,
+    execute = spawnSync,
+    temporaryDirectoryRoot = tmpdir(),
+  }) {
+    const temporaryDirectory = await mkdtemp(path.join(temporaryDirectoryRoot, 'cao-sample-'));
+    const checkout = path.join(temporaryDirectory, repository.split('/')[1]);
+    let repositoryCreated = false;
+    try {
+      run(execute, 'gh', [
+        'repo', 'create', repository,
+        '--public',
+        '--clone',
+        '--description', SAMPLE_DESCRIPTION,
+      ], { cwd: temporaryDirectory });
+      repositoryCreated = true;
+      for (const [relativePath, content] of Object.entries(SAMPLE_FILES)) {
+        const destination = path.join(checkout, relativePath);
+        await mkdir(path.dirname(destination), { recursive: true });
+        await writeFile(destination, content);
+      }
+      const branch = run(execute, 'gh', [
+        'api', `repos/${repository}`,
+        '--jq', '.default_branch',
+      ]).stdout.trim() || 'main';
+      run(execute, 'git', ['add', '--', ...Object.keys(SAMPLE_FILES)], { cwd: checkout });
+      run(execute, 'git', ['branch', '-M', branch], { cwd: checkout });
+      run(execute, 'git', [
+        '-c', `user.name=${user.login}`,
+        '-c', `user.email=${user.id}+${user.login}@users.noreply.github.com`,
+        'commit', '--no-gpg-sign',
+        '-m', 'Create CAO Bug Bash sample',
+      ], { cwd: checkout });
+      run(execute, 'git', ['push', '--set-upstream', 'origin', 'HEAD'], { cwd: checkout });
+      return { repository, url: `https://github.com/${repository}` };
+    } catch (error) {
+      if (repositoryCreated) {
+        throw new Error(`${error.message}\nThe public sample repository ${repository} was created but may be incomplete; inspect or delete it before retrying.`, { cause: error });
+      }
+      throw error;
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
@@ -150,6 +240,7 @@ export function formatQuickstartSummary(result) {
   return [
     'CAO quickstart complete.',
     `Dashboard: ${result.dashboard.url}`,
+    `Target: https://github.com/${result.targetRepository}${result.sampleCreated ? ' (sample with intentional bugs)' : ''}`,
     `Bug Bash: ${result.bugBash.url} (${result.bugBash.conclusion})`,
     `Activity: ${result.activity.url} (${result.activity.uniqueRuns} collected runs)`,
     `Control repository: https://github.com/${result.controlRepository}`,
@@ -158,6 +249,7 @@ export function formatQuickstartSummary(result) {
 
 async function executeCaoQuickstart({
   campaignSpec,
+  targetRepository,
   policyPath = '.github/workflows/cao.json',
   execute = spawnSync,
   addCampaign = addCaoCampaign,
@@ -167,6 +259,8 @@ async function executeCaoQuickstart({
   now = Date.now,
   pause = wait,
   resolveRootRevision = installedCaoRevision,
+  createSampleTarget = createQuickstartSampleRepository,
+  effects = {},
 } = {}) {
   const ui = progress ?? {};
 
@@ -207,6 +301,33 @@ async function executeCaoQuickstart({
   if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(user?.login || '') || !Number.isSafeInteger(user?.id)) {
     throw new Error('Unable to resolve the signed-in GitHub user for the quickstart commit');
   }
+  let selectedTarget = targetRepository;
+  let sampleCreated = false;
+  if (selectedTarget) {
+    if (!REPOSITORY_COORDINATE.test(selectedTarget)) {
+      throw new Error(`Quickstart target must use owner/repository format: ${selectedTarget}`);
+    }
+    const target = runJson(execute, 'gh', [
+      'repo', 'view', selectedTarget,
+      '--json', 'nameWithOwner,visibility',
+    ]);
+    if (!REPOSITORY_COORDINATE.test(target?.nameWithOwner || '') || String(target.visibility || '').toUpperCase() !== 'PUBLIC') {
+      throw new Error(`Quickstart target must be an accessible public repository: ${selectedTarget}`);
+    }
+    selectedTarget = target.nameWithOwner;
+  } else {
+    selectedTarget = `${user.login}/${SAMPLE_REPOSITORY_NAME}`;
+    const existingSample = execute('gh', ['api', `repos/${selectedTarget}`], { encoding: 'utf8' });
+    if (!existingSample?.error && existingSample?.status === 0) {
+      throw new Error(
+        `Default sample repository ${selectedTarget} already exists. `
+        + `Rerun with --target ${selectedTarget} to use it, or delete it before retrying.`,
+      );
+    }
+    if (existingSample?.error || !/\bHTTP 404\b/.test(existingSample?.stderr || '')) {
+      throw new Error(`Unable to verify that ${selectedTarget} is available: ${commandFailureMessage(existingSample, 'gh api failed')}`);
+    }
+  }
 
   await ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
@@ -216,10 +337,22 @@ async function executeCaoQuickstart({
   if (!campaign?.workers?.investigation) {
     throw new Error('Bug Bash did not install its CAO campaign declaration');
   }
+  if (!targetRepository) {
+    await ui.step?.(`Creating the public sample target ${selectedTarget} with intentional bugs`);
+    await createSampleTarget({
+      repository: selectedTarget,
+      user,
+      execute,
+    });
+    sampleCreated = true;
+    effects.sampleRepository = selectedTarget;
+    ui.success?.(`Public sample target created: ${selectedTarget}`);
+  }
   const controlOwner = controlRepository.split('/')[0];
+  const targetOwner = selectedTarget.split('/')[0];
   policy['control-plane'].scope = {
-    'allowed-owners': [...new Set([controlOwner, 'githubnext'])],
-    'allowed-repositories': [controlRepository, STARTER_REPOSITORY],
+    'allowed-owners': [...new Set([controlOwner, targetOwner])],
+    'allowed-repositories': [...new Set([controlRepository, selectedTarget])],
   };
   policy['control-plane'].activity = { repositories: [controlRepository] };
   policy['control-plane'].campaigns['bug-bash'] = {
@@ -228,7 +361,7 @@ async function executeCaoQuickstart({
     mode: 'review',
     'max-repositories': 1,
     'rollout-percent': 100,
-    targets: { [STARTER_REPOSITORY]: { mode: 'review' } },
+    targets: { [selectedTarget]: { mode: 'review' } },
     workers: {
       investigation: {
         ...campaign.workers.investigation,
@@ -242,7 +375,7 @@ async function executeCaoQuickstart({
     'validate-policy',
     policyPath,
   ]);
-  ui.success?.('Bug Bash campaign installed in review mode for one public starter repository');
+  ui.success?.(`Bug Bash campaign installed in review mode for ${selectedTarget}`);
 
   await ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
@@ -284,7 +417,7 @@ async function executeCaoQuickstart({
     branch,
     pause,
     fields: {
-      target_repo: STARTER_REPOSITORY,
+      target_repo: selectedTarget,
       safe_output_repo: controlRepository,
       max_repos: 1,
       rollout_percent: 100,
@@ -297,7 +430,7 @@ async function executeCaoQuickstart({
     workflow: BUG_BASH_WORKFLOW,
     event: 'workflow_dispatch',
     created: bugBashCreated,
-    titleIncludes: STARTER_REPOSITORY,
+    titleIncludes: selectedTarget,
     pause,
   });
   const bugBash = await watchRun(execute, controlRepository, bugBashRun, { pause });
@@ -311,7 +444,7 @@ async function executeCaoQuickstart({
     workflow: BUG_BASH_WORKER,
     event: 'workflow_dispatch',
     created: bugBashCreated,
-    titleIncludes: STARTER_REPOSITORY,
+    titleIncludes: selectedTarget,
     attempts: 15,
     pause,
     required: false,
@@ -380,7 +513,8 @@ async function executeCaoQuickstart({
   return {
     command: 'quickstart',
     controlRepository,
-    starterRepository: STARTER_REPOSITORY,
+    targetRepository: selectedTarget,
+    sampleCreated,
     campaign: 'bug-bash',
     mode: 'review',
     dashboard: {
@@ -409,11 +543,19 @@ async function executeCaoQuickstart({
 export async function runCaoQuickstart(options = {}) {
   const ui = options.progress
     ?? (await import('./setup-prompt.mjs')).createQuickstartProgress();
+  const effects = {};
   ui.start?.();
   try {
-    return await executeCaoQuickstart({ ...options, progress: ui });
+    return await executeCaoQuickstart({ ...options, progress: ui, effects });
   } catch (error) {
     ui.failure?.();
+    if (effects.sampleRepository) {
+      throw new Error(
+        `${error.message}\nThe public sample repository ${effects.sampleRepository} remains in place. `
+        + `Inspect or delete it before retrying, or rerun with --target ${effects.sampleRepository}.`,
+        { cause: error },
+      );
+    }
     throw error;
   }
 }

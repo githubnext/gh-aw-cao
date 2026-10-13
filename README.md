@@ -11,8 +11,7 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
-Reach a first data-bearing dashboard from a clean public or private control
-repository checkout with:
+Reach a first data-bearing dashboard with:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -20,17 +19,18 @@ curl --fail --silent --show-error --location \
   bash -s -- --quickstart
 ```
 
-When run at a repository root, the installer uses that clean checkout, including
-headlessly on the default branch. When run interactively outside a checkout, it
-lists eligible repository owners and creates a private control repository. It
-installs Bug Bash in review mode for the pinned public starter target, commits
-and pushes the bounded CAO paths, collects Activity, and waits for a public
-GitHub Pages dashboard with first data. This one run can use up to 700 AI
-credits and never modifies the starter repository.
+At a repository root, the installer uses that clean default-branch checkout,
+including headlessly. Outside a checkout, it creates the private control
+repository `USERNAME/cao`. Unless `--target OWNER/REPO` selects an existing
+public repository, quickstart also creates the public `USERNAME/cao-sample`
+repository with intentional bugs and runs Bug Bash against it in review mode.
+It commits and pushes the bounded CAO paths, collects Activity, and waits for a
+public GitHub Pages dashboard with first data. This one run can use up to 700 AI
+credits. After initial sample creation, CAO never modifies the target.
 Elapsed progress distinguishes the short local installation phases from the
 longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
-For non-interactive creation of a new private control repository, also pass
-`--create-repo OWNER/CONTROL_REPOSITORY`.
+Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
+repository explicitly.
 
 The installer checks tools, sign-in, and checkout readiness before writing CAO
 files, adds gh-aw and the core runtime, and preserves an existing policy.
@@ -47,12 +47,13 @@ repository must be public, existing scope must already be exact to that
 repository, and campaigns must be empty. Setup configures public Actions-backed
 Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
 Activity scope for only that repository. Private/internal repositories or
-broader existing policy require interactive setup. Headless repository creation
-still requires `--create-repo OWNER/NAME`, and missing prerequisites (including
-an installed gh-aw that is too old) fail instead of reporting success. Explicit
-`--quickstart` is the bounded headless first-success path: from a clean public or
-private checkout on its default branch, it performs the documented
-public-starter effects without prompting.
+broader existing policy require interactive setup. Headless guided-setup
+repository creation still requires `--create-repo OWNER/NAME`; quickstart alone
+may create only the signed-in user's `cao` and `cao-sample` repositories.
+Missing prerequisites (including an installed gh-aw that is too old) fail
+instead of reporting success. Explicit `--quickstart` is the bounded headless
+first-success path and performs the documented sample-target effects without
+prompting.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime

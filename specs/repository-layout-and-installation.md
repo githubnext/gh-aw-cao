@@ -220,9 +220,10 @@ guided setup directly on the controlling terminal without allowing streamed
 children to consume installer source from stdin. Interactive `--quickstart`
 MUST preserve that controlling terminal for its progress UI. `--quickstart`
 MUST also run with plain progress from a clean current public or private
-control-repository checkout when no terminal is available or `CI` is set,
-while exact non-interactive repository creation MUST retain plain progress and
-require `--create-repo OWNER/NAME`. Informational status lines SHOULD remain
+control-repository checkout when no terminal is available or `CI` is set.
+Outside a checkout it MUST default only to the signed-in user's available
+`cao` repository name; another coordinate MUST require
+`--create-repo OWNER/NAME`. Informational status lines SHOULD remain
 aligned with completed steps while using muted styling to distinguish existing
 state from completed work. Animated presentation MUST be disabled when
 `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports no styling
@@ -257,10 +258,13 @@ commit, or push.
 
 `--quickstart` MUST be a separate, explicit end-to-end path rather than an
 implicit continuation of install or setup. It MUST use a clean current public
-or private control repository, or create a private control repository when
-creation is requested, and disclose before execution that it publishes a
-public dashboard, runs Bug Bash in review mode against the pinned public
-starter target, and may consume up to 700 AI credits. The flag itself
+or private control repository, default to creating the private
+`USERNAME/cao` control repository outside a checkout, or create another private
+control repository only when `--create-repo OWNER/NAME` requests it. It MUST
+disclose before execution that it publishes a public dashboard, creates the
+public `USERNAME/cao-sample` target with intentional bugs unless
+`--target OWNER/REPO` selects an existing public target, runs Bug Bash against
+that target in review mode, and may consume up to 700 AI credits. The flag itself
 authorizes the bounded campaign installation, commit, push, dispatch,
 collection, and deployment effects in interactive and headless use; the
 installer MUST NOT add a redundant post-install confirmation.
@@ -275,11 +279,15 @@ The quickstart MUST:
 - accept public, private, and internal control repositories because its target
   and collected evidence are public, without widening that visibility exception
   to another target or campaign;
-- configure exact global scope for the control repository and public starter
+- validate an explicit target as public, or fail if `USERNAME/cao-sample`
+  already exists before creating that public repository with a production
+  warning and deterministic functional defects; it MUST NOT reuse, overwrite,
+  delete, or choose a suffixed default repository name;
+- configure exact global scope for the control repository and selected public
   target while declaring `control-plane.activity.repositories` as only the
   control repository;
 - set Bug Bash to `review`, cap selection at one repository, set rollout to
-  100 percent for the exact starter target, and cap its worker at `review`;
+  100 percent for the exact selected target, and cap its worker at `review`;
 - select repository-local workflow-token mode and require public GitHub Pages
   with GitHub Actions as its source;
 - refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
@@ -292,7 +300,9 @@ The quickstart MUST:
 - dispatch Activity with a correlatable request ID, require a successful
   data-bearing Activity artifact with at least one unique run, then require the
   corresponding dashboard deployment to succeed; and
-- print the dashboard, workflow-run, and control-repository URLs only after
+- never modify the selected target after initial sample creation, and disclose
+  that a created sample may remain if a later phase fails; and
+- print the target, dashboard, workflow-run, and control-repository URLs only after
   those success conditions are verified.
 
 `control-plane.activity.repositories`, when present, MUST contain exact

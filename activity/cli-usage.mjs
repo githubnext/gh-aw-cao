@@ -37,7 +37,7 @@ export const DEFAULT_GH_LIMIT = 30;
 export const USAGE = `Usage:
   cao init
   cao setup [--json]
-  cao quickstart [--campaign PACKAGE] [--json]
+  cao quickstart [--target OWNER/REPO] [--campaign PACKAGE] [--json]
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]

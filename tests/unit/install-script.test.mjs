@@ -35,9 +35,10 @@ const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install
 test("quickstart keeps terminal presentation and filters Node experimental warnings", () => {
   assert.match(installerSource, /run_cao_quickstart\(\)[\s\S]*?terminal_available[\s\S]*?< \/dev\/tty/);
   assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
-  assert.match(installerSource, /run_cao_quickstart "\$cao_command" quickstart/);
+  assert.match(installerSource, /quickstart_arguments=\(quickstart\)/);
+  assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
+  assert.match(installerSource, /default_quickstart_control_repository/);
   assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
-  assert.doesNotMatch(installerSource, /if \[\[ "\$quickstart" == true \]\]; then\s+create_repository_requested=true/);
 });
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
@@ -138,6 +139,10 @@ if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   [[ -z "\${FAKE_OWNER_DISCOVERY_FAILURE:-}" ]] || { echo "owner lookup failed" >&2; exit 1; }
   echo "owners-query" >> "$FAKE_COMMAND_LOG"
   printf '%b\\n' "\${FAKE_REPOSITORY_OWNERS:-alpha-user\\\\nalpha-org}"
+  exit 0
+fi
+if [[ "$*" == "api user --jq .login" ]]; then
+  printf '%s\\n' "\${FAKE_USER_LOGIN:-alpha-user}"
   exit 0
 fi
 if [[ "\${1:-}" == api && "\${2:-}" == repos/*/pages ]]; then
@@ -1135,6 +1140,22 @@ test("headless quickstart selects the current checkout and validates it before m
   await assertNothingInstalled(consumer);
 });
 
+test("headless quickstart defaults a missing control checkout to USERNAME/cao and refuses a collision", async (t) => {
+  const { root, env, log } = await createConsumer(t, supportedGhAw);
+  const outsideCheckout = path.join(root, "outside-checkout");
+  await mkdir(outsideCheckout);
+  const result = await runStreamed(outsideCheckout, {
+    ...env,
+    CI: "1",
+    FAKE_CONTROL_REPOSITORY: "alpha-user/cao",
+    FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
+  }, ["--quickstart"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /alpha-user\/cao already exists/);
+  assert.equal(await log(), "");
+  await assertNothingInstalled(outsideCheckout);
+});
+
 test("install.sh in CI applies public defaults without prompting on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runTerminal("bash", [installScript, "--setup"], {
@@ -1166,6 +1187,8 @@ for (const arguments_ of [
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
   ["--setup", "--quickstart"],
+  ["--target", "alpha-org/project"],
+  ["--quickstart", "--target", "not-a-coordinate"],
 ]) {
   test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t);

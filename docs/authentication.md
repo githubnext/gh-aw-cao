@@ -86,8 +86,8 @@ workflow-token quota. Owner-wide or cross-repository Activity scopes require
 only the control repository.
 
 The public quickstart has broader rollout scope because Bug Bash reads its
-public starter target, but the agentic workflows themselves run in the control
-repository. It declares the narrower Activity scope explicitly:
+selected public target, but the agentic workflows themselves run in the
+control repository. It declares the narrower Activity scope explicitly:
 
 ```json
 {
@@ -95,7 +95,7 @@ repository. It declares the narrower Activity scope explicitly:
     "scope": {
       "allowed-repositories": [
         "acme/cao",
-        "githubnext/gh-aw-cao"
+        "octocat/cao-sample"
       ]
     },
     "activity": {
