@@ -24,6 +24,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
 )
 
 const backfillDatabaseQueries = "../../../dashboard/site/src/data/queries/database.json"
@@ -58,10 +59,8 @@ func TestPostgresBackfillIntegration(t *testing.T) {
 	if err := store.Ping(ctx); err != nil {
 		t.Fatal("local Redis is unavailable")
 	}
-	lake := collect.Lake{Directory: t.TempDir()}
-	if err := os.CopyFS(lake.Directory, os.DirFS("../../testdata/deployed-subset")); err != nil {
-		t.Fatal(err)
-	}
+	directory, _ := testutil.RecentSnapshot(t, "../../testdata/deployed-subset")
+	lake := collect.Lake{Directory: directory}
 	enrollment := collect.Enrollment{Metadata: store, Leases: store}
 	github, api, proxy, _ := syntheticGitHub(t, simulator.Scenario{
 		Name: "backfill-replay", Repositories: 1,

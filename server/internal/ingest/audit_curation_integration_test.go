@@ -15,12 +15,14 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
 )
 
 func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 	ctx, store, config := ingestTestStoreConfig(t)
 	options := Options{DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json"}
-	first, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	directory, _ := testutil.RecentSnapshot(t, "../../testdata/deployed-subset")
+	first, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,14 +33,14 @@ func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {
 		FROM audits WHERE id='audit:424242:complete'`); err != nil {
 		t.Fatal(err)
 	}
-	second, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	second, err := Run(ctx, store, directory, options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if second.Revision != first.Revision+1 || second.DataRevision != first.DataRevision || second.EvaluatedAt != first.EvaluatedAt || !reflect.DeepEqual(second.Counts, first.Counts) {
 		t.Fatalf("unchanged input did not publish cleanup: before=%+v after=%+v", first, second)
 	}
-	third, err := Run(ctx, store, "../../testdata/deployed-subset", options)
+	third, err := Run(ctx, store, directory, options)
 	if err != nil || !reflect.DeepEqual(third, second) {
 		t.Fatalf("repeat cleanup was not idempotent: %+v %v", third, err)
 	}
