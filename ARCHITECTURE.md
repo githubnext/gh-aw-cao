@@ -524,15 +524,17 @@ than reusing, overwriting, deleting, or suffixing repositories. Quickstart
 installs Bug Bash at the selected catalog revision, configures exact
 review-only authority for the selected target, requires public Pages, commits
 and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
-`.vscode/settings.json` project settings, dispatches one orchestrator and at
-most one worker, collects Activity, and waits for the Activity-triggered
-dashboard deployment. Campaign execution never modifies the target. A failed
-later phase may leave the initially created sample in place and reports that
-partial effect. Quickstart reports Bug Bash blocked and failed outcomes without
-converting them to findings, and does not report success until the Activity
-artifact contains at least one unique run and the dashboard deployment
-succeeds. Installer handoff preserves the controlling terminal when present
-and otherwise uses plain headless progress, uses elapsed progress for each long
+`.vscode/settings.json` project settings, then waits for successful validation,
+a data-bearing push-triggered Activity snapshot, and its Activity-triggered
+dashboard deployment. Only after that readiness gate does it dispatch one Bug
+Bash orchestrator and at most one worker. It then collects a fresh Activity
+snapshot and waits for the updated dashboard deployment. Campaign execution
+never modifies the target. A failed later phase may leave the initially created
+sample in place and reports that partial effect. Quickstart reports Bug Bash
+blocked and failed outcomes without converting them to findings, and does not
+report success until both readiness and post-campaign Activity/dashboard gates
+succeed. Installer handoff preserves the controlling terminal when present and
+otherwise uses plain headless progress, uses elapsed progress for each long
 operation, and suppresses Node's experimental-runtime diagnostic rather than
 mixing it into user progress. `--quickstart` is the authorization boundary for
 these effects in interactive and headless use; ordinary install and `cao setup`

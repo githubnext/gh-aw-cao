@@ -307,12 +307,16 @@ The quickstart MUST:
   `dashboard/`, `bug-bash/`, `cao.sh`, gh-aw's root `.gitattributes`, and its
   `.vscode/settings.json` project settings, refuse pre-staged changes, then
   create and push one commit on the repository default branch;
+- after pushing, require successful CAO validation, a data-bearing
+  push-triggered Activity artifact with at least one unique run, and its
+  successful Activity-triggered dashboard deployment before dispatching Bug
+  Bash;
 - dispatch one Bug Bash orchestrator and at most one investigation worker,
   preserving a blocked or failed outcome rather than converting it to
   `no-finding`;
-- dispatch Activity with a correlatable request ID, require a successful
-  data-bearing Activity artifact with at least one unique run, then require the
-  corresponding dashboard deployment to succeed; and
+- after the bounded campaign, dispatch Activity with a correlatable request ID,
+  require a data-bearing artifact with at least one unique run, then require
+  the corresponding dashboard deployment to succeed;
 - never modify the selected target after initial sample creation, and disclose
   that a created sample may remain if a later phase fails; and
 - print the target, dashboard, workflow-run, and control-repository URLs only after

@@ -95,6 +95,15 @@ async function quickstartFixture(t, {
   const sampleTargets = [];
   const targetRepository = 'octocat/cao-sample';
   const runRecords = {
+    'cao-validate.yml': {
+      databaseId: 100,
+      displayTitle: 'CAO validation',
+      status: 'completed',
+      conclusion: 'success',
+      createdAt: '2026-01-01T00:00:05Z',
+      updatedAt: '2026-01-01T00:00:30Z',
+      url: 'https://github.com/acme/cao/actions/runs/100',
+    },
     'bug-bash.lock.yml': {
       databaseId: 101,
       displayTitle: `Bug Bash: ${targetRepository}`,
@@ -304,6 +313,23 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(progress.includes('Public sample target created: octocat/cao-sample'));
   assert.ok(progress.includes('Bug Bash campaign installed in review mode for octocat/cao-sample'));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
+  assert.ok(progress.includes('Waiting for CAO validation'));
+  assert.ok(progress.includes('Waiting for the initial CAO Activity snapshot'));
+  assert.ok(progress.includes('Waiting for the initial dashboard deployment'));
+  assert.ok(
+    progress.indexOf('Waiting for the initial dashboard deployment')
+      < progress.findIndex((message) => message.startsWith('Running one bounded Bug Bash')),
+  );
+  const bugBashDispatch = fixture.calls.findIndex((call) => call.join(' ').includes('workflow run bug-bash.lock.yml'));
+  for (const workflow of ['cao-validate.yml', 'cao-activity.yml', 'cao-dashboard.yml']) {
+    const readinessWait = fixture.calls.findIndex((call) =>
+      call[0] === 'gh'
+      && call[1] === 'run'
+      && call[2] === 'list'
+      && call.includes(workflow)
+    );
+    assert.ok(readinessWait >= 0 && readinessWait < bugBashDispatch, `${workflow} readiness precedes Bug Bash`);
+  }
   assert.ok(progress.some((message) => message.startsWith('Running one bounded Bug Bash campaign in review mode')));
   assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
   assert.ok(progress.some((message) => message.includes('up to 700 AI credits')));

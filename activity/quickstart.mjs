@@ -12,6 +12,7 @@ const SAMPLE_REPOSITORY_NAME = 'cao-sample';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/bug-bash';
 const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
 const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
+const VALIDATION_WORKFLOW = 'cao-validate.yml';
 const ACTIVITY_WORKFLOW = 'cao-activity.yml';
 const DASHBOARD_WORKFLOW = 'cao-dashboard.yml';
 const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'bug-bash'];
@@ -396,6 +397,7 @@ async function executeCaoQuickstart({
   status.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
 
   await ui.step?.('Committing and pushing the bounded control-plane configuration');
+  const bootstrapCreated = isoBefore(now);
   run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS]);
   run(execute, 'git', ['diff', '--cached', '--check']);
   if (!hasHead) run(execute, 'git', ['branch', '-M', branch]);
@@ -407,6 +409,59 @@ async function executeCaoQuickstart({
   ]);
   run(execute, 'git', ['push', '--set-upstream', 'origin', 'HEAD']);
   ui.success?.(`Control plane pushed to ${controlRepository}`);
+
+  await ui.step?.('Waiting for CAO validation');
+  const validationRun = await findRun({
+    execute,
+    repository: controlRepository,
+    workflow: VALIDATION_WORKFLOW,
+    event: 'push',
+    created: bootstrapCreated,
+    pause,
+  });
+  const validation = await watchRun(execute, controlRepository, validationRun, { pause });
+  if (validation.conclusion !== 'success') {
+    throw new Error(`CAO validation concluded ${validation.conclusion || validation.status}: ${validation.url}`);
+  }
+  ui.success?.('CAO validation completed');
+
+  await ui.step?.('Waiting for the initial CAO Activity snapshot');
+  const initialActivityRun = await findRun({
+    execute,
+    repository: controlRepository,
+    workflow: ACTIVITY_WORKFLOW,
+    event: 'push',
+    created: bootstrapCreated,
+    pause,
+  });
+  const initialActivity = await watchRun(execute, controlRepository, initialActivityRun, { pause });
+  if (initialActivity.conclusion !== 'success') {
+    throw new Error(`Initial CAO Activity concluded ${initialActivity.conclusion || initialActivity.status}: ${initialActivity.url}`);
+  }
+  const initialStats = await collectActivityStats({
+    repo: controlRepository,
+    workflow: ACTIVITY_WORKFLOW,
+    limit: 1,
+  }, execute);
+  if (initialStats.summary.runsWithArtifact !== 1 || initialStats.summary.totalUniqueRuns < 1) {
+    throw new Error(`Initial CAO Activity completed without a data-bearing snapshot: ${initialActivity.url}`);
+  }
+  ui.success?.(`Initial Activity collected ${initialStats.summary.totalUniqueRuns} workflow runs`);
+
+  await ui.step?.('Waiting for the initial dashboard deployment');
+  const initialDashboardRun = await findRun({
+    execute,
+    repository: controlRepository,
+    workflow: DASHBOARD_WORKFLOW,
+    event: 'workflow_run',
+    created: bootstrapCreated,
+    pause,
+  });
+  const initialDashboard = await watchRun(execute, controlRepository, initialDashboardRun, { pause });
+  if (initialDashboard.conclusion !== 'success') {
+    throw new Error(`Initial CAO Dashboard concluded ${initialDashboard.conclusion || initialDashboard.status}: ${initialDashboard.url}`);
+  }
+  ui.success?.('Control plane validated and initial dashboard deployed');
 
   const bugBashCreated = isoBefore(now);
   await ui.step?.('Running one bounded Bug Bash campaign in review mode (up to 700 AI credits)');
