@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
 )
 
 // TestEvidenceShardPipelineParity compares both consumers of the same phased
@@ -24,11 +25,21 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 	} else if err != nil {
 		t.Fatal(err)
 	}
-	directory := scratchDirectory(t)
+	directory, offset := testutil.RecentSnapshot(t, "../../testdata/deployed-subset")
+	snapshot, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := snapshot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	evidence, err := os.ReadFile("testdata/evidence.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
+	evidence = testutil.ShiftEvidence(t, evidence, offset)
 	runEvidence := []json.RawMessage{}
 	recordEvidence := []json.RawMessage{}
 	for _, line := range bytes.Split(bytes.TrimSpace(evidence), []byte("\n")) {
@@ -48,11 +59,11 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		t.Fatalf("expected two run-phase and four record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
 	}
 
-	runFixture, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-runs/subset.jsonl")
+	runFixture, err := snapshot.ReadFile("gh-aw-logs-runs/subset.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordFixture, err := os.ReadFile("../../testdata/deployed-subset/gh-aw-logs-records/subset.jsonl")
+	recordFixture, err := snapshot.ReadFile("gh-aw-logs-records/subset.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}

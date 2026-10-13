@@ -17,6 +17,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
 )
 
 func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
@@ -50,7 +51,8 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	result, err := ingest.Run(ctx, store, "../../testdata/deployed-subset", ingest.Options{
+	directory, _ := testutil.RecentSnapshot(t, "../../testdata/deployed-subset")
+	result, err := ingest.Run(ctx, store, directory, ingest.Options{
 		DatabaseQueriesPath: "../../../dashboard/site/src/data/queries/database.json",
 	})
 	if err != nil {
