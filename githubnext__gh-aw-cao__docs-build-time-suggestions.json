@@ -1,7 +1,80 @@
 {
-  "source_sha": "5263be06676f6b3509a55bd2937a488c941c6aac",
+  "source_sha": "a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2",
   "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-13T06:00:30Z",
+      "worker_run_id": 38354152582,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38354172987,
+        38353758914,
+        38353710512,
+        38353436676,
+        38353435555,
+        38352524537,
+        38352209741,
+        38350660177,
+        38349760350,
+        38349759763,
+        38349759638,
+        38349759517,
+        38349759434,
+        38349721449,
+        38348989096,
+        38347774794,
+        38347163805,
+        38344629298,
+        38344577806,
+        38342989666
+      ],
+      "docs_window": {
+        "start": "2026-10-13T03:42:39Z",
+        "end": "2026-10-13T05:58:35Z"
+      },
+      "docs_success_count": 8,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 1,
+      "docs_metrics": {
+        "queue_median_s": 0.0,
+        "queue_p90_s": 0.0,
+        "workflow_median_s": 19.0,
+        "workflow_p90_s": 64.3,
+        "execution_median_s": 19.0,
+        "execution_p90_s": 64.3,
+        "schedule_freshness_median_s": 14.0,
+        "schedule_freshness_p90_s": 15.0,
+        "check_freshness_step_median_s": 11.0,
+        "check_freshness_step_p90_s": 11.0,
+        "build_median_s": 43.5,
+        "build_p90_s": 51.1,
+        "deploy_median_s": 19.0,
+        "deploy_p90_s": 19.0
+      },
+      "dashboard_window": {
+        "start": "2026-10-12T22:35:10Z",
+        "end": "2026-10-13T05:58:31Z"
+      },
+      "dashboard_success_count": 0,
+      "dashboard_current_sha_success_count": 0,
+      "dashboard_comparable_success_count": 0,
+      "dashboard_metrics": {
+        "queue_median_s": null,
+        "queue_p90_s": null,
+        "workflow_median_s": null,
+        "workflow_p90_s": null,
+        "execution_median_s": null,
+        "execution_p90_s": null,
+        "build_median_s": null,
+        "build_p90_s": null,
+        "cache_median_s": null,
+        "cache_p90_s": null,
+        "deploy_median_s": null,
+        "deploy_p90_s": null
+      },
+      "decision": "noop_insufficient_comparable_runs",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T03:42:39Z through 2026-10-13T05:58:35Z, 8 runs succeeded but only 2 reached a successful build job (38353758914, 38353436676), so there were not 5 comparable successful docs samples. Trusted job metadata showed six successful schedule runs on 5263be0 were freshness-only skips, while the two current-SHA build samples on a71b0e0 were one push run with deploy skipped and one schedule run with deploy success; queue median/p90 were 0.0s/0.0s, workflow median/p90 were 19.0s/64.3s, successful build-job median/p90 were 43.5s/51.1s, successful deploy-job median/p90 were 19.0s/19.0s, and schedule-freshness median/p90 were 14.0s/15.0s. Bounded log reads for docs runs 38353436676 and 38353758914 confirmed Node setup cache hits on the npm cache primary key, and job metadata showed Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in both build samples, consistent with cache hits rather than repeated installation or artifact download. The same docs window also contained 6 skipped workflow_run runs and 6 workflow_run runs that ended action_required; these were disclosed but excluded from comparability. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T22:35:10Z through 2026-10-13T05:58:31Z contained 0 successful dashboard builds (18 skipped workflow_run runs and 2 push failures). Trusted job metadata for failure 38353436671 showed build failed after a 158s Restore collected activity data step and a 1s Upgrade fallback activity data step failure, while failure 38337349456 was a 3h17m outlier with no retained job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard samples, no evidence-backed recommendation is actionable in this cycle."
+    },
     {
       "evaluated_at": "2026-10-13T05:34:20Z",
       "worker_run_id": 38351755775,
@@ -1863,66 +1936,6 @@
       },
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T10:33:50Z through 2026-10-12T14:31:28Z, 11 runs concluded success and 9 were skipped. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. All successful runs used source SHA b56d73723daceacca67a961d071f650e7f76eedd; their workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 17.0s/22.3s, and schedule-freshness median/p90 was 16.0s/19.0s. Trusted job metadata for every successful run showed build and deploy skipped; a bounded log read of run 38262162815 confirmed the freshness-only summary path reporting that the deployed docs and dashboard are current. Because the bounded sample contains 0 comparable successful deployed docs runs, no evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-12T11:30:03Z",
-      "worker_run_id": 38242651902,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38242770728,
-        38242463446,
-        38240194752,
-        38239976555,
-        38239267392,
-        38238852563,
-        38237113002,
-        38236917010,
-        38234162053,
-        38233846092,
-        38231706101,
-        38231365866,
-        38227094573,
-        38226880235,
-        38222896878,
-        38222309577,
-        38220493696,
-        38217307151,
-        38216521228,
-        38214993782
-      ],
-      "docs_window": {
-        "start": "2026-10-12T06:55:56Z",
-        "end": "2026-10-12T11:27:51Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 0,
-      "docs_metrics": {
-        "queue_median_s": 0.0,
-        "queue_p90_s": 0.0,
-        "workflow_median_s": 17.5,
-        "workflow_p90_s": 19.5,
-        "schedule_freshness_median_s": 5.5,
-        "schedule_freshness_p90_s": 14.0,
-        "build_median_s": null,
-        "build_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "dashboard_window": {
-        "start": "2026-10-12T01:19:57Z",
-        "end": "2026-10-12T11:24:37Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_current_sha_success_count": 0,
-      "dashboard_metrics": {
-        "build_median_s": null,
-        "build_p90_s": null,
-        "cache_median_s": null,
-        "cache_p90_s": null,
-        "deploy_median_s": null,
-        "deploy_p90_s": null
-      },
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"artifact transfer and Pages packaging\" on workflow source SHA b56d73723daceacca67a961d071f650e7f76eedd. Within the latest 20 completed docs.yml runs from 2026-10-12T06:55:56Z through 2026-10-12T11:27:51Z, 10 runs concluded success and all 10 were schedule-triggered freshness-only passes on source SHA b56d73723daceacca67a961d071f650e7f76eedd; the other 10 completed runs were skipped workflow_run invocations on the same source SHA. Trusted job metadata showed 0 comparable successful deployed docs runs with both build and deploy successful, below the required minimum of 5. Across the 10 successful docs runs, workflow queue median/p90 was 0.0s/0.0s, full workflow execution median/p90 was 17.5s/19.5s, and schedule-freshness job median/p90 was 5.5s/14.0s. Trusted job metadata for every successful docs run showed build and deploy skipped. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T01:19:57Z through 2026-10-12T11:24:37Z contained 0 successful dashboard builds and therefore provided no comparable dashboard execution sample in this bounded window. Because the bounded sample contains 0 comparable successful deployed docs runs, no safe evidence-backed artifact transfer and pages packaging recommendation is actionable in this cycle."
     }
   ]
 }
