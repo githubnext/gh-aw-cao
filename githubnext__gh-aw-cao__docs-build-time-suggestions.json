@@ -3,6 +3,42 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-13T19:23:38Z",
+      "worker_run_id": 38453956070,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38454215177,
+        38453879574,
+        38451570256,
+        38450855138,
+        38450836113,
+        38450501752,
+        38450190808,
+        38447656535,
+        38447350323,
+        38447114616,
+        38446129254,
+        38443639763,
+        38443530483,
+        38442872233,
+        38442078681,
+        38441849112,
+        38441522009,
+        38439960941,
+        38439839278,
+        38438428478
+      ],
+      "docs_window": {
+        "start": "2026-10-13T17:24:44Z",
+        "end": "2026-10-13T19:21:40Z"
+      },
+      "docs_success_count": 8,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_incomplete_insufficient_comparable_runs",
+      "outcome": "Evaluation incomplete for category \"Astro documentation generation\" on source SHA 84723fff744e08c73292dc88ce4a7de20f493502. In the latest 20 completed docs.yml runs from 2026-10-13T17:24:44Z through 2026-10-13T19:21:40Z, 8 runs succeeded but only 3 were comparable successful builds (run IDs 38451570256, 38450836113, 38443639763), with 1 successful deploy jobs. The same window also contained 5 freshness-only schedule successes that skipped the build because deployed docs and dashboard were current, 7 skipped workflow_run callbacks, 2 action_required workflow_run callbacks, and 3 failed build attempts. Because the mission requires at least five comparable successful runs in the latest-20-run evidence window before making a build-time recommendation, no actionable evaluation was completed and the category remains queued for the next run."
+    },
+    {
       "evaluated_at": "2026-10-13T19:01:30Z",
       "worker_run_id": 38451185487,
       "category": "Astro documentation generation",
@@ -1213,48 +1249,6 @@
       "dashboard_comparable_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. In the latest 20 completed docs.yml runs from 2026-10-12T22:56:20Z through 2026-10-13T02:18:31Z, 8 runs succeeded but 0 successful docs runs reached a successful build job, so there were not 5 comparable successful docs samples. Trusted job metadata showed all successful docs runs were same-SHA schedule-triggered freshness-only passes on 5263be0, with workflow queue median/p90 0.0s/0.0s, full workflow median/p90 6.5s/16.0s, execution median/p90 6.5s/16.0s, schedule-freshness median/p90 12.0s/14.0s, and the freshness-check step median/p90 7.5s/9.0s. The same 20-run window also contained 9 skipped workflow_run runs and 3 workflow_run runs that ended action_required; these were disclosed but excluded from comparability. A bounded log read from docs run 38336053619 confirmed the freshness gate still short-circuits when the deployed docs and dashboard are current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T20:24:38Z through 2026-10-13T02:32:16Z contained 0 successful runs and 0 successful dashboard build runs; 19 were skipped workflow_run runs and 1 ended action_required. Because the bounded evidence window still lacks 5 comparable successful runs, no evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T01:51:00Z",
-      "worker_run_id": 38333953301,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38334004784,
-        38333931988,
-        38333543594,
-        38330571927,
-        38330354668,
-        38325426873,
-        38324703451,
-        38324080226,
-        38323715765,
-        38322946641,
-        38321980105,
-        38321786109,
-        38321743710,
-        38320841392,
-        38320841010,
-        38319950150,
-        38319456455,
-        38318847582,
-        38318638935,
-        38317589774
-      ],
-      "docs_window": {
-        "start": "2026-10-12T22:36:07Z",
-        "end": "2026-10-13T01:50:02Z"
-      },
-      "docs_success_count": 9,
-      "docs_comparable_success_count": 0,
-      "docs_deployed_success_count": 0,
-      "dashboard_window": {
-        "start": "2026-10-12T19:45:30Z",
-        "end": "2026-10-13T01:49:58Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "incomplete_insufficient_comparable_runs: evaluated category \"dependency installation and caching\" on source SHA 5263be06676f6b3509a55bd2937a488c941c6aac. In the latest 20 completed docs.yml runs from 2026-10-12T22:36:07Z through 2026-10-13T01:50:02Z, 9 runs succeeded but 0 successful docs runs reached a successful build job, so there were no comparable docs samples for dependency-installation analysis. Trusted job metadata showed all 9 successful docs runs were same-SHA schedule-triggered freshness-only passes on 5263be0, with workflow queue median/p90 0.0s/0.0s, full workflow median/p90 6.5s/16.1s, execution median/p90 6.5s/16.1s, schedule-freshness median/p90 11.0s/13.2s, and the freshness-check step median/p90 7.0s/9.0s. The same 20-run window also contained 8 skipped workflow_run runs and 3 workflow_run runs that ended action_required; these were disclosed but excluded from comparability. A bounded log read from docs run 38333931988 confirmed the freshness gate script still short-circuits when the deployed docs and dashboard are current. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-12T19:45:30Z through 2026-10-13T01:49:58Z contained 0 successful runs and 20 skipped workflow_run runs, so no dashboard build, artifact, or cache-restore steps executed within the allowed evidence window. Because the bounded evidence window still lacks 5 comparable successful runs for category \"dependency installation and caching\", no evidence-backed dependency-caching recommendation is actionable in this cycle."
     }
   ]
 }
