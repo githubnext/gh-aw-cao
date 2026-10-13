@@ -236,9 +236,15 @@ Then call `publish_review_bundle` once with `bundle_name` set to the finding ide
 
 Create exactly one issue in `REVIEW_OUTPUT_REPO`. Use the canonical unprefixed subject `TARGET_REPO bug bash <outcome>` plus the finding identity when one exists, so reruns deduplicate onto the same issue. Provide only the unprefixed subject; the configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix.
 
-Begin the body directly with a concise executive summary naming the outcome, the repository, the source revision, and what a maintainer is being asked to do. Follow it immediately with `**Action:**`. For `review-ready`, the action is to review the attached bundle, replay the reproduction, and accept or reject the fix. For every other outcome, the action is to read the evidence and decide whether to run again.
+Make the body decision-first and easy to scan. Use these sections in this exact order:
 
-Always include the hypothesis identity and version, work identity, finding identity when one exists, classifier decision and reason, failed gate when one exists, and stated uncertainty. Put logs, patches, and long command output in named `<details>` sections. Include `### Control Plane` correlation data when present.
+1. `## Finding` — start with `**<outcome>** · TARGET_REPO @ <short revision>`, followed by at most two plain-language sentences describing the violated contract and observed behavior. Put the operational consequence on its own `**Impact:**` line. Do not repeat the title or start with `Outcome`.
+2. `## Maintainer action` — use a checklist with no more than three concrete steps. For `review-ready`, tell the maintainer to inspect the published review bundle, replay the reproduction, and accept or reject the fix. End with one `**Acceptance check:**` line containing the decisive verification command and expected result. For every other outcome, state what evidence to inspect and whether a rerun is appropriate.
+3. `## Proposed fix` — include only when a production patch exists. Name the file or symbol and summarize the behavioral change in one or two bullets. Do not describe the repair as correct.
+4. `## Verification` — use a compact Markdown table with `Check` and `Result` columns for the baseline, test-only failure, patched run, and boundary probes that were actually executed. Never put raw logs or patches in the table. Follow the table with a GitHub note containing `**Uncertainty:**` and the exact uncertainty statement.
+5. `<details><summary>Investigation metadata</summary>` — include the full source revision, hypothesis identity and version, work identity, finding identity when one exists, classifier outcome and reason, and failed gate when one exists. Keep machine-oriented identifiers here instead of in the opening summary.
+
+Put any additional logs, patches, or long command output in separate, clearly named `<details>` sections after the metadata. Include `### Control Plane` correlation data last when present.
 
 Never claim a defect the classifier did not reach `reproduced-candidate` or `review-ready` for, and never describe a repair as correct. Say which gates passed.
 

@@ -503,6 +503,26 @@ test("only a review-ready outcome publishes a complete, sealed review bundle", (
   assert.match(investigation, /Stands alone\./);
 });
 
+test("investigation issues present the decision before machine metadata", () => {
+  const finding = investigation.indexOf("`## Finding`");
+  const action = investigation.indexOf("`## Maintainer action`");
+  const fix = investigation.indexOf("`## Proposed fix`");
+  const verification = investigation.indexOf("`## Verification`");
+  const metadata = investigation.indexOf("<details><summary>Investigation metadata</summary>");
+
+  assert.ok(finding > 0);
+  assert.ok(action > finding);
+  assert.ok(fix > action);
+  assert.ok(verification > fix);
+  assert.ok(metadata > verification);
+  assert.match(investigation, /operational consequence on its own `\*\*Impact:\*\*` line/);
+  assert.match(investigation, /checklist with no more than three concrete steps/);
+  assert.match(investigation, /`\*\*Acceptance check:\*\*` line/);
+  assert.match(investigation, /Markdown table with `Check` and `Result` columns/);
+  assert.match(investigation, /GitHub note containing `\*\*Uncertainty:\*\*`/);
+  assert.match(investigation, /machine-oriented identifiers here instead of in the opening summary/);
+});
+
 test("the sealing command writes digests and rejects an incomplete bundle", () => {
   const directory = mkdtempSync(join(tmpdir(), "bug-bash-bundle-"));
   try {
