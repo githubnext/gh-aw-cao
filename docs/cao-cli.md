@@ -65,8 +65,19 @@ gh aw run dependabot --ref main \
 | `./cao.sh setup-auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `./cao.sh setup-auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
+| `./cao.sh add --repository OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
+
+The canvas Updates page exposes **Add repository** beside Repositories. Its
+debounced GitHub search only selects a target; execution still requires fresh
+approval of the exact `./cao.sh add --repository OWNER/REPO` command. Enrollment
+requires existing exact owner and repository allowlists and does not rewrite a
+broad discovery policy. An already enrolled repository is unchanged. New targets
+stay in review mode even when a campaign defaults to live. The command neither
+commits nor pushes, enables campaigns, changes rollout limits, configures
+credentials, nor expands an explicitly narrowed Activity scope. Review and commit
+the policy before activation at a reviewed workflow SHA.
 
 Use `./cao.sh quickstart` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing

@@ -18,6 +18,10 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   :is(.semantic-prompt-action, .chart-prompt-action) .table-intent-button span { display: inline; overflow-wrap: anywhere; }
   .cli-action-trigger, .table-intent-button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
   .cli-action-trigger-copy strong { white-space: normal; overflow-wrap: anywhere; }
+  .document-list-header { align-items: flex-start; gap: 12px; padding-inline: 16px; }
+  .document-list-header .cli-action-trigger { width: 44px; min-height: 44px; justify-content: center; padding: 0; }
+  .document-list-header .cli-action-trigger > .octicon { margin-top: 0; }
+  .document-list-header .cli-action-trigger-copy { display: none; }
   .custom-table :is(th.table-compact-column, td.table-cli-action-cell) { width: auto; min-width: 120px; max-width: none; }
   .table-cli-action-button { width: auto; min-height: 44px; padding: 8px; text-align: left; }
   .table-cli-action-control { max-width: 100%; }
@@ -409,8 +413,6 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .pie-chart-layout { grid-template-columns: 1fr; }
   .pie-chart-layout .chart-widget { min-height: 140px; }
   .pie-chart-layout .chart-widget svg { max-width: 140px; }
-  .document-list-header { align-items: stretch; flex-direction: column; }
-  .document-list-header .declared-cli-action, .document-list-header .cli-action-trigger { width: 100%; }
   .document-list-card { grid-template-columns: auto minmax(0, 1fr); }
   .document-list-card-actions { grid-column: 2; justify-content: flex-start; }
   .issue-list-card { grid-template-columns: 20px minmax(0, 1fr); padding: 10px 14px; }

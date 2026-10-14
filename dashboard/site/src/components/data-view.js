@@ -174,13 +174,12 @@ function resolveCardListEmptyMessage(metadata, view) {
  *   cards: HTMLElement[],
  *   listClassName: string,
  *   listAttrs?: Record<string, unknown>,
- *   footer?: HTMLElement[],
- *   sectionDescription?: boolean
+ *   footer?: HTMLElement[]
  * }} options
  * @returns {HTMLElement}
  */
 function renderCardListSection(options) {
-  const { pageId, title, view, metadata, contextDetails, headingTag, listAction, cards, listClassName, listAttrs = {}, footer = [], sectionDescription = false } = options;
+  const { pageId, title, view, metadata, contextDetails, headingTag, listAction, cards, listClassName, listAttrs = {}, footer = [] } = options;
   const emptyMessage = resolveCardListEmptyMessage(metadata, view);
   return renderPageSection(
     pageId,
@@ -198,8 +197,7 @@ function renderCardListSection(options) {
         : h('p', { className: 'document-list-empty' }, emptyMessage),
       ...footer
     ],
-    headingTag,
-    sectionDescription ? view.description : undefined
+    headingTag
   );
 }
 
@@ -268,9 +266,11 @@ function renderListView(context) {
   const actions = tableActions(view);
   const preparedRows = prepareTableRows(rows, columns, view.data);
   const icon = isPlainObject(view.list) && typeof view.list.icon === 'string' ? view.list.icon : 'dash';
-  const listAction = isPlainObject(view.list) && typeof view.list.action === 'string'
-    ? renderDeclaredCliAction(view.list.action)
-    : null;
+  const listActions = isPlainObject(view.list) ? [
+    ...(typeof view.list.action === 'string' ? [view.list.action] : []),
+    ...(Array.isArray(view.list.actions) ? view.list.actions : [])
+  ].map((id) => renderDeclaredCliAction(id)).filter(Boolean) : [];
+  const listAction = listActions.length ? h('span', { className: 'document-list-actions' }, ...listActions) : null;
   const renderValue = createEntityAwareCellRenderer(
     ENTITY_LINK_FIELDS,
     findLink,
@@ -420,8 +420,7 @@ function renderEntityCardListView(options) {
           octicon('arrow-right')
         )
       )]
-      : [],
-    sectionDescription: true
+      : []
   });
 }
 
@@ -742,7 +741,6 @@ function renderIssueListView(options) {
     cards,
     listClassName: 'document-list issue-list',
     listAttrs: { 'data-custom-view-mark': 'list' },
-    sectionDescription: true
   });
 }
 

@@ -229,7 +229,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
 | Callout `visible-when` | `source`, `field`, `equals` |
 | Dashboard `horizon` | `label`, `tooltip` |
-| Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments` |
+| Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments`, `selector` |
 | Dashboard CLI action argument | `id`, `label`, `description`, `type`, `flag`, `default` |
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
@@ -1266,6 +1266,56 @@ A smell row identifies one detected condition with a stable `smell-id` and uniqu
 The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `ref`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link` and defaults to `text`. It selects presentation independently from the field name. The optional table-column field `filter` is boolean and defaults to `true`; `false` excludes the column from interactive facet filters without changing its display or sorting. Named UI element values are `campaign-route`, `workflow-route-page`, `outcome-detail`, `outcome-detail-section`, `problem-detail`, `entity-route`, `configuration-policy`, `measure-history`, `factory-header`, `factory-floor`, `link-button-list`, and `markdown`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents.
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
+
+A list may declare `list.actions`, a non-empty sequence of unique view-placed
+CLI action IDs, alongside its existing `list.action`. Actions render in declared
+order beside the list heading, including when the list has no rows.
+
+A list shows its declared description inline in the header. Presenters do not
+repeat that same explanation in a separate heading tooltip.
+
+A view-placed `operate` CLI action may declare a reusable `selector` dialog
+configuration: `label`, optional `placeholder`, `debounce-ms` (100–2000),
+`query: { command: "gh search repos", fields: [...], limit: 1–50 }`, and
+`mapping: { value, label, description?, target }`. Mapping fields must be selected
+by the query; `target` must name one command template token. For example:
+
+```json
+{
+  "id": "add-repository",
+  "level": "operate",
+  "label": "Add repository",
+  "icon": "plus",
+  "placement": "view",
+  "command": "./cao.sh add --repository {{repository}}",
+  "selector": {
+    "label": "Repository",
+    "debounce-ms": 300,
+    "query": { "command": "gh search repos", "fields": ["fullName", "description"], "limit": 20 },
+    "mapping": { "value": "fullName", "label": "fullName", "description": "description", "target": "repository" }
+  }
+}
+```
+
+Selectors render only in executable canvas mode. Lookup is a bounded read-only
+GitHub CLI search on the canvas server, not a query over canonical dashboard
+evidence. The server resolves the query and mapping from the declared action ID;
+clients cannot supply a command, fields, or mapping. Search input is a separate
+argv value, never shell-interpolated. These transient external choices do not
+become dashboard sources. Changing input immediately invalidates prior selection
+and cancels stale lookups. Closing or detaching the dialog cancels pending work.
+The presenter must label the textbox, announce loading, empty, and failed lookup
+states, and keep results in a viewport-bounded, independently scrollable list.
+Queries return at most their declared `limit`, even when hundreds of repositories
+match. At that limit, the presenter tells users to refine their search rather
+than implying that every match is shown. Slow lookups retain an explicit loading
+state and, after two seconds, explain that users can continue typing or cancel.
+The server bounds each GitHub CLI lookup to 15 seconds. Search input and
+cancellation remain available while waiting; abandoned lookups and their
+slow-search timers must not update later searches. Presenters support keyboard
+selection and disable execution until a mapped value
+passes command-template validation. Selection never executes a command; fresh,
+exact per-invocation host approval remains mandatory.
 
 A CLI action may declare `copy-only: true`. Presenters must expose its resolved
 command for copying and must not execute it.
