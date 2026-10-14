@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { createDashboardQueryBudget, executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -83,12 +83,16 @@ function viewPayload(sources, queryContext = {}, partial = false) {
 }
 
 beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(metadata['as-of']));
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   });
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe('workflow list query contract', () => {
   it('publishes declared identities and drill links without reading runs in the preview', async () => {
@@ -179,6 +183,11 @@ describe('workflow list query contract', () => {
 
   it('drops all event-coverage dependencies and reduces original inventory query operations by at least 25 percent', async () => {
     const sources = await canonical(200);
+    const expectedRecords = evidence(200).runs.rows.length * 4;
+    for (const name of ['audits', 'domains', 'tools', 'issues']) {
+      expect(sources[name].metadata.availability).toBe('available');
+      expect(sources[name].rows).toHaveLength(expectedRecords);
+    }
     expect(resolveDashboardQuerySources(queries, ['workflow-list']).filter((name) => Object.hasOwn(sources, name)).sort())
       .toEqual(['runs', 'workflows']);
     const before = createDashboardQueryBudget();

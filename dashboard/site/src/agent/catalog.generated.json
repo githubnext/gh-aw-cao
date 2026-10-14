@@ -66,7 +66,8 @@
       "parameters": [],
       "queries": [
         "issue-repository-totals",
-        "repository-activity"
+        "repository-activity",
+        "repository-run-inventory"
       ]
     },
     {
@@ -2338,6 +2339,34 @@
       "used-by-pages": [
         "repositories",
         "repository-detail"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "outcomes",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-run-inventory",
+      "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
+      "objective": "Compare repository execution volume and choose repositories for drill-down.",
+      "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-activity"
+      ],
+      "used-by-pages": [
+        "repositories"
       ],
       "execution": {
         "local": true,
