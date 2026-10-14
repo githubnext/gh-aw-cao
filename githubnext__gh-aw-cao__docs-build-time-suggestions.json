@@ -3,6 +3,42 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-14T20:30:00Z",
+      "worker_run_id": 38631525742,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38631604951,
+        38628620153,
+        38628111776,
+        38626533442,
+        38624716157,
+        38623699566,
+        38622981661,
+        38620152927,
+        38618226448,
+        38616374195,
+        38615660612,
+        38615258686,
+        38613133054,
+        38611742867,
+        38609750166,
+        38607893151,
+        38606154801,
+        38605572469,
+        38603114252,
+        38601441351
+      ],
+      "docs_window": {
+        "start": "2026-10-14T16:50:08Z",
+        "end": "2026-10-14T20:23:27Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 0,
+      "docs_deployed_success_count": 0,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T16:50:08Z through 2026-10-14T20:23:27Z, 14 runs concluded success, 5 concluded skipped, and 1 concluded action_required. Zero comparable successful runs executed the build job or completed deploy: all 14 successful runs were schedule-freshness no-ops with build and deploy skipped, the 5 workflow_run callbacks were skipped before work ran, and the action_required callback created no jobs. Job metadata for every run showed build:skipped and deploy:skipped when jobs existed, and a bounded log read from run 38631604951 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper scheduling or dashboard-build analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-14T19:39:37Z",
       "worker_run_id": 38624997917,
       "category": "artifact transfer and Pages packaging",
