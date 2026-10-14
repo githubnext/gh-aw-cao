@@ -1,7 +1,43 @@
 {
-  "source_sha": "5a7695bddf77510a9663d3d31cb1225a52683cda",
+  "source_sha": "b6fda4c8973ada500b2992be20aa7d9c75c56267",
   "next_category": "reusable dashboard generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T23:25:00Z",
+      "worker_run_id": 38653521786,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38653573965,
+        38653304261,
+        38653104809,
+        38651501487,
+        38651358476,
+        38650991704,
+        38649822630,
+        38648357088,
+        38647761294,
+        38647074183,
+        38647067343,
+        38644796804,
+        38644686152,
+        38642739874,
+        38641094783,
+        38639585844,
+        38636975345,
+        38635034423,
+        38633157772,
+        38632416884
+      ],
+      "docs_window": {
+        "start": "2026-10-14T20:28:50Z",
+        "end": "2026-10-14T23:21:45Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA b6fda4c8973ada500b2992be20aa7d9c75c56267. In the latest 20 completed docs.yml runs from 2026-10-14T20:28:50Z through 2026-10-14T23:21:45Z, 14 runs concluded success, 4 concluded skipped, and 2 concluded action_required. Only 3 comparable successful runs executed the build job (38651501487, 38651358476, 38650991704): one schedule run on source SHA b6fda4c8973ada500b2992be20aa7d9c75c56267 that completed deploy, plus two push runs on SHAs 438fb0c3bcf327bfad065517eebb86c4a7a5fdd4 and c10583b36c6d0a6120fc4acc5c2b60e6a67a811b that built without deploy. The remaining 11 successful schedule runs were freshness no-ops with build and deploy skipped, and 4 workflow_run callbacks were skipped before work ran. Job metadata for run 38653573965 showed schedule-freshness:success with build:skipped and deploy:skipped, and a bounded log read confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper reusable-dashboard or CAO Dashboard timing analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T22:37:44Z",
       "worker_run_id": 38648541930,
