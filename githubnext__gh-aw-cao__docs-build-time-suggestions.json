@@ -1,7 +1,43 @@
 {
-  "source_sha": "a93bcd762f01a2a343dae574d01b662c5f8d2bb1",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "5a7695bddf77510a9663d3d31cb1225a52683cda",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T15:30:17Z",
+      "worker_run_id": 38589098361,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38588878646,
+        38586781924,
+        38585814229,
+        38583803289,
+        38581918668,
+        38580883952,
+        38580300957,
+        38579883184,
+        38578660302,
+        38576902796,
+        38574886731,
+        38573030043,
+        38571371711,
+        38571021506,
+        38568429746,
+        38567381292,
+        38564841364,
+        38564500151,
+        38560884517,
+        38559092610
+      ],
+      "docs_window": {
+        "start": "2026-10-14T11:47:44Z",
+        "end": "2026-10-14T15:23:38Z"
+      },
+      "docs_success_count": 16,
+      "docs_comparable_success_count": 6,
+      "docs_deployed_success_count": 3,
+      "decision": "noop_not_actionable",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T11:47:44Z through 2026-10-14T15:23:38Z, 16 runs concluded success and 4 workflow_run callbacks concluded skipped. Six comparable successful runs executed the build job (38586781924, 38581918668, 38580883952, 38580300957, 38578660302, 38559092610) across three source SHAs and both push and schedule triggers, and 3 of those schedule-triggered runs also completed deploy. Workflow queue time was 0s in all comparable docs runs. Across those six comparable runs, docs workflow execution measured median 73.5s and p90 90.0s; the build job measured median 43.5s and p90 52.0s; the deploy job measured median 20.0s and p90 26.4s on the three deployed schedule runs. Build-step timings stayed concentrated in Checkout (median 6.0s), Set up Node.js (4.5s), Restore node_modules (6.0s), Build documentation (12.5s), and Upload Pages artifact (6.0s). Ten successful schedule runs were freshness no-ops whose only work was the schedule-freshness job (median 9.0s, p90 11.2s), and bounded logs from run 38585814229 confirmed they ended with \"Documentation build skipped because the deployed docs and dashboard are current.\" The four workflow_run callbacks were also fast skips (1-12s end to end) that followed skipped CAO Dashboard runs rather than queuing real work. Trusted logs for representative build run 38581918668 still showed cache hits for setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache, while recent successful cao-dashboard.yml runs remained dominated by Restore collected activity data and Upgrade fallback activity data rather than any docs-workflow scheduling bottleneck. The avoidable work visible in this category is limited to small 9-12s freshness polls and skipped callbacks; reducing the 15-minute schedule cadence or removing the workflow_run backstop would weaken freshness guarantees, and queue time/concurrency provided no evidence of delay to recover. Because no repository-controlled scheduling or concurrency change in this category is supported to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety, no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T14:58:35Z",
       "worker_run_id": 38584412448,
@@ -1169,48 +1205,6 @@
           ]
         }
       ]
-    },
-    {
-      "evaluated_at": "2026-10-13T21:53:30Z",
-      "worker_run_id": 38471544519,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38471286022,
-        38470125160,
-        38469820694,
-        38467438250,
-        38466695619,
-        38465826144,
-        38465668105,
-        38464465190,
-        38464428403,
-        38462761732,
-        38462348688,
-        38462302204,
-        38460951227,
-        38460280094,
-        38459569395,
-        38458358383,
-        38457519442,
-        38456838271,
-        38456805249,
-        38455784325
-      ],
-      "docs_window": {
-        "start": "2026-10-13T19:33:32Z",
-        "end": "2026-10-13T21:34:39Z"
-      },
-      "docs_success_count": 13,
-      "docs_comparable_success_count": 12,
-      "docs_deployed_success_count": 6,
-      "dashboard_window": {
-        "start": "2026-10-07T22:30:42Z",
-        "end": "2026-10-13T14:41:37Z"
-      },
-      "dashboard_success_count": 20,
-      "dashboard_comparable_success_count": 20,
-      "decision": "noop_not_actionable",
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA f85d30548bb54019f275d1932ee7c486777c7559. In the latest 20 completed docs.yml runs from 2026-10-13T19:33:32Z through 2026-10-13T21:34:39Z, 13 runs succeeded and 12 were comparable successful builds, with 6 successful deploy jobs; 1 additional successful schedule run skipped the build because deployed docs and dashboard were current, 3 workflow_run callbacks were skipped, 2 workflow_run callbacks ended action_required, and 2 schedule runs failed and were disclosed but excluded from timing comparisons. Trusted job metadata showed comparable docs workflow queue median/p90 0s/0s, execution median/p90 68s/122s, build-job median/p90 43s/49.6s, deploy-job median/p90 32.5s/79s, and schedule-freshness median/p90 8s/12.8s across all successful runs with that job. Step timings across the 9 comparable docs build jobs with complete step metadata showed Build documentation median/p90 14s/15s, Restore node_modules 5s/6s, Restore cached CAO Dashboard 1s/2s, and Upload Pages artifact 6s/7s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact remained skipped in all sampled builds with complete step data. Bounded logs for docs runs 38470125160, 38462761732, and 38459569395 confirmed repeated cache hits for the setup-node npm cache, the node_modules cache, and the central-agentic-ops-dashboard cache; Astro repeatedly built 72 pages in about 11.18s-14s with Pagefind finishing in 357ms or similar; and Pages artifacts remained about 34.9 MB with uploads around 6s. Like-for-like same-SHA push-to-schedule pairs on f85d30548bb54019f275d1932ee7c486777c7559, dd59dadea706e1fd0c93852f6b482cf727e291ba, e1278dcdefac8d9ea0d48c695a818dac379cf668, and 91978d1d5c9f5f0913df7c754173d50f08fae4de kept the docs build step flat while total schedule runtime grew only from the additional freshness and deploy work. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:41:37Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893s/1447.5s, Restore collected activity data median/p90 108.5s/177.3s, Upgrade fallback activity data median/p90 712s/1257.1s, Install dashboard build dependencies median/p90 6.5s/9.1s, Assemble Dashboard Language site median/p90 4s/8.1s, and cache-job median/p90 11s/14.2s. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed repeated restore-key hits for cao-activity-v5-37765769970-1, repeated dashboard-site npm ci installs of only a few production packages in 1-3s, and repeated publication of a 105.6 MiB sqlite payload plus 510 activity shards totaling 463.1 MiB into ~31.3 MB dashboard artifacts. Failed schedule runs 38467438250 and 38465826144 were caused by transient GitHub Actions jobs API 502 errors inside the freshness check, not by documentation generation. Because Astro documentation generation and dashboard site assembly remain small, stable slices of the observed workflows, no workflow-only change in .github/workflows/docs.yml or .github/workflows/cao-dashboard.yml is supported by repeated evidence to save at least 60 seconds or 15 percent of median execution time without weakening correctness, freshness, or deployment safety."
     }
   ]
 }
