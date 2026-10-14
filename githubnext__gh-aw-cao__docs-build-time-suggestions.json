@@ -1,7 +1,43 @@
 {
   "source_sha": "95d3da95a306cf08324ff5e65e468aa94e6718cb",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T01:59:05Z",
+      "worker_run_id": 38498414056,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38498141197,
+        38496444424,
+        38495737964,
+        38494639436,
+        38492693208,
+        38492436301,
+        38490710413,
+        38487992242,
+        38486197985,
+        38484739681,
+        38484281606,
+        38483570029,
+        38482758270,
+        38481857817,
+        38481624476,
+        38479921909,
+        38478472452,
+        38477264049,
+        38476935820,
+        38474851719
+      ],
+      "docs_window": {
+        "start": "2026-10-13T22:01:18Z",
+        "end": "2026-10-14T01:53:47Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 1,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 95d3da95a306cf08324ff5e65e468aa94e6718cb. In the latest 20 completed docs.yml runs from 2026-10-13T22:01:18Z through 2026-10-14T01:53:47Z, 14 runs succeeded but only 1 successful run executed the build and deploy jobs (38484739681). The remaining completed runs were freshness-check schedule no-ops, workflow_run skips, workflow_run callbacks that ended action_required, or one schedule run that failed before build when schedule-freshness hit a transient GitHub Actions jobs API 500 while scanning prior docs runs. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so the evaluation stopped before deeper dashboard-run analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T01:33:38Z",
       "worker_run_id": 38496101950,
@@ -1276,48 +1312,6 @@
       "dashboard_comparable_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 18792d7f0a888c986075a76c2d3dee2d92f16eea. In the latest 20 completed docs.yml runs from 2026-10-13T08:39:55Z through 2026-10-13T11:28:20Z, 11 runs succeeded but only 3 reached a successful build job (38390225537, 38387495490, 38386507579), with 2 deploy success. Trusted job metadata for those comparable docs runs showed reusable-build cache hits already working: Set up Node.js hit the npm cache, Restore node_modules restored ~283 MB, Install dependencies and Save node_modules were skipped, and Restore cached CAO Dashboard hit the central-agentic-ops-dashboard cache so Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped. Those three comparable docs samples had workflow median/p90 82s/111s, build-job median/p90 42s/42s, deploy-job median/p90 32.5s/49s, and the 8 freshness-only schedule runs had schedule-freshness median/p90 11s/13s. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T04:42:47Z through 2026-10-13T11:17:07Z contained 0 successful runs and 0 successful dashboard build jobs. The lone push build attempt in that window, run 38353436671, spent 158s restoring a cache hit from key cao-activity-v5-37765769970-1 (~2165 MB / 2270059693 B) and then failed in Upgrade fallback activity data with ERR_MODULE_NOT_FOUND before Assemble Dashboard Language site could start. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard build samples, no evidence-backed reusable-dashboard recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T11:07:00Z",
-      "worker_run_id": 38386982559,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38386990137,
-        38386507579,
-        38385730238,
-        38384061593,
-        38383687059,
-        38381179728,
-        38380727519,
-        38380271571,
-        38379730110,
-        38378183836,
-        38377967674,
-        38375876934,
-        38374713740,
-        38372948086,
-        38371476283,
-        38370801432,
-        38367695852,
-        38367093197,
-        38366126749,
-        38365190500
-      ],
-      "docs_window": {
-        "start": "2026-10-13T07:49:52Z",
-        "end": "2026-10-13T10:58:30Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 1,
-      "docs_deployed_success_count": 0,
-      "dashboard_window": {
-        "start": "2026-10-13T03:41:20Z",
-        "end": "2026-10-13T10:58:17Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA cf42f81b0d259054c70c400ddee4d321fd8b5c87. In the latest 20 completed docs.yml runs from 2026-10-13T07:49:52Z through 2026-10-13T10:58:30Z, 11 runs succeeded but only 1 reached a successful build job (38386507579) and 0 reached a successful deploy job, so fewer than 5 comparable successful docs samples were available. Trusted job metadata showed the 10 successful schedule runs on a71b0e0 were freshness-only skips with schedule-freshness median/p90 10.5s/12.1s and successful workflow median/p90 16.0s/17.0s. The lone comparable docs build on cf42f81 took 36s with deploy skipped because it was push-triggered; a bounded log read confirmed a node_modules cache hit restored ~283 MB before npm run docs:build, which itself completed in about 10s, and the cached CAO Dashboard restore step also hit. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T03:41:20Z through 2026-10-13T10:58:17Z contained 0 successful dashboard builds and 1 push failure (38353436671); trusted step metadata for that failure showed a 158s Restore collected activity data step and a 1s Upgrade fallback activity data failure before Assemble Dashboard Language site could start. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard runs, no evidence-backed recommendation is actionable for Astro documentation generation in this cycle."
     }
   ]
 }
