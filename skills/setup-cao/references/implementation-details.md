@@ -66,16 +66,25 @@ dispatches a workflow.
 
 `activity/quickstart.mjs` is a separate, explicit effectful flow. It requires an
 installed public, private, or internal control repository on its checked-out
-default branch, selects the pinned public `githubnext/gh-aw-cao-bug-bash`
-emergency-rollout incident, whose green normal suite misses explicit zero
-controls that prepare tier-0 services and retries, unless
-`--target OWNER/REPO` selects another existing public target, installs Bug Bash
-in review mode for only that target, declares
+default branch, selects the public `github/gh-aw` Repo Assist example
+unless `--target OWNER/REPO` selects another existing public target, installs
+Repo Assist in review mode for only
+that target, declares
 Activity collection only for the control repository,
 configures public Pages and repository-local workflow-token mode, validates and
 commits only CAO-owned paths, pushes the default branch, runs at most one
-investigation, collects Activity, and waits for the data-bearing dashboard
-deployment. Existing commits are preserved. It reports non-success Bug Bash
+existing maintenance worker in review mode, collects Activity, and waits for the data-bearing dashboard
+deployment. No existing Agentic Workflows or run history are required.
+It enables only maintenance and disables the other workers. Immediately after
+requesting ordinary Repo Assist, it pauses the orchestrator with
+`gh workflow disable`; the requested run continues but recurring runs require
+explicit re-enablement, which also resumes the six-hour schedule.
+The first result is one validated patch proposal and review bundle or a no-op,
+with normal workflow budgets (1,250 credits by default including the configurable
+400-credit output check), never target writes. There is no custom starter worker
+or snapshot profile.
+Its proposals are not requirements for using CAO, and unchanged repositories
+are a valid outcome. Existing commits are preserved. It reports non-success Repo Assist
 outcomes honestly and fails unless
 Activity contains a run and the dashboard deployment succeeds.
 

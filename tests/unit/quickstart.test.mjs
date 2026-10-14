@@ -38,13 +38,13 @@ test('plain quickstart progress starts with the first operation', () => {
   });
 
   progress.start();
-  progress.step('Installing Bug Bash');
-  progress.success('Bug Bash campaign installed');
+  progress.step('Installing Repo Assist');
+  progress.success('Repo Assist campaign installed');
   progress.finish('Dashboard ready');
 
   assert.equal(output, [
-    '==> Installing Bug Bash',
-    'OK: Bug Bash campaign installed',
+    '==> Installing Repo Assist',
+    'OK: Repo Assist campaign installed',
     'Dashboard ready',
     '',
   ].join('\n'));
@@ -60,8 +60,8 @@ test('styled quickstart progress renders immediately without a UI dependency', {
   await writeFile(driver, `
 import { createQuickstartProgress } from ${JSON.stringify(pathToFileURL(path.resolve('activity/setup-prompt.mjs')).href)};
 const progress = createQuickstartProgress();
-await progress.step('Installing Bug Bash campaign');
-progress.success('Bug Bash campaign installed');
+await progress.step('Installing Repo Assist campaign');
+progress.success('Repo Assist campaign installed');
 progress.finish('Dashboard ready');
 `);
   const result = await runTerminal(process.execPath, [driver], {
@@ -76,8 +76,8 @@ progress.finish('Dashboard ready');
   });
 
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Installing Bug Bash campaign · 0s elapsed/);
-  assert.match(result.stdout, /Bug Bash campaign installed \[0s\]/);
+  assert.match(result.stdout, /Installing Repo Assist campaign · 0s elapsed/);
+  assert.match(result.stdout, /Repo Assist campaign installed \[0s\]/);
   assert.match(result.stdout, /Dashboard ready/);
 });
 
@@ -88,25 +88,29 @@ async function quickstartFixture(t, {
   currentBranch = 'main',
   defaultBranch = 'main',
   diffCheck = success(),
-  starterRevision = QUICKSTART_STARTER_TARGET.revision,
+  targetRepository = QUICKSTART_STARTER_TARGET.repository,
+  targetVisibility = 'PUBLIC',
+  workerConclusion = 'success',
+  dispatchResult = success(),
+  disableResult = success(),
+  compileResult = success(),
 } = {}) {
   const calls = [];
-  const targetRepository = QUICKSTART_STARTER_TARGET.repository;
   const runRecords = {
-    'bug-bash.lock.yml': {
+    'repo-assist.lock.yml': {
       databaseId: 101,
-      displayTitle: `Bug Bash: ${targetRepository}`,
+      displayTitle: `Repo Assist: ${targetRepository}`,
       status: 'completed',
       conclusion: 'success',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:01:00Z',
       url: 'https://github.com/acme/cao/actions/runs/101',
     },
-    'bug-bash-investigation.lock.yml': {
+    'repo-assist-maintenance.lock.yml': {
       databaseId: 102,
-      displayTitle: `Investigate ${targetRepository}`,
+      displayTitle: `Repo Assist maintenance ${targetRepository}`,
       status: 'completed',
-      conclusion: 'success',
+      conclusion: workerConclusion,
       createdAt: '2026-01-01T00:00:10Z',
       updatedAt: '2026-01-01T00:02:00Z',
       url: 'https://github.com/acme/cao/actions/runs/102',
@@ -146,19 +150,20 @@ async function quickstartFixture(t, {
       return success(`${JSON.stringify({ nameWithOwner: 'acme/cao', visibility })}\n`);
     }
     if (command === 'gh' && arguments_[0] === 'repo' && arguments_[1] === 'view') {
-      return success(`${JSON.stringify({ nameWithOwner: arguments_[2], visibility: 'PUBLIC' })}\n`);
+      return success(`${JSON.stringify({ nameWithOwner: arguments_[2], visibility: targetVisibility })}\n`);
     }
+    if (command === 'gh' && arguments_[0] === 'aw' && arguments_[1] === 'compile') return compileResult;
     if (command === 'git' && arguments_[0] === 'status') return success(status);
     if (command === 'git' && arguments_[0] === 'diff' && arguments_.includes('--check')) return diffCheck;
     if (command === 'gh' && arguments_[0] === 'api' && arguments_[1] === 'user') {
       return success('{"login":"octocat","id":1}\n');
     }
-    if (command === 'gh' && arguments_[0] === 'api'
-      && arguments_[1] === `repos/${targetRepository}/commits/${QUICKSTART_STARTER_TARGET.revision}`) {
-      return success(`${starterRevision}\n`);
-    }
     if (command === 'gh' && arguments_[0] === 'api' && arguments_.includes('--jq')) {
       return success(`${defaultBranch}\n`);
+    }
+    if (command === 'gh' && arguments_[0] === 'workflow' && arguments_[2] === 'repo-assist.lock.yml') {
+      if (arguments_[1] === 'run') return dispatchResult;
+      if (arguments_[1] === 'disable') return disableResult;
     }
     if (command === 'gh' && arguments_[0] === 'run' && arguments_[1] === 'list') {
       const workflow = arguments_[arguments_.indexOf('--workflow') + 1];
@@ -213,9 +218,9 @@ test('quickstart reports staged whitespace errors', async (t) => {
     execute: fixture.execute,
     addCampaign: async () => {
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-      policy['control-plane'].campaigns['bug-bash'] = {
-        orchestrator: 'bug-bash',
-        workers: { investigation: { workflow: 'bug-bash-investigation' } },
+      policy['control-plane'].campaigns['repo-assist'] = {
+        orchestrator: 'repo-assist',
+        workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
       };
       await writeFile(policyPath, JSON.stringify(policy));
     },
@@ -225,26 +230,46 @@ test('quickstart reports staged whitespace errors', async (t) => {
   }), /git diff --cached --check failed: dashboard\/site\/src\/components\/workflow-badges\.js:73: new blank line at EOF/);
 });
 
+test('quickstart refuses to commit or dispatch when deterministic compilation fails', async (t) => {
+  const fixture = await quickstartFixture(t, {
+    compileResult: { status: 1, stdout: '', stderr: 'Invalid workflow source' },
+  });
+  await assert.rejects(runCaoQuickstart({
+    policyPath: await fixture.policyPath(),
+    execute: fixture.execute,
+    addCampaign: async () => {},
+    progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  }), /gh aw compile .*--schedule-seed githubnext\/gh-aw-cao failed: Invalid workflow source/);
+  assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call.includes('commit')));
+  assert.ok(!fixture.calls.some((call) => call[0] === 'gh' && call[1] === 'workflow'));
+});
+
 test('quickstart configures, commits, runs, collects, and reports first dashboard data', async (t) => {
   const fixture = await quickstartFixture(t);
   const policyPath = await fixture.policyPath();
   const progress = [];
   let installedCampaign;
-  let activeBugBashPhaseRendered = false;
+  let activeRepoAssistPhaseRendered = false;
   const result = await runCaoQuickstart({
     policyPath,
     execute: (command, arguments_) => {
       if (command === 'gh' && arguments_[0] === 'workflow' && arguments_[1] === 'run') {
-        assert.equal(activeBugBashPhaseRendered, true);
+        assert.equal(activeRepoAssistPhaseRendered, true);
       }
       return fixture.execute(command, arguments_);
     },
     addCampaign: async (campaign) => {
       installedCampaign = campaign;
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-      policy['control-plane'].campaigns['bug-bash'] = {
-        orchestrator: 'bug-bash',
-        workers: { investigation: { workflow: 'bug-bash-investigation', 'max-mode': 'review' } },
+      policy['control-plane'].campaigns['repo-assist'] = {
+        orchestrator: 'repo-assist',
+        workers: {
+          maintenance: { workflow: 'repo-assist-maintenance', enabled: true },
+          'issue-fix': { workflow: 'repo-assist-issue-fix' },
+          'issue-triage': { workflow: 'repo-assist-issue-triage' },
+          'pr-upkeep': { workflow: 'repo-assist-pr-upkeep' },
+        },
       };
       await writeFile(policyPath, JSON.stringify(policy));
     },
@@ -256,9 +281,9 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
       start() {},
       step: async (message) => {
         progress.push(message);
-        if (message.startsWith('Running one bounded Bug Bash')) {
+        if (message.startsWith('Running Repo Assist in review mode')) {
           await Promise.resolve();
-          activeBugBashPhaseRendered = true;
+          activeRepoAssistPhaseRendered = true;
         }
       },
       success: (message) => progress.push(message),
@@ -270,34 +295,95 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
     resolveRootRevision: () => 'a'.repeat(40),
   });
 
-  assert.equal(installedCampaign, `githubnext/gh-aw-cao/bug-bash@${'a'.repeat(40)}`);
+  assert.equal(installedCampaign, `githubnext/gh-aw-cao/repo-assist@${'a'.repeat(40)}`);
   assert.equal(result.dashboard.url, 'https://acme.github.io/cao/');
   assert.equal(result.activity.uniqueRuns, 4);
   assert.equal(result.mode, 'review');
+  assert.equal(result.paused, true);
   assert.equal(result.targetRepository, QUICKSTART_STARTER_TARGET.repository);
   assert.equal(result.starterTarget, true);
-  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/githubnext\/gh-aw-cao-bug-bash \(canonical emergency-pause incident sample\)/);
+  assert.equal(result.campaign, 'repo-assist');
+  assert.equal(result.repoAssist.workerRunId, 102);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw \(public Repo Assist example\)/);
+  assert.match(formatQuickstartSummary(result), /Repo Assist:/);
+  assert.match(formatQuickstartSummary(result), /Repo Assist is paused; re-enable it explicitly/);
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
   assert.deepEqual(policy['control-plane'].activity.repositories, ['acme/cao']);
   assert.deepEqual(policy['control-plane'].scope['allowed-repositories'], [
     'acme/cao',
     QUICKSTART_STARTER_TARGET.repository,
   ]);
-  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'githubnext']);
-  assert.equal(policy['control-plane'].campaigns['bug-bash'].mode, 'review');
-  assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run bug-bash.lock.yml')));
+  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'github']);
+  assert.equal(policy['control-plane'].campaigns['repo-assist'].mode, 'review');
+  assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance.enabled, true);
+  assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance['max-mode'], 'review');
+  for (const key of ['issue-fix', 'issue-triage', 'pr-upkeep']) {
+    assert.equal(policy['control-plane'].campaigns['repo-assist'].workers[key].enabled, false, key);
+    assert.equal(policy['control-plane'].campaigns['repo-assist'].workers[key]['max-mode'], 'review', key);
+  }
+  assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run repo-assist.lock.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
-  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard bug-bash cao.sh .gitattributes .vscode/settings.json'));
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard repo-assist cao.sh .gitattributes .vscode/settings.json'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
-  assert.ok(progress.includes('Installing the review-only Bug Bash campaign (2 workflows)'));
+  const compileIndex = fixture.calls.findIndex((call) => call.join(' ') === 'gh aw compile --strict --no-check-update --schedule-seed githubnext/gh-aw-cao');
+  const stageIndex = fixture.calls.findIndex((call) => call[0] === 'git' && call[1] === 'add');
+  assert.ok(compileIndex >= 0 && stageIndex > compileIndex);
+  const dispatchIndex = fixture.calls.findIndex((call) => call.join(' ').includes('workflow run repo-assist.lock.yml'));
+  const disableIndex = fixture.calls.findIndex((call) => call.join(' ') === 'gh workflow disable repo-assist.lock.yml --repo acme/cao');
+  const watchIndex = fixture.calls.findIndex((call) => call.join(' ').startsWith('gh run list'));
+  assert.ok(dispatchIndex >= 0 && disableIndex > dispatchIndex && watchIndex > disableIndex);
+  assert.ok(!fixture.calls.some((call) => call.includes('starter=true')));
+  assert.ok(!fixture.calls.some((call) => call[1] === 'api' && call[2].includes('/commits/')));
+  assert.ok(progress.includes('Installing Repo Assist with only its existing maintenance worker enabled in review mode'));
   assert.ok(progress.includes(
-    `Canonical Bug Bash incident selected: ${QUICKSTART_STARTER_TARGET.repository}@${QUICKSTART_STARTER_TARGET.revision}`,
+    `Repo Assist example selected: ${QUICKSTART_STARTER_TARGET.repository}`,
   ));
-  assert.ok(progress.includes(`Bug Bash campaign installed in review mode for ${QUICKSTART_STARTER_TARGET.repository}`));
+  assert.ok(progress.includes(`Repo Assist maintenance enabled in review mode for ${QUICKSTART_STARTER_TARGET.repository}; other workers remain disabled; proposals are optional, not requirements for CAO`));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
-  assert.ok(progress.some((message) => message.startsWith('Running one bounded Bug Bash campaign in review mode')));
-  assert.ok(progress.includes('Waiting for one bounded Bug Bash investigation'));
-  assert.ok(progress.some((message) => message.includes('up to 700 AI credits')));
+  assert.ok(progress.some((message) => message.startsWith('Running Repo Assist in review mode')));
+  assert.ok(progress.includes('Waiting for a Repo Assist maintenance proposal or no-op'));
+  assert.ok(progress.some((message) => message.includes('up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 output checking')));
+  assert.ok(progress.some((message) => message.includes('proposals are optional, not requirements for CAO')));
+});
+
+test('quickstart runs maintenance on an explicit ordinary repository without workflow-inventory preflight', async (t) => {
+  const fixture = await quickstartFixture(t, {
+    targetRepository: 'acme/plain-project',
+    workerConclusion: 'failure',
+  });
+  const policyPath = await fixture.policyPath();
+  const warnings = [];
+  const result = await runCaoQuickstart({
+    targetRepository: 'acme/plain-project',
+    policyPath,
+    execute: fixture.execute,
+    addCampaign: async () => {
+      const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+      policy['control-plane'].campaigns['repo-assist'] = {
+        workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
+      };
+      await writeFile(policyPath, JSON.stringify(policy));
+    },
+    configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+    collectActivityStats: async () => ({
+      summary: { runsWithArtifact: 1, totalUniqueRuns: 4 },
+    }),
+    progress: { warning: (message) => warnings.push(message) },
+    now: () => Date.parse('2026-01-01T00:00:05Z'),
+    pause() {},
+    resolveRootRevision: () => 'a'.repeat(40),
+  });
+
+  assert.equal(result.targetRepository, 'acme/plain-project');
+  assert.equal(result.starterTarget, false);
+  assert.equal(result.repoAssist.workerConclusion, 'failure');
+  assert.deepEqual(warnings, ['Repo Assist maintenance concluded failure']);
+  assert.ok(!fixture.calls.some((call) => call[1] === 'workflow' && call[2] === 'list'));
+  assert.ok(!fixture.calls.some((call) => call[1] === 'api' && call[2].includes('/commits/')));
+  const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+  assert.deepEqual(policy['control-plane'].campaigns['repo-assist'].targets, {
+    'acme/plain-project': { mode: 'review' },
+  });
 });
 
 for (const [name, status, message] of [
@@ -317,9 +403,9 @@ for (const [name, status, message] of [
       addCampaign: async () => {
         campaignInstalled = true;
         const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-        policy['control-plane'].campaigns['bug-bash'] = {
-          orchestrator: 'bug-bash',
-          workers: { investigation: { workflow: 'bug-bash-investigation' } },
+        policy['control-plane'].campaigns['repo-assist'] = {
+          orchestrator: 'repo-assist',
+          workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
         };
         await writeFile(policyPath, JSON.stringify(policy));
       },
@@ -358,15 +444,15 @@ test('quickstart uses an explicit public target without creating the sample repo
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'gh repo view acme/project --json nameWithOwner,visibility'));
 });
 
-test('quickstart rejects a canonical sample revision mismatch before installing the campaign', async (t) => {
-  const fixture = await quickstartFixture(t, { starterRevision: 'f'.repeat(40) });
+test('quickstart rejects a private target before installing the campaign', async (t) => {
+  const fixture = await quickstartFixture(t, { targetVisibility: 'PRIVATE' });
   let campaignInstalled = false;
   await assert.rejects(runCaoQuickstart({
     execute: fixture.execute,
     addCampaign: async () => { campaignInstalled = true; },
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
-  }), /Canonical Bug Bash sample resolved to f{40} instead of 49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9/);
+  }), /target must be an accessible public repository/);
   assert.equal(campaignInstalled, false);
 });
 
@@ -394,9 +480,9 @@ test('quickstart rejects private Pages before setting credentials or committing'
     execute: fixture.execute,
     addCampaign: async () => {
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-      policy['control-plane'].campaigns['bug-bash'] = {
-        orchestrator: 'bug-bash',
-        workers: { investigation: { workflow: 'bug-bash-investigation' } },
+      policy['control-plane'].campaigns['repo-assist'] = {
+        orchestrator: 'repo-assist',
+        workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
       };
       await writeFile(policyPath, JSON.stringify(policy));
     },
@@ -410,3 +496,49 @@ test('quickstart rejects private Pages before setting credentials or committing'
   assert.ok(!fixture.calls.some((call) => call[0] === 'gh' && call[1] === 'variable'));
   assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call.includes('commit')));
 });
+
+for (const [name, options, message] of [
+  ['pauses after a failed dispatch', {
+    dispatchResult: { status: 1, stdout: '', stderr: 'dispatch rejected' },
+  }, /workflow run repo-assist\.lock\.yml .*failed: dispatch rejected/],
+  ['reports a pause failure', {
+    disableResult: { status: 1, stdout: '', stderr: 'disable denied' },
+  }, /workflow disable repo-assist\.lock\.yml .*failed: disable denied/],
+  ['preserves dispatch and pause failures', {
+    dispatchResult: { status: 1, stdout: '', stderr: 'dispatch rejected' },
+    disableResult: { status: 1, stdout: '', stderr: 'disable denied' },
+  }, /dispatch rejected; pausing Repo Assist also failed: .*disable denied/],
+]) {
+  test(`quickstart ${name}`, async (t) => {
+    const fixture = await quickstartFixture(t, options);
+    const policyPath = await fixture.policyPath();
+    await assert.rejects(runCaoQuickstart({
+      policyPath,
+      execute: fixture.execute,
+      addCampaign: async () => {
+        const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+        policy['control-plane'].campaigns['repo-assist'] = {
+          orchestrator: 'repo-assist',
+          workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
+        };
+        await writeFile(policyPath, JSON.stringify(policy));
+      },
+      configurePages: () => ({ url: 'https://acme.github.io/cao/', public: true }),
+      progress: {},
+      pause() {},
+      resolveRootRevision: () => 'a'.repeat(40),
+    }), (error) => {
+      assert.match(error.message, message);
+      if (options.dispatchResult && options.disableResult) {
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.errors.length, 2);
+      }
+      return true;
+    });
+    const dispatches = fixture.calls.filter((call) => call[1] === 'workflow' && call[2] === 'run');
+    assert.ok(dispatches.length > 0);
+    assert.ok(dispatches.every((call) => call[3] === 'repo-assist.lock.yml'));
+    assert.equal(fixture.calls.filter((call) => call.join(' ') === 'gh workflow disable repo-assist.lock.yml --repo acme/cao').length, 1);
+    assert.ok(!fixture.calls.some((call) => call[1] === 'run' && call[2] === 'list'));
+  });
+}

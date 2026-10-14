@@ -282,11 +282,12 @@ or private control repository, default to creating the private
 `USERNAME/cao` control repository outside a checkout, or create another private
 control repository only when `--create-repo OWNER/NAME` requests it. It MUST
 disclose before execution that it publishes a public dashboard, creates the
-private `USERNAME/cao` control repository when needed, targets a pinned
-fictional emergency-rollout incident in the public
-`githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
-another existing public target, runs Bug Bash against
-that target in review mode, and may consume up to 700 AI credits. The flag itself
+private `USERNAME/cao` control repository when needed, targets the public
+Repo Assist example in the public `github/gh-aw` repository unless
+`--target OWNER/REPO` selects another existing public target, runs Repo Assist
+maintenance against that target in review mode, and may consume up to 1,250 AI
+credits under default limits (250 orchestration, 600 maintenance, 400 output
+checking; configured output-check limits may differ). The flag itself
 authorizes the bounded campaign installation, commit, push, dispatch,
 collection, and deployment effects in interactive and headless use; the
 installer MUST NOT add a redundant post-install confirmation.
@@ -302,27 +303,50 @@ The quickstart MUST:
   and collected evidence are public, without widening that visibility exception
   to another target or campaign;
 - validate an explicit target as public, or select
-  `githubnext/gh-aw-cao-bug-bash` and verify that its configured immutable
-  revision remains available; it MUST NOT create, fork, copy, or otherwise
-  mutate a target repository and MUST NOT fall back to a mutable branch;
-- supply the canonical starter hypothesis from the campaign contract rather
-  than target content; the pinned target and its reachable history MUST NOT
-  contain the incident explanation, root-cause hint, failing reproduction, or
-  intentional-bug warning that would reveal the seeded defect;
+  `github/gh-aw`; it MUST NOT create, fork, copy, otherwise mutate a target,
+  or substitute another target when access fails; the existing worker's
+  checkout and recorded base SHA MUST remain the source identity;
+- admit repositories without existing Agentic Workflows, Actions history, or
+  telemetry and run the Repo Assist maintenance contract, not a new assessment
+  campaign or framework audit;
+- use campaign `repo-assist` with only the existing `maintenance` worker enabled
+  at review, explicitly disabling other workers; ordinary dispatch inputs,
+  budgets, source checkout, duplicate checking, implementation, focused
+  validation, and review-bundle behavior MUST remain unchanged;
+- not introduce an onboarding-only worker, snapshot helper, or execution
+  profile; proposals MUST NOT be presented as requirements for using CAO,
+  prohibit readiness grades or source-convention eligibility gates, and allow
+  keeping the repository unchanged as a valid outcome; admission MUST depend
+  on policy and access, not tests, CI, instructions, or recommendation adoption;
+- disclose normal budgets including the default configurable output-check
+  budget without claiming measured tokens or expected cost;
+- compile installed workflows with `--schedule-seed githubnext/gh-aw-cao`
+  before committing, matching the deterministic lock-file validator;
+- pause the orchestrator through `gh workflow disable` immediately after
+  requesting the initial run, including on dispatch failure, to prevent
+  recurring six-hour runs without modifying campaign sources; pause failures
+  MUST be explicit, and re-enabling MUST be disclosed as also resuming schedule;
+  validation MUST report a manually paused orchestrator with active workers as
+  a pause note, not a recommendation to resume scheduled spending;
+- publish one validated optional maintenance proposal as a control review issue
+  plus review bundle, or record an honest no-op; unavailable required evidence
+  MUST remain incomplete; other worker enablement and live authority MUST remain
+  separate reviewed choices;
 - configure exact global scope for the control repository and selected public
   target while declaring `control-plane.activity.repositories` as only the
   control repository;
-- set Bug Bash to `review`, cap selection at one repository, set rollout to
-  100 percent for the exact selected target, and cap its worker at `review`;
+- set Repo Assist to `review`, cap selection at one repository, set
+  rollout to 100 percent for the exact selected target, and cap its worker at
+  `review`;
 - select repository-local workflow-token mode and require public GitHub Pages
   with GitHub Actions as its source;
 - refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
-  `dashboard/`, `bug-bash/`, `cao.sh`, gh-aw's root `.gitattributes`, and its
-  `.vscode/settings.json` project settings, refuse pre-staged changes, then
-  create and push one commit on the repository default branch;
-- dispatch one Bug Bash orchestrator and at most one investigation worker,
-  preserving a blocked or failed outcome rather than converting it to
-  `no-finding`;
+  `dashboard/`, `repo-assist/`, `cao.sh`, gh-aw's root `.gitattributes`,
+  and its `.vscode/settings.json` project settings, refuse pre-staged changes,
+  then create and push one commit on the repository default branch;
+- dispatch one Repo Assist orchestrator and at most one maintenance worker,
+  preserving blocked, incomplete, or failed outcomes rather than converting
+  missing evidence into a finding;
 - dispatch Activity with a correlatable request ID, require a successful
   data-bearing Activity artifact with at least one unique run, then require the
   corresponding dashboard deployment to succeed; and

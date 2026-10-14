@@ -187,6 +187,40 @@ test("preserves unavailable GitHub enablement state as unknown", () => {
   assert.equal(findings[0].severity, "warning");
 });
 
+test("reports a manually paused orchestrator with active workers as a note", () => {
+  const findings = validateEnablement(".", () => ({
+    status: 0,
+    stdout: JSON.stringify([
+      { path: ".github/workflows/sample.lock.yml", state: "disabled_manually" },
+      { path: ".github/workflows/sample-worker.lock.yml", state: "active" },
+    ]),
+    stderr: "",
+  }), [{
+    campaign: "sample", orchestrator: "sample", workers: { worker: "sample-worker" },
+  }]);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].id, "campaign-orchestrator-paused");
+  assert.equal(findings[0].severity, "note");
+  assert.doesNotMatch(findings[0].remediation, /\.\/cao\.sh enable/);
+  assert.match(findings[0].remediation, /resumes its schedule/);
+});
+
+test("does not treat unavailable or inactive workers as an intentional pause", () => {
+  for (const workerState of ["unknown", "disabled_inactivity", "disabled_manually"]) {
+    const findings = validateEnablement(".", () => ({
+      status: 0,
+      stdout: JSON.stringify([
+        { path: ".github/workflows/sample.lock.yml", state: "disabled_manually" },
+        { path: ".github/workflows/sample-worker.lock.yml", state: workerState },
+      ]),
+      stderr: "",
+    }), [{
+      campaign: "sample", orchestrator: "sample", workers: { worker: "sample-worker" },
+    }]);
+    assert.ok(!findings.some(({ id }) => id === "campaign-orchestrator-paused"), workerState);
+  }
+});
+
 test("detects bounded static security findings", async () => {
   const root = await fixture({ declaration: false });
   try {

@@ -25,26 +25,35 @@ repository `USERNAME/cao`. With no catalog source, quickstart resolves and pins
 the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
 release discovery fails. Pass an explicit source such as
 `githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
-that selection. Unless `--target OWNER/REPO` selects another
-existing public repository, quickstart targets
-[`githubnext/gh-aw-cao-bug-bash`](https://github.com/githubnext/gh-aw-cao-bug-bash)
-at a pinned revision. The shared starter is a guided investigation of a
-fictional production incident, not discovery of an unknown production bug: an
-emergency `0%` rollout request still prepared ten services—including four
-tier-0 services—and three retries while the normal test suite remained green.
-A small truthiness fallback turns the intentional zero into a default. The
-campaign supplies that hypothesis externally; the target repository contains
-neutral product documentation and no explanation of the seeded defect. Current
-and legacy modules, different zero-value contracts, and red herrings force Bug
-Bash to screen, reproduce, repair, and independently verify the finding rather
-than report a textual match. Quickstart runs that campaign in review mode.
-The investigation is the first useful result; Activity collection and the
-public GitHub Pages dashboard follow. This one run can use up to 700 AI credits.
+that selection. Unless `--target OWNER/REPO` selects another existing public
+repository, quickstart targets
+[`github/gh-aw`](https://github.com/github/gh-aw) using Repo Assist's normal checkout.
+Repo Assist proposes one small, validated maintenance improvement in review
+mode, or honestly records a no-op if nothing suitable fits.
+It works even when the target has no Agentic Workflows or Actions history.
+Quickstart runs the existing maintenance worker, not a special assessment.
+A control review issue and downloadable patch bundle let you decide whether
+to apply the improvement.
+The review issue is the first useful result; Activity
+collection and the public GitHub Pages dashboard follow. This one run can use
+up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
++ 400 output checking; configured output-check limits may differ), not a
+measured token budget or expected consumption.
+**None of these proposals is a requirement for using CAO.** There are no
+readiness grades, required templates, or practice checklists; keeping the
+repository unchanged is a valid result. Only maintenance is enabled; quickstart
+pauses the orchestrator after dispatch so recurring runs need explicit re-enablement.
 CAO never modifies the target.
 Elapsed progress distinguishes the short local installation phases from the
-longer Bug Bash, Activity, and dashboard jobs running on GitHub Actions.
+longer Repo Assist, Activity, and dashboard jobs running on GitHub Actions.
 Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
 repository explicitly.
+
+Want to see the rest of Repo Assist before running more workers? Browse
+[real triage, issue-fix, maintenance, and PR-upkeep reports](repo-assist/README.md#see-repo-assist-in-action)
+from our own control plane. This separate showcase adds no workflows or AI
+spend to your first run; it distinguishes proposals and blockers from applied
+changes. No demo repository is created.
 
 The installer checks tools, sign-in, and checkout readiness before writing CAO
 files, adds gh-aw and the core runtime, and preserves an existing policy.

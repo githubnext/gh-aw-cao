@@ -101,8 +101,10 @@ usage() {
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
     '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao, then targets the public' \
-    'githubnext/gh-aw-cao-bug-bash sample. Pass --target OWNER/REPO to use another public target.' \
-    'It runs Bug Bash in review mode (up to 700 AI credits), collects Activity, and deploys a public dashboard.' \
+    'github/gh-aw Repo Assist example. Pass --target OWNER/REPO to assist your own public repository.' \
+    'It runs existing Repo Assist maintenance in review mode (default budget up to 1,250 AI credits), collects Activity, and deploys a public dashboard.' \
+    'It pauses the orchestrator after dispatch; proposals are optional, not requirements for using CAO.' \
+    'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
@@ -653,9 +655,9 @@ main() {
   fi
   if [[ "$quickstart" == true ]]; then
     if [[ -n "$target_repository" ]]; then
-      note "Quickstart reviews $target_repository, publishes a public dashboard, and may use up to 700 AI credits."
+      note "Quickstart runs Repo Assist maintenance on $target_repository, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
     else
-      note "Quickstart investigates the canonical emergency-pause incident in githubnext/gh-aw-cao-bug-bash, publishes a public dashboard, and may use up to 700 AI credits."
+      note "Quickstart runs Repo Assist maintenance on github/gh-aw, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
     fi
   fi
   if [[ "$create_repository_requested" == false ]]; then
@@ -862,7 +864,7 @@ main() {
       quickstart_arguments+=(--target "$target_repository")
     fi
     if [[ -d "$catalog_source" ]]; then
-      quickstart_arguments+=(--campaign "$catalog_source/bug-bash")
+      quickstart_arguments+=(--campaign "$catalog_source/repo-assist")
       run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"
     else
       run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"

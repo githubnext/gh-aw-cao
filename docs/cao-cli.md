@@ -58,7 +58,7 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `./cao.sh quickstart [--target OWNER/REPO]` | Create the default public sample or select an existing public target, install review-only Bug Bash, commit and push bounded CAO paths, collect first Activity, and wait for the public dashboard. |
+| `./cao.sh quickstart [--target OWNER/REPO]` | Select the public example or another public target, run Repo Assist with only its existing maintenance worker in review mode, pause the orchestrator after dispatch, collect first Activity, and wait for the public dashboard. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -71,7 +71,9 @@ gh aw run dependabot --ref main \
 Use `./cao.sh quickstart` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing
 commits are allowed; the quickstart adds one bounded CAO commit. It can consume
-up to 700 AI credits and owns the bounded commit, push, workflow dispatches,
+up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
++ 400 output checking; configured output-check limits may differ),
+and owns the bounded commit, push, workflow dispatches,
 and public dashboard deployment documented in the
 [quickstart](setup-quickstarts.md). Use `./cao.sh setup` for
 review-before-apply configuration. The individual `setup-auth` commands remain
@@ -87,11 +89,16 @@ control repositories, broader existing policy, or installed campaigns.
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
 Explicit quickstart is also terminal-independent. Without `--target`, it uses
-the pinned public `githubnext/gh-aw-cao-bug-bash` emergency-rollout incident:
-an explicit zero-percent pause prepares tier-0 services and retries while the
-normal suite remains green. `--target OWNER/REPO` selects another existing
-public repository. The checkout, target-visibility, source-revision, and
-default-branch preflight remain fail-closed.
+the public `github/gh-aw` repository for one validated maintenance proposal
+or no-op, not to grade its readiness or eligibility for CAO. Applying the proposal
+is never required for using CAO. Existing Agentic Workflows, Actions
+history, or telemetry are not required.
+Only the existing maintenance worker is enabled. The normal orchestrator is
+paused through `gh workflow disable` after requesting the first run. Re-enable
+it explicitly for further runs; doing so also resumes its six-hour schedule.
+`--target OWNER/REPO` selects another existing public repository. The checkout,
+target-visibility and default-branch preflight remain
+fail-closed.
 
 ## Control Campaigns
 

@@ -988,6 +988,11 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
           source: '$repositories',
           rows: collections.repositories ?? [],
           metadata: queryMetadata(sources, 'repositories', 'repositories', true)
+        },
+        $campaigns: {
+          source: '$campaigns',
+          rows: collections.campaigns ?? [],
+          metadata: queryMetadata(sources, 'campaigns', 'campaigns', true)
         }
       }, sources, 'workflows');
       result[name] = executeDatabaseQuery(name, {

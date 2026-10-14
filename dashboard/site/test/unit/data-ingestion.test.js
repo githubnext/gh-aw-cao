@@ -507,14 +507,14 @@ describe('database table ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 7,
+        ingestionVersion: 8,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),
       expect.objectContaining({ kind: 'audit-curation', version: 1 })
     ]);
   });
 
-  it('reimports inventory cached before campaign mapping preservation', async () => {
+  it('reimports version-seven inventory to restore campaign membership and worker roles', async () => {
     const bundledSources = {
       ...sources,
       campaigns: {
@@ -522,7 +522,7 @@ describe('database table ingestion and queries', () => {
         metadata
       },
       workflows: {
-        rows: [{ ...sources.workflows.rows[0], campaign: 'dashboard' }],
+        rows: [{ ...sources.workflows.rows[0], campaign: 'dashboard', 'workflow-role': 'worker' }],
         metadata
       }
     };
@@ -530,9 +530,10 @@ describe('database table ingestion and queries', () => {
     const stored = await readCanonicalBatch(indexedDB);
     delete stored.workflows[0].campaignId;
     delete stored.workflows[0].campaign;
+    delete stored.workflows[0].role;
     await replaceCanonicalBatch(indexedDB, stored);
     const [transaction] = await readTransactions(indexedDB);
-    delete transaction.ingestionVersion;
+    transaction.ingestionVersion = 7;
     await recordTransaction(indexedDB, transaction);
 
     await expect(ingestDashboardSources(indexedDB, bundledSources)).resolves.toMatchObject({
@@ -540,7 +541,8 @@ describe('database table ingestion and queries', () => {
     });
     await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
       expect.objectContaining({
-        campaignId: 'campaign:dashboard-sources:dashboard'
+        campaignId: 'campaign:dashboard-sources:dashboard',
+        role: 'worker'
       })
     ]);
   });
@@ -984,6 +986,9 @@ describe('database table ingestion and queries', () => {
           'campaign-name': 'CAO Dashboard',
           'workflow-id': '501',
           'workflow-name': 'Current registry name',
+          'workflow-role': 'worker',
+          'rollout-mode': 'review',
+          'max-ai-credits': 600,
           'workflow-active': 'unknown',
           'workflow-registry-state': 'unknown',
           'workflow-link': {
@@ -1011,6 +1016,9 @@ describe('database table ingestion and queries', () => {
         campaignId: 'campaign:dashboard-sources:dashboard',
         githubId: '501',
         name: 'Current registry name',
+        role: 'worker',
+        rolloutMode: 'review',
+        maxAiCredits: 600,
         state: 'unknown',
         registryState: 'unknown',
         workflowLink: {

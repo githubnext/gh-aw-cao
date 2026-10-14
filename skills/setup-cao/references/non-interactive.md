@@ -29,7 +29,8 @@ its selected public-target campaign, public Pages, bounded commit and push, and
 workflow dispatches. It may run without prompts from a clean public or private
 control-repository checkout on the default branch. Outside a checkout it may
 create only the signed-in user's private `cao` control repository and public
-canonical Bug Bash target is referenced rather than created; another control coordinate requires exact
+canonical `github/gh-aw` Repo Assist target is referenced rather than
+created; another control coordinate requires exact
 `--create-repo OWNER/NAME`, and another target requires exact
 `--target OWNER/REPO`.
 

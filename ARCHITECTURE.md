@@ -530,44 +530,62 @@ default branch, preserving any existing commits. Outside a checkout the
 installer defaults to the signed-in user's available private `cao` control
 repository; explicit `--create-repo OWNER/NAME` selects another coordinate.
 Unless the operator supplies a catalog source, the installer pins quickstart to
-the latest stable CAO release before this flow begins; Bug Bash is then pinned
-to the same installed CAO commit.
-Quickstart selects an immutable revision of the public
-`githubnext/gh-aw-cao-bug-bash` repository unless `--target OWNER/REPO` selects
-another existing public repository. The shared starter replays a fictional
-incident where an emergency zero-percent rollout request prepares ten services,
-including four tier-0 services, and three retries while its normal suite remains
-green. The campaign supplies that hypothesis externally. The target itself has
-neutral product documentation and a clean single-commit history with no
-incident explanation, root-cause hint, failing reproduction, or intentional-bug
-warning. Current and legacy modules, different valid-zero contracts, a
-production-like fleet inventory, a paused-rollout scenario, and red herrings
-force the versioned `explicit-zero-default` campaign to screen, reproduce,
-repair, and independently verify rather than report a textual match. Quickstart
-verifies that the pinned revision is still available and never creates or
-copies a target repository. Quickstart
-installs Bug Bash at the selected catalog revision, configures exact
+the latest stable CAO release before this flow begins; Repo Assist is
+then pinned to the same installed CAO commit.
+Quickstart selects the public `github/gh-aw`
+repository unless `--target OWNER/REPO` selects another existing public
+repository. Repo Assist works without existing Agentic Workflows,
+Actions history, or telemetry. Quickstart runs ordinary Repo Assist, enabling
+only its existing maintenance worker in review mode and explicitly disabling
+issue triage, issue fix, and PR upkeep. It does not define a custom worker,
+source snapshot, starter input, or separate assessment contract. Normal source
+checkout, duplicate checks, implementation, focused validation, and review
+bundles are preserved. The worker records its actual base SHA.
+Installed quickstart workflows are recompiled with the catalog schedule seed
+`githubnext/gh-aw-cao` before committing, matching lock-file validation.
+The existing budgets are 250 AI credits for orchestration and 600 for
+maintenance, plus the model-based output check, whose default is 400 credits
+and may be configured differently in gh-aw. Quickstart discloses the 1,250-credit
+default total without presenting it as measured usage or expected cost.
+One validated low-risk maintenance proposal and review bundle, or an honest
+no-op, is the first useful result. Proposals are not requirements for using CAO;
+there are no readiness grades,
+required practices, or source-convention admission gates. CAO admission depends
+on policy and access, not tests, CI, agent instructions, or recommendation adoption.
+Immediately after requesting the normal orchestrator, quickstart disables it
+with `gh workflow disable`, including when dispatch fails, to prevent six-hour
+reruns without changing workflow sources or policy semantics. Disabling does
+not cancel the requested run. Pause failures are surfaced explicitly.
+Validation records a manually paused orchestrator with active workers as a
+pause note, not a recommendation to restart the schedule.
+Further runs require explicit re-enablement, which also resumes the normal
+schedule. Other workers and live authority require a reviewed policy decision.
+A successful run does not imply a patch, applied change, or
+operational value.
+Quickstart validates target access and public visibility and never
+creates or copies a target repository. Quickstart installs Repo Assist
+at the selected catalog revision, configures exact
 review-only authority for the selected target, requires public Pages, commits
 and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
 `.vscode/settings.json` project settings, dispatches one orchestrator and at
 most one worker, collects Activity, and waits for the Activity-triggered
 dashboard deployment. Campaign execution never modifies the target. Quickstart
-reports Bug Bash blocked and failed outcomes without
-converting them to findings, and does not report success until the Activity
-artifact contains at least one unique run and the dashboard deployment
-succeeds. Installer handoff preserves the controlling terminal when present
-and otherwise uses plain headless progress, uses elapsed progress for each long
-operation, and suppresses Node's experimental-runtime diagnostic rather than
-mixing it into user progress. `--quickstart` is the authorization boundary for
-these effects in interactive and headless use; ordinary install and `cao setup`
-retain their non-effectful boundaries.
+reports Repo Assist blocked, incomplete, and failed outcomes without
+converting unknowns into findings, and does not report success until the
+Activity artifact contains at least one unique run and the dashboard
+deployment succeeds. Installer handoff preserves the controlling terminal when
+present and otherwise uses plain headless progress, uses elapsed progress for
+each long operation, and suppresses Node's experimental-runtime diagnostic
+rather than mixing it into user progress. `--quickstart` is the authorization
+boundary for these effects in interactive and headless use; ordinary install
+and `cao setup` retain their non-effectful boundaries.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence
 collection scope from campaign rollout authority without silently narrowing
 either. Authentication planning uses the declared subset when present and
 otherwise preserves its existing fail-closed behavior. The public quickstart
-uses this contract to admit the public Bug Bash target while collecting
+uses this contract to admit the public Repo Assist target while collecting
 workflow evidence only from the selected control repository with its
 repository-provided token. A public control repository is safe for this exact
 path because the selected target, evidence, dashboard, and review outputs are

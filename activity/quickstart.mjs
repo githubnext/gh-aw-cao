@@ -7,14 +7,13 @@ import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
-const SAMPLE_SEED_REPOSITORY = 'githubnext/gh-aw-cao-bug-bash';
-const SAMPLE_SEED_REVISION = '49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9';
-const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/bug-bash';
-const BUG_BASH_WORKFLOW = 'bug-bash.lock.yml';
-const BUG_BASH_WORKER = 'bug-bash-investigation.lock.yml';
+const SAMPLE_SEED_REPOSITORY = 'github/gh-aw';
+const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/repo-assist';
+const REPO_ASSIST_WORKFLOW = 'repo-assist.lock.yml';
+const REPO_ASSIST_WORKER = 'repo-assist-maintenance.lock.yml';
 const ACTIVITY_WORKFLOW = 'cao-activity.yml';
 const DASHBOARD_WORKFLOW = 'cao-dashboard.yml';
-const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'bug-bash'];
+const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'repo-assist'];
 const QUICKSTART_PATHS = [
   ...QUICKSTART_DIRECTORIES,
   'cao.sh',
@@ -25,7 +24,6 @@ const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 
 export const QUICKSTART_STARTER_TARGET = Object.freeze({
   repository: SAMPLE_SEED_REPOSITORY,
-  revision: SAMPLE_SEED_REVISION,
 });
 
 function resultText(result) {
@@ -157,8 +155,9 @@ export function formatQuickstartSummary(result) {
   return [
     'CAO quickstart complete.',
     `Dashboard: ${result.dashboard.url}`,
-    `Target: https://github.com/${result.targetRepository}${result.starterTarget ? ' (canonical emergency-pause incident sample)' : ''}`,
-    `Bug Bash: ${result.bugBash.url} (${result.bugBash.conclusion})`,
+    `Target: https://github.com/${result.targetRepository}${result.starterTarget ? ' (public Repo Assist example)' : ''}`,
+    `Repo Assist: ${result.repoAssist.url} (${result.repoAssist.conclusion})`,
+    ...(result.paused ? ['Repo Assist is paused; re-enable it explicitly for further runs and the six-hour schedule.'] : []),
     `Activity: ${result.activity.url} (${result.activity.uniqueRuns} collected runs)`,
     `Control repository: https://github.com/${result.controlRepository}`,
   ].join('\n');
@@ -229,26 +228,19 @@ async function executeCaoQuickstart({
   }
   selectedTarget = target.nameWithOwner;
   const starterTarget = selectedTarget === SAMPLE_SEED_REPOSITORY;
-  if (starterTarget) {
-    const resolvedRevision = run(execute, 'gh', [
-      'api', `repos/${SAMPLE_SEED_REPOSITORY}/commits/${SAMPLE_SEED_REVISION}`,
-      '--jq', '.sha',
-    ]).stdout.trim();
-    if (resolvedRevision !== SAMPLE_SEED_REVISION) {
-      throw new Error(
-        `Canonical Bug Bash sample resolved to ${resolvedRevision || 'no revision'} instead of ${SAMPLE_SEED_REVISION}`,
-      );
-    }
-    ui.success?.(`Canonical Bug Bash incident selected: ${selectedTarget}@${SAMPLE_SEED_REVISION}`);
-  }
+  if (starterTarget) ui.success?.(`Repo Assist example selected: ${selectedTarget}`);
 
-  await ui.step?.('Installing the review-only Bug Bash campaign (2 workflows)');
+  await ui.step?.('Installing Repo Assist with only its existing maintenance worker enabled in review mode');
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
   await addCampaign(selectedCampaign, [], { policyPath, execute });
+  run(execute, 'gh', [
+    'aw', 'compile', '--strict', '--no-check-update',
+    '--schedule-seed', 'githubnext/gh-aw-cao',
+  ]);
   const policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
-  const campaign = policy['control-plane']?.campaigns?.['bug-bash'];
-  if (!campaign?.workers?.investigation) {
-    throw new Error('Bug Bash did not install its CAO campaign declaration');
+  const campaign = policy['control-plane']?.campaigns?.['repo-assist'];
+  if (campaign?.workers?.maintenance?.workflow !== 'repo-assist-maintenance') {
+    throw new Error('Repo Assist did not install its maintenance worker declaration');
   }
   const controlOwner = controlRepository.split('/')[0];
   const targetOwner = selectedTarget.split('/')[0];
@@ -257,19 +249,22 @@ async function executeCaoQuickstart({
     'allowed-repositories': [...new Set([controlRepository, selectedTarget])],
   };
   policy['control-plane'].activity = { repositories: [controlRepository] };
-  policy['control-plane'].campaigns['bug-bash'] = {
+  policy['control-plane'].campaigns['repo-assist'] = {
     ...campaign,
-    icon: 'rocket',
+    icon: 'gear',
+    enabled: true,
     mode: 'review',
     'max-repositories': 1,
     'rollout-percent': 100,
     targets: { [selectedTarget]: { mode: 'review' } },
-    workers: {
-      investigation: {
-        ...campaign.workers.investigation,
+    workers: Object.fromEntries(Object.entries(campaign.workers).map(([key, worker]) => [
+      key,
+      {
+        ...worker,
+        enabled: key === 'maintenance',
         'max-mode': 'review',
       },
-    },
+    ])),
   };
   await writeJsonAtomically(path.resolve(policyPath), policy);
   run(execute, process.execPath, [
@@ -277,7 +272,7 @@ async function executeCaoQuickstart({
     'validate-policy',
     policyPath,
   ]);
-  ui.success?.(`Bug Bash campaign installed in review mode for ${selectedTarget}`);
+  ui.success?.(`Repo Assist maintenance enabled in review mode for ${selectedTarget}; other workers remain disabled; proposals are optional, not requirements for CAO`);
 
   await ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
@@ -310,42 +305,62 @@ async function executeCaoQuickstart({
   run(execute, 'git', ['push', '--set-upstream', 'origin', 'HEAD']);
   ui.success?.(`Control plane pushed to ${controlRepository}`);
 
-  const bugBashCreated = isoBefore(now);
-  await ui.step?.('Running one bounded Bug Bash campaign in review mode (up to 700 AI credits)');
-  await dispatchWorkflow({
+  const repoAssistCreated = isoBefore(now);
+  await ui.step?.('Running Repo Assist in review mode (default budget up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ)');
+  let dispatchError;
+  try {
+    await dispatchWorkflow({
+      execute,
+      repository: controlRepository,
+      workflow: REPO_ASSIST_WORKFLOW,
+      branch,
+      pause,
+      fields: {
+        target_repo: selectedTarget,
+        safe_output_repo: controlRepository,
+        max_repos: 1,
+        rollout_percent: 100,
+        safe_output_mode: 'review',
+      },
+    });
+  } catch (error) {
+    dispatchError = error;
+    throw error;
+  } finally {
+    await ui.step?.('Pausing Repo Assist after this dispatch to prevent recurring scheduled runs');
+    try {
+      run(execute, 'gh', ['workflow', 'disable', REPO_ASSIST_WORKFLOW, '--repo', controlRepository]);
+    } catch (error) {
+      if (dispatchError) {
+        throw new AggregateError(
+          [dispatchError, error],
+          `${dispatchError.message}; pausing Repo Assist also failed: ${error.message}`,
+        );
+      }
+      throw error;
+    }
+    ui.success?.('Repo Assist is paused; the requested run can finish. Re-enable it explicitly for further runs');
+  }
+  const repoAssistRun = await findRun({
     execute,
     repository: controlRepository,
-    workflow: BUG_BASH_WORKFLOW,
-    branch,
-    pause,
-    fields: {
-      target_repo: selectedTarget,
-      safe_output_repo: controlRepository,
-      max_repos: 1,
-      rollout_percent: 100,
-      safe_output_mode: 'review',
-    },
-  });
-  const bugBashRun = await findRun({
-    execute,
-    repository: controlRepository,
-    workflow: BUG_BASH_WORKFLOW,
+    workflow: REPO_ASSIST_WORKFLOW,
     event: 'workflow_dispatch',
-    created: bugBashCreated,
+    created: repoAssistCreated,
     titleIncludes: selectedTarget,
     pause,
   });
-  const bugBash = await watchRun(execute, controlRepository, bugBashRun, { pause });
-  if (bugBash.conclusion === 'success') ui.success?.('Bug Bash orchestrator completed');
-  else ui.warning?.(`Bug Bash orchestrator concluded ${bugBash.conclusion || bugBash.status}`);
+  const repoAssist = await watchRun(execute, controlRepository, repoAssistRun, { pause });
+  if (repoAssist.conclusion === 'success') ui.success?.('Repo Assist orchestrator completed');
+  else ui.warning?.(`Repo Assist orchestrator concluded ${repoAssist.conclusion || repoAssist.status}`);
 
-  await ui.step?.('Waiting for one bounded Bug Bash investigation');
+  await ui.step?.('Waiting for a Repo Assist maintenance proposal or no-op');
   const workerRun = await findRun({
     execute,
     repository: controlRepository,
-    workflow: BUG_BASH_WORKER,
+    workflow: REPO_ASSIST_WORKER,
     event: 'workflow_dispatch',
-    created: bugBashCreated,
+    created: repoAssistCreated,
     titleIncludes: selectedTarget,
     attempts: 15,
     pause,
@@ -354,13 +369,13 @@ async function executeCaoQuickstart({
   let worker;
   if (workerRun) {
     worker = await watchRun(execute, controlRepository, workerRun, { pause });
-    if (worker.conclusion === 'success') ui.success?.('Bug Bash investigation completed');
-    else ui.warning?.(`Bug Bash investigation concluded ${worker.conclusion || worker.status}`);
+    if (worker.conclusion === 'success') ui.success?.('Repo Assist maintenance completed (proposal or no-op; inspect the run outcome)');
+    else ui.warning?.(`Repo Assist maintenance concluded ${worker.conclusion || worker.status}`);
   } else {
-    ui.warning?.('Bug Bash dispatched no investigation; Activity will retain the orchestrator outcome');
+    ui.warning?.('Repo Assist dispatched no maintenance worker; Activity will retain the orchestrator outcome');
   }
 
-  const requestId = `quickstart-${bugBash.databaseId}`;
+  const requestId = `quickstart-${repoAssist.databaseId}`;
   const activityCreated = isoBefore(now);
   await ui.step?.('Collecting the first CAO Activity snapshot');
   await dispatchWorkflow({
@@ -417,17 +432,18 @@ async function executeCaoQuickstart({
     controlRepository,
     targetRepository: selectedTarget,
     starterTarget,
-    campaign: 'bug-bash',
+    campaign: 'repo-assist',
     mode: 'review',
+    paused: true,
     dashboard: {
       url: dashboardUrl,
       workflowRun: dashboard.url,
       visibility: deployedPages.public === false ? 'private' : 'public',
     },
-    bugBash: {
-      runId: bugBash.databaseId,
-      url: bugBash.url,
-      conclusion: bugBash.conclusion,
+    repoAssist: {
+      runId: repoAssist.databaseId,
+      url: repoAssist.url,
+      conclusion: repoAssist.conclusion,
       ...(worker ? {
         workerRunId: worker.databaseId,
         workerUrl: worker.url,

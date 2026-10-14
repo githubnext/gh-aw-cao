@@ -85,9 +85,9 @@ workflow-token quota. Owner-wide or cross-repository Activity scopes require
 `app` or `pat`; Activity rejects those scopes rather than silently collecting
 only the control repository.
 
-The public quickstart has broader rollout scope because Bug Bash reads its
-selected public target, but the agentic workflows themselves run in the
-control repository. It declares the narrower Activity scope explicitly:
+The public quickstart has broader rollout scope because Repo Assist
+reads its selected public target, but the agentic workflows themselves run in
+the control repository. It declares the narrower Activity scope explicitly:
 
 ```json
 {
@@ -95,7 +95,7 @@ control repository. It declares the narrower Activity scope explicitly:
     "scope": {
       "allowed-repositories": [
         "acme/cao",
-        "githubnext/gh-aw-cao-bug-bash"
+        "github/gh-aw"
       ]
     },
     "activity": {

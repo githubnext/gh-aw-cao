@@ -5,7 +5,7 @@
 > [!NOTE]
 > **Experimental campaign:** Worker boundaries, verification gates, and output contracts may change as review evidence accumulates.
 
-Bug Bash is the recommended getting-started campaign for a new Central Agentic Ops control repository. It does one small thing end to end: select one repository for one versioned defect hypothesis, screen it cheaply, run one bounded investigation, verify the result adversarially, and hand a maintainer either one reviewable finding or an honest `no-finding`.
+Bug Bash is a focused investigation campaign. It does one small thing end to end: select one repository for one versioned defect hypothesis, screen it cheaply, run one bounded investigation, verify the result adversarially, and hand a maintainer either one reviewable finding or an honest `no-finding`.
 
 It is deliberately the smallest scope of the same campaign machinery intended for a fleet. The unit of work is a hypothesis against one repository revision; expanding later changes scope and budgets, not the investigation and verification contract. Nothing is written to the investigated repository, and the whole run is review evidence in your own control repository.
 
@@ -74,7 +74,7 @@ A schedule is opt-in. Add one only after you have read several runs and decided 
 | Hypothesis | An explicit numeric zero accepted by a public contract is replaced by a nonzero default. |
 | Focus | Paused-rollout scenario, production-like fleet inventory, policy contract, current and legacy normalizers, and `test/` |
 
-The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. Quickstart targets this shared repository directly and never forks, copies, or modifies it. The campaign supplies the emergency-pause hypothesis externally. The target itself is a neutral change-window codebase with no incident explanation, root-cause hint, failing reproduction, or intentional-bug warning. Its current and legacy modules, different zero-value contracts, production-like fleet inventory, paused-rollout scenario, and red herrings require the worker to earn the reproduction from code and contract evidence.
+The revision is an immutable commit SHA, not a branch, so a later push cannot quietly change what "reproduced" means. Bug Bash targets this shared repository directly and never forks, copies, or modifies it. The campaign supplies the emergency-pause hypothesis externally. The target itself is a neutral change-window codebase with no incident explanation, root-cause hint, failing reproduction, or intentional-bug warning. Its current and legacy modules, different zero-value contracts, production-like fleet inventory, paused-rollout scenario, and red herrings require the worker to earn the reproduction from code and contract evidence.
 
 The starter contains a known opportunity for the declared hypothesis, so it is designed to exercise screening, reproduction, repair, and independent verification. That does not waive any verification gate or guarantee a model result. On any ordinary target, `no-finding` remains a valid and expected outcome.
 

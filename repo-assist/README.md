@@ -17,7 +17,75 @@ Repo Assist makes bounded progress on enrolled repositories. Its orchestrator ra
 
 Workers are independently dispatchable and handle exactly one authorized target repository. Review mode routes issue findings to the control repository and publishes proposed patches as review-bundle artifacts. Live mode may label or comment on a selected issue, assign one actionable issue to Copilot, create a draft pull request, or update an owned Repo Assist pull request branch.
 
+## First run
+
+The CAO quickstart uses **Repo Assist**, not a separate repository assessment.
+It enables only the existing maintenance worker, in review mode, for one exact
+public target. Issue triage, issue fix, and PR upkeep remain disabled.
+There is no special worker, snapshot helper, or reduced assessment profile.
+With no `--target`, quickstart uses the actively maintained public
+[`github/gh-aw`](https://github.com/github/gh-aw) repository and the normal
+worker checkout. Use `--target OWNER/REPOSITORY` for your own public repository.
+No demo repository is created, and the example's existing automations are not
+prerequisites for your repository.
+
+Maintenance proposes **one small validated patch** in a control-repository
+review issue and downloadable review bundle, or records a **no-op** if nothing
+appropriate fits. It never changes the target repository.
+Proposals are optional, not requirements for using CAO. There are no readiness
+grades, required templates, or practice checklists; repositories do not need
+existing Agentic Workflows, Actions history, tests, CI, or `AGENTS.md`.
+
+This uses the normal workflow budgets: **250 AI credits** for the orchestrator
+and **600** for maintenance, plus the model-based output check (**400** by
+default, configurable in gh-aw). The default total is **1,250 AI credits**,
+not expected consumption or a measured token count. Normal validation and
+review-bundle behavior are unchanged.
+
+Quickstart pauses the orchestrator through `gh workflow disable` immediately
+after requesting its first run. The requested run can finish, but the six-hour
+schedule will not keep spending credits. Re-enable it explicitly for further
+manual runs or scheduled operation:
+
+```bash
+gh workflow enable repo-assist.lock.yml
+gh aw run repo-assist --ref main \
+  --raw-field target_repo="OWNER/REPOSITORY" \
+  --raw-field safe_output_repo="OWNER/CONTROL_REPOSITORY" \
+  --raw-field max_repos="1" \
+  --raw-field safe_output_mode="review"
+```
+
+Re-enabling also resumes the six-hour schedule. Disable the orchestrator again
+after a manual run if you do not want recurring work. Enable additional workers
+or live mode only through a separate reviewed policy change.
+
 Copilot assignment uses the `assign-to-agent` safe output and requires Copilot coding agent availability on the target plus a `GH_AW_AGENT_TOKEN` Actions secret with the assignment permissions required by gh-aw. Both the issue and resulting pull request stay in the authorized target repository. Already assigned issues and active fixes are skipped. Review mode never starts a coding agent; maintainers review the suggested prompt before delegation. Assignment does not grant merge authority.
+
+## See Repo Assist in action
+
+The first run demonstrates Maintenance only. Explore the broader campaign
+through these real, historical review-mode reports from our
+[`githubnext/gh-aw-cao` control repository](https://github.com/githubnext/gh-aw-cao).
+They are not canned demo data or a promise that every run finds work.
+Reading these reports does not start a workflow or spend AI credits.
+
+| Capability | Observed report and outcome |
+| --- | --- |
+| Issue triage | [#17740](https://github.com/githubnext/gh-aw-cao/issues/17740) diagnoses a runtime import failure in `githubnext/gh-aw-cao`, explains the evidence, and gives a maintainer action and acceptance checks. [Originating run](https://github.com/githubnext/gh-aw-cao/actions/runs/38399472881). |
+| Issue fix | [#17851](https://github.com/githubnext/gh-aw-cao/issues/17851) proposes a patch for false dashboard integration-test failures in `githubnext/gh-aw-cao`, with 12 focused tests reported passing and full-suite baseline failures disclosed. [Originating run](https://github.com/githubnext/gh-aw-cao/actions/runs/38493105790). |
+| Maintenance | [#17378](https://github.com/githubnext/gh-aw-cao/issues/17378) proposes a lockfile-sync correction in `githubnext/gh-aw-cao`, with before/after `npm ci --dry-run` evidence and an infrastructure limitation on full installation disclosed. [Originating run](https://github.com/githubnext/gh-aw-cao/actions/runs/38119485916). |
+| PR upkeep | [#14060](https://github.com/githubnext/gh-aw-cao/issues/14060) reviews a blocker on `github/gh-aw#56568` and identifies a maintainer design decision rather than inventing a repair. No new patch was made, and the [originating run failed](https://github.com/githubnext/gh-aw-cao/actions/runs/36227760220); this is not a successful repair example. |
+
+These outcomes were checked on 2026-10-14. They show analysis and proposed work,
+not proof that a patch was applied, accepted, or merged. Historical reports may
+be automatically closed and workflow artifacts may expire; closure alone is
+not acceptance. Inspect the report's evidence and originating run rather than
+equating workflow success with an applied improvement.
+
+The showcase does not enable more workers in quickstart. Issue triage, issue
+fix, PR upkeep, recurring operation, and live authority remain explicit,
+separately reviewed choices. Keeping the repository unchanged is valid.
 
 ## Install
 
@@ -87,6 +155,7 @@ Each worker registers a deterministic one-shot operational grader through gh-aw'
 | PR Upkeep | `target-bound-pr-repair-request` | One identified Repo Assist pull request receives a bounded repair request, or review mode produces equivalent patch evidence. |
 
 The evaluators grade validated requests available in the current run. They do not treat a requested issue, pull request, comment, label, or branch update as applied, accepted, or merged. Missing target evidence and explicit no-op outcomes remain `null`; malformed, inconsistent, or off-target requests score `0`.
+
 
 ## Pause or Stop
 

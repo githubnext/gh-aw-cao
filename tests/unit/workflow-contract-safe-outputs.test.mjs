@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
@@ -325,16 +326,93 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
   }
 });
 
-test("review bundles skip safely when the agent artifact omits their prepared directory", () => {
+test("review bundles persist redacted patch evidence before publishing", () => {
   const reviewBundle = workflow("shared/review-bundle.md");
+  const config = parse(/^---\n([\s\S]*?)\n---/.exec(reviewBundle)[1]);
+  assert.deepEqual(config["safe-outputs"].jobs["publish-review-bundle"].artifacts, [
+    "/tmp/gh-aw/agent/review-bundles/",
+  ]);
+  for (const name of ["repo-assist-maintenance", "repo-assist-issue-fix", "repo-assist-pr-upkeep", "bug-bash-investigation"]) {
+    const agent = parse(workflow(`${name}.lock.yml`)).jobs.agent;
+    const redactionIndex = agent.steps.findIndex((step) => step.name === "Redact secrets in logs");
+    const uploadIndex = agent.steps.findIndex((step) => step.name === "Upload agent artifacts");
+    const upload = agent.steps[uploadIndex];
+    assert.ok(redactionIndex >= 0 && uploadIndex > redactionIndex, name);
+    assert.equal(upload.if, "always() && steps.redact_secrets.outcome == 'success'", name);
+    for (const extension of [".md", ".txt", ".patch"]) {
+      assert.ok(upload.with.path.includes(`/tmp/gh-aw/agent/review-bundles/**/*${extension}`), `${name}: ${extension}`);
+    }
+  }
   const missingBundleBranch = /if \[ ! -d "\$SOURCE_DIR" \]; then[\s\S]*?^\s+fi$/m.exec(reviewBundle)?.[0];
   const uploadStep = stepBlock(reviewBundle, "Upload review bundle artifact");
 
   assert.ok(missingBundleBranch, "missing review bundle branch must exist");
-  assert.match(missingBundleBranch, /::warning::Review bundle was not persisted in the agent artifact/);
-  assert.match(missingBundleBranch, /echo "skip_upload=true" >> "\$GITHUB_OUTPUT"/);
-  assert.match(missingBundleBranch, /exit 0/);
+  assert.match(missingBundleBranch, /::error::Requested review bundle was not persisted in the agent artifact/);
+  assert.doesNotMatch(missingBundleBranch, /skip_upload=true/);
+  assert.match(missingBundleBranch, /exit 1/);
   assert.match(uploadStep, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
+});
+
+test("review bundle preparation fails on missing requested evidence but permits a genuine no-op", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-review-bundle-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const config = parse(/^---\n([\s\S]*?)\n---/.exec(workflow("shared/review-bundle.md"))[1]);
+  const prepare = config["safe-outputs"].jobs["publish-review-bundle"].steps[0].run;
+  const output = join(directory, "agent_output.json");
+  const githubOutput = join(directory, "github-output");
+  const request = {
+    type: "publish_review_bundle",
+    bundle_name: "maintenance",
+    source_dir: "/tmp/gh-aw/agent/review-bundles/maintenance",
+    target_repo: "github/gh-aw",
+    requested_output: "create-pull-request",
+    base_sha: "a".repeat(40),
+  };
+  const runPrepare = (items) => {
+    writeFileSync(output, JSON.stringify({ items }));
+    writeFileSync(githubOutput, "");
+    return spawnSync("bash", ["-c", `
+realpath() { "$NODE" -e 'console.log(require("node:path").resolve(process.argv[1]))' "$2"; }
+${prepare}`], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE: process.execPath,
+        GH_AW_AGENT_OUTPUT: output,
+        GITHUB_OUTPUT: githubOutput,
+        RUNNER_TEMP: join(directory, "runner"),
+        GITHUB_WORKFLOW: "Maintenance",
+        GITHUB_RUN_ID: "123",
+        GITHUB_RUN_ATTEMPT: "1",
+        GITHUB_SERVER_URL: "https://github.com",
+        GITHUB_REPOSITORY: "acme/control",
+        GH_AW_SAFE_OUTPUTS_STAGED: "false",
+      },
+    });
+  };
+  const missing = runPrepare([request]);
+  assert.equal(missing.status, 1, missing.stderr);
+  assert.match(missing.stderr, /::error::Requested review bundle was not persisted/);
+  assert.doesNotMatch(readFileSync(githubOutput, "utf8"), /skip_upload=true/);
+
+  const noop = runPrepare([]);
+  assert.equal(noop.status, 0, noop.stderr);
+  assert.match(readFileSync(githubOutput, "utf8"), /skip_upload=true/);
+
+  const restored = join(directory, "agent", "review-bundles", "maintenance");
+  mkdirSync(restored, { recursive: true });
+  for (const file of ["summary.md", "changed-files.txt", "validation.txt", "changes.patch"]) {
+    writeFileSync(join(restored, file), `Evidence in ${file}\n`);
+  }
+  const published = runPrepare([request]);
+  assert.equal(published.status, 0, published.stderr);
+  const preparedOutput = readFileSync(githubOutput, "utf8");
+  assert.match(preparedOutput, /skip_upload=false/);
+  const staging = /^bundle_path=(.+)$/m.exec(preparedOutput)[1];
+  for (const file of ["summary.md", "changed-files.txt", "validation.txt", "changes.patch"]) {
+    assert.equal(readFileSync(join(staging, file), "utf8"), `Evidence in ${file}\n`);
+  }
+  assert.equal(JSON.parse(readFileSync(join(staging, "bundle-manifest.json"), "utf8")).base_sha, request.base_sha);
 });
 
 test("workers inherit human-first progressive report disclosure", () => {

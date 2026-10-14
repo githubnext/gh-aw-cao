@@ -103,7 +103,7 @@ export function mergeActivityStructuralRecord(storeName, existing, incoming) {
   const preserved = Object.fromEntries(inventoryFields
     .filter((field) => existing[field] !== undefined)
     .map((field) => [field, existing[field]]));
-  return { ...incoming, ...preserved };
+  return { ...existing, ...incoming, ...preserved };
 }
 
 /** @param {Record<string, unknown>} record */

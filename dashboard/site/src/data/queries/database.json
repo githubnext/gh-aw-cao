@@ -896,7 +896,7 @@
   },
   {
     "name": "outcomes",
-    "stores": ["issues", "runs", "workflows", "repositories"],
+    "stores": ["issues", "runs", "workflows", "repositories", "campaigns"],
     "from": "run-records",
     "filter": {
       "predicates": [

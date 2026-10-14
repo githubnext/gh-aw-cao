@@ -319,6 +319,18 @@ export function validateEnablement(root, execute, installed) {
       return { workflow: name, path: workflowPath, state: states.get(workflowPath) ?? "unknown" };
     });
     const knownStates = new Set(observed.map(({ state }) => state).filter((state) => state !== "unknown"));
+    if (observed.length > 1
+        && observed[0].state === "disabled_manually"
+        && observed.slice(1).every(({ state }) => state === "active")) {
+      findings.push(finding("campaign-orchestrator-paused", "note", "configuration", "Campaign orchestration is paused", {
+        campaign: declaration.campaign,
+        files: observed.map(({ path: workflowPath }) => workflowPath),
+        expected: "A manually paused orchestrator does not start new work; active workers may finish dispatched work",
+        observed: observed.map(({ workflow, state }) => `${workflow}: ${state}`).join(", "),
+        remediation: "Leave orchestration paused until another run is intended; enabling the campaign also resumes its schedule",
+      }));
+      continue;
+    }
     if (knownStates.size > 1) {
       const activeCount = observed.filter(({ state }) => state === "active").length;
       findings.push(finding("campaign-partially-disabled", "warning", "configuration", "Campaign workflows have inconsistent enablement", {

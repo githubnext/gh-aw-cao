@@ -2666,7 +2666,7 @@
       "id": "campaign-worker-issues",
       "subject": "Project issue outcomes created by campaign worker workflows.",
       "objective": "Choose a campaign worker issue whose current recorded disposition needs review.",
-      "acceptance": "Every included issue outcome joins a declared worker on organization, repository, and workflow and retains its issue, run, and status evidence; missing closing details remain unknown and closure is not proof of resolution.",
+      "acceptance": "Include only issues whose producing run joins declared worker inventory on organization, repository, and workflow, even when the issue lands elsewhere. Preserve campaign and role across Activity imports. Retain run and status evidence; missing closure details stay unknown and closure is not proof of resolution.",
       "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
       "parameters": [
         {

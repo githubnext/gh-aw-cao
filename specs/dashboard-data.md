@@ -399,6 +399,13 @@ normalization output MAY be retained as an incremental cache, but that cache
 SHALL live outside the published phase directories and MUST NOT be copied into
 the dashboard artifact or listed in the deployed payload manifest.
 
+Browser Activity ingestion MUST preserve existing workflow inventory metadata,
+including worker roles and campaign membership, when an incoming structural
+record omits it. Outcome projection MUST resolve campaign membership through
+the producing run's workflow and canonical campaign collection, independently
+of the repository receiving the issue. Campaign Reports MUST remain available
+after incremental imports whose unchanged inventory is skipped.
+
 Consolidated shards SHALL be partitioned deterministically so that unchanged
 history remains byte-identical between publications. Structural collections
 SHALL occupy a single leading partition that sorts before time-based partitions,
