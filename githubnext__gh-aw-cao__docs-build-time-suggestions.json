@@ -3,6 +3,42 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-14T01:33:38Z",
+      "worker_run_id": 38496101950,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38495737964,
+        38494639436,
+        38492693208,
+        38492436301,
+        38490710413,
+        38487992242,
+        38486197985,
+        38484739681,
+        38484281606,
+        38483570029,
+        38482758270,
+        38481857817,
+        38481624476,
+        38479921909,
+        38478472452,
+        38477264049,
+        38476935820,
+        38474851719,
+        38473017970,
+        38471286022
+      ],
+      "docs_window": {
+        "start": "2026-10-13T21:31:42Z",
+        "end": "2026-10-14T01:26:33Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 2,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 95d3da95a306cf08324ff5e65e468aa94e6718cb. In the latest 20 completed docs.yml runs from 2026-10-13T21:31:42Z through 2026-10-14T01:26:33Z, 14 runs succeeded but only 2 successful runs executed the build and deploy jobs (38484739681 and 38471286022). The remaining completed runs were freshness-check schedule no-ops, workflow_run skips, or workflow_run callbacks that ended action_required. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so the evaluation stopped before deeper dashboard-run analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-14T00:56:12Z",
       "worker_run_id": 38492631172,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -1282,48 +1318,6 @@
       "dashboard_comparable_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "Evaluated category \"Astro documentation generation\" on source SHA cf42f81b0d259054c70c400ddee4d321fd8b5c87. In the latest 20 completed docs.yml runs from 2026-10-13T07:49:52Z through 2026-10-13T10:58:30Z, 11 runs succeeded but only 1 reached a successful build job (38386507579) and 0 reached a successful deploy job, so fewer than 5 comparable successful docs samples were available. Trusted job metadata showed the 10 successful schedule runs on a71b0e0 were freshness-only skips with schedule-freshness median/p90 10.5s/12.1s and successful workflow median/p90 16.0s/17.0s. The lone comparable docs build on cf42f81 took 36s with deploy skipped because it was push-triggered; a bounded log read confirmed a node_modules cache hit restored ~283 MB before npm run docs:build, which itself completed in about 10s, and the cached CAO Dashboard restore step also hit. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T03:41:20Z through 2026-10-13T10:58:17Z contained 0 successful dashboard builds and 1 push failure (38353436671); trusted step metadata for that failure showed a 158s Restore collected activity data step and a 1s Upgrade fallback activity data failure before Assemble Dashboard Language site could start. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard runs, no evidence-backed recommendation is actionable for Astro documentation generation in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T09:38:01Z",
-      "worker_run_id": 38377194307,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38375876934,
-        38374713740,
-        38372948086,
-        38371476283,
-        38370801432,
-        38367695852,
-        38367093197,
-        38366126749,
-        38365190500,
-        38361915714,
-        38361499803,
-        38358813042,
-        38358518368,
-        38356195199,
-        38355222384,
-        38354714993,
-        38354172987,
-        38353758914,
-        38353710512,
-        38353436676
-      ],
-      "docs_window": {
-        "start": "2026-10-13T05:50:07Z",
-        "end": "2026-10-13T09:23:02Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 1,
-      "dashboard_window": {
-        "start": "2026-10-13T01:49:57Z",
-        "end": "2026-10-13T09:12:57Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T05:50:07Z through 2026-10-13T09:23:02Z, 10 runs succeeded but only 2 reached a successful build job (38353758914, 38353436676), so fewer than 5 comparable successful runs were available. Trusted job metadata showed workflow queue median/p90 0.0s/0.0s, successful workflow median/p90 14.0s/60.1s, successful execution median/p90 14.0s/60.1s, successful build-job median/p90 43.5s/51.1s, successful deploy-job median/p90 19.0s/19.0s, and successful schedule-freshness median/p90 9.0s/11.6s. Bounded log reads for docs runs 38353758914 and 38353436676 confirmed cache hits for the setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in both build samples. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T01:49:57Z through 2026-10-13T09:12:57Z contained 0 successful dashboard builds and 2 push failures: 38353436671 spent 158s restoring a 2.27 GB activity cache before failing in Upgrade fallback activity data, and 38337349456 was a 3h17m push outlier with no retained job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard samples, no evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
