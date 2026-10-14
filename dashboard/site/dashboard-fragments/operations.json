@@ -2360,7 +2360,8 @@
             "style": "entity-cards",
             "card": "maintenance-repository",
             "icon": "repo",
-            "action": "upgrade-repository"
+            "action": "upgrade-repository",
+            "actions": ["add-repository"]
           }
         }
       ]

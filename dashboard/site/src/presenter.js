@@ -2394,7 +2394,7 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
     );
   }
 
-  if (filteredRows.length === 0 && view.mark !== 'table' && !isMetricCard) {
+  if (filteredRows.length === 0 && view.mark !== 'table' && view.mark !== 'list' && !isMetricCard) {
     return renderCustomViewState(pageId, title, authoredSourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 

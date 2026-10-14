@@ -52,6 +52,7 @@
     "activity/version.mjs",
     "dashboard/bootstrap-activity.mjs",
     "dashboard/cli-action-contract.mjs",
+    "dashboard/dialog-selector.mjs",
     "dashboard/grader",
     "dashboard/local-custom-views.mjs",
     "dashboard/local-server.mjs",

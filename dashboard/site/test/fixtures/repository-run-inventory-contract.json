@@ -1,0 +1,16 @@
+{
+  "page": "repositories",
+  "view": "repositories-runs",
+  "source": "repository-run-inventory",
+  "chart": "horizontal-bar",
+  "limit": 100,
+  "rows": [
+    { "repository": "org/alpha", "runs": 6 },
+    { "repository": "org/approval", "runs": 1 },
+    { "repository": "org/reported", "runs": 1 },
+    { "repository": "org/running", "runs": 1 },
+    { "repository": "other/alpha", "runs": 1 },
+    { "repository": "org/disabled", "runs": 0 },
+    { "repository": "org/empty", "runs": 0 }
+  ]
+}

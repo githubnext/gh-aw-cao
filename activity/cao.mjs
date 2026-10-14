@@ -8,6 +8,7 @@ import { formatQuickstartSummary } from './quickstart.mjs';
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
 export { initializeCaoPolicy } from './cli/policy.mjs';
+export { addCaoRepository } from './cli/repositories.mjs';
 export { ensureGhAwMinimumVersion, upgradeGhAw } from './cli/gh-aw.mjs';
 export { fineGrainedTokenSetups, setupCaoAuthentication } from './cli/authentication.mjs';
 export { addCaoCampaign, updateCaoCampaigns, setCaoCampaignMode, setCaoCampaignWorkflowsEnabled } from './cli/campaigns.mjs';

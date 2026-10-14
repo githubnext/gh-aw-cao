@@ -12,6 +12,7 @@ import { setupCaoControlPlane } from '../setup.mjs';
 import { DAY_MS, UsageError, parseOptions, rawQueryFromStdin, option, rejectUnknownOptions, ttlDays, retentionWindowMs, runRetentionWindowMs, runTtlDays } from './options.mjs';
 import { DEFAULT_COMPACTED_JSONL_SHARD_BYTES, auditJsonlDirectory, compactJsonlShards } from './jsonl.mjs';
 import { initializeCaoPolicy } from './policy.mjs';
+import { addCaoRepository } from './repositories.mjs';
 import { setupCaoAuthentication } from './authentication.mjs';
 import { upgradeGhAw } from './gh-aw.mjs';
 import { addCaoCampaign, updateCaoCampaigns, setCaoCampaignMode, setCaoCampaignWorkflowsEnabled } from './campaigns.mjs';
@@ -46,6 +47,7 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
       runCaoQuickstart,
       setupCaoAuthentication,
       addCaoCampaign,
+      addCaoRepository,
       updateCaoCampaigns,
       upgradeGhAw,
       setCaoCampaignMode,

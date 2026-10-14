@@ -91,7 +91,7 @@ test('mobile footer hides update details and keeps versions within the viewport'
   }
 });
 
-test('tiered actions keep visible labels and usable approval on portrait and landscape phones', async ({ page }) => {
+test('mobile prompt actions are accessible icon buttons with usable approval', async ({ page }) => {
   await page.evaluate(async (moduleUrls) => {
     const [{ getPrimerStyles }, { renderCliActions }, { renderPromptPreviewAction }, { normalizeAction }] = await Promise.all(
       moduleUrls.map((url) => import(url))
@@ -121,7 +121,10 @@ test('tiered actions keep visible labels and usable approval on portrait and lan
     await page.setViewportSize(viewport);
     const triggers = page.locator('.cli-action-trigger, .table-intent-button');
     await expect(triggers).toHaveCount(3);
-    await expect(triggers.last().locator('span')).toHaveText('Propose fix');
+    await expect(triggers.last()).toHaveAccessibleName('Propose fix');
+    await expect(triggers.last().locator('span')).toBeHidden();
+    await expect(triggers.last()).toHaveCSS('width', '44px');
+    await expect(triggers.last().locator('svg')).toBeVisible();
     for (const trigger of await triggers.all()) {
       await expect(trigger).toBeVisible();
       const box = await trigger.boundingBox();
@@ -400,6 +403,7 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
 
   // The full-view modifier replaces the default stable gutter while preserving full-height content.
   await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(page.locator('.org-sidebar')).toHaveCSS('margin-bottom', '0px');
   await expect.poll(contentLayout).toEqual({
     left: 24,
     right: 24,
@@ -409,6 +413,13 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.org-sidebar')).toHaveCSS('margin-bottom', '8px');
+  expect(await page.locator('.app-shell').evaluate((shell) => {
+    const sidebar = shell.querySelector('.org-sidebar');
+    const main = shell.querySelector('.app-main');
+    if (!sidebar || !main) throw new Error('Expected sidebar and main content.');
+    return main.getBoundingClientRect().top - sidebar.getBoundingClientRect().bottom;
+  })).toBe(8);
   await expect.poll(contentLayout).toEqual({
     left: 14,
     right: 14,
@@ -416,6 +427,8 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
     bottom: 0,
     scrollbarGutter: 'auto'
   });
+  await page.locator('.dashboard-root').evaluate((root) => root.classList.add('dashboard-full-view-scrolled'));
+  await expect(page.locator('.org-sidebar')).toHaveCSS('margin-bottom', '0px');
 });
 
 test('full-view chart, card, and table content share the page inset', async ({ page }) => {
@@ -452,6 +465,80 @@ test('full-view chart, card, and table content share the page inset', async ({ p
   ]);
 
   expect(contentInsets).toEqual([expectedInset, expectedInset, expectedInset]);
+});
+
+test('full-view chart mode scrolls without shrinking or overlapping chart sections', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <main class="dashboard-prototype">
+            <div class="report-body"><div class="dashboard-pages">
+              <section class="dashboard-page" data-view-mode="chart">
+                <div class="page-chrome">View mode</div>
+                <div class="custom-view-grid">
+                  <section class="custom-view chart-view-pie" data-view-layout="full" data-view-mode-content="chart">
+                      <div class="chart-prompt-heading"><h3>Dispatches by campaign</h3></div>
+                      <p class="view-description">Observed dispatches handled by each campaign.</p>
+                      <div class="pie-chart-layout">
+                        <div class="chart-widget"><svg viewBox="0 0 100 100"></svg></div>
+                        <ul class="chart-legend chart-legend-pie">
+                          ${'<li><i></i><span>Campaign</span><strong>100</strong><small>10%</small></li>'.repeat(10)}
+                        </ul>
+                      </div>
+                  </section>
+                  <section class="custom-view" data-view-mode-content="chart">
+                    <div class="chart-prompt-heading"><h3>Repository coverage by campaign</h3></div>
+                    <div class="chart-widget horizontal-bar-chart-widget">
+                      <ul class="horizontal-bar-chart-list">
+                        ${'<li class="horizontal-bar-chart-row"><span>Campaign</span><span class="horizontal-bar-chart-track"></span><span>100</span></li>'.repeat(10)}
+                      </ul>
+                    </div>
+                  </section>
+                  <section class="custom-view" data-view-layout="full-view" data-view-mode-content="table">
+                    <div class="table-region"><div class="table-scroll">Campaign inventory</div></div>
+                  </section>
+                </div>
+              </section>
+            </div></div>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const dashboardPage = page.locator('.dashboard-page');
+  const grid = page.locator('.custom-view-grid');
+  const charts = page.locator('[data-view-mode-content="chart"]');
+  for (const width of [1440, 580, 390]) {
+    await page.setViewportSize({ width, height: 780 });
+    await expect(grid).toHaveCSS('overflow-y', 'auto');
+    const [first, second] = await charts.evaluateAll((elements) => elements.map((element) => ({
+      top: element.getBoundingClientRect().top,
+      bottom: element.getBoundingClientRect().bottom,
+      contentBottom: element.lastElementChild?.getBoundingClientRect().bottom,
+      headingTop: element.querySelector('h3')?.getBoundingClientRect().top,
+      headingLeft: element.querySelector('h3')?.getBoundingClientRect().left
+    })));
+    expect(first.contentBottom).toBeLessThanOrEqual(first.bottom + 1);
+    expect(first.headingTop).toBeCloseTo(first.top, 0);
+    expect(first.headingLeft).toBeGreaterThan(0);
+    expect(first.headingLeft).toBe(second.headingLeft);
+    expect(second.top).toBeGreaterThanOrEqual(first.bottom + 15);
+    await grid.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect(charts.last().locator('.horizontal-bar-chart-row').last()).toBeInViewport();
+    await grid.evaluate((element) => { element.scrollTop = 0; });
+  }
+  await dashboardPage.evaluate((element) => { element.setAttribute('data-view-mode', 'table'); });
+  await expect(grid).toHaveCSS('overflow-y', 'hidden');
+  await expect(charts.first()).toBeHidden();
+  await expect(page.locator('.table-scroll')).toBeVisible();
 });
 
 test('mobile table and card modes use the full viewport width', async ({ page }) => {

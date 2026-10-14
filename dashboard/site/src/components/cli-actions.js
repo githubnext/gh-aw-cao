@@ -6,11 +6,12 @@ import { createDebug } from '../debug.js';
 import { createFactoryScope } from './factory-elements.js';
 import { effect, state } from '../reactive.js';
 import { assertActionLevel, normalizeAction, actionPresentation } from '../action-model.js';
+import { createDialogSelector } from './dialog-selector.js';
 
 const debugCliActions = createDebug('cli-actions');
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -181,7 +182,7 @@ function commandPreview(action, values, templateValues) {
 }
 
 /**
- * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
+ * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
  * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
@@ -189,7 +190,12 @@ function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
   const canExecute = options.canExecute !== false && action['copy-only'] !== true;
-  const templateValues = options.templateValues ?? {};
+  const confirmationLabel = action.selector ? presentation.label
+    : presentation.confirmation ? `Confirm ${presentation.label}` : `Run ${presentation.label}`;
+  const templateValues = { ...options.templateValues };
+  const preview = () => action.selector && !templateValues[action.selector.mapping.target]
+    ? 'Select a repository to review the command.'
+    : commandPreview(action, argumentValues, templateValues);
   const argumentValues = Object.fromEntries(
     (action.arguments ?? []).map((argument) => [argument.id, argument.default === true])
   );
@@ -202,14 +208,14 @@ function renderCliActionControl(action, options = {}) {
   // node, replacing the three scattered `command.textContent` writes
   // previously made from the checkbox listener, `resetArguments`, and the
   // dialog-open handler.
-  const commandPreviewText = state(commandPreview(action, argumentValues, templateValues));
+  const commandPreviewText = state(preview());
   const inputs = (action.arguments ?? []).map((argument) => {
     const input = /** @type {HTMLInputElement} */ (h('input', {
       type: 'checkbox',
       checked: argument.default === true,
       onChange: (/** @type {Event} */ event) => {
         argumentValues[argument.id] = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
-        commandPreviewText.set(commandPreview(action, argumentValues, templateValues));
+        commandPreviewText.set(preview());
       }
     }));
     return {
@@ -234,13 +240,18 @@ function renderCliActionControl(action, options = {}) {
       argumentValues[argument.id] = checked;
       input.checked = checked;
     }
-    commandPreviewText.set(commandPreview(action, argumentValues, templateValues));
+    commandPreviewText.set(preview());
   };
-  const { dialog, open, close } = createModalDialog({
+  const { dialog, open, close: closeModal } = createModalDialog({
     className: 'cli-action-dialog',
     ariaLabel: `Approve ${action.label}`,
     onFallbackClose: () => trigger.focus()
   });
+  const close = () => {
+    if (busy.get()) return;
+    selector?.cancel();
+    closeModal();
+  };
   const copyControl = canExecute ? null : createCopyControl({
     getContent: () => commandPreviewText.get(),
     label: 'Copy command',
@@ -261,7 +272,30 @@ function renderCliActionControl(action, options = {}) {
   const statusText = state('');
   const outputVisible = state(false);
   const outputText = state('');
-  const confirmLabel = state(presentation.confirmation ? `Confirm ${presentation.label}` : `Run ${presentation.label}`);
+  const confirmLabel = state(confirmationLabel);
+  const selectionReady = state(!action.selector);
+  const selector = action.selector ? createDialogSelector(action.id, action.selector, {
+    signal: scope.signal,
+    select: (value) => {
+      const target = action.selector?.mapping.target;
+      if (!target) return;
+      statusText.set('');
+      outputVisible.set(false);
+      outputText.set('');
+      confirmLabel.set(confirmationLabel);
+      if (value === null) delete templateValues[target];
+      else templateValues[target] = value;
+      try {
+        commandPreviewText.set(preview());
+        selectionReady.set(value !== null);
+      } catch (error) {
+        delete templateValues[target];
+        selectionReady.set(false);
+        statusText.set(error instanceof Error ? error.message : 'Invalid selection.');
+        commandPreviewText.set(preview());
+      }
+    }
+  }) : null;
 
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
@@ -272,6 +306,7 @@ function renderCliActionControl(action, options = {}) {
       type: 'button',
       className: 'cli-action-confirm',
       onClick: async () => {
+        if (busy.get() || !selectionReady.get()) return;
         busy.set(true);
         statusText.set('Running…');
         outputText.set('');
@@ -284,7 +319,7 @@ function renderCliActionControl(action, options = {}) {
           });
           statusText.set(result.ok ? 'Completed' : (result.error || 'Action failed'));
           if (!outputText.get()) outputText.set(resultText(result));
-          confirmLabel.set(presentation.confirmation ? `Confirm ${presentation.label} again` : `Run ${presentation.label} again`);
+          confirmLabel.set(`${confirmationLabel} again`);
           debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
         } catch (error) {
           statusText.set(error instanceof Error ? error.message : 'Action failed.');
@@ -300,8 +335,9 @@ function renderCliActionControl(action, options = {}) {
     }, 'Run action'));
   if (canExecute) {
     effect(() => {
-      confirm.disabled = busy.get();
+      confirm.disabled = busy.get() || !selectionReady.get();
       cancel.disabled = busy.get();
+      selector?.setDisabled(busy.get());
       status.textContent = statusText.get();
       output.hidden = !outputVisible.get();
       output.textContent = outputText.get();
@@ -317,17 +353,19 @@ function renderCliActionControl(action, options = {}) {
         : settingsPresentation
         ? 'cli-action-trigger configuration-cli-action'
         : 'cli-action-trigger',
-      title: rowPresentation ? action.label : undefined,
-      'aria-label': rowPresentation ? action.label : undefined,
+      title: action.label,
+      'aria-label': action.label,
       onClick: () => {
         copyControl?.reset();
         if (canExecute) {
           statusText.set('');
           outputVisible.set(false);
-          confirmLabel.set(presentation.confirmation ? `Confirm ${presentation.label}` : `Run ${presentation.label}`);
+          confirmLabel.set(confirmationLabel);
         }
         resetArguments();
+        selector?.reset();
         open();
+        selector?.focus();
       }
     },
     octicon(presentation.icon),
@@ -357,12 +395,13 @@ function renderCliActionControl(action, options = {}) {
       'div',
       { className: 'cli-action-dialog-body' },
       action.description ? h('p', null, action.description) : null,
+      selector?.root,
       inputs.length > 0
         ? h('fieldset', { className: 'cli-action-arguments' },
           h('legend', null, 'Options'),
           ...inputs.map(({ element }) => element))
         : null,
-      h('p', null, canExecute
+      action.selector ? null : h('p', null, canExecute
         ? presentation.confirmation
           ? `Confirm the exact effect of ${presentation.label} on the selected target. This command will execute once after approval. Actions that use gh aw may install the pinned extension first.`
           : 'This command is declared as read-only investigation. Review its exact target and command before running.'
@@ -373,7 +412,12 @@ function renderCliActionControl(action, options = {}) {
     h('footer', { className: 'cli-action-dialog-footer' }, status, cancel, confirm)
   );
   dialog.addEventListener('close', () => {
+    selector?.cancel();
     trigger.focus();
+  });
+  dialog.addEventListener('cancel', (event) => {
+    if (busy.get()) event.preventDefault();
+    else selector?.cancel();
   });
   scope.bind(trigger);
   return { trigger, dialog };
@@ -410,7 +454,7 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
  */
 export function renderDeclaredCliAction(actionId, templateValues = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
-  if (!action) return null;
+  if (!action || action.selector && !declaredCliActionsCanExecute) return null;
   const rendered = renderCliActionControl(action, {
     templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
     canExecute: declaredCliActionsCanExecute
@@ -421,12 +465,14 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
 /**
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
- * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
+ * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
  * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */
 export function renderCliActions(actions, options = {}) {
   if (!Array.isArray(actions) || actions.length === 0) return null;
+  const visibleActions = actions.filter((action) => !action.selector || options.canExecute !== false);
+  if (!visibleActions.length) return null;
 
   const settingsPresentation = options.presentation === 'settings';
   const settingsList = settingsPresentation
@@ -467,7 +513,7 @@ export function renderCliActions(actions, options = {}) {
   if (!list) return null;
   if (!settingsPresentation) root.append(list);
 
-  for (const declared of actions) {
+  for (const declared of visibleActions) {
     const action = { ...normalizeAction(declared, { id: declared.id, type: 'cli' }), ...declared };
     const { trigger, dialog } = renderCliActionControl(action, options);
     list.append(trigger);

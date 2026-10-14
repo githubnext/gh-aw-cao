@@ -849,11 +849,17 @@ describe('dashboard view query contracts', () => {
     });
   });
 
-  it('renders issues per repository and one activity inventory', () => {
+  it('renders runs and issues per repository with one activity inventory', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
     const views = viewsOf(page);
 
-    expect(views[0]).toMatchObject(
+    expect(views[0]).toMatchObject({
+      id: 'repositories-runs',
+      data: { source: 'repository-run-inventory', limit: 100 },
+      mark: 'chart',
+      chart: 'horizontal-bar'
+    });
+    expect(views[1]).toMatchObject(
       {
         id: 'repositories-issues',
         data: { source: 'issue-repository-totals' },
@@ -871,10 +877,11 @@ describe('dashboard view query contracts', () => {
         }
       });
     expect(views.map((view) => view.id)).toEqual([
+      'repositories-runs',
       'repositories-issues',
       'repositories-activity'
     ]);
-    expect(views[1]).toMatchObject({
+    expect(views[2]).toMatchObject({
       data: { source: 'repository-activity' },
       mark: 'table'
     });

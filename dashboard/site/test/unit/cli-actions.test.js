@@ -99,6 +99,8 @@ describe('CLI actions', () => {
     expect(rendered?.classList.contains('cli-actions-settings')).toBe(true);
     expect(rendered?.querySelector('#configuration-cli-actions-heading')?.textContent).toBe('Agentic Workflows');
     expect(rendered?.querySelector('.cli-action-trigger')?.classList.contains('configuration-cli-action')).toBe(true);
+    expect(rendered?.querySelector('.cli-action-trigger')?.getAttribute('aria-label')).toBe('Upgrade repository');
+    expect(rendered?.querySelector('.cli-action-trigger')?.getAttribute('title')).toBe('Upgrade repository');
     rendered?.querySelector('button')?.click();
     const checkbox = /** @type {HTMLInputElement} */ (
       rendered?.querySelector('.cli-action-argument input')

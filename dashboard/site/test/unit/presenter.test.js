@@ -152,7 +152,7 @@ describe('declarative view title visibility', () => {
   });
 
   it('hides a chart title even when its prompt action moves the heading', () => {
-    for (const [chart, layout] of [['bar', 'full'], ['pie', 'full'], ['bar', 'horizontal']]) {
+    for (const [chart, layout] of [['bar', 'full'], ['pie', 'full'], ['pie', 'horizontal'], ['bar', 'horizontal']]) {
       const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
         languageVersion: '0.1.0',
         dashboard: {
@@ -179,6 +179,10 @@ describe('declarative view title visibility', () => {
       expect(view?.querySelector('.chart-prompt-heading > :is(h2, h3, h4)'), `${chart} ${layout}`).toBeNull();
       expect(view?.getAttribute('aria-label'), `${chart} ${layout}`).toBe('Quiet chart');
       expect(view?.querySelector('.table-intent-button')?.getAttribute('aria-label')).toBe('Propose fix: Quiet chart');
+      if (chart === 'pie') {
+        expect(view?.querySelector('.pie-chart-card') !== null).toBe(layout === 'horizontal');
+        expect(view?.querySelector(':scope > .pie-chart-layout') !== null).toBe(layout === 'full');
+      }
       disposeDashboard(rendered);
     }
   });
@@ -1594,7 +1598,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     const prompt = page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .table-intent-button');
     expect(prompt?.getAttribute('aria-label')).toBe('Propose fix: Most blocked domains');
-    expect(page?.querySelector('.pie-chart-card > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
+    expect(page?.querySelector('.chart-view-pie > .chart-prompt-heading > .chart-prompt-action .table-intent-button')).toBe(prompt);
     prompt?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('Prioritize investigation of the most blocked domains');
     expect(page?.querySelector('.table-intent-preview')?.textContent).toContain('query firewall-domain-workflows with --param domain=DOMAIN');
