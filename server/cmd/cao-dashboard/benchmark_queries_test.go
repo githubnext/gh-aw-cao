@@ -441,3 +441,19 @@ func TestLoadBenchmarkCandidatesRejectsEmptyList(t *testing.T) {
 		t.Fatalf("expected an empty-candidates error, got %v", err)
 	}
 }
+
+func TestBenchmarkExecutionOptionsBoundsPageAndRaisesBudgets(t *testing.T) {
+	options := benchmarkExecutionOptions("runs-overview")
+	if len(options.Pages) != 1 || options.Pages["runs-overview"].Limit != benchmarkPageLimit {
+		t.Fatalf("pages = %#v, want only runs-overview limited to %d", options.Pages, benchmarkPageLimit)
+	}
+	limits := options.ResourceLimits
+	if limits == nil {
+		t.Fatal("resource limits missing")
+	}
+	if limits.MaxInputRows != query.MaxWorkingRows ||
+		limits.MaxOperations != 10*query.MaxOperations ||
+		limits.MaxWorkingBytes != 4*query.MaxWorkingBytes {
+		t.Fatalf("limits = %#v, want benchmark budgets", limits)
+	}
+}
