@@ -633,7 +633,7 @@ export async function startDashboardServer({
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
   canvas = false,
-  dataBackend = canvas ? "sqlite" : "indexeddb",
+  dataBackend = "sqlite",
   executeCliAction,
   approveCliAction,
   lookupSelector = lookupDialogOptions,
@@ -1690,7 +1690,7 @@ async function main() {
   const options = parseDashboardServerArguments(process.argv.slice(2));
   if (options.help) {
     console.log("usage: local-server.mjs [--canvas] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
-    console.log("Data backend defaults to SQLite for canvas previews and IndexedDB otherwise.");
+    console.log("Data backend defaults to SQLite; use --data-backend indexeddb for browser IndexedDB.");
     console.log("       local-server.mjs --data-backend postgres [--operational-store redis|memory|postgres] [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("Go mode requires a matching reviewed host policy, PostgreSQL, a built site, and hosted OAuth/HTTPS configuration.");

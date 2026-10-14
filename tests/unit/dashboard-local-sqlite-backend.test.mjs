@@ -14,7 +14,8 @@ import { NORMALIZED_JSONL_INGESTION_VERSION } from "../../dashboard/site/src/dat
 for (const { canvas, dataBackend, expected } of [
   { canvas: true, expected: "sqlite" },
   { canvas: true, dataBackend: "indexeddb", expected: "indexeddb" },
-  { canvas: false, expected: "indexeddb" },
+  { canvas: false, expected: "sqlite" },
+  { canvas: false, dataBackend: "indexeddb", expected: "indexeddb" },
   { canvas: false, dataBackend: "sqlite", expected: "sqlite" },
 ]) {
   test(`local ${canvas ? "canvas" : "browser"} preview selects ${dataBackend ?? "default"} backend`, async () => {

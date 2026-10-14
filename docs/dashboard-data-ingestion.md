@@ -300,8 +300,8 @@ Run `cao help` for the collection list and full command syntax. The SQLite file 
 
 | Backend | Behavior |
 |---------|----------|
-| `sqlite` | Default for canvas previews. Ingests the downloaded inventory and Activity shards into a temporary server-side SQLite projection; the page uses the remote HTTP query backend instead of browser IndexedDB. |
-| `indexeddb` | Default for ordinary non-canvas previews. The page uses the static browser backend. |
+| `sqlite` | Default for local previews. Ingests the downloaded inventory and Activity shards into a temporary server-side SQLite projection; the page uses the remote HTTP query backend instead of browser IndexedDB. |
+| `indexeddb` | Opt-in browser backend. The page uses the static browser backend. |
 | `postgres` | Selects the Go/PostgreSQL server. It needs the reviewed host policy, built site, database, and OAuth/HTTPS configuration, and does not support canvas previews. |
 
 ```bash
