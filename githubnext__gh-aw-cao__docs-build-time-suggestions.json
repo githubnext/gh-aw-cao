@@ -3,6 +3,42 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-14T04:58:15Z",
+      "worker_run_id": 38513848578,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38513029515,
+        38511581000,
+        38509302008,
+        38508532183,
+        38508505999,
+        38507685638,
+        38506363119,
+        38506139874,
+        38504155678,
+        38503194471,
+        38502398311,
+        38501981309,
+        38501457840,
+        38501237548,
+        38501074253,
+        38498909658,
+        38498141197,
+        38496444424,
+        38495737964,
+        38494639436
+      ],
+      "docs_window": {
+        "start": "2026-10-14T01:14:38Z",
+        "end": "2026-10-14T04:45:35Z"
+      },
+      "docs_success_count": 12,
+      "docs_comparable_success_count": 0,
+      "docs_deployed_success_count": 0,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 95d3da95a306cf08324ff5e65e468aa94e6718cb. In the latest 20 completed docs.yml runs from 2026-10-14T01:14:38Z through 2026-10-14T04:45:35Z, 12 runs succeeded but 0 comparable successful runs executed the build and deploy jobs. The remaining completed runs were 12 successful schedule freshness no-ops that skipped build and deploy, 4 workflow_run callbacks that were skipped, 3 workflow_run callbacks that ended action_required before any jobs ran, and 1 schedule run that failed in schedule-freshness after GitHub Actions returned HTTP 500 for listJobsForWorkflowRun while scanning prior docs runs. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper cache analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-14T04:32:00Z",
       "worker_run_id": 38511549425,
       "category": "dependency installation and caching",
@@ -1234,53 +1270,6 @@
       "dashboard_comparable_success_count": 20,
       "decision": "noop_not_actionable",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 1d6048f65d67d424fa45e9ef6f41fa33d7e1a780. In the latest 20 completed docs.yml runs from 2026-10-13T13:56:56Z through 2026-10-13T15:28:31Z, 9 runs succeeded and 7 reached a successful build job, with 6 successful deploy jobs. Trusted job metadata showed successful docs workflow queue median/p90 0s/0s, comparable workflow execution median/p90 86.0s/107.0s, build-job median/p90 46.0s/54.2s, deploy-job median/p90 24.0s/40.0s, and schedule-freshness median/p90 7.5s/8.3s. Bounded logs for docs runs 38417415574 and 38416604927 confirmed cache hits for the ~293 MB setup-node npm cache, repeated hits for the ~283 MB node_modules cache, and repeated hits for the ~26 MB central-agentic-ops-dashboard cache; the only recent node_modules miss rebuilt 855 packages in 14s and resaved the 283 MB cache in about 4s. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:41:37Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893.0s/1447.5s, and cache-job median/p90 11.0s/14.2s. Step timings showed Restore collected activity data at 108.5s median and Upgrade fallback activity data at 712.0s median (1257.1s p90), while Install dashboard build dependencies remained only 6.5s median. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed restore-key hits for the 2.27 GB cao-activity cache and only 3 packages installed in 1-2s before the long activity upgrade work; the latest completed dashboard sample also disclosed push failure 38400996141, which spent 149s restoring activity data before failing in Upgrade fallback activity data with ERR_MODULE_NOT_FOUND for @clack/prompts. Excluded but disclosed docs evidence included 9 skipped workflow_run callbacks and 2 action_required workflow_run callbacks. No dependency-installation or cache-only change in docs.yml or cao-dashboard.yml is supported by repeated evidence to save at least 60 seconds or 15 percent of median execution time without weakening freshness or deployment safety."
-    },
-    {
-      "evaluated_at": "2026-10-13T15:18:00Z",
-      "worker_run_id": 38417987981,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38418744229,
-        38418496971,
-        38417794755,
-        38417758563,
-        38417415574,
-        38416960565,
-        38416630480,
-        38416604927,
-        38415899669,
-        38415560535,
-        38414560766,
-        38413594003,
-        38412361473,
-        38411539882,
-        38410388001,
-        38409776390,
-        38409175284,
-        38409173615,
-        38407193002,
-        38406834045
-      ],
-      "docs_window": {
-        "start": "2026-10-13T13:40:08Z",
-        "end": "2026-10-13T15:03:41Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 8,
-      "docs_deployed_success_count": 7,
-      "dashboard_window": {
-        "start": "2026-10-07T18:59:13Z",
-        "end": "2026-10-13T14:41:37Z"
-      },
-      "dashboard_success_count": 20,
-      "dashboard_comparable_success_count": 20,
-      "decision": "noop_existing_open_issues",
-      "related_open_issues": [
-        17171,
-        16054,
-        16825
-      ],
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 1d6048f65d67d424fa45e9ef6f41fa33d7e1a780. In the latest 20 completed docs.yml runs from 2026-10-13T13:40:08Z through 2026-10-13T15:03:41Z, 10 runs succeeded and 8 reached a successful build job, with 7 successful deploy jobs. Trusted job metadata showed docs workflow queue median/p90 0s/0s, comparable workflow execution median/p90 87.0s/104.0s, build-job median/p90 47.5s/53.9s, deploy-job median/p90 18.0s/38.2s, and schedule-freshness median/p90 7.0s/9.0s. Bounded logs for docs runs 38417415574, 38416604927, and 38418744229 confirmed repeated cache hits for setup-node npm cache, Restore node_modules, and central-agentic-ops-dashboard on scheduled deploy runs, a schedule freshness-only skip in 13s after current content was already deployed, and one push run that uploaded a 34.7 MB Pages artifact before a skipped deploy. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T18:59:13Z through 2026-10-13T14:41:37Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893.0s/1447.5s, and cache-job median/p90 11.0s/14.2s. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed repeated restoration of the same 2.27 GB cao-activity-v5-37765769970-1 cache key before 31.3-31.4 MB dashboard artifact uploads, while step timings showed Restore collected activity data at 108.5s median and Upgrade fallback activity data at 712.0s median (1257.1s p90). The current scheduling window does not support a new non-duplicate issue: the main scheduling opportunities already remain tracked by open issues #17171 (freshness scan), #16054 (duplicate workflow_run rebuilds), and #16825 (upstream dashboard cache reuse), and the latest 20 docs runs contain only one new push-to-schedule same-SHA redeploy candidate, which is not enough repeated evidence for another distinct scheduling recommendation."
     }
   ]
 }
