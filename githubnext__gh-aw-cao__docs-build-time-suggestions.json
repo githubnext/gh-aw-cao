@@ -1,7 +1,43 @@
 {
-  "source_sha": "8b2ee9397e91b30e2451010755db79ebb18735cc",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "82468d369761eef76d47db076f6398fa9ad12b0e",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T11:27:31Z",
+      "worker_run_id": 38556228339,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38556295577,
+        38555645164,
+        38553672994,
+        38553495750,
+        38553473993,
+        38552113978,
+        38550723553,
+        38549467581,
+        38549136780,
+        38546677013,
+        38545252204,
+        38544061653,
+        38542463648,
+        38542140146,
+        38539379295,
+        38538253674,
+        38535785640,
+        38535474837,
+        38532313915,
+        38530430754
+      ],
+      "docs_window": {
+        "start": "2026-10-14T07:45:31Z",
+        "end": "2026-10-14T11:24:15Z"
+      },
+      "docs_success_count": 15,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 82468d369761eef76d47db076f6398fa9ad12b0e. In the latest 20 completed docs.yml runs from 2026-10-14T07:45:31Z through 2026-10-14T11:24:15Z, 15 runs succeeded but only 2 comparable successful runs executed the build job (38553672994 and 38553473993), and only 1 of those also completed deploy (38553672994). The remaining completed runs were 12 successful schedule freshness no-ops that skipped build and deploy and 5 workflow_run callbacks that were skipped before work ran. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper reusable-dashboard analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T10:55:39Z",
       "worker_run_id": 38552562879,
@@ -1192,42 +1228,6 @@
       "related_open_issue": 16825,
       "suggestion_fingerprint": "cache-upgraded-cao-activity-snapshots-across-repeated-cao-dashboard-builds",
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 91978d1d5c9f5f0913df7c754173d50f08fae4de. In the latest 20 completed docs.yml runs from 2026-10-13T18:02:29Z through 2026-10-13T19:52:52Z, 10 runs succeeded and 8 were comparable successful builds, with 3 successful deploy jobs; 2 additional successful schedule runs skipped the build because deployed docs and dashboard were current, 6 workflow_run callbacks were skipped, 3 builds failed, and 1 workflow_run callback ended action_required and was disclosed but excluded from timing comparisons. Trusted job metadata showed comparable docs workflow queue median/p90 0s/0s, execution median/p90 58s/91.1s, build-job median/p90 45s/51.9s, deploy-job median/p90 27s/28.6s, and freshness-only schedule-freshness median/p90 7s/7.8s. Step timings inside the 8 comparable build jobs showed Restore node_modules median/p90 5s/8.2s, Build documentation median/p90 12.5s/14.3s, Restore cached CAO Dashboard median/p90 1.5s/3s, and Upload Pages artifact median/p90 5.5s/7.3s; Install dependencies remained skipped in all 8 runs. Bounded logs for docs runs 38457519442 and 38456805249 confirmed repeated cache hits for the ~283 MB node_modules cache, the ~293 MB setup-node npm cache, and the ~26 MB central-agentic-ops-dashboard cache, with 72 pages built in 8.08s and Pagefind indexing in 240ms on the latest schedule deploy run. Like-for-like same-SHA samples remained flat on the consumer side: push/schedule pairs on SHAs 91978d1d5c9f5f0913df7c754173d50f08fae4de, 42c44fc0aaa363e54f1995a1236d46251aba166d, and 84723fff744e08c73292dc88ce4a7de20f493502 all restored the dashboard cache and kept Build documentation at 10-14s. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:05:19Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893s/1447.5s, Restore collected activity data median/p90 108.5s/177.3s, Upgrade fallback activity data median/p90 712s/1257.1s, Assemble Dashboard Language site median/p90 4s/8.1s, and Upload dashboard artifact median/p90 10s/13s. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed repeated restore-key hits for the same raw snapshot key cao-activity-v5-37765769970-1, repeated validation of a 785.1 MiB working database, repeated publication of a 105.6-107.1 MiB sqlite payload plus 510 shards totaling 463.1 MiB, and repeated rebuild costs with Upgrade fallback activity data durations of 982s, 1242s, and 1272s before the small 2-4s dashboard assembly step. The actionable recommendation remains the same as open issue #16825 (reuse upgraded CAO activity snapshots across repeated CAO Dashboard builds), so no new issue was created."
-    },
-    {
-      "evaluated_at": "2026-10-13T19:45:00Z",
-      "worker_run_id": 38456389919,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38456838271,
-        38456805249,
-        38455784325,
-        38455311564,
-        38455289771,
-        38454215177,
-        38453879574,
-        38451570256,
-        38450855138,
-        38450836113,
-        38450501752,
-        38450190808,
-        38447656535,
-        38447350323,
-        38447114616,
-        38446129254,
-        38443639763,
-        38443530483,
-        38442872233,
-        38442078681
-      ],
-      "docs_window": {
-        "start": "2026-10-13T17:51:47Z",
-        "end": "2026-10-13T19:42:05Z"
-      },
-      "docs_success_count": 8,
-      "docs_comparable_success_count": 6,
-      "docs_deployed_success_count": 2,
-      "decision": "noop_not_actionable",
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 42c44fc0aaa363e54f1995a1236d46251aba166d. In the latest 20 completed docs.yml runs from 2026-10-13T17:51:47Z through 2026-10-13T19:42:05Z, 8 runs succeeded and 6 reached a successful build job, with 2 successful deploy jobs; 7 workflow_run callbacks were skipped, 3 builds failed, and 2 workflow_run callbacks ended action_required and were disclosed but excluded from timing comparisons. Trusted job metadata showed comparable docs workflow queue median/p90 1s/4s, execution median/p90 57s/92s, build-job median/p90 45s/54s, deploy-job median/p90 23.5s/27s across the two successful deploys, and freshness-only schedule-freshness durations of 6-8s across the two skip-only schedule successes. Step timings inside the six comparable build jobs showed Build documentation median/p90 12.5s/14s, Restore node_modules median/p90 5s/11s, Restore cached CAO Dashboard median/p90 1.5s/3s, and Upload Pages artifact median/p90 5.5s/8s. Like-for-like same-SHA samples stayed flat: push run 38455289771 and schedule run 38455784325 on 42c44fc0aaa363e54f1995a1236d46251aba166d both spent 14s in Build documentation, while push run 38450836113 and schedule run 38451570256 on 84723fff744e08c73292dc88ce4a7de20f493502 spent 14s and 11s respectively. Bounded logs for runs 38456805249, 38455784325, and 38451570256 confirmed repeated cache hits for the ~293 MB setup-node npm cache, the ~283 MB node_modules cache, and the ~26 MB central-agentic-ops-dashboard cache; Astro repeatedly built 72 pages with Pagefind indexing in 8.53-10.96s plus 290-453ms for search indexing, and the Pages artifact upload stayed at 34.7 MB in 5-6s. Failed runs 38450501752, 38447656535, and 38447114616 showed the same 11-14s Astro build profile before failing on agent documentation validation, not on site generation. Because Astro documentation generation is already a small, stable slice of the docs workflow and no concrete workflow-only change in .github/workflows/docs.yml or .github/workflows/cao-dashboard.yml is supported by repeated evidence to save at least 60 seconds or 15 percent of median execution time without weakening correctness, freshness, or deployment safety, no actionable recommendation was made."
     }
   ]
 }
