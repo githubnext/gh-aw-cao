@@ -65,6 +65,16 @@ curl --fail --silent --show-error --location \
 To use your own existing public repository immediately, replace the final
 line with `bash -s -- --quickstart --target OWNER/REPOSITORY`.
 
+Outside a checkout, quickstart creates private `USERNAME/cao` when both that
+repository name and the local clone path are available. Otherwise it selects a
+fresh UTC timestamped name, such as `USERNAME/cao-20261014-111151`, and prints
+the choice before creation. If that timestamp is also occupied, it checks
+numeric suffixes (`-2`, `-3`, and so on), stopping after ten timestamped
+candidates. Existing repositories and local files are never reused or overwritten.
+Use `--create-repo OWNER/NAME` for an exact name; an explicit name is never
+silently changed. To reuse an existing control repository, run from its clean
+checkout instead.
+
 With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
 release and pins the control plane, Repo Assist campaign, and verified
 release runtime to its immutable commit. It fails closed if a stable release
@@ -75,7 +85,7 @@ into the development build by passing `githubnext/gh-aw-cao@main` before
 Then watch CAO:
 
 1. Pin the latest stable CAO release.
-2. Create private `USERNAME/cao`, your control repository.
+2. Create private `USERNAME/cao` (or its timestamped fallback), your control repository.
 3. Select the public example or validate your explicit public target.
 4. Install Repo Assist in `review` mode for that exact target.
 5. Enable only its existing maintenance worker and dispatch ordinary Repo Assist.
@@ -119,6 +129,8 @@ Control repository: https://github.com/USERNAME/cao
 ```
 
 Open **Dashboard**, select **Repo Assist**, then open **Reports**.
+Use the actual repository name and dashboard URL printed by quickstart; a
+timestamped control repository has its own matching dashboard URL.
 If there is a proposal, open its review issue and download the patch bundle
 from the worker run's Artifacts section. Review the observed problem, smallest
 change, application prompt, and exact validation outcomes before deciding
@@ -167,6 +179,8 @@ complete onboarding. Your one real maintenance run may honestly produce a no-op.
 
 Reuse the same control repository and installed Repo Assist campaign.
 Do not run the installer or `cao add` again.
+Replace `USERNAME/cao` below with the actual control repository printed by
+quickstart, including any timestamp suffix.
 
 In the control repository, edit `.github/workflows/cao.json`:
 
@@ -237,8 +251,13 @@ for advanced authentication choices.
 
 ## If quickstart stops
 
-- **`USERNAME/cao` already exists:** run quickstart from its clean checkout or
-  choose another name with `--create-repo OWNER/NAME`.
+- **The default name or clone path already exists:** quickstart automatically
+  selects a timestamped name. To reuse the existing control repository, run
+  from its clean checkout; to select an exact new name, use `--create-repo OWNER/NAME`.
+- **A repository-name lookup fails:** restore GitHub access or availability and
+  retry. Lookup failures are not treated as proof that a name is available.
+- **An explicit name is occupied or all ten timestamped names are occupied:**
+  select an available exact name with `--create-repo OWNER/NAME`.
 - **The target is inaccessible:** restore repository access or GitHub
   availability; quickstart does not substitute another target.
 - **Required evidence is inaccessible or validation cannot complete:** inspect

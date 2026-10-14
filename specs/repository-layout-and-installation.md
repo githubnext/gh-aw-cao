@@ -241,9 +241,19 @@ children to consume installer source from stdin. Interactive `--quickstart`
 MUST preserve that controlling terminal for its progress UI. `--quickstart`
 MUST also run with plain progress from a clean current public or private
 control-repository checkout when no terminal is available or `CI` is set.
-Outside a checkout it MUST default only to the signed-in user's available
-`cao` repository name; another coordinate MUST require
-`--create-repo OWNER/NAME`. Informational status lines SHOULD remain
+Outside a checkout it MUST default to the signed-in user's `cao` repository
+name when both that remote name and local clone path are available. If either
+is occupied, it MUST choose a fresh `cao-YYYYMMDD-HHMMSS` name using UTC,
+checking both remote availability and the local clone path, including dangling
+symlinks. It MAY try numeric suffixes `-2` through `-10` when timestamped
+candidates are occupied, but MUST stop without mutation after ten timestamped
+candidates. In-place connection of a checkout without remotes MUST check only
+remote-name availability. Lookup or timestamp-generation failures MUST stop
+without mutation rather than implying availability. The selected fallback
+coordinate MUST be printed before creation; existing repositories and paths
+MUST NOT be reused or overwritten. Other names or owners require
+`--create-repo OWNER/NAME`, and explicit names MUST NOT be silently changed.
+Informational status lines SHOULD remain
 aligned with completed steps while using muted styling to distinguish existing
 state from completed work. Animated presentation MUST be disabled when
 `ACCESSIBLE`, `NO_COLOR`, or `CI` is set or the terminal reports no styling
@@ -279,10 +289,12 @@ commit, or push.
 `--quickstart` MUST be a separate, explicit end-to-end path rather than an
 implicit continuation of install or setup. It MUST use a clean current public
 or private control repository, default to creating the private
-`USERNAME/cao` control repository outside a checkout, or create another private
-control repository only when `--create-repo OWNER/NAME` requests it. It MUST
+`USERNAME/cao` control repository outside a checkout, using the UTC timestamped
+fallback above when its name or local clone path is occupied, or create another
+private control repository only when `--create-repo OWNER/NAME` requests it. It MUST
 disclose before execution that it publishes a public dashboard, creates the
-private `USERNAME/cao` control repository when needed, targets the public
+private `USERNAME/cao` control repository or its timestamped fallback when
+needed, targets the public
 Repo Assist example in the public `github/gh-aw` repository unless
 `--target OWNER/REPO` selects another existing public target, runs Repo Assist
 maintenance against that target in review mode, and may consume up to 1,250 AI

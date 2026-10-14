@@ -21,7 +21,10 @@ curl --fail --silent --show-error --location \
 
 At a repository root, the installer uses that clean default-branch checkout,
 including headlessly. Outside a checkout, it creates the private control
-repository `USERNAME/cao`. With no catalog source, quickstart resolves and pins
+repository `USERNAME/cao`. If that repository or local clone path already exists,
+it chooses a fresh name such as `USERNAME/cao-20261014-111151` using UTC,
+leaving the existing repository and files untouched.
+With no catalog source, quickstart resolves and pins
 the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
 release discovery fails. Pass an explicit source such as
 `githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
@@ -72,7 +75,8 @@ Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
 Activity scope for only that repository. Private/internal repositories or
 broader existing policy require interactive setup. Headless guided-setup
 repository creation still requires `--create-repo OWNER/NAME`; quickstart may
-create only the signed-in user's `cao` control repository.
+create only the signed-in user's `cao` control repository or its timestamped
+fallback.
 Missing prerequisites (including an installed gh-aw that is too old) fail
 instead of reporting success. Explicit `--quickstart` is the bounded headless
 first-success path and performs the documented control-repository and workflow

@@ -100,7 +100,7 @@ usage() {
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao, then targets the public' \
+    '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao (adding a UTC timestamp if occupied), then targets the public' \
     'github/gh-aw Repo Assist example. Pass --target OWNER/REPO to assist your own public repository.' \
     'It runs existing Repo Assist maintenance in review mode (default budget up to 1,250 AI credits), collects Activity, and deploys a public dashboard.' \
     'It pauses the orchestrator after dispatch; proposals are optional, not requirements for using CAO.' \
@@ -334,7 +334,7 @@ select_repository_owner() {
 
 default_repository_name() {
   local owner="$1"
-  local candidate="cao"
+  local candidate="${2:-cao}"
   local result
   if result="$(gh api "repos/$owner/$candidate" 2>&1 >/dev/null)"; then
     return
@@ -458,6 +458,7 @@ prompt_create_repository() {
 }
 
 default_quickstart_control_repository() {
+  local clone_repository="${1:-true}"
   local owner
   if ! owner="$(gh api user --jq .login)" ||
     [[ ! "$owner" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
@@ -468,12 +469,40 @@ default_quickstart_control_repository() {
   if ! name="$(default_repository_name "$owner")"; then
     return 1
   fi
-  if [[ -z "$name" ]]; then
-    printf '%s/%s already exists. Run quickstart from its checkout or pass --create-repo OWNER/NAME.\n' \
-      "$owner" "cao" >&2
+  if [[ -n "$name" ]] &&
+    { [[ "$clone_repository" == false ]] || [[ ! -e "$name" && ! -L "$name" ]]; }; then
+    printf '%s/%s\n' "$owner" "$name"
+    return
+  fi
+  local reason="$owner/cao already exists"
+  if [[ -n "$name" ]]; then
+    reason="Local clone path $name already exists"
+  fi
+  local timestamp
+  if ! timestamp="$(date -u +%Y%m%d-%H%M%S)" ||
+    [[ ! "$timestamp" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
+    printf 'Unable to generate a UTC timestamp for the quickstart repository. No CAO files were written.\n' >&2
     return 1
   fi
-  printf '%s/%s\n' "$owner" "$name"
+  local candidate
+  local attempt
+  for ((attempt = 1; attempt <= 10; attempt++)); do
+    candidate="cao-$timestamp"
+    if (( attempt > 1 )); then
+      candidate+="-$attempt"
+    fi
+    if ! name="$(default_repository_name "$owner" "$candidate")"; then
+      return 1
+    fi
+    if [[ -n "$name" ]] &&
+      { [[ "$clone_repository" == false ]] || [[ ! -e "$name" && ! -L "$name" ]]; }; then
+      note "$reason; creating a fresh private control repository: $owner/$name." >&2
+      printf '%s/%s\n' "$owner" "$name"
+      return
+    fi
+  done
+  printf 'Unable to find an available quickstart repository after 10 timestamped names. Pass --create-repo OWNER/NAME. No CAO files were written.\n' >&2
+  return 1
 }
 
 install_gh_aw() {
@@ -692,7 +721,7 @@ main() {
     else
       git_remotes="$(git remote)"
       if [[ -z "$git_remotes" && "$quickstart" == true ]]; then
-        if ! create_repository="$(default_quickstart_control_repository)"; then
+        if ! create_repository="$(default_quickstart_control_repository false)"; then
           return 1
         fi
         create_repository_requested=true
@@ -730,7 +759,7 @@ main() {
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
     directory="${create_repository#*/}"
-    if [[ -e "$directory" ]]; then
+    if [[ -e "$directory" || -L "$directory" ]]; then
       printf 'Cannot clone into existing path %s. Open that checkout or choose another repository name.\n' "$directory" >&2
       return 1
     fi

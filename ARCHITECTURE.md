@@ -528,7 +528,14 @@ the exact control repository with no campaigns before setup.
 uses a clean public, private, or internal control repository on its checked-out
 default branch, preserving any existing commits. Outside a checkout the
 installer defaults to the signed-in user's available private `cao` control
-repository; explicit `--create-repo OWNER/NAME` selects another coordinate.
+repository. If that remote name or required local clone path is occupied, it
+selects a fresh `cao-YYYYMMDD-HHMMSS` name using UTC, trying numeric suffixes
+through `-10` if needed and reporting the selected coordinate before creation.
+Availability lookup or timestamp-generation failures stop without mutation;
+existing repositories and clone paths are never reused or overwritten.
+An explicit `--create-repo OWNER/NAME` selects an exact coordinate and is never
+silently renamed. In-place connection of a checkout without remotes checks only
+remote-name availability because no clone directory is created.
 Unless the operator supplies a catalog source, the installer pins quickstart to
 the latest stable CAO release before this flow begins; Repo Assist is
 then pinned to the same installed CAO commit.

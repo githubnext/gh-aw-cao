@@ -69,6 +69,10 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.match(quickstart, /require at least one collected run/);
   assert.match(quickstart, /There is no second confirmation/);
   assert.match(quickstart, /Installer-created control repositories\s+remain private/);
+  assert.match(quickstart, /fresh UTC timestamped name/);
+  assert.match(quickstart, /Existing repositories and local files are never reused or overwritten/);
+  assert.match(quickstart, /an explicit name is never\s+silently changed/);
+  assert.match(quickstart, /stopping after ten timestamped\s+candidates/);
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
