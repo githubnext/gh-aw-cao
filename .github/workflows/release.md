@@ -2,7 +2,7 @@
 private: true
 emoji: "🚀"
 name: Release
-description: Prepare a version-tagged draft with verified runtime assets and highlights, then publish an immutable prerelease
+description: Prepare a version-tagged draft with verified runtime assets, publish an immutable prerelease, then add human-friendly highlights
 intent: Help maintainers publish trustworthy releases whose descriptions clearly explain user-facing changes.
 
 on:
@@ -46,133 +46,6 @@ tools:
 safe-outputs:
   threat-detection: false
   update-release:
-  jobs:
-    publish-release:
-      description: Publish the prepared draft as an immutable prerelease under its exact version tag
-      runs-on: ubuntu-latest
-      needs: safe_outputs
-      output: Published the verified release as an immutable prerelease.
-      permissions:
-        contents: write
-      steps:
-        - name: Download prepared release context
-          uses: actions/download-artifact@v8.0.1
-          with:
-            name: release-context-${{ github.run_id }}
-            path: ${{ runner.temp }}/release-context
-        - name: Publish verified draft as prerelease
-          uses: actions/github-script@v9
-          env:
-            RELEASE_CONTEXT_PATH: ${{ runner.temp }}/release-context/release.json
-          with:
-            github-token: ${{ github.token }}
-            script: |
-              const { readFileSync } = require('node:fs');
-              const releaseContext = JSON.parse(readFileSync(process.env.RELEASE_CONTEXT_PATH, 'utf8'));
-              const releaseId = Number(releaseContext.id);
-              const releaseTag = releaseContext.tag;
-              const revision = releaseContext.sha;
-              if (!Number.isSafeInteger(releaseId) || releaseId <= 0) {
-                throw new Error(`Invalid release ID: ${releaseContext.id}`);
-              }
-              if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(releaseTag)) {
-                throw new Error(`Invalid stable release tag: ${releaseTag}`);
-              }
-              if (!/^[0-9a-f]{40}$/.test(revision)) {
-                throw new Error(`Invalid release revision: ${revision}`);
-              }
-              const expectedArchive = `cao-runtime-${revision}.tgz`;
-
-              const { data: draft } = await github.rest.repos.getRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: releaseId,
-              });
-              if (
-                draft.tag_name !== releaseTag ||
-                draft.name !== releaseTag ||
-                draft.target_commitish !== revision ||
-                draft.draft !== true ||
-                draft.prerelease !== false
-              ) {
-                throw new Error(`Release ${releaseId} is not the expected ${releaseTag} draft for ${revision}`);
-              }
-
-              const { data: releaseRef } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `tags/${releaseTag}`,
-              });
-              if (releaseRef.object.type !== 'commit' || releaseRef.object.sha !== revision) {
-                throw new Error(`Tag ${releaseTag} does not point directly to ${revision}`);
-              }
-
-              const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: releaseId,
-                per_page: 100,
-              });
-              const expectedAssets = [expectedArchive, `${expectedArchive}.sha256`].sort();
-              const actualAssets = assets.map(({ name }) => name).sort();
-              if (
-                assets.length !== expectedAssets.length ||
-                actualAssets.some((name, index) => name !== expectedAssets[index]) ||
-                assets.some(({ state, size }) => state !== 'uploaded' || size <= 0)
-              ) {
-                throw new Error(`Release ${releaseId} does not contain the two verified runtime assets`);
-              }
-
-              await github.rest.repos.updateRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: releaseId,
-                tag_name: releaseTag,
-                target_commitish: revision,
-                name: releaseTag,
-                draft: false,
-                prerelease: true,
-                make_latest: 'false',
-              });
-
-              const [{ data: published }, { data: releaseByTag }, { data: publishedRef }] = await Promise.all([
-                github.rest.repos.getRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  release_id: releaseId,
-                }),
-                github.rest.repos.getReleaseByTag({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag: releaseTag,
-                }),
-                github.rest.git.getRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `tags/${releaseTag}`,
-                }),
-              ]);
-              if (
-                published.id !== releaseId ||
-                published.tag_name !== releaseTag ||
-                published.name !== releaseTag ||
-                published.target_commitish !== revision ||
-                published.draft !== false ||
-                published.prerelease !== true ||
-                published.immutable !== true ||
-                releaseByTag.id !== releaseId ||
-                publishedRef.object.type !== 'commit' ||
-                publishedRef.object.sha !== revision
-              ) {
-                throw new Error(`Published release ${releaseId} failed exact tag, revision, or immutability verification`);
-              }
-
-              core.summary
-                .addHeading(`Published ${releaseTag} as a prerelease`)
-                .addRaw('The version tag and verified runtime assets are now immutable. Review the release notes, then remove the prerelease designation and mark this release as latest.')
-                .addEOL()
-                .addLink('Review prerelease', published.html_url);
-              await core.summary.write();
 
 jobs:
   resolve-version:
@@ -318,7 +191,7 @@ jobs:
             core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The workflow will attach the verified runtime, update this draft with release highlights, and publish it as an immutable prerelease under the exact version tag. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
+              .addRaw('The workflow will attach the verified runtime and publish this draft as an immutable prerelease under the exact version tag before adding release highlights. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
               .addLink('Review draft', release.html_url);
             await core.summary.write();
@@ -444,8 +317,140 @@ jobs:
             echo "- Source revision: ${REVISION}"
             echo "- Runtime archive: ${runtime_name}.tgz"
             echo
-            echo "The workflow will publish this draft as a prerelease only after the release highlights are applied."
+            echo "The workflow will now publish this draft as a prerelease before applying release highlights."
           } >> "${GITHUB_STEP_SUMMARY}"
+
+  publish-release:
+    name: Publish verified prerelease
+    needs: [prepare-release, attach-runtime-assets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.publish.outputs.release_id }}
+      release_tag: ${{ steps.publish.outputs.release_tag }}
+    steps:
+      - name: Publish verified draft as prerelease
+        id: publish
+        uses: actions/github-script@v9
+        env:
+          RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
+          REVISION: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const releaseId = Number(process.env.RELEASE_ID);
+            const releaseTag = process.env.RELEASE_TAG;
+            const runtimeArchive = process.env.RUNTIME_ARCHIVE;
+            const revision = process.env.REVISION;
+            if (!Number.isSafeInteger(releaseId) || releaseId <= 0) {
+              throw new Error(`Invalid release ID: ${process.env.RELEASE_ID}`);
+            }
+            if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(releaseTag)) {
+              throw new Error(`Invalid stable release tag: ${releaseTag}`);
+            }
+            if (!/^[0-9a-f]{40}$/.test(revision)) {
+              throw new Error(`Invalid release revision: ${revision}`);
+            }
+            const expectedArchive = `cao-runtime-${revision}.tgz`;
+            if (runtimeArchive !== expectedArchive) {
+              throw new Error(`Runtime archive ${runtimeArchive} does not match ${expectedArchive}`);
+            }
+
+            const { data: draft } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+            });
+            if (
+              draft.tag_name !== releaseTag ||
+              draft.name !== releaseTag ||
+              draft.target_commitish !== revision ||
+              draft.draft !== true ||
+              draft.prerelease !== false
+            ) {
+              throw new Error(`Release ${releaseId} is not the expected ${releaseTag} draft for ${revision}`);
+            }
+
+            const { data: releaseRef } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${releaseTag}`,
+            });
+            if (releaseRef.object.type !== 'commit' || releaseRef.object.sha !== revision) {
+              throw new Error(`Tag ${releaseTag} does not point directly to ${revision}`);
+            }
+
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              per_page: 100,
+            });
+            const expectedAssets = [expectedArchive, `${expectedArchive}.sha256`].sort();
+            const actualAssets = assets.map(({ name }) => name).sort();
+            if (
+              assets.length !== expectedAssets.length ||
+              actualAssets.some((name, index) => name !== expectedAssets[index]) ||
+              assets.some(({ state, size }) => state !== 'uploaded' || size <= 0)
+            ) {
+              throw new Error(`Release ${releaseId} does not contain the two verified runtime assets`);
+            }
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              tag_name: releaseTag,
+              target_commitish: revision,
+              name: releaseTag,
+              draft: false,
+              prerelease: true,
+              make_latest: 'false',
+            });
+
+            const [{ data: published }, { data: releaseByTag }, { data: publishedRef }] = await Promise.all([
+              github.rest.repos.getRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: releaseId,
+              }),
+              github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: releaseTag,
+              }),
+              github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${releaseTag}`,
+              }),
+            ]);
+            if (
+              published.id !== releaseId ||
+              published.tag_name !== releaseTag ||
+              published.name !== releaseTag ||
+              published.target_commitish !== revision ||
+              published.draft !== false ||
+              published.prerelease !== true ||
+              published.immutable !== true ||
+              releaseByTag.id !== releaseId ||
+              publishedRef.object.type !== 'commit' ||
+              publishedRef.object.sha !== revision
+            ) {
+              throw new Error(`Published release ${releaseId} failed exact tag, revision, or immutability verification`);
+            }
+
+            core.setOutput('release_id', String(releaseId));
+            core.setOutput('release_tag', releaseTag);
+            core.summary
+              .addHeading(`Published ${releaseTag} as a prerelease`)
+              .addRaw('The version tag and verified runtime assets are now immutable. The release highlights agent will update the notes next; after the workflow succeeds, review the release and promote it to latest.')
+              .addEOL()
+              .addLink('Review prerelease', published.html_url);
+            await core.summary.write();
 
 steps:
   - name: Download prepared release context
@@ -456,13 +461,26 @@ steps:
   - name: Fetch release context
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+      RELEASE_TAG: ${{ needs.publish-release.outputs.release_tag }}
       RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
     run: |
       set -euo pipefail
       mkdir -p /tmp/gh-aw/agent/release-data
 
-      test -s /tmp/gh-aw/agent/release-data/current_release.json
+      RELEASE_ID=$(jq -r '.id' /tmp/gh-aw/agent/release-data/release.json)
+      [[ "$RELEASE_ID" =~ ^[1-9][0-9]*$ ]]
+      gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+        > /tmp/gh-aw/agent/release-data/current_release.json
+      jq -e \
+        --arg tag "$RELEASE_TAG" \
+        --arg revision "$GITHUB_SHA" \
+        '.tag_name == $tag
+          and .name == $tag
+          and .target_commitish == $revision
+          and .draft == false
+          and .prerelease == true
+          and .immutable == true' \
+        /tmp/gh-aw/agent/release-data/current_release.json >/dev/null
       test "$RUNTIME_ARCHIVE" = "cao-runtime-${GITHUB_SHA}.tgz"
 
       gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
@@ -550,15 +568,15 @@ steps:
 
 # Release Highlights
 
-Update the newly created draft identified by `current_release.json` with a concise, human-friendly summary.
+Update the newly published immutable prerelease identified by `current_release.json` with a concise, human-friendly summary.
 
-The release preparation jobs have already created the tag and draft and attached the verified runtime assets. Do not create, publish, promote, or otherwise change the release state directly. The safe-output publisher will publish the completed draft as an immutable prerelease under the verified version tag after the release-description update succeeds. A maintainer will then review the prerelease and promote it to the latest stable release.
+The release preparation jobs have already created the tag, attached the verified runtime assets, and published the draft as an immutable prerelease under the verified version tag. Do not create, publish, promote, or otherwise change the release state. Your only write is the release-description update through the safe output. A maintainer will review the completed prerelease and promote it to the latest stable release.
 
 ## Available evidence
 
 Read the files under `/tmp/gh-aw/agent/release-data/`:
 
-- `current_release.json`: the draft release, including GitHub-generated notes
+- `current_release.json`: the immutable prerelease, including GitHub-generated notes
 - `previous_release.json`: the previous published stable release, or an empty object
 - `pull_requests.json`: pull requests merged in the release window
 - `release_adrs.md`: ADRs changed by those pull requests, if any
@@ -580,10 +598,8 @@ Follow GitHub release-notes best practices:
 
 Call `safeoutputs/update_release` exactly once with:
 
-- `tag`: `${{ needs.prepare-release.outputs.release_tag }}`
+- `tag`: `${{ needs.publish-release.outputs.release_tag }}`
 - `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 
-Then call `safeoutputs/publish_release` exactly once with no arguments. It is the only authorized path for publishing the prepared draft and verifies the exact release ID, semantic version tag, commit, runtime assets, and immutable prerelease state.
-
-If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created draft needs a human-friendly introductory summary and verified prerelease publication.
+If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every published prerelease needs a human-friendly introductory summary.

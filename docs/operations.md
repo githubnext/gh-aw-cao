@@ -312,9 +312,9 @@ Dispatch the private **Release** workflow from `main` with a patch, minor, or
 major bump. The workflow creates the version tag and a draft release, waits for
 the successful exact-SHA `cao-runtime.yml` push build, verifies its checksum and
 GitHub-hosted signed provenance, attaches the runtime archive and checksum, and
-adds human-friendly release highlights. It then publishes that exact release as
-an immutable prerelease with an explicit `vX.Y.Z` tag and verifies the release
-ID, tag, source revision, assets, and immutable state.
+publishes that exact release as an immutable prerelease with an explicit
+`vX.Y.Z` tag. It verifies the release ID, tag, source revision, assets, and
+immutable state before adding human-friendly release highlights.
 
 Do not publish the draft manually. After the complete Release workflow succeeds,
 review the generated notes, confirm the tag targets the intended `main` commit,
@@ -322,8 +322,8 @@ and confirm both runtime assets are present. Then remove the prerelease
 designation and mark it as the latest release. The workflow's prerelease
 publication makes the tag and assets immutable; no workflow can add, replace, or
 remove release assets afterward. A failure before publication leaves the draft
-unpublished for diagnosis rather than creating a stable release that
-quickstart or update can select.
+unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,
+never a stable release that quickstart or update can select.
 
 ## Update CAO
 

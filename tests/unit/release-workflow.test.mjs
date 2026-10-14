@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { generatedJobs, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
-test("tag and version-named draft exist before the agent job starts", () => {
+test("tag and version-named draft exist before runtime assets are attached", () => {
   const source = workflow("release.md");
   const prepareRelease = stepBlock(source, "Generate draft release notes");
   const jobs = generatedJobs(workflow("release.lock.yml"));
@@ -23,10 +23,10 @@ test("tag and version-named draft exist before the agent job starts", () => {
     prepareRelease.indexOf("github.rest.git.createRef") < prepareRelease.indexOf("github.rest.repos.createRelease"),
     "git tag must be created before the draft release",
   );
-  assert.ok(jobs.get("agent")?.needs.includes("prepare-release"));
+  assert.ok(jobs.get("attach-runtime-assets")?.needs.includes("prepare-release"));
 });
 
-test("release attaches an exact-SHA attested runtime before the agent updates the draft", () => {
+test("release attaches an exact-SHA attested runtime before publishing", () => {
   const source = workflow("release.md");
   const attach = stepBlock(source, "Attach verified runtime assets to draft release");
   const jobs = generatedJobs(workflow("release.lock.yml"));
@@ -46,7 +46,7 @@ test("release attaches an exact-SHA attested runtime before the agent updates th
   assert.match(attach, /gh release upload/);
   assert.match(attach, /length == 2/);
   assert.deepEqual(jobs.get("attach-runtime-assets")?.needs, ["prepare-release"]);
-  assert.ok(jobs.get("agent")?.needs.includes("attach-runtime-assets"));
+  assert.ok(jobs.get("publish-release")?.needs.includes("attach-runtime-assets"));
 });
 
 test("release publishes the completed draft under the exact version tag", () => {
@@ -54,14 +54,11 @@ test("release publishes the completed draft under the exact version tag", () => 
   const publish = stepBlock(source, "Publish verified draft as prerelease");
   const jobs = generatedJobs(workflow("release.lock.yml"));
 
-  assert.match(source, /publish-release:[\s\S]*needs: safe_outputs/);
+  assert.match(source, /publish-release:[\s\S]*needs: \[prepare-release, attach-runtime-assets\]/);
   assert.match(source, /publish-release:[\s\S]*permissions:[\s\S]*contents: write/);
-  assert.match(source, /name: release-context-\$\{\{ github\.run_id \}\}/);
-  assert.match(publish, /RELEASE_CONTEXT_PATH: \$\{\{ runner\.temp \}\}\/release-context\/release\.json/);
-  assert.match(publish, /JSON\.parse\(readFileSync\(process\.env\.RELEASE_CONTEXT_PATH, 'utf8'\)\)/);
-  assert.match(publish, /const releaseId = Number\(releaseContext\.id\)/);
-  assert.match(publish, /const releaseTag = releaseContext\.tag/);
-  assert.match(publish, /const revision = releaseContext\.sha/);
+  assert.match(publish, /RELEASE_ID: \$\{\{ needs\.prepare-release\.outputs\.release_id \}\}/);
+  assert.match(publish, /RELEASE_TAG: \$\{\{ needs\.prepare-release\.outputs\.release_tag \}\}/);
+  assert.match(publish, /RUNTIME_ARCHIVE: \$\{\{ needs\.attach-runtime-assets\.outputs\.runtime_archive \}\}/);
   assert.match(publish, /draft\.tag_name !== releaseTag/);
   assert.match(publish, /draft\.target_commitish !== revision/);
   assert.match(publish, /draft\.draft !== true/);
@@ -76,7 +73,8 @@ test("release publishes the completed draft under the exact version tag", () => 
   assert.match(publish, /published\.tag_name !== releaseTag/);
   assert.match(publish, /published\.immutable !== true/);
   assert.match(publish, /releaseByTag\.id !== releaseId/);
-  assert.deepEqual(jobs.get("publish_release")?.needs, ["agent", "safe_outputs"]);
+  assert.deepEqual(jobs.get("publish-release")?.needs, ["attach-runtime-assets", "prepare-release"]);
+  assert.ok(jobs.get("agent")?.needs.includes("publish-release"));
 });
 
 test("release context paginates before filtering complete API responses", () => {
@@ -104,14 +102,16 @@ test("release context fetches tags before local git inspection", () => {
   assert.ok(fetchReleaseTag < verifyReleaseTag, "release tag must be fetched before verification");
 });
 
-test("agent consumes release tag and runtime identity from draft jobs", () => {
+test("agent consumes and verifies the published prerelease identity", () => {
   const source = workflow("release.md");
   const fetchReleaseContext = stepBlock(source, "Fetch release context");
 
   assert.match(source, /prepare-release:[\s\S]*outputs:[\s\S]*release_tag: \$\{\{ steps\.release\.outputs\.release_tag \}\}/);
-  assert.match(fetchReleaseContext, /RELEASE_TAG: \$\{\{ needs\.prepare-release\.outputs\.release_tag \}\}/);
+  assert.match(fetchReleaseContext, /RELEASE_TAG: \$\{\{ needs\.publish-release\.outputs\.release_tag \}\}/);
   assert.match(fetchReleaseContext, /RUNTIME_ARCHIVE: \$\{\{ needs\.attach-runtime-assets\.outputs\.runtime_archive \}\}/);
+  assert.match(fetchReleaseContext, /gh api "\/repos\/\$GITHUB_REPOSITORY\/releases\/\$RELEASE_ID"/);
+  assert.match(fetchReleaseContext, /\.tag_name == \$tag[\s\S]*\.draft == false[\s\S]*\.prerelease == true[\s\S]*\.immutable == true/);
   assert.match(fetchReleaseContext, /test "\$RUNTIME_ARCHIVE" = "cao-runtime-\$\{GITHUB_SHA\}\.tgz"/);
-  assert.match(source, /- `tag`: `\$\{\{ needs\.prepare-release\.outputs\.release_tag \}\}`/);
-  assert.match(source, /Then call `safeoutputs\/publish_release` exactly once with no arguments/);
+  assert.match(source, /- `tag`: `\$\{\{ needs\.publish-release\.outputs\.release_tag \}\}`/);
+  assert.doesNotMatch(source, /safeoutputs\/publish_release/);
 });

@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"c469fa17d1f6b313729f4a6c06a9c033fd74dceadd6397fb21910486b880cf17","body_hash":"16edfd255744317a8d2a9af6e50526a3e6b09efe73a2a354fbf1921055ff4cab","compiler_version":"v0.91.5","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.90"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"16b430146d5d5646eccef5a1ceb72152333b18b9","version":"v0.91.5"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.44","digest":"sha256:f36912e24d360625351fc8f2981cca7dca4e234719ac99648de93129c5f4fda4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.44@sha256:f36912e24d360625351fc8f2981cca7dca4e234719ac99648de93129c5f4fda4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.44","digest":"sha256:630c0895fe51727ad3f6d5bfb0b7d153d88697f870f8e5917ad53f50df26014e","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.44@sha256:630c0895fe51727ad3f6d5bfb0b7d153d88697f870f8e5917ad53f50df26014e"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.44","digest":"sha256:02262c36c9d9f2f91b1b7d129aaf7abf02cd4e4bfb684f75316dc50df6ca8983","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.44@sha256:02262c36c9d9f2f91b1b7d129aaf7abf02cd4e4bfb684f75316dc50df6ca8983"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.29","digest":"sha256:ec08867ac8a4823e01efb2de2ba85a313199bb7ae666ef70ae58effc162a9bf3","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.29@sha256:ec08867ac8a4823e01efb2de2ba85a313199bb7ae666ef70ae58effc162a9bf3"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"},{"image":"ghcr.io/github/github-mcp-server:v1.12.2","digest":"sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6"}],"mcp_servers":[{"name":"github","tools":["get_commit","get_file_contents","get_latest_release","get_me","get_pull_request","get_pull_request_comments","get_pull_request_diff","get_pull_request_files","get_pull_request_review_comments","get_pull_request_reviews","get_pull_request_status","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_pull_requests","list_releases","list_starred_repositories","list_tags","pull_request_read","search_code","search_issues","search_pull_requests","search_repositories"]},{"name":"safeoutputs","tools":["missing_data","missing_tool","noop","publish_release","report_incomplete","update_release"]}],"threat_detection":{"mode":"disabled"}}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"dca872ee5ac0cc9b52ec2cb10b63d84cbe99960c163f8bdf3cb6f2bfa4d04dea","body_hash":"b7d6f36fdbfd7cbef6fbc9a401927366a05ebb86cdd0b66919e06cdfe9717d95","compiler_version":"v0.91.5","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.90"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"16b430146d5d5646eccef5a1ceb72152333b18b9","version":"v0.91.5"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.44","digest":"sha256:f36912e24d360625351fc8f2981cca7dca4e234719ac99648de93129c5f4fda4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.44@sha256:f36912e24d360625351fc8f2981cca7dca4e234719ac99648de93129c5f4fda4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.44","digest":"sha256:630c0895fe51727ad3f6d5bfb0b7d153d88697f870f8e5917ad53f50df26014e","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.44@sha256:630c0895fe51727ad3f6d5bfb0b7d153d88697f870f8e5917ad53f50df26014e"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.44","digest":"sha256:02262c36c9d9f2f91b1b7d129aaf7abf02cd4e4bfb684f75316dc50df6ca8983","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.44@sha256:02262c36c9d9f2f91b1b7d129aaf7abf02cd4e4bfb684f75316dc50df6ca8983"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.29","digest":"sha256:ec08867ac8a4823e01efb2de2ba85a313199bb7ae666ef70ae58effc162a9bf3","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.29@sha256:ec08867ac8a4823e01efb2de2ba85a313199bb7ae666ef70ae58effc162a9bf3"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"},{"image":"ghcr.io/github/github-mcp-server:v1.12.2","digest":"sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6"}],"mcp_servers":[{"name":"github","tools":["get_commit","get_file_contents","get_latest_release","get_me","get_pull_request","get_pull_request_comments","get_pull_request_diff","get_pull_request_files","get_pull_request_review_comments","get_pull_request_reviews","get_pull_request_status","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_pull_requests","list_releases","list_starred_repositories","list_tags","pull_request_read","search_code","search_issues","search_pull_requests","search_repositories"]},{"name":"safeoutputs","tools":["missing_data","missing_tool","noop","report_incomplete","update_release"]}],"threat_detection":{"mode":"disabled"}}
 # This file was automatically generated by gh-aw (v0.91.5). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -23,7 +23,7 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Prepare a version-tagged draft with verified runtime assets and highlights, then publish an immutable prerelease
+# Prepare a version-tagged draft with verified runtime assets, publish an immutable prerelease, then add human-friendly highlights
 #
 # Intent: Help maintainers publish trustworthy releases whose descriptions clearly explain user-facing changes.
 #
@@ -283,7 +283,7 @@ jobs:
           GH_AW_GITHUB_RUN_ID: ${{ github.run_id }}
           GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
           GH_AW_PROMPT_CONTENT_0000: "<system>\n"
-          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: update_release, missing_tool, missing_data, noop(max:2), publish_release\n"
+          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: update_release, missing_tool, missing_data, noop(max:2)\n"
           GH_AW_PROMPT_CONTENT_0002: "</safe-output-tools>\n"
           GH_AW_PROMPT_CONTENT_0003: "<github-context>\nThe following GitHub context information is available for this workflow:\n{{#if github.actor}}\n- **actor**: __GH_AW_GITHUB_ACTOR__\n{{/if}}\n{{#if github.repository}}\n- **repository**: __GH_AW_GITHUB_REPOSITORY__\n{{/if}}\n{{#if github.workspace}}\n- **workspace**: __GH_AW_GITHUB_WORKSPACE__\n{{/if}}\n{{#if github.event.issue.number || (github.aw.context.item_type == 'issue' && github.aw.context.item_number)}}\n- **issue-number**: #__GH_AW_EXPR_7C248226__\n{{/if}}\n{{#if github.event.discussion.number || (github.aw.context.item_type == 'discussion' && github.aw.context.item_number)}}\n- **discussion-number**: #__GH_AW_EXPR_C19C384F__\n{{/if}}\n{{#if github.event.pull_request.number || (github.aw.context.item_type == 'pull_request' && github.aw.context.item_number)}}\n- **pull-request-number**: #__GH_AW_EXPR_76DF9333__\n{{/if}}\n{{#if github.event.comment.id || github.aw.context.comment_id}}\n- **comment-id**: __GH_AW_EXPR_77C1A4D2__\n{{/if}}\n{{#if github.run_id}}\n- **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__\n{{/if}}\n- **checkouts**: The following repositories have been checked out and are available in the workspace:\n  - repo `__GH_AW_GITHUB_REPOSITORY__` → `__GH_AW_GITHUB_WORKSPACE__` (cwd) [full history, all branches available as remote-tracking refs] [additional refs fetched: *]\n  - **Note**: The workspace path reported above may contain a separate shallow, credential-free checkout of the host repository. Use the exact checkout path shown for the repository you need. Before concluding that a branch is unavailable, confirm your working directory matches that path and inspect refs there. If the branch is not present in that checkout and is not listed as an additional fetched ref, it has NOT been checked out. For private repositories you cannot fetch it. If the branch is required and not available, exit with an error and ask the user to add it to the `fetch:` option of the `checkout:` configuration (e.g., `fetch: [\"refs/pulls/open/*\"]` for all open PR refs, or `fetch: [\"main\", \"feature/my-branch\"]` for specific branches).\n  - **Warning: No git credentials are available to the agent.** Credentials are\n    intentionally removed after the checkout step for security. This means any git\n    operation that needs to authenticate to the remote will fail. In private repositories, that includes:\n    - `git fetch`, `git pull`, `git clone`, and `git push` (direct push, not via safe-output tools)\n    - Checking out or switching to a remote branch that is not already fetched\n    - Deepening a shallow clone (`git fetch --unshallow`)\n    - On-demand blob fetches in partial/blobless clones (operations on files not in the initial checkout)\n    Do NOT attempt to configure credentials, run `git credential fill`, or modify `.gitconfig` —\n    authentication will not succeed. If you encounter credential prompts or authentication errors,\n    stop immediately and report the limitation rather than spending turns trying to work around it.\n</github-context>\n\n"
           GH_AW_PROMPT_CONTENT_0004: "</system>\n"
@@ -393,6 +393,7 @@ jobs:
       - activation
       - attach-runtime-assets
       - prepare-release
+      - publish-release
       - resolve-version
     if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
     runs-on: ubuntu-latest
@@ -507,10 +508,10 @@ jobs:
           path: /tmp/gh-aw/agent/release-data
       - env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          RELEASE_TAG: ${{ needs.publish-release.outputs.release_tag }}
           RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
         name: Fetch release context
-        run: "set -euo pipefail\nmkdir -p /tmp/gh-aw/agent/release-data\n\ntest -s /tmp/gh-aw/agent/release-data/current_release.json\ntest \"$RUNTIME_ARCHIVE\" = \"cao-runtime-${GITHUB_SHA}.tgz\"\n\ngh api --paginate \"/repos/$GITHUB_REPOSITORY/releases?per_page=100\" |\n  jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \\\n  > /tmp/gh-aw/agent/release-data/previous_release.json\n\nPREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)\nGIT_FETCH_AUTH_HEADER=$(printf \"x-access-token:%s\" \"$GH_TOKEN\" | base64 -w 0)\nfetch_release_tag() {\n  local tag=\"$1\"\n  if [ -z \"$tag\" ]; then\n    return 0\n  fi\n  if git rev-parse --verify \"refs/tags/$tag\" >/dev/null 2>&1; then\n    return 0\n  fi\n  git -c \"http.extraheader=Authorization: Basic ${GIT_FETCH_AUTH_HEADER}\" \\\n    fetch --force origin \"refs/tags/$tag:refs/tags/$tag\"\n}\nfetch_release_tag \"$PREVIOUS_TAG\"\nfetch_release_tag \"$RELEASE_TAG\"\necho \"[]\" > /tmp/gh-aw/agent/release-data/pull_requests.json\nif [ -n \"$PREVIOUS_TAG\" ]; then\n  git rev-parse --verify \"refs/tags/$PREVIOUS_TAG\" >/dev/null\n  git rev-parse --verify \"refs/tags/$RELEASE_TAG\" >/dev/null\n  COMMIT_RANGE=\"refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG\"\n  git diff --name-only --diff-filter=AMR \\\n    \"refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG\" \\\n    -- 'adr/*.md' \\\n    > /tmp/gh-aw/agent/release-data/adr_paths.txt\nelse\n  git rev-parse --verify \"refs/tags/$RELEASE_TAG\" >/dev/null\n  COMMIT_RANGE=\"refs/tags/$RELEASE_TAG\"\n  git ls-files -- 'adr/*.md' \\\n    > /tmp/gh-aw/agent/release-data/adr_paths.txt\nfi\n\ngit rev-list \"$COMMIT_RANGE\" |\n  while IFS= read -r commit_sha; do\n    if ! [[ \"$commit_sha\" =~ ^[0-9a-f]{40}$ ]]; then\n      echo \"Invalid commit SHA in release range.\" >&2\n      exit 1\n    fi\n    COMMIT_PRS=$(gh api --paginate \\\n      \"/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100\" |\n      jq --slurp 'add | map({\n        number,\n        title,\n        author: {login: .user.login},\n        labels: (.labels | map({name})),\n        mergedAt: .merged_at,\n        url: .html_url,\n        body\n      })')\n    jq --argjson prs \"$COMMIT_PRS\" '. + $prs | unique_by(.number)' \\\n      /tmp/gh-aw/agent/release-data/pull_requests.json \\\n      > /tmp/gh-aw/agent/release-data/pull_requests.next.json\n    mv /tmp/gh-aw/agent/release-data/pull_requests.next.json \\\n      /tmp/gh-aw/agent/release-data/pull_requests.json\n  done\n\n: > /tmp/gh-aw/agent/release-data/release_adrs.md\nWORKSPACE_ROOT=$(realpath -- \"$GITHUB_WORKSPACE\")\nwhile IFS= read -r adr_path; do\n    case \"$adr_path\" in\n      adr/*.md)\n        RESOLVED_ADR=$(realpath -- \"$adr_path\" 2>/dev/null || true)\n        if [ -f \"$adr_path\" ] && [ ! -L \"$adr_path\" ]; then\n          case \"$RESOLVED_ADR\" in\n            \"$WORKSPACE_ROOT\"/adr/*.md) ;;\n            *) continue ;;\n          esac\n          printf '\\n## %s\\n\\n' \"$adr_path\" >> /tmp/gh-aw/agent/release-data/release_adrs.md\n          cat -- \"$adr_path\" >> /tmp/gh-aw/agent/release-data/release_adrs.md\n        fi\n        ;;\n    esac\n  done < /tmp/gh-aw/agent/release-data/adr_paths.txt\n\nCHANGELOG_PATH=$(realpath -- CHANGELOG.md 2>/dev/null || true)\nif [ -f CHANGELOG.md ] && [ ! -L CHANGELOG.md ] && [ \"$CHANGELOG_PATH\" = \"$WORKSPACE_ROOT/CHANGELOG.md\" ]; then\n  cp -- CHANGELOG.md /tmp/gh-aw/agent/release-data/CHANGELOG.md\nfi"
+        run: "set -euo pipefail\nmkdir -p /tmp/gh-aw/agent/release-data\n\nRELEASE_ID=$(jq -r '.id' /tmp/gh-aw/agent/release-data/release.json)\n[[ \"$RELEASE_ID\" =~ ^[1-9][0-9]*$ ]]\ngh api \"/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID\" \\\n  > /tmp/gh-aw/agent/release-data/current_release.json\njq -e \\\n  --arg tag \"$RELEASE_TAG\" \\\n  --arg revision \"$GITHUB_SHA\" \\\n  '.tag_name == $tag\n    and .name == $tag\n    and .target_commitish == $revision\n    and .draft == false\n    and .prerelease == true\n    and .immutable == true' \\\n  /tmp/gh-aw/agent/release-data/current_release.json >/dev/null\ntest \"$RUNTIME_ARCHIVE\" = \"cao-runtime-${GITHUB_SHA}.tgz\"\n\ngh api --paginate \"/repos/$GITHUB_REPOSITORY/releases?per_page=100\" |\n  jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \\\n  > /tmp/gh-aw/agent/release-data/previous_release.json\n\nPREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)\nGIT_FETCH_AUTH_HEADER=$(printf \"x-access-token:%s\" \"$GH_TOKEN\" | base64 -w 0)\nfetch_release_tag() {\n  local tag=\"$1\"\n  if [ -z \"$tag\" ]; then\n    return 0\n  fi\n  if git rev-parse --verify \"refs/tags/$tag\" >/dev/null 2>&1; then\n    return 0\n  fi\n  git -c \"http.extraheader=Authorization: Basic ${GIT_FETCH_AUTH_HEADER}\" \\\n    fetch --force origin \"refs/tags/$tag:refs/tags/$tag\"\n}\nfetch_release_tag \"$PREVIOUS_TAG\"\nfetch_release_tag \"$RELEASE_TAG\"\necho \"[]\" > /tmp/gh-aw/agent/release-data/pull_requests.json\nif [ -n \"$PREVIOUS_TAG\" ]; then\n  git rev-parse --verify \"refs/tags/$PREVIOUS_TAG\" >/dev/null\n  git rev-parse --verify \"refs/tags/$RELEASE_TAG\" >/dev/null\n  COMMIT_RANGE=\"refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG\"\n  git diff --name-only --diff-filter=AMR \\\n    \"refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG\" \\\n    -- 'adr/*.md' \\\n    > /tmp/gh-aw/agent/release-data/adr_paths.txt\nelse\n  git rev-parse --verify \"refs/tags/$RELEASE_TAG\" >/dev/null\n  COMMIT_RANGE=\"refs/tags/$RELEASE_TAG\"\n  git ls-files -- 'adr/*.md' \\\n    > /tmp/gh-aw/agent/release-data/adr_paths.txt\nfi\n\ngit rev-list \"$COMMIT_RANGE\" |\n  while IFS= read -r commit_sha; do\n    if ! [[ \"$commit_sha\" =~ ^[0-9a-f]{40}$ ]]; then\n      echo \"Invalid commit SHA in release range.\" >&2\n      exit 1\n    fi\n    COMMIT_PRS=$(gh api --paginate \\\n      \"/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100\" |\n      jq --slurp 'add | map({\n        number,\n        title,\n        author: {login: .user.login},\n        labels: (.labels | map({name})),\n        mergedAt: .merged_at,\n        url: .html_url,\n        body\n      })')\n    jq --argjson prs \"$COMMIT_PRS\" '. + $prs | unique_by(.number)' \\\n      /tmp/gh-aw/agent/release-data/pull_requests.json \\\n      > /tmp/gh-aw/agent/release-data/pull_requests.next.json\n    mv /tmp/gh-aw/agent/release-data/pull_requests.next.json \\\n      /tmp/gh-aw/agent/release-data/pull_requests.json\n  done\n\n: > /tmp/gh-aw/agent/release-data/release_adrs.md\nWORKSPACE_ROOT=$(realpath -- \"$GITHUB_WORKSPACE\")\nwhile IFS= read -r adr_path; do\n    case \"$adr_path\" in\n      adr/*.md)\n        RESOLVED_ADR=$(realpath -- \"$adr_path\" 2>/dev/null || true)\n        if [ -f \"$adr_path\" ] && [ ! -L \"$adr_path\" ]; then\n          case \"$RESOLVED_ADR\" in\n            \"$WORKSPACE_ROOT\"/adr/*.md) ;;\n            *) continue ;;\n          esac\n          printf '\\n## %s\\n\\n' \"$adr_path\" >> /tmp/gh-aw/agent/release-data/release_adrs.md\n          cat -- \"$adr_path\" >> /tmp/gh-aw/agent/release-data/release_adrs.md\n        fi\n        ;;\n    esac\n  done < /tmp/gh-aw/agent/release-data/adr_paths.txt\n\nCHANGELOG_PATH=$(realpath -- CHANGELOG.md 2>/dev/null || true)\nif [ -f CHANGELOG.md ] && [ ! -L CHANGELOG.md ] && [ \"$CHANGELOG_PATH\" = \"$WORKSPACE_ROOT/CHANGELOG.md\" ]; then\n  cp -- CHANGELOG.md /tmp/gh-aw/agent/release-data/CHANGELOG.md\nfi"
 
       - name: Configure Git credentials
         env:
@@ -580,7 +581,7 @@ jobs:
         env:
           GH_AW_FILE_ROOT: "${{ runner.temp }}/gh-aw"
           GH_AW_FILE_CONFIG: "{\"files\":[{\"path\":\"safeoutputs/config.json\",\"content_env\":\"GH_AW_SAFE_OUTPUTS_CONFIG\"}]}"
-          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":2,\"report-as-issue\":\"false\"},\"publish-release\":{\"description\":\"Publish the prepared draft as an immutable prerelease under its exact version tag\",\"output\":\"Published the verified release as an immutable prerelease.\"},\"report_incomplete\":{},\"update_release\":{\"max\":1}}"
+          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":2,\"report-as-issue\":\"false\"},\"report_incomplete\":{},\"update_release\":{\"max\":1}}"
         with:
           script: |
             const path = require('path');
@@ -597,17 +598,7 @@ jobs:
                 "update_release": " CONSTRAINTS: Maximum 1 release(s) can be updated."
               },
               "repo_params": {},
-              "dynamic_tools": [
-                {
-                  "description": "Publish the prepared draft as an immutable prerelease under its exact version tag",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {},
-                    "type": "object"
-                  },
-                  "name": "publish_release"
-                }
-              ]
+              "dynamic_tools": []
             }
           GH_AW_VALIDATION_JSON: |
             {
@@ -1297,7 +1288,7 @@ jobs:
             echo "- Source revision: ${REVISION}"
             echo "- Runtime archive: ${runtime_name}.tgz"
             echo
-            echo "The workflow will publish this draft as a prerelease only after the release highlights are applied."
+            echo "The workflow will now publish this draft as a prerelease before applying release highlights."
           } >> "${GITHUB_STEP_SUMMARY}"
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1312,7 +1303,7 @@ jobs:
       - agent
       - attach-runtime-assets
       - prepare-release
-      - publish_release
+      - publish-release
       - resolve-version
       - safe_outputs
     if: >
@@ -1500,7 +1491,7 @@ jobs:
           GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/release.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_JOB_RESULTS: ${{ toJSON(needs) }}
-          GH_AW_JOB_DISPLAY_NAMES: "{\"activation\":\"Activation\",\"agent\":\"Agent\",\"attach-runtime-assets\":\"Attach verified runtime assets\",\"check_token_telemetry\":\"Check token telemetry\",\"conclusion\":\"Conclusion\",\"detection\":\"Detection\",\"evals\":\"Evaluations\",\"pre_activation\":\"Pre-activation\",\"prepare-release\":\"Prepare draft release\",\"push_evals_state\":\"Push evaluations state\",\"push_experiments_state\":\"Push experiments state\",\"push_ledger_changes\":\"Push ledger changes\",\"push_repo_memory\":\"Push repository memory\",\"resolve-version\":\"Authorize and resolve release version\",\"safe_outputs\":\"Safe outputs\",\"send_slack_message\":\"Send Slack message\",\"unlock\":\"Unlock\",\"update_cache_memory\":\"Update cache memory\",\"update_drive_memory\":\"Update drive memory\",\"upload_assets\":\"Upload assets\",\"upload_code_coverage\":\"Upload code coverage\",\"upload_code_scanning_sarif\":\"Upload code scanning results\"}"
+          GH_AW_JOB_DISPLAY_NAMES: "{\"activation\":\"Activation\",\"agent\":\"Agent\",\"attach-runtime-assets\":\"Attach verified runtime assets\",\"check_token_telemetry\":\"Check token telemetry\",\"conclusion\":\"Conclusion\",\"detection\":\"Detection\",\"evals\":\"Evaluations\",\"pre_activation\":\"Pre-activation\",\"prepare-release\":\"Prepare draft release\",\"publish-release\":\"Publish verified prerelease\",\"push_evals_state\":\"Push evaluations state\",\"push_experiments_state\":\"Push experiments state\",\"push_ledger_changes\":\"Push ledger changes\",\"push_repo_memory\":\"Push repository memory\",\"resolve-version\":\"Authorize and resolve release version\",\"safe_outputs\":\"Safe outputs\",\"send_slack_message\":\"Send Slack message\",\"unlock\":\"Unlock\",\"update_cache_memory\":\"Update cache memory\",\"update_drive_memory\":\"Update drive memory\",\"upload_assets\":\"Upload assets\",\"upload_code_coverage\":\"Upload code coverage\",\"upload_code_scanning_sarif\":\"Upload code scanning results\"}"
           GH_AW_REPORT_FAILED_JOBS: "true"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
@@ -1656,7 +1647,7 @@ jobs:
             core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The workflow will attach the verified runtime, update this draft with release highlights, and publish it as an immutable prerelease under the exact version tag. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
+              .addRaw('The workflow will attach the verified runtime and publish this draft as an immutable prerelease under the exact version tag before adding release highlights. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
               .addLink('Review draft', release.html_url);
             await core.summary.write();
@@ -1682,56 +1673,45 @@ jobs:
           path: ${{ runner.temp }}/release-context/
           retention-days: ${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '1' }}
 
-  publish_release:
+  publish-release:
+    name: Publish verified prerelease
     needs:
-      - agent
-      - safe_outputs
-    if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'publish_release')
+      - attach-runtime-assets
+      - prepare-release
     runs-on: ubuntu-latest
-    # Permissions for the publish_release job (workflow permissions default to none).
+    # Permissions for the publish-release job (workflow permissions default to none).
     permissions:
       contents: write
-    env:
-      GH_AW_AGENT_AIC: ${{ needs.agent.outputs.aic }}
-      GH_AW_AIC: ${{ needs.agent.outputs.aic }}
-      GH_AW_AMBIENT_CONTEXT: ${{ needs.agent.outputs.ambient_context }}
-      GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/release"
-      GH_AW_ENGINE_ID: "copilot"
-      GH_AW_ENGINE_MODEL: ${{ needs.agent.outputs.model }}
-      GH_AW_WORKFLOW_EMOJI: "🚀"
-      GH_AW_WORKFLOW_ID: "release"
-      GH_AW_WORKFLOW_NAME: "Release"
-      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/release.md"
+    outputs:
+      release_id: ${{ steps.publish.outputs.release_id }}
+      release_tag: ${{ steps.publish.outputs.release_tag }}
     steps:
-      - name: Download agent output artifact
-        continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: "{agent,agent-output-fallback}"
-          merge-multiple: true
-          path: ${{ runner.temp }}/gh-aw/safe-jobs/
-      - name: Download prepared release context
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        env:
-          GH_AW_AGENT_OUTPUT: ${{ runner.temp }}/gh-aw/safe-jobs/agent_output.json
-        with:
-          name: release-context-${{ github.run_id }}
-          path: ${{ runner.temp }}/release-context
+      - name: Configure GH_HOST for enterprise compatibility
+        id: ghes-host-config
+        shell: bash
+        run: | # zizmor: ignore[github-env] - GITHUB_SERVER_URL is set by GitHub Actions, not user input.
+          # Derive GH_HOST from GITHUB_SERVER_URL so the gh CLI targets the correct
+          # GitHub instance (GHES/GHEC). On github.com this is a harmless no-op.
+          GH_HOST="${GITHUB_SERVER_URL#https://}"
+          GH_HOST="${GH_HOST#http://}"
+          echo "GH_HOST=${GH_HOST}" >> "$GITHUB_ENV"
       - name: Publish verified draft as prerelease
+        id: publish
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
-          GH_AW_AGENT_OUTPUT: ${{ runner.temp }}/gh-aw/safe-jobs/agent_output.json
-          RELEASE_CONTEXT_PATH: ${{ runner.temp }}/release-context/release.json
+          RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          REVISION: ${{ github.sha }}
+          RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
         with:
           github-token: ${{ github.token }}
           script: |
-            const { readFileSync } = require('node:fs');
-            const releaseContext = JSON.parse(readFileSync(process.env.RELEASE_CONTEXT_PATH, 'utf8'));
-            const releaseId = Number(releaseContext.id);
-            const releaseTag = releaseContext.tag;
-            const revision = releaseContext.sha;
+            const releaseId = Number(process.env.RELEASE_ID);
+            const releaseTag = process.env.RELEASE_TAG;
+            const runtimeArchive = process.env.RUNTIME_ARCHIVE;
+            const revision = process.env.REVISION;
             if (!Number.isSafeInteger(releaseId) || releaseId <= 0) {
-              throw new Error(`Invalid release ID: ${releaseContext.id}`);
+              throw new Error(`Invalid release ID: ${process.env.RELEASE_ID}`);
             }
             if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(releaseTag)) {
               throw new Error(`Invalid stable release tag: ${releaseTag}`);
@@ -1740,6 +1720,9 @@ jobs:
               throw new Error(`Invalid release revision: ${revision}`);
             }
             const expectedArchive = `cao-runtime-${revision}.tgz`;
+            if (runtimeArchive !== expectedArchive) {
+              throw new Error(`Runtime archive ${runtimeArchive} does not match ${expectedArchive}`);
+            }
 
             const { data: draft } = await github.rest.repos.getRelease({
               owner: context.repo.owner,
@@ -1825,9 +1808,11 @@ jobs:
               throw new Error(`Published release ${releaseId} failed exact tag, revision, or immutability verification`);
             }
 
+            core.setOutput('release_id', String(releaseId));
+            core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Published ${releaseTag} as a prerelease`)
-              .addRaw('The version tag and verified runtime assets are now immutable. Review the release notes, then remove the prerelease designation and mark this release as latest.')
+              .addRaw('The version tag and verified runtime assets are now immutable. The release highlights agent will update the notes next; after the workflow succeeds, review the release and promote it to latest.')
               .addEOL()
               .addLink('Review prerelease', published.html_url);
             await core.summary.write();
@@ -2033,7 +2018,6 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUT_JOBS: "{\"publish_release\":\"\"}"
           GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":2,\"report-as-issue\":\"false\"},\"report_incomplete\":{},\"update_release\":{\"max\":1}}"
           GH_AW_GITHUB_TOKEN_SOURCE: ${{ secrets.GH_AW_GITHUB_TOKEN != '' && 'pat' || 'github_actions' }}
         with:
