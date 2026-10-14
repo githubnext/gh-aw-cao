@@ -3,6 +3,7 @@ import { parseAllDocuments } from 'yaml';
 import { isReadOnlyCliAction, parseCliActionTokens, validateActionLevel, validWorkflowDispatchArguments } from './action-validator.js';
 import { CARD_TEMPLATE_ACTION_KEYS, CARD_DETAIL_LABEL_VALUES, CARD_STATUS_KEYS, CARD_TEMPLATE_KEYS, CARD_TIMING_FIELD_KEYS, DASHBOARD_KEYS, DASHBOARD_HORIZON_KEYS, DEFAULTS_KEYS, CLI_ACTION_KEYS, CLI_ACTION_ARGUMENT_KEYS, CLI_ACTION_ARGUMENT_TYPE_VALUES, CLI_ACTION_PLACEMENT_VALUES, ERROR_CODES, FIELD_DEFINITION_KEYS, FIELD_DISPLAY_VALUES, FIELD_FORMAT_VALUES, IDENTIFIER_PATTERN, LANGUAGE_VERSION, MAX_CLI_ACTIONS, MAX_CLI_ACTION_ARGUMENTS, MAX_CLI_ACTION_COMMAND_LENGTH, PAGE_ICON_VALUES, SITE_CALLOUT_KEYS, SITE_CALLOUT_VISIBILITY_KEYS, QUERY_SOURCE_VALUES, TABLE_ACTION_WHEN_KEYS, UNIT_DEFINITION_KEYS, UNIT_FORMAT_VALUES } from './specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
+import { assertDialogSelector } from './dialog-selector.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
 import { findDeadDashboardQueries } from './query-usage.js';
 import { validateTooltip, validateNavigation, validatePage } from './validator-pages.js';
@@ -520,6 +521,16 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
         }
       }
       validateStringField(action.command, `${path}.command`, true, errors);
+      if (action.selector !== undefined) {
+        try {
+          assertDialogSelector(action.selector, typeof action.command === 'string' ? cliActionTemplateFields(action.command) : []);
+        } catch (error) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, error instanceof Error ? error.message : 'Invalid dialog selector.', `${path}.selector`));
+        }
+        if (action.level !== 'operate' || action.placement !== 'view' || action['copy-only'] === true) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'Selector actions must be executable, view-placed operate actions.', `${path}.selector`));
+        }
+      }
       if (typeof action.command === 'string') {
         if (action.command.length > MAX_CLI_ACTION_COMMAND_LENGTH) {
           errors.push(createError(

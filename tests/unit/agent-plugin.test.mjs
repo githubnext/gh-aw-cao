@@ -122,7 +122,8 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.match(source, /cao_dashboard_execute_query/);
   assert.match(source, /cao_dashboard_read_data_specification/);
   assert.match(source, /onSessionStart:/);
-  assert.match(source, /onSessionEnd: closePreviews/);
+  assert.match(source, /onSessionEnd: async/);
+  assert.match(source, /if \(reason === "user_exit"\) await closePreviews\(\)/);
   assert.match(source, /onClose:/);
   assert.match(source, /additionalProperties: false/);
   assert.doesNotMatch(source, /github\.io|https:/);

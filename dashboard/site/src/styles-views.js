@@ -104,6 +104,13 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
   min-height: 0;
   flex: 1;
 }
+.dashboard-full-view .dashboard-page[data-view-mode="chart"] > .custom-view-grid:has(> .custom-view[data-view-layout="full-view"]) {
+  gap: 16px;
+  overflow-y: auto;
+}
+.dashboard-full-view .dashboard-page[data-view-mode="chart"] > .custom-view-grid:has(> .custom-view[data-view-layout="full-view"]) > .custom-view {
+  flex: none;
+}
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: var(--dashboard-page-padding-inline); }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .table-region {
   margin: 0;

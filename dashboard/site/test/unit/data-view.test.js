@@ -1047,6 +1047,37 @@ describe('data view renderer', () => {
     expect(renderDataView('unsupported', /** @type {any} */ ({}))).toBeNull();
   });
 
+  it.each(['cards', 'entity-cards', 'issues'])('shows %s list descriptions once without a duplicate tooltip', (style) => {
+    const description = 'Installed and current compiler versions observed for each repository.';
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Repositories',
+      view: {
+        mark: 'list', description,
+        list: { style, card: 'repository', icon: 'repo' },
+        encoding: { columns: [{ field: 'name' }] }
+      },
+      sourceName: 'repositories',
+      rows: [{ name: 'octo/example' }],
+      cardTemplates: {
+        repository: { icon: 'repo', title: { field: 'name' }, labels: [], details: [] }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.document-list-header > p')?.textContent).toBe(description);
+    expect(rendered?.querySelector('.view-description-tooltip')).toBeNull();
+    expect(rendered?.textContent?.split(description)).toHaveLength(2);
+    expect(rendered?.querySelector('h3')?.textContent).toBe('Repositories');
+    expect(rendered?.getAttribute('aria-labelledby')).toBe('maintenance-repositories-heading');
+  });
+
   it('renders a view description in the shared explanation tooltip', () => {
     const rendered = renderDataView('table', {
       pageId: 'workflow-runs',

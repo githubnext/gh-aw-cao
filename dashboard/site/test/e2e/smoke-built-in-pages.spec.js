@@ -497,7 +497,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const prompt = campaignInsights.locator('.semantic-prompt-action').first();
   if (await prompt.count() > 0) {
     await expect(prompt).toHaveCSS('position', 'static');
-    await expect(prompt.locator('.table-intent-button span')).toBeVisible();
+    await expect(prompt.locator('.table-intent-button span')).toBeHidden();
+    await expect(prompt.locator('.table-intent-button')).toHaveAccessibleName(/^Propose fix/);
     const promptAndHelp = await prompt.evaluate((element) => {
       const section = element.closest('.view-description-section');
       const promptBox = element.getBoundingClientRect();

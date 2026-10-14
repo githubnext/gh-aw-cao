@@ -81,6 +81,10 @@ rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
 
+The canvas's local preview server stays available between agent turns, including
+completed, interrupted, or failed turns. It stops when its canvas closes, when
+you exit the session, or when its extension process stops.
+
 ### Design queries in a Copilot canvas
 
 The local **Central Agentic Ops** Copilot canvas includes a **Query editor**
