@@ -604,7 +604,7 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "layout": "horizontal",
+            "layout": "full",
             "empty-message": "No campaign dispatches were observed in the selected horizon.",
             "encoding": {
               "x": {

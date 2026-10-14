@@ -517,7 +517,7 @@ export const TABLE_FIELDS = {
   'dispatch-activation-summary': ['label', 'value'],
   'campaign-dispatch-state': ['campaign', 'campaign-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
   'repository-summary': ['label', 'value', 'items'],
-  'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status', 'repository-link'],
+  'repository-activity': ['organization', 'repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status', 'repository-link'],
   'repository-detail-summary': ['repository', 'workflows', 'latest-update', 'external-link'],
   'repository-workflow-status': ['repository', 'status', 'workflows'],
   'repository-workflow-usage': ['repository', 'workflow', 'invocation', 'aic', 'workflow-link'],

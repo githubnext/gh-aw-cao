@@ -1516,7 +1516,7 @@ function renderChartView(context, facetPanel = false) {
       visualization?.replaceWith(...rendered);
       clusteringEffect.stop();
     }, { signal: clusteringScope.signal });
-  } else if (chartType === 'pie') {
+  } else if (chartType === 'pie' && view.layout !== 'full') {
     section.append(
       h('div', { className: 'pie-chart-card' }, ...Array.from(section.children))
     );
