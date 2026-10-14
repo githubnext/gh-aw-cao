@@ -1,7 +1,43 @@
 {
-  "source_sha": "9cae2a1514ce48cdda94867abffb99c994b36000",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "8b2ee9397e91b30e2451010755db79ebb18735cc",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T06:41:00Z",
+      "worker_run_id": 38523283005,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38523373955,
+        38523100641,
+        38519937294,
+        38519264164,
+        38519250433,
+        38518674929,
+        38517497099,
+        38517045494,
+        38517033896,
+        38516424918,
+        38516166611,
+        38514456506,
+        38513029515,
+        38511581000,
+        38509302008,
+        38508532183,
+        38508505999,
+        38507685638,
+        38506363119,
+        38506139874
+      ],
+      "docs_window": {
+        "start": "2026-10-14T03:25:04Z",
+        "end": "2026-10-14T06:38:27Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 2,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 8b2ee9397e91b30e2451010755db79ebb18735cc. In the latest 20 completed docs.yml runs from 2026-10-14T03:25:04Z through 2026-10-14T06:38:27Z, 14 runs succeeded but only 4 comparable successful runs executed the build job (38519937294, 38519250433, 38517497099, and 38517033896), and only 2 of those also completed deploy (38519937294 and 38517497099). The remaining completed runs were 10 successful schedule freshness no-ops that skipped build and deploy and 6 workflow_run callbacks that were skipped before any work ran. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper artifact-transfer and Pages-packaging analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T05:56:46Z",
       "worker_run_id": 38518995049,
@@ -1209,48 +1245,6 @@
         16825
       ],
       "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA dda6e4ad3194da3253b9b944f447aa590aa4e377. In the latest 20 completed docs.yml runs from 2026-10-13T15:28:18Z through 2026-10-13T17:24:44Z, 11 runs succeeded and 6 reached a successful build job, with 3 successful deploy jobs; 5 additional successful schedule runs skipped build because the deployed docs and dashboard were already current, 8 workflow_run callbacks were skipped, and one workflow_run callback was cancelled and excluded. Trusted job metadata showed successful docs workflow queue median/p90 0s/0s, comparable workflow execution median/p90 64.5s/91.0s, build-job median/p90 37.5s/43.0s, deploy-job median/p90 29.0s/30.6s, and freshness-only schedule-freshness median/p90 8.0s/9.0s. Like-for-like same-SHA samples showed three push builds (38422681567, 38427063289, 38430477769) followed 37-841s later by schedule deploy runs on the same SHA (38424667577, 38427151909, 38430932659), with trusted cache-hit logs confirming repeated reuse of the ~293 MB setup-node npm cache, the ~283 MB node_modules cache, and the ~26 MB central-agentic-ops-dashboard cache on both sides while the later schedule builds still spent 31-43s rebuilding before 19-31s deploy jobs. A bounded log read of freshness-only run 38438428478 confirmed that schedule-freshness still scans up to 100 successful docs runs and per-run job lists before declaring the deployed docs and dashboard current. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:41:37Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893.0s/1447.5s, cache-job median/p90 11.0s/14.2s, Restore collected activity data median/p90 108.5s/177.3s, and Upgrade fallback activity data median/p90 712.0s/1257.1s; bounded logs for runs 38410368012, 38408906957, and 38403527237 confirmed repeated restoration of raw activity cache key cao-activity-v5-37765769970-1 and 105.6-107.1 MiB SQLite plus 463.1 MiB shard copies before 31.3 MB artifact uploads. No new scheduling issue was created because the only clearly actionable repeated scheduling cost still represented in the inspected workflow source is the freshness-scan overhead already tracked by open issue #17171, the historical workflow_run-duplicate category is already tracked by #16054 and is currently skipped in this source revision, and the newly observed push-to-schedule same-SHA rebuild pattern does not yet prove a concrete workflow-only artifact-reuse change in docs.yml or cao-dashboard.yml that would preserve Pages deployment semantics, dashboard freshness, and current fail-closed behavior."
-    },
-    {
-      "evaluated_at": "2026-10-13T17:14:00Z",
-      "worker_run_id": 38434877976,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38435358067,
-        38434950761,
-        38433645156,
-        38433375316,
-        38430932659,
-        38430583251,
-        38430501905,
-        38430477769,
-        38427151909,
-        38427097207,
-        38427063289,
-        38426580500,
-        38426101924,
-        38425171277,
-        38424667577,
-        38424548134,
-        38422681567,
-        38422342935,
-        38421902423,
-        38418744229
-      ],
-      "docs_window": {
-        "start": "2026-10-13T15:03:29Z",
-        "end": "2026-10-13T17:02:12Z"
-      },
-      "docs_success_count": 11,
-      "docs_comparable_success_count": 6,
-      "docs_deployed_success_count": 3,
-      "dashboard_window": {
-        "start": "2026-10-07T22:30:42Z",
-        "end": "2026-10-13T14:41:37Z"
-      },
-      "dashboard_success_count": 20,
-      "dashboard_comparable_success_count": 20,
-      "decision": "noop_not_actionable",
-      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA dda6e4ad3194da3253b9b944f447aa590aa4e377. In the latest 20 completed docs.yml runs from 2026-10-13T15:03:29Z through 2026-10-13T17:02:12Z, 11 runs succeeded and 6 reached a successful build job, with 3 successful deploy jobs; 5 additional successful schedule runs skipped the build because the deployed docs and dashboard were already current, and one workflow_run callback was cancelled and excluded. Trusted job metadata showed successful docs workflow queue median/p90 0s/0s, comparable workflow execution median/p90 64.5s/91.0s, build-job median/p90 37.5s/43.0s, deploy-job median/p90 29.0s/30.6s, and freshness-only schedule median/p90 13.0s/14.2s. Bounded logs for docs runs 38430932659, 38430477769, and 38427151909 confirmed repeated cache hits for the ~293 MB setup-node npm cache, the ~283 MB node_modules cache, and the ~26 MB central-agentic-ops-dashboard cache; Upload Pages artifact repeatedly uploaded a single 34.7 MB github-pages bundle in about 4-6s; and Deploy Pages spent about 19-31s mostly in normal syncing_files and updating_pages states without a repeated packaging bottleneck. For the latest 20 successful main-branch cao-dashboard.yml runs from 2026-10-07T22:30:42Z through 2026-10-13T14:41:37Z, trusted job metadata showed workflow execution median/p90 913.5s/1470.8s, build-job median/p90 893.0s/1447.5s, cache-job median/p90 11.0s/14.2s, Upload dashboard artifact median/p90 10.0s/13.0s, and Save dashboard cache median/p90 3.0s/4.0s. Bounded logs for dashboard runs 38410368012, 38408906957, and 38403527237 confirmed repeated restore-key hits for the 2.27 GB cao-activity cache, 105.6-107.1 MiB SQLite plus 463.1 MiB of activity shards copied into the site payload, and 31.3 MB dashboard artifacts uploaded successfully in 5-8s. Because artifact transfer and Pages packaging remain a small tail in docs.yml and an even smaller share of cao-dashboard.yml, no workflow-only change in the inspected files is supported by repeated evidence to save at least 60 seconds or 15 percent of median execution time without reducing freshness or deployment safety."
     }
   ]
 }
