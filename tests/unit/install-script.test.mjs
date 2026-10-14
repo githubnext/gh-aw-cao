@@ -135,9 +135,9 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
-if [[ "$*" == "release view --repo github.com/githubnext/gh-aw-cao --json tagName --jq .tagName" ]]; then
+if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-aw-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
   [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
-  printf '%s\\n' "\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}"
+  printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
@@ -1183,6 +1183,49 @@ test("implicit quickstart pins the latest stable CAO release", async (t) => {
   assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
   assert.equal(await log(), "add\n");
 });
+
+test("quickstart skips malformed tags, drafts, and prereleases when selecting a stable release", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_ADD_FAILURE: "1",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+    FAKE_CAO_RELEASE_LIST: [
+      "false\tfalse\tuntagged-a58de5448231a0eed5d3",
+      "true\tfalse\tv1.3.0",
+      "false\ttrue\tv1.2.5",
+      "false\tfalse\tv1.2.4-rc.1",
+      "false\tfalse\tv1.2.3",
+      "false\tfalse\tv1.2.2",
+    ].join("\n"),
+  }, ["--quickstart"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
+  assert.equal(await log(), "add\n");
+});
+
+for (const releases of [
+  "",
+  "false\tfalse\tuntagged-a58de5448231a0eed5d3",
+  "true\tfalse\tv1.3.0\nfalse\ttrue\tv1.2.5",
+]) {
+  test(`quickstart fails closed without a published stable version tag: ${JSON.stringify(releases)}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const result = await runStreamed(consumer, {
+      ...env,
+      CI: "1",
+      FAKE_CAO_RELEASE_LIST: releases || "\n",
+    }, ["--quickstart"]);
+
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /Unable to resolve the latest stable CAO release with a vX\.Y\.Z tag/);
+    assert.match(result.stderr, /No CAO files were written/);
+    assert.equal(await log(), "");
+    await assertNothingInstalled(consumer);
+  });
+}
 
 test("implicit quickstart refreshes an existing control plane to the stable release", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);

@@ -532,16 +532,26 @@ verify_gh_aw_version() {
 }
 
 resolve_latest_cao_release() {
+  local releases
+  local draft
+  local prerelease
   local release
-  if ! release="$(gh release view --repo github.com/githubnext/gh-aw-cao --json tagName --jq .tagName)" ||
-    [[ ! "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    printf '%s\n' \
-      'Unable to resolve the latest stable CAO release.' \
-      'Retry after GitHub release access is restored, or pass an explicit source such as githubnext/gh-aw-cao@main.' \
-      'No CAO files were written.' >&2
-    return 1
+  if releases="$(gh api --hostname github.com --paginate \
+    'repos/githubnext/gh-aw-cao/releases?per_page=100' \
+    --jq '.[] | [.draft, .prerelease, .tag_name] | @tsv')"; then
+    while IFS=$'\t' read -r draft prerelease release; do
+      if [[ "$draft" == false && "$prerelease" == false &&
+        "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        printf '%s\n' "$release"
+        return
+      fi
+    done <<< "$releases"
   fi
-  printf '%s\n' "$release"
+  printf '%s\n' \
+    'Unable to resolve the latest stable CAO release with a vX.Y.Z tag.' \
+    'Retry after GitHub release access is restored, or pass an explicit source such as githubnext/gh-aw-cao@main.' \
+    'No CAO files were written.' >&2
+  return 1
 }
 
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
