@@ -227,6 +227,18 @@ export function removeDashboardPages({ repository, execute = spawnSync }) {
   return !result.error && result.status === 0;
 }
 
+function configureWorkflowToken(repository, execute) {
+  const result = execute('gh', [
+    'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE',
+    '--repo', repository,
+    '--body', 'workflow-token',
+  ], { encoding: 'utf8' });
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to select repository workflow-token authentication: ${commandFailureMessage(result, 'gh variable set failed')}`);
+  }
+  return { mode: 'workflow-token', repository };
+}
+
 async function setupNonInteractivePublicControl({
   output,
   execute,
@@ -317,14 +329,7 @@ async function setupNonInteractivePublicControl({
     }
 
     applyStage = 'workflow-token authentication';
-    const authentication = execute('gh', [
-      'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE',
-      '--repo', control.repository,
-      '--body', 'workflow-token',
-    ], { encoding: 'utf8' });
-    if (authentication.error || authentication.status !== 0) {
-      throw new Error(`Unable to select repository workflow-token authentication: ${commandFailureMessage(authentication, 'gh variable set failed')}`);
-    }
+    const authentication = configureWorkflowToken(control.repository, execute);
 
     applyStage = 'policy';
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
@@ -342,10 +347,7 @@ async function setupNonInteractivePublicControl({
       visibility: control.visibility,
       repositories: [control.repository],
       profile: 'workflow-token',
-      authentication: {
-        mode: 'workflow-token',
-        repository: control.repository,
-      },
+      authentication,
       dashboardPages: 'public',
       campaigns: [],
       nonInteractive: true,
@@ -500,8 +502,13 @@ export async function setupCaoControlPlane({
         hint: 'User-bound; separate credentials per owner',
       }];
 
-    const profile = await interactive.select('How should CAO authenticate?', choices);
-    if (!choices.some((choice) => choice.value === profile)) {
+    const requiresCredentials = uniqueInspected.some(({ owner, visibility }) => (
+      owner.toLowerCase() !== control.owner.toLowerCase() || visibility !== 'public'
+    ));
+    const profile = requiresCredentials
+      ? await interactive.select('How should CAO authenticate?', choices)
+      : 'workflow-token';
+    if (requiresCredentials && !choices.some((choice) => choice.value === profile)) {
       throw new UsageError(`Authentication profile is not available for this repository scope: ${profile}`);
     }
     const intendedPolicy = structuredClone(policy);
@@ -509,6 +516,13 @@ export async function setupCaoControlPlane({
       'allowed-owners': owners,
       'allowed-repositories': repositories,
     };
+    if (profile === 'workflow-token') {
+      intendedPolicy['control-plane'].activity = {
+        ...(isMapping(intendedPolicy['control-plane'].activity) ? intendedPolicy['control-plane'].activity : {}),
+        repositories: [control.repository],
+      };
+      interactive.note('Using the repository GITHUB_TOKEN; no App or PAT is needed for this setup.\nActivity will collect only the control repository.');
+    }
     temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'cao-setup-'));
     const intendedPolicyPath = path.join(temporaryDirectory, 'cao.json');
     await writeJsonAtomically(intendedPolicyPath, intendedPolicy);
@@ -567,8 +581,12 @@ export async function setupCaoControlPlane({
       }
     }
     applyStage = 'credentials';
-    interactive.step?.('Connecting read and review-output credentials');
-    const authentication = await setupAuthentication(profile, authenticationArguments, { execute });
+    interactive.step?.(profile === 'workflow-token'
+      ? 'Selecting repository workflow-token authentication'
+      : 'Connecting read and review-output credentials');
+    const authentication = profile === 'workflow-token'
+      ? configureWorkflowToken(control.repository, execute)
+      : await setupAuthentication(profile, authenticationArguments, { execute });
     if (authentication?.cancelled) throw new SetupCancelled();
     applyStage = 'policy';
     interactive.step?.('Saving the exact repository scope');

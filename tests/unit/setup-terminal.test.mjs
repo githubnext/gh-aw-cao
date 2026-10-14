@@ -141,6 +141,32 @@ test("setup without a terminal applies public repository workflow-token defaults
   assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
 });
 
+for (const [name, settings, apply, expectedCode] of [
+  ["applies", {}, "\u001b[D\r", 0],
+  ["cancels before mutations", {}, "\r", 0],
+  ["reports a variable failure", { workflowTokenFails: true }, "\u001b[D\r", 1],
+]) {
+  test(`interactive public setup skips credential prompts and ${name}`, terminal, async (t) => {
+    const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", ...settings });
+    const result = await walk(f, [
+      ["Repositories CAO should read", "\r"],
+      ["Apply this setup?", apply],
+    ]);
+    assert.equal(result.code, expectedCode, result.stdout + result.stderr);
+    assert.doesNotMatch(result.stdout, /How should CAO authenticate\?/);
+    assert.ok(!f.calls().some(([command]) => command === "connect"));
+    if (name === "applies") {
+      assert.match(result.stdout, /"profile":"workflow-token"/);
+      assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
+      assert.ok(f.calls().some(([command]) => command === "variable"));
+    } else {
+      assert.deepEqual(f.saved(), f.policy);
+      if (expectedCode) assert.match(result.stdout, /Unable to select repository workflow-token authentication/);
+      else assert.ok(!f.calls().some(([command]) => command === "variable" || command === "api"));
+    }
+  });
+}
+
 test("setup in CI applies public repository workflow-token defaults without prompting", terminal, async (t) => {
   const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
   const result = await walk(f, [], "xterm-256color", { CI: "1" });

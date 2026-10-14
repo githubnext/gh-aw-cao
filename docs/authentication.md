@@ -15,11 +15,12 @@ Use a private control repository whenever the target or required evidence is pri
 
 | Your run | Use |
 | --- | --- |
+| Setup with only public repositories owned by the control repository's owner | Automatic repository `GITHUB_TOKEN`; no credential prompt |
 | Private targets in one organization | Organization-owned private GitHub Apps |
 | Targets across organizations in one enterprise | Enterprise-owned private GitHub Apps |
 | Apps are unavailable and the required APIs are PAT-compatible | One fine-grained PAT pair per resource owner |
 
-Interactive setup always configures an App or PAT profile that can authenticate to every selected repository. The repository-provided `GITHUB_TOKEN` remains a bounded runtime fallback for control-repository operations; it is not a cross-repository authentication profile.
+Interactive setup asks for an App or PAT only when an inspected repository is private or internal, or belongs to a different owner than the control repository. Otherwise it selects `workflow-token` automatically and limits Activity collection to the control repository, while preserving the selected exact rollout scope. This does not grant cross-repository access: campaigns that need privileged target APIs or target writes still require an App or PAT.
 
 :::tip[Prefer GitHub Apps]
 Apps use short-lived, installation-scoped tokens and do not depend on one person's continued access. CAO separates a read-only App from a write-capable App.
@@ -71,7 +72,7 @@ The committed root `aw.yml` intentionally has no `config` block so normal instal
 
 ### Repository-provided token fallback
 
-The repository-provided `GITHUB_TOKEN` is not offered by setup as an authentication profile. It remains available for bounded control-repository operations and compatibility when no explicit mode has been configured. Public visibility alone does not make it a reliable credential for another repository's Actions logs, security data, issues, pull requests, or write APIs.
+Setup selects the repository-provided `GITHUB_TOKEN` automatically for same-owner public scope rather than offering it in the credential menu. It remains bounded to operations it can authorize. Public visibility and shared ownership do not make it a reliable credential for another repository's Actions logs, security data, issues, pull requests, or write APIs.
 
 For a fresh repository-local installation, keep
 `control-plane.scope.allowed-repositories` set to the control repository.
