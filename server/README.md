@@ -1634,7 +1634,7 @@ guidance, limitations, and private vulnerability-reporting process.
 
 ## Run locally
 
-The module targets and pins Go 1.27.1.
+The module targets and pins Go 1.27.2.
 
 On a MacBook, install Homebrew first and run the idempotent project setup:
 
@@ -1942,7 +1942,7 @@ docker-compose -f server/docker-compose.yml down
 Install the pinned linter and run the local quality checks:
 
 ```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 npm run dashboard:server:lint
 npm run dashboard:server:test
 ```
@@ -1966,7 +1966,7 @@ npm run test:e2e:dashboard-server
 `.github/workflows/cgo.yml` keeps server validation separate from the static
 dashboard CI:
 
-- **Go format, lint, and tests** runs Go 1.27.1, golangci-lint v2.13.2, and the
+- **Go format, lint, and tests** runs Go 1.27.2, golangci-lint v2.14.0, and the
   server unit suite.
 - **Redis dashboard integration** starts Redis, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,

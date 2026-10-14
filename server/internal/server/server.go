@@ -1615,6 +1615,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		http.NotFound(response, request)
 		return
 	}
+	// #nosec G703 -- path is constrained to the configured site directory above.
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		path = filepath.Join(a.config.SiteDirectory, "index.html")
@@ -1626,6 +1627,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 	if contentType := mime.TypeByExtension(filepath.Ext(path)); contentType != "" {
 		response.Header().Set("Content-Type", contentType)
 	}
+	// #nosec G703 -- path is constrained to the configured site directory above.
 	http.ServeFile(response, request, path)
 }
 
