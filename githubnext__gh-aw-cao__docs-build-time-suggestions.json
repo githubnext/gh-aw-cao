@@ -3,6 +3,42 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-14T22:37:44Z",
+      "worker_run_id": 38648541930,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38648357088,
+        38647761294,
+        38647074183,
+        38647067343,
+        38644796804,
+        38644686152,
+        38642739874,
+        38641094783,
+        38639585844,
+        38636975345,
+        38635034423,
+        38633157772,
+        38632416884,
+        38631604951,
+        38628620153,
+        38628111776,
+        38626533442,
+        38624716157,
+        38623699566,
+        38622981661
+      ],
+      "docs_window": {
+        "start": "2026-10-14T19:21:28Z",
+        "end": "2026-10-14T22:32:54Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 0,
+      "docs_deployed_success_count": 0,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T19:21:28Z through 2026-10-14T22:32:54Z, 14 runs concluded success, 5 concluded skipped, and 1 concluded action_required. Zero comparable successful runs executed the build job or completed deploy: all successful runs were schedule-freshness no-ops with build and deploy skipped, the workflow_run callbacks were skipped before work ran, and the action_required callback created no jobs. Job metadata for every run showed build:skipped and deploy:skipped when jobs existed, and a bounded log read from run 38648357088 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper Astro documentation generation analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-14T21:51:55Z",
       "worker_run_id": 38643080019,
       "category": "Astro documentation generation",
