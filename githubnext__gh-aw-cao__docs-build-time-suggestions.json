@@ -3,6 +3,42 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-14T00:56:12Z",
+      "worker_run_id": 38492631172,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38492693208,
+        38492436301,
+        38490710413,
+        38487992242,
+        38486197985,
+        38484739681,
+        38484281606,
+        38483570029,
+        38482758270,
+        38481857817,
+        38481624476,
+        38479921909,
+        38478472452,
+        38477264049,
+        38476935820,
+        38474851719,
+        38473017970,
+        38471286022,
+        38470125160,
+        38469820694
+      ],
+      "docs_window": {
+        "start": "2026-10-13T21:20:14Z",
+        "end": "2026-10-14T00:53:27Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 3,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 95d3da95a306cf08324ff5e65e468aa94e6718cb. In the latest 20 completed docs.yml runs from 2026-10-13T21:20:14Z through 2026-10-14T00:53:27Z, 14 runs succeeded but only 4 successful runs executed the build job (38484739681, 38471286022, 38470125160, 38469820694); only 3 of those completed deploy. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so the evaluation stopped before deeper dashboard-run analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-13T23:59:00Z",
       "worker_run_id": 38486639016,
       "category": "artifact transfer and Pages packaging",
@@ -1288,48 +1324,6 @@
       "dashboard_comparable_success_count": 0,
       "decision": "noop_insufficient_comparable_runs",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T05:50:07Z through 2026-10-13T09:23:02Z, 10 runs succeeded but only 2 reached a successful build job (38353758914, 38353436676), so fewer than 5 comparable successful runs were available. Trusted job metadata showed workflow queue median/p90 0.0s/0.0s, successful workflow median/p90 14.0s/60.1s, successful execution median/p90 14.0s/60.1s, successful build-job median/p90 43.5s/51.1s, successful deploy-job median/p90 19.0s/19.0s, and successful schedule-freshness median/p90 9.0s/11.6s. Bounded log reads for docs runs 38353758914 and 38353436676 confirmed cache hits for the setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in both build samples. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T01:49:57Z through 2026-10-13T09:12:57Z contained 0 successful dashboard builds and 2 push failures: 38353436671 spent 158s restoring a 2.27 GB activity cache before failing in Upgrade fallback activity data, and 38337349456 was a 3h17m push outlier with no retained job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard samples, no evidence-backed recommendation is actionable in this cycle."
-    },
-    {
-      "evaluated_at": "2026-10-13T09:08:42Z",
-      "worker_run_id": 38373611864,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38372948086,
-        38371476283,
-        38370801432,
-        38367695852,
-        38367093197,
-        38366126749,
-        38365190500,
-        38361915714,
-        38361499803,
-        38358813042,
-        38358518368,
-        38356195199,
-        38355222384,
-        38354714993,
-        38354172987,
-        38353758914,
-        38353710512,
-        38353436676,
-        38353435555,
-        38352524537
-      ],
-      "docs_window": {
-        "start": "2026-10-13T05:39:35Z",
-        "end": "2026-10-13T08:58:23Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 1,
-      "dashboard_window": {
-        "start": "2026-10-13T01:44:08Z",
-        "end": "2026-10-13T08:45:36Z"
-      },
-      "dashboard_success_count": 0,
-      "dashboard_comparable_success_count": 0,
-      "decision": "noop_insufficient_comparable_runs",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA a71b0e017f51b12324f2fcc4fc1e1bedb61b1bb2. In the latest 20 completed docs.yml runs from 2026-10-13T05:39:35Z through 2026-10-13T08:58:23Z, 10 runs succeeded but only 2 reached a successful build job (38353758914 and 38353436676), so fewer than 5 comparable successful runs were available. Trusted job metadata showed workflow queue median/p90 0.0s/0.0s, successful workflow median/p90 14.5s/58.0s, successful build-job median/p90 43.5s/53.0s, successful deploy-job median/p90 19.0s/19.0s, and successful schedule-freshness median/p90 9.0s/15.0s. Bounded log reads for docs runs 38353758914 and 38353436676 confirmed cache hits for the setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in both build samples. The same docs window also contained 8 successful schedule freshness-only skips, 9 skipped workflow_run runs, and 1 workflow_run run that ended action_required; these were disclosed but excluded from comparability. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-13T01:44:08Z through 2026-10-13T08:45:36Z contained 0 successful dashboard builds and 2 push failures: 38353436671 on a71b0e0 spent 158s restoring a 2.17 GB activity cache before failing in Upgrade fallback activity data, and 38337349456 was a 3h17m non-main outlier with no retained job metadata. Because the bounded evidence window still lacks 5 comparable successful docs or dashboard samples, no evidence-backed recommendation is actionable in this cycle."
     }
   ]
 }
