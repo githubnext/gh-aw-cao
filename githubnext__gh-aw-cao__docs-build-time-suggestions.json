@@ -1,7 +1,43 @@
 {
   "source_sha": "8b2ee9397e91b30e2451010755db79ebb18735cc",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-14T09:30:04Z",
+      "worker_run_id": 38542341425,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38542463648,
+        38542140146,
+        38539379295,
+        38538253674,
+        38535785640,
+        38535474837,
+        38532313915,
+        38530430754,
+        38528691306,
+        38528331770,
+        38527383703,
+        38526279328,
+        38525658707,
+        38523373955,
+        38523100641,
+        38519937294,
+        38519264164,
+        38519250433,
+        38518674929,
+        38517497099
+      ],
+      "docs_window": {
+        "start": "2026-10-14T05:35:58Z",
+        "end": "2026-10-14T09:27:39Z"
+      },
+      "docs_success_count": 13,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 2,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 8b2ee9397e91b30e2451010755db79ebb18735cc. In the latest 20 completed docs.yml runs from 2026-10-14T05:35:58Z through 2026-10-14T09:27:39Z, 13 runs succeeded but only 3 comparable successful runs executed the build job (38519937294, 38519250433, and 38517497099), and only 2 of those also completed deploy (38519937294 and 38517497099). The remaining completed runs were 10 successful schedule freshness no-ops that skipped build and deploy, 5 workflow_run callbacks that were skipped, and 2 workflow_run callbacks that ended action_required before any jobs were created. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper artifact-transfer and Pages-packaging analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-14T08:59:21Z",
       "worker_run_id": 38538652748,
@@ -1192,42 +1228,6 @@
       "docs_deployed_success_count": 1,
       "decision": "noop_incomplete_insufficient_comparable_runs",
       "outcome": "Evaluation incomplete for category \"Astro documentation generation\" on source SHA 84723fff744e08c73292dc88ce4a7de20f493502. In the latest 20 completed docs.yml runs from 2026-10-13T17:24:44Z through 2026-10-13T19:21:40Z, 8 runs succeeded but only 3 were comparable successful builds (run IDs 38451570256, 38450836113, 38443639763), with 1 successful deploy jobs. The same window also contained 5 freshness-only schedule successes that skipped the build because deployed docs and dashboard were current, 7 skipped workflow_run callbacks, 2 action_required workflow_run callbacks, and 3 failed build attempts. Because the mission requires at least five comparable successful runs in the latest-20-run evidence window before making a build-time recommendation, no actionable evaluation was completed and the category remains queued for the next run."
-    },
-    {
-      "evaluated_at": "2026-10-13T19:01:30Z",
-      "worker_run_id": 38451185487,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38450855138,
-        38450836113,
-        38450501752,
-        38450190808,
-        38447656535,
-        38447350323,
-        38447114616,
-        38446129254,
-        38443639763,
-        38443530483,
-        38442872233,
-        38442078681,
-        38441849112,
-        38441522009,
-        38439960941,
-        38439839278,
-        38438428478,
-        38438073699,
-        38435358067,
-        38434950761
-      ],
-      "docs_window": {
-        "start": "2026-10-13T16:59:05Z",
-        "end": "2026-10-13T18:56:41Z"
-      },
-      "docs_success_count": 7,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 0,
-      "decision": "noop_incomplete_insufficient_comparable_runs",
-      "outcome": "Evaluation incomplete for category \"Astro documentation generation\" on source SHA 84723fff744e08c73292dc88ce4a7de20f493502. In the latest 20 completed docs.yml runs from 2026-10-13T16:59:05Z through 2026-10-13T18:56:41Z, 7 runs succeeded but only 2 were comparable successful builds (run IDs 38443639763 and 38450836113), with 0 successful deploy jobs. The same window also contained 5 freshness-only schedule successes that skipped the build because deployed docs and dashboard were current, 8 skipped workflow_run callbacks, 2 action_required workflow_run callbacks, 2 failed schedule runs, and 1 failed push run. Because the mission requires at least five comparable successful runs in the latest-20-run evidence window before making a build-time recommendation, no actionable evaluation was completed and the category remains queued for the next run."
     }
   ]
 }
