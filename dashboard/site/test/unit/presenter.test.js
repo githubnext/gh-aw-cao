@@ -2489,7 +2489,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
     expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
-    expect(page?.querySelectorAll('.factory-station')).toHaveLength(2);
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your campaigns are idle.');
     expect(page?.querySelector('.factory-station')?.textContent).toContain('0/0 healthy campaigns');
     expect(page?.querySelector('.link-button-list-empty')?.textContent).toBe('No campaigns are registered.');

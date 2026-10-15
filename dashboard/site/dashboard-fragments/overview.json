@@ -184,6 +184,48 @@
       }
     },
     {
+      "name": "overview-issue-summary",
+      "subject": "Count retained issue and pull request safe-output records for Overview.",
+      "objective": "Restore the issue and pull request counter with a link to its evidence inventory.",
+      "acceptance": "The count includes retained canonical issue and pull request records, not inferred outcomes; unavailable evidence remains unavailable.",
+      "from": "issues",
+      "aggregate": {
+        "values": [
+          { "field": "id", "as": "value", "reducer": "count" }
+        ]
+      },
+      "limit": 1
+    },
+    {
+      "name": "overview-issue-station",
+      "subject": "Present the retained issue and pull request count for Overview.",
+      "objective": "Provide a presentation-ready count and accessible evidence description.",
+      "acceptance": "The value matches overview-issue-summary and describes retained safe outputs, not accepted outcomes.",
+      "from": "overview-issue-summary",
+      "compute": [
+        { "as": "detail", "function": "concat", "args": [{ "value": "Retained safe" }, { "value": " outputs" }] },
+        { "as": "description", "function": "concat", "args": [{ "field": "value" }, { "value": " retained issues and pull requests" }] }
+      ],
+      "limit": 1
+    },
+    {
+      "name": "overview-value-station",
+      "subject": "Present the observed grader-result count as the legacy Value gains counter.",
+      "objective": "Restore the Value gains counter while making its observation-count semantics explicit.",
+      "acceptance": "The count matches overview-value-summary, including zero; grader presence is not proof of improvement and unavailable evidence is not zero.",
+      "from": "overview-value-summary",
+      "compute": [
+        { "as": "detail", "function": "concat", "args": [{ "value": "Observed grader" }, { "value": " results" }] },
+        { "as": "description", "function": "concat", "args": [{ "field": "value-gains" }, { "value": " observed grader results, not verified improvements" }] }
+      ],
+      "select": [
+        { "field": "value-gains", "as": "value" },
+        { "field": "detail" },
+        { "field": "description" }
+      ],
+      "limit": 1
+    },
+    {
       "name": "overview-run-status-input",
       "subject": "Prepare the compact run summary for declarative factory status classification.",
       "objective": "Carry successful-runs, failed-runs, and active-runs into the status join without changing their meaning.",
@@ -1953,11 +1995,13 @@
           "title": "Campaign overview",
           "show-title": false,
           "prompt": "none",
-          "subject": "Show the registered campaign and repository inventory while preserving their investigation routes.",
+          "subject": "Show campaign health, repository coverage, retained issues and pull requests, and observed grader results with their investigation routes.",
           "data": {
             "sources": [
               "overview-campaign-station",
-              "overview-repository-station"
+              "overview-repository-station",
+              "overview-issue-station",
+              "overview-value-station"
             ]
           },
           "mark": "element",
@@ -1966,7 +2010,9 @@
             "animate": "number",
             "stations": [
               "campaigns",
-              "repositories"
+              "repositories",
+              "issues",
+              "value-gains"
             ]
           },
           "layout": "full"
