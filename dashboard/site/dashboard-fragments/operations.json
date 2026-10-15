@@ -2330,6 +2330,74 @@
       "icon": "tools",
       "class-name": "maintenance-page",
       "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
+      "route": {
+        "tab": "repositories",
+        "tabs": [
+          { "id": "repositories", "label": "Repositories", "icon": "repo", "page": "maintenance" },
+          { "id": "campaigns", "label": "Campaigns", "icon": "workflow", "page": "maintenance-campaigns" }
+        ]
+      },
+      "views": [
+        {
+          "id": "maintenance-repositories",
+          "title": "Repositories",
+          "description": "Installed and current gh-aw compiler versions observed for each repository.",
+          "data": {
+            "source": "maintenance-repositories"
+          },
+          "mark": "list",
+          "empty-message": "No Agentic Workflow compiler versions were observed.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "gh-aw-version",
+                "type": "nominal",
+                "title": "Installed"
+              },
+              {
+                "field": "gh-aw-current-version",
+                "type": "nominal",
+                "title": "Latest"
+              },
+              {
+                "field": "upgrade-state",
+                "type": "nominal",
+                "title": "Upgrade",
+                "display": "status"
+              }
+            ]
+          },
+          "layout": "full",
+          "list": {
+            "style": "entity-cards",
+            "card": "maintenance-repository",
+            "icon": "repo",
+            "action": "upgrade-repository",
+            "actions": ["add-repository"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "maintenance-campaigns",
+      "kind": "custom",
+      "title": "Updates",
+      "icon": "tools",
+      "class-name": "maintenance-page",
+      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
+      "route": {
+        "navigation-page": "maintenance",
+        "tab": "campaigns",
+        "tabs": [
+          { "id": "repositories", "label": "Repositories", "icon": "repo", "page": "maintenance" },
+          { "id": "campaigns", "label": "Campaigns", "icon": "workflow", "page": "maintenance-campaigns" }
+        ]
+      },
       "views": [
         {
           "id": "maintenance-campaigns",
@@ -2377,49 +2445,6 @@
             "card": "maintenance-campaign",
             "icon": "workflow",
             "action": "update-repository"
-          }
-        },
-        {
-          "id": "maintenance-repositories",
-          "title": "Repositories",
-          "description": "Installed and current gh-aw compiler versions observed for each repository.",
-          "data": {
-            "source": "maintenance-repositories"
-          },
-          "mark": "list",
-          "empty-message": "No Agentic Workflow compiler versions were observed.",
-          "encoding": {
-            "columns": [
-              {
-                "field": "repository",
-                "type": "nominal",
-                "title": "Repository"
-              },
-              {
-                "field": "gh-aw-version",
-                "type": "nominal",
-                "title": "Installed"
-              },
-              {
-                "field": "gh-aw-current-version",
-                "type": "nominal",
-                "title": "Latest"
-              },
-              {
-                "field": "upgrade-state",
-                "type": "nominal",
-                "title": "Upgrade",
-                "display": "status"
-              }
-            ]
-          },
-          "layout": "full",
-          "list": {
-            "style": "entity-cards",
-            "card": "maintenance-repository",
-            "icon": "repo",
-            "action": "upgrade-repository",
-            "actions": ["add-repository"]
           }
         }
       ]

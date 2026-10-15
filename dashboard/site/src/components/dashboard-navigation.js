@@ -181,7 +181,7 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
     const pageId = selectorIdentifier(String(page.id));
     const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
     for (const link of links) {
-      if (!(link instanceof HTMLAnchorElement)) continue;
+      if (!(link instanceof HTMLAnchorElement) || link.closest('[data-route-tabs]')) continue;
       link.setAttribute('aria-label', label);
       link.title = label;
       const dot = link.querySelector('[data-nav-indicator]');

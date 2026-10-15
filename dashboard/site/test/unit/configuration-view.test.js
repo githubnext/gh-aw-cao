@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import maintenanceNavigationContract from '../fixtures/maintenance-navigation-contract.json' with { type: 'json' };
 
 const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedValue({
   schemaVersion: 13,
@@ -251,21 +252,33 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
+    const campaigns = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance-campaigns');
+    const views = [...campaigns.views, ...page.views];
     const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
 
     expect(page.title).toBe('Updates');
+    expect(page.route).toEqual({ tab: 'repositories', tabs: maintenanceNavigationContract.tabs });
+    expect(campaigns.route).toEqual({
+      'navigation-page': 'maintenance', tab: 'campaigns', tabs: maintenanceNavigationContract.tabs
+    });
+    expect(page.views).toHaveLength(1);
+    expect(campaigns.views).toHaveLength(1);
+    expect([page.views[0].data.source, campaigns.views[0].data.source])
+      .toEqual(maintenanceNavigationContract.sources);
+    expect(manageNavigation.pages).toContain('maintenance');
+    expect(manageNavigation.pages).not.toContain('maintenance-campaigns');
     expect(page.description).toContain('Active describes registration only');
     expect(page.description).toContain('run CAO Activity to refresh inventory');
     expect(page['filter-bar']).toBeUndefined();
-    expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
+    expect(views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
-    expect(page.views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
-    expect(page.views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
+    expect(views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
+    expect(views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
         { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', action: 'update-repository' },
         { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', action: 'upgrade-repository', actions: ['add-repository'] }
       ]);
-    expect(page.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
+    expect(views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([
         'campaign-name',
         'campaign-version',
@@ -273,16 +286,16 @@ describe('Configuration dashboard view', () => {
         'campaign-update-state',
         'campaign-registration'
       ]);
-    expect(page.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
+    expect(views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([
         'repository',
         'gh-aw-version',
         'gh-aw-current-version',
         'upgrade-state'
       ]);
-    expect(page.views.map((/** @type {{ title?: string }} */ view) => view.title))
+    expect(views.map((/** @type {{ title?: string }} */ view) => view.title))
       .toEqual(['CAO packages', 'Repositories']);
-    expect(page.views.some((/** @type {{ disclosure?: string }} */ view) => view.disclosure !== undefined)).toBe(false);
+    expect(views.some((/** @type {{ disclosure?: string }} */ view) => view.disclosure !== undefined)).toBe(false);
     const templates = new Map(dashboard['card-templates'].map((/** @type {{ id: string }} */ template) => [template.id, template]));
     expect(templates.get('maintenance-campaign')['detail-labels']).toBe('visible');
     expect(templates.get('maintenance-campaign').details).toContainEqual({

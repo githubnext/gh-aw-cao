@@ -3,11 +3,35 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { renderDashboardHeader } from '../../src/components/dashboard-header.js';
 import { enableDashboardNavigation, renderDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from '../../src/components/dashboard-navigation.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows } from '../../src/components/view-data.js';
+import { renderPageTabs } from '../../src/components/route-tabs.js';
 
 describe('dashboard sidebar', () => {
   beforeEach(() => {
     document.body.replaceChildren();
     localStorage.clear();
+  });
+
+  it('keeps route tab names independent from the parent navigation indicator', () => {
+    const pages = [{
+      id: 'maintenance', title: 'Updates',
+      'navigation-indicator': { label: 'updates available', any: ['updates'] }
+    }];
+    const root = document.createElement('div');
+    const sidebar = renderDashboardNavigation(pages, 'Example', undefined);
+    const tabs = renderPageTabs({
+      currentTab: 'repositories',
+      tabs: [{ id: 'repositories', label: 'Repositories', icon: 'repo', page: 'maintenance' }]
+    });
+    root.append(sidebar, tabs);
+    for (const rows of [[], [{ available: true }]]) {
+      syncDashboardNavigationIndicators(root, pages, { updates: { rows } });
+      const tab = tabs.querySelector('a');
+      expect(tab?.textContent).toBe('Repositories');
+      expect(tab?.getAttribute('aria-label')).toBeNull();
+      expect(tab?.getAttribute('title')).toBeNull();
+      expect(sidebar.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+        .toBe(rows.length ? 'Updates, updates available' : 'Updates');
+    }
   });
 
   it('owns its navigation markup and collapse interaction', () => {
