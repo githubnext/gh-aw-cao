@@ -3,6 +3,42 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-15T03:00:00Z",
+      "worker_run_id": 38673523733,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38673466029,
+        38673220743,
+        38671480474,
+        38668899599,
+        38668674585,
+        38668119237,
+        38666336199,
+        38665705831,
+        38665174021,
+        38664443059,
+        38662491959,
+        38660438161,
+        38659406439,
+        38657836174,
+        38657227056,
+        38656105342,
+        38654563610,
+        38653573965,
+        38653304261,
+        38653104809
+      ],
+      "docs_window": {
+        "start": "2026-10-14T23:16:58Z",
+        "end": "2026-10-15T02:54:30Z"
+      },
+      "docs_success_count": 12,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T23:16:58Z through 2026-10-15T02:54:30Z, 12 runs concluded success, 7 concluded skipped, and 1 workflow_run callback concluded action_required before jobs were created; there were no failed or cancelled runs in the inspected window. Only 2 comparable successful docs runs executed the build job (38662491959 on schedule and 38660438161 on push), both on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907; just 1 of those comparable runs completed deploy. The remaining 10 successful runs were schedule freshness no-ops with build and deploy skipped, and a bounded log read from run 38673220743 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
+    },
+    {
       "evaluated_at": "2026-10-15T02:00:14Z",
       "worker_run_id": 38668396065,
       "category": "artifact transfer and Pages packaging",
