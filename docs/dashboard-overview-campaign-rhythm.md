@@ -1,9 +1,9 @@
 ---
-title: Campaign rhythm
+title: Weekly rhythm
 description: Understand the seven-day successful-run comparison in Overview.
 ---
 
-Campaign rhythm shows whether successful Actions activity is continuing through
+Weekly rhythm shows whether successful Actions activity is continuing through
 the week without reducing recent activity to a single total.
 
 ## How to read it

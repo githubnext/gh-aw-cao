@@ -1,0 +1,11 @@
+{
+  "view": "overview-header",
+  "config": "data-status",
+  "cases": [
+    { "phase": "unknown", "value": "Unknown", "icon": "question", "tone": "muted" },
+    { "phase": "loading", "value": "Importing", "icon": "sync", "tone": "muted" },
+    { "phase": "cached", "value": "Refreshing", "icon": "sync", "tone": "muted" },
+    { "phase": "ready", "value": "Current", "icon": "check-circle-fill", "tone": "success" },
+    { "phase": "stale", "value": "Refresh failed", "icon": "alert", "tone": "danger" }
+  ]
+}

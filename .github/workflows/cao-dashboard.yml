@@ -24,6 +24,10 @@ concurrency:
   # Finish publishing the current snapshot; coalesce newer eligible builds behind it.
   cancel-in-progress: false
 
+env:
+  REPORT_MAX_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_RAW_CACHE_BYTES || '1073741824' }}
+  REPORT_MAX_NORMALIZED_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_NORMALIZED_CACHE_BYTES || '268435456' }}
+
 jobs:
   build:
     if: >-
@@ -175,7 +179,6 @@ jobs:
           NODE_DEBUG: cao:ingest
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
           REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -184,13 +187,19 @@ jobs:
           script: |
             const path = require('path')
             await exec.exec(process.execPath, [
+              'activity/cao.mjs', 'recycle-cache',
+              '--input-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
+              '--retention-days', '30',
+              '--max-bytes', process.env.REPORT_MAX_CACHE_BYTES,
+            ])
+            await exec.exec(process.execPath, [
               'activity/cao.mjs',
               'hash-payloads',
               '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
-              '--normalized-dir', process.env.REPORT_GH_AW_LOGS_NORMALIZED,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
               '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
+              '--max-cache-bytes', process.env.REPORT_MAX_NORMALIZED_CACHE_BYTES,
             ])
             await exec.exec(process.execPath, [
               'activity/cao.mjs',
@@ -210,6 +219,7 @@ jobs:
               '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
               '--output', process.env.REPORT_PAYLOAD_HASHES,
+              '--max-cache-bytes', process.env.REPORT_MAX_NORMALIZED_CACHE_BYTES,
             ])
             await exec.exec(process.execPath, [
               'activity/agent-summary.mjs',

@@ -25,7 +25,7 @@ ${overviewGridStyles}
 .factory-floor-active { background-image: radial-gradient(circle at 50% 100%, var(--overview-hero-glow), transparent 34rem); }
 .factory-floor-active::before { border-color: var(--overview-grid-major); background-image: linear-gradient(var(--overview-grid-major) 1px, transparent 1px), linear-gradient(90deg, var(--overview-grid-major) 1px, transparent 1px), linear-gradient(var(--overview-grid-minor) 1px, transparent 1px), linear-gradient(90deg, var(--overview-grid-minor) 1px, transparent 1px); background-size: 160px 160px, 160px 160px, 32px 32px, 32px 32px; }
 .dashboard-overview-page .factory-floor::before { content: none; }
-.factory-stations { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
+.factory-stations { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
 .factory-floor-compact .factory-stations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .factory-station { min-width: 0; display: grid; justify-items: center; text-align: center; animation: factory-station-enter 420ms cubic-bezier(.2, .7, .2, 1) both; }
 .factory-station:nth-child(2) { animation-delay: 70ms; }

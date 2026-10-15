@@ -465,7 +465,7 @@ describe('dashboard DOM provenance', () => {
     expect(floor?.classList.contains('factory-floor')).toBe(true);
     expect(floor?.querySelector('.semantic-prompt-heading')).toBeNull();
     expect(floor?.querySelector('.semantic-prompt-action')).toBeNull();
-    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     disposeDashboard(rendered);
   });
@@ -2488,11 +2488,11 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
-    expect(page?.querySelectorAll('.factory-station')).toHaveLength(2);
-    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your campaigns are idle.');
-    expect(page?.querySelector('.factory-station')?.textContent).toContain('0/0 healthy campaigns');
-    expect(page?.querySelector('.link-button-list-empty')?.textContent).toBe('No campaigns are registered.');
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
+    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
+    expect(page?.querySelector('.factory-station')?.textContent).toContain('1/1 healthy workflows');
+    expect(page?.querySelector('.link-button-list-view')).toBeNull();
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
     expect(page?.querySelector('.factory-all-clear')).toBeNull();
@@ -4573,7 +4573,16 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('keeps route tabs visible while a sibling view loads', async () => {
+  it('keeps route tabs visible and uses a tab transition while a sibling view loads', async () => {
+    /** @type {Array<string | undefined>} */
+    const transitions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitions.push(document.documentElement.dataset.navigationTransition);
+        callback();
+      })
+    });
     const root = document.createElement('div');
     root.innerHTML = `
       <a data-nav-page-id="first" href="#page-first?campaign=ambient-context">First</a>
@@ -4605,8 +4614,16 @@ describe('presenter built-in and custom pages', () => {
       expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
       expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
       expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      expect(transitions).toEqual(['tab']);
+      window.history.replaceState(null, '', '/#page-first?campaign=ambient-context');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('tab');
+      window.history.replaceState(null, '', '/#page-second?campaign=different');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('page');
       disposeNavigation();
     } finally {
+      Reflect.deleteProperty(document, 'startViewTransition');
       root.remove();
       window.history.replaceState(null, '', '/');
     }

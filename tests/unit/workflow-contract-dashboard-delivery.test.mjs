@@ -283,7 +283,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?gh-aw-logs-shards[\s\S]*?gh-aw-logs-runs[\s\S]*?gh-aw-logs-records[\s\S]*?payload-hashes\.json[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.match(dashboardWorkflow, /Resolve fallback activity run[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?listWorkflowRuns\(\{[\s\S]*?workflow_id: 'cao-activity\.yml'[\s\S]*?branch: context\.payload\.repository\.default_branch[\s\S]*?status: 'success'[\s\S]*?per_page: 100[\s\S]*?core\.setOutput\('run-id', String\(run\.id\)\)/);
   assert.match(dashboardWorkflow, /Download fallback activity data[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?repository: \$\{\{ github\.repository \}\}[\s\S]*?github-token: \$\{\{ github\.token \}\}[\s\S]*?run-id: \$\{\{ steps\.activity-artifact-run\.outputs\.run-id \}\}/);
-  assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?'hash-payloads'[\s\S]*?'--normalized-dir'[\s\S]*?'ingest-jsonl'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'hash-payloads'[\s\S]*?'--output', process\.env\.REPORT_PAYLOAD_HASHES/);
+  assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?'hash-payloads'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'ingest-jsonl'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'hash-payloads'[\s\S]*?'--output', process\.env\.REPORT_PAYLOAD_HASHES/);
+  assert.doesNotMatch(dashboardWorkflow, /'--normalized-dir'/);
   assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?const path = require\('path'\)[\s\S]*?path\.join\(process\.env\.RUNNER_TEMP, 'cao-activity', 'agent-summary\.json'\)/);
   assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?NODE_DEBUG: cao:ingest[\s\S]*?'--retention-days', '7'[\s\S]*?'--run-retention-days', '30'/);
   assert.doesNotMatch(dashboardWorkflow, /Upgrade fallback activity data\n\s+if:/);
@@ -308,7 +309,11 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityCollectJob, /secrets\[fromJSON\(vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \|\| '\{\}'\)\[matrix\.credentialRepository\]\]/);
   assert.doesNotMatch(activityCollectJob, /GH_AW_GITHUB_READ_PAT \|\||GH_AW_GITHUB_TOKEN \|\||\|\| github\.token/);
   assert.match(activityIndexJob, /Fetch repository memory refs into a separate checkout[\s\S]*?path: cao-memory-source[\s\S]*?fetch-depth: 0[\s\S]*?persist-credentials: false/);
-  assert.match(activityIndexJob, /const directFragment = path\.join\(root, "inventory-sources\.json"\)[\s\S]*?existsSync\(directFragment\)[\s\S]*?No owner-scoped inventory fragments were downloaded/);
+  assert.match(activityIndexJob, /import \{ mergeActivityFragments \} from "\.\/activity\/cli\/cache\.mjs"[\s\S]*?await mergeActivityFragments/);
+  assert.doesNotMatch(activityIndexJob, /-exec cp/);
+  assert.match(activityIndexJob, /Recycle expired and oversized activity cache[\s\S]*?recycle-cache[\s\S]*?--retention-days 30[\s\S]*?Generate phased activity shards/);
+  assert.match(dashboardWorkflow, /'recycle-cache'[\s\S]*?'hash-payloads'/);
+  assert.match(activityIndexJob, /--max-cache-bytes "\$REPORT_MAX_NORMALIZED_CACHE_BYTES"/);
   assert.match(activityIndexJob, /Collect campaign repository memory[\s\S]*?activity\/repository-memory\.mjs[\s\S]*?cao-memory-source[\s\S]*?cao-activity\/memory/);
   assert.match(repositoryMemory, /for-each-ref[\s\S]*?MEMORY_REF_PREFIX/);
   assert.match(repositoryMemory, /ls-tree[\s\S]*?cat-file/);

@@ -164,7 +164,7 @@ describe('bounded element query contracts', () => {
     const payload = compileDashboardViewPayloadQueries(
       dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value-repository'), 'operational-value-repository',
       { queries: dashboard.queries, viewId: 'repository-outcome-history',
-        sourceNames: ['operational-value-plot-series'], routeParameters: { campaign: 'selected', organization: 'org', repository: 'z' } }
+        sourceNames: ['operational-value-plot-series'], routeParameters: { organization: 'org', repository: 'z' } }
     );
     const result = execute(payload, sources({
       'operational-values': [
@@ -178,8 +178,9 @@ describe('bounded element query contracts', () => {
       ]
     }))[payload.aliases[0]];
     expect(result.metadata.availability).toBe('available');
-    expect(result.rows).toHaveLength(1);
-    const series = /** @type {{ id: string, points: { x: string, link?: unknown }[] }[]} */ (result.rows.flatMap((row) => row.series));
+    expect(result.rows).toHaveLength(2);
+    const selected = result.rows.filter(row => row.campaign === 'selected');
+    const series = /** @type {{ id: string, points: { x: string, link?: unknown }[] }[]} */ (selected.flatMap((row) => row.series));
     expect(series.map((entry) => entry.id)).toEqual(['org/z']);
     expect(series.find((entry) => entry.id === 'org/z')?.points.map((point) => point.link)).toEqual([links[1], links[2], links[0]]);
     expect(series.find((entry) => entry.id === 'org/a')).toBeUndefined();

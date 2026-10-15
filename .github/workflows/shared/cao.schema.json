@@ -443,6 +443,7 @@
           "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]*$"
         },
         "ref": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "format": { "type": "string", "enum": ["packages", "workflows"], "default": "packages" },
         "api-url": { "type": "string", "format": "uri", "pattern": "^https://" },
         "auth": { "$ref": "#/$defs/marketplaceAuth" }
       }

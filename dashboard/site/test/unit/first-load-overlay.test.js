@@ -287,7 +287,7 @@ describe('browser first-load presentation', () => {
 
   it('suppresses idle and rhythm throughout the initial import, including after dismissal and failure', () => {
     const sources = {
-      status: { rows: () => [{ heading: 'Your campaigns are idle.' }], pending: () => false, unavailable: () => false },
+      status: { rows: () => [{ heading: 'Your factory is idle.' }], pending: () => false, unavailable: () => false },
       rhythm: { rows: () => [], pending: () => false, unavailable: () => false }
     };
     const header = renderFactoryHeader(sources, owner, { presentation: 'status', rhythm: 'rhythm' }, true);
@@ -301,14 +301,14 @@ describe('browser first-load presentation', () => {
     browserFirstLoad.set({ status: 'failed', dismissed: true });
     expect(header.querySelector('h2')?.textContent).toBe('Your dashboard import is incomplete.');
     expect(header.querySelector('h2')?.hasAttribute('aria-busy')).toBe(false);
-    expect(header.querySelector('p')?.textContent).toBe('Campaign status is not available yet.');
+    expect(header.querySelector('p')?.textContent).toBe('Factory status is not available yet.');
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
-    expect(header.querySelector('h2')?.textContent).toBe('Your campaigns are idle.');
+    expect(header.querySelector('h2')?.textContent).toBe('Your factory is idle.');
     expect(header.querySelector('.factory-rhythm')?.hasAttribute('hidden')).toBe(false);
     expect(header.querySelectorAll('button')).toHaveLength(0);
     owner.abort();
     browserFirstLoad.set({ status: 'loading', dismissed: false });
-    expect(header.querySelector('h2')?.textContent).toBe('Your campaigns are idle.');
+    expect(header.querySelector('h2')?.textContent).toBe('Your factory is idle.');
   });
 
   it('does not apply the first-load presentation without declarative opt-in', () => {

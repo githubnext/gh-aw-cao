@@ -159,7 +159,7 @@ async function createFixture() {
     "# Complete",
     "Broad content.",
     "# Activity cache compression analysis",
-    "# Campaign rhythm",
+    "# Weekly rhythm",
     "# Dashboard view catalog",
     ...Object.keys(routeTypes).map((route) => `# ${route}`),
     "# Central Agentic Ops",

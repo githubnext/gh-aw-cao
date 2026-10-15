@@ -60,14 +60,22 @@ The current dashboard publication does not include immutable GitHub repository o
 
 ## Maintenance inventory
 
-The Maintenance page, grouped in navigation alongside Marketplace, Indexing, and
-Configuration, combines two distinct inventory concerns:
+The Updates page under Maintenance separates inventory into **Repositories**
+(the default tab) and **Campaigns**. Both tabs retain the Updates navigation
+indicator, and each has a directly addressable route:
 
 - **Agentic campaigns** use Campaign records and compare `campaign-version` with
   `campaign-current-version`. These are installed campaign revisions resolved
   from the control repository's catalog sources.
 - **Agentic Workflow compilers** use workflow inventory and compare
   `gh-aw-version` with `gh-aw-current-version` for each repository.
+
+Repositories opens at `#page-maintenance`; Campaigns opens at
+`#page-maintenance-campaigns`. Repository enrollment and compiler upgrade actions
+remain in Repositories, while campaign package update actions remain in Campaigns.
+Switching sibling tabs, including browser back and forward, cross-fades only the
+tab content. The shared navigation and tab bar stay outside the full-page
+transition used when opening a different dashboard view.
 
 These records do not constitute an inventory of vendored agents or project
 skills. Runtime skill calls are retained as Skill records, but a call

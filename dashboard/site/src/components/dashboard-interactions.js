@@ -5,7 +5,7 @@
 import { createDebug } from '../debug.js';
 import { trackViewTransition } from './lazy-view.js';
 
-const directionalViewTransitions = new WeakMap();
+const navigationTransitions = new WeakMap();
 
 const debugInteractions = createDebug('dashboard-interactions');
 
@@ -13,8 +13,9 @@ const debugInteractions = createDebug('dashboard-interactions');
  * @param {Document} document
  * @param {() => void} update
  * @param {'forward'|'backward'} [direction]
+ * @param {'page'|'tab'} [kind]
  */
-export function updateWithViewTransition(document, update, direction) {
+export function updateWithViewTransition(document, update, direction, kind = 'page') {
   const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown>, finished?: Promise<unknown> } | void }} */ (document);
   const unsupported = typeof transitionDocument.startViewTransition !== 'function';
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
@@ -28,27 +29,35 @@ export function updateWithViewTransition(document, update, direction) {
     return;
   }
 
-  if (direction) {
+  const owner = {};
+  navigationTransitions.set(document, owner);
+  document.documentElement.dataset.navigationTransition = kind;
+  if (direction && kind === 'page') {
     document.documentElement.dataset.navigationDirection = direction;
   } else {
-    directionalViewTransitions.delete(document);
     delete document.documentElement.dataset.navigationDirection;
   }
-  debugInteractions({ event: 'transition-started', direction: direction ?? null });
-  const transition = transitionDocument.startViewTransition(update);
-  trackViewTransition(document, transition);
-  if (!direction) return;
-  if (!transition?.finished) {
+  const cleanup = () => {
+    if (navigationTransitions.get(document) !== owner) return;
+    navigationTransitions.delete(document);
     delete document.documentElement.dataset.navigationDirection;
+    delete document.documentElement.dataset.navigationTransition;
+    debugInteractions({ event: 'transition-finished', direction: direction ?? null, kind });
+  };
+  debugInteractions({ event: 'transition-started', direction: direction ?? null, kind });
+  let transition;
+  try {
+    transition = transitionDocument.startViewTransition(update);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+  trackViewTransition(document, transition);
+  if (!transition?.finished) {
+    cleanup();
     return;
   }
-  directionalViewTransitions.set(document, transition);
-  void Promise.resolve(transition.finished).catch(() => {}).then(() => {
-    if (directionalViewTransitions.get(document) !== transition) return;
-    directionalViewTransitions.delete(document);
-    delete document.documentElement.dataset.navigationDirection;
-    debugInteractions({ event: 'transition-finished', direction });
-  });
+  void Promise.resolve(transition.finished).catch(() => {}).then(cleanup);
 }
 
 /**

@@ -42,7 +42,7 @@ flowchart LR
 | Capacity | Enough PostgreSQL capacity for dashboard data and enough Upstash storage and command capacity for operational state. |
 | Eviction | Disable Redis eviction. If Upstash reaches its data limit, writes must fail instead of silently evicting security or queue state. |
 | Dashboard artifact | A complete payload from the `cao-dashboard.yml` workflow, including `payload-hashes.json` and every file that it lists. |
-| GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
+| Browser sign-in app | A GitHub OAuth app, or a GitHub App with organization **Members: read**, with the callback URL `https://PUBLIC-HOST/auth/callback`. GitHub App clients request `offline_access` for rotating user tokens on GitHub.com or GHES 3.23 or later. |
 
 The application host needs outbound access to PostgreSQL, the Upstash Redis endpoint, and the GitHub OAuth and API endpoints.
 

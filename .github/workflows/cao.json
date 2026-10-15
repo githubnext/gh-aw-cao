@@ -36,6 +36,18 @@
             "type": "pat",
             "secret": "GH_TOKEN"
           }
+        },
+        {
+          "id": "agentics",
+          "name": "Agentics workflows",
+          "repository": "githubnext/agentics",
+          "path": "workflows",
+          "format": "workflows",
+          "ref": "main",
+          "auth": {
+            "type": "pat",
+            "secret": "GH_TOKEN"
+          }
         }
       ]
     },

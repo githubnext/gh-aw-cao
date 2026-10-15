@@ -51,6 +51,89 @@ func TestParsePackageManifestDefaultsVersionToRef(t *testing.T) {
 	}
 }
 
+func TestWorkflowMetadataAndCoordinates(t *testing.T) {
+	coordinates := Coordinates{
+		RegistryID: "agentics", RegistryName: "Agentics workflows", Precedence: 1,
+		Repository: "githubnext/agentics", Path: "workflows/ci-doctor.md",
+		Format: "workflows", Ref: "main", ResolvedCommit: fakeCommitSHA,
+	}
+	body := "# CI Failure Doctor\n\nInvestigate failed CI.\n\nname: Not metadata\nprivate: true"
+	pkg, err := ParsePackageManifest("---\ndescription: |\n  Investigates failed runs.\n  Reports remediation.\non:\n  workflow_dispatch:\n---\n"+body, coordinates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantSource := "githubnext/agentics/workflows/ci-doctor.md@" + fakeCommitSHA
+	if pkg.Name != "CI Failure Doctor" || pkg.Description != "Investigates failed runs.\nReports remediation." ||
+		pkg.ID != "githubnext/agentics/workflows/ci-doctor.md" || pkg.Source != wantSource ||
+		pkg.AddCommand != "gh aw add "+wantSource || pkg.Readme != body || pkg.ReadmePath != coordinates.Path ||
+		len(pkg.Contents) != 1 || pkg.Contents[0] != coordinates.Path {
+		t.Fatalf("unexpected workflow: %#v", pkg)
+	}
+	for _, tc := range []struct{ metadata, name, description string }{
+		{"name: Explicit name\ndescription: >-\n  Fold this\n  description.\non: push", "Explicit name", "Fold this description."},
+		{"description: Simple description\non: push", "ci-doctor", "Simple description"},
+	} {
+		pkg, err := ParsePackageManifest("---\n"+tc.metadata+"\n---\nPrompt", coordinates)
+		if err != nil || pkg.Name != tc.name || pkg.Description != tc.description {
+			t.Fatalf("metadata normalization: %#v, %v", pkg, err)
+		}
+	}
+	for _, source := range []string{"# Not a workflow", "---\ntools:\n  bash: true\n---\n# Shared", "---\nprivate: true\non: push\n---\n# Private"} {
+		pkg, err := ParsePackageManifest(source, coordinates)
+		if err != nil || pkg.ID != "" {
+			t.Fatalf("non-installable entry must be skipped: %#v, %v", pkg, err)
+		}
+	}
+}
+
+func TestResolveWorkflowRegistry(t *testing.T) {
+	for _, documentation := range []bool{false, true} {
+		t.Run(fmt.Sprint(documentation), func(t *testing.T) {
+			cfg := fakeGitHubConfig{
+				manifest:      "---\ndescription: Diagnose CI\non: push\n---\n# CI Doctor\n\nInvestigate failures.",
+				manifestPaths: []string{"workflows/ci-doctor.md", "workflows/shared/tools.md", "workflows/README.md", "workflows/unsafe;command.md", "other/ignored.md"},
+			}
+			if documentation {
+				cfg.readmePaths = []string{"docs/ci-doctor.md"}
+				cfg.readme = "# CI Doctor\n\nPublished documentation."
+			}
+			server := newFakeGitHubServer(t, cfg)
+			registry := Registry{ID: "agentics", Repository: "example/packages", Ref: "main", Path: "workflows", Format: "workflows", APIURL: server.baseURL()}
+			packages, err := ResolveRegistry(t.Context(), registry, 0, Options{HTTPClient: insecureTestClient()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(packages) != 1 {
+				t.Fatalf("expected only a direct workflow: %#v", packages)
+			}
+			pkg := packages[0]
+			wantReadme, wantReadmePath := "# CI Doctor\n\nInvestigate failures.", "workflows/ci-doctor.md"
+			if documentation {
+				wantReadme, wantReadmePath = cfg.readme, "docs/ci-doctor.md"
+			}
+			if pkg.Readme != wantReadme || pkg.ReadmePath != wantReadmePath ||
+				pkg.AddCommand != "gh aw add example/packages/workflows/ci-doctor.md@"+fakeCommitSHA {
+				t.Fatalf("unexpected workflow detail: %#v", pkg)
+			}
+			for i := 0; i < server.requestCount(); i++ {
+				path := server.requestAt(i).URL.Path
+				if strings.Contains(path, "shared/tools.md") || strings.Contains(path, "README.md") || strings.Contains(path, "ignored.md") {
+					t.Fatalf("excluded file fetched: %s", path)
+				}
+			}
+		})
+	}
+}
+
+func TestWorkflowRegistryFormatValidation(t *testing.T) {
+	for _, format := range []string{"", "packages", "workflows", "arbitrary"} {
+		_, err := ValidateRegistry(Registry{ID: "demo", Repository: "example/packages", Ref: "main", Format: format}, 0)
+		if (err != nil) != (format == "arbitrary") {
+			t.Fatalf("unexpected validation for %q: %v", format, err)
+		}
+	}
+}
+
 func TestParsePackageManifestNormalizesOcticons(t *testing.T) {
 	for _, tc := range []struct {
 		icon string

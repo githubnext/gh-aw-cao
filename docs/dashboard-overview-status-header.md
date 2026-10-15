@@ -3,7 +3,7 @@ title: Status header
 description: Understand the operating status and work-in-motion label at the top of Overview.
 ---
 
-The status header gives you the overall shape of the campaign right now.
+The status header gives you the overall shape of the factory right now.
 
 ## What it shows
 
@@ -19,6 +19,7 @@ into the relevant run, output, or value view before deciding what happened.
 | Query | Source | Purpose |
 | --- | --- | --- |
 | `overview-factory-status` | Run and grader summaries | Selects the status heading. |
+| `overview-header-presentation` | Factory status and all-workflow health | Applies the health attention heading across CAO and targeted repositories. |
 | `overview-run-summary` | `runs` and workflow inventory | Counts active work, including review and live rollout modes. |
 
 If status evidence is unavailable, the header says so instead of inferring a

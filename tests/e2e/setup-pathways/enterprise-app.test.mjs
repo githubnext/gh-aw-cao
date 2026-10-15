@@ -30,6 +30,7 @@ test("clean repository follows the multi-organization enterprise App pathway", a
 
   assert.deepEqual(journey.prompt.selections[0].choices.map(({ value }) => value), [
     "enterprise-app",
+    "approved-app",
     "token",
   ]);
   assert.equal(journey.result.authentication.profile, "enterprise-app");

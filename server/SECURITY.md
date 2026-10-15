@@ -296,7 +296,7 @@ and configuration includes:
 - `rediss://` Redis transport and a Redis namespace;
 - an explicit trusted host allow-list from `CAO_AZURE_ALLOWED_HOSTS`;
 - HTTPS forwarded-protocol enforcement;
-- GitHub OAuth App client ID, client secret, redirect URL, and a session secret
+- GitHub OAuth App or GitHub App client ID, client secret, redirect URL, and a session secret
   of at least 32 characters; and
 - at least one allowed GitHub organization or `org/team-slug` value.
 
@@ -307,9 +307,14 @@ configured allow-list and the forwarded protocol is HTTPS.
 
 ### GitHub OAuth and authorization
 
-Azure mode implements the GitHub OAuth authorization-code flow. It requests the
-minimum `read:org` scope needed for active organization or team membership
-authorization. Successful GitHub authentication alone is insufficient: the
+Azure mode implements the GitHub OAuth authorization-code flow. OAuth Apps
+request `read:org` for active organization or team membership checks. GitHub
+App client IDs (`Iv...`) instead request `offline_access`, which opts that
+authorization into expiring user tokens and refresh tokens; their registration
+must grant organization **Members: read** with an approved installation in each
+allowed organization. This scope neither adds repository
+permissions nor grants offline dashboard authority, and requires GitHub.com or
+GHES 3.23 or later. Successful GitHub authentication alone is insufficient: the
 server must verify an allowed organization or team membership before creating a
 session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership

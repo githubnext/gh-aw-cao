@@ -550,6 +550,8 @@ describe('dashboard document validation', () => {
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
     floor.config.stations = ['campaigns', 'repositories'];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.stations = ['campaigns', 'repositories', 'issues', 'value-gains'];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     floor.config.stations = ['campaigns', 'campaigns'];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     floor.config.stations = ['campaigns', 'workers'];
@@ -561,30 +563,31 @@ describe('dashboard document validation', () => {
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    floor.config.sources = { campaigns: 'overview-campaign-station' };
+    floor.config.sources = { campaigns: 'overview-factory-station' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    floor.config.sources = { issues: 'database-issue-count' };
+    floor.config.sources = { issues: 'overview-issue-station', 'value-gains': 'overview-value-station' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.sources = { workers: 'overview-worker-summary' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     delete floor.config.sources;
     header.config = { sources: { presentation: 'overview-header-presentation' } };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    const links = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'link-button-list');
-    links.config.sources = { status: 'overview-factory-status' };
+    header.config.sources = { status: 'overview-factory-status' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
-  it('allows browser first-load presentation only as a boolean on the factory header', () => {
+  it.each(['browser-first-load', 'data-status'])('allows %s presentation only as a boolean on the factory header', (key) => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    expect(header.config['browser-first-load']).toBe(true);
+    expect(header.config[key]).toBe(true);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    header.config['browser-first-load'] = 'true';
+    header.config[key] = 'true';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
-    header.config['browser-first-load'] = false;
+    header.config[key] = false;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
-    floor.config['browser-first-load'] = true;
+    floor.config[key] = true;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
@@ -1261,7 +1264,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as declarative factory and campaign navigation elements', () => {
+  it('defines Overview as declarative factory elements without campaign navigation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
@@ -1270,7 +1273,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
+        description: 'Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution.',
         data: { sources: ['overview-header-presentation', 'overview-rhythm'] },
         mark: 'element',
         element: 'factory-header',
@@ -1279,27 +1282,15 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-floor',
-        data: { sources: ['overview-campaign-station', 'overview-repository-station'] },
+        data: { sources: ['overview-factory-station', 'overview-repository-station', 'overview-issue-station', 'overview-value-station'] },
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),
         layout: 'full'
-      }),
-      expect.objectContaining({
-        id: 'overview-campaigns',
-        data: { sources: ['overview-campaign-links'] },
-        mark: 'element',
-        element: 'link-button-list',
-        config: expect.objectContaining({
-          'label-field': 'campaign-name',
-          'link-field': 'campaign-dashboard-link',
-          'fallback-icon': 'goal'
-        }),
-        layout: 'full'
       })
     ]);
     expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-campaigns'))
-      .not.toHaveProperty('description');
+      .toBeUndefined();
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 

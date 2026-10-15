@@ -13,8 +13,8 @@ const metadata = {
   completeness: 'complete', freshness: 'unknown', availability: 'available'
 };
 
-/** @param {Record<string, unknown>[]} rows @param {string} [viewId] @param {string} [pageId] @param {Record<string, string>} [routeParameters] @param {Record<string, unknown>[]} [campaigns] @param {import('../../src/data/queries/view-payload-compiler.js').GlobalQueryContext} [queryContext] @param {number} [sourceIndex] */
-function query(rows, viewId = 'operational-value-latest', pageId = fixture.views.find(view => view.id === viewId)?.page ?? 'operational-value', routeParameters = {}, campaigns = fixture.campaigns, queryContext, sourceIndex = 0) {
+/** @param {Record<string, unknown>[]} rows @param {string} [viewId] @param {string} [pageId] @param {Record<string, string>} [routeParameters] @param {Record<string, unknown>[]} [repositories] @param {import('../../src/data/queries/view-payload-compiler.js').GlobalQueryContext} [queryContext] */
+function query(rows, viewId = 'operational-value-latest', pageId = fixture.views.find(view => view.id === viewId)?.page ?? 'operational-value', routeParameters = {}, repositories = fixture.repositories, queryContext) {
   const selectedPage = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === pageId);
   const payload = compileDashboardViewPayloadQueries(selectedPage, pageId, {
     viewId, queries: dashboard.queries, views: dashboard.views, routeParameters,
@@ -24,7 +24,7 @@ function query(rows, viewId = 'operational-value-latest', pageId = fixture.views
     operation: 'execute-dashboard-queries',
     queries: payload.queries, sourceNames: payload.aliases,
     sources: {
-      campaigns: { source: 'campaigns', metadata, rows: campaigns },
+      repositories: { source: 'repositories', metadata, rows: repositories },
       runs: { source: 'runs', metadata, rows: fixture.runs },
       workflows: { source: 'workflows', metadata, rows: fixture.workflows },
       'operational-values': { source: 'operational-values', metadata, rows }
@@ -35,7 +35,7 @@ function query(rows, viewId = 'operational-value-latest', pageId = fixture.views
     expect(result[alias], 'the production worker must produce every declared view source').toBeTruthy();
     expect(result[alias].metadata?.availability, JSON.stringify(result[alias].metadata)).not.toBe('unavailable');
   }
-  const source = result[payload.aliases[sourceIndex]];
+  const source = result[payload.aliases[0]];
   expect(source, 'the production worker must produce the declared view payload').toBeDefined();
   expect(source.metadata?.availability, JSON.stringify(source.metadata)).not.toBe('unavailable');
   return source.rows;
@@ -48,14 +48,24 @@ function plotPoints(plot) {
 }
 
 describe('operational-value tracking contract', () => {
+  it('omits the Evidence tab while preserving the direct evidence route', () => {
+    const evidence = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-evidence');
+    for (const selected of [page, evidence]) {
+      expect(selected.route.tabs).toEqual([
+        { id: 'overview', label: 'Overview', icon: 'graph', page: 'operational-value' }
+      ]);
+    }
+  });
+
   it('shows only repository summaries before native evidence drill-down', () => {
-    const campaignPage = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-campaign');
-    expect(campaignPage.views).toHaveLength(1);
-    expect(campaignPage.views[0]).toMatchObject({
-      id: fixture.campaignSummaryContract.view, mark: 'list',
-      data: { source: fixture.campaignSummaryContract.source },
+    expect(dashboard.pages.some((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-campaign')).toBe(false);
+    expect(page.views[1]).toMatchObject({
+      id: fixture.repositorySummaryContract.view, mark: 'list',
+      data: { source: fixture.repositorySummaryContract.source },
       list: { drill: { page: 'operational-value-repository' } }
     });
+    expect(page.views[1].list.drill.arguments.map((/** @type {{ name: string }} */ entry) => entry.name))
+      .toEqual(['organization', 'repository']);
   });
 
   it('explains unavailable comparison without treating a versioned history as a validated trend', () => {
@@ -135,12 +145,12 @@ describe('operational-value tracking contract', () => {
     for (const view of fixture.views) expect(query(fixture.observations, view.id, view.page)).not.toHaveLength(0);
   });
 
-  it('drills into native history for exactly one campaign and subject repository without central run attribution', () => {
+  it('drills directly into all native history for one subject repository without central run attribution', () => {
     const plots = query(fixture.observations, 'repository-outcome-history', 'operational-value-repository', {
-      campaign: 'alpha', organization: 'octo', repository: 'api'
+      organization: 'octo', repository: 'api'
     });
-    expect(plots).toHaveLength(1);
-    expect(plots[0]).toMatchObject({
+    expect(plots).toHaveLength(2);
+    expect(plots.find(plot => plot.campaign === 'alpha')).toMatchObject({
       campaign: 'alpha', 'plot-evidence-mode': 'per-observation',
       series: [{ label: 'octo/api', points: [
         { y: 4, metadata: { 'maturity-status': 'matured', 'adoption-at': '2026-09-01T00:00:00Z' } },
@@ -159,32 +169,28 @@ describe('operational-value tracking contract', () => {
     expect(plotPoints(plots[0]).map(point => point.metadata['maturity-status']).sort()).toEqual(['interim', 'matured', 'matured']);
   });
 
-  it('counts repositories once, includes gaps and exposes evidence dates without averaging native measures', () => {
+  it('counts a repository once across campaigns and exposes evidence dates without averaging native measures', () => {
     expect(query(fixture.observations, 'operational-value-signals')).toMatchObject([
-      { campaign: 'alpha', signal: 'Improving', 'measured-repositories': 1, 'comparable-repositories': 1, 'improving-repositories': 1,
-        'oldest-evidence-at': '2026-09-24T10:00:00Z', 'newest-evidence-at': '2026-09-24T10:00:00Z' },
-      { campaign: 'beta', signal: 'Improving', 'measured-repositories': 1, 'comparable-repositories': 1 }
+      { 'repository-coordinate': 'octo/api', signal: 'Improving', goals: 2, 'comparable-goals': 2,
+        'oldest-evidence-at': '2026-09-24T10:00:00Z', 'newest-evidence-at': '2026-09-24T10:00:00Z' }
     ]);
     expect(query(fixture.observations, 'operational-value-unmeasured')).toMatchObject([
-      { campaign: 'unmeasured', signal: 'Not measured', 'measured-repositories': 0, 'evidence-reason': 'No retained primary measurements.' }
+      { repository: 'unmeasured', signal: 'Not measured', 'measured-goals': 0, 'evidence-reason': 'No retained primary measurements.' }
     ]);
   });
 
-  it('keeps campaign payloads bounded by campaign count rather than retained report volume', () => {
+  it('keeps repository payloads bounded by repository count rather than retained report volume', () => {
     const rows = Array.from({ length: 1000 }, (_, repository) =>
       fixture.observations.slice(0, 2).map((row, index) => ({
         ...row, id: `${repository}:${index}`, repository: `repo-${repository}`
       }))).flat();
     const signals = query(rows, 'operational-value-signals');
-    expect(signals).toHaveLength(1);
-    expect(signals[0]).toMatchObject({
-      campaign: 'alpha', 'measured-repositories': 1000, 'comparable-repositories': 1000,
-      'improving-repositories': 1000, 'insufficient-repositories': 0
-    });
-    expect(query(rows, 'operational-value-direction-chart')).toHaveLength(1);
+    expect(signals).toHaveLength(1000);
+    expect(signals.every(row => row.goals === 1 && row.signal === 'Improving')).toBe(true);
+    expect(query(rows, 'operational-value-direction-chart')).toHaveLength(100);
   });
 
-  it('ranks worsening first and represents opposing repository movement as mixed, not an averaged all-clear', () => {
+  it('ranks worsening repositories before improving repositories without averaging native values', () => {
     const rows = [
       ...fixture.observations,
       ...fixture.observations.slice(2).map((row, index) => ({
@@ -192,8 +198,8 @@ describe('operational-value tracking contract', () => {
       }))
     ];
     expect(query(rows, 'operational-value-signals').slice(0, 2)).toMatchObject([
-      { campaign: 'beta', signal: 'Mixed', 'measured-repositories': 2, 'improving-repositories': 1, 'worsening-repositories': 1 },
-      { campaign: 'alpha', signal: 'Improving' }
+      { repository: 'web', signal: 'Worsening', 'measured-goals': 1 },
+      { repository: 'api', signal: 'Improving', 'measured-goals': 2 }
     ]);
   });
 
@@ -203,15 +209,15 @@ describe('operational-value tracking contract', () => {
     }));
     const mixed = [...fixture.observations.slice(0, 2), ...opposite];
     expect(query(mixed, 'operational-value-signals')[0]).toMatchObject({
-      campaign: 'alpha', signal: 'Mixed', 'mixed-repositories': 1, 'measured-repositories': 1
+      repository: 'api', signal: 'Mixed', 'measured-goals': 2
     });
     expect(query([...mixed, { ...opposite[1], id: 'interim', 'observed-at': '2026-09-25T10:00:00Z', 'maturity-status': 'interim' }],
       'operational-value-signals')[0]).toMatchObject({
-      campaign: 'alpha', signal: 'Insufficient evidence', 'insufficient-repositories': 1, 'comparable-repositories': 0
+      repository: 'api', signal: 'Insufficient evidence', 'comparable-goals': 1
     });
   });
 
-  it('plots daily repository assessments, deduplicates intraday observations and leaves absent days missing', () => {
+  it('links comparable repository directions directly to repository history', () => {
     const rows = [...fixture.observations, {
       ...fixture.observations[1], id: 'a3', 'observed-at': '2026-09-24T12:00:00Z', 'operational-value': 8
     }];
@@ -220,36 +226,34 @@ describe('operational-value tracking contract', () => {
     });
     expect(plot).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        'campaign-label': 'Alpha', signal: 'Worsening', repositories: 1,
-        'campaign-dashboard-link': { 'dashboard-href': '#page-operational-value-campaign?campaign=alpha', 'dashboard-label': 'Alpha' }
-      }),
-      expect.objectContaining({ 'campaign-label': 'Beta', signal: 'Improving', repositories: 1 })
+        'repository-coordinate': 'octo/api', signal: 'Mixed', repositories: 1,
+        'repository-dashboard-link': { 'dashboard-href': '#page-operational-value-repository?organization=octo&repository=api', 'dashboard-label': 'octo/api' }
+      })
     ]));
   });
 
-  it('produces campaign-scoped repository summaries through the production worker without loading history', () => {
+  it('produces repository summaries through the production worker without loading history', () => {
     const base = fixture.observations[0];
     const rows = [
       ...fixture.observations,
       { ...base, id: 'other-repo', repository: 'other', 'observed-at': '2026-09-25T10:00:00Z', 'evaluator-digest': undefined }
     ];
-    const contract = fixture.campaignSummaryContract;
-    const result = query(rows, contract.view, contract.page, { campaign: 'alpha' });
+    const contract = fixture.repositorySummaryContract;
+    const result = query(rows, contract.view, contract.page);
     expect(result).toHaveLength(2);
     for (const panel of result) {
       expect(Object.keys(panel)).toEqual(expect.arrayContaining(contract.fields));
-      expect(panel.campaign).toBe('alpha');
+      expect(panel).not.toHaveProperty('campaign');
       expect(panel).not.toHaveProperty('cells');
       expect(panel).not.toHaveProperty('series');
     }
     expect(result.map(row => row['repository-coordinate']).sort()).toEqual(['octo/api', 'octo/other']);
   });
 
-  it('lists all campaigns and measures coverage rather than report volume or outcome scores', () => {
+  it('lists all repositories and measures coverage rather than report volume or outcome scores', () => {
     expect(query(fixture.observations, 'operational-value-coverage')).toMatchObject([
-      { campaign: 'alpha', 'measured-goals': 1, 'mature-goals': 1, 'measurement-state': 'Mature evidence available' },
-      { campaign: 'beta', 'measured-goals': 1, 'mature-goals': 1, 'measurement-state': 'Mature evidence available' },
-      { campaign: 'unmeasured', 'measured-goals': 0, 'mature-goals': 0, 'measurement-state': 'Not measured' }
+      { repository: 'api', 'measured-goals': 2, 'mature-goals': 2, 'measurement-state': 'Mature evidence available' },
+      { repository: 'unmeasured', 'measured-goals': 0, 'mature-goals': 0, 'measurement-state': 'Not measured' }
     ]);
   });
 
@@ -260,32 +264,32 @@ describe('operational-value tracking contract', () => {
     ]);
   });
 
-  it('summarizes campaigns and latest goals at their own grains, not distinct target repositories', () => {
+  it('summarizes distinct repositories and latest goals at their own grains', () => {
     expect(query(fixture.observations, 'operational-value-summary')).toMatchObject([{
-      campaigns: 3, 'measured-campaigns': 2, 'measured-goals': 2, 'comparable-goals': 2,
-      summary: '2 of 3 campaigns measured · 2 comparable goals'
+      repositories: 2, 'measured-repositories': 1, 'measured-goals': 2, 'comparable-goals': 2,
+      summary: '1 of 2 repositories measured · 2 comparable goals'
     }]);
     const secondGoal = fixture.observations.slice(0, 2).map(row => ({
       ...row, 'operational-value-definition': 'worker.other', 'evaluator-digest': undefined
     }));
     expect(query([...fixture.observations, ...secondGoal], 'operational-value-summary')).toMatchObject([{
-      campaigns: 3, 'measured-campaigns': 2, 'measured-goals': 3, 'comparable-goals': 2
+      repositories: 2, 'measured-repositories': 1, 'measured-goals': 3, 'comparable-goals': 2
     }]);
   });
 
   it('explains version blockers even when no direction can be plotted, without hiding native values', () => {
     const rows = fixture.observations.map(row => ({ ...row, 'evaluator-digest': undefined }));
     expect(query(rows, 'operational-value-summary')).toMatchObject([{
-      'measured-campaigns': 2, 'measured-goals': 2, 'comparable-goals': 0,
+      'measured-repositories': 1, 'measured-goals': 2, 'comparable-goals': 0,
       'summary-note': 'Measurements are available, but none supports a comparable movement yet. Inspect the reasons below.'
     }]);
-    expect(query(rows, 'operational-value-signals')).toHaveLength(2);
+    expect(query(rows, 'operational-value-signals')).toHaveLength(1);
     for (const signal of query(rows, 'operational-value-signals')) {
       expect(signal).toMatchObject({ signal: 'Insufficient evidence', 'evidence-reason': 'Measurement version missing. ' });
     }
     expect(query(rows, 'operational-value-direction-chart')).toEqual([]);
     expect(query(rows)[0]['operational-value']).toBe(0);
-    const repositories = query(rows, 'campaign-outcome-repositories', 'operational-value-campaign', { campaign: 'alpha' });
+    const repositories = query(rows, 'operational-value-signals');
     expect(repositories[0]['evidence-reason']).toBe('Measurement version missing. ');
   });
 
@@ -300,9 +304,9 @@ describe('operational-value tracking contract', () => {
         ...row, 'operational-value-definition': 'target', 'operational-value-direction': 'target'
       }))
     ];
-    const alpha = query(rows, 'operational-value-signals').find(row => row.campaign === 'alpha');
+    const alpha = query(rows, 'operational-value-signals').find(row => row.repository === 'api');
     expect(alpha).toMatchObject({
-      'measured-repositories': 1, 'comparable-repositories': 0, 'measured-goals': 6, 'comparable-goals': 1,
+      'measured-goals': 7, 'comparable-goals': 2,
       'evidence-reason': 'Measurement version missing. Native unit missing. Provisional or unavailable measurements. Comparable history missing. Target assessment needed. '
     });
   });
@@ -310,19 +314,66 @@ describe('operational-value tracking contract', () => {
   it('treats diagnostics-only evidence as missing measurement availability, not zero value or a missing contract', () => {
     const rows = fixture.observations.map(row => ({ ...row, 'operational-value-role': 'diagnostic' }));
     expect(query(rows, 'operational-value-signals')).toEqual([]);
-    expect(query(rows, 'operational-value-unmeasured')).toHaveLength(3);
+    expect(query(rows, 'operational-value-unmeasured')).toHaveLength(2);
     expect(query(rows, 'operational-value-summary')).toMatchObject([{
-      campaigns: 3, 'measured-campaigns': 0, 'measured-goals': 0, 'comparable-goals': 0,
+      repositories: 2, 'measured-repositories': 0, 'measured-goals': 0, 'comparable-goals': 0,
       'summary-note': 'No primary measurements are retained. Inspect collection and measurement coverage in Evidence; absence is not zero value.'
     }]);
   });
 
-  it('keeps an empty campaign inventory honest instead of rendering a missing count as a measurement', () => {
+  it('keeps an empty repository inventory honest instead of rendering a missing count as a measurement', () => {
     const summary = query([], 'operational-value-summary', 'operational-value', {}, []);
     expect(summary).toMatchObject([{
-      campaigns: 0, 'measured-campaigns': 0, 'measured-goals': 0, 'comparable-goals': 0,
-      summary: '0 of 0 campaigns measured · 0 comparable goals'
+      repositories: 0, 'measured-repositories': 0, 'measured-goals': 0, 'comparable-goals': 0,
+      summary: '0 of 0 repositories measured · 0 comparable goals'
     }]);
+  });
+
+  it.each([undefined, null, ''])('includes standalone outcomes with campaign %s even without campaign or repository inventory', (campaign) => {
+    const rows = fixture.observations.slice(0, 2).map(row => ({
+      ...row, campaign, repository: 'standalone', workflow: '.github/workflows/standalone.md'
+    }));
+    expect(query(rows, 'operational-value-signals', undefined, {}, [])).toMatchObject([{
+      'repository-coordinate': 'octo/standalone', signal: 'Improving', goals: 1
+    }]);
+    expect(query(rows, 'operational-value-summary', undefined, {}, [])).toMatchObject([{
+      repositories: 1, 'measured-repositories': 1, 'comparable-goals': 1
+    }]);
+    const plots = query(rows, 'repository-outcome-history', 'operational-value-repository',
+      { organization: 'octo', repository: 'standalone' }, []);
+    expect(plots).toHaveLength(1);
+    expect(plotPoints(plots[0]).map(point => point.y)).toEqual([4, 0]);
+    expect(query(rows)).toMatchObject([{ 'operational-value': 0, 'native-change': -4, movement: 'Improving' }]);
+  });
+
+  it.each(['workflow', 'workflow-slug'])('keeps identical measure IDs separate by %s within the same repository', (workflowField) => {
+    const rows = ['first', 'second'].flatMap((workflow, workflowIndex) =>
+      fixture.observations.slice(0, 2).map((row, index) => ({
+        ...row, id: `${workflow}-${index}`, campaign: undefined, [workflowField]: workflow,
+        'operational-value': workflowIndex === 0 ? row['operational-value'] : 10 + index
+      })));
+    expect(query(rows)).toHaveLength(2);
+    expect(query(rows).map(row => row.movement).sort()).toEqual(['Improving', 'Worsening']);
+    expect(query(rows, 'operational-value-signals')).toMatchObject([{
+      repository: 'api', signal: 'Mixed', goals: 2
+    }]);
+    const plots = query(rows, 'repository-outcome-history', 'operational-value-repository',
+      { organization: 'octo', repository: 'api' });
+    expect(plots).toHaveLength(2);
+    expect(plots.map(plot => plot['value-workflow']).sort()).toEqual(['first', 'second']);
+    expect(plots.map(plot => plot['plot-title'])).toEqual(['Remaining alerts - first', 'Remaining alerts - second']);
+    expect(plots.map(plot => plotPoints(plot).map(point => point.y))).toEqual([[4, 0], [10, 11]]);
+  });
+
+  it('does not mix organizations or include another repository in direct history', () => {
+    const rows = ['octo', 'other'].flatMap(organization =>
+      fixture.observations.slice(0, 2).map(row => ({ ...row, campaign: undefined, organization })));
+    expect(query(rows, 'operational-value-signals')).toHaveLength(2);
+    const plots = query(rows, 'repository-outcome-history', 'operational-value-repository',
+      { organization: 'other', repository: 'api' });
+    expect(plots).toHaveLength(1);
+    expect(plotPoints(plots[0])).toHaveLength(2);
+    expect(plots[0].series).toMatchObject([{ label: 'other/api' }]);
   });
 
   it.each([
@@ -476,16 +527,11 @@ describe('operational-value tracking contract', () => {
     expect(values.sort((a, b) => a - b)).toEqual([0, 0, 4, 6]);
   });
 
-  it('bounds campaign run context in the worker using inclusive start and exclusive end', () => {
-    /** @param {string} start @param {string} end */
-    const contextRows = (start, end) => query(fixture.observations, 'repository-outcome-history',
-      'operational-value-repository', { campaign: 'alpha', organization: 'octo', repository: 'api' },
-      undefined, { timeWindow: { start, end } }, 1);
-    expect(contextRows('2026-09-23T09:00:00Z', '2026-09-24T11:00:00Z')).toMatchObject([
-      { 'run-day': '2026-09-23', 'concluded-runs': 2, 'successful-runs': 1, 'failed-runs': 1 }
-    ]);
-    expect(contextRows('2026-09-24T09:00:00Z', '2026-09-24T11:00:00Z')).toEqual([]);
-    expect(contextRows('2026-09-22T09:00:00Z', '2026-09-23T09:00:00Z')).toEqual([]);
+  it('does not attach campaign-wide execution to repository history', () => {
+    const detail = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-repository');
+    expect(detail.views[0].data.sources).toEqual(['operational-value-plot-series']);
+    expect(detail.route.breadcrumbs.map((/** @type {{ page: string }} */ entry) => entry.page))
+      .toEqual(['operational-value', 'operational-value-repository']);
   });
 
   it('exposes denominator and cohort changes without renormalizing the native measure', () => {
@@ -529,7 +575,7 @@ describe('operational-value tracking contract', () => {
       index === 1 ? { ...row, 'maturity-status': 'interim' } : row);
     expect(query(rows)).toMatchObject([{ 'operational-value': 0, movement: 'Provisional or unavailable' }]);
     expect(query(rows, 'operational-value-coverage')[0]).toMatchObject({
-      'measured-goals': 1, 'mature-goals': 0, 'measurement-state': 'Provisional evidence only'
+      'measured-goals': 1, 'mature-goals': 0, 'measurement-state': 'Interim or unavailable evidence'
     });
   });
 
