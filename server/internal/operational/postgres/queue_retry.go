@@ -6,8 +6,40 @@ import (
 	"sort"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var queueRetryLog = logger.New("cao:operational:postgres:queue")
+
+type dueTask struct {
+	record record
+	task   task
+}
+
+// selectDueTasks returns at most count scheduled tasks for the delayed queue
+// whose due time has been reached by at, ordered by due time and then
+// position. A record that cannot be decoded fails the whole selection.
+func selectDueTasks(records []record, delayed string, at time.Time, count int) ([]dueTask, error) {
+	cutoff := at.Truncate(time.Millisecond)
+	var due []dueTask
+	for _, r := range records {
+		var data task
+		if err := json.Unmarshal(r.value, &data); err != nil {
+			return nil, err
+		}
+		if data.Delayed == delayed && !data.Due.After(cutoff) {
+			due = append(due, dueTask{r, data})
+		}
+	}
+	sort.Slice(due, func(i, j int) bool {
+		if due[i].task.Due.Equal(due[j].task.Due) {
+			return due[i].record.position < due[j].record.position
+		}
+		return due[i].task.Due.Before(due[j].task.Due)
+	})
+	return due[:min(count, len(due))], nil
+}
 
 func (s *Store) ReplaceTask(ctx context.Context, r operational.Replacement) error {
 	if r.Destination == "" && !r.Due.IsZero() {
@@ -75,27 +107,11 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, queue string, at time
 		if err != nil {
 			return err
 		}
-		type candidate struct {
-			record record
-			task   task
+		due, err := selectDueTasks(records, delayed, at, count)
+		if err != nil {
+			return err
 		}
-		var due []candidate
-		for _, r := range records {
-			var data task
-			if err := json.Unmarshal(r.value, &data); err != nil {
-				return err
-			}
-			if data.Delayed == delayed && !data.Due.After(at.Truncate(time.Millisecond)) {
-				due = append(due, candidate{r, data})
-			}
-		}
-		sort.Slice(due, func(i, j int) bool {
-			if due[i].task.Due.Equal(due[j].task.Due) {
-				return due[i].record.position < due[j].record.position
-			}
-			return due[i].task.Due.Before(due[j].task.Due)
-		})
-		for _, c := range due[:min(count, len(due))] {
+		for _, c := range due {
 			if err := t.remove(c.record.key); err != nil {
 				return err
 			}
@@ -109,6 +125,7 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, queue string, at time
 	if err != nil {
 		return 0, err
 	}
+	queueRetryLog.Printf("delayed tasks promoted count=%d limit=%d", promoted, count)
 	return promoted, nil
 }
 
