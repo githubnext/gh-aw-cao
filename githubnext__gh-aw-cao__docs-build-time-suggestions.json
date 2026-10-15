@@ -1,7 +1,43 @@
 {
   "source_sha": "b8061ef6adc6be1ba20d293b303199d0dc5a4466",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T07:44:14Z",
+      "worker_run_id": 38700307524,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38699687652,
+        38699100564,
+        38697305043,
+        38695989146,
+        38693618999,
+        38690460137,
+        38690117886,
+        38688921214,
+        38688818783,
+        38687644366,
+        38687091140,
+        38686600515,
+        38684569639,
+        38683517634,
+        38682665940,
+        38681755362,
+        38681509701,
+        38679321249,
+        38679037833,
+        38678535133
+      ],
+      "docs_window": {
+        "start": "2026-10-15T03:52:45Z",
+        "end": "2026-10-15T07:34:47Z"
+      },
+      "docs_success_count": 13,
+      "docs_comparable_success_count": 1,
+      "docs_deployed_success_count": 1,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T03:52:45Z through 2026-10-15T07:34:47Z, 13 runs concluded success and 7 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs run executed the build job and completed deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. The remaining 12 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38699100564 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper artifact-transfer or Pages-packaging analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-15T07:10:03Z",
       "worker_run_id": 38696422455,
@@ -1080,42 +1116,6 @@
       "docs_deployed_success_count": 0,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 8b2ee9397e91b30e2451010755db79ebb18735cc. In the latest 20 completed docs.yml runs from 2026-10-14T07:01:02Z through 2026-10-14T10:48:31Z, 14 runs succeeded but 0 comparable successful runs executed the build job and 0 completed deploy. The remaining completed runs were 14 successful schedule freshness no-ops that skipped build and deploy, 4 workflow_run callbacks that were skipped, and 2 workflow_run callbacks that ended action_required before any jobs were created. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper Astro-generation analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-14T09:30:04Z",
-      "worker_run_id": 38542341425,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38542463648,
-        38542140146,
-        38539379295,
-        38538253674,
-        38535785640,
-        38535474837,
-        38532313915,
-        38530430754,
-        38528691306,
-        38528331770,
-        38527383703,
-        38526279328,
-        38525658707,
-        38523373955,
-        38523100641,
-        38519937294,
-        38519264164,
-        38519250433,
-        38518674929,
-        38517497099
-      ],
-      "docs_window": {
-        "start": "2026-10-14T05:35:58Z",
-        "end": "2026-10-14T09:27:39Z"
-      },
-      "docs_success_count": 13,
-      "docs_comparable_success_count": 3,
-      "docs_deployed_success_count": 2,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 8b2ee9397e91b30e2451010755db79ebb18735cc. In the latest 20 completed docs.yml runs from 2026-10-14T05:35:58Z through 2026-10-14T09:27:39Z, 13 runs succeeded but only 3 comparable successful runs executed the build job (38519937294, 38519250433, and 38517497099), and only 2 of those also completed deploy (38519937294 and 38517497099). The remaining completed runs were 10 successful schedule freshness no-ops that skipped build and deploy, 5 workflow_run callbacks that were skipped, and 2 workflow_run callbacks that ended action_required before any jobs were created. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper artifact-transfer and Pages-packaging analysis and no actionable suggestion was emitted."
     }
   ]
 }
