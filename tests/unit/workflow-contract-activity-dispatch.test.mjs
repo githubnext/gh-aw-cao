@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { parse } from 'yaml';
+
+const root = path.resolve(import.meta.dirname, '../..');
+const workflow = parse(readFileSync(path.join(root, '.github/workflows/cao-activity.yml'), 'utf8'));
+const step = (job, name) => workflow.jobs[job].steps.find((entry) => entry.name === name);
+
+test('manual fast collection narrows download budgets without changing scope or retention', () => {
+  for (const name of ['fast', 'force-recycle']) {
+    assert.deepEqual(
+      { type: workflow.on.workflow_dispatch.inputs[name].type, default: workflow.on.workflow_dispatch.inputs[name].default },
+      { type: 'boolean', default: false }
+    );
+  }
+  const collection = step('collect', 'Download owner-scoped agentic workflow logs');
+  assert.equal(collection.env.REPORT_RUN_LIMIT, "${{ inputs.fast == true && '10' || '10000' }}");
+  assert.equal(collection.env.REPORT_MAX_STORAGE, "${{ inputs.fast == true && '100' || '1200' }}");
+  assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '15' }}");
+  assert.equal(collection.env.REPORT_DETAIL_WINDOW_DAYS, "${{ inputs.fast == true && '1' || '7' }}");
+  assert.equal(collection.env.REPORT_RUN_WINDOW_DAYS, '30');
+  assert.equal(collection.env.REPORT_TARGET_REPOSITORIES_JSON, '${{ toJSON(matrix.repositories) }}');
+  assert.equal(collection.env.REPORT_INCLUDE_CONTROL_REPOSITORY, '0');
+  assert.doesNotMatch(step('plan', 'Resolve activity collection plan').run, /inputs\.fast/);
+  assert.deepEqual(workflow.jobs.collect.permissions, {
+    actions: 'read', contents: 'read', issues: 'read', 'pull-requests': 'read', 'security-events': 'read'
+  });
+});
+
+test('fast collection preserves the history restore and exits before operational-value computation', (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'activity-fast-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const computation = step('collect', 'Compute owner-scoped operational value');
+  assert.equal(computation.env.REPORT_FAST_MODE, '${{ inputs.fast == true }}');
+  assert.match(computation.run, /cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?if \[\[ "\$REPORT_FAST_MODE" == "true" \]\]/);
+  const output = execFileSync('bash', ['-euc', computation.run], {
+    cwd: root, encoding: 'utf8',
+    env: {
+      ...process.env, REPORT_FAST_MODE: 'true', ACTIVITY_ARTIFACT: 'example',
+      REPORT_VALUE_SEED_SHARDS: directory, REPORT_GH_AW_LOGS_SHARDS: directory
+    }
+  });
+  assert.match(output, /skipping new computation/);
+});
+
+test('forced recycling runs before new downloads and safely clears only disposable payloads', (t) => {
+  for (const [job, download] of [
+    ['collect', 'Download owner-scoped agentic workflow logs'],
+    ['index', 'Download owner-scoped activity fragments']
+  ]) {
+    const steps = workflow.jobs[job].steps;
+    const maintenance = step(job, 'Force recycling of restored activity cache');
+    assert.equal(maintenance.if, '${{ inputs.force-recycle == true }}');
+    assert.ok(steps.indexOf(maintenance) > steps.findIndex((entry) => entry.name === 'Restore activity cache'));
+    assert.ok(steps.indexOf(maintenance) < steps.findIndex((entry) => entry.name === download));
+    assert.match(maintenance.run, /--retention-days 30 --max-bytes "\$REPORT_MAX_CACHE_BYTES"/);
+    const directory = mkdtempSync(path.join(tmpdir(), `activity-force-${job}-`));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const shards = path.join(directory, 'cao-activity/gh-aw-logs-shards');
+    mkdirSync(shards, { recursive: true });
+    const current = { kind: 'run', run: { run_id: 1, status: 'completed', created_at: new Date().toISOString() } };
+    const expired = { kind: 'run', run: { run_id: 2, status: 'completed', created_at: '2020-01-01T00:00:00Z' } };
+    writeFileSync(path.join(shards, 'mixed.jsonl'), `${JSON.stringify(current)}\n${JSON.stringify(expired)}\n`);
+    const payloads = path.join(directory, 'cao-activity/gh-aw-logs-runs/.payloads');
+    mkdirSync(payloads, { recursive: true });
+    writeFileSync(path.join(payloads, 'disposable.jsonl'), 'disposable');
+    execFileSync('bash', ['-euc', maintenance.run], {
+      cwd: root, env: { ...process.env, RUNNER_TEMP: directory, REPORT_MAX_CACHE_BYTES: '1048576' }
+    });
+    assert.equal(readFileSync(path.join(shards, 'mixed.jsonl'), 'utf8'), `${JSON.stringify(current)}\n`);
+    assert.deepEqual(readdirSync(payloads), []);
+  }
+});

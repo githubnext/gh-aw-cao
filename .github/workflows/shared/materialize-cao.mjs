@@ -506,6 +506,7 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
       'activity/cao.mjs',
       'activity/cli/activity-stats.mjs',
       'activity/cli/authentication.mjs',
+      'activity/cli/cache.mjs',
       'activity/cli/campaigns.mjs',
       'activity/cli/dashboard.mjs',
       'activity/cli/download.mjs',

@@ -36,6 +36,26 @@ publishes an explicit empty snapshot. Broader repository or owner-wide scopes
 require explicit `app` or `pat` authentication; missing credentials in those
 modes fail closed rather than falling back to the workflow token.
 
+For a bounded manual smoke run, dispatch `cao-activity.yml` with `fast=true`.
+It keeps the same resolved repository scope, credentials, 30-day raw retention,
+and cache byte budgets, but requests at most 10 runs per repository, limits
+downloads to 100 MB and the timeout to 5 (instead of 1200 MB and 15), and collects
+detailed evidence for only the newest day. It preserves retained operational-value
+history without computing new measurements. Scheduled runs and dispatches without
+this input retain normal collection behavior. Fast mode still performs inventory,
+visibility checks, ingestion, normalization, snapshot verification, and cache
+publication; it is not a full-history refresh.
+
+The independent `force-recycle=true` dispatch input adds a maintenance pass over
+restored raw shards before collection and before index fragment download. It uses
+the normal 30-day/byte limits and clears only disposable normalization `.payloads`
+caches, which are rebuilt on demand. It does not erase retained run evidence or
+change collection authority. For example:
+
+```sh
+gh workflow run cao-activity.yml --ref BRANCH -f fast=true -f force-recycle=true
+```
+
 Each `gh aw logs` invocation uses `--cached-jsonl` with a repository-specific
 trailing wildcard shard prefix instead of a single growing file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`
