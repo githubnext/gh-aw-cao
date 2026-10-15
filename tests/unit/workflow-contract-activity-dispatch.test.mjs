@@ -80,6 +80,7 @@ test('forced recycling runs before new downloads and safely clears only disposab
 
 test('recycle-only bypasses repository collection and API evidence requests but requires coherent publication', () => {
   assert.equal(workflow.jobs.collect.if, '${{ inputs.recycle-only != true }}');
+  assert.match(workflow.jobs['notify-failure'].if, /always\(\) && inputs\.recycle-only != true/);
   assert.equal(step('plan', 'Resolve activity collection plan').if, '${{ inputs.recycle-only != true }}');
   assert.match(workflow.jobs.index.if, /!cancelled\(\).*needs\.plan\.result == 'success'.*needs\.collect\.result == 'success' \|\| inputs\.recycle-only == true/);
   for (const name of [

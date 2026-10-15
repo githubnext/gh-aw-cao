@@ -67,7 +67,7 @@ compatible snapshot whose repository scope matches the current resolved policy;
 a cache miss, unavailable policy, or scope change fails closed. It skips the
 authentication plan, collector jobs, fragment download, issue enrichment,
 operational-value collection, and repository-memory fetches. No GitHub API
-evidence requests are made. Checkout and Actions cache/artifact transport still
+evidence requests or failure-issue writes are made. Checkout and Actions cache/artifact transport still
 use GitHub services.
 
 Maintenance expires and bounds raw evidence, clears disposable normalization

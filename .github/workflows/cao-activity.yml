@@ -649,7 +649,7 @@ jobs:
 
   notify-failure:
     needs: [plan, collect, index, cache]
-    if: ${{ always() && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure') }}
+    if: ${{ always() && inputs.recycle-only != true && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
