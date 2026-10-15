@@ -881,7 +881,7 @@
       {
         "id": "upgrade-target-repository",
         "level": "operate",
-        "label": "Upgrade repository",
+        "label": "Upgrade",
         "description": "Upgrade Agentic Workflows in the selected repository and create a pull request.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",

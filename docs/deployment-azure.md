@@ -46,7 +46,7 @@ The `server/azure/main.bicep` template creates the following resources in one re
 - An Azure subscription and resource group where you can create these resources and assign the **Key Vault Secrets User** role.
 - The Azure CLI with Bicep support.
 - Go 1.27.2 and Node.js 24, to build the deployment package.
-- A GitHub OAuth app. Personal access tokens and GitHub App user tokens aren't supported.
+- A GitHub OAuth app, or a GitHub App with organization **Members: read** for browser sign-in. PATs and pasted user tokens aren't supported; users must complete the browser authorization-code flow.
 - At least one GitHub organization, or team in `ORGANIZATION/TEAM-SLUG` format, whose active members can read the dashboard.
 - A PostgreSQL database and connection URL. The current Bicep template does not provision PostgreSQL or its secret; configure `CAO_POSTGRES_URL` separately.
 - A private network path from the Function App to PostgreSQL and Azure Managed Redis, and from any host that runs ingestion. The template turns off public network access for Redis but doesn't create a virtual network or private endpoint. You must add private networking that fits your tenant.
@@ -59,6 +59,13 @@ The optional collection profile also needs a container image of the collector, a
 In the following steps, replace `FUNCTION-APP-NAME` with a globally unique name for your Function App.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://FUNCTION-APP-NAME.azurewebsites.net/auth/callback`. Store the client secret in your secret manager for use in a later step. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+
+   Alternatively, reuse a GitHub App with the same callback URL and organization
+   **Members: read**. With its `Iv...` client ID, CAO requests `offline_access`
+   for expiring user tokens and refresh tokens without changing expiration for
+   other clients of that App. This requires GitHub.com or GHES 3.23 or later.
+   Manage client secrets and key pairs in the App's **Credentials** tab on
+   current GitHub versions; no App private key is needed for browser sign-in.
 
    > [!CAUTION]
    > Never commit the client secret to a repository.

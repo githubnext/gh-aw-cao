@@ -1,18 +1,18 @@
 ---
 title: Cached gh-aw JSONL mapping
-description: Normative mapping of cached schema-v2 and schema-v4 gh-aw JSONL into canonical dashboard data.
+description: Normative mapping of cached schema-v2, schema-v4, and schema-v5 gh-aw JSONL into canonical dashboard data.
 ---
 
 # Cached gh-aw JSONL mapping
 
-Each schema-v2 or schema-v4 activity shard SHALL be mapped into the existing
+Each schema-v2, schema-v4, or schema-v5 activity shard SHALL be mapped into the existing
 canonical stores without adding source-shaped stores, indexes, or
 relationships. The normative ingestion expression is
 `dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json`.
 Its `sourceSchemaVersions` allowlist SHALL apply to string, binary, streaming,
 and Activity run-reader inputs. Schema-v4 retains the mapped envelope and
 identity fields and adds dispatch-coordinator evidence; unmapped fields SHALL
-NOT be copied into canonical records. Mixed v2/v4 shards SHALL be accepted,
+NOT be copied into canonical records. Mixed v2/v4/v5 shards SHALL be accepted,
 and canonical ingestion SHALL reject versions outside the allowlist.
 
 The mapping SHALL preserve these mandatory relationships:
@@ -46,6 +46,33 @@ by `request.repository` or the enriched Run's `organization` and `repository`.
 Target repositories carried in dispatch titles, campaign policy, safe-output
 records, or other payload fields MUST NOT participate in the Repository,
 Workflow, or Run ownership joins below.
+
+### Unified session evidence
+
+Actions and hosted collection SHALL prefer gh-aw's version-1
+`usage/aw_session.jsonl` when available. The collector SHALL validate execution
+repository, run ID, and attempt against `aw_info.json` before storing the safe
+projection as `run.cao_unified_session = { version: 1, path, events }`.
+Each projected event SHALL retain its source line, timestamp, source category,
+canonical type, and allowlisted metadata only. Message bodies, prompts, tool
+inputs and outputs, raw errors, and native provenance SHALL NOT be persisted.
+The projection SHALL survive compaction and flow through ordinary canonical
+ingestion and normalized publication, not a second browser ingestion path.
+
+Agent messages and tool execution events SHALL map to the existing agent
+timeline types; MCP calls, denied calls, firewall access, and skill invocations
+SHALL map to the existing Tool, Domain, and Skill records. Numeric clocks SHALL
+use gh-aw's normalized `provenance.timestampMs` when present, otherwise
+milliseconds; ISO timestamps SHALL be accepted. Untimed observations SHALL NOT
+receive invented event timestamps.
+
+An available unified session SHALL replace legacy MCP, firewall, and skill
+event projections for that run, without replacing enriched run identity,
+accounting, audit findings, safe-output entities, or evaluation evidence.
+Absent sessions SHALL preserve the legacy parsers. Malformed or unsupported
+sessions, ambiguous session artifacts, and missing execution identity SHALL
+fail explicitly rather than masquerade as absent sessions. Artifacts belonging
+to another attempt SHALL NOT be associated with the cached attempt.
 
 ## 1 `workflow_runs` envelope
 

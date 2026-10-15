@@ -4,14 +4,15 @@ import { getPrimerStyles } from '../../src/styles.js';
 registerSmokeRoutes();
 
 test('a loading chart has no prompt action until its own data arrives', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const loadPageSources = (_pageId, options) => new Promise((resolve) => {
-        window.publishChart = () => options.onUpdate({
+        window.publishChart = (rows = [{ workflow: 'daily', count: 3 }]) => options.onUpdate({
           runs: {
-            source: 'runs', rows: [{ workflow: 'daily', count: 3 }],
+            source: 'runs', rows,
             metadata: {
               'source-id': 'runs', 'source-kind': 'fixture',
               'as-of': '', 'retrieved-at': '',
@@ -50,6 +51,11 @@ test('a loading chart has no prompt action until its own data arrives', async ({
   await expect(view).toHaveAttribute('aria-busy', 'true');
   await expect(view.locator('.dashboard-view-skeleton')).toBeVisible();
   await expect(view.locator('.table-intent-button')).toHaveCount(0);
+  const loadingHeight = await view.evaluate((element) => element.getBoundingClientRect().height);
+  expect(loadingHeight).toBe(280);
+  await page.evaluate(() => Reflect.get(window, 'publishChart')([]));
+  await expect(view.locator('.dashboard-view-skeleton')).toHaveCount(0);
+  expect(await view.evaluate((element) => element.getBoundingClientRect().height)).toBe(loadingHeight);
   await page.evaluate(() => Reflect.get(window, 'publishChart')());
   await expect(action).toBeVisible();
   await expect(view.locator('.dashboard-view-skeleton')).toHaveCount(0);

@@ -38,7 +38,14 @@ func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
 func TestMCPRejectsCatalogQueriesWithoutLoadedDefinitions(t *testing.T) {
 	app := newMCPTestApp(t, true)
 	definitions := app.config.DashboardQueries
-	for _, name := range []string{"all", "database-campaign-count"} {
+	catalog, err := readJSONFile[agentCatalog](app.config.AgentCatalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Queries) == 0 {
+		t.Fatal("agent catalog has no queries to verify")
+	}
+	for _, name := range []string{"all", catalog.Queries[0].ID} {
 		t.Run(name, func(t *testing.T) {
 			app.config.DashboardQueries = nil
 			if name != "all" {
@@ -298,13 +305,13 @@ func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	}
 
 	count, err := session.CallTool(t.Context(), &mcp.CallToolParams{
-		Name: "cao_query", Arguments: map[string]any{"id": "database-campaign-count", "limit": 1},
+		Name: "cao_query", Arguments: map[string]any{"id": "indexing-campaigns-table-count", "limit": 1},
 	})
 	if err != nil || count.IsError {
 		t.Fatalf("campaign count query failed: result=%#v err=%v", count, err)
 	}
 	countPayload := count.StructuredContent.(map[string]any)
-	if countPayload["query"] != "database-campaign-count" {
+	if countPayload["query"] != "indexing-campaigns-table-count" {
 		t.Fatalf("unexpected campaign count query: %#v", countPayload)
 	}
 	if countPayload["metadata"].(map[string]any)["availability"] == "unavailable" {

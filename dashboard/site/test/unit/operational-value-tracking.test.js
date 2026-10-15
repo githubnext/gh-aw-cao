@@ -48,6 +48,15 @@ function plotPoints(plot) {
 }
 
 describe('operational-value tracking contract', () => {
+  it('omits the Evidence tab while preserving the direct evidence route', () => {
+    const evidence = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-evidence');
+    for (const selected of [page, evidence]) {
+      expect(selected.route.tabs).toEqual([
+        { id: 'overview', label: 'Overview', icon: 'graph', page: 'operational-value' }
+      ]);
+    }
+  });
+
   it('shows only repository summaries before native evidence drill-down', () => {
     expect(dashboard.pages.some((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-campaign')).toBe(false);
     expect(page.views[1]).toMatchObject({

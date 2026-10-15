@@ -41,6 +41,7 @@
     "activity/quickstart.mjs",
     "activity/repository-memory.mjs",
     "activity/repository-visibility.mjs",
+    "activity/recycle-snapshot.mjs",
     "activity/run-activity.mjs",
     "activity/run-health-snapshot.mjs",
     "activity/setup.mjs",

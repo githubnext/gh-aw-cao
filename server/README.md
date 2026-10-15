@@ -1548,7 +1548,7 @@ mode fails closed unless all of the following are configured:
 - the policy-selected Redis URL environment variable with a `rediss://` URL;
 - the policy-selected Redis namespace environment variable;
 - `CAO_AZURE_ALLOWED_HOSTS` and HTTPS forwarded-protocol enforcement;
-- GitHub OAuth App client ID/secret and redirect URL;
+- GitHub OAuth App or GitHub App client ID/secret and redirect URL;
 - at least 32 characters of `CAO_SESSION_SECRET`;
 - at least one explicit `CAO_GITHUB_ALLOWED_ORGS` or
   `CAO_GITHUB_ALLOWED_TEAMS` value.
@@ -1570,8 +1570,15 @@ and local HTTP. Without that setting, Azure mode continues to require
 
 Azure mode does not accept the local bearer capability and does not support
 PATs. Login alone does not grant access: after exchanging the OAuth code, the
-server calls GitHub with the minimum `read:org` scope needed for organization
-or team membership checks. Access and refresh tokens remain server-side,
+server verifies active organization or team membership. OAuth App clients
+request `read:org`; GitHub App clients (`Iv...`) request `offline_access` for
+expiring user tokens and server-side refresh even if the App's global
+expiration setting is disabled. For a GitHub App, configure organization
+**Members: read** on the registration; scopes do not grant App permissions.
+Install the App in each organization whose membership authorizes dashboard access.
+This scope requires GitHub.com or GHES 3.23 or later. The browser sign-in App
+need not be the collection or workflow App, and its credentials do not grant
+campaign authority. Access and refresh tokens remain server-side,
 encrypted before storage in Redis, and are never written to browser-readable
 storage, URLs, API payloads, or Bicep outputs. Session cookies are `Secure`,
 `HttpOnly`, and `SameSite=Lax`; mutating API requests must include the

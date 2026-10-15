@@ -17,7 +17,8 @@ import { root, workflow } from "../unit/workflow-contract.helpers.mjs";
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
-const steps = parse(workflow("cao-dashboard.yml")).jobs.build.steps;
+const dashboardWorkflow = parse(workflow("cao-dashboard.yml"));
+const steps = dashboardWorkflow.jobs.build.steps;
 const repository = "acme/control";
 const commitSha = "0123456789abcdef0123456789abcdef01234567";
 
@@ -35,10 +36,11 @@ async function runBuildStep(name, temporaryRoot) {
     GITHUB_REPOSITORY: repository,
     GITHUB_SERVER_URL: "https://github.com",
     RUNNER_TEMP: temporaryRoot,
-    ...Object.fromEntries(Object.entries(step.env ?? {}).map(([key, value]) => [
+    ...Object.fromEntries(Object.entries({ ...dashboardWorkflow.env, ...step.env }).map(([key, value]) => [
       key,
       value.replaceAll("${{ runner.temp }}", temporaryRoot)
-        .replaceAll("${{ github.workflow_sha }}", commitSha),
+        .replaceAll("${{ github.workflow_sha }}", commitSha)
+        .replace(/\$\{\{ vars\.[A-Z_]+ \|\| '([^']*)' \}\}/g, "$1"),
     ])),
   };
   const results = [];

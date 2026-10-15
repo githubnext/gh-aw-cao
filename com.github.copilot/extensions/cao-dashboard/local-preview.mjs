@@ -13,7 +13,7 @@ import { resolveBundledResource } from "./bundled-resources.mjs";
  *   enhanceQueryIntent?: typeof import('./query-designer.mjs').enhanceQueryEditorIntent,
  *   approveCliAction: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   executeCliAction: (action: {
- *     id: string, command: string, input?: string,
+ *     id: string, command: string, input?: string, signal?: AbortSignal,
  *     onOutput: (event: { stream: "stdout" | "stderr", data: string }) => void,
  *   }) => Promise<unknown>,
  * }} options

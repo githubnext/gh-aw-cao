@@ -307,6 +307,14 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
           repository: "githubnext/gh-aw-cao",
           ref: "main",
           auth: { type: "none" },
+        }, {
+          id: "agentics",
+          name: "Agentics workflows",
+          repository: "githubnext/agentics",
+          path: "workflows",
+          format: "workflows",
+          ref: "main",
+          auth: { type: "none" },
         }],
       },
       campaigns: {},
@@ -344,9 +352,12 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
       JSON.parse(readFileSync(join(consumer, ".github", "workflows", "aw.json"), "utf8")).auto_upgrade.options,
       ["--pre-releases"],
     );
-    const autoUpgrade = readFileSync(join(consumer, ".github", "workflows", "agentic-auto-upgrade.yml"), "utf8");
-    assert.match(autoUpgrade, /github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
-    assert.match(autoUpgrade, /github\/gh-aw-actions\/setup@[0-9a-f]{40}/);
+    // The root campaign installs deterministic workflows; compiler-generated
+    // helpers are only materialized when an agentic workflow is compiled.
+    assert.deepEqual(
+      readdirSync(join(consumer, ".github", "workflows")).filter((name) => name.endsWith(".lock.yml")),
+      [],
+    );
     for (const relativePath of activityExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted activity file ${relativePath}`);
     }
@@ -571,7 +582,9 @@ test("root CAO installation materializes the dashboard campaign contract", { tim
     assert.match(dashboardWorkflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Activity[\s\S]*?types:[\s\S]*?- completed/);
     assert.doesNotMatch(dashboardWorkflow, /^  push:/m);
     assert.doesNotMatch(dashboardWorkflow, /\.github\/aw\/(?:dashboard|dashboards)/);
-    assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
+    assert.match(dashboardWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+    assert.match(dashboardWorkflow, /github\.event\.workflow_run\.head_branch == github\.event\.repository\.default_branch/);
+    assert.match(dashboardWorkflow, /ref: \$\{\{ github\.workflow_sha \}\}/);
 
     const dashboardSite = join(consumer, "dashboard", "site");
     const dashboardOutput = join(consumer, "dashboard-output");

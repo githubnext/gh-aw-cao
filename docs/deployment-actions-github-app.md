@@ -28,8 +28,8 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 
 | Requirement | Details |
 | --- | --- |
-| App ownership | Permission to create private GitHub Apps in the owning organization. For several organizations, you need this permission in the enterprise. Public apps aren't supported. |
-| App installation | An organization owner in every enrolled organization who can approve an installation on selected repositories. |
+| App ownership | An approved private App pair and access to its keys, or permission to create Apps in the owning organization/enterprise. Public apps aren't supported. |
+| App installation | Appropriate approval for each new organization installation. Repository administrators can extend an already-approved installation to their repositories where organization policy permits. |
 | Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Packages, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. |
 | Write app permissions | Write access to Actions, Contents, Issues, and Pull requests. Read access to Administration and Metadata. |
 | Webhooks | Turned off for both apps. |
@@ -40,6 +40,22 @@ Grant only the permissions that your installed campaigns need. For more informat
 
 1. Install the dashboard. For more information, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard). Don't run any workflows yet.
 1. Create and install the apps.
+
+   - **For already-approved Apps,** reuse their client IDs and securely enter
+     their keys instead of registering replacements. This also supports private
+     enterprise Apps installed separately in each enrolled organization.
+
+     ```bash
+     ./cao.sh setup-auth github-app \
+       --repo OWNER/CONTROL-REPOSITORY \
+       --read-client-id READ-APP-CLIENT-ID \
+       --write-client-id WRITE-APP-CLIENT-ID \
+       --dry-run
+     ```
+
+     Remove `--dry-run` to apply. See
+     [Reuse approved Apps](authentication.md#reuse-approved-apps)
+     for approval boundaries and supported GitHub versions.
 
    - **For one organization,** use the manifest helper. Preview the changes with `--dry-run` first. If you use GitHub Enterprise Cloud with data residency, set `GH_HOST` to your host name. Otherwise, omit it.
 

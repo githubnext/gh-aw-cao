@@ -15,6 +15,49 @@ CAO supports private GitHub Apps as its durable authentication model and a fine-
 
 CAO does not publish Apps. A private App cannot support organizations outside its owning organization or enterprise. Use independent control planes for unrelated organizations or enterprises.
 
+## Reuse approved Apps
+
+Prefer an existing private read/write App pair when your organization or
+enterprise has already approved one. In `./cao.sh setup`, choose **Reuse approved
+private GitHub Apps**, or preview and configure it directly:
+
+```bash
+./cao.sh setup-auth github-app \
+  --repo acme/central-agentic-ops \
+  --read-client-id '<read-app-client-id>' \
+  --write-client-id '<write-app-client-id>' \
+  --dry-run
+```
+
+Remove `--dry-run` to apply. Setup securely prompts for each PEM key without
+echoing it, authenticates the App, verifies its private visibility and separate
+permission ceiling, then checks its selected-repository installations. It
+stores each credential pair only after that role's repository membership is
+verified. It neither creates replacement Apps nor changes rollout policy.
+Organization-owned Apps remain limited to their organization; enterprise-owned
+Apps require a separate installation in each enrolled organization.
+
+On GitHub.com, repository administrators can add their repositories to an
+**existing, approved installation**, including an App with organization-level
+permissions, unless organization policy restricts installation changes to
+owners. Setup opens that installation's settings when repositories are missing.
+An organization owner must still approve a new installation with organization
+permissions, repository administration, or repository creation. These
+[GitHub App improvements](https://github.blog/changelog/2026-10-13-github-app-improvements-for-least-privilege-and-management/)
+ship in GHES 3.24; follow the host's existing approval requirements on older
+versions. Approval does not supply a private key: an authorized App credential
+manager must provide it through the secure prompt.
+
+For separate provisioning automation, GitHub now supports
+`repository_creation:write` for repository creation without
+`administration:write`, and `installation_repositories:write` for adding or
+removing an exact repository from an organization installation with a
+fine-grained PAT or App token. A user caller must also be a repository
+administrator or organization owner. CAO does not request either permission in
+its runtime Apps or PATs, does not request a classic `repo` PAT, and does not
+automatically enroll repositories. Installation membership never expands the
+reviewed CAO allowlist.
+
 ## Configure private GitHub Apps
 
 CAO creates separate read-only and write-capable Apps. Review the dry-run manifests before creation.
@@ -43,12 +86,14 @@ The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
 App registration, installation, API, and settings URLs. The generated read-App
 manifest requests only supported repository permissions.
 
-The helper mints a short-lived installation token from each newly created App
-key to read the selected repository list and verify every exact repository
-before setup can complete. It does not use OAuth-only `/user/installations`
-endpoints. If setup resumes after the process has lost the private key, Actions
-secrets cannot be read back; setup fails closed and directs the operator to use
-`--force` to create and verify a replacement App. The first bounded workflow
+The helper uses the App's own signed credentials to look up each organization's
+installation, then mints a short-lived, metadata-read-only installation token
+to verify every exact selected repository before setup can complete. It needs
+neither organization-wide installation-list access for the CLI user nor
+OAuth-only `/user/installations` endpoints. When rerun with stored client IDs,
+it securely prompts for the existing keys again because Actions secrets cannot
+be read back; it does not force App replacement. Use `--force` only when
+intentionally creating replacement Apps. The first bounded workflow
 run must still prove read access to every intended repository and write access
 only in an approved safe-output repository.
 
@@ -88,7 +133,7 @@ Use the same separate permission ceilings as the organization-owned Apps:
 
 Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations.
 
-The client IDs are not secrets. The command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. The operator must be able to create Apps for that enterprise and approve each organization installation.
+The client IDs are not secrets. The legacy `enterprise-app` command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. Prefer the verified [reuse path](#reuse-approved-apps) for existing enterprise Apps as well. Creating an enterprise App and approving its first organization installation still require the appropriate administrative authority; repository administrators can extend an already-approved installation where organization policy permits.
 
 :::caution[Enterprise installation is not repository access]
 [Installing an App on the enterprise](https://docs.github.com/en/enterprise-cloud@latest/apps/using-github-apps/installing-a-github-app-on-your-enterprise) grants only requested enterprise permissions. CAO's read and write Apps require separate organization installations to access organization or repository resources. GitHub's enterprise-installed App capability is in public preview; CAO does not depend on it for normal runtime access.

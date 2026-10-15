@@ -711,13 +711,13 @@ describe('gh-aw logs adapter', () => {
     expect(batch.runs.every((run) => run.targetRepository === undefined)).toBe(true);
   });
 
-  it('maps schema-v4 and mixed-version shards like schema-v2 across input paths', async () => {
+  it.each([4, 5])('maps schema-v%s and mixed-version shards like schema-v2 across input paths', async (version) => {
     const original = readFileSync(join(fixtureRoot, 'cached-v2.jsonl'), 'utf8');
     const expected = adaptCachedGhAwJsonl(original);
     for (const mixed of [false, true]) {
       const content = original.trim().split('\n').map((line, index) => {
         const envelope = JSON.parse(line);
-        envelope.schema_version = mixed && index % 2 === 0 ? 2 : 4;
+        envelope.schema_version = mixed && index % 2 === 0 ? 2 : version;
         if (envelope.schema_version === 4 && envelope.kind === 'run') {
           envelope.run.dispatch_coordinator = { operations: [] };
         }
@@ -739,7 +739,7 @@ describe('gh-aw logs adapter', () => {
     }
   });
 
-  it.each([1, 3, 5, '4', null])('rejects unsupported cached JSONL schema version %s', async (version) => {
+  it.each([1, 3, 6, '4', null])('rejects unsupported cached JSONL schema version %s', async (version) => {
     const content = JSON.stringify({ schema_version: version, kind: 'run', run: {} }) + '\n';
     for (const input of [content, new TextEncoder().encode(content)]) {
       expect(() => adaptCachedGhAwJsonl(input)).toThrow('Unsupported gh-aw JSONL schema version at line 1');

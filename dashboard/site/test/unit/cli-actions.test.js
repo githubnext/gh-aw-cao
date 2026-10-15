@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
+  mountTerminal: (/** @type {HTMLElement} */ root) => ({
+    write: (/** @type {string} */ text) => { root.textContent += text; },
+    reset: () => { root.textContent = ''; }
+  })
+}));
 import {
   attachCliActions,
   createPromptCliActionControl,
@@ -28,7 +34,10 @@ describe('CLI actions', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('requires explicit confirmation for operate and retains readable row labels and decorative icons', async () => {
+  it.each([
+    { id: 'refresh', label: 'Refresh data', command: 'gh aw compile' },
+    { id: 'upgrade-target-repository', label: 'Upgrade', command: 'gh aw upgrade --repo octo/example' }
+  ])('requires explicit confirmation for $label and retains readable row labels and decorative icons', async ({ id, label, command }) => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       body: new ReadableStream({ start(controller) {
@@ -38,22 +47,33 @@ describe('CLI actions', () => {
     });
     vi.stubGlobal('fetch', fetch);
     setDeclaredCliActions([{
-      id: 'refresh',
+      id,
       level: 'operate',
-      label: 'Refresh data',
+      label,
       icon: 'zap',
-      command: 'gh aw compile',
+      command,
       placement: 'row'
     }]);
-    const rendered = renderRowCliAction('refresh', {});
+    const rendered = renderRowCliAction(id, {});
     expect(rendered?.querySelector('.octicon-zap')?.getAttribute('aria-hidden')).toBe('true');
-    expect(rendered?.querySelector('.cli-action-trigger')?.textContent).toContain('Refresh data');
+    expect(rendered?.querySelector('.cli-action-trigger')?.textContent).toContain(label);
     rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     expect(fetch).not.toHaveBeenCalled();
-    expect(rendered?.querySelector('.cli-action-command')?.textContent).toBe('gh aw compile');
-    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toContain('Confirm Refresh data');
+    expect(rendered?.querySelector('.cli-action-command')?.textContent).toBe(command);
+    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toBe(label);
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  });
+
+  it('uses the action label without a confirmation prefix for operational prompts', () => {
+    setDeclaredCliActions([{
+      id: 'apply-fix', label: 'Apply fix', icon: 'zap',
+      command: 'gh agent-task create --from-file -', placement: 'row'
+    }]);
+    const control = createPromptCliActionControl('apply-fix', () => 'Fix the issue', {
+      level: 'operate', label: 'Apply fix'
+    });
+    expect(control?.button.textContent).toBe('Apply fix');
   });
 
   it('renders update actions with repository and pull-request creation', () => {
@@ -281,6 +301,75 @@ describe('CLI actions', () => {
     ));
   });
 
+  it('streams inline by default, optionally moves the same terminal into a window, and cancels fresh runs', async () => {
+    const fetch = vi.fn((_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true });
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const root = renderCliActions([{
+      id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
+    }]);
+    if (!root) throw new Error('Expected a CLI action control.');
+    document.body.append(root);
+    const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
+    const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
+    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel'));
+    const checkbox = /** @type {HTMLInputElement} */ (root.querySelector('input[type="checkbox"]'));
+    const terminalDialog = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-terminal-dialog'));
+    expect(root.querySelector('.cli-action-dialog')?.contains(terminalDialog)).toBe(false);
+    trigger.click();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(checkbox.checked).toBe(false);
+    confirm.click();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    expect(confirm.hidden).toBe(true);
+    expect(confirm.disabled).toBe(true);
+    expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(true);
+    confirm.click();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).arguments).toEqual({});
+    const terminal = root.querySelector('.cli-action-terminal');
+    expect(terminalDialog.open).toBe(false);
+    expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
+    expect(terminal?.textContent).toContain('$ gh aw compile');
+    checkbox.click();
+    expect(terminalDialog.open).toBe(true);
+    expect(terminalDialog.contains(terminal)).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
+    expect(terminalDialog.open).toBe(false);
+    expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(false);
+    checkbox.click();
+    expect(terminalDialog.open).toBe(true);
+    expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
+    expect(cancel.disabled).toBe(false);
+    expect(cancel.textContent).toBe('Cancel command');
+    cancel.click();
+    await vi.waitFor(() => expect(root.querySelector('.cli-action-status')?.textContent)
+      .toBe('Cancelled. Completed changes are not undone.'));
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(false);
+    expect(root.querySelector('.cli-action-dialog')?.hasAttribute('open')).toBe(true);
+    expect(terminal?.textContent).toContain('Cancelled.');
+    confirm.click();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(confirm.hidden).toBe(true);
+    terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
+    cancel.click();
+    trigger.click();
+    expect(confirm.hidden).toBe(false);
+    confirm.click();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
+    expect(fetch.mock.calls[1][1].signal.aborted).toBe(false);
+    expect(terminal?.textContent).toContain('Cancelled.');
+    cancel.click();
+    await vi.waitFor(() => expect(cancel.textContent).toBe('Close'));
+    expect(confirm.disabled).toBe(true);
+    root.remove();
+  });
+
   it('requires a fresh confirmation before every execution', async () => {
     const streamingBody = () => {
       const encoder = new TextEncoder();
@@ -334,7 +423,13 @@ describe('CLI actions', () => {
       id: 'compile-workflows',
       arguments: { 'pre-releases': true }
     });
-    await vi.waitFor(() => expect(root.querySelector('.cli-action-output')?.textContent).toBe('compiled\n'));
+    await vi.waitFor(() => expect(root.querySelector('.cli-action-dialog .cli-action-terminal')?.textContent)
+      .toContain('compiled\n'));
+    expect(root.querySelector('.cli-action-terminal')?.getAttribute('aria-label'))
+      .toBe('Read-only command terminal');
+    expect(confirm.hidden).toBe(true);
+    confirm.click();
+    expect(fetch).toHaveBeenCalledTimes(1);
 
     cancel.click();
     trigger.click();
@@ -481,6 +576,8 @@ describe('CLI actions', () => {
       event: 'execute-started', actionId: 'compile-workflows'
     });
 
+    rendered?.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
     await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
       event: 'execute-failed', actionId: 'compile-workflows', errorName: 'Error'

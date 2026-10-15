@@ -19,6 +19,9 @@
     "source-map-js": "$source-map-js"
   },
   "dependencies": {
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
     "esbuild": "^0.28.2",
     "yaml": "^2.9.0"
   },

@@ -61,7 +61,10 @@ export function minimalPolicy(version, repository) {
         'allowed-owners': [repository.split('/')[0]],
         'allowed-repositories': [repository]
       },
-      marketplace: { registries: [{ id: 'official', name: 'Official CAO catalog', repository: 'githubnext/gh-aw-cao', ref: 'main', auth: { type: 'none' } }] }, campaigns: {}
+      marketplace: { registries: [
+        { id: 'official', name: 'Official CAO catalog', repository: 'githubnext/gh-aw-cao', ref: 'main', auth: { type: 'none' } },
+        { id: 'agentics', name: 'Agentics workflows', repository: 'githubnext/agentics', path: 'workflows', format: 'workflows', ref: 'main', auth: { type: 'none' } },
+      ] }, campaigns: {}
     }
   };
 }

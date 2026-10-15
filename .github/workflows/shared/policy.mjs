@@ -41,7 +41,7 @@ const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
 const MARKETPLACE_KEYS = ["cache-ttl-seconds", "registries"];
-const REGISTRY_KEYS = ["id", "name", "repository", "path", "ref", "api-url", "auth"];
+const REGISTRY_KEYS = ["id", "name", "repository", "path", "ref", "format", "api-url", "auth"];
 const REGISTRY_AUTH_KEYS = {
   none: ["type"],
   pat: ["type", "secret"],
@@ -296,6 +296,9 @@ function validateMarketplace(marketplace) {
     if ("name" in registry) assertString(registry.name, `${registryPath}.name`, REGISTRY_NAME_PATTERN);
     assertString(registry.repository, `${registryPath}.repository`, REPOSITORY_PATTERN);
     assertString(registry.ref, `${registryPath}.ref`, REGISTRY_REF_PATTERN);
+    if ("format" in registry && !["packages", "workflows"].includes(registry.format)) {
+      throw new PolicyError(`${registryPath}.format must be packages or workflows`);
+    }
     if ("path" in registry) assertString(registry.path, `${registryPath}.path`, SAFE_REGISTRY_PATH_PATTERN);
     if ("api-url" in registry) {
       assertString(registry["api-url"], `${registryPath}.api-url`, HTTPS_URL_PATTERN);

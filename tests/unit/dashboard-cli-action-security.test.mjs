@@ -152,7 +152,12 @@ test("every command has a fresh bound approval and concurrent requests are rejec
       if (approvals.length === 2) secondEntered();
       return new Promise((resolve) => { approve = resolve; });
     },
-    executeCliAction: async ({ onOutput, ...request }) => { executions.push(request); return { ok: true }; },
+    executeCliAction: async ({ onOutput, signal, ...request }) => {
+      assert.ok(signal instanceof AbortSignal);
+      assert.equal(signal.aborted, false);
+      executions.push(request);
+      return { ok: true };
+    },
   });
   try {
     const first = testCase.post({ id: "create-task", input: "exact approved input" });

@@ -229,6 +229,14 @@ func (r Runner) Collect(ctx context.Context, task Task) error {
 	if err := r.downloadLogs(ctx, repository, workspace, token, reserve); err != nil {
 		return err
 	}
+	if err := r.execute(ctx, r.node(), []string{
+		filepath.Join(r.CatalogRoot, "activity", "session-evidence.mjs"),
+		filepath.Join(workspace, "logs"),
+		filepath.Join(r.Lake.ShardDirectory(), r.Lake.ShardPrefix(repository)),
+		repository,
+	}, nil); err != nil {
+		return err
+	}
 	if err := r.compact(ctx, repository); err != nil {
 		return err
 	}

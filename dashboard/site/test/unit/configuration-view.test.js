@@ -251,6 +251,8 @@ describe('Configuration dashboard view', () => {
 
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = authoritativeDashboard.dashboard;
+    expect(dashboard['cli-actions'].find((/** @type {{ id: string }} */ action) =>
+      action.id === 'upgrade-target-repository')?.label).toBe('Upgrade');
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
     const campaigns = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance-campaigns');
     const views = [...campaigns.views, ...page.views];

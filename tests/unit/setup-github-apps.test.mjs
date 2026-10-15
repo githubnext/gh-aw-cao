@@ -4,11 +4,14 @@ import { generateKeyPairSync } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
+import { runTerminal } from "../helpers/terminal.mjs";
 
 import {
   APP_PROFILES,
-  accountInstallationsEndpoint,
+  authenticateExistingApp,
   appInstallationUrl,
   appPermissionsForServer,
   appRegistrationUrl,
@@ -16,7 +19,7 @@ import {
   deriveAppName,
   deriveInstallationTargets,
   deriveWriteInstallationTargets,
-  existingGitHubApp,
+  findInstallationForApp,
   githubApiUrl,
   githubServerUrl,
   installationIncludesRepository,
@@ -25,7 +28,9 @@ import {
   installationTargetInstruction,
   isManifestCode,
   listInstallationRepositoriesForApp,
-  selectedInstallation,
+  parseArgs,
+  promptPrivateKey,
+  selectedInstallationForSetup,
   setRepositoryAuthenticationMode,
   setRepositoryCredentials,
   validateAppName,
@@ -51,6 +56,157 @@ test("GitHub App profiles preserve separate permission ceilings", () => {
   assert.equal(write.permissions.contents, "write");
   assert.equal(write.permissions.issues, "write");
   assert.equal(write.permissions.pull_requests, "write");
+  for (const profile of APP_PROFILES) {
+    assert.equal(profile.permissions.repository_creation, undefined);
+    assert.equal(profile.permissions.installation_repositories, undefined);
+  }
+});
+
+test("existing App selection requires distinct read/write client IDs without creation options", () => {
+  assert.equal(parseArgs(["--read-client-id", "Iv1.read", "--write-client-id", "Iv1.write"]).readClientId, "Iv1.read");
+  assert.throws(() => parseArgs(["--read-client-id", "Iv1.read"]), /supplied together/);
+  assert.throws(() => parseArgs(["--read-client-id", "Iv1.same", "--write-client-id", "Iv1.same"]), /distinct/);
+  for (const option of [["--force"], ["--read-app-name", "new-read"]]) {
+    assert.throws(() => parseArgs(["--read-client-id", "Iv1.read", "--write-client-id", "Iv1.write", ...option]), /cannot be combined/);
+  }
+});
+
+function testAppCredentials() {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return { id: "42", clientId: "Iv1.read", pem: privateKey.export({ type: "pkcs8", format: "pem" }) };
+}
+
+test("private-key entry is hidden and restores terminal mode", async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  input.isTTY = output.isTTY = true;
+  const modes = [];
+  input.setRawMode = (mode) => { modes.push(mode); };
+  const visible = [];
+  output.on("data", (chunk) => visible.push(chunk.toString()));
+  const pem = "-----BEGIN PRIVATE KEY-----\nprivate-material\n-----END PRIVATE KEY-----\n";
+  const pending = promptPrivateKey("read-only", { input, output });
+  input.write(pem);
+  assert.equal(await pending, pem);
+  assert.doesNotMatch(visible.join(""), /private-material|BEGIN PRIVATE KEY/);
+  assert.deepEqual(modes, [true, false]);
+  await assert.rejects(promptPrivateKey("read-only", { input: { isTTY: false }, output }), /interactive terminal/);
+});
+
+test("private-key entry never echoes pasted material in a real terminal", {
+  skip: process.platform === "win32",
+}, async () => {
+  let entered = false;
+  const result = await runTerminal(process.execPath, ["--input-type=module", "-e", `
+    import { promptPrivateKey } from ${JSON.stringify(pathToFileURL(script).href)};
+    const pem = await promptPrivateKey("read-only");
+    console.log(pem.includes("terminal-private-material") ? "key received" : "missing key");
+  `], {
+    env: process.env,
+    onOutput(output, write) {
+      if (!entered && output.includes("finish with its END line")) {
+        entered = true;
+        write("-----BEGIN PRIVATE KEY-----\nterminal-private-material\n-----END PRIVATE KEY-----\n");
+      }
+    },
+  });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /key received/);
+  assert.doesNotMatch(result.stdout + result.stderr, /terminal-private-material|BEGIN PRIVATE KEY|END PRIVATE KEY/);
+});
+
+test("private-key entry fails closed on cancellation and incomplete input", async () => {
+  for (const cancel of [true, false]) {
+    const input = new PassThrough();
+    const output = new PassThrough();
+    input.isTTY = output.isTTY = true;
+    const modes = [];
+    input.setRawMode = (mode) => { modes.push(mode); };
+    const pending = promptPrivateKey("read-only", { input, output });
+    if (cancel) input.write("\u0003");
+    else input.end("-----BEGIN PRIVATE KEY-----\n");
+    await assert.rejects(pending, cancel ? /cancelled/ : /ended before/);
+    assert.deepEqual(modes, [true, false]);
+  }
+});
+
+test("approved App authentication uses its own credentials and enforces role ceilings", async () => {
+  const { clientId, pem } = testAppCredentials();
+  const profile = APP_PROFILES[0];
+  const payload = {
+    id: 42, client_id: clientId, slug: "approved-read", public: false,
+    permissions: { ...profile.permissions, members: "read" },
+  };
+  const fetchImpl = async (url, options) => {
+    assert.equal(url, "https://api.github.com/app");
+    const jwt = options.headers.Authorization.slice("Bearer ".length).split(".");
+    assert.equal(JSON.parse(Buffer.from(jwt[1], "base64url")).iss, clientId);
+    return { ok: true, json: async () => payload };
+  };
+  const app = await authenticateExistingApp(clientId, pem, profile, { fetchImpl });
+  assert.equal(app.id, "42");
+  assert.equal(app.pem, pem);
+  payload.public = true;
+  await assert.rejects(authenticateExistingApp(clientId, pem, profile, { fetchImpl }), /selected private/);
+  payload.public = false;
+  payload.permissions.installation_repositories = "write";
+  await assert.rejects(authenticateExistingApp(clientId, pem, profile, { fetchImpl }), /unsupported permission/);
+  delete payload.permissions.installation_repositories;
+  payload.permissions.contents = "write";
+  await assert.rejects(authenticateExistingApp(clientId, pem, profile, { fetchImpl }), /requires contents: read/);
+  payload.permissions.contents = "read";
+  payload.client_id = "Iv1.other";
+  await assert.rejects(authenticateExistingApp(clientId, pem, profile, { fetchImpl }), /selected private/);
+});
+
+test("App-authenticated installation lookup needs no organization administrator inventory", async () => {
+  const app = testAppCredentials();
+  const payload = { id: 123, app_id: 42, account: { login: "Octo" }, repository_selection: "selected" };
+  let status = 200;
+  const fetchImpl = async (url, options) => {
+    assert.equal(url, "https://github.acme.test/api/v3/orgs/octo/installation");
+    assert.match(options.headers.Authorization, /^Bearer /);
+    return { ok: status === 200, status, json: async () => payload };
+  };
+  const options = { fetchImpl, apiUrl: "https://github.acme.test/api/v3" };
+  assert.deepEqual(await findInstallationForApp(app, "octo", options), { id: "123", repositorySelection: "selected" });
+  status = 404;
+  assert.equal(await findInstallationForApp(app, "octo", options), undefined);
+  status = 403;
+  await assert.rejects(findInstallationForApp(app, "octo", options), /HTTP 403/);
+  status = 200;
+  payload.account.login = "another-owner";
+  await assert.rejects(findInstallationForApp(app, "octo", options), /unexpected App installation identity/);
+});
+
+test("App setup verifies every selected repository and fails closed on unreadable or broad installations", async () => {
+  const target = { owner: "octo", repositories: ["control", "service"] };
+  const installation = { id: "123", repositorySelection: "selected" };
+  const options = {
+    findInstallation: async () => installation,
+    listRepositories: async () => ["octo/control", "octo/service"],
+  };
+  assert.equal(await selectedInstallationForSetup({}, target, options), installation);
+  options.listRepositories = async () => ["octo/control"];
+  assert.equal(await selectedInstallationForSetup({}, target, options), undefined);
+  options.listRepositories = async () => { throw new Error("HTTP 403"); };
+  await assert.rejects(selectedInstallationForSetup({}, target, options), /unable to verify.*HTTP 403/);
+  installation.repositorySelection = "all";
+  options.listRepositories = () => assert.fail("must reject all-repository scope before minting a token");
+  await assert.rejects(selectedInstallationForSetup({}, target, options), { name: "InstallationScopeError" });
+});
+
+test("existing App dry run supports enterprise scope without credentials or new manifests", () => {
+  const result = spawnSync(script, [
+    "--repo", "githubnext/gh-aw-cao", "--read-client-id", "Iv1.read", "--write-client-id", "Iv1.write", "--dry-run",
+  ], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual(output.apps.map(({ clientId }) => clientId), ["Iv1.read", "Iv1.write"]);
+  assert.ok(output.apps.every((app) => !Object.hasOwn(app, "manifest")));
+  assert.ok(output.installationTargets.read.some(({ owner }) => owner === "github"));
+  assert.deepEqual(output.installationTargets.write, [{ owner: "githubnext", repositories: ["gh-aw-cao"] }]);
+  assert.doesNotMatch(result.stdout, /pem|PRIVATE KEY/);
 });
 
 test("GitHub App manifests omit the unsupported campaigns permission", () => {
@@ -120,14 +276,6 @@ test("GitHub App setup honors GitHub Enterprise Cloud host configuration", () =>
     appInstallationUrl("octo", "control-read", "https://contoso-aw.ghe.com"),
     "https://contoso-aw.ghe.com/organizations/octo/settings/apps/control-read/installations",
   );
-  assert.equal(
-    accountInstallationsEndpoint("octo", "https://github.com"),
-    "/orgs/octo/installations?per_page=100",
-  );
-  assert.equal(
-    accountInstallationsEndpoint("octo", "https://contoso-aw.ghe.com"),
-    "/orgs/octo/installations?per_page=100",
-  );
   assert.equal(githubApiUrl({ GH_HOST: "github.com" }), "https://api.github.com");
   assert.equal(githubApiUrl({ GH_HOST: "contoso-aw.ghe.com" }), "https://api.contoso-aw.ghe.com");
   assert.equal(githubApiUrl({ GH_HOST: "github.acme.test" }), "https://github.acme.test/api/v3");
@@ -195,23 +343,6 @@ test("read App setup activates App authentication independently of the write App
   ]]);
 });
 
-test("existing Apps resolve by installed client ID after a rename", () => {
-  const app = existingGitHubApp("octo", "cao-octo-control-read", "Iv1.read", {
-    installations: () => [{ appId: "42", clientId: "Iv1.read", slug: "renamed-read-app" }],
-    appBySlug: (slug) => ({
-      id: 42,
-      client_id: "Iv1.read",
-      slug,
-      name: "Renamed Read App",
-      public: false,
-    }),
-  });
-
-  assert.equal(app.slug, "renamed-read-app");
-  assert.equal(app.name, "Renamed Read App");
-  assert.equal(app.installUrl, "https://github.com/apps/renamed-read-app/installations/new");
-});
-
 test("App setup verifies selected repositories with a short-lived installation token", async () => {
   const calls = [];
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -222,6 +353,7 @@ test("App setup verifies selected repositories with a short-lived installation t
   const fetchImpl = async (url, options) => {
     calls.push({ url, authorization: options.headers.Authorization });
     if (url.endsWith("/access_tokens")) {
+      assert.deepEqual(JSON.parse(options.body), { permissions: { metadata: "read" } });
       return {
         ok: true,
         json: async () => ({ token: "installation-token" }),
@@ -397,37 +529,4 @@ test("App setup verifies every selected repository for an account installation",
     installationTargetInstruction(target),
     'Choose "other-org", choose "Only select repositories", select other-org/service-a, other-org/service-b, and save.',
   );
-});
-
-test("App setup does not accept an installation whose selected repositories omit a target", () => {
-  const app = { name: "cao-octo-control-write", clientId: "Iv1.write" };
-  const target = { owner: "octo", repositories: ["control"] };
-  const installation = {
-    id: "123",
-    clientId: "Iv1.write",
-    repositorySelection: "selected",
-  };
-
-  assert.equal(selectedInstallation(app, target, {
-    findInstallation: () => installation,
-    listRepositories: () => ["octo/other"],
-  }), undefined);
-});
-
-test("App setup fails closed when selected repository membership cannot be read", () => {
-  const app = { name: "cao-platform-control-write", clientId: "Iv1.write" };
-  const target = { owner: "platform", repositories: ["control"] };
-  const installation = {
-    id: "123",
-    clientId: "Iv1.write",
-    repositorySelection: "selected",
-  };
-
-  assert.throws(() => selectedInstallation(app, target, {
-    findInstallation: () => installation,
-    listRepositories: () => {
-      throw new Error("HTTP 403");
-    },
-    serverUrl: "https://contoso-aw.ghe.com",
-  }), /unable to verify selected repository membership.*administer App installations/);
 });

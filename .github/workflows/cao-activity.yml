@@ -9,6 +9,21 @@ on:
         description: Correlation identifier supplied by a dispatching workflow.
         required: false
         type: string
+      fast:
+        description: Collect at most 10 runs per repository with smaller download budgets; retain existing history and skip new operational-value computation.
+        required: false
+        default: false
+        type: boolean
+      force-recycle:
+        description: Recycle restored raw shards and clear disposable normalization payload caches before collection and fragment download.
+        required: false
+        default: false
+        type: boolean
+      recycle-only:
+        description: Maintain and rebuild the restored snapshot without repository collection or GitHub API evidence requests.
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
     paths:
@@ -31,8 +46,12 @@ permissions:
   security-events: read
 
 concurrency:
-  group: central-agentic-ops-activity
+  group: ${{ inputs.recycle-only == true && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-recycle-{0}', github.ref) || 'central-agentic-ops-activity' }}
   cancel-in-progress: false
+
+env:
+  REPORT_MAX_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_RAW_CACHE_BYTES || '1073741824' }}
+  REPORT_MAX_NORMALIZED_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_NORMALIZED_CACHE_BYTES || '268435456' }}
 
 jobs:
   plan:
@@ -66,6 +85,7 @@ jobs:
 
       - name: Resolve activity collection plan
         id: plan
+        if: ${{ inputs.recycle-only != true }}
         env:
           ACTIVITY_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE || 'workflow-token' }}
           ACTIVITY_PAT_REPOSITORIES: ${{ vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES }}
@@ -92,6 +112,7 @@ jobs:
 
   collect:
     needs: plan
+    if: ${{ inputs.recycle-only != true }}
     strategy:
       fail-fast: false
       # Owner-scoped PATs can share the same user's API quota.
@@ -141,6 +162,21 @@ jobs:
           key: ${{ needs.plan.outputs.cache-key }}
           restore-keys: |
             cao-activity-v5-
+
+      - name: Force recycling of restored activity cache
+        if: ${{ inputs.force-recycle == true }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards"
+          node activity/cao.mjs recycle-cache \
+            --input-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards" \
+            --retention-days 30 --max-bytes "$REPORT_MAX_CACHE_BYTES"
+          node --input-type=module <<'EOF'
+          import { pruneNormalizationCaches } from "./activity/cli/cache.mjs";
+          const directories = ["runs", "records", "normalized"].map(
+            (phase) => `${process.env.RUNNER_TEMP}/cao-activity/gh-aw-logs-${phase}/.payloads`
+          );
+          console.log(await pruneNormalizationCaches(directories, { maxBytes: 0 }));
+          EOF
 
       - name: Generate owner-scoped GitHub App token
         id: activity-app-token
@@ -257,11 +293,12 @@ jobs:
           REPORT_TARGET_OWNER: ${{ matrix.owner }}
           REPORT_TARGET_REPOSITORIES_JSON: ${{ toJSON(matrix.repositories) }}
           REPORT_DEFER_ISSUE_STATUS: "1"
-          REPORT_LOG_TIMEOUT: "15"
+          REPORT_LOG_TIMEOUT: ${{ inputs.fast == true && '5' || '15' }}
           REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
-          REPORT_MAX_STORAGE: "1200"
-          REPORT_RUN_LIMIT: "10000"
+          REPORT_MAX_STORAGE: ${{ inputs.fast == true && '100' || '1200' }}
+          REPORT_RUN_LIMIT: ${{ inputs.fast == true && '10' || '10000' }}
           REPORT_RUN_WINDOW_DAYS: "30"
+          REPORT_DETAIL_WINDOW_DAYS: ${{ inputs.fast == true && '1' || '7' }}
         run: |
           mkdir -p "$RUNNER_TEMP/cao-activity"
           bash activity/collect-logs.sh
@@ -292,6 +329,7 @@ jobs:
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
           REPORT_VALUE_SEED_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_FAST_MODE: ${{ inputs.fast == true }}
         run: |
           retained_values="$REPORT_VALUE_SEED_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           value_output="$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
@@ -302,6 +340,10 @@ jobs:
               --input "$value_output" \
               --retention-days 30 \
               --run-retention-days 30
+          fi
+          if [[ "$REPORT_FAST_MODE" == "true" ]]; then
+            echo "Fast mode: retained operational-value history; skipping new computation."
+            exit 0
           fi
           repository_args=()
           while IFS= read -r target_repository; do
@@ -340,6 +382,7 @@ jobs:
 
   index:
     needs: [plan, collect]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.collect.result == 'success' || inputs.recycle-only == true) }}
     runs-on: ubuntu-latest
     outputs:
       cache-key: ${{ needs.plan.outputs.cache-key }}
@@ -394,44 +437,67 @@ jobs:
           restore-keys: |
             cao-activity-v3-
 
+      - name: Validate restored snapshot for recycle-only maintenance
+        if: ${{ inputs.recycle-only == true }}
+        run: |
+          node activity/control-settings.mjs \
+            .github/workflows/shared/control.mjs \
+            .github/workflows/cao.json \
+            "$RUNNER_TEMP/cao-recycle-control-settings.json"
+          node activity/recycle-snapshot.mjs verify \
+            "$RUNNER_TEMP/cao-activity" "$RUNNER_TEMP/cao-recycle-control-settings.json"
+
+      - name: Force recycling of restored activity cache
+        if: ${{ inputs.force-recycle == true || inputs.recycle-only == true }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards"
+          node activity/cao.mjs recycle-cache \
+            --input-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards" \
+            --retention-days 30 --max-bytes "$REPORT_MAX_CACHE_BYTES"
+          node --input-type=module <<'EOF'
+          import { pruneNormalizationCaches } from "./activity/cli/cache.mjs";
+          const directories = ["runs", "records", "normalized"].map(
+            (phase) => `${process.env.RUNNER_TEMP}/cao-activity/gh-aw-logs-${phase}/.payloads`
+          );
+          console.log(await pruneNormalizationCaches(directories, { maxBytes: 0 }));
+          EOF
+
       - name: Download owner-scoped activity fragments
+        if: ${{ inputs.recycle-only != true }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: cao-activity-*
           path: ${{ runner.temp }}/cao-activity-fragments
 
       - name: Merge owner-scoped activity fragments
+        if: ${{ inputs.recycle-only != true }}
         run: |
           mkdir -p "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards"
-          find "$RUNNER_TEMP/cao-activity-fragments" -path '*/gh-aw-logs-shards/*.jsonl' \
-            -exec cp {} "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards/" \;
           first_weights="$(find "$RUNNER_TEMP/cao-activity-fragments" -name drain3_weights.json -print | sort | head -n 1)"
           if [[ -n "$first_weights" ]]; then
             cp "$first_weights" "$RUNNER_TEMP/cao-activity/drain3_weights.json"
           fi
           node --input-type=module <<'EOF'
-          import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-          import path from "node:path";
-          import { mergeInventoryDashboardSources } from "./activity/inventory-sources.mjs";
-          const root = `${process.env.RUNNER_TEMP}/cao-activity-fragments`;
-          const directFragment = path.join(root, "inventory-sources.json");
-          const fragmentFiles = existsSync(directFragment)
-            ? [directFragment]
-            : readdirSync(root, { withFileTypes: true })
-              .filter((entry) => entry.isDirectory())
-              .map((entry) => path.join(root, entry.name, "inventory-sources.json"))
-              .filter((file) => existsSync(file));
-          if (fragmentFiles.length === 0) {
-            throw new Error("No owner-scoped inventory fragments were downloaded");
-          }
-          const fragments = fragmentFiles.map((file) => JSON.parse(readFileSync(file, "utf8")));
-          const merged = mergeInventoryDashboardSources(fragments);
-          writeFileSync(`${process.env.RUNNER_TEMP}/cao-activity/inventory-sources.json`, `${JSON.stringify(merged, null, 2)}\n`);
+          import { mergeActivityFragments } from "./activity/cli/cache.mjs";
+          console.log(await mergeActivityFragments(
+            `${process.env.RUNNER_TEMP}/cao-activity-fragments`,
+            `${process.env.RUNNER_TEMP}/cao-activity`
+          ));
           EOF
           node activity/control-settings.mjs \
             .github/workflows/shared/control.mjs \
             .github/workflows/cao.json \
             "$RUNNER_TEMP/cao-activity/control-settings.json"
+
+      - name: Recycle expired and oversized activity cache
+        run: |
+          node activity/cao.mjs recycle-cache \
+            --input-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards" \
+            --retention-days 30 --max-bytes "$REPORT_MAX_CACHE_BYTES"
+
+      - name: Rebuild recycled snapshot projection from retained evidence
+        if: ${{ inputs.recycle-only == true }}
+        run: node activity/recycle-snapshot.mjs reset "$RUNNER_TEMP/cao-activity"
 
       - name: Generate bounded agent summary
         run: |
@@ -440,6 +506,7 @@ jobs:
             "$RUNNER_TEMP/cao-activity/agent-summary.json"
 
       - name: Fetch repository memory refs into a separate checkout
+        if: ${{ inputs.recycle-only != true }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
@@ -449,6 +516,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Collect campaign repository memory
+        if: ${{ inputs.recycle-only != true }}
         env:
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
           REPORT_REPOSITORY_MEMORY: ${{ runner.temp }}/cao-activity/memory
@@ -469,6 +537,7 @@ jobs:
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --max-bytes 1048576 \
+            --max-cache-bytes "$REPORT_MAX_NORMALIZED_CACHE_BYTES" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
 
       - name: Ingest activity database
@@ -508,6 +577,7 @@ jobs:
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --max-bytes 1048576 \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
+            --max-cache-bytes "$REPORT_MAX_NORMALIZED_CACHE_BYTES" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
       - name: Upload activity snapshot
@@ -531,6 +601,7 @@ jobs:
 
   cache:
     needs: index
+    if: ${{ !cancelled() && needs.index.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -579,7 +650,7 @@ jobs:
 
   notify-failure:
     needs: [plan, collect, index, cache]
-    if: ${{ always() && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure') }}
+    if: ${{ always() && inputs.recycle-only != true && (needs.plan.result == 'failure' || needs.collect.result == 'failure' || needs.index.result == 'failure' || needs.cache.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write

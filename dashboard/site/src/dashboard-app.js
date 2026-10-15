@@ -315,7 +315,7 @@
       * @param {{ createdAt: string } | null} [snapshot]
       */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh, snapshot = null) => {
-        const canExecuteCliActions = previewMode === "canvas";
+        const canExecuteCliActions = previewMode === "canvas" || previewMode === "admin";
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
