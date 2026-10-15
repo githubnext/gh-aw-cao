@@ -27,6 +27,7 @@ not stages in a conversion funnel.
 | Dashboard area | What it tells you | Where it leads |
 | --- | --- | --- |
 | **Status header** | Whether runs are queued or in progress and the current evidence-based status. | Runs, outputs, or operational graders when the status is unexpected. |
+| **Data ingestion** | Dashboard refresh/import status: Current, Refreshing, Importing, Refresh failed, Rate limited, or Unknown. Includes the last complete snapshot time when available. | Retry a failed refresh or wait for rate limiting to clear. |
 | **Weekly rhythm** | Successful runs for each weekday in the current week, with previous-week context for weekdays not yet reached. | Runs when the cadence changes unexpectedly. |
 | **Factory health** | The share of all registered workflows across CAO and targeted repositories without current observed runtime failures. | Workflows to investigate failing execution. |
 | **Repositories (coverage station)** | Registered repositories that received a successful worker delivery against the total registered scope. | Repositories for the complete inventory and delivery evidence. |
@@ -61,6 +62,13 @@ score:
   there reflects retained workflow or target errors, not operational value.
 
 Missing evidence remains unavailable rather than becoming a healthy zero.
+
+Data ingestion reuses the top-right dashboard status icons and feedback.
+It tracks this dashboard's data refresh/import, independently of the selected
+time range and factory workflow health. Current means the refresh completed,
+not that upstream server collection queues are healthy. A failed first import
+never becomes Current; a failed refresh retains the last complete snapshot
+time without presenting cached data as a successful refresh.
 
 ## Where the data comes from
 

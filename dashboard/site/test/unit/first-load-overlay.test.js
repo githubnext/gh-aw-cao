@@ -301,7 +301,7 @@ describe('browser first-load presentation', () => {
     browserFirstLoad.set({ status: 'failed', dismissed: true });
     expect(header.querySelector('h2')?.textContent).toBe('Your dashboard import is incomplete.');
     expect(header.querySelector('h2')?.hasAttribute('aria-busy')).toBe(false);
-    expect(header.querySelector('p')?.textContent).toBe('Campaign status is not available yet.');
+    expect(header.querySelector('p')?.textContent).toBe('Factory status is not available yet.');
     browserFirstLoad.set({ status: 'inactive', dismissed: false });
     expect(header.querySelector('h2')?.textContent).toBe('Your factory is idle.');
     expect(header.querySelector('.factory-rhythm')?.hasAttribute('hidden')).toBe(false);

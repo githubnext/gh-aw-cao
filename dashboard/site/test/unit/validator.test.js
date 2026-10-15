@@ -577,18 +577,18 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
-  it('allows browser first-load presentation only as a boolean on the factory header', () => {
+  it.each(['browser-first-load', 'data-status'])('allows %s presentation only as a boolean on the factory header', (key) => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    expect(header.config['browser-first-load']).toBe(true);
+    expect(header.config[key]).toBe(true);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    header.config['browser-first-load'] = 'true';
+    header.config[key] = 'true';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
-    header.config['browser-first-load'] = false;
+    header.config[key] = false;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
-    floor.config['browser-first-load'] = true;
+    floor.config[key] = true;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 

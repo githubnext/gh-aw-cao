@@ -18,6 +18,7 @@ import { usesRemoteDataBackend } from "../remote-data-backend.js";
 import { createDebug, diagnosticErrorName } from "../debug.js";
 import { publishNotification } from "../notification-service.js";
 import { browserFirstLoad } from "../browser-first-load.js";
+import { dashboardDataStatus } from "../dashboard-data-status.js";
 import { mountFirstLoadOverlay } from "../components/first-load-overlay.js";
 
 const debugStartup = createDebug("startup");
@@ -148,6 +149,7 @@ export function waitForDashboardUi(browserWindow) {
  * @returns {Promise<() => void>}
  */
 export async function startDashboardData(options) {
+  dashboardDataStatus.set({ phase: "loading", snapshot: null });
   const {
     browserWindow,
     document,
@@ -416,6 +418,7 @@ export async function startDashboardData(options) {
   } else if (upgradeStarted) {
     browserFirstLoad.set({ status: "inactive", dismissed: false });
   }
+  dashboardDataStatus.set({ phase: hasCompleteSnapshot ? "cached" : "loading", snapshot });
   render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
   let refreshPending = false;
@@ -424,6 +427,7 @@ export async function startDashboardData(options) {
     if (refreshFailed || cleanup.signal.aborted) return;
     refreshFailed = true;
     refreshPending = false;
+    dashboardDataStatus.set({ phase: "stale", snapshot });
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Unable to refresh live dashboard data: ${message}`);
     debugStartup({
@@ -445,6 +449,7 @@ export async function startDashboardData(options) {
     if (refreshPending || cleanup.signal.aborted) return;
     refreshFailed = false;
     refreshPending = true;
+    dashboardDataStatus.set({ phase: hasCompleteSnapshot ? "cached" : "loading", snapshot });
     if (firstBrowserLoad && !hasCompleteSnapshot) {
       browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined, stage: undefined, ingestion: undefined }));
     }
@@ -467,6 +472,7 @@ export async function startDashboardData(options) {
         hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
         if (!hasCompleteSnapshot) throw new Error("Dashboard import finished without a complete snapshot.");
         refreshPending = false;
+        dashboardDataStatus.set({ phase: "ready", snapshot });
         if (firstBrowserLoad) finishFirstLoad();
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",

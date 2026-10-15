@@ -203,6 +203,16 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
     expect(rendered.querySelector('.factory-intro-copy > p')?.hasAttribute('hidden')).toBe(true);
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
+    expect(rendered.querySelector('.dashboard-ingestion-status')).toBeNull();
+
+    const withStatus = renderFactoryHeader(
+      sources,
+      { signal: controller.signal },
+      { presentation: 'overview-header-presentation', rhythm: 'overview-rhythm' },
+      false,
+      true
+    );
+    expect(withStatus.querySelector('.dashboard-ingestion-status')?.textContent).toContain('Data ingestion');
 
     controller.abort();
   });

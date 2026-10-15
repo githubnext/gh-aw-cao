@@ -25,7 +25,7 @@ Dashboard Language exposes the factory overview as two reusable named elements d
 as separate views in `dashboard.json`:
 
 - `header` owns status, retained-output context, work-in-motion state, and
-  Weekly rhythm.
+  Weekly rhythm, plus the opt-in Data ingestion indicator.
 - `floor` owns the four linked metric stations and their aggregate accessible
   summary.
 
@@ -37,6 +37,13 @@ Each declared source binds independently to the reactive tree, so the page and
 both element roots appear immediately. Pending state is shown only by the status,
 rhythm, or metric station waiting on that query rather than by a page-sized view
 skeleton.
+
+`config.data-status: true` on `factory-header` enables the reusable refresh/import
+indicator. It shares presentation with the top-right status icon and observes
+the actual dashboard pipeline lifecycle plus rate-limit state. This transient
+UI state is not canonical operational evidence and cannot be queried in
+Dashboard Language. It does not request hosted administrator telemetry or
+derive health from workflow rows. Its reactive lifetime ends with the header.
 
 ## Responsive by design
 

@@ -1438,6 +1438,15 @@ not canonical campaign evidence. An incomplete or failed first import must not
 be represented as an idle campaign. Backend-backed dashboards and refreshes
 with an existing complete snapshot must not enter this first-import state.
 
+`factory-header` may declare the boolean `config.data-status` (default `false`)
+to show a labeled dashboard refresh/import indicator using the same icons and
+feedback as the top-right dashboard status. This flag is supported only by
+`factory-header`. The indicator observes transient pipeline and rate-limit
+state, not canonical query evidence or upstream collection health. It MUST
+distinguish an unconfirmed or failed import from a completed refresh, retain
+the last complete snapshot time when available, update without navigation,
+and stop reacting when its owning header is disposed.
+
 The `problem-detail` element consumes its declared, route-scoped problem query
 through the active page's abort-scoped subscription and updates retained
 evidence without rebuilding its repair control or resetting log scroll position.
