@@ -2166,8 +2166,7 @@
         "tab": "overview",
         "breadcrumbs": [{ "page": "operational-value" }],
         "tabs": [
-          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" },
-          { "id": "evidence", "label": "Evidence", "icon": "database", "page": "operational-value-evidence" }
+          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" }
         ]
       },
         "views": [
@@ -2237,11 +2236,9 @@
       "view-mode-control": false,
       "route": {
         "navigation-page": "operational-value",
-        "tab": "evidence",
         "breadcrumbs": [{ "page": "operational-value" }],
         "tabs": [
-          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" },
-          { "id": "evidence", "label": "Evidence", "icon": "database", "page": "operational-value-evidence" }
+          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" }
         ]
       },
       "views": [

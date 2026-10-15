@@ -371,8 +371,7 @@ describe('dashboard view query contracts', () => {
       kind: 'custom',
       'view-mode-control': false,
       route: { tab: 'overview', tabs: [
-        { id: 'overview', page: 'operational-value' },
-        { id: 'evidence', page: 'operational-value-evidence' }
+        { id: 'overview', page: 'operational-value' }
       ] }
     });
     expect(viewsOf(page)[0]).toMatchObject({
@@ -395,7 +394,7 @@ describe('dashboard view query contracts', () => {
     const evidence = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-evidence'
     );
-    expect(evidence).toMatchObject({ route: { tab: 'evidence', 'navigation-page': 'operational-value' } });
+    expect(evidence).toMatchObject({ route: { 'navigation-page': 'operational-value' } });
     expect(viewsOf(evidence)[0]).toMatchObject({
       id: 'operational-value-coverage', disclosure: 'supplemental',
       data: { source: 'operational-value-repository-coverage' }

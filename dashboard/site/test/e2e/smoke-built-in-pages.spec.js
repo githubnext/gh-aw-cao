@@ -112,10 +112,11 @@ for (const width of [1200, 390]) {
     await unmeasured.locator('summary').click();
     await expect(view.locator('.temporal-metric-plot')).toHaveCount(0);
     await expect(view.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(0);
-    await view.getByRole('link', { name: 'Evidence', exact: true }).click();
+    await expect(view.getByRole('link', { name: 'Evidence', exact: true })).toHaveCount(0);
+    await page.evaluate(() => { window.location.hash = '#page-operational-value-evidence'; });
     const evidence = page.locator('[data-page-id="operational-value-evidence"]');
     await expect(evidence).toBeVisible();
-    await expect(evidence.getByRole('link', { name: 'Evidence', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(evidence.getByRole('link', { name: 'Evidence', exact: true })).toHaveCount(0);
     const latest = evidence.locator('[data-view-id="operational-value-latest"]').getByRole('table');
     await expect(latest.locator('tbody > tr')).toHaveCount(3);
     await expect(latest.getByRole('cell', { name: unversioned ? 'Unversioned evidence' : 'Improving', exact: true })).toHaveCount(2);
