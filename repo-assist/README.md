@@ -23,11 +23,10 @@ The CAO quickstart uses **Repo Assist**, not a separate repository assessment.
 It enables only the existing maintenance worker, in review mode, for one exact
 public target. Issue triage, issue fix, and PR upkeep remain disabled.
 There is no special worker, snapshot helper, or reduced assessment profile.
-With no `--target`, quickstart uses the actively maintained public
-[`github/gh-aw`](https://github.com/github/gh-aw) repository and the normal
-worker checkout. Use `--target OWNER/REPOSITORY` for your own public repository.
-No demo repository is created, and the example's existing automations are not
-prerequisites for your repository.
+Quickstart installation requires `--target OWNER/REPOSITORY` to select your
+existing public target explicitly; no owner or repository is suggested.
+The normal worker checkout is used. No demo repository is created, and existing
+automations are not prerequisites for your repository.
 
 Maintenance proposes **one small validated patch** in a control-repository
 review issue and downloadable review bundle, or records a **no-op** if nothing

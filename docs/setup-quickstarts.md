@@ -38,10 +38,9 @@ publish job rather than reporting success without a bundle.
 There are no readiness grades or required practice checklists. The repository
 can stay exactly as it is; CAO admission is governed by policy and access.
 
-With no explicit target, quickstart uses public
-[`github/gh-aw`](https://github.com/github/gh-aw) as a real example, using the
-normal worker checkout.
-Its existing automations are not prerequisites for your own repository.
+Choose the public target explicitly with `--target TARGET_OWNER/TARGET_REPOSITORY`.
+Quickstart does not suggest or select an owner or repository for you.
+The target uses the normal worker checkout.
 No demo repository is created, and useful findings are not guaranteed.
 
 **You build:** a private control repository, a review-only campaign, an Activity
@@ -63,26 +62,29 @@ Run `gh auth login` if needed.
 
 ## 2. Install and understand the control plane
 
-For the simplest experience, run this outside a Git checkout:
+Choose a control repository and an existing public target before installing.
+In the command below, replace both coordinates with your choices; the uppercase
+names are placeholders, not suggested owners or repositories.
+Run this outside a Git checkout to create a new private control repository:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --quickstart
+  bash -s -- --quickstart \
+    --create-repo CONTROL_OWNER/CONTROL_REPOSITORY \
+    --target TARGET_OWNER/TARGET_REPOSITORY
 ```
 
-To use your own existing public repository immediately, replace the final
-line with `bash -s -- --quickstart --target OWNER/REPOSITORY`.
-
-Outside a checkout, quickstart creates private `USERNAME/cao` when both that
-repository name and the local clone path are available. Otherwise it selects a
-fresh UTC timestamped name, such as `USERNAME/cao-20261014-111151`, and prints
-the choice before creation. If that timestamp is also occupied, it checks
-numeric suffixes (`-2`, `-3`, and so on), stopping after ten timestamped
-candidates. Existing repositories and local files are never reused or overwritten.
-Use `--create-repo OWNER/NAME` for an exact name; an explicit name is never
-silently changed. To reuse an existing control repository, run from its clean
-checkout instead.
+To use an existing control repository, run from its clean default-branch checkout
+and omit `--create-repo`; keep the explicit `--target` argument.
+To enter the control owner and name interactively, use `--create-repo` without
+a coordinate. Neither prompt has a default; blank input does not select one.
+Headless creation requires `--create-repo OWNER/NAME`.
+Existing repositories and local files are never reused or overwritten.
+An explicit name is never silently changed: if it is occupied, choose a different
+coordinate yourself, or use the existing repository's clean checkout.
+Missing `--target` stops before installation or repository creation; the later
+run, collect, and dashboard stages reuse the target in committed policy.
 
 With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
 release and pins the control plane, Repo Assist campaign, and verified
@@ -218,7 +220,7 @@ until completion or report a ready dashboard prematurely.
 **Checkpoint:** open the verified Dashboard URL, select **Repo Assist**, then
 open **Reports**. Follow the report back to its run and review evidence.
 Use the actual control-repository name and URL printed by quickstart; a
-timestamped repository has its own matching dashboard URL.
+control repository has its own matching dashboard URL.
 
 You have now followed the complete path: **policy → orchestrator → worker →
 Activity → dashboard**. The orchestrator remains paused. Enabling additional
@@ -227,7 +229,7 @@ workers or live authority is a separate reviewed policy decision.
 ### Optional: wait for the whole flow
 
 For deliberate unattended use immediately after bare installation,
-`./cao.sh quickstart --wait` retains the end-to-end installation, run,
+`./cao.sh quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
 collection, and deployment flow. It commits and pushes, starts workflows, and
 waits for remote completion. Do not use it to resume a staged installation or
 as a status check. The staged guide above is the default onboarding experience.
@@ -247,7 +249,7 @@ as a status check. The staged guide above is the default onboarding experience.
   change, target issue, pull request, or enabled workflow.
 
 CAO configures Pages and repository `GITHUB_TOKEN` access, then commits only
-its runtime and policy to the control repository. The shared starter target is never modified.
+its runtime and policy to the control repository. The selected target is never modified.
 Installer-created control repositories remain private. In a public control repository,
 policy, workflow runs, dashboard data, and review outputs are also public.
 
@@ -268,19 +270,19 @@ complete onboarding. Your one real maintenance run may honestly produce a no-op.
 
 Reuse the same control repository and installed Repo Assist campaign.
 Do not run the installer or `cao add` again.
-Replace `USERNAME/cao` below with the actual control repository printed by
-quickstart, including any timestamp suffix.
+Replace `CONTROL_OWNER/CONTROL_REPOSITORY` below with your actual control
+repository, and `OWNER/REPOSITORY` with the new target you choose.
 
 In the control repository, edit `.github/workflows/cao.json`:
 
 1. Add `OWNER` to `control-plane.scope.allowed-owners`.
-2. Replace the sample repository with `OWNER/REPOSITORY` in
-   `control-plane.scope.allowed-repositories`, retaining `USERNAME/cao`.
-3. Replace the sample entry under
+2. Replace the previous target with `OWNER/REPOSITORY` in
+   `control-plane.scope.allowed-repositories`, retaining `CONTROL_OWNER/CONTROL_REPOSITORY`.
+3. Replace the previous target entry under
    `control-plane.campaigns.repo-assist.targets` with
    `"OWNER/REPOSITORY": { "mode": "review" }`.
 
-Keep `control-plane.activity.repositories` set to `USERNAME/cao`; Activity
+Keep `control-plane.activity.repositories` set to `CONTROL_OWNER/CONTROL_REPOSITORY`; Activity
 collects the control-plane runs, not source data from the target.
 
 Validate, commit, and push the reviewed policy change:
@@ -298,7 +300,7 @@ Then run the already-installed campaign:
 gh workflow enable repo-assist.lock.yml
 gh aw run repo-assist --ref main \
   --raw-field target_repo="OWNER/REPOSITORY" \
-  --raw-field safe_output_repo="USERNAME/cao" \
+  --raw-field safe_output_repo="CONTROL_OWNER/CONTROL_REPOSITORY" \
   --raw-field max_repos="1" \
   --raw-field rollout_percent="100" \
   --raw-field safe_output_mode="review"
@@ -340,13 +342,14 @@ for advanced authentication choices.
 
 ## If quickstart stops
 
-- **The default name or clone path already exists:** quickstart automatically
-  selects a timestamped name. To reuse the existing control repository, run
-  from its clean checkout; to select an exact new name, use `--create-repo OWNER/NAME`.
+- **An owner, control name, or target was not selected:** provide
+  `--create-repo OWNER/NAME` when creating a control repository, and always
+  provide `--target OWNER/REPOSITORY` for installation. No coordinate is inferred.
 - **A repository-name lookup fails:** restore GitHub access or availability and
   retry. Lookup failures are not treated as proof that a name is available.
-- **An explicit name is occupied or all ten timestamped names are occupied:**
-  select an available exact name with `--create-repo OWNER/NAME`.
+- **The chosen name or local clone path is occupied:** select an available exact
+  name with `--create-repo OWNER/NAME`, or use the existing repository's clean
+  checkout. Quickstart never generates a fallback name.
 - **The target is inaccessible:** restore repository access or GitHub
   availability; quickstart does not substitute another target.
 - **Required evidence is inaccessible or validation cannot complete:** inspect

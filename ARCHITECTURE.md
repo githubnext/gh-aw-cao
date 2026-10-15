@@ -526,22 +526,21 @@ the exact control repository with no campaigns before setup.
 
 `activity/quickstart.mjs` owns a distinct explicit, staged first-success guide. It
 uses a clean public, private, or internal control repository on its checked-out
-default branch, preserving any existing commits. Outside a checkout the
-installer defaults to the signed-in user's available private `cao` control
-repository. If that remote name or required local clone path is occupied, it
-selects a fresh `cao-YYYYMMDD-HHMMSS` name using UTC, trying numeric suffixes
-through `-10` if needed and reporting the selected coordinate before creation.
-Availability lookup or timestamp-generation failures stop without mutation;
-existing repositories and clone paths are never reused or overwritten.
-An explicit `--create-repo OWNER/NAME` selects an exact coordinate and is never
-silently renamed. In-place connection of a checkout without remotes checks only
+default branch, preserving any existing commits. Outside a connected checkout,
+repository creation requires an explicitly chosen owner and name through
+`--create-repo OWNER/NAME`, or manual interactive entry with no defaults.
+No owner, control-repository name, or target is suggested or inferred. Blank
+interactive input selects nothing. Occupied coordinates and lookup failures
+stop without mutation; there is no generated fallback name.
+Existing repositories and clone paths are never reused or overwritten.
+In-place connection of a checkout without remotes checks only
 remote-name availability because no clone directory is created.
 Unless the operator supplies a catalog source, the installer pins quickstart to
 the latest stable CAO release before this flow begins; Repo Assist is
 then pinned to the same installed CAO commit.
-Quickstart selects the public `github/gh-aw`
-repository unless `--target OWNER/REPO` selects another existing public
-repository. Repo Assist works without existing Agentic Workflows,
+Quickstart installation and explicit `--wait` require `--target OWNER/REPO`
+to select an existing public repository before any mutation; later stages reuse
+the sole target from committed policy. Repo Assist works without existing Agentic Workflows,
 Actions history, or telemetry. Quickstart runs ordinary Repo Assist, enabling
 only its existing maintenance worker in review mode and explicitly disabling
 issue triage, issue fix, and PR upkeep. It does not define a custom worker,

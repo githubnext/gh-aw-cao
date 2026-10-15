@@ -82,14 +82,17 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(quickstart, /never silently falls back to `main`/);
   assert.match(quickstart, /githubnext\/gh-aw-cao@main/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
-  assert.match(quickstart, /starter target is never modified/);
+  assert.match(quickstart, /selected target is never modified/);
   assert.match(quickstart, /require at least one collected run/);
   assert.match(quickstart, /There is no second confirmation/);
   assert.match(quickstart, /Installer-created control repositories\s+remain private/);
-  assert.match(quickstart, /fresh UTC timestamped name/);
+  assert.match(quickstart, /Neither prompt has a default/);
   assert.match(quickstart, /Existing repositories and local files are never reused or overwritten/);
-  assert.match(quickstart, /an explicit name is never\s+silently changed/);
-  assert.match(quickstart, /stopping after ten timestamped\s+candidates/);
+  assert.match(quickstart, /An explicit name is never silently changed/);
+  assert.match(quickstart, /Missing `--target` stops before installation or repository creation/);
+  assert.doesNotMatch(firstSuccess, /github\/gh-aw|USERNAME\/cao|timestamped/);
+  assert.match(firstSuccess, /--create-repo CONTROL_OWNER\/CONTROL_REPOSITORY/);
+  assert.match(firstSuccess, /--target TARGET_OWNER\/TARGET_REPOSITORY/);
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
@@ -120,7 +123,7 @@ test("quickstart separates the first run from verified historical Repo Assist ex
   const readme = readFileSync("README.md", "utf8");
   const showcase = campaign.slice(campaign.indexOf("## See Repo Assist in action"), campaign.indexOf("## Install"));
 
-  assert.match(campaign, /With no `--target`[\s\S]*github\/gh-aw/);
+  assert.match(campaign, /requires `--target OWNER\/REPOSITORY`/);
   assert.match(campaign, /Issue triage, issue fix, and PR upkeep remain disabled/);
   assert.match(quickstart, /No demo repository is created, and useful findings are not guaranteed/);
   assert.match(quickstart, /## See more without running more/);

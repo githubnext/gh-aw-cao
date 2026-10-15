@@ -41,6 +41,9 @@ export function runQuickstart({
   if (step && step !== 'install' && (campaignSpec || targetRepository)) {
     throw new UsageError('--target and --campaign are only valid for install or --wait');
   }
+  if ((!step || step === 'install') && !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(targetRepository || '')) {
+    throw new UsageError('Quickstart install and --wait require explicit --target OWNER/REPO');
+  }
   return runCaoQuickstart({
     ...(step ? { step } : {}),
     ...(wait ? { wait } : {}),

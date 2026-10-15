@@ -16,21 +16,25 @@ Start the [step-by-step onboarding guide](docs/setup-quickstarts.md) with:
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --quickstart
+  bash -s -- --quickstart \
+    --create-repo CONTROL_OWNER/CONTROL_REPOSITORY \
+    --target TARGET_OWNER/TARGET_REPOSITORY
 ```
 
 At a repository root, the installer uses that clean default-branch checkout,
-including headlessly. Outside a checkout, it creates the private control
-repository `USERNAME/cao`. If that repository or local clone path already exists,
-it chooses a fresh name such as `USERNAME/cao-20261014-111151` using UTC,
-leaving the existing repository and files untouched.
+including headlessly; omit `--create-repo` when using that existing checkout.
+Outside a checkout, explicitly choose the private control repository to create.
+Replace the uppercase coordinates with your choices: no owner, repository name,
+or target is suggested or selected by default. Interactive `--create-repo`
+without a coordinate asks you to enter an owner and name without defaults;
+headless creation requires the full coordinate. Occupied names are rejected,
+not renamed automatically.
 With no catalog source, quickstart resolves and pins
 the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
 release discovery fails. Pass an explicit source such as
 `githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
-that selection. Unless `--target OWNER/REPO` selects another existing public
-repository, quickstart targets
-[`github/gh-aw`](https://github.com/github/gh-aw) using Repo Assist's normal checkout.
+that catalog selection. Installation requires `--target OWNER/REPO` to select an
+existing public repository explicitly, using Repo Assist's normal checkout.
 Repo Assist proposes one small, validated maintenance improvement in review
 mode, or honestly records a no-op if nothing suitable fits.
 It works even when the target has no Agentic Workflows or Actions history.
@@ -60,9 +64,9 @@ repository unchanged is a valid result. Only maintenance is enabled; quickstart
 pauses the orchestrator after dispatch so recurring runs need explicit re-enablement.
 CAO never modifies the target.
 Remote jobs continue in GitHub Actions between stages. Use `--wait` on
-`./cao.sh quickstart` only to explicitly opt into the original end-to-end flow
+`./cao.sh quickstart --target OWNER/REPO` only to explicitly opt into the original end-to-end flow
 immediately after bare installation, not to resume or check a staged run.
-Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
+Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose a new control
 repository explicitly.
 
 Want to see the rest of Repo Assist before running more workers? Browse
@@ -87,9 +91,8 @@ repository, and campaigns must be empty. Setup configures public Actions-backed
 Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
 Activity scope for only that repository. Private/internal repositories or
 broader existing policy require interactive setup. Headless guided-setup
-repository creation still requires `--create-repo OWNER/NAME`; quickstart may
-create only the signed-in user's `cao` control repository or its timestamped
-fallback.
+repository creation requires `--create-repo OWNER/NAME` for both guided setup
+and quickstart; neither infers a control owner or name.
 Missing prerequisites (including an installed gh-aw that is too old) fail
 instead of reporting success. Explicit `--quickstart` is the bounded headless
 onboarding path: installation performs the documented control-repository effects

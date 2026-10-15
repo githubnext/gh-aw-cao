@@ -58,11 +58,11 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `./cao.sh quickstart [--target OWNER/REPO]` | Install and commit the review-only control plane; leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
+| `./cao.sh quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
 | `./cao.sh quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
 | `./cao.sh quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
 | `./cao.sh quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
-| `./cao.sh quickstart --wait` | Explicitly opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
+| `./cao.sh quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -83,7 +83,7 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
-Use `./cao.sh quickstart` only immediately after verified installation in a
+Use `./cao.sh quickstart --target OWNER/REPO` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing
 commits are allowed; the install stage adds one bounded CAO commit and pauses
 Repo Assist without dispatching it. Continue with `--step run`, inspect its
@@ -112,9 +112,11 @@ control repositories, broader existing policy, or installed campaigns.
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
-Explicit quickstart is also terminal-independent. Without `--target`, it uses
-the public `github/gh-aw` repository for one validated maintenance proposal
-or no-op, not to grade its readiness or eligibility for CAO. Applying the proposal
+Explicit quickstart is also terminal-independent. Installation and `--wait`
+require `--target OWNER/REPO`; no owner or repository is suggested or selected
+for you. Later stages reuse the target in committed policy.
+The public target receives one validated maintenance proposal or no-op,
+not a readiness or eligibility grade. Applying the proposal
 is never required for using CAO. Existing Agentic Workflows, Actions
 history, or telemetry are not required.
 Only the existing maintenance worker is enabled. The normal orchestrator is

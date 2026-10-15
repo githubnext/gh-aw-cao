@@ -8,7 +8,6 @@ import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
-const SAMPLE_SEED_REPOSITORY = 'github/gh-aw';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/repo-assist';
 const REPO_ASSIST_WORKFLOW = 'repo-assist.lock.yml';
 const REPO_ASSIST_WORKER = 'repo-assist-maintenance.lock.yml';
@@ -22,10 +21,6 @@ const QUICKSTART_PATHS = [
   '.vscode/settings.json',
 ];
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
-
-export const QUICKSTART_STARTER_TARGET = Object.freeze({
-  repository: SAMPLE_SEED_REPOSITORY,
-});
 
 function resultText(result) {
   return `${result?.stdout ?? ''}\n${result?.stderr ?? ''}`.trim();
@@ -169,7 +164,7 @@ export function formatQuickstartSummary(result) {
   return [
     'CAO quickstart complete.',
     `Dashboard: ${result.dashboard.url}`,
-    `Target: https://github.com/${result.targetRepository}${result.starterTarget ? ' (public Repo Assist example)' : ''}`,
+    `Target: https://github.com/${result.targetRepository}`,
     `Repo Assist: ${result.repoAssist.url} (${result.repoAssist.conclusion})`,
     ...(result.paused ? ['Repo Assist is paused; re-enable it explicitly for further runs and the six-hour schedule.'] : []),
     `Activity: ${result.activity.url} (${result.activity.uniqueRuns} collected runs)`,
@@ -230,7 +225,7 @@ async function executeCaoQuickstart({
   if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(user?.login || '') || !Number.isSafeInteger(user?.id)) {
     throw new Error('Unable to resolve the signed-in GitHub user for the quickstart commit');
   }
-  let selectedTarget = targetRepository ?? SAMPLE_SEED_REPOSITORY;
+  let selectedTarget = targetRepository;
   if (!REPOSITORY_COORDINATE.test(selectedTarget)) {
     throw new Error(`Quickstart target must use owner/repository format: ${selectedTarget}`);
   }
@@ -242,8 +237,6 @@ async function executeCaoQuickstart({
     throw new Error(`Quickstart target must be an accessible public repository: ${selectedTarget}`);
   }
   selectedTarget = target.nameWithOwner;
-  const starterTarget = selectedTarget === SAMPLE_SEED_REPOSITORY;
-  if (starterTarget) ui.success?.(`Repo Assist example selected: ${selectedTarget}`);
 
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
   const guide = [
@@ -255,7 +248,7 @@ async function executeCaoQuickstart({
         visibility === 'PUBLIC'
           ? 'This control repository is public: policy, workflow runs, and review outputs are public too.'
           : 'The control repository is non-public, but its separately published Pages dashboard will be public.',
-        `Target: ${selectedTarget} (public; ${targetRepository ? 'explicit --target selection' : 'default public example, so no target setup is needed'}).`,
+        `Target: ${selectedTarget} (public; explicit --target selection).`,
         'The target is read for analysis and is never modified by this review-only campaign.',
         `Repo Assist package: ${selectedCampaign}. The default uses the installed root CAO revision.`,
       ],
@@ -526,7 +519,6 @@ async function executeCaoQuickstart({
     guide,
     controlRepository,
     targetRepository: selectedTarget,
-    starterTarget,
     campaign: 'repo-assist',
     mode: 'review',
     paused: true,
@@ -733,6 +725,9 @@ export async function runCaoQuickstart(options = {}) {
   if (!['install', 'run', 'collect', 'dashboard'].includes(step)) throw new Error('Invalid quickstart step');
   if (step !== 'install' && (options.targetRepository || options.campaignSpec)) {
     throw new Error('--target and --campaign are only valid for install or --wait');
+  }
+  if (step === 'install' && !REPOSITORY_COORDINATE.test(options.targetRepository || '')) {
+    throw new Error('Quickstart install and --wait require explicit --target OWNER/REPO');
   }
   const ui = options.progress
     ?? (await import('./setup-prompt.mjs')).createQuickstartProgress();

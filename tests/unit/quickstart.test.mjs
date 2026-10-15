@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 import {
-  QUICKSTART_STARTER_TARGET,
   formatQuickstartSummary,
   runCaoQuickstart,
 } from '../../activity/quickstart.mjs';
@@ -17,7 +16,20 @@ function success(stdout = '') {
   return { status: 0, stdout, stderr: '' };
 }
 
+for (const options of [{}, { step: 'install' }, { wait: true }, { targetRepository: '' }, { targetRepository: 'not-a-coordinate' }]) {
+  test(`quickstart requires an explicit target before any operation: ${JSON.stringify(options)}`, async () => {
+    await assert.rejects(runCaoQuickstart({
+      ...options,
+      execute() { assert.fail('must not execute commands'); },
+      addCampaign() { assert.fail('must not install'); },
+      configurePages() { assert.fail('must not configure Pages'); },
+      progress: { start() { assert.fail('must not start'); } },
+    }), /require explicit --target OWNER\/REPO/);
+  });
+}
+
 for (const arguments_ of [
+  [], ['--wait'], ['--step', 'install'], ['--json'], ['--target', 'not-a-coordinate'],
   ['--step'], ['--step', 'unknown'], ['--step', 'run', '--wait'],
   ['--step', 'collect', '--target', 'acme/project'],
   ['--step', 'dashboard', '--campaign', 'example'],
@@ -33,8 +45,8 @@ for (const arguments_ of [
 test('quickstart command forwards explicit stage and legacy wait', async () => {
   for (const [arguments_, expected] of [
     [['--step', 'run', '--json'], { step: 'run', progress: {} }],
-    [['--wait'], { wait: true }],
-    [['--step', 'install', '--campaign', 'example'], { step: 'install', campaignSpec: 'example' }],
+    [['--wait', '--target', 'acme/project'], { wait: true, targetRepository: 'acme/project' }],
+    [['--step', 'install', '--target', 'acme/project', '--campaign', 'example'], { step: 'install', targetRepository: 'acme/project', campaignSpec: 'example' }],
   ]) {
     let actual;
     await runQuickstartCommand({ arguments_, UsageError: Error, runCaoQuickstart(value) { actual = value; } });
@@ -145,7 +157,7 @@ async function quickstartFixture(t, {
   currentBranch = 'main',
   defaultBranch = 'main',
   diffCheck = success(),
-  targetRepository = QUICKSTART_STARTER_TARGET.repository,
+  targetRepository = 'acme/project',
   targetVisibility = 'PUBLIC',
   workerConclusion = 'success',
   dispatchResult = success(),
@@ -250,14 +262,14 @@ async function installedFixture(t, options = {}) {
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
   policy['control-plane'] = {
     scope: {
-      'allowed-owners': ['acme', 'github'],
-      'allowed-repositories': ['acme/cao', 'github/gh-aw'],
+      'allowed-owners': ['acme'],
+      'allowed-repositories': ['acme/cao', 'acme/project'],
     },
     activity: { repositories: ['acme/cao'] },
     campaigns: {
       'repo-assist': {
         enabled: true, mode: 'review', 'max-repositories': 1, 'rollout-percent': 100,
-        targets: { 'github/gh-aw': { mode: 'review' } },
+        targets: { 'acme/project': { mode: 'review' } },
         workers: {
           maintenance: { enabled: true, workflow: 'repo-assist-maintenance', 'max-mode': 'review' },
           'issue-fix': { enabled: false, workflow: 'repo-assist-issue-fix', 'max-mode': 'review' },
@@ -281,7 +293,7 @@ async function installedFixture(t, options = {}) {
   };
 }
 
-test('default quickstart installs and pauses without dispatching or polling', async (t) => {
+test('quickstart with explicit target installs and pauses without dispatching or polling', async (t) => {
   const fixture = await quickstartFixture(t);
   const policyPath = await fixture.policyPath();
   let output = '';
@@ -290,6 +302,7 @@ test('default quickstart installs and pauses without dispatching or polling', as
     output: { isTTY: false, write: (value) => { output += value; } },
   });
   const result = await runCaoQuickstart({
+    targetRepository: 'acme/project',
     policyPath, progress,
     execute(command, arguments_) {
       if (arguments_[0] === 'variable') assert.match(output, /4\/5 · Connect authentication/);
@@ -316,12 +329,12 @@ test('default quickstart installs and pauses without dispatching or polling', as
   assert.equal(result.nextCommand, './cao.sh quickstart --step run');
   assert.match(formatQuickstartSummary(result), /No work was dispatched/);
   assert.match(formatQuickstartSummary(result), /Control repository: https:\/\/github\.com\/acme\/cao/);
-  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw/);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/acme\/project/);
   assert.equal(result.guide.length, 5);
   assert.match(formatQuickstartSummary(result), /Before continuing: Open .*cao\.json/);
   for (const detail of [
     'acme/cao (private), default branch: main',
-    'default public example',
+    'explicit --target selection',
     `githubnext/gh-aw-cao/repo-assist@${'a'.repeat(40)}`,
     'cao-validate.yml', 'cao-activity.yml', 'cao-dashboard.yml',
     'repo-assist-maintenance.lock.yml', 'Issue triage, issue fix, and PR upkeep',
@@ -396,7 +409,7 @@ for (const step of ['run', 'collect', 'dashboard']) {
     assert.match(formatQuickstartSummary(result), /Before continuing: /);
     assert.equal(explanations.length, 1);
     if (step === 'run') {
-      assert.match(explanations[0].message, /Target: github\/gh-aw; review output repository: acme\/cao/);
+      assert.match(explanations[0].message, /Target: acme\/project; review output repository: acme\/cao/);
       assert.match(explanations[0].message, /max_repos=1, rollout_percent=100, safe_output_mode=review/);
       assert.match(result.checkpoint, /Do not repeat run as a status check/);
     } else if (step === 'collect') {
@@ -415,7 +428,7 @@ for (const step of ['run', 'collect', 'dashboard']) {
     const workflows = fixture.calls.filter((call) => call[1] === 'workflow');
     if (step === 'run') {
       assert.deepEqual(workflows.map((call) => call[2]), ['enable', 'run', 'disable']);
-      assert.ok(workflows[1].includes('target_repo=github/gh-aw'));
+      assert.ok(workflows[1].includes('target_repo=acme/project'));
       assert.ok(workflows[1].includes('safe_output_repo=acme/cao'));
       assert.ok(workflows[1].includes('safe_output_mode=review'));
       assert.ok(workflows[1].includes('max_repos=1'));
@@ -438,7 +451,7 @@ for (const step of ['run', 'collect']) {
   for (const [name, mutate] of [
     ['disabled campaign', (p) => { p.campaigns['repo-assist'].enabled = false; }],
     ['live campaign', (p) => { p.campaigns['repo-assist'].mode = 'live'; }],
-    ['live target', (p) => { p.campaigns['repo-assist'].targets['github/gh-aw'].mode = 'live'; }],
+    ['live target', (p) => { p.campaigns['repo-assist'].targets['acme/project'].mode = 'live'; }],
     ['multiple targets', (p) => { p.campaigns['repo-assist'].targets['acme/other'] = { mode: 'review' }; }],
     ['unbounded campaign', (p) => { p.campaigns['repo-assist']['max-repositories'] = 2; }],
     ['disabled maintenance', (p) => { p.campaigns['repo-assist'].workers.maintenance.enabled = false; }],
@@ -606,6 +619,7 @@ test('quickstart reports staged whitespace errors', async (t) => {
   const policyPath = await fixture.policyPath();
 
   await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
     policyPath,
     execute: fixture.execute,
     addCampaign: async () => {
@@ -627,6 +641,7 @@ test('quickstart refuses to commit or dispatch when deterministic compilation fa
     compileResult: { status: 1, stdout: '', stderr: 'Invalid workflow source' },
   });
   await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
     policyPath: await fixture.policyPath(),
     execute: fixture.execute,
     addCampaign: async () => {},
@@ -645,6 +660,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   let activeRepoAssistPhaseRendered = false;
   const result = await runCaoQuickstart({
     wait: true,
+    targetRepository: 'acme/project',
     policyPath,
     execute: (command, arguments_) => {
       if (command === 'gh' && arguments_[0] === 'workflow' && arguments_[1] === 'run') {
@@ -693,20 +709,21 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(result.activity.uniqueRuns, 4);
   assert.equal(result.mode, 'review');
   assert.equal(result.paused, true);
-  assert.equal(result.targetRepository, QUICKSTART_STARTER_TARGET.repository);
-  assert.equal(result.starterTarget, true);
+  assert.equal(result.targetRepository, 'acme/project');
+  assert.ok(!Object.hasOwn(result, 'starterTarget'));
   assert.equal(result.campaign, 'repo-assist');
   assert.equal(result.repoAssist.workerRunId, 102);
-  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw \(public Repo Assist example\)/);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/acme\/project/);
+  assert.doesNotMatch(formatQuickstartSummary(result), /example/);
   assert.match(formatQuickstartSummary(result), /Repo Assist:/);
   assert.match(formatQuickstartSummary(result), /Repo Assist is paused; re-enable it explicitly/);
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
   assert.deepEqual(policy['control-plane'].activity.repositories, ['acme/cao']);
   assert.deepEqual(policy['control-plane'].scope['allowed-repositories'], [
     'acme/cao',
-    QUICKSTART_STARTER_TARGET.repository,
+    'acme/project',
   ]);
-  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'github']);
+  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme']);
   assert.equal(policy['control-plane'].campaigns['repo-assist'].mode, 'review');
   assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance.enabled, true);
   assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance['max-mode'], 'review');
@@ -728,10 +745,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(!fixture.calls.some((call) => call.includes('starter=true')));
   assert.ok(!fixture.calls.some((call) => call[1] === 'api' && call[2].includes('/commits/')));
   assert.ok(progress.includes('Installing Repo Assist with only its existing maintenance worker enabled in review mode'));
-  assert.ok(progress.includes(
-    `Repo Assist example selected: ${QUICKSTART_STARTER_TARGET.repository}`,
-  ));
-  assert.ok(progress.includes(`Repo Assist maintenance enabled in review mode for ${QUICKSTART_STARTER_TARGET.repository}; other workers remain disabled; proposals are optional, not requirements for CAO`));
+  assert.ok(progress.includes('Repo Assist maintenance enabled in review mode for acme/project; other workers remain disabled; proposals are optional, not requirements for CAO'));
   assert.ok(progress.includes('Configuring the public-read workflow token profile and dashboard Pages'));
   assert.ok(progress.some((message) => message.startsWith('Running Repo Assist in review mode')));
   assert.ok(progress.includes('Waiting for a Repo Assist maintenance proposal or no-op'));
@@ -769,7 +783,7 @@ test('quickstart runs maintenance on an explicit ordinary repository without wor
   });
 
   assert.equal(result.targetRepository, 'acme/plain-project');
-  assert.equal(result.starterTarget, false);
+  assert.ok(!Object.hasOwn(result, 'starterTarget'));
   assert.equal(result.repoAssist.workerConclusion, 'failure');
   assert.deepEqual(warnings, ['Repo Assist maintenance concluded failure']);
   assert.ok(!fixture.calls.some((call) => call[1] === 'workflow' && call[2] === 'list'));
@@ -792,6 +806,7 @@ for (const [name, status, message] of [
     let campaignInstalled = false;
 
     await assert.rejects(runCaoQuickstart({
+      targetRepository: 'acme/project',
       policyPath,
       execute: fixture.execute,
       addCampaign: async () => {
@@ -816,6 +831,7 @@ test('quickstart accepts a public control repository with an existing default-br
   const fixture = await quickstartFixture(t, { headStatus: 0, visibility: 'PUBLIC' });
   const expected = new Error('campaign reached');
   await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
     execute: fixture.execute,
     addCampaign: async () => { throw expected; },
     progress: {},
@@ -825,7 +841,7 @@ test('quickstart accepts a public control repository with an existing default-br
   assert.ok(!fixture.calls.some((call) => call.join(' ') === 'git branch -M main'));
 });
 
-test('quickstart uses an explicit public target without creating the sample repository', async (t) => {
+test('quickstart uses an explicit public target without creating a target repository', async (t) => {
   const fixture = await quickstartFixture(t);
   const expected = new Error('campaign reached');
   await assert.rejects(runCaoQuickstart({
@@ -836,12 +852,14 @@ test('quickstart uses an explicit public target without creating the sample repo
     resolveRootRevision: () => 'a'.repeat(40),
   }), (error) => error === expected);
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'gh repo view acme/project --json nameWithOwner,visibility'));
+  assert.ok(!fixture.calls.some((call) => call.join(' ').startsWith('gh repo create')));
 });
 
 test('quickstart rejects a private target before installing the campaign', async (t) => {
   const fixture = await quickstartFixture(t, { targetVisibility: 'PRIVATE' });
   let campaignInstalled = false;
   await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
     execute: fixture.execute,
     addCampaign: async () => { campaignInstalled = true; },
     progress: {},
@@ -858,6 +876,7 @@ for (const [name, options, message] of [
     const fixture = await quickstartFixture(t, options);
     let campaignInstalled = false;
     await assert.rejects(runCaoQuickstart({
+      targetRepository: 'acme/project',
       execute: fixture.execute,
       addCampaign: async () => { campaignInstalled = true; },
       progress: {},
@@ -870,6 +889,7 @@ test('quickstart rejects private Pages before setting credentials or committing'
   const fixture = await quickstartFixture(t);
   const policyPath = await fixture.policyPath();
   await assert.rejects(runCaoQuickstart({
+    targetRepository: 'acme/project',
     policyPath,
     execute: fixture.execute,
     addCampaign: async () => {
@@ -908,6 +928,7 @@ for (const [name, options, message] of [
     const policyPath = await fixture.policyPath();
     await assert.rejects(runCaoQuickstart({
       wait: true,
+      targetRepository: 'acme/project',
       policyPath,
       execute: fixture.execute,
       addCampaign: async () => {
