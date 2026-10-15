@@ -139,4 +139,4 @@ Before implementation: normative source/identity/parity/retention/failure contra
 - Compare current views, ranked inbox and enhanced experience on identical evidence; measure correct acceptance/rejection, missed critical conditions, task time and workload. Test each D addition; clicks/trust surveys are not effectiveness.
 - Stability needs sound/exhaustive bounds; another unsatisfied prerequisite prevents an unlock; missing review history cannot mean no change. Shared-pool interference invalidates unqualified per-campaign causal effects.
 
-**Implementation references:** [Data](./specs/dashboard-data.md), [Computations](./specs/computations.md), [Intelligence](./specs/intelligence.md).
+**Implementation references:** [Data](../specs/dashboard-data.md), [Computations](../specs/computations.md), [Intelligence](../specs/intelligence.md).
