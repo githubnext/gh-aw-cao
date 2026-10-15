@@ -1,48 +1,7 @@
 {
   "source_sha": "fb9a6b596c1975643540c707b9193f2bce7572cd",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-15T17:39:38Z",
-      "worker_run_id": 38778562932,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38778325946,
-        38776717949,
-        38776306821,
-        38773870030,
-        38773545147,
-        38773526677,
-        38772338727,
-        38770732207,
-        38769244436,
-        38768939158,
-        38768526984,
-        38765534258,
-        38763675534,
-        38762038875,
-        38760261823,
-        38759834690,
-        38756663424,
-        38754719962,
-        38752943277,
-        38751259735
-      ],
-      "docs_window": {
-        "start": "2026-10-15T14:25:28Z",
-        "end": "2026-10-15T17:33:26Z"
-      },
-      "docs_success_count": 16,
-      "docs_comparable_success_count": 3,
-      "docs_deployed_success_count": 3,
-      "dashboard_success_count": 2,
-      "dashboard_success_run_ids": [
-        38765614002,
-        38675339180
-      ],
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA fb9a6b596c1975643540c707b9193f2bce7572cd. In the latest 20 completed docs.yml runs from 2026-10-15T14:25:28Z through 2026-10-15T17:33:26Z, 16 runs concluded success and 4 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 3 comparable successful docs runs executed both build and deploy: 38776717949 on schedule at source SHA fb9a6b596c1975643540c707b9193f2bce7572cd; 38773870030 on schedule at source SHA c10982fcfbe452c01c42085e1f8ab57efb0fe0ba; 38769244436 on workflow_run at source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. Non-comparable successful outliers were disclosed: 38773526677 on push at source SHA c10982fcfbe452c01c42085e1f8ab57efb0fe0ba built docs while deploy was skipped. Trusted job metadata for the comparable docs runs showed median queue time 4s, docs workflow execution 108s (p90 108.8s), build 58s (p90 69.2s), and deploy 33s (p90 38.6s). Trusted step metadata on the comparable docs runs showed Upload Pages artifact consistently taking 13-15s, while Deploy Pages ranged from 7s to 38s; all comparable docs builds restored both node_modules and the fixed-key central-agentic-ops-dashboard cache, so Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. In the latest 20 completed cao-dashboard.yml runs, only 2 successful dashboard-generation samples were available (38765614002, 38675339180); those trusted build-step timings showed Restore collected activity data taking 149s and 288s, Upgrade fallback activity data taking 1189s and 1236s, Assemble Dashboard Language site taking 2s and 10s, and Upload dashboard artifact taking 6s and 12s. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped without an actionable artifact-transfer or Pages-packaging suggestion."
-    },
     {
       "evaluated_at": "2026-10-15T17:26:24Z",
       "worker_run_id": 38776590089,
@@ -1102,6 +1061,47 @@
       ],
       "decision": "noop_no_actionable",
       "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T22:45:45Z through 2026-10-15T02:00:19Z, 13 runs concluded success, 6 workflow_run callbacks concluded skipped, and 1 workflow_run callback concluded action_required before jobs were created; there were no failed or cancelled runs in the inspected window. Five comparable successful docs runs executed the build job (38662491959, 38660438161, 38651501487, 38651358476, 38650991704) across four nearby source SHAs, with one same-SHA push/schedule pair on 17b08b9099a9aa5062174d6cae81c7a4fed33907 and two deployed schedule runs overall. Workflow queue time was 0s in all comparable docs runs and in the latest five successful cao-dashboard.yml runs. Across the five comparable docs runs, workflow execution measured median 59s and p90 119.4s; the build job measured median 40s and p90 50s; the deploy job measured median 47.5s and p90 71.9s on the two deployed schedule runs. Eight successful schedule runs were freshness no-ops with build and deploy skipped (median 11.5s, p90 15.4s), and six skipped workflow_run callbacks ended in median 1.5s. Trusted logs for docs runs 38662491959 and 38651501487 confirmed cache hits for setup-node npm cache (~293 MB), the explicit node_modules cache (~283 MB), and central-agentic-ops-dashboard (~26 MB), with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact all skipped. Their Upload Pages artifact step remained small at 4-8s and finalized stable github-pages artifacts of about 34.9 MB, while the slower deployed run 38651501487 spent most of its 74s Deploy Pages step waiting inside actions/deploy-pages after deployment creation rather than packaging repository work. The latest five successful cao-dashboard.yml runs (38410368012, 38408906957, 38403527237, 38292945328, 38182741457) still measured workflow execution median 1466s and p90 1894s, with build-job median 1438s and p90 1450s, but bounded logs showed Upload dashboard artifact staying near 6s with a stable ~31.3 MB artifact after copying a 105.6 MiB SQLite database and 510 activity shards totaling 463.1 MiB. The repeated cost in those dashboard runs remained Restore collected activity data (165-299s in the sampled logs) and Upgrade fallback activity data (982-1242s), not artifact transfer or Pages packaging. Because no concrete repository-controlled change in this category is supported to save at least 60s or 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety, no actionable suggestion was emitted."
+    },
+    {
+      "evaluated_at": "2026-10-15T17:56:10Z",
+      "worker_run_id": 38780792460,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38780077203,
+        38778325946,
+        38776717949,
+        38776306821,
+        38773870030,
+        38773545147,
+        38773526677,
+        38772338727,
+        38770732207,
+        38769244436,
+        38768939158,
+        38768526984,
+        38765534258,
+        38763675534,
+        38762038875,
+        38760261823,
+        38759834690,
+        38756663424,
+        38754719962,
+        38752943277
+      ],
+      "docs_window": {
+        "start": "2026-10-15T14:25:28Z",
+        "end": "2026-10-15T17:46:19Z"
+      },
+      "docs_success_count": 16,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 3,
+      "dashboard_success_count": 2,
+      "dashboard_success_run_ids": [
+        38765614002,
+        38675339180
+      ],
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA fb9a6b596c1975643540c707b9193f2bce7572cd. In the latest 20 completed docs.yml runs from 2026-10-15T14:25:28Z through 2026-10-15T17:46:19Z, 16 runs concluded success and 4 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 3 comparable successful docs runs executed both build and deploy: 38776717949 on schedule at source SHA fb9a6b596c1975643540c707b9193f2bce7572cd; 38773870030 on schedule at source SHA c10982fcfbe452c01c42085e1f8ab57efb0fe0ba; and 38769244436 on workflow_run at source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. One additional successful run, 38773526677 on push at source SHA c10982fcfbe452c01c42085e1f8ab57efb0fe0ba, built documentation while deploy was skipped and is disclosed as a non-comparable outlier. Trusted job metadata for the comparable docs runs showed median queue time 0s, workflow execution 113s (p90 113.8s), build 58s (p90 69.2s), and deploy 33s (p90 38.6s). Trusted step metadata showed Upload Pages artifact consistently taking 13-15s, while Deploy Pages ranged from 7s to 38s. Bounded build-log reads on all 3 comparable docs runs confirmed cache hits for the Linux-node-24 node_modules cache and the fixed-key central-agentic-ops-dashboard cache, so Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. A bounded schedule-freshness log read from run 38780077203 confirmed the no-build message was \"Documentation build skipped because the deployed docs and dashboard are current.\" In the latest 20 completed cao-dashboard.yml runs, only 2 successful dashboard-generation samples were available: workflow_dispatch runs 38765614002 and 38675339180. Their trusted build-step timings showed Restore collected activity data taking 288s and 149s, Upload dashboard artifact 12s and 6s, cache-job Download dashboard artifact 4s and 2s, and Save dashboard cache 3s and 2s; bounded logs confirmed both dashboard builds restored the cao-activity-v5 cache via restore key cao-activity-v5-37765769970-1. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped without an actionable artifact-transfer or Pages-packaging suggestion."
     }
   ]
 }
