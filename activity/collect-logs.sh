@@ -17,6 +17,7 @@ activity_database="${REPORT_ACTIVITY_DATABASE:-}"
 issue_status_cost_budget="${REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET:-25}"
 issue_status_min_remaining="${REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING:-500}"
 max_storage="${REPORT_MAX_STORAGE:-1200}"
+max_cache_bytes="${REPORT_MAX_CACHE_BYTES:-1073741824}"
 seed_shard_directory="${REPORT_GH_AW_LOGS_SEED_SHARDS:-}"
 
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
@@ -104,6 +105,8 @@ compact_shards() {
   for shard_group in "${shard_groups[@]}"; do
     compact_args+=(--group "$shard_group")
   done
+  node "$cao_script" recycle-cache --input-dir "$shard_directory" \
+    --retention-days "$window_days" --max-bytes "$max_cache_bytes" || return $?
   node "$cao_script" "${compact_args[@]}"
 }
 if [[ $exit_code -eq 0 ]]; then
@@ -153,6 +156,11 @@ for index in "${!repositories[@]}"; do
     exit_code=$repository_exit_code
     break
   fi
+  node "$cao_script" recycle-cache --input-dir "$shard_directory" \
+    --retention-days "$window_days" --max-bytes "$max_cache_bytes" || {
+      exit_code=$?
+      break
+    }
 done
 
 if [[ $exit_code -eq 0 ]]; then

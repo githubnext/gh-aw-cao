@@ -34,6 +34,10 @@ concurrency:
   group: central-agentic-ops-activity
   cancel-in-progress: false
 
+env:
+  REPORT_MAX_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_RAW_CACHE_BYTES || '1073741824' }}
+  REPORT_MAX_NORMALIZED_CACHE_BYTES: ${{ vars.CAO_ACTIVITY_MAX_NORMALIZED_CACHE_BYTES || '268435456' }}
+
 jobs:
   plan:
     runs-on: ubuntu-latest
@@ -403,35 +407,27 @@ jobs:
       - name: Merge owner-scoped activity fragments
         run: |
           mkdir -p "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards"
-          find "$RUNNER_TEMP/cao-activity-fragments" -path '*/gh-aw-logs-shards/*.jsonl' \
-            -exec cp {} "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards/" \;
           first_weights="$(find "$RUNNER_TEMP/cao-activity-fragments" -name drain3_weights.json -print | sort | head -n 1)"
           if [[ -n "$first_weights" ]]; then
             cp "$first_weights" "$RUNNER_TEMP/cao-activity/drain3_weights.json"
           fi
           node --input-type=module <<'EOF'
-          import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-          import path from "node:path";
-          import { mergeInventoryDashboardSources } from "./activity/inventory-sources.mjs";
-          const root = `${process.env.RUNNER_TEMP}/cao-activity-fragments`;
-          const directFragment = path.join(root, "inventory-sources.json");
-          const fragmentFiles = existsSync(directFragment)
-            ? [directFragment]
-            : readdirSync(root, { withFileTypes: true })
-              .filter((entry) => entry.isDirectory())
-              .map((entry) => path.join(root, entry.name, "inventory-sources.json"))
-              .filter((file) => existsSync(file));
-          if (fragmentFiles.length === 0) {
-            throw new Error("No owner-scoped inventory fragments were downloaded");
-          }
-          const fragments = fragmentFiles.map((file) => JSON.parse(readFileSync(file, "utf8")));
-          const merged = mergeInventoryDashboardSources(fragments);
-          writeFileSync(`${process.env.RUNNER_TEMP}/cao-activity/inventory-sources.json`, `${JSON.stringify(merged, null, 2)}\n`);
+          import { mergeActivityFragments } from "./activity/cli/cache.mjs";
+          console.log(await mergeActivityFragments(
+            `${process.env.RUNNER_TEMP}/cao-activity-fragments`,
+            `${process.env.RUNNER_TEMP}/cao-activity`
+          ));
           EOF
           node activity/control-settings.mjs \
             .github/workflows/shared/control.mjs \
             .github/workflows/cao.json \
             "$RUNNER_TEMP/cao-activity/control-settings.json"
+
+      - name: Recycle expired and oversized activity cache
+        run: |
+          node activity/cao.mjs recycle-cache \
+            --input-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-shards" \
+            --retention-days 30 --max-bytes "$REPORT_MAX_CACHE_BYTES"
 
       - name: Generate bounded agent summary
         run: |
@@ -469,6 +465,7 @@ jobs:
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --max-bytes 1048576 \
+            --max-cache-bytes "$REPORT_MAX_NORMALIZED_CACHE_BYTES" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
 
       - name: Ingest activity database
@@ -508,6 +505,7 @@ jobs:
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --max-bytes 1048576 \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
+            --max-cache-bytes "$REPORT_MAX_NORMALIZED_CACHE_BYTES" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
       - name: Upload activity snapshot

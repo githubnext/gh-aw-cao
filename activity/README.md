@@ -45,10 +45,33 @@ repository's retained files into bounded shards, retaining only runs whose
 workflow path ends in `.lock.yml` and their associated records. This excludes
 non-agentic Actions workflows while preserving observation precedence and
 dependent-record association. The bounded files limit peak browser parsing
-memory. Failed collections leave the prior files untouched. Shards containing only
-out-of-range dated records are pruned by `gh aw logs --cache-before`. The
+memory. Failed collections never replace the published cache. Shards containing only
+out-of-range dated records are pruned by `gh aw logs --cache-before`. CAO also
+runs `cao recycle-cache` before compaction, between repository downloads, and
+before index normalization. It expires completed runs older than 30 days across
+mixed-date shards and removes their safe outputs and token-efficiency evidence
+as a group. Newer observations refresh a run's expiry; active runs and runs
+without usable timestamps are not age-expired. Under byte pressure, whole run
+groups are evicted oldest first (undated runs last), with explicit expired and
+evicted counts in the command output. Operational-value history has its own
+365-day retention and is not evicted to satisfy the run-cache budget. Unknown
+records are preserved; if these protected records alone exceed the byte limit,
+maintenance fails before changing any shards rather than silently dropping them.
+Each rewritten shard is streamed to a temporary file and atomically replaced;
+fully expired shards are deleted. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
+
+The raw cache defaults to **1 GiB** across all repositories in a job, not per
+shard. Set the repository variable `CAO_ACTIVITY_MAX_RAW_CACHE_BYTES` to override
+it in both Activity and dashboard preparation, or use
+`cao recycle-cache --input-dir DIRECTORY --retention-days 30 --max-bytes BYTES`
+locally. The collector also accepts `REPORT_MAX_CACHE_BYTES`.
+These limits deliberately make the cache a bounded working set, not an archive:
+byte pressure may shorten the available run history below 30 days.
+Indexing treats successful owner fragments as the complete retained snapshot,
+removes superseded restored shards, and moves incoming files instead of keeping
+a second full fragment copy. Empty owner snapshots remain explicitly empty.
 
 After compaction, `cao issue-status` reads the canonical Issue records from the
 refreshed local SQLite projection, batches issue lookups by repository through
@@ -198,6 +221,17 @@ including their metadata header. This is separate from the 4 MiB raw-source
 compaction limit. A single canonical record larger than the budget is preserved
 intact in its own shard; evidence is never truncated to fit. Override the
 published size with `cao hash-payloads --max-bytes BYTES`.
+The separate disposable normalization caches under each phase's `.payloads/`
+directory share a **256 MiB** retained-byte budget. Override it with repository
+variable `CAO_ACTIVITY_MAX_NORMALIZED_CACHE_BYTES`, or
+`cao hash-payloads --max-cache-bytes BYTES` (`0` disables reuse).
+Obsolete source-hash/context payloads and interrupted temporary files are removed
+before replacement normalization; oldest reusable payloads are evicted to meet
+the budget after consolidation. Eviction never changes published shards or their
+hashes, and missing cache entries are regenerated on demand.
+The raw and reusable-cache limits do not cap the SQLite projection, published
+evidence, or temporary active normalization output; allow runner headroom for
+those files and one temporary rewritten source shard.
 Observation precedence is resolved before sorting, so reordered source records
 with unchanged winning values retain their content hashes. Structural records
 sort before dated records, and each filename includes its day, part index, and
