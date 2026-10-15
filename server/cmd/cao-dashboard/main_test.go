@@ -90,12 +90,37 @@ func TestServeHostedLoadsMaterializedDashboardQueriesByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	catalogPath, err := cmd.Flags().GetString("agent-catalog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if catalogPath != "../dashboard/site/src/agent/catalog.generated.json" {
+		t.Fatalf("agent catalog default = %q", catalogPath)
+	}
+	content, err := os.ReadFile("../../../dashboard/site/src/agent/catalog.generated.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var catalog struct {
+		Queries []struct {
+			ID string `json:"id"`
+		} `json:"queries"`
+	}
+	if err := json.Unmarshal(content, &catalog); err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Queries) == 0 {
+		t.Fatal("default agent catalog has no queries")
+	}
+	loaded := make(map[string]bool, len(definitions))
 	for _, definition := range definitions {
-		if definition.Name == "database-campaign-count" {
-			return
+		loaded[definition.Name] = true
+	}
+	for _, entry := range catalog.Queries {
+		if !loaded[entry.ID] {
+			t.Errorf("default dashboard query definitions omit catalog query %q", entry.ID)
 		}
 	}
-	t.Fatal("default dashboard query definitions omit database-campaign-count")
 }
 
 func TestServeHostedRejectsUnsupportedOperationalBackend(t *testing.T) {
