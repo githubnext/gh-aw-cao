@@ -29,7 +29,8 @@ for (const width of [1440, 390]) {
           signal?.addEventListener('abort', () => { cancellations += 1; resolve(undefined); }, { once: true });
         });
         if (signal?.aborted) return { ok: false, exitCode: null, error: 'CLI action cancelled.' };
-        onOutput({ stream: 'stderr', data: '\r\u001b[2KProgress: 100%\r\nRepository staged.\r\n' });
+        onOutput({ stream: 'stdout', data: '\r\u001b[2KProgress: 100%\r\n' });
+        onOutput({ stream: 'stderr', data: 'Repository staged.\r\n' });
         return { ok: true, exitCode: 0 };
       },
       downloadData: async (/** @type {string} */ destination) => {

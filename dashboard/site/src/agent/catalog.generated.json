@@ -5,6 +5,35 @@
   },
   "pages": [
     {
+      "id": "commands",
+      "title": "Commands",
+      "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "command-queue",
+        "command-queue-summary"
+      ]
+    },
+    {
+      "id": "command",
+      "title": "Command output",
+      "description": "",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "command",
+          "required": true,
+          "description": "The command this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The command this page reports on."
+          }
+        }
+      ],
+      "queries": []
+    },
+    {
       "id": "steering",
       "title": "Steering",
       "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
@@ -992,6 +1021,44 @@
     }
   ],
   "queries": [
+    {
+      "id": "command-queue",
+      "subject": "Show the durable local CLI command queue.",
+      "objective": "Inspect command lifecycle and reconnect to output without rerunning work.",
+      "acceptance": "Preserve persistent command IDs and all six server states; closing output never cancels execution. Unavailable local authority is not an empty queue.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "cli-commands"
+      ],
+      "used-by-pages": [
+        "commands"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires cli-commands, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "command-queue-summary",
+      "subject": "Report the command queue's server-owned running count and pause reason.",
+      "objective": "Expose active work and admission pauses without counting a paginated browser result.",
+      "acceptance": "Use the authoritative running and total counts, not a row count; missing authority remains unavailable.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "cli-command-summary"
+      ],
+      "used-by-pages": [
+        "commands"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires cli-command-summary, which the local SQLite projection does not provide."
+      }
+    },
     {
       "id": "event-base",
       "subject": "Project shared event fields before combining run-owned records.",

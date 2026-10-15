@@ -161,9 +161,11 @@ The capability-protected local API exposes:
 - `POST __cli_commands/:id/cancel` and `POST __cli_commands/:id/retry`: explicit
   lifecycle operations; retries revalidate the current action and approval.
 
+The `status` filter accepts one status or a comma-separated set; filtering and
+the matching total count are applied before pagination.
 Mutations require same-origin JSON requests as well as the preview capability.
 Queue retention defaults to 30 days and removes terminal history only in wholly
-expired UTC Monday-based seven-day windows; active commands never expire. Queue
+expired UTC Monday-based seven-day windows, including while idle; active commands never expire. Queue
 files contain operational command history and must remain local and uncommitted.
 Storage is bounded to 10,000 retained entries, 1 MiB output per command, 64 MiB
 retained output overall and a 128 MiB main SQLite database (excluding WAL

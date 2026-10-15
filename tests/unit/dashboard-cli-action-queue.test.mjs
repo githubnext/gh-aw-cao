@@ -238,6 +238,66 @@ for (const cancelBeforeCrash of [false, true]) test(`single-owner crash recovery
   await delay(20);
   assert.equal(queue.detail(2).status, "queued");
   assert.match(queue.list().pausedReason, /recovery is blocked/);
+  await queue.close();
+  queue = createCliActionQueue({
+    filename, acknowledgeRecovery: true,
+    execute: async ({ actionId }) => { starts.push(actionId); return success; },
+  });
+  await until(() => queue.detail(2).status === "completed");
+  assert.deepEqual(starts, ["action-2"]);
+  assert.equal(queue.detail(1).status, cancelBeforeCrash ? "canceled" : "failed");
+  assert.equal(queue.list().pausedReason, null);
+  await queue.close();
+  queue = createCliActionQueue({ filename, execute: async () => success });
+  assert.equal(queue.list().pausedReason, null);
+});
+
+test("streamed output is not duplicated by returned transcripts, with fallback per stream", async (t) => {
+  const queue = createCliActionQueue({
+    filename: await fixture(t),
+    execute: async ({ onOutput }) => {
+      await onOutput({ stream: "stdout", data: "one\npartial" });
+      return { ...success, stdout: "one\npartial", stderr: "returned stderr\n" };
+    },
+  });
+  t.after(() => queue.close());
+  const job = queue.enqueue(invocation());
+  await until(() => queue.detail(job.id).status === "completed");
+  assert.equal(queue.detail(job.id).stdout, "one\npartial");
+  assert.equal(queue.detail(job.id).stderr, "returned stderr\n");
+});
+
+test("idle retention expires history without enqueueing and publishes a revision", async (t) => {
+  let clock = Date.parse("2026-09-06T23:59:59Z");
+  const queue = createCliActionQueue({
+    filename: await fixture(t), now: () => clock,
+    retentionDays: 7, retentionIntervalMs: 5, execute: async () => success,
+  });
+  t.after(() => queue.close());
+  const job = queue.enqueue(invocation());
+  await until(() => queue.detail(job.id).status === "completed");
+  const revision = queue.list().revision;
+  clock = Date.parse("2026-09-14T00:00:00Z");
+  await until(() => queue.detail(job.id) === null);
+  assert.equal(queue.list().total, 0);
+  assert.ok(queue.list().revision > revision);
+});
+
+test("multiple statuses are filtered before pagination and counted together", async (t) => {
+  const queue = createCliActionQueue({
+    filename: await fixture(t), admission: async () => ({ concurrency: 0 }), execute: async () => success,
+  });
+  t.after(() => queue.close());
+  const first = queue.enqueue(invocation());
+  const second = queue.enqueue(invocation(2));
+  queue.cancel(first.id);
+  assert.equal(queue.list({ status: "queued,canceled", limit: 1 }).total, 2);
+  assert.equal(queue.list({ status: "queued,canceled", limit: 1 }).commands[0].id, second.id);
+  assert.equal(queue.list({ status: "queued,canceled", limit: 1, offset: 1 }).commands[0].id, first.id);
+  assert.equal(queue.list({ status: "failed,timed-out" }).total, 0);
+  for (const status of ["queued,unknown", "queued,", "", null]) {
+    assert.throws(() => queue.list({ status }), /Invalid queue status/);
+  }
 });
 
 test("existing executor awaits asynchronous output persistence and terminates process groups on deadlines", async () => {

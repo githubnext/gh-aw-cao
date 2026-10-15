@@ -174,13 +174,17 @@ export async function queryCliQueue(payload, signal) {
     }] : [], enabled),
     'cli-command-statuses': source('cli-command-statuses', COMMAND_STATUSES.map((status) => ({ status })), enabled)
   };
-  const output = executeDashboardQueries(queries, inputs, names, { signal });
+  const output = new Map(Object.entries(executeDashboardQueries(queries, inputs, names, { signal })));
+  /** @type {Array<[string, import('../presenter.js').LogicalSourceInput]>} */
+  const entries = [];
   for (const name of names) {
-    output[name] ??= inputs[name];
-    if (output[name] && resolveDashboardQuerySources(queries, [name]).includes('cli-commands') && result) {
-      output[name].metadata['total-row-count'] = result.total;
-      if (offset + limit < result.total) output[name].continuationToken = btoa(JSON.stringify({ offset: offset + limit }));
+    const value = output.get(name) ?? (Object.hasOwn(inputs, name) ? inputs[name] : undefined);
+    if (!value) throw new Error('Declared command queue source is unavailable.');
+    if (resolveDashboardQuerySources(queries, [name]).includes('cli-commands') && result) {
+      value.metadata['total-row-count'] = result.total;
+      if (offset + limit < result.total) value.continuationToken = btoa(JSON.stringify({ offset: offset + limit }));
     }
+    entries.push([name, value]);
   }
-  return Object.fromEntries([...names].map((name) => [name, output[name]]));
+  return Object.fromEntries(entries);
 }

@@ -67,7 +67,7 @@ describe('worker command queue', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(String(fetch.mock.calls[0][0])).toContain('status=queued%2Crunning&limit=6&offset=0');
     expect(result['command-queue'].rows.map((row) => row.status)).toEqual(states);
-    expect(result['command-queue'].rows[0]['command-link']).toEqual(expect.objectContaining({ 'dashboard-href': '#page-command?command=cmd-0' }));
+    expect(result['command-queue'].rows[0]['command-dashboard-link']).toEqual(expect.objectContaining({ 'dashboard-href': '#page-command?command=cmd-0' }));
     expect(result['command-queue-summary'].rows[0]).toMatchObject({ running: 8, total: 106, 'paused-reason': 'quota' });
     expect(result['command-queue'].metadata['total-row-count']).toBe(106);
     expect(JSON.parse(atob(result['command-queue'].continuationToken ?? ''))).toEqual({ offset: 6 });
@@ -82,6 +82,16 @@ describe('worker command queue', () => {
       pagination: { 'command-queue': { limit: 10, continuationToken: btoa(JSON.stringify({ offset: 20 })) } }
     });
     expect(String(fetch.mock.calls[0][0])).toContain('limit=10&offset=20');
+  });
+
+  it('does not treat inherited object properties as queue sources', async () => {
+    for (const name of ['__proto__', 'constructor']) {
+      await expect(queryCliQueue({
+        sourceNames: [name, 'cli-commands'],
+        context: { pages: [], queries: [] }
+      })).rejects.toThrow('source is unavailable');
+    }
+    expect(Object.prototype).not.toHaveProperty('continuationToken');
   });
 
   it('compiles the production history view over numeric command identities and epoch timestamps', async () => {
@@ -101,7 +111,7 @@ describe('worker command queue', () => {
     expect(output.rows).toHaveLength(1);
     expect(output.rows[0]).toMatchObject({
       status: 'running', createdAt: '2026-10-15T00:00:00.000Z',
-      'command-link': { 'dashboard-href': '#page-command?command=42' }
+      'command-dashboard-link': { 'dashboard-href': '#page-command?command=42' }
     });
   });
 

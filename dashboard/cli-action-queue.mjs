@@ -75,6 +75,7 @@ export function createCliActionQueue({
   maxConcurrency = 1, timeoutMs = 15 * 60 * 1000,
   limits: overrides = {}, now = Date.now, admissionPollMs = 1000, sensitiveValues = [],
   retentionDays = overrides.retentionDays ?? dashboardQueueLimits.retentionDays,
+  retentionIntervalMs = 60_000, acknowledgeRecovery = false,
 }) {
   if (typeof filename !== "string" || !filename || filename === ":memory:"
     || typeof execute !== "function") throw new Error("A durable filename and executor are required.");
@@ -86,6 +87,8 @@ export function createCliActionQueue({
   integer(maxConcurrency, 1, limits.maxConcurrency, "concurrency");
   integer(timeoutMs, 1, 15 * 60 * 1000, "timeout");
   integer(admissionPollMs, 1, 60000, "admission interval");
+  integer(retentionIntervalMs, 1, 86400000, "retention interval");
+  if (typeof acknowledgeRecovery !== "boolean") throw new Error("Invalid queue recovery acknowledgement.");
   if (!Array.isArray(sensitiveValues) || sensitiveValues.some((value) => typeof value !== "string" || value.length < 4)) {
     throw new Error("Invalid queue sensitive values.");
   }
@@ -181,6 +184,12 @@ export function createCliActionQueue({
         db.exec("COMMIT");
       } catch (error) { db.exec("ROLLBACK"); throw error; }
     }
+    if (acknowledgeRecovery) {
+      db.exec(`BEGIN IMMEDIATE;
+        DELETE FROM execution_claims;
+        DELETE FROM queue_state WHERE key='recovery_blocked';
+        COMMIT;`);
+    }
   } catch {
     db?.close();
     ownership.close();
@@ -207,10 +216,19 @@ export function createCliActionQueue({
   function retain() {
     // Keep the partial cutoff week; only earlier, fully expired weeks can drop.
     const cutoff = monday(now() - limits.retentionDays * 86400000);
-    db.prepare(`DELETE FROM jobs WHERE completion_week < ? AND status NOT IN ('queued','running')
+    const { changes } = db.prepare(`DELETE FROM jobs WHERE completion_week < ? AND status NOT IN ('queued','running')
       AND id NOT IN (SELECT job_id FROM execution_claims)`).run(cutoff);
+    if (changes) emit({ type: "retained", removed: Number(changes) });
   }
   retain();
+  const retentionTimer = setInterval(() => {
+    try { retain(); } catch {
+      reconciliationFailed = true;
+      admissionReason = "CLI queue retention is unavailable.";
+      emit({ type: "unavailable" });
+    }
+  }, retentionIntervalMs);
+  retentionTimer.unref();
   function detail(id) {
     assertOpen();
     const row = db.prepare("SELECT * FROM jobs WHERE id=?").get(integer(Number(id), 1, Number.MAX_SAFE_INTEGER, "id"));
@@ -280,6 +298,7 @@ export function createCliActionQueue({
     db.prepare("UPDATE jobs SET status='running',started_at=?,deadline=? WHERE id=? AND status='queued'").run(now(), deadline, id);
     db.prepare("INSERT INTO execution_claims(job_id) VALUES(?)").run(id);
     const buffers = { stdout: "", stderr: "" };
+    const streamed = { stdout: false, stderr: false };
     const dropping = { stdout: false, stderr: false };
     const privateKey = { stdout: false, stderr: false };
     const persistLine = (stream, line) => {
@@ -327,6 +346,7 @@ export function createCliActionQueue({
         onOutput: async (chunk) => {
           await decision.onOutput?.(chunk);
           consume(chunk);
+          if (chunk.data) streamed[chunk.stream] = true;
         },
       });
     }).then((result) => {
@@ -334,7 +354,9 @@ export function createCliActionQueue({
       recordTerminalExitCode(id, result?.exitCode);
       if (!controller.signal.aborted) {
         for (const stream of ["stdout", "stderr"]) {
-          if (typeof result?.[stream] === "string" && result[stream]) consume({ stream, data: result[stream] });
+          if (!streamed[stream] && typeof result?.[stream] === "string" && result[stream]) {
+            consume({ stream, data: result[stream] });
+          }
           persistLine(stream, buffers[stream]);
         }
         finish(id, result?.ok ? "completed" : "failed", {
@@ -436,11 +458,12 @@ export function createCliActionQueue({
       assertOpen();
       integer(limit, 1, limits.maxPageSize, "page size");
       integer(offset, 0, Number.MAX_SAFE_INTEGER, "offset");
-      if (status !== undefined && !statuses.has(status)) throw new Error("Invalid queue status.");
-      const commands = db.prepare(`SELECT id FROM jobs ${status ? "WHERE status=?" : ""} ORDER BY id DESC LIMIT ? OFFSET ?`)
-        .all(...(status ? [status] : []), limit, offset).map(({ id }) => detail(id));
-      const total = db.prepare(`SELECT count(*) AS count FROM jobs ${status ? "WHERE status=?" : ""}`)
-        .get(...(status ? [status] : [])).count;
+      const selected = status === undefined ? [] : typeof status === "string" ? status.split(",") : [status];
+      if (selected.some((value) => !statuses.has(value))) throw new Error("Invalid queue status.");
+      const filter = selected.length ? `WHERE status IN (${selected.map(() => "?").join(",")})` : "";
+      const commands = db.prepare(`SELECT id FROM jobs ${filter} ORDER BY id DESC LIMIT ? OFFSET ?`)
+        .all(...selected, limit, offset).map(({ id }) => detail(id));
+      const total = db.prepare(`SELECT count(*) AS count FROM jobs ${filter}`).get(...selected).count;
       return { commands, total, running: active.size, pausedReason: admissionReason ?? null, revision };
     },
     output(id, after = 0, limit = 100) {
@@ -476,6 +499,7 @@ export function createCliActionQueue({
       if (closePromise) return closePromise;
       closed = true;
       clearTimeout(pumpTimer);
+      clearInterval(retentionTimer);
       for (const { controller } of active.values()) controller.abort();
       closePromise = Promise.allSettled([pumpTask, ...[...active.values()].map(({ promise }) => promise)]).then(() => {
         db.prepare(`UPDATE jobs SET status='failed',ok=0,error='CLI action interrupted by server shutdown.',

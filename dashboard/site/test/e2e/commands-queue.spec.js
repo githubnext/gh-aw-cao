@@ -63,6 +63,7 @@ for (const width of [1440, 390]) {
       await expect(approval).not.toBeVisible();
       expect(cancellations).toBe(0);
 
+      if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
       await page.getByRole('link', { name: 'Commands', exact: true }).last().click();
       const history = page.getByRole('table').filter({ hasText: 'Queued' });
       await expect(history).toContainText('running');

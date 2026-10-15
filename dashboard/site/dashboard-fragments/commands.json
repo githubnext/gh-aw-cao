@@ -8,7 +8,7 @@
       "from": "cli-commands",
       "compute": [
         { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
-        { "as": "command-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
+        { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
       ]
     },
     {
@@ -63,8 +63,9 @@
             ]
           },
           "encoding": {
+            "href": { "field": "command-dashboard-link" },
             "columns": [
-              { "field": "command-link", "type": "nominal", "title": "Command", "display": "evidence-link" },
+              { "field": "id", "type": "nominal", "title": "Command" },
               { "field": "actionId", "type": "nominal", "title": "Action" },
               { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
               { "field": "createdAt", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
