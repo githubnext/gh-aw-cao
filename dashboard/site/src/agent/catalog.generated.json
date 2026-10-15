@@ -523,27 +523,6 @@
       ]
     },
     {
-      "id": "operational-value-campaign",
-      "title": "Operational Value",
-      "description": "Choose a repository to see its plots.",
-      "experimental": true,
-      "parameters": [
-        {
-          "name": "campaign",
-          "required": true,
-          "description": "The campaign this page reports on.",
-          "schema": {
-            "type": "string",
-            "description": "The campaign this page reports on."
-          }
-        }
-      ],
-      "queries": [
-        "operational-value-plot-series",
-        "operational-value-repository-signals"
-      ]
-    },
-    {
       "id": "campaign-insights",
       "title": "Campaign",
       "description": "Operational activity for this campaign.",
@@ -572,7 +551,7 @@
       "id": "operational-value-repository",
       "title": "Operational Value",
       "description": "Measurements over time. Select a point to inspect its value.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [
         {
           "name": "repository",
@@ -586,8 +565,7 @@
       ],
       "queries": [
         "operational-value-latest",
-        "operational-value-plot-series",
-        "operational-value-repository-campaign-run-health"
+        "operational-value-plot-series"
       ]
     },
     {
@@ -725,14 +703,14 @@
     {
       "id": "operational-value",
       "title": "Operational Value",
-      "description": "Choose a campaign, then a repository to see its plots.",
-      "experimental": true,
+      "description": "Choose a repository to see its workflow outcome plots, with or without a CAO campaign.",
+      "experimental": false,
       "parameters": [],
       "queries": [
-        "operational-value-measured-campaigns",
+        "operational-value-measured-repositories",
         "operational-value-overview-summary",
-        "operational-value-repository-signals",
-        "operational-value-unmeasured-campaigns"
+        "operational-value-plot-series",
+        "operational-value-unmeasured-repositories"
       ]
     },
     {
@@ -3151,116 +3129,13 @@
       }
     },
     {
-      "id": "operational-value-campaign-run-observations",
-      "subject": "Campaign execution observations inside the selected display horizon.",
-      "objective": "Scope run context in the worker rather than filtering campaign rows in the chart.",
-      "acceptance": "Use the exact inclusive start and exclusive end. An absent bound means unbounded; invalid run timestamps cannot contribute.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "campaign-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits",
-          "runs",
-          "workflows"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-campaign-run-health",
-      "subject": "Daily concluded campaign execution counts, not target outcome evidence.",
-      "objective": "Place outcome history beside retained campaign execution health without attributing runs to measured targets.",
-      "acceptance": "Group completed retained attempts by campaign and start day. Count distinct control-repository run/attempt identities, successes and declared failed conclusions. Do not reconstruct prior retries or claim outcome attainment.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "operational-value-campaign-run-observations"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits",
-          "runs",
-          "workflows"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-run-context-subjects",
-      "subject": "Measured repository identities to bind campaign execution context without target attribution.",
-      "objective": "Identify outcome-page subjects eligible to display campaign-wide run context.",
-      "acceptance": "Emit one row per observed campaign, organization and repository, with the retained observation count. Never infer target execution from a measured repository identity.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "operational-values"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "operational-values"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-repository-campaign-run-health",
-      "subject": "Campaign-wide run health scoped to the selected outcome page, never target-attributed.",
-      "objective": "Show campaign execution context beside a repository outcome timeline without inventing target-run relationships.",
-      "acceptance": "Join measured repository subjects to every matching campaign/day execution row using inner-many. Preserve counts, order days ascending, and omit unmatched subjects. Counts remain campaign-wide, not repository-attributed.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "campaign",
-          "field": "campaign"
-        },
-        {
-          "name": "organization",
-          "field": "organization"
-        },
-        {
-          "name": "repository",
-          "field": "repository"
-        }
-      ],
-      "sources": [
-        "operational-value-campaign-run-health",
-        "operational-value-run-context-subjects"
-      ],
-      "used-by-pages": [
-        "operational-value-repository"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits",
-          "operational-values",
-          "runs",
-          "workflows"
-        ]
-      }
-    },
-    {
       "id": "operational-value-plot-series",
-      "subject": "One primary outcome plot per campaign, repository and native measure.",
+      "subject": "One primary outcome plot per repository, optional campaign, workflow and native measure.",
       "objective": "Keep every finite value visible and move provenance to individual observations.",
       "acceptance": "Separate unlike units and directions. Preserve evaluator, maturity and cadence on points. Connect only adjacent points with known matching context and declared cadence; never infer a combined trend or baseline.",
       "description": "",
       "parameters": [
         {
-          "name": "campaign",
-          "field": "campaign"
-        },
-        {
           "name": "organization",
           "field": "organization"
         },
@@ -3273,7 +3148,7 @@
         "operational-values"
       ],
       "used-by-pages": [
-        "operational-value-campaign",
+        "operational-value",
         "operational-value-repository"
       ],
       "execution": {
@@ -3426,10 +3301,6 @@
       "description": "",
       "parameters": [
         {
-          "name": "campaign",
-          "field": "campaign"
-        },
-        {
           "name": "organization",
           "field": "organization"
         },
@@ -3456,7 +3327,7 @@
       "id": "operational-value-repository-evidence-order",
       "subject": "Identify oldest and newest latest primary evidence per repository.",
       "objective": "Expose date bounds across the latest retained primary measures for a repository.",
-      "acceptance": "Partition by campaign and repository, retaining all input rows. Identify first rows in ascending and descending observation order, with ID tie-breaks. Do not infer freshness or fill gaps.",
+      "acceptance": "Partition by repository, retaining all input rows. Identify first rows in ascending and descending observation order, with ID tie-breaks. Do not infer freshness or fill gaps.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3473,9 +3344,9 @@
     },
     {
       "id": "operational-value-repository-counts",
-      "subject": "Latest primary movement counts per campaign and target repository.",
+      "subject": "Latest primary movement counts per repository across campaigns and standalone workflows.",
       "objective": "Summarize comparable and missing primary-measure evidence without combining native values.",
-      "acceptance": "Group by campaign and repository; count goals and improving, worsening and unchanged measures. Preserve oldest/newest retained dates. Incomparable goals remain in the total, not in comparable counts.",
+      "acceptance": "Group by repository; count goals and improving, worsening and unchanged measures. Preserve oldest/newest retained dates. Incomparable goals remain in the total, not in comparable counts.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3492,41 +3363,14 @@
     },
     {
       "id": "operational-value-repository-signals",
-      "subject": "One conservative direction signal per campaign and target repository.",
+      "subject": "One conservative direction signal per repository across all workflow outcomes.",
       "objective": "Rank repository investigations while preserving disagreement and evidence gaps.",
       "acceptance": "Any incomparable primary measure makes the repository insufficient; opposing comparable measures are Mixed. Count each repository once.",
       "description": "",
-      "parameters": [
-        {
-          "name": "campaign",
-          "field": "campaign"
-        }
-      ],
+      "parameters": [],
       "sources": [
         "operational-value-repository-counts"
       ],
-      "used-by-pages": [
-        "operational-value",
-        "operational-value-campaign"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "operational-values"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-campaign-evidence-order",
-      "subject": "Identify date bounds across latest repository evidence in a campaign.",
-      "objective": "Carry campaign evidence date bounds without treating asynchronous observations as one snapshot.",
-      "acceptance": "Partition by campaign and retain all repository signals. Identify newest/oldest evidence rows with deterministic repository tie-breaks. Dates describe retained evidence, not a common cutoff or freshness guarantee.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "operational-value-repository-signals"
-      ],
       "used-by-pages": [],
       "execution": {
         "local": true,
@@ -3537,82 +3381,64 @@
       }
     },
     {
-      "id": "operational-value-signal-counts",
-      "subject": "Campaign direction and coverage counts, one vote per measured repository.",
-      "objective": "Summarize the portfolio's evidence distribution without averaging unlike outcomes.",
-      "acceptance": "Group by campaign and count each measured repository once in Improving, Worsening, Mixed, Unchanged or Insufficient evidence. Preserve oldest/newest dates. Counts do not represent complete enrolled scope.",
+      "id": "operational-value-repository-subjects",
+      "subject": "Inventory and measured repositories, independent of campaign membership.",
+      "objective": "Include standalone workflow outcomes and unmeasured inventory repositories.",
+      "acceptance": "Deduplicate organization/repository identities. Observations outside campaign inventory remain visible; missing measurements are not zero value.",
       "description": "",
       "parameters": [],
       "sources": [
-        "operational-value-campaign-evidence-order"
+        "operational-values",
+        "repositories"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
     {
-      "id": "operational-value-campaign-counts",
-      "subject": "Coverage of latest primary repository outcome measurements.",
-      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
-      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
+      "id": "operational-value-repository-coverage",
+      "subject": "Outcome evidence coverage for each repository.",
+      "objective": "Expose measurement gaps without requiring campaign registration.",
+      "acceptance": "One row per repository. Count latest primary goals, not reports. Preserve conservative direction and comparison blockers; no evidence is not zero value.",
       "description": "",
       "parameters": [],
       "sources": [
-        "operational-value-latest"
+        "operational-value-repository-signals",
+        "operational-value-repository-subjects"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "operational-values"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-campaign-signals",
-      "subject": "Ranked campaign signals with measured and comparable repository coverage.",
-      "objective": "See worsening, mixed evidence, gains and gaps before drilling down.",
-      "acceptance": "All campaigns remain visible. Counts are repositories, not scores or complete enrolled scope. Latest retained dates stay visible; no fresh all-clear or causal attribution.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "campaigns",
-        "operational-value-campaign-counts",
-        "operational-value-signal-counts"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "campaigns",
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
     {
       "id": "operational-value-overview-totals",
-      "subject": "Campaign measurement availability and latest comparable goal counts.",
-      "objective": "Explain what the portfolio evidence can support before drilling down.",
-      "acceptance": "Count inventory campaigns once and sum latest primary goal counts, not observations or distinct repositories. No retained measurements does not imply no contract or zero value.",
+      "subject": "Repository measurement availability and latest comparable goal counts.",
+      "objective": "Explain evidence readiness before repository drill-down.",
+      "acceptance": "Count repositories once across campaigns and standalone workflows. Goal counts describe latest primary measurements, not impact.",
       "description": "",
       "parameters": [],
       "sources": [
-        "operational-value-campaign-signals"
+        "operational-value-repository-coverage"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
@@ -3620,7 +3446,7 @@
       "id": "operational-value-overview-summary",
       "subject": "Compact portfolio measurement readiness summary.",
       "objective": "Explain comparison readiness without replacing unavailable movement with zero value.",
-      "acceptance": "Preserve campaign and latest goal totals; distinguish no observations from measurements without comparable movement.",
+      "acceptance": "Preserve repository and latest goal totals; distinguish no observations from measurements without comparable movement.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3633,20 +3459,20 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
     {
-      "id": "operational-value-measured-campaigns",
-      "subject": "Campaigns with retained primary measurements.",
-      "objective": "Choose a measured campaign to investigate without listing unmeasured campaigns first.",
-      "acceptance": "Preserve the campaign signal ordering, native evidence reasons and dates; include only campaigns with measured repositories.",
+      "id": "operational-value-measured-repositories",
+      "subject": "Repositories with retained primary outcome measurements.",
+      "objective": "Choose a repository directly, including standalone workflow outcomes.",
+      "acceptance": "One repository card across all campaigns and standalone workflows. Preserve disagreement and missing comparison evidence.",
       "description": "",
       "parameters": [],
       "sources": [
-        "operational-value-campaign-signals"
+        "operational-value-repository-coverage"
       ],
       "used-by-pages": [
         "operational-value"
@@ -3655,20 +3481,20 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
     {
-      "id": "operational-value-unmeasured-campaigns",
-      "subject": "Inventory campaigns without retained primary measurements.",
-      "objective": "Inspect measurement availability gaps without conflating absence with missing contracts.",
-      "acceptance": "Keep every unmeasured inventory campaign. Missing observations establish neither zero value nor absence of a contract.",
+      "id": "operational-value-unmeasured-repositories",
+      "subject": "Inventory repositories without retained primary measurements.",
+      "objective": "Inspect evidence gaps without implying absent contracts or zero value.",
+      "acceptance": "Keep every unmeasured inventory repository; no campaign is required.",
       "description": "",
       "parameters": [],
       "sources": [
-        "operational-value-campaign-signals"
+        "operational-value-repository-coverage"
       ],
       "used-by-pages": [
         "operational-value"
@@ -3677,16 +3503,16 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
-          "operational-values"
+          "operational-values",
+          "repositories"
         ]
       }
     },
     {
-      "id": "operational-value-direction-campaigns",
-      "subject": "Fleet direction distribution per campaign in repository counts, never native-value averages.",
-      "objective": "Compare available campaign movement distributions; inspect comparison gaps in Overview.",
-      "acceptance": "Include only comparable repository signals, grouped by campaign and direction. Empty is not neutral. Never average native outcomes.",
+      "id": "operational-value-direction-repositories",
+      "subject": "Comparable outcome direction per repository.",
+      "objective": "Inspect repository movement without combining native values.",
+      "acceptance": "One count per fully comparable repository. Opposing goals remain Mixed; absent evidence is not neutral. Links open repository history directly.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3697,27 +3523,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "operational-values"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-campaign-coverage",
-      "subject": "Measurement coverage of every registered campaign, including unmeasured campaigns.",
-      "objective": "Expose outcome-evidence gaps without substituting runtime success or output counts.",
-      "acceptance": "Left join from campaign inventory; no primary measurement yields Not measured, not a zero outcome. Mature observations indicate evidence availability, not verified impact. Coverage counts do not establish target-repository completeness.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "campaigns",
-        "operational-value-campaign-counts"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "campaigns",
           "operational-values"
         ]
       }

@@ -86,7 +86,7 @@ function identityFor(observation) {
     }
     case 'operational-value':
       return operationalValueId({
-        campaign: requiredString(data.campaign, 'operationalValue.campaign'),
+        campaign: data.campaign === undefined ? undefined : requiredString(data.campaign, 'operationalValue.campaign'),
         repository: requiredString(data.repository, 'operationalValue.repository'),
         valueId: requiredString(data.valueId, 'operationalValue.valueId'),
         observedAt: requiredString(data.timestamp, 'operationalValue.timestamp')

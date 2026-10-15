@@ -353,7 +353,7 @@ describe('dashboard view query contracts', () => {
 
     expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
       .toContain('operational-value');
-    for (const pageId of ['operational-value', 'operational-value-evidence', 'operational-value-campaign', 'operational-value-repository']) {
+    for (const pageId of ['operational-value', 'operational-value-evidence', 'operational-value-repository']) {
       const valuePage = dashboard.pages.find(
         (/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId
       );
@@ -375,14 +375,14 @@ describe('dashboard view query contracts', () => {
     });
     expect(viewsOf(page)[1]).toMatchObject({
       id: 'operational-value-signals',
-      data: { source: 'operational-value-measured-campaigns' },
+      data: { source: 'operational-value-measured-repositories' },
       mark: 'list',
-      list: { card: 'campaign-outcome-signal' }
+      list: { card: 'repository-outcome-signal' }
     });
     expect(viewsOf(page)[2]).toMatchObject({
       id: 'operational-value-unmeasured',
       disclosure: 'supplemental',
-      data: { source: 'operational-value-unmeasured-campaigns' }
+      data: { source: 'operational-value-unmeasured-repositories' }
     });
     expect(viewsOf(page)).toHaveLength(3);
     const evidence = dashboard.pages.find(
@@ -391,7 +391,7 @@ describe('dashboard view query contracts', () => {
     expect(evidence).toMatchObject({ route: { tab: 'evidence', 'navigation-page': 'operational-value' } });
     expect(viewsOf(evidence)[0]).toMatchObject({
       id: 'operational-value-coverage', disclosure: 'supplemental',
-      data: { source: 'operational-value-campaign-coverage' }
+      data: { source: 'operational-value-repository-coverage' }
     });
     expect(viewsOf(evidence)[1]).toMatchObject({
       id: 'operational-value-latest',
@@ -592,17 +592,10 @@ describe('dashboard view query contracts', () => {
     });
 
     const outcomes = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-campaign');
-    expect(outcomes).toMatchObject({
-      route: { 'navigation-page': 'operational-value' }
-    });
+    expect(outcomes).toBeUndefined();
     expect(viewsOf(insights).map((view) => view.id)).not.toEqual(expect.arrayContaining([
       'campaign-outcome-directions', 'campaign-outcome-repositories', 'campaign-operational-value-history'
     ]));
-    expect(viewsOf(outcomes)).toHaveLength(1);
-    expect(viewsOf(outcomes)[0]).toMatchObject({
-      id: 'campaign-outcome-repositories',
-      mark: 'list'
-    });
 
     expect(viewsOf(insights)[1]).toMatchObject({
       id: 'campaign-baseline-outcomes',
@@ -656,23 +649,20 @@ describe('dashboard view query contracts', () => {
 
   it('compiles repository summaries without native history or run-context dependencies', () => {
     const page = dashboard.pages.find(
-      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-campaign'
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
-    const sourceNames = ['operational-value-repository-signals'];
+    const sourceNames = ['operational-value-measured-repositories'];
     for (const sourceName of sourceNames) {
-      const payload = compileDashboardViewPayloadQueries(page, 'operational-value-campaign', {
-        viewId: 'campaign-outcome-repositories',
+      const payload = compileDashboardViewPayloadQueries(page, 'operational-value', {
+        viewId: 'operational-value-signals',
         sourceNames: [sourceName],
-        routeParameters: { campaign: 'optimization' },
         queries
       });
 
       expect(payload.aliases).toHaveLength(1);
       expect(payload.queries.map(query => query.name)).not.toContain('operational-value-plot-series');
-      expect(payload.queries.at(-1)).toMatchObject({
-        name: payload.aliases[0],
-        filter: { predicates: expect.arrayContaining([{ field: 'campaign', equals: 'optimization' }]) }
-      });
+      expect(payload.queries.at(-1)?.name).toBe(payload.aliases[0]);
+      expect(payload.queries.some(query => query.name === 'operational-value-campaign-run-health')).toBe(false);
     }
   });
 

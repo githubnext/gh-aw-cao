@@ -7,6 +7,8 @@ Operational value is the degree to which a workflow's intended repository outcom
 
 It measures repository outcomes rather than workflow runs, generated output, or an agent's assessment. A person or another system achieving the same outcome must count as success under the same contract.
 
+The dashboard's **Operational Value** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
+
 CAO uses one shared campaign module for both collection paths:
 
 - By default, scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model. Retention keeps one observation per declared cadence bucket: closed cadence-aligned observations remain fixed, while repeated collections replace the latest observation in the still-open bucket.
