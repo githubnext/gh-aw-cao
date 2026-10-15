@@ -10,13 +10,14 @@ import {
   serializeGhAwLogsJsonl,
 } from "../../activity/gh-aw-logs.mjs";
 
-test("Activity run readers retain schema-v2 and schema-v4 runs in mixed shards", async () => {
-  const runs = [{ run_id: 303 }, { run_id: 404 }];
+test("Activity run readers retain schema-v2, schema-v4 and schema-v5 runs in mixed shards", async () => {
+  const runs = [{ run_id: 303 }, { run_id: 404 }, { run_id: 505 }];
   const content = [
     { schema_version: 2, kind: "run", run: runs[0] },
     { schema_version: 4, kind: "workflow_runs", payload: [] },
     { schema_version: 4, kind: "run", run: runs[1] },
-    { schema_version: 5, kind: "run", run: { run_id: 505 } },
+    { schema_version: 5, kind: "run", run: runs[2] },
+    { schema_version: 6, kind: "run", run: { run_id: 606 } },
   ].map((envelope) => JSON.stringify(envelope)).join("\n") + "\n";
   assert.deepEqual(parseGhAwLogsJsonl(content), runs);
   assert.deepEqual(parseGhAwLogsJsonl(serializeGhAwLogsJsonl(runs)), runs);

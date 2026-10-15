@@ -572,8 +572,7 @@ describe('dashboard document validation', () => {
     delete floor.config.sources;
     header.config = { sources: { presentation: 'overview-header-presentation' } };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    const links = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'link-button-list');
-    links.config.sources = { status: 'overview-factory-status' };
+    header.config.sources = { status: 'overview-factory-status' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
@@ -1265,7 +1264,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as declarative factory and campaign navigation elements', () => {
+  it('defines Overview as declarative factory elements without campaign navigation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
@@ -1288,22 +1287,10 @@ describe('dashboard document validation', () => {
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),
         layout: 'full'
-      }),
-      expect.objectContaining({
-        id: 'overview-campaigns',
-        data: { sources: ['overview-campaign-links'] },
-        mark: 'element',
-        element: 'link-button-list',
-        config: expect.objectContaining({
-          'label-field': 'campaign-name',
-          'link-field': 'campaign-dashboard-link',
-          'fallback-icon': 'goal'
-        }),
-        layout: 'full'
       })
     ]);
     expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-campaigns'))
-      .not.toHaveProperty('description');
+      .toBeUndefined();
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 

@@ -1,7 +1,8 @@
 export const accessibilityStyles = `@media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  ::view-transition-old(root), ::view-transition-new(root),
+  ::view-transition-group(dashboard-tab-content), ::view-transition-old(dashboard-tab-content), ::view-transition-new(dashboard-tab-content) { animation: none; }
   .dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton-block, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
   .dashboard-view-skeleton-block { opacity: 1; }
 }

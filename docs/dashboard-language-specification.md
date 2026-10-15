@@ -1299,6 +1299,25 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
+For CLI-action presentation and confirmation, canvas CLI-action mode also
+includes explicitly enabled local admin previews (`local-server.mjs --admin`).
+This host capability does not change the document vocabulary, copy-only
+restrictions, action authority, or per-run confirmation requirements. Commands
+start headlessly and stream output into a scrollable, read-only terminal inside
+the approval dialog. The unchecked **Open terminal window** interaction option
+moves the same terminal into a separate, reusable dialog without changing
+the command or starting another execution. Closing that window returns output
+to the approval dialog;
+explicit cancellation stops the command. Command streams use a read-only
+terminal emulator; terminal emulation cannot be
+expressed by data marks and does not query or derive dashboard evidence.
+Each approval dialog executes at most once: its action button disappears when
+execution starts, leaving **Cancel command** while running and **Close** after
+completion or cancellation. Another run requires reopening the approval dialog.
+While running, the terminal dialog fills the viewport and hides the approval
+content, leaving terminal output and cancellation controls. Terminal URLs use
+HTTP/HTTPS link detection and open separately without opener access.
+
 A list may declare `list.actions`, a non-empty sequence of unique view-placed
 CLI action IDs, alongside its existing `list.action`. Actions render in declared
 order beside the list heading, including when the list has no rows.

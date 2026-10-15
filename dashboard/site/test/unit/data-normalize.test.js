@@ -196,6 +196,20 @@ describe('canonical normalization', () => {
     ]);
   });
 
+  it('deduplicates standalone operational values without colliding with campaign measurements', () => {
+    const common = { repository: 'octo/api', valueId: 'remaining-alerts', timestamp: '2026-09-24T10:00:00Z', value: 0 };
+    const standalone = observation('operational-value', 'standalone', common.timestamp, common);
+    const batch = normalize([
+      standalone, standalone,
+      observation('operational-value', 'campaign', common.timestamp, { ...common, campaign: 'alpha', value: 4 })
+    ]);
+    expect(batch.operationalValues).toHaveLength(2);
+    expect(batch.operationalValues.find(row => row.campaign === undefined)?.value).toBe(0);
+    expect(new Set(batch.operationalValues.map(row => row.id)).size).toBe(2);
+    expect(batch.operationalValues.find(row => row.campaign === 'alpha')?.id)
+      .toBe(`operational-value:${encodeURIComponent(`alpha:octo/api:remaining-alerts:${common.timestamp}`)}`);
+  });
+
   it('orders run-linked records independently of ingestion order', () => {
     const records = [
       ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],

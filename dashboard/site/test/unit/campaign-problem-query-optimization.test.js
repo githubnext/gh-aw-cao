@@ -18,9 +18,44 @@ const privateQueries = new Set([
   'campaign-problem-runtime-partitions'
 ]);
 
-// Only the changed declarations are restored; all shared dependencies execute
-// from the production document in both graphs.
+// Retain the retired runtime queries only in the pre-optimization baseline.
+// Shared dependencies still execute from the production document in both graphs.
+const retiredRuntimeQueries = [
+  {
+    name: 'campaign-runtime-problem-candidates',
+    from: 'campaign-runtime-health-groups',
+    compute: [
+      { as: 'has-current-failure', function: 'greater-than', args: [{ field: 'failure-count' }, { value: 0 }] },
+      { as: 'problem-kind', function: 'coalesce', args: [{ value: 'failure' }, { value: 'failure' }] }
+    ]
+  },
+  {
+    name: 'campaign-current-runtime-failures',
+    from: 'campaign-runtime-problem-candidates',
+    filter: { predicates: [{ field: 'has-current-failure', equals: true }] },
+    'order-by': [
+      { field: 'failure-count', direction: 'desc' },
+      { field: 'workflow-name', direction: 'asc' },
+      { field: 'runtime-repository', direction: 'asc' }
+    ]
+  },
+  {
+    name: 'campaign-runtime-problems',
+    from: 'campaign-current-runtime-failures',
+    union: ['campaign-unobserved-orchestrators'],
+    'order-by': [
+      { field: 'failure-count', direction: 'desc' },
+      { field: 'workflow-name', direction: 'asc' },
+      { field: 'runtime-repository', direction: 'asc' }
+    ]
+  }
+];
 const baselineQueries = queries
+  .flatMap((/** @type {{ name: string }} */ query) => {
+    if (query.name === 'workflow-run-observation-counts') return [...retiredRuntimeQueries.slice(0, 2), query];
+    if (query.name === 'dispatches') return [retiredRuntimeQueries[2], query];
+    return [query];
+  })
   .filter((/** @type {{ name: string }} */ query) => !privateQueries.has(query.name))
   .map((/** @type {import('../../src/data/queries/declarative.js').DashboardQuery & { subject: string, objective?: string, acceptance?: string }} */ query) => {
     if (query.name === 'campaign-problem-runs') {

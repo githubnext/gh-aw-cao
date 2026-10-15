@@ -4,6 +4,10 @@ import { renderDeclaredCliAction, setDeclaredCliActions } from '../../src/compon
 import { validateDashboardDocument } from '../../src/validator.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
+vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
+  mountTerminal: () => ({ write: vi.fn(), reset: vi.fn() })
+}));
+
 const definition = /** @type {import('../../src/dialog-selector.js').DialogSelector} */ ({
   label: 'Repository', 'debounce-ms': 300,
   query: { command: 'gh search repos', fields: ['fullName', 'description'], limit: 20 },
@@ -205,6 +209,7 @@ describe('declarative external dialog selector', () => {
     expect(confirm.textContent).toBe('Add repository');
     expect(confirm.disabled).toBe(false);
     confirm.click();
+    await vi.dynamicImportSettled();
     await vi.advanceTimersByTimeAsync(0);
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ id: action.id, arguments: {}, values: { repository: 'octo/repo' } });
     expect(root.querySelector('.cli-action-status')?.textContent).toBe('Completed');

@@ -269,6 +269,9 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
 	values.Set("scope", "read:org")
+	if strings.HasPrefix(oauth.config.ClientID, "Iv") {
+		values.Set("scope", "offline_access")
+	}
 	values.Set("prompt", "select_account")
 	oauth.logBranch("login.account_selection_requested")
 	target.RawQuery = values.Encode()

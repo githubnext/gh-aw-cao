@@ -103,6 +103,7 @@ type Coordinates struct {
 	Repository     string
 	APIURL         string
 	Path           string
+	Format         string
 	Ref            string
 	ResolvedCommit string
 	Readme         string
@@ -122,7 +123,27 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 	if len(source) > maxManifestBytes {
 		return Package{}, fmt.Errorf("package manifest exceeds size limit")
 	}
+	workflow := coordinates.Format == "workflows"
+	body := ""
+	if workflow {
+		document := workflowDocumentPattern.FindStringSubmatch(strings.ReplaceAll(source, "\r\n", "\n"))
+		if document == nil || !workflowTriggerPattern.MatchString(document[1]) {
+			return Package{}, nil
+		}
+		source, body = document[1], strings.TrimSpace(document[2])
+		if scalar(source, "private") == "true" {
+			return Package{}, nil
+		}
+	}
 	name := scalar(source, "name")
+	if name == "" && workflow {
+		if title := workflowTitlePattern.FindStringSubmatch(body); title != nil {
+			name = strings.TrimSpace(title[1])
+		} else {
+			parts := strings.Split(coordinates.Path, "/")
+			name = strings.TrimSuffix(parts[len(parts)-1], ".md")
+		}
+	}
 	if name == "" {
 		return Package{}, fmt.Errorf("package manifest name is required")
 	}
@@ -131,12 +152,36 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 	readmePath := coordinates.ReadmePath
 	if readme == "" {
 		readmePath = ""
+		if workflow && body != "" {
+			readme, readmePath = body, coordinates.Path
+		}
 	}
 	version := scalar(source, "version")
 	if version == "" {
 		version = coordinates.Ref
 	}
 	packagePath := awManifestSuffix.ReplaceAllString(coordinates.Path, "")
+	addCLI := "./cao.sh"
+	if workflow {
+		packagePath, addCLI = coordinates.Path, "gh aw"
+		contents = []string{coordinates.Path}
+	}
+	description := scalar(source, "description")
+	if workflow && workflowBlockIndicatorPattern.MatchString(description) {
+		lines := ""
+		if block := workflowDescriptionPattern.FindStringSubmatch(source); block != nil {
+			lines = strings.TrimSpace(block[1])
+		}
+		parts := strings.Split(lines, "\n")
+		for index := range parts {
+			parts[index] = strings.TrimSpace(parts[index])
+		}
+		separator := "\n"
+		if strings.HasPrefix(description, ">") {
+			separator = " "
+		}
+		description = strings.Join(parts, separator)
+	}
 	sourceCoordinate := coordinates.Repository
 	if packagePath != "" {
 		sourceCoordinate += "/" + packagePath
@@ -160,7 +205,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		RegistryName:       coordinates.RegistryName,
 		RegistryPrecedence: coordinates.Precedence,
 		Name:               name,
-		Description:        scalar(source, "description"),
+		Description:        description,
 		Publisher:          publisher,
 		Repository:         coordinates.Repository,
 		RepositoryLink:     repositoryLink(coordinates.Repository, coordinates.APIURL),
@@ -174,7 +219,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		Readme:             readme,
 		ReadmePath:         readmePath,
 		Source:             sourceCoordinate,
-		AddCommand:         "./cao.sh add " + sourceCoordinate,
+		AddCommand:         addCLI + " add " + sourceCoordinate,
 	}, nil
 }
 
@@ -291,9 +336,14 @@ func scalar(source, name string) string {
 }
 
 var (
-	includesBlockPattern = regexp.MustCompile(`(?m)^includes:[ \t]*\n((?:^[ \t]+.*\n?)*)`)
-	includesLinePattern  = regexp.MustCompile(`^\s*-\s+(?:source:\s+)?([^#]+?)\s*$`)
-	newlinePattern       = regexp.MustCompile(`\r?\n`)
+	workflowDocumentPattern       = regexp.MustCompile(`^---\n([\s\S]*?)\n---(?:\n|$)([\s\S]*)$`)
+	workflowTriggerPattern        = regexp.MustCompile(`(?m)^on[ \t]*:`)
+	workflowTitlePattern          = regexp.MustCompile(`(?m)^#\s+(.+)$`)
+	workflowBlockIndicatorPattern = regexp.MustCompile(`^[|>][-+]?$`)
+	workflowDescriptionPattern    = regexp.MustCompile(`(?m)^description:[ \t]*[|>][-+]?[ \t]*\n((?:[ \t]+[^\n]*(?:\n|$)|\n)*)`)
+	includesBlockPattern          = regexp.MustCompile(`(?m)^includes:[ \t]*\n((?:^[ \t]+.*\n?)*)`)
+	includesLinePattern           = regexp.MustCompile(`^\s*-\s+(?:source:\s+)?([^#]+?)\s*$`)
+	newlinePattern                = regexp.MustCompile(`\r?\n`)
 )
 
 // includes reads the manifest's "includes:" block, mirroring the includes()
@@ -365,11 +415,29 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		prefix = registry.Path + "/"
 	}
 	entries, truncated := manifestEntries(rawTree, prefix)
+	workflow := registry.Format == "workflows"
+	if workflow {
+		entries, truncated = workflowEntries(rawTree, prefix)
+	}
 	if truncated {
 		resolveLog.Printf("registry manifests truncated registry_id=%s limit=%d",
 			registry.ID, maxPackagesPerRegistry)
 	}
 	readmes := readmeEntries(rawTree, prefix)
+	workflowDocs := map[string]treeEntry{}
+	if workflow {
+		for _, raw := range rawTree {
+			entry, ok := raw.(map[string]any)
+			if !ok || entry["type"] != "blob" {
+				continue
+			}
+			path, _ := entry["path"].(string)
+			sha, _ := entry["sha"].(string)
+			if strings.HasPrefix(path, "docs/") && sha != "" {
+				workflowDocs[path] = treeEntry{path: path, sha: sha}
+			}
+		}
+	}
 
 	stars, forks := repositoryCounts(ctx, opts, fmt.Sprintf("%s/repos/%s", base, repositoryPath), token)
 
@@ -385,12 +453,17 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		if err != nil {
 			return nil, err
 		}
-		if scalar(manifest, "private") == "true" {
+		if !workflow && scalar(manifest, "private") == "true" {
 			skippedPrivate++
 			continue
 		}
 		readme, readmePath := "", ""
-		if readmeEntry, ok := readmes[strings.TrimSuffix(entry.path, "aw.yml")]; ok {
+		readmeEntry, hasReadme := readmes[strings.TrimSuffix(entry.path, "aw.yml")]
+		if workflow {
+			parts := strings.Split(entry.path, "/")
+			readmeEntry, hasReadme = workflowDocs["docs/"+parts[len(parts)-1]]
+		}
+		if hasReadme {
 			readme = fetchReadme(ctx, opts, base, repositoryPath, token, readmeEntry.sha)
 			if readme != "" {
 				readmePath = readmeEntry.path
@@ -403,6 +476,7 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 			Repository:     registry.Repository,
 			APIURL:         apiBase(registry),
 			Path:           entry.path,
+			Format:         registry.Format,
 			Ref:            registry.Ref,
 			ResolvedCommit: commit,
 			Readme:         readme,
@@ -411,12 +485,38 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		if err != nil {
 			return nil, err
 		}
+		if pkg.ID == "" {
+			continue
+		}
 		pkg.Stars, pkg.Forks = stars, forks
 		packages = append(packages, pkg)
 	}
 	resolveLog.Printf("resolved registry registry_id=%s entries=%d packages=%d skipped_private=%d",
 		registry.ID, len(entries), len(packages), skippedPrivate)
 	return packages, nil
+}
+
+func workflowEntries(rawTree []any, prefix string) (entries []treeEntry, truncated bool) {
+	for _, raw := range rawTree {
+		entry, ok := raw.(map[string]any)
+		if !ok || entry["type"] != "blob" {
+			continue
+		}
+		path, _ := entry["path"].(string)
+		sha, _ := entry["sha"].(string)
+		if !strings.HasPrefix(path, prefix) || sha == "" || !isSafePath(path) {
+			continue
+		}
+		relative := strings.TrimPrefix(path, prefix)
+		if strings.Contains(relative, "/") || !strings.HasSuffix(relative, ".md") || strings.EqualFold(relative, "README.md") {
+			continue
+		}
+		if len(entries) >= maxPackagesPerRegistry {
+			return entries, true
+		}
+		entries = append(entries, treeEntry{path: path, sha: sha})
+	}
+	return entries, false
 }
 
 // decodeBlobOutcome names why decodeBase64Blob did or did not confirm a

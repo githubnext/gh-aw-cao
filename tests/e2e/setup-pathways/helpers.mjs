@@ -52,7 +52,7 @@ async function createCleanRepository(t, repositories) {
   await writeFile(commandLog, "");
   await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
 set -euo pipefail
-if [[ "\${1:-}" == "aw" ]]; then
+if [[ "\${1:-}" == "aw" || "\${1:-}" == "--version" ]]; then
   exec ${JSON.stringify(realGh)} "$@"
 fi
 printf '%s\\n' "$(node -e 'console.log(JSON.stringify(process.argv.slice(1)))' "$@")" >> "$FAKE_GITHUB_COMMAND_LOG"
@@ -61,6 +61,10 @@ if [[ "$*" == "auth status" ]]; then
 fi
 if [[ "$*" == "repo view --json nameWithOwner --jq .nameWithOwner" ]]; then
   printf '%s\\n' "$FAKE_CONTROL_REPOSITORY"
+  exit 0
+fi
+if [[ "\${1:-}" == "api" && "\${2:-}" == "repos/$FAKE_CONTROL_REPOSITORY/pages" ]]; then
+  printf '%s\\n' '{"build_type":"workflow","public":false}'
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "repo view" && "\${4:-}" == "--json" ]]; then

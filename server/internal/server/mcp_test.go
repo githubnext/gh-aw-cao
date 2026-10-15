@@ -38,7 +38,14 @@ func TestMCPDisabledEndpointIsAbsent(t *testing.T) {
 func TestMCPRejectsCatalogQueriesWithoutLoadedDefinitions(t *testing.T) {
 	app := newMCPTestApp(t, true)
 	definitions := app.config.DashboardQueries
-	for _, name := range []string{"all", "indexing-campaigns-table-count"} {
+	catalog, err := readJSONFile[agentCatalog](app.config.AgentCatalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Queries) == 0 {
+		t.Fatal("agent catalog has no queries to verify")
+	}
+	for _, name := range []string{"all", catalog.Queries[0].ID} {
 		t.Run(name, func(t *testing.T) {
 			app.config.DashboardQueries = nil
 			if name != "all" {

@@ -183,8 +183,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
   };
 
   for (const viewport of [
-    { width: 1440, height: 900, introColumns: 2, colorScheme: 'dark', itemBackground: 'rgb(21, 27, 35)' },
-    { width: 390, height: 844, introColumns: 1, colorScheme: 'light', itemBackground: 'rgb(246, 248, 250)' }
+    { width: 1440, height: 900, introColumns: 2, colorScheme: 'dark' },
+    { width: 390, height: 844, introColumns: 1, colorScheme: 'light' }
   ]) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme: /** @type {'dark'|'light'} */ (viewport.colorScheme) });
@@ -205,24 +205,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(stations.nth(3).getByRole('link', { name: '1', exact: true })).toHaveAttribute('href', '#page-graders');
     await expect(factory.locator('.factory-stations')).toHaveCSS('grid-template-columns',
       viewport.width > 700 ? /^([\d.]+px ){3}[\d.]+px$/ : /^[\d.]+px [\d.]+px$/);
-    const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
-    await expect(campaigns).toBeVisible();
-    await expect(campaigns.locator(':scope > header')).toHaveCSS('clip-path', 'inset(50%)');
-    await expect(campaigns.locator(':scope > header > h2')).toHaveText('Campaigns');
-    await expect(campaigns.locator(':scope > header > p')).toHaveCount(0);
-    await expect(campaigns.locator('.link-button-list')).toBeVisible();
-    await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
-    const campaignLink = campaigns.locator('.link-button-list-item > a').first();
-    await expect(campaignLink).toHaveCSS('background-color', viewport.itemBackground);
-    await campaignLink.hover();
-    await expect(campaignLink).toHaveCSS('background-color', /^color\(srgb [\d.]+ [\d.]+ [\d.]+\)$/);
-    await expect(campaigns).toHaveCSS('row-gap', '12px');
+    await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveCount(0);
+    await expect(factory.locator('.link-button-list')).toHaveCount(0);
+    await expect(factory.getByRole('link', { name: /campaign dashboard/ })).toHaveCount(0);
     for (const view of await factory.locator(':scope > .custom-view').all()) {
       await expect(view).toHaveCSS('border-top-width', '0px');
       await expect(view).toHaveCSS('border-left-width', '0px');
     }
     await expect(factory.locator('.factory-floor')).toHaveCSS('border-bottom-width', '0px');
-    await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();
     const introBounds = await factory.locator(':scope > .factory-intro').boundingBox();
@@ -247,12 +237,6 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     } else {
       await expect(page.locator('.mobile-nav-menu')).toBeVisible();
     }
-    await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
-    await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=dependabot');
-    await expect(campaigns.locator('.link-button-list-label-badge:not([hidden])')).toHaveText('Disabled');
-    await expect(campaigns.locator('.link-button-list-label-badge:not([hidden])')).toBeVisible();
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
@@ -419,17 +403,17 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 7,
+    sourceLoadCalls: 6,
     pageLoadCalls: 0,
     header: true,
     floor: true,
-    campaigns: true,
+    campaigns: false,
     pageSkeletons: 0,
     pageBusy: null,
     headerBusy: null,
     floorBusy: null,
-    campaignsBusy: '',
-    campaignSkeletonRows: 3,
+    campaignsBusy: undefined,
+    campaignSkeletonRows: 0,
     headingPending: 1,
     rhythmPending: 1,
     stationsPending: 4

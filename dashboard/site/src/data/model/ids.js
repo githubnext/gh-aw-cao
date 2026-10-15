@@ -76,15 +76,15 @@ export function issueId(owner, repository, issueNumber) {
 }
 
 /**
- * @param {{ campaign: string, repository: string, valueId: string, observedAt: string }} input
+ * @param {{ campaign?: string, repository: string, valueId: string, observedAt: string }} input
  */
 export function operationalValueId({ campaign, repository, valueId, observedAt }) {
-  const campaignId = campaign.trim().toLowerCase();
+  const campaignId = campaign?.trim().toLowerCase() ?? '';
   const coordinate = repository.trim().toLowerCase();
   const metric = valueId.trim().toLowerCase();
   const timestamp = observedAt.trim();
-  if (!campaignId || !coordinate || !metric || !timestamp) {
-    throw new TypeError('Operational value campaign, repository, value ID, and timestamp are required');
+  if (!coordinate || !metric || !timestamp) {
+    throw new TypeError('Operational value repository, value ID, and timestamp are required');
   }
   return `operational-value:${encodeURIComponent(`${campaignId}:${coordinate}:${metric}:${timestamp}`)}`;
 }

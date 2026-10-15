@@ -41,6 +41,14 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         await writeFile(join(destination, 'sources.json'), JSON.stringify({
+          campaigns: {
+            metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
+            rows: empty ? [] : [{
+              campaign: 'demo', 'campaign-name': 'Demo campaign', 'campaign-version': 'v1',
+              'campaign-current-version': 'v2', 'campaign-update-state': 'update-available',
+              'campaign-registration': 'true'
+            }]
+          },
           repositories: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: [{ organization: 'acme', repository: 'control', 'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
@@ -54,12 +62,29 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       }
     });
     try {
+      await page.addInitScript(() => {
+        const start = document.startViewTransition?.bind(document);
+        if (!start) return;
+        document.startViewTransition = (update) => {
+          const root = document.documentElement;
+          root.dataset.lastTransitionKind = root.dataset.navigationTransition;
+          root.dataset.lastTransitionDirection = root.dataset.navigationDirection ?? '';
+          root.dataset.lastTransitionRootName = getComputedStyle(root).viewTransitionName;
+          const body = document.querySelector('.dashboard-page:not([hidden]) > :is(.custom-view-grid, .page-layout-grid)');
+          root.dataset.lastTransitionBodyName = body ? getComputedStyle(body).viewTransitionName : '';
+          return start(update);
+        };
+      });
       await page.setViewportSize({ width, height });
       await page.goto(`${preview.url}/#page-maintenance`);
       const add = page.getByRole('button', { name: 'Add repository', exact: true });
       await expect(add).toBeVisible();
       const headers = page.locator('#page-maintenance .document-list-header');
-      await expect(headers).toHaveCount(2);
+      await expect(headers).toHaveCount(1);
+      const tabs = page.locator('#page-maintenance [data-route-tabs]');
+      await expect(tabs.getByRole('link', { name: 'Repositories', exact: true })).toHaveAttribute('aria-current', 'page');
+      await expect(tabs.getByRole('link', { name: 'Campaigns', exact: true })).toHaveAttribute('href', '#page-maintenance-campaigns');
+      await expect(page.locator('#page-maintenance').getByRole('region', { name: 'CAO packages', exact: true })).toHaveCount(0);
       await expect(page.locator('#page-maintenance .view-description-tooltip')).toHaveCount(0);
       for (const header of await headers.all()) {
         const geometry = await header.evaluate((element) => {
@@ -102,6 +127,47 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       const repositories = page.getByRole('region', { name: 'Repositories', exact: true });
       if (empty) await expect(repositories.getByText('No Agentic Workflow compiler versions were observed.')).toBeVisible();
       else await expect(repositories.getByText('acme/control', { exact: true }).first()).toBeVisible();
+      if (!empty && !crowded && [1440, 390].includes(width)) {
+        await page.screenshot({ path: testInfo.outputPath(`updates-repositories-${width}.png`), fullPage: true });
+        await testInfo.attach(`updates-repositories-${width}`, { path: testInfo.outputPath(`updates-repositories-${width}.png`), contentType: 'image/png' });
+      }
+      await tabs.getByRole('link', { name: 'Repositories', exact: true }).focus();
+      await page.keyboard.press('ArrowRight');
+      const campaignsTab = tabs.getByRole('link', { name: 'Campaigns', exact: true });
+      await expect(campaignsTab).toBeFocused();
+      await campaignsTab.press('Enter');
+      const campaignPage = page.locator('#page-maintenance-campaigns');
+      await expect(campaignPage).toBeVisible();
+      const documentRoot = page.locator('html');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-kind', 'tab');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-direction', '');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-root-name', 'none');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-body-name', 'dashboard-tab-content');
+      await expect(campaignPage.locator('[data-route-tabs]').getByRole('link', { name: 'Campaigns', exact: true }))
+        .toHaveAttribute('aria-current', 'page');
+      await expect(campaignPage.getByRole('region', { name: 'CAO packages', exact: true })).toBeVisible();
+      if (empty) await expect(campaignPage.getByText('No CAO campaign packages were observed.')).toBeVisible();
+      else {
+        await expect(campaignPage.getByText('Demo campaign', { exact: true }).first()).toBeVisible();
+        await expect(campaignPage.getByRole('button', { name: 'Update', exact: true })).toBeVisible();
+      }
+      await expect(campaignPage.getByRole('button', { name: 'Add repository', exact: true })).toHaveCount(0);
+      if (!empty && !crowded && [1440, 390].includes(width)) {
+        await page.screenshot({ path: testInfo.outputPath(`updates-campaigns-${width}.png`), fullPage: true });
+        await testInfo.attach(`updates-campaigns-${width}`, { path: testInfo.outputPath(`updates-campaigns-${width}.png`), contentType: 'image/png' });
+      }
+      await page.reload();
+      await expect(campaignPage.locator('[data-route-tabs]')).toHaveAttribute('data-route-tabs-current', 'campaigns');
+      await campaignPage.getByRole('link', { name: 'Repositories', exact: true }).click();
+      await expect(add).toBeVisible();
+      await expect(documentRoot).toHaveAttribute('data-last-transition-kind', 'tab');
+      await page.goBack();
+      await expect(campaignPage).toBeVisible();
+      await expect(documentRoot).toHaveAttribute('data-last-transition-kind', 'tab');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-direction', '');
+      await page.goForward();
+      await expect(add).toBeVisible();
+      await expect(documentRoot).toHaveAttribute('data-last-transition-kind', 'tab');
       await add.click();
       const dialog = page.getByRole('dialog', { name: 'Approve Add repository' });
       await expect(dialog.getByText(/Confirm the exact effect of/)).toHaveCount(0);
@@ -166,6 +232,13 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       await page.keyboard.press('Escape');
       await expect(dialog).not.toBeVisible();
       await expect(add).toBeFocused();
+      if (width <= 700) {
+        await page.locator('.mobile-nav-menu > summary').click();
+        await page.locator('[data-mobile-nav-page-id="configuration"]').click();
+      } else await page.locator('[data-nav-page-id="configuration"]').first().click();
+      await expect(page.locator('#page-configuration')).toBeVisible();
+      await expect(documentRoot).toHaveAttribute('data-last-transition-kind', 'page');
+      await expect(documentRoot).toHaveAttribute('data-last-transition-direction', 'forward');
     } finally {
       finishSearch?.();
       await page.goto('about:blank');

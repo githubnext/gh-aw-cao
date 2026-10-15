@@ -13,8 +13,8 @@ questions without requiring you to inspect raw workflow activity:
 The page presents factory activity across CAO and its targeted repositories.
 Its status header and weekly rhythm summarize current activity, while a
 Factory health station measures all registered workflows and a repository-coverage
-station connects that activity to repository scope. A campaign links list gives direct navigation into every
-registered campaign's Insights view. These are related operational signals,
+station connects that activity to repository scope. Use the Campaigns page to
+find registered campaigns and open their Insights views. These are related operational signals,
 not stages in a conversion funnel.
 
 ## What Overview shows
@@ -33,7 +33,6 @@ not stages in a conversion funnel.
 | **Repositories (coverage station)** | Registered repositories that received a successful worker delivery against the total registered scope. | Repositories for the complete inventory and delivery evidence. |
 | **Issues & PRs** | Retained issue and pull request safe outputs. | Issues for the underlying safe outputs. |
 | **Value gains** | Observed grader results, not verified improvements. | Graders for the retained observations. |
-| **Campaigns list** | One navigation row per registered campaign, with a problem indicator when one exists. | Each campaign's dedicated Insights view. |
 
 The selected dashboard time range applies before Overview calculates these
 values. The start time is inclusive and the end time is exclusive. Weekly
@@ -58,8 +57,6 @@ score:
 - Repository coverage counts registered repositories that received at least
   one successful worker delivery; a repository can be registered without yet
   receiving work during the selected time range.
-- A campaign link opens that campaign's Insights view; a problem indicator
-  there reflects retained workflow or target errors, not operational value.
 
 Missing evidence remains unavailable rather than becoming a healthy zero.
 
@@ -79,8 +76,6 @@ defines the snapshot and its requirements.
 | Source | How Overview uses it |
 | --- | --- |
 | `overview-runs` | Counts active, successful, and failed runs; builds Weekly rhythm, current workflow failure streaks, and the run-motion status input. |
-| `campaigns` | Lists registered campaigns for campaign links. |
-| `campaign-runtime-problem-counts` | Flags campaigns with retained workflow or target errors for campaign link indicators only. |
 | `repositories` | Counts canonical repository identities in the observed control-plane scope for repository coverage. |
 | `workflows` | Supplies the all-workflow Factory health denominator, identifies declared workers, and enriches run context. |
 | `outcomes` | Supplies delivery evidence for the repository-coverage station. |

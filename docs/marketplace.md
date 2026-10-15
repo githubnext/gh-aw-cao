@@ -1,22 +1,32 @@
 ---
-title: Browse Campaign Packages
-description: Configure registries and browse campaign packages without granting the dashboard installation authority.
+title: Browse Campaigns and Workflows
+description: Configure registries and browse campaigns and individual workflows without granting the dashboard installation authority.
 ---
 
 The **Marketplace** page appears under **Updates** in the CAO dashboard. It
-provides a read-only view of campaign packages from an ordered set of registries.
+provides a read-only view of campaign packages and individual workflows from an
+ordered set of registries. New CAO policies include both the official CAO catalog
+and the [Agentics collection](https://github.com/githubnext/agentics).
 Selecting a package shows its published README beside an **About** panel
 carrying its normalized metadata, provenance, contents, and immutable source
 coordinate, with an **Add** button above both.
 
 A package README is the `README.md` published beside its `aw.yml` manifest. A
 package without one simply shows no README preview.
+Agentics workflow previews use their matching `docs/NAME.md` documentation, or
+the workflow prompt body when no documentation is available.
 
 The dashboard does not contact registries or install packages. Its **Add**
 action only copies the canonical command:
 
 ```sh
 ./cao.sh add OWNER/REPOSITORY[/PATH]@COMMIT
+```
+
+Individual workflow entries instead copy:
+
+```sh
+gh aw add githubnext/agentics/workflows/WORKFLOW.md@COMMIT
 ```
 
 Review the command and run it separately from a trusted checkout.
@@ -57,6 +67,15 @@ registry wins.
           "auth": { "type": "none" }
         },
         {
+          "id": "agentics",
+          "name": "Agentics workflows",
+          "repository": "githubnext/agentics",
+          "path": "workflows",
+          "format": "workflows",
+          "ref": "main",
+          "auth": { "type": "none" }
+        },
+        {
           "id": "internal",
           "name": "Internal campaigns",
           "repository": "acme/cao-packages",
@@ -77,6 +96,11 @@ registry wins.
 The official registry is ordinary configuration. Remove its entry to omit it,
 or replace it with public, private, or GitHub Enterprise registries. Registry
 IDs must be unique and stable.
+For existing control repositories, add the Agentics entry above to enable its
+discovery. `format` defaults to `packages` for existing registries; `workflows`
+discovers Markdown workflows directly under the configured path, not nested
+shared fragments. Registry discovery never enrolls repositories or enables
+workflow execution.
 
 ## Authenticate private registries
 

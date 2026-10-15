@@ -27,7 +27,7 @@ import { discoverWorkflows, pruneDashboardFile, analyzeDashboardComplexityFile }
 // Commands whose first argument may be an identifier instead of an option.
 const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query', 'prompt']);
 
-const COMMANDS = new Set(['init', 'setup', 'quickstart', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
+const COMMANDS = new Set(['init', 'setup', 'quickstart', 'setup-auth', 'add', 'update', 'upgrade-gh-aw', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'recycle-cache', 'issue-status', 'query', 'prompt', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'validate', 'download', 'hash-payloads', 'activity-stats', 'validate-activity-data', 'gh', 'pages', 'queries', 'query-info', 'mcp']);
 
 export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;

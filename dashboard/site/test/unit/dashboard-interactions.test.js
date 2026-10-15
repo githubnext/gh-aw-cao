@@ -5,6 +5,7 @@ describe('dashboard-interactions debug logging', () => {
   afterEach(() => {
     Reflect.deleteProperty(document, 'startViewTransition');
     Reflect.deleteProperty(document.documentElement.dataset, 'navigationDirection');
+    Reflect.deleteProperty(document.documentElement.dataset, 'navigationTransition');
     vi.doUnmock('../../src/debug.js');
     vi.resetModules();
   });
@@ -72,7 +73,8 @@ describe('dashboard-interactions debug logging', () => {
 
     expect(output.debug).toHaveBeenCalledWith('[cao:dashboard-interactions]', {
       event: 'transition-started',
-      direction: 'backward'
+      direction: 'backward',
+      kind: 'page'
     });
 
     finishTransition();
@@ -82,7 +84,8 @@ describe('dashboard-interactions debug logging', () => {
 
     expect(output.debug).toHaveBeenCalledWith('[cao:dashboard-interactions]', {
       event: 'transition-finished',
-      direction: 'backward'
+      direction: 'backward',
+      kind: 'page'
     });
   });
 });

@@ -1,13 +1,144 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 
 import {
   ensureGhAwAvailable,
   executeDashboardCommand,
   parseDashboardCommand,
   resolveGhAwCompilerVersion,
+  runDashboardCommandStreaming,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
+import * as bundledCliActions from "../../dashboard/cli-actions.mjs";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+
+test("the dashboard bundle and Copilot extension share the CLI action executor", () => {
+  assert.equal(executeDashboardCommand, bundledCliActions.executeDashboardCommand);
+  assert.equal(runDashboardCommandStreaming, bundledCliActions.runDashboardCommandStreaming);
+  assert.equal(parseDashboardCommand, bundledCliActions.parseDashboardCommand);
+  assert.equal(ensureGhAwAvailable, bundledCliActions.ensureGhAwAvailable);
+  assert.equal(resolveGhAwCompilerVersion, bundledCliActions.resolveGhAwCompilerVersion);
+});
+
+test("buffered CLI commands preserve results and bound captured output", { skip: process.platform === "win32" }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-buffered-command-"));
+  const executable = join(directory, "gh");
+  try {
+    await writeFile(executable, `#!/usr/bin/env node
+if (process.argv.includes("large.yml")) {
+  process.stdout.write("x".repeat(2 * 1024 * 1024));
+  setInterval(() => {}, 1000);
+} else {
+  process.stdout.write("result\\n");
+  process.stderr.write("diagnostic\\n");
+  process.exitCode = process.argv.includes("fail.yml") ? 2 : 0;
+}
+`);
+    await chmod(executable, 0o755);
+    const execute = (workflow, ghExecutable = executable) => executeDashboardCommand({
+      command: `gh workflow run ${workflow}`, ghExecutable,
+      workingDirectory: directory, githubToken: "test-fixture",
+    });
+    assert.deepEqual(await execute("success.yml"), {
+      ok: true, exitCode: 0, stdout: "result\n", stderr: "diagnostic\n",
+    });
+    const failed = await execute("fail.yml");
+    assert.equal(failed.ok, false);
+    assert.equal(failed.exitCode, 2);
+    assert.equal(failed.stderr, "diagnostic\n");
+    const oversized = await execute("large.yml");
+    assert.equal(oversized.ok, false);
+    assert.ok(Buffer.byteLength(oversized.stdout) <= 1024 * 1024);
+    await assert.rejects(execute("success.yml", join(directory, "missing")), /GitHub CLI is required/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("cancelling CLI preparation also stops its subprocesses", { skip: process.platform === "win32" }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-preparation-cancel-"));
+  const readyPath = join(directory, "ready");
+  const executable = join(directory, "gh");
+  const lifetime = new AbortController();
+  let descendant;
+  let pending;
+  const running = (pid) => {
+    const result = spawnSync("ps", ["-p", String(pid), "-o", "stat="], { encoding: "utf8" });
+    if (result.error) throw result.error;
+    if (result.status === 1) return false;
+    assert.equal(result.status, 0);
+    return !result.stdout.trim().startsWith("Z");
+  };
+  try {
+    const child = `process.on("SIGTERM", () => {});
+require("node:fs").writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+setInterval(() => {}, 1000);`;
+    await writeFile(executable, `#!/usr/bin/env node
+require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(child)}], { stdio: "inherit" });
+`);
+    await chmod(executable, 0o755);
+    pending = ensureGhAwAvailable({
+      ghExecutable: executable, workingDirectory: process.cwd(), signal: lifetime.signal,
+    });
+    for (let attempt = 0; attempt < 200 && !descendant; attempt += 1) {
+      const contents = await readFile(readyPath, "utf8").catch((error) => {
+        if (error.code === "ENOENT") return "";
+        throw error;
+      });
+      if (contents) descendant = Number(contents);
+      else await delay(10);
+    }
+    assert.ok(descendant, "Preparation subprocess must start before cancellation.");
+    lifetime.abort();
+    await assert.rejects(pending, { name: "AbortError" });
+    for (let attempt = 0; attempt < 100 && running(descendant); attempt += 1) await delay(10);
+    assert.equal(running(descendant), false, "Cancellation must stop preparation subprocesses.");
+  } finally {
+    lifetime.abort();
+    if (pending) await Promise.allSettled([pending]);
+    if (descendant && running(descendant)) process.kill(descendant, "SIGKILL");
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("streaming commands preserve split UTF-8 and terminate on cancellation", async () => {
+  const lifetime = new AbortController();
+  const output = [];
+  const result = await runDashboardCommandStreaming({
+    ghExecutable: process.execPath,
+    args: ["-e", "process.stdout.write(Buffer.from([0xe2])); setTimeout(() => { process.stdout.write(Buffer.from([0x9c, 0x93])); }, 20); setInterval(() => {}, 1000);"],
+    workingDirectory: process.cwd(),
+    signal: lifetime.signal,
+    onOutput: ({ data }) => { output.push(data); lifetime.abort(); },
+  });
+  assert.equal(output.join(""), "\u2713");
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "The CLI action was cancelled.");
+});
+
+test("stream cancellation also terminates CLI subprocesses", { skip: process.platform === "win32" }, async () => {
+  const lifetime = new AbortController();
+  const output = [];
+  const grandchild = `process.on("SIGTERM", () => { console.log("subprocess stopped"); process.exit(0); });
+console.log("subprocess ready");
+setInterval(() => {}, 1000);`;
+  const result = await runDashboardCommandStreaming({
+    ghExecutable: process.execPath,
+    args: ["-e", `require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(grandchild)}], { stdio: "inherit" });`],
+    workingDirectory: process.cwd(),
+    signal: lifetime.signal,
+    onOutput: ({ data }) => {
+      output.push(data);
+      if (data.includes("subprocess ready")) lifetime.abort();
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(output.join(""), /subprocess stopped/);
+});
 
 test("CLI actions read the gh-aw compiler version from cao.json", async () => {
   assert.equal(await resolveGhAwCompilerVersion(), "v0.92.0");
