@@ -24,6 +24,12 @@
   border-radius: 0.5rem;
 }
 
+:is(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus {
+  outline: 3px solid #1f6feb;
+  outline-offset: 0.25rem;
+  border-radius: 0.5rem;
+}
+
 :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button, summary):focus-visible,
 :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) a:focus-visible,
 :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) button:focus-visible,
@@ -34,6 +40,7 @@
 }
 
 :root[data-theme="dark"] .sl-skip-link:focus-visible,
+:root[data-theme="dark"] :is(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus,
 :root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button, summary):focus-visible,
 :root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) a:focus-visible,
 :root[data-theme="dark"] :where(.sidebar-pane, .right-sidebar-panel, .sl-markdown-content, .pagination-links, .sl-link-button) button:focus-visible,

@@ -38,6 +38,32 @@ const buildCommitShort = buildCommit.slice(0, 7);
 </footer>
 <ImageZoom />
 
+<script>
+  function enableSkipLinkFocus() {
+    const skipLink = document.querySelector(".sl-skip-link");
+    if (!(skipLink instanceof HTMLAnchorElement)) return;
+    if (skipLink.dataset.caoSkipFocusBound === "true") return;
+
+    const targetId = skipLink.getAttribute("href")?.startsWith("#") ? skipLink.getAttribute("href").slice(1) : "";
+    if (!targetId) return;
+
+    const target = document.getElementById(targetId);
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+
+    const focusTarget = () => {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    };
+
+    skipLink.addEventListener("click", () => requestAnimationFrame(focusTarget));
+    skipLink.dataset.caoSkipFocusBound = "true";
+  }
+
+  enableSkipLinkFocus();
+  document.addEventListener("astro:page-load", enableSkipLinkFocus);
+</script>
+
 <style>
   @layer starlight.components {
     .site-footer {
