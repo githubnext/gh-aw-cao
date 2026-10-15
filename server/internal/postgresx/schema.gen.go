@@ -496,6 +496,7 @@ var entityTables = map[string]entityTable{
 		{field: "version", name: "version", kind: "", sql: "TEXT"},
 	}},
 	"$operationalValues": {name: "operational_values", runtime: false, canonical: true, partitioned: false, columns: []entityColumn{
+		{field: "cadence-days", name: "cadence_days", kind: "numeric", sql: "NUMERIC"},
 		{field: "adoption-at", name: "adoption_at", kind: "timestamp", sql: "TIMESTAMPTZ"},
 		{field: "baseline-value", name: "baseline_value", kind: "numeric", sql: "NUMERIC"},
 		{field: "campaign", name: "campaign", kind: "", sql: "TEXT"},

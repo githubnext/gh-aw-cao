@@ -19,7 +19,7 @@ const metadata = {
 
 describe('Audit dashboard view', () => {
   it('keeps the hosted operational value query graph in sync with the dashboard', () => {
-    const names = ['campaign-operational-value-primary-series'];
+    const names = ['operational-value-plot-series'];
     for (const name of names) {
       expect(hostedQueries.find((query) => query.name === name))
         .toEqual(dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === name));
@@ -32,7 +32,6 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
-      'campaign-operational-value-history',
       'campaign-baseline-outcomes',
       'campaign-performance-baseline',
       'campaign-audit-event-table'
@@ -69,7 +68,7 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-primary-series', 'campaign-operational-value-plot-inventory'],
+      sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
           source: 'operational-values',
@@ -79,10 +78,9 @@ describe('Audit dashboard view', () => {
       }
     }));
 
-    expect(result['campaign-operational-value-primary-series'].rows).toEqual([
+    expect(result['operational-value-plot-series'].rows).toEqual([
       expect.objectContaining({
         campaign: 'optimization',
-        'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
         'operational-value-unit': 'aic-per-run',
         series: [expect.objectContaining({
@@ -92,21 +90,12 @@ describe('Audit dashboard view', () => {
             expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 8.25, link: operationalValueObservations[1]['run-link'] })
           ]
         })]
-      }),
-      expect.objectContaining({
-        'operational-value-role': 'diagnostic',
-        series: [expect.objectContaining({
-          points: [
-            expect.objectContaining({ y: 1 }),
-            expect.objectContaining({ y: 0.5 })
-          ]
-        })]
       })
     ]);
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      pageId: 'campaign-insights',
-      sourceNames: ['campaign-operational-value-primary-series'],
+      pageId: 'operational-value-campaign',
+      sourceNames: ['operational-value-plot-series'],
       sources: result,
       elementConfig: { 'measure-source': 'operational-value' },
       contextDetails: [],
@@ -117,8 +106,7 @@ describe('Audit dashboard view', () => {
         'https://github.com/githubnext/gh-aw-cao/actions/runs/101',
         'https://github.com/githubnext/gh-aw-cao/actions/runs/102'
       ]);
-    expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(4);
-    expect(result['campaign-operational-value-plot-inventory'].rows).toHaveLength(2);
+    expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(2);
   });
 
   it('keeps irregular observations partitioned and leaves missing native values unplotted', () => {
@@ -133,6 +121,7 @@ describe('Audit dashboard view', () => {
       ['zero-last', 'a', 'zero', 0, '2026-01-02T00:00:00Z']
     ].map(([id, repository, definition, value, at]) => ({
       id, campaign: 'sample', organization: 'githubnext', repository,
+      'operational-value-role': 'primary',
       'operational-value-definition': definition,
       'operational-value': value,
       'observed-at': at
@@ -140,10 +129,10 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-primary-series'],
+      sourceNames: ['operational-value-plot-series'],
       sources: { 'operational-values': { source: 'operational-values', rows: observations, metadata } }
     }));
-    const rows = result['campaign-operational-value-primary-series'].rows;
+    const rows = result['operational-value-plot-series'].rows;
     const points = rows.flatMap((row) => /** @type {Array<{ id: string, points: Array<{ x: string, y: number }> }>} */ (row.series)
       .flatMap((series) => series.points.map((point) => ({ ...point, color: series.id }))));
     expect(points.filter((point) => point.color === 'githubnext/a').map((point) => point.y)).toEqual([10, 20, 30, -2, 0]);
@@ -155,7 +144,7 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-primary-series'],
+      sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
           source: 'operational-values',
@@ -164,12 +153,12 @@ describe('Audit dashboard view', () => {
             { campaign: 'sample', organization: 'two', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 100, 'observed-at': '2026-01-01T00:00:00Z' },
             { campaign: 'sample', organization: 'one', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 20, 'observed-at': '2026-01-02T00:00:00Z' },
             { campaign: 'sample', organization: 'two', repository: 'service', 'operational-value-definition': 'm', 'operational-value': 110, 'observed-at': '2026-01-02T00:00:00Z' }
-          ],
+          ].map((row) => ({ ...row, 'operational-value-role': 'primary' })),
           metadata
         }
       }
     }));
-    const points = result['campaign-operational-value-primary-series'].rows.flatMap(
+    const points = result['operational-value-plot-series'].rows.flatMap(
       (row) => /** @type {Array<{ id: string, points: Array<{ y: number }> }>} */ (row.series)
         .flatMap((series) => series.points.map((point) => ({ ...point, color: series.id })))
     );
@@ -183,7 +172,7 @@ describe('Audit dashboard view', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-value-evidence-state'],
+      sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
           source: 'operational-values',
@@ -207,30 +196,32 @@ describe('Audit dashboard view', () => {
             'operational-value': 0.25,
             'maturity-status': 'interim',
             'observed-at': '2026-09-24T00:00:00Z'
-          }],
+          }].map(row => ({
+            ...row, organization: 'org', repository: 'repo',
+            'operational-value-role': 'primary', 'operational-value-definition': 'measure',
+            'operational-value-name': 'Measure', 'operational-value-unit': 'count',
+            'operational-value-direction': 'decrease'
+          })),
           metadata
         }
       }
     }));
 
-    expect(result['campaign-operational-value-evidence-state'].rows).toEqual([
+    expect(result['operational-value-plot-series'].metadata.availability).toBe('available');
+    expect(result['operational-value-plot-series'].rows).toEqual(expect.arrayContaining([
       expect.objectContaining({
         campaign: 'optimization',
-        'observation-count': 2,
-        'matured-observation-count': 0,
-        'evidence-state': 'interim-evidence'
+        'maturity-status': 'interim'
       }),
       expect.objectContaining({
         campaign: 'ambient-context',
-        'matured-observation-count': 1,
-        'evidence-state': 'observed-value'
+        'maturity-status': 'matured'
       }),
       expect.objectContaining({
         campaign: 'campaign-scout',
-        'matured-observation-count': 0,
-        'evidence-state': 'interim-evidence'
+        'maturity-status': 'interim'
       })
-    ]);
+    ]));
   });
 
   it('projects only issue outcomes produced by campaign workers', () => {
@@ -331,7 +322,7 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('counts every rendered Insights plot through the shared plot inventory', () => {
+  it('excludes experimental operational-value plots from Insights counts', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -394,7 +385,7 @@ describe('Audit dashboard view', () => {
 
     expect(result['campaign-insight-tab-counts'].rows).toHaveLength(3);
     expect(result['campaign-insight-tab-counts'].rows).toEqual(expect.arrayContaining([
-      { campaign: 'combined', items: 2 },
+      { campaign: 'combined', items: 1 },
       { campaign: 'audit-only', items: 1 },
       { campaign: 'noise', items: 1 }
     ]));

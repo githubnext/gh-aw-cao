@@ -4,6 +4,96 @@ import { renderTemporalMetricPlot } from '../../src/components/temporal-metric-p
 import { chartStyles } from '../../src/styles-charts.js';
 
 describe('Temporal metric plot', () => {
+  it('distinguishes retained history from verified coverage, freshness and trend assessment', () => {
+    const root = renderTemporalMetricPlot({
+      title: 'Retained value', mode: 'baseline-comparable',
+      adoptionAt: '2026-09-15T00:00:00Z',
+      comparisonNote: 'Comparison unavailable: measurement version was not retained.',
+      metrics: [{ id: 'value', label: 'Repository', points: [
+        { x: '2026-09-14T00:00:00Z', y: 20 },
+        { x: '2026-09-28T00:00:00Z', y: 90 }
+      ] }]
+    });
+    expect(root.textContent).toContain('Retained observations: 2026-09-14 to 2026-09-28 (UTC)');
+    expect(root.textContent).toContain('Latest observation is not a live measurement');
+    expect(root.textContent).toContain('complete baseline-window coverage is not verified');
+    expect(root.textContent).toContain('measurement version was not retained');
+    expect(root.textContent).toContain('stored observations do not identify the reason');
+    expect(root.textContent).not.toContain('No trend yet');
+    const details = root.querySelector('details');
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector('summary')?.textContent).toBe('Evidence details');
+    expect(details?.contains(root.querySelector('.temporal-plot-coverage-note'))).toBe(true);
+    expect(root.querySelector('.temporal-plot-trend')?.textContent).toBe('Trend not assessed');
+  });
+
+  it('connects consecutive observations separately per series and breaks at missing cadence periods', () => {
+    const root = renderTemporalMetricPlot({
+      title: 'Native history', mode: 'attainment-only', adoptionAt: '',
+      maxGapDays: 1,
+      metrics: [
+        { id: 'one', label: 'One', points: [
+          { x: '2026-09-20T00:00:00Z', y: 4 },
+          { x: '2026-09-21T00:00:00Z', y: 3 },
+          { x: '2026-09-23T00:00:00Z', y: 2 },
+          { x: '2026-09-24T00:00:00Z', y: 1 }
+        ] },
+        { id: 'two', label: 'Two', points: [
+          { x: '2026-09-20T00:00:00Z', y: 8 },
+          { x: '2026-09-21T00:00:00Z', y: 7 }
+        ] }
+      ]
+    });
+    const lines = [...root.querySelectorAll('polyline')];
+    expect(lines).toHaveLength(3);
+    expect(lines.map((line) => line.getAttribute('data-temporal-metric'))).toEqual(['one', 'one', 'two']);
+    expect(lines.every((line) => line.getAttribute('points')?.split(' ').length === 2)).toBe(true);
+    expect(root.querySelectorAll('.temporal-plot-point')).toHaveLength(6);
+  });
+
+  it('keeps isolated points disconnected and supports weekly cadence', () => {
+    const options = {
+      title: 'Weekly', mode: /** @type {const} */ ('attainment-only'), adoptionAt: '',
+      metrics: [{ id: 'one', label: 'One', points: [
+        { x: '2026-09-01T00:00:00Z', y: 3 },
+        { x: '2026-09-08T00:00:00Z', y: 2 },
+        { x: '2026-09-22T00:00:00Z', y: 1 }
+      ] }]
+    };
+    expect(renderTemporalMetricPlot({ ...options, maxGapDays: 7 }).querySelectorAll('polyline')).toHaveLength(1);
+    expect(renderTemporalMetricPlot({ ...options, maxGapDays: 1 }).querySelectorAll('polyline')).toHaveLength(0);
+    expect(renderTemporalMetricPlot({ ...options, connectPoints: false }).querySelectorAll('polyline')).toHaveLength(0);
+  });
+
+  it('keeps adoption visible before retained history without inventing baseline points', () => {
+    const rendered = renderTemporalMetricPlot({
+      title: 'Retained outcome',
+      mode: 'baseline-comparable',
+      adoptionAt: '2026-09-01T00:00:00Z',
+      metrics: [{ id: 'value', label: 'Repository', points: [{ x: '2026-09-23T00:00:00Z', y: 4 }] }],
+      outcomes: [{ 'run-day': '2026-09-20', 'successful-runs': 2, 'failed-runs': 1, 'concluded-runs': 3 }]
+    });
+    expect(rendered.textContent).toContain('Adopted 2026-09-01 (UTC)');
+    expect(rendered.textContent).toContain('Baseline unavailable: no retained pre-adoption observations');
+    expect(rendered.textContent).toContain('1 observation; trend unavailable');
+    expect(rendered.querySelector('[data-chart-temporal-marker]')).not.toBeNull();
+    expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(1);
+    expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(1);
+  });
+
+  it('counts distinct observation times without claiming a trend from duplicate points', () => {
+    const render = (/** @type {string[]} */ times) => renderTemporalMetricPlot({
+      title: 'Alerts', mode: 'baseline-comparable', adoptionAt: '2026-09-01T00:00:00Z',
+      metrics: [{ id: 'alerts', label: 'Repository', points: times.map((x) => ({ x, y: 4 })) }]
+    });
+    expect(render(['2026-09-23T00:00:00Z', '2026-09-23T00:00:00Z']).textContent)
+      .toContain('1 observation; trend unavailable');
+    const history = render(['2026-08-23T00:00:00Z', '2026-09-23T00:00:00Z']);
+    expect(history.textContent).toContain('2 observation times');
+    expect(history.textContent).toContain('Pre-adoption observations retained; complete baseline-window coverage is not verified');
+    expect(history.textContent).not.toContain('Baseline unavailable');
+  });
+
   it('exposes the observation run report in an accessible point tooltip', () => {
     const rendered = renderTemporalMetricPlot({
       title: 'Repository value',

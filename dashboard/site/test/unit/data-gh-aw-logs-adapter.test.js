@@ -21,6 +21,85 @@ function files(directory) {
 }
 
 describe('gh-aw logs adapter', () => {
+  it('preserves same-attempt credit enrichment in either input order without leaking it to reruns', () => {
+    const run = {
+      run_id: 303, run_attempt: 1, organization: 'octo', repository: 'octo/api', workflow_name: 'Worker',
+      workflow_path: '.github/workflows/worker.lock.yml', status: 'completed', conclusion: 'success',
+      created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:01:00Z'
+    };
+    const measured = { ...run, token_usage_summary: { total_aic: 2.5, total_input_tokens: 100 } };
+    const sparse = { ...run, updated_at: '2026-10-01T00:02:00Z', token_usage_summary: null };
+    const adapt = (/** @type {Record<string, unknown>[]} */ runs) => normalize(adaptCachedGhAwJsonl(
+      runs.map((value) => JSON.stringify({ schema_version: 2, kind: 'run', run: value })).join('\n')
+    ).observations).runs[0];
+    for (const records of [[measured, sparse], [sparse, measured],
+      [measured, { ...sparse, token_usage_summary: {} }],
+      [measured, { ...sparse, token_usage_summary: { total_aic: null } }]]) {
+      expect(adapt(records)).toMatchObject({ aicTotal: 2.5, inputTokens: 100 });
+    }
+    expect(adapt([measured, { ...sparse, run_attempt: 2 }])).toMatchObject({
+      attempt: 2, aicTotal: null, inputTokens: null
+    });
+    expect(adapt([measured, { ...sparse, token_usage_summary: { total_aic: 0 } }]).aicTotal).toBe(0);
+    const mixed = [
+      { schema_version: 2, kind: 'run', run: {
+        ...measured, tool_calls: [{ tool: 'report_incomplete', server: 'safeoutputs', status: 'incomplete' }]
+      } },
+      {
+        schema_version: 2, kind: 'workflow_runs',
+        request: { host: 'github.com', repository: 'octo/api', args: ['run', 'list'] },
+        payload: [{
+          databaseId: 303, attempt: 2, workflowName: 'Worker', status: 'completed',
+          conclusion: 'success', createdAt: run.created_at, updatedAt: sparse.updated_at
+        }]
+      }
+    ];
+    const rerun = normalize(adaptCachedGhAwJsonl(mixed.map(value => JSON.stringify(value)).join('\n')).observations).runs[0];
+    expect(rerun).toMatchObject({ attempt: 2, aicTotal: null, inputTokens: null });
+    expect(rerun).not.toHaveProperty('terminalOutcome');
+  });
+
+  it('preserves declared cadence and rejects invalid cadence without inventing legacy metadata', () => {
+    const envelope = {
+      schema_version: 2, kind: 'operational_value',
+      operational_value: {
+        repository: 'octo/api', timestamp: '2026-10-14T00:00:00Z',
+        campaign: 'custom', value_id: 'worker.remaining', value: 4,
+        metric_unit: 'alerts', cadence_days: 2.5
+      }
+    };
+    const adapt = (/** @type {Record<string, unknown>} */ value) => adaptCachedGhAwJsonl(JSON.stringify({
+      ...envelope, operational_value: value
+    }));
+    const observations = adapt(envelope.operational_value);
+    expect(observations.observations.find((row) => row.kind === 'operational-value')?.data['cadence-days']).toBe(2.5);
+    const { cadence_days: omitted, ...legacy } = envelope.operational_value;
+    expect(omitted).toBe(2.5);
+    expect(adapt(legacy).observations.find((row) => row.kind === 'operational-value')?.data).not.toHaveProperty('cadence-days');
+    for (const cadence_days of [0, -1, null, '7']) {
+      expect(() => adapt({ ...envelope.operational_value, cadence_days })).toThrow('cadence_days must be a positive finite number');
+    }
+  });
+
+  it('rejects malformed evaluator fingerprints and preserves valid or absent legacy metadata', () => {
+    const value = {
+      repository: 'octo/api', timestamp: '2026-10-14T00:00:00Z',
+      campaign: 'custom', value_id: 'worker.remaining', value: 4
+    };
+    const adapt = (/** @type {Record<string, unknown>} */ operational_value) => adaptCachedGhAwJsonl(JSON.stringify({
+      schema_version: 2, kind: 'operational_value', operational_value
+    }));
+    expect(adapt(value).observations.find(row => row.kind === 'operational-value')?.data['evaluator-digest']).toBeUndefined();
+    const digest = 'a'.repeat(64);
+    expect(adapt({ ...value, evaluator_digest: digest }).observations
+      .find(row => row.kind === 'operational-value')?.data['evaluator-digest']).toBe(digest);
+    for (const evaluator_digest of [
+      null, 64, {}, [digest], '', 'a'.repeat(63), 'A'.repeat(64), 'g'.repeat(64)
+    ]) {
+      expect(() => adapt({ ...value, evaluator_digest })).toThrow('evaluator_digest must be a SHA-256 fingerprint');
+    }
+  });
+
   it('splits agent, tool, and firewall JSONL into run-linked tables', () => {
     const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
     const adapted = adaptGhAwLogs({ ...context, files: files(fixtureRoot) });

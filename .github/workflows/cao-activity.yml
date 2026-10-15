@@ -288,7 +288,18 @@ jobs:
           REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
+          REPORT_VALUE_SEED_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
+          retained_values="$REPORT_VALUE_SEED_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
+          value_output="$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
+          if [[ -f "$retained_values" ]]; then
+            cp "$retained_values" "$value_output"
+            node activity/cao.mjs ingest-jsonl \
+              --database "$ACTIVITY_DATABASE" \
+              --input "$value_output" \
+              --retention-days 30 \
+              --run-retention-days 30
+          fi
           repository_args=()
           while IFS= read -r target_repository; do
             repository_args+=(--repository "$target_repository")
@@ -297,17 +308,12 @@ jobs:
               | select((.organization | ascii_downcase) == ($owner | ascii_downcase))
               | "\(.organization)/\(.repository)"' \
             "$REPORT_INVENTORY_SOURCES")
-          history_args=()
-          if [[ -f optimization/operational-value.mjs ]]; then
-            history_args=(--history-campaign optimization)
-          fi
           if ! node activity/cao.mjs operational-value \
               --database "$ACTIVITY_DATABASE" \
               --root . \
               --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl" \
-              --retention-days 30 \
+              --retention-days 365 \
               "${repository_args[@]}" \
-              "${history_args[@]}" \
               --max-github-api-rate-limit "$REPORT_MAX_GITHUB_API_RATE_LIMIT"; then
             echo "::warning::Operational value collection failed for $ACTIVITY_OWNER; continuing activity indexing."
           fi

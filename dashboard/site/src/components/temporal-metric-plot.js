@@ -50,6 +50,9 @@ let tooltipId = 0;
  *   trend?: TemporalTrend,
  *   provisional?: boolean
  *   connectPoints?: boolean
+ *   maxGapDays?: number
+ *   continuityNote?: string
+ *   comparisonNote?: string
  * }} options
  * @returns {HTMLElement}
  */
@@ -69,11 +72,11 @@ export function renderTemporalMetricPlot(options) {
 
   const firstObservation = observationTimes[0] ?? '';
   const lastObservation = observationTimes.at(-1) ?? firstObservation;
-  const start = Date.parse(firstObservation);
-  const end = Date.parse(lastObservation);
-  const span = Math.max(1, end - start);
   const adoption = Date.parse(options.adoptionAt);
-  const showAdoption = Number.isFinite(adoption) && adoption >= start && adoption <= end;
+  const showAdoption = Number.isFinite(adoption);
+  const start = Math.min(Date.parse(firstObservation), showAdoption ? adoption : Infinity);
+  const end = Math.max(Date.parse(lastObservation), showAdoption ? adoption : -Infinity);
+  const span = Math.max(1, end - start);
   const values = metrics.flatMap((metric) => metric.points.map((point) => Number(point.y)));
   const observedMinimum = Math.min(...values);
   const observedMaximum = Math.max(...values);
@@ -93,8 +96,10 @@ export function renderTemporalMetricPlot(options) {
       ? domainMinimum
       : domainMaximum - (((domainMaximum - domainMinimum) * index) / 3)
   ));
-  const ticks = selectTicks(observationTimes, MAX_TICKS);
-  const sameDay = firstObservation.slice(0, 10) === lastObservation.slice(0, 10);
+  const axisTimes = [...new Set([...observationTimes, ...(showAdoption ? [options.adoptionAt] : [])])]
+    .toSorted((left, right) => Date.parse(left) - Date.parse(right));
+  const ticks = selectTicks(axisTimes, MAX_TICKS);
+  const sameDay = new Date(start).toISOString().slice(0, 10) === new Date(end).toISOString().slice(0, 10);
   const unit = metrics.every((metric) => metric.unit === metrics[0]?.unit)
     ? (metrics[0]?.unit ?? 'value')
     : 'native value';
@@ -116,8 +121,8 @@ export function renderTemporalMetricPlot(options) {
   const provisionalDescription = options.provisional
     ? ' The plotted values are interim and are not yet mature.'
     : '';
-  const firstDay = firstObservation.slice(0, 10);
-  const lastDay = lastObservation.slice(0, 10);
+  const firstDay = new Date(start).toISOString().slice(0, 10);
+  const lastDay = new Date(end).toISOString().slice(0, 10);
   const outcomes = (options.outcomes ?? []).filter((outcome) => (
     outcome['run-day'] >= firstDay
     && outcome['run-day'] <= lastDay
@@ -158,7 +163,28 @@ export function renderTemporalMetricPlot(options) {
   h('header', { className: 'temporal-plot-heading' },
     h('div', { className: 'temporal-plot-heading-copy' },
       h('h3', null, options.title),
-      h('p', null, directionLabel || displayUnit(unit))),
+      h('p', null, directionLabel || displayUnit(unit)),
+      options.comparisonNote ? h('p', { className: 'temporal-plot-latest-date' },
+        `Latest observation ${new Date(lastObservation).toISOString().slice(0, 10)} (UTC)`) : null,
+      h(options.comparisonNote ? 'details' : 'div', options.comparisonNote
+        ? { className: 'temporal-plot-evidence-details' } : null,
+      options.comparisonNote ? h('summary', null, 'Evidence details') : null,
+      h('p', { className: 'temporal-plot-observation-count' },
+        observationTimes.length === 1
+          ? '1 observation; trend unavailable. At least two comparable observations are needed.'
+          : `${observationTimes.length} observation times; movement does not establish causation.`),
+      options.comparisonNote ? h('p', { className: 'temporal-plot-evidence-dates' },
+        `Retained observations: ${new Date(firstObservation).toISOString().slice(0, 10)} to ${new Date(lastObservation).toISOString().slice(0, 10)} (UTC). Latest observation is not a live measurement.`) : null,
+      showAdoption ? h('p', null, `Adopted ${new Date(adoption).toISOString().slice(0, 10)} (UTC)`) : null,
+      options.mode === 'baseline-comparable'
+        ? h('p', null, showAdoption && !observationTimes.some((time) => Date.parse(time) < adoption)
+          ? 'Baseline unavailable: no retained pre-adoption observations. Missing periods stay missing.'
+          : 'Pre-adoption observations retained; complete baseline-window coverage is not verified.')
+        : h('p', null, 'Attainment only: no pre-adoption baseline.'),
+      options.comparisonNote ? h('p', { className: 'temporal-plot-comparison-note' }, options.comparisonNote) : null,
+      options.continuityNote ? h('p', { className: 'temporal-plot-continuity-note' }, options.continuityNote) : null,
+      options.comparisonNote ? h('p', { className: 'temporal-plot-coverage-note' },
+        'Source-window coverage is not recorded here. Missing periods may reflect unavailable records, insufficient eligible runs, or incomplete measurement evidence; the stored observations do not identify the reason. Do not infer zero or improvement from a gap.') : null)),
     h('div', { className: 'temporal-plot-summary' },
       multipleSeries
         ? h('p', { className: 'temporal-plot-current' },
@@ -167,7 +193,7 @@ export function renderTemporalMetricPlot(options) {
         : h('p', { className: 'temporal-plot-current' },
           h('strong', null, formatCurrentValue(latestValue, unit)),
           displayUnit(unit) ? h('span', null, displayUnit(unit)) : null),
-      multipleSeries ? null : renderTrendSummary(options.trend, unit, options.provisional))),
+      multipleSeries ? null : renderTrendSummary(options.trend, unit, options.provisional, options.comparisonNote))),
   h('div', { className: 'temporal-plot-chart' },
   h('svg', {
     viewBox: '0 0 1280 366',
@@ -214,12 +240,12 @@ export function renderTemporalMetricPlot(options) {
   ...metrics.flatMap((metric, index) => {
     const className = `chart-series-${(index % 12) + 1}`;
     return [
-      options.connectPoints === false ? null : h('polyline', {
+      ...(options.connectPoints === false ? [] : lineSegments(metric.points, options.maxGapDays)).map((points) => h('polyline', {
         className: `temporal-plot-metric ${className}`,
-        points: metric.points.map((point) => `${x(point.x)},${y(point.y)}`).join(' '),
+        points: points.map((point) => `${x(point.x)},${y(point.y)}`).join(' '),
         fill: 'none',
         'data-temporal-metric': metric.id
-      }),
+      })),
       ...metric.points.map((point) => h('circle', {
         className: `temporal-plot-point ${className}`,
         cx: x(point.x),
@@ -303,13 +329,36 @@ export function renderTemporalMetricPlot(options) {
 }
 
 /**
+ * @param {TemporalMetric['points']} points
+ * @param {number | undefined} maxGapDays
+ */
+function lineSegments(points, maxGapDays) {
+  if (maxGapDays === undefined) return [points];
+  /** @type {TemporalMetric['points'][]} */
+  const segments = [];
+  for (const point of points) {
+    const segment = segments.at(-1);
+    const previous = segment?.at(-1);
+    if (!segment || (previous && maxGapDays !== undefined
+      && Date.parse(point.x) - Date.parse(previous.x) > maxGapDays * 86_400_000)) {
+      segments.push([point]);
+    } else {
+      segment.push(point);
+    }
+  }
+  return segments.filter((segment) => segment.length > 1);
+}
+
+/**
  * @param {TemporalTrend | undefined} trend
  * @param {string} unit
  * @param {boolean | undefined} provisional
+ * @param {string | undefined} comparisonNote
  */
-function renderTrendSummary(trend, unit, provisional) {
+function renderTrendSummary(trend, unit, provisional, comparisonNote) {
   if (!trend || trend.observationCount < 2 || !Number.isFinite(trend.delta)) {
-    return h('p', { className: 'temporal-plot-trend temporal-plot-trend-insufficient' }, 'No trend yet');
+    return h('p', { className: 'temporal-plot-trend temporal-plot-trend-insufficient' },
+      comparisonNote ? 'Trend not assessed' : 'Insufficient comparable observations for a trend.');
   }
   const arrow = trend.observedDirection === 'up' ? '↑' : trend.observedDirection === 'down' ? '↓' : '→';
   const assessment = provisional

@@ -698,6 +698,7 @@ CREATE TABLE IF NOT EXISTS operational_values (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
+  cadence_days NUMERIC,
   adoption_at TIMESTAMPTZ,
   baseline_value NUMERIC,
   campaign TEXT,
@@ -734,7 +735,7 @@ CREATE TABLE IF NOT EXISTS operational_values (
 
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 33),
+  CHECK (bit_length(present_fields) = 34),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (repository_id IS NOT NULL AND repository_id <> ''),
   FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED

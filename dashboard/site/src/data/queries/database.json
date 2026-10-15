@@ -646,6 +646,7 @@
       { "field": "rollout-mode" },
       { "field": "value", "as": "operational-value" },
       { "field": "valueId", "as": "operational-value-definition" },
+      { "field": "cadence-days" },
       { "field": "operational-value-role" },
       { "field": "operational-value-name" },
       { "field": "operational-value-unit" },

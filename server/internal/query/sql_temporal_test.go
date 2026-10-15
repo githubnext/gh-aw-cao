@@ -141,7 +141,7 @@ func TestTemporalSQLDeployedCampaignQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, definition := range fragment.Queries {
-		if definition.Name != "campaign-operational-value-primary-series" {
+		if definition.Name != "operational-value-plot-series" {
 			continue
 		}
 		series := definition.TemporalSeries

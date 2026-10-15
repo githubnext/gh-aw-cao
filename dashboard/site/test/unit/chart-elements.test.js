@@ -319,6 +319,14 @@ describe('chart element helpers', () => {
     expect([...chart.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
       .toEqual(['Alpha repository', 'Beta repository']);
     expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href')).toBe('#page-alpha');
+    const tracks = chart.querySelectorAll('.horizontal-bar-chart-track');
+    expect(tracks[0].tagName).toBe('A');
+    expect(tracks[0].getAttribute('href')).toBe('#page-alpha');
+    expect(tracks[0].getAttribute('aria-label')).toContain('Alpha repository: 40');
+    expect(tracks[0].getAttribute('aria-hidden')).toBeNull();
+    expect(tracks[0].getAttribute('target')).toBeNull();
+    expect(tracks[1].tagName).toBe('SPAN');
+    expect(tracks[1].getAttribute('aria-hidden')).toBe('true');
     expect(chart.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
     expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('style')).toContain('--horizontal-bar-size: 100%');
     expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))

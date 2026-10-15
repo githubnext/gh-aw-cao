@@ -207,9 +207,178 @@ For a standalone Pages site:
 
 Run `./cao.sh setup` to configure the control repository's Pages source as GitHub Actions with repository-restricted access for private repositories. The standalone workflow passes `enablement: false` to `actions/configure-pages`, checks private-site access before publishing, and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
 
-The Activity workflow restores its log cache, runs one bounded `gh aw logs --audit --artifacts usage` command for compiled workflows in the checked-out control repository, and saves only the refreshed JSONL. It does not index, normalize, collect telemetry, or generate dashboard records. Consumers restore the JSONL cache and apply their own bounded processing without publishing secondary Activity cache files.
+The Activity workflow restores its source-shard cache, collects bounded read-only
+`gh aw logs --audit --artifacts usage` evidence for the resolved repository scope,
+and refreshes native operational-value measurements. Its index job merges the
+owner-scoped fragments and publishes normalized run/detail shards and a canonical
+SQLite projection. Consumers query those snapshots without collecting more data.
 
 Target repository Git history, Actions run metadata, and accepted evidence are the reconstructable authority for operational value. gh-aw's local weekly shards and the installed control repository's Actions observation cache are accelerators, not archives; either may be deleted or evicted. The current Pages artifact is a presentation snapshot. No private organization-specific observation ledger belongs in the public catalog. Organizations that require an independently durable derived archive must persist the versioned observation records in an access-controlled control-plane data store and retain their source identity and evidence lineage.
+
+### Tracking campaign outcomes
+
+The regular campaign **Insights** tab shows **Workflow run results** and
+**Execution reliability**, not verified campaign outcomes. Their source is
+retained GitHub Actions workflow-attempt metadata collected through `gh aw logs`
+for the campaign's control-repository workflows in the selected time window.
+Only the retained attempt for each run is available; earlier retry history is not
+reconstructed. Success rate divides successful retained attempts by concluded
+attempts; queued and running attempts are excluded. The chart's other concluded
+attempts include cancellations and skipped runs, not just failures.
+Reported output items are safe-output counts from successful attempts, not
+confirmed merges or resolved problems. Average AIC includes only successful
+attempts with recorded positive cost. These facts do not measure improvements in
+target repositories, and missing collection history is not reconstructed.
+
+The experimental **Operational Value** page lists every registered campaign's
+measurement coverage, latest primary repository outcomes, and retained observation
+history. Campaigns without retained primary measurements show **Not measured**,
+not zero value. Currently, Dependabot Update Planner and Optimization Token
+Optimizer have outcome contracts; other campaigns need their own reviewed
+repository-native measures. Coverage counts describe measured repository goals,
+not complete target coverage, verified impact, or an overall campaign score.
+
+The overview offers **Chart** and **Cards** modes. The fleet-direction chart
+counts repositories, never averages unlike native measurements. Campaign signal
+cards rank worsening and mixed evidence before gains and show improving,
+worsening, mixed, unchanged, and insufficient-evidence coverage. Each repository
+counts once: any incomparable latest primary measure makes its signal
+insufficient; otherwise opposing measure movements make it mixed. Campaigns with
+no observations remain **Not measured**. Comparable/measured counts are not the
+total enrolled scope; no authoritative target denominator is inferred. Oldest
+and newest latest-evidence dates remain visible instead of claiming freshness.
+
+Open a campaign from **Operational Value** for the repositories behind its signal.
+The campaign page shows only repository summary cards: direction, primary-measure
+count and evidence dates. Open a repository for native history, adoption and
+available baseline evidence. These views and their counts are
+kept out of the regular campaign **Insights** tab while operational value remains
+experimental. Native line plots are loaded only after repository drill-down,
+with separate panels for each measure and retained contract context.
+Select a point to inspect its native value; evidence details remain collapsed.
+Missing observations are never zero, and lines preserve the recorded cadence
+and conservative legacy gap rules described below. There is no separate
+repository/date matrix or campaign-level daily bars. All data shaping remains
+in worker queries without interactive GitHub acquisition. No observations are carried
+forward, and no sustained-gain or regression threshold is invented.
+
+Open a repository for its native timeline. Each panel separates campaign,
+repository, measure, evaluator fingerprint, unit, direction, adoption instant,
+evaluation mode, and maturity. Adoption stays visible even when it predates
+retained observations. Baseline evidence is actual retained pre-adoption
+observations, never an invented zero or reconstructed missing period.
+Attainment-only contracts have no pre-adoption baseline.
+Repository drill-downs do not substitute central run bars for target-attributed
+runs. Green/red bars beneath native timelines are explicitly labelled **Campaign
+run health**: campaign-wide control-plane execution context, not target-attributed
+runs. They use retained concluded attempts without interactive API acquisition.
+Temporal proximity and run success are not causal or outcome verification.
+
+Dashboard Language performs all classification, ordering, aggregation and
+drill-down shaping in the data worker. Shared cards, charts and temporal plots
+render the supplied payloads; there is no new compute-layer analysis, acquisition,
+API traffic or LLM call on navigation.
+
+Values keep their native unit, direction, and maturity. Movement compares two
+retained mature observations within the same repository, measure, evaluator
+fingerprint, unit, direction, adoption instant, and evaluation mode. It does not
+establish causation, target attainment, or a pre-adoption baseline comparison.
+Interim observations remain provisional. A missing contract version, unit, or
+comparable observation cannot establish improvement. Always inspect the observation
+timestamp: a retained old result is not a fresh all-clear.
+
+Routine Actions and hosted collection no longer reconstruct historical windows.
+The standard adapter queries existing canonical observations first and reuses a
+complete set of repository/metric measurements within the contract's cadence.
+Reused measurements retain their original timestamps; unchanged scheduled runs
+do not fabricate additional history. A fingerprint of the adapter and outcome
+module source invalidates reuse when either changes. Outcome modules must version changes to imported evaluator dependencies as part
+of their measurement contract; source fingerprints alone do not cover transitive
+dependencies.
+Partial or missing results are not cached as zero. Collection still performs
+credential and quota checks, and a cache miss may require bounded evidence
+acquisition. Opening the dashboard performs queries, not collection or API calls.
+
+The Actions and hosted collectors carry retained compact observations forward
+for **365 days**, independently of the run collection window. Browser storage,
+the SQLite projection and doctor also keep a year of outcomes without retaining
+extra run details; an explicitly longer SQLite run archive remains longer.
+At weekly cadence this is about 52 observation instants per repository and
+measure, rather than a copy of every run. Select a wider dashboard time window
+to inspect older retained observations.
+Single-observation timelines say **trend unavailable**; they require at least
+two comparable observations. Baseline-comparable panels explicitly report when
+no pre-adoption observations are retained. A longer retention window preserves
+future evidence; it does not recreate already-lost observations or change
+the frozen measurement cadence. Neither browser storage
+nor an evictable Actions cache guarantees an all-time archive. Explicit
+`cao operational-value --history-campaign CAMPAIGN --retention-days DAYS`
+remains available for deliberate reconstruction where the frozen contract and
+retained evidence support it; unavailable intervals remain missing. Do not run
+that command routinely or during dashboard navigation. Historical reconstruction
+must use retained snapshots or locally preserved authoritative facts; an adapter
+that reacquires remote lifecycle evidence for each cutoff is not a low-cost
+backfill path. No remote backfill is enabled by the longer retention default.
+
+Native timeline dots remain selectable. Lines connect observations only within
+the same campaign, repository, metric, native unit, direction, adoption context,
+evaluator version, maturity, and declared cadence. Each outcome module supplies
+its own frozen cadence with its measurements; the shared query and renderer do
+not infer cadence from campaign names or metric identifiers. Lines break when the
+elapsed interval exceeds that cadence. Legacy observations without cadence use
+a conservative 24-hour display gap limit, while their cadence metadata remains
+unknown. This connects nearby retained observations without claiming a recovered
+measurement schedule or verified contract comparability. The distinction is
+explained under Evidence details. Lines show observed movement, not continuous measurement or
+causation. This uses existing worker query results and makes no additional API
+calls.
+
+The renderer is shared, not the outcome definition. Each campaign may contain
+different workflow outcome contracts, with their own primary measure, diagnostics,
+native units, direction, cadence, adoption and accepted evidence. Their panels
+remain separate; a new contract needs no campaign-specific renderer. Campaigns
+without an outcome contract remain unmeasured rather than inheriting another
+campaign's metric or a synthetic common score.
+
+Each native timeline keeps the value, chart, latest observation date and concise
+comparison status visible. A collapsed **Evidence details** disclosure contains
+the first/latest retained dates, adoption and baseline context, observation
+count, and coverage/comparison limitations.
+Those dates describe evidence, not live repository state. A pre-adoption dot
+does not certify complete coverage of its measurement window: the current
+observation records do not carry that coverage proof or a reason for missing
+periods. Panels say so explicitly rather than inferring collection failure,
+insufficient runs, or zero outcomes. Missing evaluator metadata is labeled as
+an unavailable comparison; versioned panels without a supplied trend assessment
+are labeled observed history, not "No trend yet".
+
+Optimization supports **batched local backfill**. It sends all missing cadence
+instants (at most 366) to its adapter in one call, reads the bounded canonical
+run/workflow evidence once, and applies the unchanged declarative efficiency
+query to each distinct window. Repositories sharing a window reuse its result.
+This performs no GitHub API acquisition and requires a prepared local Activity
+SQLite database. Use an explicit repository scope and retain the output shard:
+
+```sh
+node activity/cao.mjs operational-value \
+  --database .cao/gh-aw-logs.sqlite --root . --campaign optimization \
+  --history-campaign optimization --retention-days 365 \
+  --repository github/gh-aw --output .cao/optimization-values.jsonl
+```
+
+Accepted cadence-bucket observations keep their real timestamps, and rerunning fills only missing
+points. Expired run or AI Credit evidence cannot be recovered by this command;
+windows with no eligible complete evidence emit no value, not zero. Retained
+evidence is not a guarantee that an earlier acquisition covered every run.
+This does not enable Dependabot remote lifecycle backfill or schedule backfill
+as part of routine collection.
+
+Canonical ingestion preserves known AI Credit and token measurements when a
+sparse refresh omits them for the same explicit run attempt, including measured
+zero. A newer supplied measurement takes precedence. Usage is never carried
+across reruns or records without an explicit matching attempt. This applies to
+duplicate observations and streamed storage batches without additional GitHub
+API calls. It cannot recover evidence absent from every retained source.
 
 Repository pages are outcome projections, not campaign projections. Reports and operational-value insights are grouped by their subject repository whether they were produced by a repository-local workflow or by a centrally executed worker. The report retains the producer identity `(runtime_repository, workflow_path)`, the durable output repository, and optional campaign membership as separate provenance. Local Actions health and AI Credit usage remain labeled as local execution data; a central worker run is not counted as a target repository run.
 

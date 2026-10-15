@@ -1,113 +1,314 @@
 {
   "queries": [
     {
-      "name": "campaign-operational-value-primary-series",
-      "subject": "Project native operational-value observations into repository temporal series.",
-      "objective": "Choose a repository and measure whose observed value needs evidence review.",
-      "acceptance": "Panels retain native values, units, repository series, and point-level run links; missing values are omitted, not zero. Requery operational-values and campaign-operational-value-evidence-state for maturity before interpreting trends; do not infer causality.",
-      "description": "Repository observations in native units; point-level maturity and missing values require source observation review.",
-      "from": "operational-values",
+      "name": "operational-value-campaign-run-health",
+      "subject": "Daily concluded campaign execution counts, not target outcome evidence.",
+      "from": "campaign-runs",
+      "filter": { "predicates": [{ "field": "run-status", "equals": "completed" }] },
       "compute": [
-        {
-          "as": "series-repository",
-          "function": "concat",
-          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
-        }
+        { "as": "run-day", "function": "date-day", "args": [{ "field": "started-at" }] },
+        { "as": "attempt-key", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "run" }, { "value": ":" }, { "field": "run-attempt" }] }
       ],
-      "temporal-series": {
-        "time": "observed-at",
-        "series": "series-repository",
-        "shape": "panels",
-        "link": "run-link",
-        "carry": [
-          "campaign",
-          "operational-value-definition",
-          "operational-value-role",
-          "operational-value-name",
-          "operational-value-unit",
-          "operational-value-direction",
-          "adoption-at",
-          "evaluation-mode"
-        ],
-        "measures": [
-          {
-            "field": "operational-value",
-            "key": "operational-value-definition",
-            "kind": "primary"
-          }
-        ]
-      },
-      "order-by": [{ "field": "operational-value-name", "direction": "asc" }]
-    },
-    {
-      "name": "campaign-operational-value-evidence-state-totals",
-      "subject": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
-      "objective": "Determine whether the campaign has matured value observations available for inspection.",
-      "acceptance": "Observation-count matches retained timestamped observations and matured-observation-count counts only non-null native values with matured status for the same campaign and horizon; missing campaigns do not imply zero value or no evidence.",
-      "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
-      "from": "operational-values",
       "aggregate": {
-        "by": [
-          "campaign"
-        ],
+        "by": ["campaign", "run-day"],
         "values": [
-          {
-            "field": "observed-at",
-            "as": "observation-count",
-            "reducer": "count"
-          },
-          {
-            "field": "operational-value",
-            "as": "matured-observation-count",
-            "reducer": "count",
-            "filter": {
-              "predicates": [
-                {
-                  "field": "maturity-status",
-                  "equals": "matured"
-                }
-              ]
-            }
-          }
+          { "field": "attempt-key", "as": "concluded-runs", "reducer": "distinct-count" },
+          { "field": "attempt-key", "as": "successful-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "status", "equals": "success" }] } },
+          { "field": "attempt-key", "as": "failed-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "status", "in": ["failure", "startup-failure", "timed_out", "cancelled", "stale"] }] } }
         ]
       }
     },
     {
-      "name": "campaign-operational-value-evidence-state",
-      "subject": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
-      "objective": "Decide whether to inspect matured observations or label the campaign's value evidence interim.",
-      "acceptance": "Evidence-state is observed-value only when matured-observation-count is positive, otherwise interim-evidence for a returned campaign; this classification neither changes native measure values nor upgrades missing or interim evidence to a verified outcome.",
-      "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
-      "from": "campaign-operational-value-evidence-state-totals",
+      "name": "operational-value-run-context-subjects",
+      "subject": "Measured repository identities to bind campaign execution context without target attribution.",
+      "from": "operational-values",
+      "aggregate": { "by": ["campaign", "organization", "repository"], "values": [{ "field": "observed-at", "as": "observations", "reducer": "count" }] }
+    },
+    {
+      "name": "operational-value-repository-campaign-run-health",
+      "subject": "Campaign-wide run health scoped to the selected outcome page, never target-attributed.",
+      "from": "operational-value-run-context-subjects",
+      "joins": [{
+        "source": "operational-value-campaign-run-health", "type": "inner-many",
+        "on": [{ "left": "campaign", "right": "campaign" }],
+        "fields": [
+          { "field": "run-day", "as": "run-day" },
+          { "field": "concluded-runs", "as": "concluded-runs" },
+          { "field": "successful-runs", "as": "successful-runs" },
+          { "field": "failed-runs", "as": "failed-runs" }
+        ]
+      }],
+      "order-by": [{ "field": "run-day", "direction": "asc" }]
+    },
+    {
+      "name": "operational-value-plot-series",
+      "subject": "Separate primary outcome timelines by campaign, frozen evaluator, native unit and maturity.",
+      "objective": "Inspect repository observations around adoption without averaging unlike measures or joining missing evidence.",
+      "acceptance": "Separate campaign, repository, measure, unit, direction, adoption, mode, evaluator, maturity and cadence. Lines use declared cadence or a 24-hour display limit for legacy observations, not inferred cadence. Never synthesize a baseline.",
+      "from": "operational-values",
+      "filter": { "predicates": [{ "field": "operational-value-role", "equals": "primary" }] },
       "compute": [
-        {
-          "as": "has-matured-observations",
-          "function": "greater-than",
-          "args": [
-            {
-              "field": "matured-observation-count"
-            },
-            {
-              "value": 0
-            }
-          ]
-        },
-        {
-          "as": "evidence-state",
-          "function": "if",
-          "args": [
-            {
-              "field": "has-matured-observations"
-            },
-            {
-              "value": "observed-value"
-            },
-            {
-              "value": "interim-evidence"
-            }
-          ]
-        }
+        { "as": "plot-contract", "function": "coalesce", "args": [{ "field": "evaluator-digest" }, { "value": "unknown" }] },
+        { "as": "plot-unversioned", "function": "equals-any", "args": [{ "field": "plot-contract" }, { "value": "unknown" }] },
+        { "as": "plot-comparison-note", "function": "if", "args": [{ "field": "plot-unversioned" }, { "value": "Comparison unavailable: measurement version was not retained." }, { "value": "Observed history only: a validated trend assessment is not supplied for this panel." }] },
+        { "as": "plot-cadence-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 0 }] },
+        { "as": "plot-max-gap-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 1 }] },
+        { "as": "series-repository", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+        { "as": "plot-campaign", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "field": "campaign" }] },
+        { "as": "plot-title", "function": "concat", "args": [{ "field": "plot-campaign" }, { "value": " / " }, { "field": "series-repository" }, { "value": " / " }, { "field": "operational-value-name" }] }
+      ],
+      "temporal-series": {
+        "time": "observed-at", "series": "series-repository", "shape": "panels", "link": "run-link",
+        "carry": [
+          "campaign", "series-repository", "plot-title", "operational-value-definition", "operational-value-name",
+          "operational-value-unit", "operational-value-direction", "adoption-at",
+          "evaluation-mode", "evaluator-digest", "maturity-status", "plot-cadence-days", "plot-max-gap-days", "plot-comparison-note"
+        ],
+        "measures": [{ "field": "operational-value", "key": "operational-value-definition", "kind": "primary" }]
+      }
+    },
+    {
+      "name": "operational-value-comparable-history",
+      "subject": "Native outcome movement within one repository and frozen measurement context.",
+      "objective": "Compare retained observations without mixing campaigns, units, contracts or interim evidence.",
+      "acceptance": "Differences use consecutive observations within the same campaign, repository, measure, unit, direction, adoption, evaluation mode, evaluator and maturity. Missing numeric observations break comparison. No workflow attribution or baseline claim.",
+      "from": "operational-values",
+      "compute": [
+        { "as": "observation-marker", "function": "literal", "args": [{ "value": 1 }] },
+        { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+        { "as": "adoption-context", "function": "concat", "args": [{ "field": "adoption-at" }, { "value": "|" }, { "field": "evaluation-mode" }] }
+      ],
+      "window": [{
+        "operation": "change", "field": "operational-value", "as": "previous-native-change", "mode": "absolute",
+        "groupby": ["campaign", "repository-coordinate", "operational-value-definition", "operational-value-unit", "operational-value-direction", "adoption-context", "evaluator-digest", "maturity-status"],
+        "order-by": [{ "field": "observed-at", "direction": "asc" }, { "field": "id", "direction": "asc" }]
+      }]
+    },
+    {
+      "name": "operational-value-movements",
+      "subject": "Direction-aware movement of retained primary repository measures.",
+      "objective": "Classify native changes without averaging unlike measures.",
+      "acceptance": "Movement requires matured evidence, a known evaluator, native unit, increase/decrease direction and comparable numeric observations. Missing evidence stays insufficient; no causality or baseline claim.",
+      "from": "operational-value-comparable-history",
+      "filter": { "predicates": [{ "field": "operational-value-role", "equals": "primary" }] },
+      "compute": [
+        { "as": "campaign-label", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "field": "campaign" }] },
+        { "as": "mature", "function": "equals-any", "args": [{ "field": "maturity-status" }, { "value": "matured" }] },
+        { "as": "native-change-state", "function": "coalesce", "args": [{ "field": "previous-native-change" }, { "value": "missing" }] },
+        { "as": "missing-change", "function": "equals-any", "args": [{ "field": "native-change-state" }, { "value": "missing" }] },
+        { "as": "contract", "function": "coalesce", "args": [{ "field": "evaluator-digest" }, { "value": "unknown" }] },
+        { "as": "missing-contract", "function": "equals-any", "args": [{ "field": "contract" }, { "value": "unknown" }] },
+        { "as": "native-unit", "function": "coalesce", "args": [{ "field": "operational-value-unit" }, { "value": "unknown" }] },
+        { "as": "missing-unit", "function": "equals-any", "args": [{ "field": "native-unit" }, { "value": "unknown" }] },
+        { "as": "increase-goal", "function": "equals-any", "args": [{ "field": "operational-value-direction" }, { "value": "increase" }] },
+        { "as": "decrease-goal", "function": "equals-any", "args": [{ "field": "operational-value-direction" }, { "value": "decrease" }] },
+        { "as": "rising", "function": "greater-than", "args": [{ "field": "previous-native-change" }, { "value": 0 }] },
+        { "as": "falling", "function": "greater-than", "args": [{ "value": 0 }, { "field": "previous-native-change" }] },
+        { "as": "increasing-movement", "function": "if", "args": [{ "field": "rising" }, { "value": "Improving" }, { "value": "Worsening" }] },
+        { "as": "decreasing-movement", "function": "if", "args": [{ "field": "falling" }, { "value": "Improving" }, { "value": "Worsening" }] },
+        { "as": "increase-movement", "function": "if", "args": [{ "field": "increase-goal" }, { "field": "increasing-movement" }, { "value": "Target assessment required" }] },
+        { "as": "directed-movement", "function": "if", "args": [{ "field": "decrease-goal" }, { "field": "decreasing-movement" }, { "field": "increase-movement" }] },
+        { "as": "unchanged", "function": "equals-any", "args": [{ "field": "previous-native-change" }, { "value": 0 }] },
+        { "as": "unchanged-increase", "function": "if", "args": [{ "field": "increase-goal" }, { "value": "Unchanged" }, { "value": "Target assessment required" }] },
+        { "as": "unchanged-direction", "function": "if", "args": [{ "field": "decrease-goal" }, { "value": "Unchanged" }, { "field": "unchanged-increase" }] },
+        { "as": "observed-movement", "function": "if", "args": [{ "field": "unchanged" }, { "field": "unchanged-direction" }, { "field": "directed-movement" }] },
+        { "as": "comparable-movement", "function": "if", "args": [{ "field": "missing-change" }, { "value": "Insufficient comparable history" }, { "field": "observed-movement" }] },
+        { "as": "versioned-movement", "function": "if", "args": [{ "field": "missing-contract" }, { "value": "Unversioned evidence" }, { "field": "comparable-movement" }] },
+        { "as": "unit-movement", "function": "if", "args": [{ "field": "missing-unit" }, { "value": "Native unit unavailable" }, { "field": "versioned-movement" }] },
+        { "as": "movement", "function": "if", "args": [{ "field": "mature" }, { "field": "unit-movement" }, { "value": "Provisional or unavailable" }] }
+      ],
+      "order-by": [{ "field": "campaign", "direction": "asc" }, { "field": "repository-coordinate", "direction": "asc" }, { "field": "operational-value-definition", "direction": "asc" }]
+    },
+    {
+      "name": "operational-value-ordered-history",
+      "subject": "Latest observation of each repository measure, before maturity or value filtering.",
+      "objective": "Prevent an older positive or mature result from masking a newer incomplete observation.",
+      "acceptance": "Order every observation by timestamp and stable ID before selecting the latest. Preserve native values including zero and null.",
+      "from": "operational-value-movements",
+      "window": [{
+        "operation": "change", "field": "observation-marker", "as": "preceding-observation", "mode": "absolute",
+        "groupby": ["campaign", "organization", "repository", "operational-value-definition"],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }]
+      }]
+    },
+    {
+      "name": "operational-value-latest",
+      "subject": "Latest primary outcome per campaign, repository and measure.",
+      "objective": "Expose the latest retained movement, including incomplete evidence.",
+      "acceptance": "Latest selection precedes aggregation. Older mature or positive observations cannot mask newer incomplete evidence.",
+      "from": "operational-value-ordered-history",
+      "filter": { "predicates": [{ "field": "preceding-observation", "equals": "unknown" }] }
+    },
+    {
+      "name": "operational-value-repository-evidence-order",
+      "subject": "Identify oldest and newest latest primary evidence per repository.",
+      "from": "operational-value-latest",
+      "window": [
+        { "operation": "change", "field": "observation-marker", "as": "before-newest", "groupby": ["campaign", "repository-coordinate"], "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }] },
+        { "operation": "change", "field": "observation-marker", "as": "before-oldest", "groupby": ["campaign", "repository-coordinate"], "order-by": [{ "field": "observed-at", "direction": "asc" }, { "field": "id", "direction": "asc" }] }
       ]
+    },
+    {
+      "name": "operational-value-repository-counts",
+      "subject": "Latest primary movement counts per campaign and target repository.",
+      "from": "operational-value-repository-evidence-order",
+      "aggregate": {
+        "by": ["campaign", "organization", "repository", "repository-coordinate"],
+        "values": [
+          { "field": "observation-marker", "as": "goals", "reducer": "count" },
+          { "field": "observation-marker", "as": "improving", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Improving" }] } },
+          { "field": "observation-marker", "as": "worsening", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Worsening" }] } },
+          { "field": "observation-marker", "as": "unchanged", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Unchanged" }] } },
+          { "field": "observed-at", "as": "newest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-newest", "equals": "unknown" }] } },
+          { "field": "observed-at", "as": "oldest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-oldest", "equals": "unknown" }] } }
+        ]
+      }
+    },
+    {
+      "name": "operational-value-repository-signals",
+      "subject": "One conservative direction signal per campaign and target repository.",
+      "acceptance": "Any incomparable primary measure makes the repository insufficient; opposing comparable measures are Mixed. Count each repository once.",
+      "from": "operational-value-repository-counts",
+      "compute": [
+        { "as": "comparable-goals", "function": "sum", "args": [{ "field": "improving" }, { "field": "worsening" }, { "field": "unchanged" }] },
+        { "as": "incomplete", "function": "greater-than", "args": [{ "field": "goals" }, { "field": "comparable-goals" }] },
+        { "as": "has-improving", "function": "greater-than", "args": [{ "field": "improving" }, { "value": 0 }] },
+        { "as": "has-worsening", "function": "greater-than", "args": [{ "field": "worsening" }, { "value": 0 }] },
+        { "as": "positive-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Improving" }, { "value": "Unchanged" }] },
+        { "as": "negative-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Mixed" }, { "value": "Worsening" }] },
+        { "as": "comparable-state", "function": "if", "args": [{ "field": "has-worsening" }, { "field": "negative-state" }, { "field": "positive-state" }] },
+        { "as": "signal", "function": "if", "args": [{ "field": "incomplete" }, { "value": "Insufficient evidence" }, { "field": "comparable-state" }] }
+      ],
+      "order-by": [{ "field": "worsening", "direction": "desc" }, { "field": "improving", "direction": "desc" }, { "field": "repository-coordinate", "direction": "asc" }]
+    },
+    {
+      "name": "operational-value-campaign-evidence-order",
+      "subject": "Identify date bounds across latest repository evidence in a campaign.",
+      "from": "operational-value-repository-signals",
+      "compute": [{ "as": "repository-marker", "function": "literal", "args": [{ "value": 1 }] }],
+      "window": [
+        { "operation": "change", "field": "repository-marker", "as": "before-newest", "groupby": ["campaign"], "order-by": [{ "field": "newest-evidence-at", "direction": "desc" }, { "field": "repository-coordinate", "direction": "asc" }] },
+        { "operation": "change", "field": "repository-marker", "as": "before-oldest", "groupby": ["campaign"], "order-by": [{ "field": "oldest-evidence-at", "direction": "asc" }, { "field": "repository-coordinate", "direction": "asc" }] }
+      ]
+    },
+    {
+      "name": "operational-value-signal-counts",
+      "subject": "Campaign direction and coverage counts, one vote per measured repository.",
+      "from": "operational-value-campaign-evidence-order",
+      "aggregate": {
+        "by": ["campaign"],
+        "values": [
+          { "field": "repository-coordinate", "as": "measured-repositories", "reducer": "count" },
+          { "field": "repository-coordinate", "as": "improving-repositories", "reducer": "count", "filter": { "predicates": [{ "field": "signal", "equals": "Improving" }] } },
+          { "field": "repository-coordinate", "as": "worsening-repositories", "reducer": "count", "filter": { "predicates": [{ "field": "signal", "equals": "Worsening" }] } },
+          { "field": "repository-coordinate", "as": "mixed-repositories", "reducer": "count", "filter": { "predicates": [{ "field": "signal", "equals": "Mixed" }] } },
+          { "field": "repository-coordinate", "as": "unchanged-repositories", "reducer": "count", "filter": { "predicates": [{ "field": "signal", "equals": "Unchanged" }] } },
+          { "field": "repository-coordinate", "as": "insufficient-repositories", "reducer": "count", "filter": { "predicates": [{ "field": "signal", "equals": "Insufficient evidence" }] } },
+          { "field": "newest-evidence-at", "as": "newest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-newest", "equals": "unknown" }] } },
+          { "field": "oldest-evidence-at", "as": "oldest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-oldest", "equals": "unknown" }] } }
+        ]
+      }
+    },
+    {
+      "name": "operational-value-campaign-signals",
+      "subject": "Ranked campaign signals with measured and comparable repository coverage.",
+      "objective": "See worsening, mixed evidence, gains and gaps before drilling down.",
+      "acceptance": "All campaigns remain visible. Counts are repositories, not scores or complete enrolled scope. Latest retained dates stay visible; no fresh all-clear or causal attribution.",
+      "from": "campaigns",
+      "joins": [{
+        "source": "operational-value-signal-counts", "type": "left",
+        "on": [{ "left": "campaign", "right": "campaign" }],
+        "fields": [
+          { "field": "measured-repositories", "as": "measured-count" },
+          { "field": "improving-repositories", "as": "improving-count" },
+          { "field": "worsening-repositories", "as": "worsening-count" },
+          { "field": "mixed-repositories", "as": "mixed-count" },
+          { "field": "unchanged-repositories", "as": "unchanged-count" },
+          { "field": "insufficient-repositories", "as": "insufficient-count" },
+          { "field": "newest-evidence-at", "as": "newest-evidence-at" },
+          { "field": "oldest-evidence-at", "as": "oldest-evidence-at" }
+        ]
+      }],
+      "compute": [
+        { "as": "measured-repositories", "function": "coalesce", "args": [{ "field": "measured-count" }, { "value": 0 }] },
+        { "as": "improving-repositories", "function": "coalesce", "args": [{ "field": "improving-count" }, { "value": 0 }] },
+        { "as": "worsening-repositories", "function": "coalesce", "args": [{ "field": "worsening-count" }, { "value": 0 }] },
+        { "as": "mixed-repositories", "function": "coalesce", "args": [{ "field": "mixed-count" }, { "value": 0 }] },
+        { "as": "unchanged-repositories", "function": "coalesce", "args": [{ "field": "unchanged-count" }, { "value": 0 }] },
+        { "as": "insufficient-repositories", "function": "coalesce", "args": [{ "field": "insufficient-count" }, { "value": 0 }] },
+        { "as": "comparable-repositories", "function": "difference", "args": [{ "field": "measured-repositories" }, { "field": "insufficient-repositories" }] },
+        { "as": "has-worsening", "function": "greater-than", "args": [{ "field": "worsening-repositories" }, { "value": 0 }] },
+        { "as": "has-mixed", "function": "greater-than", "args": [{ "field": "mixed-repositories" }, { "value": 0 }] },
+        { "as": "has-improving", "function": "greater-than", "args": [{ "field": "improving-repositories" }, { "value": 0 }] },
+        { "as": "has-unchanged", "function": "greater-than", "args": [{ "field": "unchanged-repositories" }, { "value": 0 }] },
+        { "as": "has-evidence", "function": "greater-than", "args": [{ "field": "measured-repositories" }, { "value": 0 }] },
+        { "as": "gap-state", "function": "if", "args": [{ "field": "has-evidence" }, { "value": "Insufficient evidence" }, { "value": "Not measured" }] },
+        { "as": "stable-state", "function": "if", "args": [{ "field": "has-unchanged" }, { "value": "Unchanged" }, { "field": "gap-state" }] },
+        { "as": "gain-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Improving" }, { "field": "stable-state" }] },
+        { "as": "opposed-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Mixed" }, { "value": "Worsening" }] },
+        { "as": "negative-state", "function": "if", "args": [{ "field": "has-worsening" }, { "field": "opposed-state" }, { "field": "gain-state" }] },
+        { "as": "signal", "function": "if", "args": [{ "field": "has-mixed" }, { "value": "Mixed" }, { "field": "negative-state" }] },
+        { "as": "direction-summary", "function": "concat", "args": [{ "field": "improving-repositories" }, { "value": " improving / " }, { "field": "worsening-repositories" }, { "value": " worsening / " }, { "field": "mixed-repositories" }, { "value": " mixed / " }, { "field": "unchanged-repositories" }, { "value": " unchanged" }] },
+        { "as": "coverage-summary", "function": "concat", "args": [{ "field": "comparable-repositories" }, { "value": " comparable / " }, { "field": "measured-repositories" }, { "value": " measured; " }, { "field": "insufficient-repositories" }, { "value": " insufficient. Total target scope unknown." }] }
+      ],
+      "order-by": [{ "field": "worsening-repositories", "direction": "desc" }, { "field": "mixed-repositories", "direction": "desc" }, { "field": "improving-repositories", "direction": "desc" }, { "field": "campaign-name", "direction": "asc" }]
+    },
+    {
+      "name": "operational-value-direction-campaigns",
+      "subject": "Fleet direction distribution per campaign in repository counts, never native-value averages.",
+      "from": "operational-value-repository-signals",
+      "compute": [
+        { "as": "campaign-label", "function": "title-case", "args": [{ "field": "campaign" }] },
+        { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "campaign" }] },
+        { "as": "outcome-drill-href", "function": "concat", "args": [{ "value": "#page-operational-value-campaign?campaign=" }, { "field": "encoded-campaign" }] },
+        { "as": "outcome-drill-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "outcome-drill-href" }, { "field": "campaign-label" }] }
+      ],
+      "aggregate": {
+        "by": ["campaign", "campaign-label", "signal"],
+        "values": [
+          { "field": "repository-coordinate", "as": "repositories", "reducer": "count" },
+          { "field": "outcome-drill-link", "as": "outcome-drill-link", "reducer": "unique" }
+        ]
+      },
+      "order-by": [{ "field": "campaign-label", "direction": "asc" }, { "field": "signal", "direction": "asc" }]
+    },
+    {
+      "name": "operational-value-campaign-counts",
+      "subject": "Coverage of latest primary repository outcome measurements.",
+      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
+      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
+      "from": "operational-value-latest",
+      "aggregate": {
+        "by": ["campaign"],
+        "values": [
+          { "field": "operational-value", "as": "observation-count", "reducer": "count" },
+          { "field": "operational-value", "as": "matured-observation-count", "reducer": "count", "filter": { "predicates": [{ "field": "maturity-status", "equals": "matured" }] } }
+        ]
+      }
+    },
+    {
+      "name": "operational-value-campaign-coverage",
+      "subject": "Measurement coverage of every registered campaign, including unmeasured campaigns.",
+      "objective": "Expose outcome-evidence gaps without substituting runtime success or output counts.",
+      "acceptance": "Left join from campaign inventory; no primary measurement yields Not measured, not a zero outcome. Mature observations indicate evidence availability, not verified impact. Coverage counts do not establish target-repository completeness.",
+      "from": "campaigns",
+      "joins": [{
+        "source": "operational-value-campaign-counts", "type": "left",
+        "on": [{ "left": "campaign", "right": "campaign" }],
+        "fields": [
+          { "field": "observation-count", "as": "observation-count" },
+          { "field": "matured-observation-count", "as": "matured-observation-count" }
+        ]
+      }],
+      "compute": [
+        { "as": "measured-goals", "function": "coalesce", "args": [{ "field": "observation-count" }, { "value": 0 }] },
+        { "as": "mature-goals", "function": "coalesce", "args": [{ "field": "matured-observation-count" }, { "value": 0 }] },
+        { "as": "has-measurements", "function": "greater-than", "args": [{ "field": "measured-goals" }, { "value": 0 }] },
+        { "as": "has-mature-measurements", "function": "greater-than", "args": [{ "field": "mature-goals" }, { "value": 0 }] },
+        { "as": "measured-state", "function": "if", "args": [{ "field": "has-mature-measurements" }, { "value": "Mature evidence available" }, { "value": "Provisional evidence only" }] },
+        { "as": "measurement-state", "function": "if", "args": [{ "field": "has-measurements" }, { "field": "measured-state" }, { "value": "Not measured" }] }
+      ],
+      "order-by": [{ "field": "campaign-name", "direction": "asc" }]
     },
     {
       "name": "campaign-baseline-successful-runs",
@@ -116,7 +317,7 @@
       "acceptance": "Counts reconcile to campaign-performance-baseline-totals; missing campaigns do not imply zero runs.",
       "from": "campaign-performance-baseline-totals",
       "compute": [
-        { "as": "outcome", "function": "concat", "args": [{ "value": "Successful runs" }, { "value": "" }] }
+        { "as": "outcome", "function": "concat", "args": [{ "value": "Successful attempts" }, { "value": "" }] }
       ],
       "select": [
         { "field": "campaign" },
@@ -131,7 +332,7 @@
       "acceptance": "Runs equal concluded-runs minus successful-runs; the category includes every other concluded status, not just failures.",
       "from": "campaign-performance-baseline-totals",
       "compute": [
-        { "as": "outcome", "function": "concat", "args": [{ "value": "Other concluded runs" }, { "value": "" }] },
+        { "as": "outcome", "function": "concat", "args": [{ "value": "Other concluded attempts" }, { "value": "" }] },
         { "as": "other-runs", "function": "difference", "args": [{ "field": "concluded-runs" }, { "field": "successful-runs" }] }
       ],
       "select": [
@@ -147,18 +348,6 @@
       "acceptance": "Successful and other counts sum to concluded attempts; neither runtime result nor output production establishes operational value.",
       "from": "campaign-baseline-successful-runs",
       "union": ["campaign-baseline-other-runs"]
-    },
-    {
-      "name": "campaign-operational-value-plot-inventory",
-      "subject": "Describe each repository operational-value observation plot rendered on campaign Insights.",
-      "objective": "Identify which repository operational-value plots are backed by available series evidence.",
-      "acceptance": "Every plot entry derives from a primary-series panel with a plottable repository observation, measure definition, native unit, and direction; an empty inventory does not mean no observations were published, and point-level maturity must be checked separately.",
-      "description": "Plot inventory derived from native-unit repository observations; maturity must be checked separately.",
-      "from": "campaign-operational-value-primary-series",
-      "aggregate": {
-        "by": ["campaign", "operational-value-definition", "operational-value-unit", "operational-value-direction", "adoption-at", "evaluation-mode"],
-        "values": [{ "field": "operational-value-definition", "as": "observation-groups", "reducer": "count" }]
-      }
     },
     {
       "name": "campaign-audit-summary-plot-inventory",
@@ -184,12 +373,9 @@
       "name": "campaign-insight-plot-inventory",
       "subject": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
       "objective": "Choose an available campaign Insights plot to inspect its underlying evidence.",
-      "acceptance": "Each plot entry is supplied by the repository value or audit summary plot inventory for the same campaign; no plot count is treated as outcome quality, and unavailable evidence is not synthesized into a plot.",
+      "acceptance": "Each plot entry is supplied by the audit summary plot inventory for the same campaign; experimental operational-value evidence is excluded, no plot count is treated as outcome quality, and unavailable evidence is not synthesized into a plot.",
       "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
-      "from": "campaign-operational-value-plot-inventory",
-      "union": [
-        "campaign-audit-summary-plot-inventory"
-      ]
+      "from": "campaign-audit-summary-plot-inventory"
     },
     {
       "name": "campaign-insight-tab-counts",
@@ -214,43 +400,69 @@
   ],
   "pages": [
     {
+      "id": "operational-value-campaign",
+      "kind": "custom",
+      "title": "Campaign outcome evidence",
+      "description": "Experimental repository outcome signals. Open a repository to inspect native history and evidence.",
+      "icon": "graph",
+      "experimental": true,
+      "view-mode-control": true,
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "navigation-page": "operational-value"
+      },
+      "views": [
+        {
+          "id": "campaign-outcome-repositories",
+          "title": "Repositories behind the signal",
+          "description": "One signal per measured repository. Any incomparable latest primary measure makes its signal insufficient. Opposing comparable measures are Mixed. Open a repository for native history, adoption and available baseline evidence.",
+          "data": {
+            "source": "operational-value-repository-signals",
+            "arguments": [{ "name": "campaign", "field": "campaign" }]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "card": "repository-outcome-signal",
+            "icon": "repo",
+            "drill": {
+              "type": "query", "page": "operational-value-repository", "query": "operational-value-plot-series",
+              "title-field": "repository-coordinate",
+              "arguments": [
+                { "name": "campaign", "field": "campaign" },
+                { "name": "organization", "field": "organization" },
+                { "name": "repository", "field": "repository" }
+              ]
+            }
+          },
+          "layout": "full",
+          "empty-message": "This campaign has no retained primary repository measurements.",
+          "encoding": { "columns": [
+            { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
+            { "field": "signal", "type": "nominal", "title": "Observed direction" }
+          ] }
+        }
+      ]
+    },
+    {
       "id": "campaign-insights",
       "kind": "custom",
       "title": "Campaign",
       "description": "Operational activity for this campaign.",
       "icon": "graph",
       "class-name": "campaign-insights-page",
-      "view-mode-control": false,
+      "view-mode-control": true,
       "route": {
         "hash-query-parameter": "campaign",
         "title-format": "title-case",
         "tabs-class-name": "campaign-tabs",
         "tab": "insights",
         "tabs": [
-          {
-            "id": "insights",
-            "label": "Operational Value",
-            "icon": "graph",
-            "page": "campaign-insights"
-          },
-          {
-            "id": "problems",
-            "label": "Failures",
-            "icon": "alert",
-            "page": "campaign-problems"
-          },
-          {
-            "id": "issues",
-            "label": "Reports",
-            "icon": "issue-opened",
-            "page": "campaign-issues"
-          },
-          {
-            "id": "memory",
-            "label": "Memory",
-            "icon": "archive",
-            "page": "campaign-memory"
-          }
+          { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+          { "id": "problems", "label": "Failures", "icon": "alert", "page": "campaign-problems" },
+          { "id": "issues", "label": "Reports", "icon": "issue-opened", "page": "campaign-issues" },
+          { "id": "memory", "label": "Memory", "icon": "archive", "page": "campaign-memory" }
         ]
       },
       "views": [
@@ -258,58 +470,22 @@
           "id": "campaign-insights-navigation",
           "title": "Campaign insights",
           "data": {
-            "sources": [
-              "workflows",
-              "campaign-insight-tab-counts",
-              "campaign-problem-tab-counts",
-              "campaign-issue-tab-counts"
-            ],
-            "arguments": [
-              {
-                "name": "campaign",
-                "field": "campaign"
-              }
-            ]
+            "sources": ["workflows", "campaign-insight-tab-counts", "campaign-problem-tab-counts", "campaign-issue-tab-counts"],
+            "arguments": [{ "name": "campaign", "field": "campaign" }]
           },
           "mark": "element",
           "element": "campaign-route",
           "layout": "full",
-          "config": {
-            "body": "insights"
-          }
-        },
-        {
-          "id": "campaign-operational-value-history",
-          "title": "Repository operational value observations",
-          "data": {
-            "sources": [
-              "campaign-operational-value-primary-series",
-              "campaign-operational-value-run-days",
-              "campaign-operational-value-evidence-state"
-            ],
-            "arguments": [
-              {
-                "name": "campaign",
-                "field": "campaign"
-              }
-            ]
-          },
-          "mark": "element",
-          "element": "measure-history",
-          "layout": "full",
-          "config": {
-            "measure-source": "operational-value",
-            "empty-message": "No operational-value observations can be plotted in this horizon."
-          }
+          "config": { "body": "insights" }
         },
         {
           "id": "campaign-baseline-outcomes",
-          "title": "Concluded run outcomes",
+          "title": "Workflow run results",
           "disclosure": "supplemental",
           "subject": "Selected-horizon distribution of successful and other concluded campaign attempts.",
-          "objective": "Spot run reliability that merits inspection alongside operational-value evidence.",
+          "objective": "Inspect workflow execution reliability without confusing successful execution with campaign effectiveness.",
           "acceptance": "Each slice is a count of retained concluded attempts; the total reconciles to concluded runs, and run success is not verified operational value.",
-          "description": "Successful versus other concluded attempts. Run success and produced outputs do not verify accepted outcomes or operational value.",
+          "description": "Source: GitHub Actions status and conclusion collected through gh aw logs for this campaign's control-repository workflows in the selected time window. Each rerun counts as a separate attempt. Other concluded attempts include failures, cancellations, timeouts, skipped runs and other non-success conclusions; queued and running attempts are excluded. This does not measure changes in target repositories.",
           "data": {
             "source": "campaign-baseline-outcome-distribution",
             "route-field": "campaign"
@@ -317,16 +493,16 @@
           "mark": "chart",
           "chart": "pie",
           "layout": "full",
-          "empty-message": "No concluded campaign runs were observed during the selected horizon.",
+          "empty-message": "No concluded workflow attempts are retained for this campaign in the selected time window.",
           "encoding": {
-            "x": { "field": "outcome", "type": "nominal", "title": "Run outcome" },
-            "y": { "field": "runs", "type": "quantitative", "title": "Concluded runs" }
+            "x": { "field": "outcome", "type": "nominal", "title": "Execution result" },
+            "y": { "field": "runs", "type": "quantitative", "title": "Concluded attempts" }
           }
         },
         {
           "id": "campaign-performance-baseline",
-          "title": "Baseline evidence and signals",
-          "description": "Deterministic reliability, unverified production, and successful-run efficiency facts. Produced outputs are not accepted outcomes or operational value.",
+          "title": "Execution reliability",
+          "description": "Measured from retained control-repository workflow attempts collected through gh aw logs, not from target-repository improvements. Success rate = successful attempts / concluded attempts in the selected time window; reruns count separately. Outputs are reported safe-output items from successful attempts, not confirmed merges or resolved problems. Average AIC includes only successful attempts with a recorded positive AI Credit cost. Missing collection history is not reconstructed.",
           "data": {
             "source": "campaign-performance-baseline",
             "route-field": "campaign"
@@ -340,12 +516,17 @@
               {
                 "field": "concluded-runs",
                 "type": "quantitative",
-                "title": "Concluded runs"
+                "title": "Concluded attempts"
+              },
+              {
+                "field": "successful-runs",
+                "type": "quantitative",
+                "title": "Successful attempts"
               },
               {
                 "field": "success-rate-display",
                 "type": "nominal",
-                "title": "Run success"
+                "title": "Success rate"
               },
               {
                 "field": "reliability-signal",
@@ -355,7 +536,7 @@
               {
                 "field": "produced-outputs",
                 "type": "quantitative",
-                "title": "Produced outputs"
+                "title": "Reported output items"
               },
               {
                 "field": "production-signal",
@@ -365,7 +546,7 @@
               {
                 "field": "aic-per-successful-run",
                 "type": "quantitative",
-                "title": "Average AIC / successful run",
+                "title": "Average AIC / costed successful attempt",
                 "unit": "aic-per-run"
               }
             ]
@@ -411,6 +592,28 @@
           }
         }
       ]
+    },
+    {
+      "id": "operational-value-repository",
+      "kind": "custom",
+      "experimental": true,
+      "title": "Repository outcome evidence",
+      "description": "Native observations for the selected campaign and subject repository. Adoption is timing, not causal attribution; missing baseline evidence stays missing. Central execution is not attributed to this target without evidence.",
+      "route": { "hash-query-parameter": "repository", "navigation-page": "operational-value" },
+      "views": [{
+        "id": "repository-outcome-history",
+        "title": "Native outcome history",
+        "data": {
+          "sources": ["operational-value-plot-series", "operational-value-repository-campaign-run-health"],
+          "arguments": [
+            { "name": "campaign", "field": "campaign" },
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" }
+          ]
+        },
+        "mark": "element", "element": "measure-history", "layout": "full",
+        "config": { "measure-source": "operational-value", "empty-message": "No primary outcome history is retained for this campaign and repository." }
+      }]
     }
   ]
 }

@@ -2159,7 +2159,7 @@
       "kind": "built-in",
       "page": "operational-value",
       "title": "Operational Value",
-      "description": "Computed package-defined operational value for each repository.",
+      "description": "Where outcomes are improving, worsening or uncertain. Signals describe retained evidence, not campaign causality or run success.",
       "icon": "graph",
       "class-name": "value-page",
       "experimental": true,
@@ -2169,44 +2169,107 @@
         },
         "views": [
           {
-            "id": "operational-value-history",
-            "title": "Operational value over time",
-            "subject": "Track retained repository observations by package-defined operational value ID.",
-            "objective": "Identify changes in a value's native measure worth investigating.",
-            "acceptance": "Values are interpreted with their declared units, direction, and maturity; an interim observation is not claimed as a verified outcome.",
-            "description": "Each line tracks one package-defined value ID across retained repository observations.",
-            "data": {
-              "source": "operational-values"
-            },
+            "id": "operational-value-direction-chart",
+            "title": "Outcome direction across campaigns",
+            "subject": "Repository outcome directions across measured campaigns.",
+            "objective": "Locate gains, worsening and uncertain evidence before drilling down.",
+            "acceptance": "Count each repository once; preserve insufficient and mixed states. Never average native values or imply complete target coverage or causal impact.",
+            "description": "Repositories by their latest retained primary outcome direction. Missing comparisons remain insufficient evidence. Counts are not a value score or full target coverage. Campaigns without measurements appear in the signal list. Switch between chart and card views; open a campaign for its history.",
+            "data": { "source": "operational-value-direction-campaigns", "limit": 100 },
             "mark": "chart",
-            "chart": "line",
+            "chart": "horizontal-bar",
             "layout": "full",
-            "empty-message": "No operational-value observations are available.",
+            "empty-message": "No primary measurements are retained. Switch to cards to inspect campaign measurement gaps.",
             "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "format": "human-friendly-timestamp",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "operational-value",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Operational value"
-              },
-              "color": {
-                "field": "operational-value-definition",
-                "type": "nominal",
-                "title": "Value ID"
-              }
+              "x": { "field": "campaign-label", "type": "nominal", "title": "Campaign" },
+              "y": { "field": "repositories", "type": "quantitative", "title": "Measured repositories" },
+              "color": { "field": "signal", "type": "nominal", "title": "Observed direction" },
+              "href": { "field": "outcome-drill-link" }
             }
           },
           {
+            "id": "operational-value-signals",
+            "title": "Campaign signals",
+            "subject": "Direction and uncertainty across measured campaign repositories.",
+            "objective": "Find worsening or mixed outcomes, gains and evidence gaps without inspecting every timeline.",
+            "acceptance": "One count per repository, not per report. Keep insufficient evidence visible and native units separate. Retained observations do not imply freshness, complete scope, sustained gains or causality.",
+            "description": "Worsening and mixed evidence come first. Counts compare each repository's own native goals, never an average score. Coverage is measured repositories, not all enrolled targets. Open a campaign to see daily direction and the repositories behind it.",
+            "data": { "source": "operational-value-campaign-signals" },
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "card": "campaign-outcome-signal",
+              "icon": "graph",
+              "drill": {
+                "type": "query", "page": "operational-value-campaign", "query": "operational-value-repository-signals",
+                "title-field": "campaign-name",
+                "arguments": [{ "name": "campaign", "field": "campaign" }]
+              }
+            },
+            "layout": "full",
+            "empty-message": "Campaign inventory is unavailable; outcome coverage cannot be assessed.",
+            "encoding": { "columns": [
+              { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+              { "field": "signal", "type": "nominal", "title": "Observed direction" },
+              { "field": "direction-summary", "type": "nominal", "title": "Repositories" },
+              { "field": "coverage-summary", "type": "nominal", "title": "Coverage" }
+            ] }
+          },
+          {
+            "id": "operational-value-coverage",
+            "disclosure": "supplemental",
+            "disclosure-label": "Measurement contract coverage",
+            "subject": "Outcome measurement coverage for every registered campaign.",
+            "objective": "Identify which campaigns have primary outcome evidence and which need a measurement contract.",
+            "acceptance": "Include campaigns without observations. Not measured is not zero value. Coverage and maturity do not verify impact or complete repository coverage.",
+            "description": "Every registered campaign is listed. Counts describe measured repository goals, not a campaign score. Inspect latest results for freshness and missing scope.",
+            "data": { "source": "operational-value-campaign-coverage" },
+            "mark": "table",
+            "column-summaries": false,
+            "layout": "full",
+            "empty-message": "Campaign inventory is unavailable; measurement coverage cannot be assessed.",
+            "encoding": {
+              "columns": [
+                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+                { "field": "measurement-state", "type": "nominal", "title": "Outcome evidence" },
+                { "field": "measured-goals", "type": "quantitative", "title": "Measured repository goals" },
+                { "field": "mature-goals", "type": "quantitative", "title": "Mature repository goals" }
+              ]
+            }
+          },
+          {
+            "id": "operational-value-latest",
+            "disclosure": "supplemental",
+            "disclosure-label": "Latest primary outcomes",
+            "subject": "Latest native repository outcomes and movement against comparable retained measurements.",
+            "objective": "Inspect whether measured goals are moving in the intended direction.",
+            "acceptance": "Keep repositories, measures, units and contract versions separate. Show interim results and observation timestamps. Movement is not causal attribution or a pre-adoption baseline comparison.",
+            "description": "Movement compares mature observations under the same evaluator, unit and direction. Freshness is shown by Observed; old evidence is not a current all-clear. Missing or unversioned history cannot establish improvement. No unlike values are averaged.",
+            "data": { "source": "operational-value-latest" },
+            "mark": "table",
+            "column-summaries": false,
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full",
+            "empty-message": "No primary outcome measurements are retained. Campaign coverage above identifies the measurement gaps.",
+            "encoding": { "columns": [
+              { "field": "campaign-label", "type": "nominal", "title": "Campaign" },
+              { "field": "repository-coordinate", "type": "nominal", "title": "Repository", "display": "repository-link" },
+              { "field": "operational-value-name", "type": "nominal", "title": "Goal measure" },
+              { "field": "operational-value", "type": "quantitative", "title": "Latest value" },
+              { "field": "operational-value-unit", "type": "nominal", "title": "Native unit" },
+              { "field": "operational-value-direction", "type": "nominal", "title": "Goal direction" },
+              { "field": "maturity-status", "type": "nominal", "title": "Maturity" },
+              { "field": "movement", "type": "nominal", "title": "Observed movement" },
+              { "field": "previous-native-change", "type": "quantitative", "title": "Native change" },
+              { "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Observed" }
+            ] }
+          },
+          {
             "id": "operational-value-observations",
-            "title": "Operational value observations",
-            "description": "Time-ordered computed values with their repository and campaign context.",
+            "disclosure": "supplemental",
+            "disclosure-label": "Retained observation history",
+            "description": "The most recent 100 retained observations, including diagnostics and interim evidence, in native units. Missing intervals are not zero. No collection or historical reconstruction runs when this page opens.",
             "data": {
               "source": "operational-values",
               "order-by": [
@@ -2218,8 +2281,9 @@
               "limit": 100
             },
             "mark": "table",
+            "column-summaries": false,
             "controls": "interactive",
-            "layout": "full-view",
+            "layout": "full",
             "empty-message": "No operational-value observations are available.",
             "encoding": {
               "columns": [
@@ -2239,6 +2303,12 @@
                   "type": "quantitative",
                   "title": "Value"
                 },
+                { "field": "operational-value-unit", "type": "nominal", "title": "Unit" },
+                { "field": "operational-value-direction", "type": "nominal", "title": "Direction" },
+                { "field": "operational-value-role", "type": "nominal", "title": "Role" },
+                { "field": "maturity-status", "type": "nominal", "title": "Maturity" },
+                { "field": "evaluation-mode", "type": "nominal", "title": "Evaluation mode" },
+                { "field": "evaluator-digest", "type": "nominal", "title": "Evaluator fingerprint" },
                 {
                   "field": "repository",
                   "type": "nominal",

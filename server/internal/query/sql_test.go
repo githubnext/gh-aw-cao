@@ -81,6 +81,25 @@ func TestSQLCompilationFailsClosed(t *testing.T) {
 	}
 }
 
+func TestCompileSQLExplicitManyJoin(t *testing.T) {
+	definitions := []Definition{{Name: "matrix", From: "facts", Joins: []Join{{
+		Source: "owners", Type: "inner-many",
+		On:     []JoinKey{{Left: "owner", Right: "owner"}},
+		Fields: []SelectedField{{Field: "id", As: "matched-id"}},
+	}}}}
+	if err := Validate(definitions); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := CompileSQL(definitions, []string{"matrix"}, sqlTestResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.JoinKeys) != 0 || !strings.Contains(plan.CTEs, "INNER JOIN") ||
+		!strings.Contains(plan.CTEs, `row_number() OVER (ORDER BY l."__order",r."__order")`) {
+		t.Fatalf("explicit expansion must preserve ordered matches without uniqueness guard: %s", plan.CTEs)
+	}
+}
+
 func TestValidateRejectsPrediction(t *testing.T) {
 	err := Validate([]Definition{{Name: "prediction", From: "facts", Predict: []json.RawMessage{json.RawMessage(`{}`)}}})
 	if err == nil || !strings.Contains(err.Error(), "prediction") {

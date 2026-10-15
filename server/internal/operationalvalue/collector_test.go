@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
 func TestParseOutputRejectsExplicitNullOptionalFields(t *testing.T) {
 	for _, field := range []string{
-		"metricUnit", "adoptionAt", "evaluationMode", "workflowSlug", "workflowName",
+		"metricUnit", "adoptionAt", "evaluationMode", "workflowSlug", "workflowName", "evaluatorDigest", "cadenceDays",
 	} {
 		t.Run(field, func(t *testing.T) {
 			record := fmt.Sprintf(
@@ -33,6 +34,62 @@ func TestParseOutputRejectsExplicitNullOptionalFields(t *testing.T) {
 	}
 }
 
+func TestCadenceValidationAndPublication(t *testing.T) {
+	for _, cadence := range []string{"0", "-1", `"7"`, "null", "2.5"} {
+		record := fmt.Sprintf(
+			`{"timestamp":"2026-10-14T00:00:00Z","repository":"octo/api","valueId":"example.value","value":4,"cadenceDays":%s}`,
+			cadence,
+		)
+		parsed, err := parseOutput([]byte(record+"\n"), "adapter", []string{"octo/api"})
+		if cadence != "2.5" {
+			if err == nil {
+				t.Fatalf("accepted invalid cadence %s", cadence)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		values := envelopes("example", parsed.values)
+		if values[0].OperationalValue.CadenceDays == nil || *values[0].OperationalValue.CadenceDays != 2.5 {
+			t.Fatal("cadence not preserved")
+		}
+	}
+}
+
+func TestEvaluatorDigestValidationAndPublication(t *testing.T) {
+	for _, digest := range []string{`["` + strings.Repeat("a", 64) + `"]`, "64", "{}"} {
+		record := fmt.Sprintf(
+			`{"timestamp":"2026-09-24T10:00:00Z","repository":"octo/api","valueId":"example.value","value":0,"evaluatorDigest":%s}`,
+			digest,
+		)
+		if _, err := parseOutput([]byte(record+"\n"), "adapter", []string{"octo/api"}); err == nil {
+			t.Fatalf("accepted non-string evaluator fingerprint %s", digest)
+		}
+	}
+	for _, digest := range []string{"", "legacy", strings.Repeat("A", 64), strings.Repeat("a", 64)} {
+		record := fmt.Sprintf(
+			`{"timestamp":"2026-09-24T10:00:00Z","repository":"octo/api","valueId":"example.value","value":0,"evaluatorDigest":%q}`,
+			digest,
+		)
+		parsed, err := parseOutput([]byte(record+"\n"), "adapter", []string{"octo/api"})
+		if digest != strings.Repeat("a", 64) {
+			if err == nil {
+				t.Fatal("expected malformed evaluator fingerprint to be rejected")
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		values := envelopes("example", parsed.values)
+		if len(values) != 1 || values[0].OperationalValue.EvaluatorDigest == nil ||
+			*values[0].OperationalValue.EvaluatorDigest != digest {
+			t.Fatalf("evaluator fingerprint not preserved: %+v", values)
+		}
+	}
+}
+
 func testEnvelope(valueID string, value float64) envelope {
 	const campaign = "example"
 	const timestamp = "2026-09-01T00:00:00.000Z"
@@ -45,6 +102,33 @@ func testEnvelope(valueID string, value float64) envelope {
 			MetricRole: "primary", MetricName: valueID, MetricDirection: "increase",
 			MaturityStatus: "matured",
 		},
+	}
+}
+
+func TestDefaultRetentionKeepsYearBoundary(t *testing.T) {
+	now := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	path := filepath.Join(t.TempDir(), "observations.jsonl")
+	lines := make([]string, 0, 3)
+	for _, age := range []int{40, 365, 366} {
+		lines = append(lines, fmt.Sprintf(
+			`{"schema_version":2,"kind":"operational_value","operational_value":{"timestamp":%q,"campaign":"example","repository":"octo/api","value_id":"alerts","value":0}}`,
+			now.Add(-time.Duration(age)*day).Format(time.RFC3339),
+		))
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	values, err := readRetained(path, now.Add(-DefaultRetention))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(values) != 2 {
+		t.Fatalf("retained %d observations, want ages 40 and 365 days", len(values))
+	}
+	for index, age := range []int{40, 365} {
+		if values[index].OperationalValue.Timestamp != now.Add(-time.Duration(age)*day).Format(time.RFC3339) {
+			t.Fatalf("unexpected retained timestamp: %s", values[index].OperationalValue.Timestamp)
+		}
 	}
 }
 

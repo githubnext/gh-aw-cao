@@ -280,6 +280,7 @@ describe('canonical view sources', () => {
       repository: 'githubnext/gh-aw-cao',
       campaign: 'dependabot',
       valueId: 'dependabot-vulnerability-alerts',
+      'cadence-days': 7,
       value: 4,
       timestamp: '2026-09-09T04:00:00Z',
       observedAt: '2026-09-09T04:00:00Z'
@@ -293,6 +294,7 @@ describe('canonical view sources', () => {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'operational-value-definition': 'dependabot-vulnerability-alerts',
+      'cadence-days': 7,
       'operational-value': 4,
       'observed-at': '2026-09-09T04:00:00Z'
     })]);

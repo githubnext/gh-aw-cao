@@ -1,0 +1,35 @@
+{
+  "campaignSummaryContract": {
+    "page": "operational-value-campaign",
+    "view": "campaign-outcome-repositories",
+    "source": "operational-value-repository-signals",
+    "fields": ["campaign", "repository-coordinate", "signal", "goals", "oldest-evidence-at", "newest-evidence-at"]
+  },
+  "views": [
+    { "id": "operational-value-direction-chart", "source": "operational-value-direction-campaigns" },
+    { "id": "operational-value-signals", "source": "operational-value-campaign-signals" },
+    { "id": "operational-value-coverage", "source": "operational-value-campaign-coverage" },
+    { "id": "operational-value-latest", "source": "operational-value-latest" },
+    { "id": "operational-value-observations", "source": "operational-values" }
+  ],
+  "campaigns": [
+    { "campaign": "alpha", "campaign-name": "Alpha" },
+    { "campaign": "beta", "campaign-name": "Beta" },
+    { "campaign": "unmeasured", "campaign-name": "No outcome contract" }
+  ],
+  "workflows": [
+    { "campaign": "alpha", "workflow": "alpha-worker", "repository": "control", "organization": "ops" },
+    { "campaign": "beta", "workflow": "beta-worker", "repository": "control", "organization": "ops" }
+  ],
+  "runs": [
+    { "workflow": "alpha-worker", "repository": "control", "organization": "ops", "run": "101", "run-attempt": 1, "started-at": "2026-09-23T09:00:00Z", "run-status": "completed", "run-conclusion": "success" },
+    { "workflow": "alpha-worker", "repository": "control", "organization": "ops", "run": "102", "run-attempt": 1, "started-at": "2026-09-23T09:00:00Z", "run-status": "completed", "run-conclusion": "failure" },
+    { "workflow": "beta-worker", "repository": "control", "organization": "ops", "run": "103", "run-attempt": 1, "started-at": "2026-09-24T09:00:00Z", "run-status": "completed", "run-conclusion": "success" }
+  ],
+  "observations": [
+    { "id": "a1", "campaign": "alpha", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Remaining alerts", "operational-value-role": "primary", "operational-value-unit": "alerts", "operational-value-direction": "decrease", "operational-value": 4, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-23T10:00:00Z" },
+    { "id": "a2", "campaign": "alpha", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Remaining alerts", "operational-value-role": "primary", "operational-value-unit": "alerts", "operational-value-direction": "decrease", "operational-value": 0, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-24T10:00:00Z" },
+    { "id": "b1", "campaign": "beta", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Accepted changes", "operational-value-role": "primary", "operational-value-unit": "changes", "operational-value-direction": "increase", "operational-value": 0, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-23T10:00:00Z" },
+    { "id": "b2", "campaign": "beta", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Accepted changes", "operational-value-role": "primary", "operational-value-unit": "changes", "operational-value-direction": "increase", "operational-value": 3, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-24T10:00:00Z" }
+  ]
+}

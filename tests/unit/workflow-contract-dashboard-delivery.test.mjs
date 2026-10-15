@@ -510,7 +510,9 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Enrich owner-scoped issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?--history-campaign optimization/);
+  assert.match(workflow, /cao\.mjs operational-value[\s\S]*?--retention-days 365/);
+  assert.doesNotMatch(workflow, /--history-campaign/);
+  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?REPORT_VALUE_SEED_SHARDS:[\s\S]*?cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?--input "\$value_output"/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);
   assert.match(workflow, /Select independent activity credential[\s\S]*?id: activity-credential[\s\S]*?echo "token=\$token" >> "\$GITHUB_OUTPUT"/);

@@ -1556,10 +1556,28 @@ describe('declarative dashboard queries', () => {
 
   describe('join operator edge cases', () => {
     /**
-     * @typedef {{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
+     * @typedef {{ source: string, type?: 'inner'|'left'|'inner-many', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
      */
     /** @param {TestJoin[]} joins */
     const query = (joins) => ({ name: 'join-test', from: 'left', joins });
+    it('expands only explicit many joins in stable input order and drops unmatched keys', () => {
+      const result = executeDashboardQuery(query([join({ type: 'inner-many' })]), {
+        left: source('left', [{ id: 'a', order: 1 }, { id: 'none' }, { id: 'a', order: 2 }, { id: null }]),
+        right: source('right', [{ id: 'a', value: 9 }, { id: 'a', value: 0 }, { id: null, value: 3 }])
+      });
+      expect(result.metadata.availability).toBe('available');
+      expect(result.rows).toEqual([
+        { id: 'a', order: 1, 'joined-value': 9 }, { id: 'a', order: 1, 'joined-value': 0 },
+        { id: 'a', order: 2, 'joined-value': 9 }, { id: 'a', order: 2, 'joined-value': 0 }
+      ]);
+    });
+    it('charges expanded matches against the operation budget before materializing all rows', () => {
+      const budget = createDashboardQueryBudget({ maxOperations: 40 });
+      expect(() => executeDashboardQuery(query([join({ type: 'inner-many' })]), {
+        left: source('left', Array.from({ length: 10 }, () => ({ id: 'a' }))),
+        right: source('right', Array.from({ length: 10 }, (_, value) => ({ id: 'a', value })))
+      }, undefined, budget).rows).toThrow(DashboardQueryCancelledError);
+    });
     /**
      * @param {Partial<TestJoin>} [overrides]
      * @returns {TestJoin}

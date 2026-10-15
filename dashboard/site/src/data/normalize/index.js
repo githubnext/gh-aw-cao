@@ -1,6 +1,6 @@
 import { issueCoordinates, issueId, operationalValueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
-import { pruneCanonicalRecord } from '../model/fields.js';
+import { mergeCanonicalRun, pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
 
@@ -196,9 +196,9 @@ export function normalize(observations, options = {}) {
             ? String(current.lastObservedAt ?? current.observedAt) : observedAt
         }
       : {};
+    const incoming = withoutUndefined(pruneCanonicalRecord(collection, observation.data));
     entities[collection].set(id, {
-      ...current,
-      ...withoutUndefined(pruneCanonicalRecord(collection, observation.data)),
+      ...(collection === 'runs' ? mergeCanonicalRun(current, incoming) : { ...current, ...incoming }),
       ...definitionRange,
       id,
       observedAt,

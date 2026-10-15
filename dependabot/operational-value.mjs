@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -39,6 +41,19 @@ const selectedModule = process.env.CAO_OPERATIONAL_VALUE_MODULE;
 if (selectedModule && !MODULE_SLUG.test(selectedModule)) {
   fail("CAO_OPERATIONAL_VALUE_MODULE must be a workflow slug");
 }
+const history = request.historyTimestamps;
+if (history !== undefined && (
+  !selectedModule || !Array.isArray(history) || history.length === 0 || history.length > 366
+  || history.at(-1) !== request.timestamp
+  || history.some((timestamp, index) => (
+    typeof timestamp !== "string" || !Number.isFinite(Date.parse(timestamp))
+    || new Date(timestamp).toISOString() !== timestamp
+    || Date.parse(timestamp) > Date.parse(request.timestamp)
+    || (index > 0 && Date.parse(timestamp) <= Date.parse(history[index - 1]))
+  ))
+)) {
+  fail("Invalid operational value history batch");
+}
 const moduleFiles = readdirSync(moduleDirectory)
   .filter((name) => MODULE_SLUG.test(name.replace(/\.mjs$/, "")) && name.endsWith(".mjs"))
   .filter((name) => !selectedModule || name === `${selectedModule}.mjs`)
@@ -50,6 +65,9 @@ if (selectedModule && moduleFiles.length === 0) {
 for (const moduleFile of moduleFiles) {
   const valueModule = await import(pathToFileURL(path.join(moduleDirectory, moduleFile)).href);
   const { collectBatch, definition, scoreMetric } = valueModule;
+  if (history && valueModule.historyBatch !== true) {
+    fail(`Operational value module does not support local history batches: ${moduleFile}`);
+  }
   if (
     !MODULE_SLUG.test(definition?.slug ?? "")
     || typeof collectBatch !== "function"
@@ -73,6 +91,7 @@ for (const moduleFile of moduleFiles) {
     cadenceDays: definition.evidence.window.cadenceDays,
     repositories: definition.evidence.repositories,
     valueIds: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`),
+    ...(valueModule.historyBatch === true ? { historyBatch: true } : {}),
   }));
 
   const supported = new Set(
@@ -84,19 +103,70 @@ for (const moduleFile of moduleFiles) {
   const { durationDays, maturationDays } = definition.evidence.window;
   const observedAt = request.timestamp;
   const firstMatureAt = shiftDays(definition.adoption.adoptedAt, durationDays + maturationDays);
-  const interim = definition.evaluation?.mode === "attainment-only"
-    && Date.parse(observedAt) < Date.parse(firstMatureAt);
-  const windowEnd = interim ? observedAt : shiftDays(observedAt, -maturationDays);
-  const windows = repositories.map((repository) => ({
-    repository,
-    observedAt,
-    windowStart: interim ? definition.adoption.adoptedAt : shiftDays(windowEnd, -durationDays),
-    windowEnd,
-  }));
+  const windows = (history ?? [observedAt]).flatMap((timestamp) => {
+    const interim = definition.evaluation?.mode === "attainment-only"
+      && Date.parse(timestamp) < Date.parse(firstMatureAt);
+    const windowEnd = interim ? timestamp : shiftDays(timestamp, -maturationDays);
+    return repositories.map((repository) => ({
+      repository,
+      observedAt: timestamp,
+      windowStart: interim ? definition.adoption.adoptedAt : shiftDays(windowEnd, -durationDays),
+      windowEnd,
+    }));
+  });
+
+  const evaluatorDigest = createHash("sha256")
+    .update(readFileSync(fileURLToPath(import.meta.url)))
+    .update(readFileSync(path.join(moduleDirectory, moduleFile)))
+    .digest("hex");
+  if (request.database && !selectedModule) {
+    const query = {
+      name: "reusable-operational-values",
+      from: "operationalValues",
+      filter: { predicates: [
+        { field: "campaign", equals: path.basename(path.dirname(moduleDirectory)) },
+        { field: "repository", in: repositories },
+        { field: "valueId", in: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`) },
+        { field: "evaluator-digest", equals: evaluatorDigest },
+        { field: "timestamp", gte: new Date(Date.parse(observedAt) - definition.evidence.window.cadenceDays * 86_400_000 + 1).toISOString() },
+        { field: "timestamp", lt: new Date(Date.parse(observedAt) + 1).toISOString() },
+      ] },
+      "order-by": [{ field: "timestamp", direction: "desc" }],
+    };
+    const result = spawnSync(process.execPath, [
+      process.env.CAO_ACTIVITY_CLI || fileURLToPath(new URL("../activity/cao.mjs", import.meta.url)),
+      "query", "--database", request.database, "--stdin",
+    ], { input: JSON.stringify(query), encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+    if (result.error || result.status !== 0) fail("Unable to query retained operational-value measurements");
+    const rows = JSON.parse(result.stdout);
+    if (!Array.isArray(rows)) fail("Invalid retained operational-value measurements");
+    const cached = repositories.flatMap((repository) => definition.metrics.map((metric) => rows.find((row) => (
+      row.repository === repository && row.valueId === `${definition.slug}.${metric.id}`
+      && typeof row.value === "number" && Number.isFinite(row.value)
+    ))));
+    if (cached.length > 0 && cached.every(Boolean)) {
+      for (const row of cached) console.log(JSON.stringify({
+        timestamp: row.timestamp, repository: row.repository, valueId: row.valueId, value: row.value,
+        metricRole: row["operational-value-role"], metricName: row["operational-value-name"],
+        metricUnit: row["operational-value-unit"], metricDirection: row["operational-value-direction"],
+        maturityStatus: row["maturity-status"], adoptionAt: row["adoption-at"],
+        evaluationMode: row["evaluation-mode"], workflowSlug: row["workflow-slug"],
+        workflowName: row["workflow-name"], evaluatorDigest,
+        cadenceDays: row["cadence-days"],
+        ...(row["rollup-numerator"] !== undefined ? {
+          rollupNumerator: row["rollup-numerator"], rollupDenominator: row["rollup-denominator"],
+        } : {}),
+      }));
+      continue;
+    }
+  }
 
   let collections;
   try {
-    collections = await collectBatch(windows, { database: request.database });
+    collections = await collectBatch(windows, {
+      database: request.database,
+      ...(history ? { history: true } : {}),
+    });
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }
@@ -126,19 +196,21 @@ for (const moduleFile of moduleFiles) {
         fail(`Operational value metric returned invalid rollup evidence: ${definition.slug}.${metric.id}`);
       }
       console.log(JSON.stringify({
-        timestamp: request.timestamp,
+        timestamp: windows[index].observedAt,
         repository: windows[index].repository,
         valueId: `${definition.slug}.${metric.id}`,
         value,
         metricRole: metric.role,
         metricName: metric.name,
         metricUnit: metric.unit,
+        cadenceDays: definition.evidence.window.cadenceDays,
         metricDirection: metric.direction,
         maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
         adoptionAt: definition.adoption.adoptedAt,
         evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
         workflowSlug: definition.slug,
         workflowName: definition.workflowName,
+        evaluatorDigest,
         ...(metric.rollup ? { rollupNumerator, rollupDenominator } : {}),
       }));
     }

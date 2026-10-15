@@ -14,6 +14,26 @@ function observation(kind, sourceId, observedAt, data, source = 'dashboard-sourc
 }
 
 describe('canonical normalization', () => {
+  it('keeps measured usage through sparse refreshes but not across run attempts', () => {
+    const run = { owner: 'octo', repository: 'api', githubRunId: '303', attempt: 1 };
+    const measured = observation('run', 'measured', '2026-10-01T00:00:00Z',
+      { ...run, aicTotal: 2.5, inputTokens: 100, outputTokens: 0 });
+    const sparse = observation('run', 'refresh', '2026-10-02T00:00:00Z',
+      { ...run, aicTotal: null, inputTokens: null, outputTokens: null, conclusion: 'success' });
+    expect(normalize([sparse, measured]).runs[0]).toMatchObject({
+      aicTotal: 2.5, inputTokens: 100, outputTokens: 0, conclusion: 'success'
+    });
+    expect(normalize([measured, {
+      ...sparse, data: { ...sparse.data, aicTotal: 0 }
+    }]).runs[0]).toMatchObject({ aicTotal: 0 });
+    expect(normalize([measured, {
+      ...sparse, data: { ...run, attempt: 2, aicTotal: null }
+    }]).runs[0]).toMatchObject({ attempt: 2, aicTotal: null });
+    expect(normalize([measured, {
+      ...sparse, data: { ...run, attempt: 2 }
+    }]).runs[0]).not.toHaveProperty('inputTokens');
+  });
+
   it('normalizes marketplace packages without credential-shaped fields', () => {
     const batch = normalize([observation(
       'marketplace-package',

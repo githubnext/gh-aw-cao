@@ -7,6 +7,29 @@
     "repository": "githubnext/gh-aw-cao",
     "card-templates": [
       {
+        "id": "campaign-outcome-signal",
+        "icon": "graph",
+        "title": { "field": "campaign-name", "title": "Campaign" },
+        "subtitle": { "field": "direction-summary", "title": "Observed direction" },
+        "labels": [{ "field": "signal", "title": "Signal", "display": "label" }],
+        "details": [
+          { "field": "coverage-summary", "title": "Repository coverage" },
+          { "field": "oldest-evidence-at", "title": "Oldest latest evidence", "type": "temporal", "format": "human-friendly-timestamp" },
+          { "field": "newest-evidence-at", "title": "Newest evidence", "type": "temporal", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "repository-outcome-signal",
+        "icon": "repo",
+        "title": { "field": "repository-coordinate", "title": "Repository" },
+        "labels": [{ "field": "signal", "title": "Signal", "display": "label" }],
+        "details": [
+          { "field": "goals", "title": "Primary measures" },
+          { "field": "oldest-evidence-at", "title": "Oldest latest evidence", "type": "temporal", "format": "human-friendly-timestamp" },
+          { "field": "newest-evidence-at", "title": "Newest evidence", "type": "temporal", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
         "id": "repository",
         "icon": "repo",
         "title": {

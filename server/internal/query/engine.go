@@ -47,7 +47,7 @@ func Validate(definitions []Definition) error {
 			if join.Source == "" || len(join.On) == 0 {
 				return fmt.Errorf("query %q contains an unbounded join", definition.Name)
 			}
-			if join.Type != "" && join.Type != "inner" && join.Type != "left" {
+			if join.Type != "" && join.Type != "inner" && join.Type != "left" && join.Type != "inner-many" {
 				return fmt.Errorf("query %q has unsupported join type %q", definition.Name, join.Type)
 			}
 			if seen[join.Source] && !available[join.Source] {

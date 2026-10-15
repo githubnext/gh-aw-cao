@@ -13,7 +13,7 @@ import {
   prepareCanonicalRecord
 } from './indexeddb.js';
 import { STORAGE_SHARD_STORE } from './shards.js';
-import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
+import { mergeRetainedRecords, OPERATIONAL_VALUE_RETENTION_MS, RETENTION_WINDOW_DAYS } from './retention.js';
 import {
   createSqliteRelationalTables,
   SQLITE_INDEXEDDB_METADATA_SCHEMA,
@@ -514,7 +514,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   }
   const retentionWindowMsByStore = {
     runs: runRetentionWindowMs,
-    operationalValues: options.ttlDays === undefined ? RETENTION_WINDOW_DAYS * DAY_MS : retentionWindowMs
+    operationalValues: Math.max(OPERATIONAL_VALUE_RETENTION_MS, runRetentionWindowMs)
   };
   const checkedAt = new Date(now).toISOString();
   const actions = /** @type {string[]} */ ([]);

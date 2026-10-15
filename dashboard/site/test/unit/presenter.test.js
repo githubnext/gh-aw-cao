@@ -847,7 +847,7 @@ describe('dashboard DOM provenance', () => {
       const workflows = deliver('workflows', [{
         campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'workflow-role': 'orchestrator'
       }]);
-      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value'));
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights'));
       const shell = rendered.querySelector('[data-view-id="campaign-insights-navigation"]');
       expect(shell?.textContent).not.toContain('This view cannot be shown');
       requests.get('campaign-problem-tab-counts').reject(new Error('dashboard queries exceeded the max-duration-ms limit of 60000'));

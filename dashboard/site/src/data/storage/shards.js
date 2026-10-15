@@ -1,4 +1,5 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
+import { mergeCanonicalRun } from '../model/fields.js';
 import {
   auditCurationRunFacts, discardAudit, AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION
 } from '../model/audit-curation.js';
@@ -80,7 +81,11 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   const unique = new Map();
   for (const record of records) {
     const previous = unique.get(String(record.id));
-    unique.set(String(record.id), previous && EVIDENCE_DEFINITION_STORES.has(storeName)
+    unique.set(String(record.id), previous && storeName === 'runs'
+      ? withStorageMetadata(storeName, mergeCanonicalRun(
+          withoutStorageMetadata(previous), withoutStorageMetadata(record)
+        ))
+      : previous && EVIDENCE_DEFINITION_STORES.has(storeName)
       ? withStorageMetadata(storeName, mergeEvidenceDefinition(
           withoutStorageMetadata(previous), withoutStorageMetadata(record)
         ))
@@ -117,7 +122,11 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
     if (referencesAudits && typeof existing?.auditId === 'string' && existing.auditId !== record.auditId) {
       dirtyAudits.add(existing.auditId);
     }
-    if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
+    if (storeName === 'runs' && existing) {
+      const incomingRun = withoutStorageMetadata(record);
+      const merged = mergeCanonicalRun(withoutStorageMetadata(existing), incomingRun);
+      if (merged !== incomingRun) record = withStorageMetadata(storeName, merged);
+    } else if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
       record = withStorageMetadata(storeName, mergeEvidenceDefinition(
         existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
       ));

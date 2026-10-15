@@ -256,8 +256,8 @@ func (p Projector) refreshManifest(ctx context.Context) error {
 	return p.run(ctx, arguments)
 }
 
-// refreshOperationalValues reconstructs the same retained operational-value
-// history as the Actions profile, using a short-lived Activity projection and
+// refreshOperationalValues collects current outcomes from the retained Activity
+// projection without reconstructing historical windows, using
 // one installation-scoped token per enrolled repository.
 func (p Projector) refreshOperationalValues(ctx context.Context) error {
 	repositories, err := p.enrolledRepositories(ctx)
@@ -289,12 +289,6 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 	}
 	observedAt := time.Now().UTC()
 	output := filepath.Join(p.Lake.ShardDirectory(), "operational-values.jsonl")
-	history := false
-	if _, err := os.Stat(filepath.Join(p.CatalogRoot, "optimization", "operational-value.mjs")); err == nil {
-		history = true
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 	for _, repository := range repositories {
 		installationID, err := p.Enrollment.InstallationFor(ctx, repository)
 		if err != nil {
@@ -316,16 +310,11 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 			"GH_TOKEN=" + token,
 			"CAO_GITHUB_API_MIN_REMAINING=" + strconv.Itoa(reserve),
 		}...)
-		historyCampaign := ""
-		if history {
-			historyCampaign = "optimization"
-		}
 		result, err := operationalvalue.Collect(ctx, operationalvalue.Config{
 			Root: p.CatalogRoot, Database: database, Output: output,
 			ObservedAt: observedAt, Repositories: []string{repository},
-			HistoryCampaign: historyCampaign,
-			Retention:       time.Duration(p.windowDays()) * 24 * time.Hour,
-			NodeBinary:      p.node(), GitHubBinary: p.GitHubBinary,
+			Retention:  operationalvalue.DefaultRetention,
+			NodeBinary: p.node(), GitHubBinary: p.GitHubBinary,
 			Environment: environment, RedactValues: []string{token},
 			RateLimitReserve: reserve,
 		})

@@ -762,8 +762,10 @@ func (c *sqlCompiler) join(left, right SQLRelation, join Join, name string) (SQL
 		keys = append(keys, rightKey+" <> ''")
 		grouping = append(grouping, rightKey)
 	}
-	c.joins = append(c.joins, "SELECT 1 FROM "+right.SQL+" WHERE "+strings.Join(keys, " AND ")+" GROUP BY "+
-		strings.Join(grouping, ",")+" HAVING count(*) > 1 LIMIT 1")
+	if join.Type != "inner-many" {
+		c.joins = append(c.joins, "SELECT 1 FROM "+right.SQL+" WHERE "+strings.Join(keys, " AND ")+" GROUP BY "+
+			strings.Join(grouping, ",")+" HAVING count(*) > 1 LIMIT 1")
+	}
 	joinType := "INNER JOIN"
 	if join.Type == "left" {
 		joinType = "LEFT JOIN"
@@ -781,8 +783,12 @@ func (c *sqlCompiler) join(left, right SQLRelation, join Join, name string) (SQL
 		column.Presence = "TRUE"
 		columns[alias] = column
 	}
+	order := left.Order
+	if join.Type == "inner-many" {
+		order = "row_number() OVER (ORDER BY " + left.Order + "," + right.Order + ")"
+	}
 	return c.materialize(SQLRelation{SQL: left.SQL + " " + joinType + " " + right.SQL + " ON " + strings.Join(condition, " AND "),
-		Columns: columns, Order: left.Order}, name, "join", 1), nil
+		Columns: columns, Order: order}, name, "join", 1), nil
 }
 
 func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name string) (SQLRelation, error) {

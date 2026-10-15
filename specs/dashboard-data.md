@@ -430,10 +430,13 @@ MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. IndexedDB SHALL retain detailed
-run-linked records for seven days and Operational Value records for 30 days;
+run-linked records for seven days and Operational Value records for 365 days;
 the Activity SQLite database SHALL retain run-linked detail for seven days by
-default, while retaining Run and Operational Value records for 30 days by
-default. Explicit historical retention windows MAY override these defaults.
+default, while retaining Run records for 30 days and Operational Value records
+for at least 365 days by default. Shortening run or detail retention MUST NOT
+shorten this compact observation history. Explicitly longer historical SQLite
+run windows SHALL also preserve the corresponding longer outcome history.
+Explicit per-store historical retention windows MAY override these defaults.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
@@ -2400,6 +2403,41 @@ treated as durable evidence.
 ---
 
 # 31. Query-only derived results
+
+## 31.1 Campaign outcome signals
+
+The Operational Value overview SHALL derive campaign signals from retained,
+repository-scoped primary Operational Value observations, not run conclusions.
+SQL and IndexedDB query execution SHALL use the same Dashboard Language queries.
+This presentation introduces no canonical collection, migration, persistent
+projection, acquisition request, or change to retention.
+
+Movement SHALL compare native numeric observations only within the same campaign,
+subject repository, measure, evaluator fingerprint, unit, direction, adoption
+instant, evaluation mode, and maturity. Unknown versions, missing values, interim
+evidence, and unsupported goal directions SHALL remain insufficient evidence.
+Latest selection SHALL precede campaign aggregation so historical report volume
+cannot inflate repository counts or hide a newer incomplete observation.
+
+A repository SHALL count once per campaign. It SHALL be insufficient when any
+latest retained primary measure lacks comparable movement; otherwise opposing
+measure directions SHALL be Mixed, followed by Worsening, Improving, or Unchanged.
+Campaign summaries SHALL expose all five counts and measured repository coverage,
+rank worsening and mixed evidence before gains, and retain campaigns with no
+measurements. Counts SHALL NOT imply complete enrolled-target coverage where an
+authoritative target denominator is absent. Observation dates SHALL stay visible;
+retained evidence SHALL NOT be represented as a fresh all-clear.
+
+Daily direction charts SHALL select the last observation per repository, measure,
+and UTC day before classifying repositories. They SHALL count repositories
+assessed that day, not a carried-forward fleet state, and SHALL NOT fill missing
+days, average native values across measures, infer sustained improvement, or
+attribute movement causally to a campaign. Repository drill-downs SHALL preserve
+native measurement history, adoption and actual available baseline evidence.
+Campaign-wide run context SHALL be labeled as such, never as target-attributed
+execution. Missing inputs SHALL propagate unavailable states through the
+production query boundary. Active views SHALL requery on database changes within
+their abort-scoped subscription lifetime.
 
 Derived query results SHALL be computed from canonical records on demand.
 No derived-result generation, metadata pointer, or persistent projection

@@ -61,6 +61,12 @@ adapter environment fields, or additional informational warnings, MAY exist.
 The conformance harness MUST disable optional filters and compare only the
 required environment fields and warning categories.
 
+The shipped current-only collection profile retains compact observations for
+365 days independently of run/detail collection windows. It does not enable
+historical reconstruction automatically. Browser and SQLite projections preserve
+that observation horizon; longer explicit SQLite archives remain longer.
+Extending retention cannot reconstruct already-expired source evidence.
+
 Conformance concerns the observable request, output, warning, and publication
 behavior. Programming language, internal data structures, and process-launch
 APIs are not part of this specification.
@@ -158,7 +164,40 @@ and `CAO_OPERATIONAL_VALUE_TIMESTAMP` as the invocation's current observation
 instant. The latter remains the current invocation instant during historical
 requests; the request's `timestamp` is the historical observation instant.
 
+### 4.1.1 Optional local history batching
+
+A definition MAY advertise `historyBatch: true` when its module supports
+historical evaluation exclusively from locally preserved evidence. For such a
+definition, the orchestrator MUST send all missing instants in one historical
+request using `historyTimestamps`, an ascending, unique array of at most 366
+canonical timestamps. `timestamp` MUST equal the last requested instant.
+An empty batch MUST NOT execute. Adapters without this capability retain the
+single-instant exchange.
+
+The adapter MUST require a selected module, reject malformed, unordered,
+duplicate, oversized, or future instants, and reject batches for modules that
+have not opted in. It MUST derive every window from the frozen contract and
+call `collectBatch` once with all requested windows and repositories, passing
+`history: true` in the collection context. Historical batch collection MUST NOT
+download or acquire remote evidence. Missing evidence MUST remain missing.
+Values MUST carry their actual requested observation instant.
+
+The orchestrator MUST validate every returned instant against the requested
+batch and every identifier against the current definition before accepting any
+value in that response. A retained observation MUST satisfy its metric's cadence
+bucket without retimestamping. Retained observations MUST NOT be replaced by
+historically reevaluated values when only some metrics in a bucket are missing.
+The existing timeout, cancellation, atomic publication, and failure requirements
+apply to the entire batch.
+
 ### 4.2 Response framing
+
+Value records MAY include `cadenceDays`, a positive finite number copied from
+the frozen module's observation cadence. Orchestrators MUST validate and preserve
+it as `cadence_days` in retained envelopes. Canonical ingestion MUST preserve it
+as `cadence-days`. Missing legacy metadata MUST remain absent; consumers MUST NOT
+infer it from campaign identity or measure names. Different cadences MUST NOT be
+connected within a single plotted series.
 
 An adapter response MUST be UTF-8 JSON Lines. Blank lines MAY occur. Every
 non-blank line MUST contain one JSON object. A malformed line MUST invalidate
@@ -218,7 +257,8 @@ It MAY contain:
 - `adoptionAt`: a valid timestamp;
 - `evaluationMode`: `baseline-comparable` or `attainment-only`;
 - `workflowSlug`: a non-empty string;
-- `workflowName`: a non-empty string; and
+- `workflowName`: a non-empty string;
+- `evaluatorDigest`: a lowercase 64-character hexadecimal SHA-256 fingerprint; and
 - both `rollupNumerator` and `rollupDenominator`.
 
 When either rollup field is present, both MUST be present.
@@ -241,6 +281,31 @@ For omitted metadata, the orchestrator MUST use these publication defaults:
 | `maturityStatus` | `matured` |
 
 Other omitted optional metadata MUST remain absent.
+
+An orchestrator MUST preserve a supplied `evaluatorDigest` as `evaluator_digest`
+in the published schema-v2 envelope. Existing unversioned observations remain
+readable, but MUST NOT establish comparable directional movement across evaluator
+versions.
+
+### 4.5 Routine cadence reuse
+
+Outside explicit historical reconstruction, a standard adapter MAY satisfy a
+current request using retained observations. Reuse MUST require the same campaign,
+repository, metric identifier, and evaluator fingerprint, with every required
+metric available as a finite native value. An observation MUST NOT be in the
+future and MUST be younger than the declared cadence. Reuse MUST preserve its
+original timestamp, native unit, direction, maturity and rollup evidence; it MUST
+NOT relabel old evidence as a newly collected observation.
+
+The standard adapter fingerprints its own source and the selected outcome module.
+Imported evaluator dependencies, if any, MUST be versioned through a corresponding
+module change before reuse can be considered safe. A failed canonical query MUST
+be reported, not treated as an empty successful cache lookup. Missing measurements
+MUST NOT be replaced with zero.
+
+Routine Actions and hosted collection SHOULD use current-only collection.
+Historical reconstruction MUST remain explicitly selected; cadence reuse MUST
+NOT substitute an earlier observation for a requested historical instant.
 
 ## 5. Historical schedule
 

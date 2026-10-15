@@ -110,8 +110,8 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'campaign-operational-value-primary-series': {
-        source: 'campaign-operational-value-primary-series',
+      'operational-value-plot-series': {
+        source: 'operational-value-plot-series',
         metadata,
         rows: [{
           campaign: 'ambient-context',
@@ -150,7 +150,7 @@ describe('campaign detail route', () => {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value');
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
     expect(rendered.querySelector('.measure-history')).toBeNull();
   });
 
@@ -161,7 +161,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsFailuresReportsMemory');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
@@ -224,7 +224,7 @@ describe('campaign detail route', () => {
       label: link.querySelector('span')?.textContent,
       count: link.querySelector('.count-badge')?.textContent
     }))).toEqual([
-      { label: 'Operational Value', count: '4' },
+      { label: 'Insights', count: '4' },
       { label: 'Failures', count: '2' },
       { label: 'Reports', count: '1' },
       { label: 'Memory', count: undefined }
@@ -369,7 +369,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsFailuresReportsMemory');
   });
 
   describe('workflow run navigation', () => {
