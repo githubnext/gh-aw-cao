@@ -157,7 +157,8 @@ export function formatQuickstartSummary(result) {
     return [
       `CAO quickstart ${result.step}: ${result.status}.`,
       result.context,
-      `Control repository: ${result.controlRepository} (default branch: ${result.branch})`,
+      `Control repository: https://github.com/${result.controlRepository} (default branch: ${result.branch})`,
+      `Target: https://github.com/${result.targetRepository}`,
       ...(result.actionsUrl ? [`Actions: ${result.actionsUrl}`] : []),
       ...(result.dashboard?.url ? [`Dashboard: ${result.dashboard.url}`] : []),
       ...(result.inspectCommand ? [`Inspect: ${result.inspectCommand}`] : []),
@@ -553,7 +554,7 @@ async function executeQuickstartStage({
   const actionsUrl = (workflow) => `${serverUrl}/${repository}/actions/workflows/${workflow}`;
   const inspectCommand = (workflow) => `gh run list --repo ${repository} --branch '${branch.replaceAll("'", "'\\''")}' --workflow ${workflow}`;
   if (step === 'run') {
-    await ui.step?.('Requesting one review-only maintenance run; proposals are optional and a no-op is valid');
+    await ui.step?.('Requesting one review-only maintenance run (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking); proposals are optional and a no-op is valid');
     let dispatchError;
     try {
       run(execute, 'gh', ['workflow', 'enable', REPO_ASSIST_WORKFLOW, '--repo', repository]);
@@ -575,7 +576,7 @@ async function executeQuickstartStage({
     ui.finish?.('Review requested; Repo Assist schedules are paused.');
     return {
       ...base, status: 'dispatched', paused: true, actionsUrl: actionsUrl(REPO_ASSIST_WORKFLOW),
-      context: 'One bounded review was requested. Inspect the orchestrator and completed maintenance proposal or no-op before collecting evidence. No target changes are applied.',
+      context: 'One bounded review was requested (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking). Inspect the orchestrator and completed maintenance proposal or no-op before collecting evidence. No target changes are applied.',
       inspectCommand: inspectCommand(REPO_ASSIST_WORKER),
       nextCommand: './cao.sh quickstart --step collect',
     };
@@ -592,15 +593,15 @@ async function executeQuickstartStage({
       nextCommand: './cao.sh quickstart --step dashboard',
     };
   }
-  const pending = (message) => {
+  const pending = (message, workflow = ACTIVITY_WORKFLOW) => {
     ui.finish?.(message);
     return {
-      ...base, status: 'pending', context: message, actionsUrl: actionsUrl(ACTIVITY_WORKFLOW),
-      inspectCommand: inspectCommand(ACTIVITY_WORKFLOW), nextCommand: './cao.sh quickstart --step dashboard',
+      ...base, status: 'pending', context: message, actionsUrl: actionsUrl(workflow),
+      inspectCommand: inspectCommand(workflow), nextCommand: './cao.sh quickstart --step dashboard',
     };
   };
   const activity = stageRuns(execute, repository, branch, ACTIVITY_WORKFLOW)[0];
-  if (!context.dashboardDeploy) return pending('Standalone Pages deployment is disabled by policy. This read-only check cannot publish a dashboard.');
+  if (!context.dashboardDeploy) return pending('Standalone Pages deployment is disabled by policy. This read-only check cannot publish a dashboard.', DASHBOARD_WORKFLOW);
   if (activity?.status !== 'completed' || activity.conclusion !== 'success') {
     return pending('The latest default-branch Activity snapshot is not successfully completed. Inspect Actions, then retry this read-only check; no work was dispatched.');
   }
@@ -612,10 +613,17 @@ async function executeQuickstartStage({
   const dashboard = stageRuns(execute, repository, branch, DASHBOARD_WORKFLOW, 'workflow_run')
     .filter((record) => Date.parse(record.createdAt) >= Date.parse(activity.updatedAt))[0];
   if (dashboard?.status !== 'completed' || dashboard.conclusion !== 'success') {
-    return pending('A successful dashboard deployment after the latest Activity snapshot is not ready. Retry this read-only check; no new collection was dispatched.');
+    return pending('A successful dashboard deployment after the latest Activity snapshot is not ready. Retry this read-only check; no new collection was dispatched.', DASHBOARD_WORKFLOW);
+  }
+  const dashboardJobs = runJson(execute, 'gh', [
+    'run', 'view', String(dashboard.databaseId), '--repo', repository, '--json', 'jobs',
+  ]);
+  const deploy = dashboardJobs?.jobs?.find((job) => job.name === 'deploy');
+  if (deploy?.status !== 'completed' || deploy.conclusion !== 'success') {
+    return pending('The dashboard run has no completed successful Pages deploy job. Inspect its deployment jobs and retry this read-only check.', DASHBOARD_WORKFLOW);
   }
   const pages = runJson(execute, 'gh', ['api', `repos/${repository}/pages`]);
-  if (!pages?.html_url || pages.public === false) return pending('No public deployed Pages URL is available yet. Inspect Pages and retry this read-only check.');
+  if (!pages?.html_url || pages.public === false) return pending('No public deployed Pages URL is available yet. Inspect Pages and retry this read-only check.', DASHBOARD_WORKFLOW);
   ui.finish?.('Data-bearing dashboard deployment verified.');
   return {
     ...base, status: 'ready', context: 'Activity contains collected runs and its subsequent dashboard workflow succeeded. Explore the evidence; operational value still requires reviewing outcomes.',

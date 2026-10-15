@@ -102,6 +102,10 @@ This stage will:
 
 It does **not** dispatch Repo Assist or Activity, or wait for remote jobs.
 The quickstart works without a terminal and when `CI` is set.
+The installed Activity workflow still has its normal push and scheduled
+triggers, so the installation commit can start a baseline collection and
+dashboard build automatically. That does not run Repo Assist or replace the
+post-review snapshot you request in step 4.
 
 **Checkpoint:** enter the control-repository directory printed by the installer.
 Run every remaining command from that checkout, not from the target repository.
@@ -184,7 +188,8 @@ Check publication without starting another workflow:
 ```
 
 This read-only step checks for successful, data-bearing Activity and its
-subsequent successful dashboard deployment. If either is pending, inspect the
+subsequent successful Pages deployment job, not merely a successful build.
+If either is pending, inspect the
 printed Actions link and repeat **only this command** later. It does not poll
 until completion or report a ready dashboard prematurely.
 

@@ -561,7 +561,9 @@ required practices, or source-convention admission gates. CAO admission depends
 on policy and access, not tests, CI, agent instructions, or recommendation adoption.
 The default install stage configures and commits the control plane, disables
 the orchestrator, and returns without dispatching Repo Assist or Activity or
-waiting for remote completion. Explicit `--step run` uses the installed,
+waiting for remote completion. Normal Activity push and schedule triggers remain
+active independently and can publish a baseline after installation.
+Explicit `--step run` uses the installed,
 validated policy without rewriting scope, enables the normal orchestrator for
 one dispatch, then disables it
 with `gh workflow disable`, including when dispatch fails, to prevent six-hour
@@ -583,7 +585,7 @@ and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
 check. Run and collect return Actions links without waiting; repeating them
 requests new work. Operators inspect the maintenance outcome before requesting
 Activity. The dashboard check verifies data-bearing Activity and a subsequent
-successful deployment, returning pending rather than polling when either is
+successful Pages deployment job, not just workflow success, returning pending rather than polling when either is
 unfinished. No local checkpoint file grants authority; stages revalidate the
 installed policy. Explicit `--wait`, immediately after bare installation,
 retains the original end-to-end flow, dispatching one orchestrator and at most

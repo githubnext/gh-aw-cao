@@ -48,7 +48,9 @@ Assist paused. Continue from the printed control-repository directory:
    read-only. Repeat this check if pending, then open the verified dashboard.
 
 Each step explains a different component; there is no long default terminal
-wait. The review issue is the first useful result. Starting the campaign can use
+wait. Normal Activity push/schedule triggers may publish a baseline independently;
+the collect stage refreshes evidence after your review.
+The review issue is the first useful result. Starting the campaign can use
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
 + 400 output checking; configured output-check limits may differ), not a
 measured token budget or expected consumption.

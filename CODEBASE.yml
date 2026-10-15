@@ -106,7 +106,7 @@ components:
     responsibility: resolve exact repository scope, review intended authority, verify Pages source and public-visibility consent, connect credentials, and atomically save bare control-plane policy
   control_plane_quickstart:
     path: activity/quickstart.mjs
-    responsibility: guide first success through separate install, run, collect, and read-only dashboard stages; install commits bounded review-only policy and pauses Repo Assist, run and collect return without remote waits, dashboard verifies data-bearing publication, and explicit --wait retains the end-to-end flow
+    responsibility: guide first success through separate install, run, collect, and read-only dashboard stages; install commits bounded review-only policy and pauses Repo Assist, run and collect return without remote waits, dashboard verifies data-bearing publication and a successful Pages deployment job, and explicit --wait retains the end-to-end flow
   setup_prompts:
     path: activity/setup-prompt.mjs
     responsibility: dependency-free keyboard-driven terminal presentation and plain-terminal fallback without owning authority decisions
@@ -368,6 +368,7 @@ boundaries:
       - postgres_entity_store
 
 invariants:
+  - "Quickstart installation does not explicitly dispatch Activity, but normal Activity push/schedule triggers remain active and may publish a baseline independently. Dashboard readiness requires an actual successful Pages deployment job; successful workflows with skipped deployments are insufficient."
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
   - "Review mode is the default; live mode requires explicit campaign, worker, scope, and target authority."

@@ -154,6 +154,7 @@ async function quickstartFixture(t, {
     'cao-dashboard.yml': {
       databaseId: 104,
       displayTitle: 'CAO Dashboard',
+      jobs: [{ name: 'deploy', status: 'completed', conclusion: 'success' }],
       status: 'completed',
       conclusion: 'success',
       createdAt: '2026-01-01T00:03:10Z',
@@ -211,176 +212,267 @@ async function quickstartFixture(t, {
 }
 
 async function installedFixture(t, options = {}) {
-      const fixture = await quickstartFixture(t, { headStatus: 0, ...options });
-      const policyPath = await fixture.policyPath();
+  const fixture = await quickstartFixture(t, { headStatus: 0, ...options });
+  const policyPath = await fixture.policyPath();
+  const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+  policy['control-plane'] = {
+    scope: {
+      'allowed-owners': ['acme', 'github'],
+      'allowed-repositories': ['acme/cao', 'github/gh-aw'],
+    },
+    activity: { repositories: ['acme/cao'] },
+    campaigns: {
+      'repo-assist': {
+        enabled: true, mode: 'review', 'max-repositories': 1, 'rollout-percent': 100,
+        targets: { 'github/gh-aw': { mode: 'review' } },
+        workers: {
+          maintenance: { enabled: true, workflow: 'repo-assist-maintenance', 'max-mode': 'review' },
+          'issue-fix': { enabled: false, workflow: 'repo-assist-issue-fix', 'max-mode': 'review' },
+        },
+      },
+    },
+  };
+  await writeFile(policyPath, JSON.stringify(policy));
+  return {
+    ...fixture, policy, policyPath,
+    options: {
+      policyPath, execute: fixture.execute, progress: {},
+      pause() { assert.fail('stages must not poll or wait'); },
+      addCampaign() { assert.fail('must not reinstall'); },
+      configurePages() { assert.fail('must not reconfigure'); },
+      collectActivityStats: async (value) => {
+        assert.equal(value.runId, 103);
+        return { summary: { runsWithArtifact: 1, totalUniqueRuns: 4 }, runs: [{ runId: '103' }] };
+      },
+    },
+  };
+}
+
+test('default quickstart installs and pauses without dispatching or polling', async (t) => {
+  const fixture = await quickstartFixture(t);
+  const policyPath = await fixture.policyPath();
+  const result = await runCaoQuickstart({
+    policyPath, execute: fixture.execute, progress: {},
+    resolveRootRevision: () => 'a'.repeat(40),
+    async addCampaign() {
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-      policy['control-plane'] = {
-        scope: {
-          'allowed-owners': ['acme', 'github'],
-          'allowed-repositories': ['acme/cao', 'github/gh-aw'],
-        },
-        activity: { repositories: ['acme/cao'] },
-        campaigns: {
-          'repo-assist': {
-            enabled: true, mode: 'review', 'max-repositories': 1, 'rollout-percent': 100,
-            targets: { 'github/gh-aw': { mode: 'review' } },
-            workers: {
-              maintenance: { enabled: true, workflow: 'repo-assist-maintenance', 'max-mode': 'review' },
-              'issue-fix': { enabled: false, workflow: 'repo-assist-issue-fix', 'max-mode': 'review' },
-            },
-          },
-        },
+      policy['control-plane'].campaigns['repo-assist'] = {
+        workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
       };
       await writeFile(policyPath, JSON.stringify(policy));
-      return {
-        ...fixture, policy, policyPath,
-        options: {
-          policyPath, execute: fixture.execute, progress: {},
-          pause() { assert.fail('stages must not poll or wait'); },
-          addCampaign() { assert.fail('must not reinstall'); },
-          configurePages() { assert.fail('must not reconfigure'); },
-          collectActivityStats: async (value) => {
-            assert.equal(value.runId, 103);
-            return { summary: { runsWithArtifact: 1, totalUniqueRuns: 4 }, runs: [{ runId: '103' }] };
-          },
-        },
-      };
-    }
+    },
+    configurePages: () => ({ public: true, url: 'https://acme.github.io/cao/' }),
+    pause() { assert.fail('no waiting'); },
+  });
+  assert.equal(result.step, 'install');
+  assert.equal(result.status, 'installed');
+  assert.equal(result.paused, true);
+  assert.equal(result.nextCommand, './cao.sh quickstart --step run');
+  assert.match(formatQuickstartSummary(result), /No work was dispatched/);
+  assert.match(formatQuickstartSummary(result), /Control repository: https:\/\/github\.com\/acme\/cao/);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw/);
+  assert.ok(!fixture.calls.some((call) => call[1] === 'run'));
+  assert.deepEqual(fixture.calls.filter((call) => call[1] === 'workflow'), [
+    ['gh', 'workflow', 'disable', 'repo-assist.lock.yml', '--repo', 'acme/cao'],
+  ]);
+});
 
-    test('default quickstart installs and pauses without dispatching or polling', async (t) => {
-      const fixture = await quickstartFixture(t);
-      const policyPath = await fixture.policyPath();
-      const result = await runCaoQuickstart({
-        policyPath, execute: fixture.execute, progress: {},
-        resolveRootRevision: () => 'a'.repeat(40),
-        async addCampaign() {
-          const policy = JSON.parse(await readFile(policyPath, 'utf8'));
-          policy['control-plane'].campaigns['repo-assist'] = {
-            workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
-          };
-          await writeFile(policyPath, JSON.stringify(policy));
-        },
-        configurePages: () => ({ public: true, url: 'https://acme.github.io/cao/' }),
-        pause() { assert.fail('no waiting'); },
-      });
-      assert.equal(result.step, 'install');
-      assert.equal(result.status, 'installed');
-      assert.equal(result.paused, true);
-      assert.equal(result.nextCommand, './cao.sh quickstart --step run');
-      assert.match(formatQuickstartSummary(result), /No work was dispatched/);
-      assert.ok(!fixture.calls.some((call) => call[1] === 'run'));
-      assert.deepEqual(fixture.calls.filter((call) => call[1] === 'workflow'), [
-        ['gh', 'workflow', 'disable', 'repo-assist.lock.yml', '--repo', 'acme/cao'],
-      ]);
+for (const step of ['run', 'collect', 'dashboard']) {
+  test(`${step} stage preserves policy bytes and never watches or commits`, async (t) => {
+    const fixture = await installedFixture(t);
+    const before = await readFile(fixture.policyPath, 'utf8');
+    const result = await runCaoQuickstart({ ...fixture.options, step });
+    assert.equal(await readFile(fixture.policyPath, 'utf8'), before);
+    assert.equal(result.step, step);
+    assert.equal(result.status, step === 'dashboard' ? 'ready' : 'dispatched');
+    assert.match(formatQuickstartSummary(result), /Next: /);
+    assert.ok(!fixture.calls.some((call) => ['watch', 'commit', 'push', 'add', 'compile'].includes(call[1])));
+    const views = fixture.calls.filter((call) => call[1] === 'run' && call[2] === 'view');
+    assert.equal(views.length, step === 'dashboard' ? 1 : 0);
+    if (step === 'dashboard') assert.equal(views[0].at(-1), 'jobs');
+    const workflows = fixture.calls.filter((call) => call[1] === 'workflow');
+    if (step === 'run') {
+      assert.deepEqual(workflows.map((call) => call[2]), ['enable', 'run', 'disable']);
+      assert.ok(workflows[1].includes('target_repo=github/gh-aw'));
+      assert.ok(workflows[1].includes('safe_output_repo=acme/cao'));
+      assert.ok(workflows[1].includes('safe_output_mode=review'));
+      assert.ok(workflows[1].includes('max_repos=1'));
+      assert.ok(workflows[1].includes('rollout_percent=100'));
+    } else if (step === 'collect') {
+      assert.equal(workflows.length, 1);
+      assert.equal(workflows[0][3], 'cao-activity.yml');
+      assert.match(result.requestId, /^quickstart-[0-9a-f-]{36}$/);
+      assert.ok(workflows[0].includes(`request-id=${result.requestId}`));
+      const again = await runCaoQuickstart({ ...fixture.options, step });
+      assert.notEqual(again.requestId, result.requestId);
+    } else {
+      assert.deepEqual(workflows, []);
+      assert.equal(result.dashboard.url, 'https://acme.github.io/cao/');
+    }
+  });
+}
+
+for (const step of ['run', 'collect']) {
+  for (const [name, mutate] of [
+    ['disabled campaign', (p) => { p.campaigns['repo-assist'].enabled = false; }],
+    ['live campaign', (p) => { p.campaigns['repo-assist'].mode = 'live'; }],
+    ['live target', (p) => { p.campaigns['repo-assist'].targets['github/gh-aw'].mode = 'live'; }],
+    ['multiple targets', (p) => { p.campaigns['repo-assist'].targets['acme/other'] = { mode: 'review' }; }],
+    ['unbounded campaign', (p) => { p.campaigns['repo-assist']['max-repositories'] = 2; }],
+    ['disabled maintenance', (p) => { p.campaigns['repo-assist'].workers.maintenance.enabled = false; }],
+    ['live worker', (p) => { p.campaigns['repo-assist'].workers.maintenance['max-mode'] = 'live'; }],
+    ['another enabled worker', (p) => { p.campaigns['repo-assist'].workers['issue-fix'].enabled = true; }],
+    ['implicit worker enablement', (p) => { delete p.campaigns['repo-assist'].workers['issue-fix'].enabled; }],
+    ['wrong workflow', (p) => { p.campaigns['repo-assist'].workers.maintenance.workflow = 'other'; }],
+    ['missing scope', (p) => { delete p.scope; }],
+    ['out-of-scope target', (p) => { p.scope['allowed-repositories'] = ['acme/cao']; }],
+    ['broader collection', (p) => { p.activity.repositories.push('acme/other'); }],
+  ]) {
+    test(`${step} fails closed without mutation for ${name}`, async (t) => {
+      const fixture = await installedFixture(t);
+      mutate(fixture.policy['control-plane']);
+      const before = JSON.stringify(fixture.policy);
+      await writeFile(fixture.policyPath, before);
+      await assert.rejects(runCaoQuickstart({ ...fixture.options, step }), /policy|target/);
+      assert.equal(await readFile(fixture.policyPath, 'utf8'), before);
+      assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
     });
+  }
+  for (const [name, options] of [
+    ['non-default branch', { currentBranch: 'feature' }],
+    ['unpushed revision', { remoteHead: 'b'.repeat(40) }],
+    ['uncommitted policy', { policyDiff: { status: 1 } }],
+    ['private target', { targetVisibility: 'PRIVATE' }],
+  ]) {
+    test(`${step} rejects ${name} before dispatch`, async (t) => {
+      const fixture = await installedFixture(t, options);
+      await assert.rejects(runCaoQuickstart({ ...fixture.options, step }));
+      assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+    });
+  }
+}
 
-    for (const step of ['run', 'collect', 'dashboard']) {
-      test(`${step} stage preserves policy bytes and never watches or commits`, async (t) => {
-        const fixture = await installedFixture(t);
-        const before = await readFile(fixture.policyPath, 'utf8');
-        const result = await runCaoQuickstart({ ...fixture.options, step });
-        assert.equal(await readFile(fixture.policyPath, 'utf8'), before);
-        assert.equal(result.step, step);
-        assert.equal(result.status, step === 'dashboard' ? 'ready' : 'dispatched');
-        assert.match(formatQuickstartSummary(result), /Next: /);
-        assert.ok(!fixture.calls.some((call) => ['watch', 'commit', 'push', 'add', 'compile'].includes(call[1])));
-        assert.ok(!fixture.calls.some((call) => call[1] === 'run' && call[2] === 'view'));
-        const workflows = fixture.calls.filter((call) => call[1] === 'workflow');
-        if (step === 'run') {
-          assert.deepEqual(workflows.map((call) => call[2]), ['enable', 'run', 'disable']);
-          assert.ok(workflows[1].includes('target_repo=github/gh-aw'));
-          assert.ok(workflows[1].includes('safe_output_repo=acme/cao'));
-          assert.ok(workflows[1].includes('safe_output_mode=review'));
-          assert.ok(workflows[1].includes('max_repos=1'));
-          assert.ok(workflows[1].includes('rollout_percent=100'));
-        } else if (step === 'collect') {
-          assert.equal(workflows.length, 1);
-          assert.equal(workflows[0][3], 'cao-activity.yml');
-          assert.match(result.requestId, /^quickstart-[0-9a-f-]{36}$/);
-          assert.ok(workflows[0].includes(`request-id=${result.requestId}`));
-          const again = await runCaoQuickstart({ ...fixture.options, step });
-          assert.notEqual(again.requestId, result.requestId);
-        } else {
-          assert.deepEqual(workflows, []);
-          assert.equal(result.dashboard.url, 'https://acme.github.io/cao/');
-        }
-      });
-    }
+for (const [name, options] of [
+  ['dispatch fails', { dispatchResult: { status: 1, stderr: 'dispatch failed' } }],
+  ['enable fails', { enableResult: { status: 1, stderr: 'enable failed' } }],
+  ['dispatch and pause fail', { dispatchResult: { status: 1, stderr: 'dispatch failed' }, disableResult: { status: 1, stderr: 'pause failed' } }],
+]) {
+  test(`run stage always pauses when ${name}`, async (t) => {
+    const fixture = await installedFixture(t, options);
+    await assert.rejects(runCaoQuickstart({ ...fixture.options, step: 'run' }));
+    const workflows = fixture.calls.filter((call) => call[1] === 'workflow');
+    assert.equal(workflows.at(-1)[2], 'disable');
+    assert.ok(workflows.filter((call) => call[2] === 'run').length <= 1);
+  });
+}
 
-    for (const step of ['run', 'collect']) {
-      for (const [name, mutate] of [
-        ['disabled campaign', (p) => { p.campaigns['repo-assist'].enabled = false; }],
-        ['live campaign', (p) => { p.campaigns['repo-assist'].mode = 'live'; }],
-        ['live target', (p) => { p.campaigns['repo-assist'].targets['github/gh-aw'].mode = 'live'; }],
-        ['multiple targets', (p) => { p.campaigns['repo-assist'].targets['acme/other'] = { mode: 'review' }; }],
-        ['unbounded campaign', (p) => { p.campaigns['repo-assist']['max-repositories'] = 2; }],
-        ['disabled maintenance', (p) => { p.campaigns['repo-assist'].workers.maintenance.enabled = false; }],
-        ['live worker', (p) => { p.campaigns['repo-assist'].workers.maintenance['max-mode'] = 'live'; }],
-        ['another enabled worker', (p) => { p.campaigns['repo-assist'].workers['issue-fix'].enabled = true; }],
-        ['implicit worker enablement', (p) => { delete p.campaigns['repo-assist'].workers['issue-fix'].enabled; }],
-        ['wrong workflow', (p) => { p.campaigns['repo-assist'].workers.maintenance.workflow = 'other'; }],
-        ['missing scope', (p) => { delete p.scope; }],
-        ['out-of-scope target', (p) => { p.scope['allowed-repositories'] = ['acme/cao']; }],
-        ['broader collection', (p) => { p.activity.repositories.push('acme/other'); }],
-      ]) {
-        test(`${step} fails closed without mutation for ${name}`, async (t) => {
-          const fixture = await installedFixture(t);
-          mutate(fixture.policy['control-plane']);
-          const before = JSON.stringify(fixture.policy);
-          await writeFile(fixture.policyPath, before);
-          await assert.rejects(runCaoQuickstart({ ...fixture.options, step }), /policy|target/);
-          assert.equal(await readFile(fixture.policyPath, 'utf8'), before);
-          assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
-        });
+for (const state of ['activity-pending', 'activity-failed', 'activity-empty', 'stats-mismatch', 'dashboard-pending', 'dashboard-failed', 'dashboard-old']) {
+  test(`dashboard check is read-only and pending for ${state}`, async (t) => {
+    const fixture = await installedFixture(t);
+    if (state === 'activity-pending') fixture.runRecords['cao-activity.yml'].status = 'in_progress';
+    if (state === 'activity-failed') fixture.runRecords['cao-activity.yml'].conclusion = 'failure';
+    if (state === 'dashboard-pending') fixture.runRecords['cao-dashboard.yml'].status = 'queued';
+    if (state === 'dashboard-failed') fixture.runRecords['cao-dashboard.yml'].conclusion = 'failure';
+    if (state === 'dashboard-old') fixture.runRecords['cao-dashboard.yml'].createdAt = '2025-01-01T00:00:00Z';
+    const collectActivityStats = async () => ({
+      summary: { runsWithArtifact: 1, totalUniqueRuns: state === 'activity-empty' ? 0 : 4 },
+      runs: [{ runId: state === 'stats-mismatch' ? '100' : '103' }],
+    });
+    const result = await runCaoQuickstart({ ...fixture.options, step: 'dashboard', collectActivityStats });
+    assert.equal(result.status, 'pending');
+    assert.equal(result.dashboard, undefined);
+    assert.equal(result.nextCommand, './cao.sh quickstart --step dashboard');
+    const workflow = state.startsWith('dashboard-') ? 'cao-dashboard.yml' : 'cao-activity.yml';
+    assert.ok(result.actionsUrl.endsWith(`/actions/workflows/${workflow}`));
+    assert.ok(result.inspectCommand.endsWith(`--workflow ${workflow}`));
+    assert.doesNotMatch(formatQuickstartSummary(result), /CAO quickstart complete|dashboard: ready|Dashboard: https/);
+    assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+  });
+}
+test('run discloses its AI credit budget before dispatch and in JSON context', async (t) => {
+  const fixture = await installedFixture(t);
+  let budgetDisclosed = false;
+  const budget = /up to 1,250 AI credits: 250 orchestration \+ 600 maintenance \+ 400 configurable output checking/;
+  const result = await runCaoQuickstart({
+    ...fixture.options, step: 'run',
+    progress: { step(message) { assert.match(message, budget); budgetDisclosed = true; } },
+    execute(command, arguments_) {
+      if (command === 'gh' && arguments_[0] === 'workflow' && arguments_[1] === 'run') {
+        assert.equal(budgetDisclosed, true);
       }
-      for (const [name, options] of [
-        ['non-default branch', { currentBranch: 'feature' }],
-        ['unpushed revision', { remoteHead: 'b'.repeat(40) }],
-        ['uncommitted policy', { policyDiff: { status: 1 } }],
-        ['private target', { targetVisibility: 'PRIVATE' }],
-      ]) {
-        test(`${step} rejects ${name} before dispatch`, async (t) => {
-          const fixture = await installedFixture(t, options);
-          await assert.rejects(runCaoQuickstart({ ...fixture.options, step }));
-          assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
-        });
-      }
-    }
+      return fixture.execute(command, arguments_);
+    },
+  });
+  assert.match(result.context, budget);
+  assert.match(JSON.stringify(result), /1,250 AI credits/);
+});
 
-    for (const [name, options] of [
-      ['dispatch fails', { dispatchResult: { status: 1, stderr: 'dispatch failed' } }],
-      ['enable fails', { enableResult: { status: 1, stderr: 'enable failed' } }],
-      ['dispatch and pause fail', { dispatchResult: { status: 1, stderr: 'dispatch failed' }, disableResult: { status: 1, stderr: 'pause failed' } }],
-    ]) {
-      test(`run stage always pauses when ${name}`, async (t) => {
-        const fixture = await installedFixture(t, options);
-        await assert.rejects(runCaoQuickstart({ ...fixture.options, step: 'run' }));
-        const workflows = fixture.calls.filter((call) => call[1] === 'workflow');
-        assert.equal(workflows.at(-1)[2], 'disable');
-        assert.ok(workflows.filter((call) => call[2] === 'run').length <= 1);
-      });
+test('dashboard remains pending without Activity history or data artifacts', async (t) => {
+  const fixture = await installedFixture(t);
+  const execute = (command, arguments_) => {
+    if (command === 'gh' && arguments_[0] === 'run' && arguments_[1] === 'list') {
+      fixture.calls.push([command, ...arguments_]);
+      return success('[]');
     }
+    return fixture.execute(command, arguments_);
+  };
+  const empty = await runCaoQuickstart({
+    ...fixture.options, execute, step: 'dashboard',
+    collectActivityStats() { assert.fail('no Activity run to inspect'); },
+  });
+  assert.equal(empty.status, 'pending');
+  const missingArtifact = await runCaoQuickstart({
+    ...fixture.options, step: 'dashboard',
+    collectActivityStats: async () => ({
+      summary: { runsWithArtifact: 0, totalUniqueRuns: 0 },
+      runs: [{ runId: '103', error: 'artifact not found' }],
+    }),
+  });
+  assert.equal(missingArtifact.status, 'pending');
+  assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+});
 
-    for (const state of ['activity-pending', 'activity-failed', 'activity-empty', 'stats-mismatch', 'dashboard-pending', 'dashboard-failed', 'dashboard-old']) {
-      test(`dashboard check is read-only and pending for ${state}`, async (t) => {
-        const fixture = await installedFixture(t);
-        if (state === 'activity-pending') fixture.runRecords['cao-activity.yml'].status = 'in_progress';
-        if (state === 'activity-failed') fixture.runRecords['cao-activity.yml'].conclusion = 'failure';
-        if (state === 'dashboard-pending') fixture.runRecords['cao-dashboard.yml'].status = 'queued';
-        if (state === 'dashboard-failed') fixture.runRecords['cao-dashboard.yml'].conclusion = 'failure';
-        if (state === 'dashboard-old') fixture.runRecords['cao-dashboard.yml'].createdAt = '2025-01-01T00:00:00Z';
-        const collectActivityStats = async () => ({
-          summary: { runsWithArtifact: 1, totalUniqueRuns: state === 'activity-empty' ? 0 : 4 },
-          runs: [{ runId: state === 'stats-mismatch' ? '100' : '103' }],
-        });
-        const result = await runCaoQuickstart({ ...fixture.options, step: 'dashboard', collectActivityStats });
-        assert.equal(result.status, 'pending');
-        assert.equal(result.dashboard, undefined);
-        assert.equal(result.nextCommand, './cao.sh quickstart --step dashboard');
-        assert.doesNotMatch(formatQuickstartSummary(result), /CAO quickstart complete|dashboard: ready|Dashboard: https/);
-        assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
-      });
-    }
+test('dashboard cannot report ready when Pages deployment is disabled', async (t) => {
+  const fixture = await installedFixture(t);
+  fixture.policy['control-plane'].campaigns.dashboard = { deploy: false };
+  await writeFile(fixture.policyPath, JSON.stringify(fixture.policy));
+  const result = await runCaoQuickstart({ ...fixture.options, step: 'dashboard' });
+  assert.equal(result.status, 'pending');
+  assert.equal(result.dashboard, undefined);
+  assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+});
+
+for (const [name, jobs] of [
+  ['skipped', [{ name: 'deploy', status: 'completed', conclusion: 'skipped' }]],
+  ['missing', [{ name: 'build', status: 'completed', conclusion: 'success' }]],
+  ['failed', [{ name: 'deploy', status: 'completed', conclusion: 'failure' }]],
+  ['pending', [{ name: 'deploy', status: 'in_progress', conclusion: null }]],
+]) {
+  test(`dashboard stays pending when its actual Pages deploy job is ${name}`, async (t) => {
+    const fixture = await installedFixture(t);
+    fixture.runRecords['cao-dashboard.yml'].jobs = jobs;
+    const result = await runCaoQuickstart({ ...fixture.options, step: 'dashboard' });
+    assert.equal(result.status, 'pending');
+    assert.equal(result.dashboard, undefined);
+    assert.ok(result.actionsUrl.endsWith('/cao-dashboard.yml'));
+    assert.ok(fixture.calls.some((call) => call.join(' ') === 'gh run view 104 --repo acme/cao --json jobs'));
+    assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+    assert.ok(!fixture.calls.some((call) => call[1] === 'api' && call[2].endsWith('/pages')));
+  });
+}
+
+for (const step of ['run', 'collect']) {
+  test(`${step} rejects missing or invalid policy without mutation`, async (t) => {
+    const fixture = await installedFixture(t);
+    await writeFile(fixture.policyPath, '{invalid JSON');
+    await assert.rejects(runCaoQuickstart({ ...fixture.options, step }), SyntaxError);
+    assert.equal(await readFile(fixture.policyPath, 'utf8'), '{invalid JSON');
+    await rm(fixture.policyPath);
+    await assert.rejects(runCaoQuickstart({ ...fixture.options, step }), { code: 'ENOENT' });
+    assert.ok(!fixture.calls.some((call) => call[1] === 'workflow'));
+  });
+}
+
 test('quickstart reports staged whitespace errors', async (t) => {
   const fixture = await quickstartFixture(t, {
     diffCheck: {

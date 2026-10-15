@@ -302,11 +302,12 @@ Repo Assist maintenance runs in review mode and may consume up to 1,250 AI
 credits under default limits (250 orchestration, 600 maintenance, 400 output
 checking; configured output-check limits may differ). The installer flag
 authorizes bounded campaign installation, configuration, commit, and push,
-but MUST NOT automatically dispatch Repo Assist or Activity or wait for remote
+but MUST NOT explicitly dispatch Repo Assist or Activity or wait for remote
 completion. The install stage MUST leave the orchestrator paused. Separate
 `--step run` and `--step collect` commands authorize their respective dispatches
 and MUST return without watching remote jobs. `--step dashboard` MUST be
-read-only, report pending work without polling, and be safe to repeat.
+read-only, report pending work without polling, and be safe to repeat. Normal
+Activity push and schedule triggers MAY collect a baseline independently.
 Every stage MUST explain its component and provide the next command or Actions
 link. Explicit `cao quickstart --wait` MAY retain the end-to-end installation,
 dispatch, collection, and deployment waits for unattended use immediately
@@ -374,7 +375,8 @@ The quickstart MUST:
 - dispatch Activity only in its requested collection stage (or explicit `--wait`)
   with a correlatable request ID; to report dashboard readiness require a successful
   data-bearing Activity artifact with at least one unique run, then require the
-  corresponding dashboard deployment to succeed; and
+  corresponding dashboard Pages deployment job to succeed (workflow success
+  with a skipped deployment MUST NOT establish readiness); and
 - never modify the selected target; and
 - print target, control-repository, and Actions links as navigation during stages,
   but MUST NOT report a ready dashboard until those success conditions are verified.

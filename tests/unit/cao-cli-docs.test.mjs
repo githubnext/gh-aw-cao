@@ -67,6 +67,8 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(firstSuccess, /Do not repeat `--step run` just to check progress/);
   assert.match(firstSuccess, /Do not repeat `--step collect` as a status check/);
   assert.match(firstSuccess, /read-only step/);
+  assert.match(firstSuccess, /normal push and scheduled\s+triggers/);
+  assert.match(firstSuccess, /successful Pages deployment job, not merely a successful build/);
   assert.match(firstSuccess, /\.\/cao\.sh quickstart --wait/);
   assert.match(firstSuccess, /Do not use it to resume a staged installation/);
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
