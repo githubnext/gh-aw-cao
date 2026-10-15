@@ -1079,6 +1079,7 @@
           "runs",
           "issues",
           "cost",
+          "operational-value",
           "friction",
           "engines-models",
           "firewall",
@@ -1090,7 +1091,6 @@
         "label": "Experimental",
         "experimental": true,
         "pages": [
-          "operational-value",
           "skills",
           "steering",
           "simulators"

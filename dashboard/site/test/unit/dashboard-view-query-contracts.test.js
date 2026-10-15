@@ -180,7 +180,6 @@ describe('dashboard view query contracts', () => {
       label: 'Experimental',
       experimental: true,
       pages: [
-        'operational-value',
         'skills',
         'steering',
         'simulators'
@@ -348,15 +347,21 @@ describe('dashboard view query contracts', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
-    const experimentalSection = dashboard.navigation.find(
-      (/** @type {Record<string, unknown>} */ section) => section.experimental === true
+    const dataSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
     );
 
-    expect(/** @type {Record<string, unknown> | undefined} */ (experimentalSection)?.pages)
+    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
       .toContain('operational-value');
+    for (const pageId of ['operational-value', 'operational-value-evidence', 'operational-value-campaign', 'operational-value-repository']) {
+      const valuePage = dashboard.pages.find(
+        (/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId
+      );
+      expect(valuePage).toBeDefined();
+      expect(valuePage?.experimental).not.toBe(true);
+    }
     expect(page).toMatchObject({
       kind: 'custom',
-      experimental: true,
       'view-mode-control': false,
       route: { tab: 'overview', tabs: [
         { id: 'overview', page: 'operational-value' },
@@ -525,9 +530,9 @@ describe('dashboard view query contracts', () => {
   });
 
   it('keeps stable campaign route IDs with an Insights label across every entry path', () => {
+    const campaignPageIds = ['campaign-insights', 'campaign-problems', 'campaign-issues', 'campaign-memory'];
     const campaignPages = dashboard.pages.filter((/** @type {Record<string, unknown>} */ page) => (
-      /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
-      && page.experimental !== true
+      campaignPageIds.includes(/** @type {string} */ (page.id))
     ));
     const expectedTabs = [
       { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
@@ -536,6 +541,8 @@ describe('dashboard view query contracts', () => {
       { id: 'memory', label: 'Memory', icon: 'archive', page: 'campaign-memory' }
     ];
 
+    expect(campaignPages.map((/** @type {Record<string, unknown>} */ page) => page.id))
+      .toEqual(expect.arrayContaining(campaignPageIds));
     for (const page of campaignPages) {
       expect(page.route).toMatchObject({
         'title-format': 'title-case',
@@ -586,7 +593,6 @@ describe('dashboard view query contracts', () => {
 
     const outcomes = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-campaign');
     expect(outcomes).toMatchObject({
-      experimental: true,
       route: { 'navigation-page': 'operational-value' }
     });
     expect(viewsOf(insights).map((view) => view.id)).not.toEqual(expect.arrayContaining([

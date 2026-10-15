@@ -11,6 +11,6 @@ test('hosted MCP loads the same named queries advertised by its agent catalog', 
   assert.match(dockerfile, /COPY .*\/dist\/src\/agent\/catalog\.generated\.json \/app\/agent\/catalog\.json/);
   assert.match(dockerfile, /"--dashboard-queries", "\/app\/agent\/queries\.json"/);
   assert.match(compose, /- --dashboard-queries\s+- \/app\/agent\/queries\.json/);
-  assert.ok(queries.some(({ name }) => name === 'database-campaign-count'));
+  assert.ok(queries.some(({ name }) => name === 'overview-workflow-health-summary'));
   assert.ok(queries.some(({ name }) => name === 'campaign-readme-orchestrators'));
 });

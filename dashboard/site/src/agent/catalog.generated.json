@@ -526,7 +526,7 @@
       "id": "operational-value-campaign",
       "title": "Operational Value",
       "description": "Choose a repository to see its plots.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [
         {
           "name": "campaign",
@@ -572,7 +572,7 @@
       "id": "operational-value-repository",
       "title": "Operational Value",
       "description": "Measurements over time. Select a point to inspect its value.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [
         {
           "name": "repository",
@@ -726,7 +726,7 @@
       "id": "operational-value",
       "title": "Operational Value",
       "description": "Choose a campaign, then a repository to see its plots.",
-      "experimental": true,
+      "experimental": false,
       "parameters": [],
       "queries": [
         "operational-value-measured-campaigns",
@@ -869,8 +869,10 @@
         "overview-campaign-links",
         "overview-factory-station",
         "overview-header-presentation",
+        "overview-issue-station",
         "overview-repository-station",
-        "overview-rhythm"
+        "overview-rhythm",
+        "overview-value-station"
       ]
     },
     {
@@ -5390,6 +5392,67 @@
         "grader-observations"
       ],
       "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
+      }
+    },
+    {
+      "id": "overview-issue-summary",
+      "subject": "Count retained issue and pull request safe-output records for Overview.",
+      "objective": "Restore the issue and pull request counter with a link to its evidence inventory.",
+      "acceptance": "The count includes retained canonical issue and pull request records, not inferred outcomes; unavailable evidence remains unavailable.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issues"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues"
+        ]
+      }
+    },
+    {
+      "id": "overview-issue-station",
+      "subject": "Present the retained issue and pull request count for Overview.",
+      "objective": "Provide a presentation-ready count and accessible evidence description.",
+      "acceptance": "The value matches overview-issue-summary and describes retained safe outputs, not accepted outcomes.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-issue-summary"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues"
+        ]
+      }
+    },
+    {
+      "id": "overview-value-station",
+      "subject": "Present the observed grader-result count as the legacy Value gains counter.",
+      "objective": "Restore the Value gains counter while making its observation-count semantics explicit.",
+      "acceptance": "The count matches overview-value-summary, including zero; grader presence is not proof of improvement and unavailable evidence is not zero.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-value-summary"
+      ],
+      "used-by-pages": [
+        "overview"
+      ],
       "execution": {
         "local": true,
         "backend": "sqlite",

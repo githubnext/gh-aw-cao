@@ -8,13 +8,15 @@ const debugFactoryFloor = createDebug('factory-floor');
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /** @typedef {{ signal: AbortSignal }} FactoryFloorScope */
-/** @typedef {'campaigns'|'repositories'} FactoryStationId */
+/** @typedef {'campaigns'|'repositories'|'issues'|'value-gains'} FactoryStationId */
 
+/** @type {Record<FactoryStationId, { icon: string, label: string, href: string, format: 'count'|'percent', unavailableDetail: string, unavailableDescription: string }>} */
 const STATION_DEFINITIONS = {
   campaigns: {
     icon: 'workflow',
     label: 'Factory health',
     href: '#page-workflows',
+    format: 'percent',
     unavailableDetail: '0/0 healthy workflows',
     unavailableDescription: 'Factory health unavailable'
   },
@@ -22,8 +24,25 @@ const STATION_DEFINITIONS = {
     icon: 'repo',
     label: 'Repository coverage',
     href: '#page-repositories',
+    format: 'percent',
     unavailableDetail: '0/0 repositories reached',
     unavailableDescription: 'Repository coverage unavailable'
+  },
+  issues: {
+    icon: 'issue',
+    label: 'Issues & PRs',
+    href: '#page-issues',
+    format: 'count',
+    unavailableDetail: '',
+    unavailableDescription: 'Issue and pull request count unavailable'
+  },
+  'value-gains': {
+    icon: 'trophy',
+    label: 'Value gains',
+    href: '#page-graders',
+    format: 'count',
+    unavailableDetail: '',
+    unavailableDescription: 'Grader result count unavailable'
   }
 };
 
@@ -40,7 +59,8 @@ export function renderFactoryFloor(sources, animateNumbers, scope, roleNames, se
     const source = sources[roleNames[id]];
     const station = renderFactoryStation(definition.icon, {
       animate: animateNumbers,
-      format: 'percent',
+      format: definition.format,
+      final: id === 'value-gains',
       href: definition.href,
       signal: scope.signal
     });
@@ -88,7 +108,9 @@ export function renderFactoryFloor(sources, animateNumbers, scope, roleNames, se
  */
 export const FLOOR_DEFAULT_SOURCES = {
   campaigns: 'overview-factory-station',
-  repositories: 'overview-repository-station'
+  repositories: 'overview-repository-station',
+  issues: 'overview-issue-station',
+  'value-gains': 'overview-value-station'
 };
 
 /**
@@ -98,7 +120,7 @@ export const FLOOR_DEFAULT_SOURCES = {
 export function renderFactoryFloorElement(context) {
   const configuredStations = Array.isArray(context.elementConfig?.stations) ? context.elementConfig.stations : null;
   const selectedStations = configuredStations
-    ? /** @type {FactoryStationId[]} */ (configuredStations.filter((station) => station === 'campaigns' || station === 'repositories'))
+    ? /** @type {FactoryStationId[]} */ (configuredStations.filter((station) => Object.hasOwn(STATION_DEFINITIONS, station)))
     : /** @type {FactoryStationId[]} */ (['campaigns', 'repositories']);
   if (configuredStations && selectedStations.length !== configuredStations.length) {
     debugFactoryFloor({

@@ -207,6 +207,32 @@ it('rebinds the factory header to differently named sources through config.sourc
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
 });
 
+it('refreshes restored counters independently and keeps missing evidence unavailable', () => {
+  const issueName = 'overview-issue-station';
+  const valueName = 'overview-value-station';
+  const rendered = renderUiElement('factory-floor', context('factory-floor', {
+    [issueName]: source(issueName, [{ value: 5, detail: 'Retained safe outputs', description: '5 retained issues and pull requests' }]),
+    [valueName]: source(valueName, [], { availability: 'unavailable' })
+  }, { stations: ['issues', 'value-gains'] }));
+  if (!rendered) throw new Error('Factory floor must render its declared counters.');
+  document.body.append(rendered);
+  const stations = rendered.querySelectorAll('.factory-station');
+  expect(stations[0].querySelector('strong')?.textContent).toBe('5');
+  expect(stations[1].querySelector('strong')?.textContent).toBe('Unavailable');
+  expect(stations[1].querySelector('strong a')).toBeNull();
+  const key = dashboardViewAliasName('overview', { id: 'overview-floor' }, 1, valueName, 1);
+  publishSource(valueName, source(valueName, [{
+    value: 0, detail: 'Observed grader results', description: '0 observed grader results, not verified improvements'
+  }]), key);
+  expect(stations[0].querySelector('strong')?.textContent).toBe('5');
+  expect(stations[1].querySelector('strong')?.textContent).toBe('0');
+  expect(stations[1].querySelector('strong a')?.getAttribute('href')).toBe('#page-graders');
+  expect(rendered.getAttribute('aria-label')).toContain('not verified improvements');
+  publishSource(valueName, source(valueName, [{ value: 12 }]), key);
+  expect(stations[1].querySelector('strong')?.textContent).toBe('12');
+  rendered.remove();
+});
+
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
     'overview-factory-station': source('overview-factory-station', [{

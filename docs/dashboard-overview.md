@@ -30,6 +30,8 @@ not stages in a conversion funnel.
 | **Weekly rhythm** | Successful runs for each weekday in the current week, with previous-week context for weekdays not yet reached. | Runs when the cadence changes unexpectedly. |
 | **Factory health** | The share of all registered workflows across CAO and targeted repositories without current observed runtime failures. | Workflows to investigate failing execution. |
 | **Repositories (coverage station)** | Registered repositories that received a successful worker delivery against the total registered scope. | Repositories for the complete inventory and delivery evidence. |
+| **Issues & PRs** | Retained issue and pull request safe outputs. | Issues for the underlying safe outputs. |
+| **Value gains** | Observed grader results, not verified improvements. | Graders for the retained observations. |
 | **Campaigns list** | One navigation row per registered campaign, with a problem indicator when one exists. | Each campaign's dedicated Insights view. |
 
 The selected dashboard time range applies before Overview calculates these

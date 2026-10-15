@@ -26,7 +26,7 @@ as separate views in `dashboard.json`:
 
 - `header` owns status, retained-output context, work-in-motion state, and
   Weekly rhythm.
-- `floor` owns the two linked metric stations and their aggregate accessible
+- `floor` owns the four linked metric stations and their aggregate accessible
   summary.
 
 The default dashboard declares `factory-header` followed by `factory-floor`.
@@ -45,7 +45,7 @@ same meaning, data, and reading order, but their layout may differ when a narrow
 screen needs a better way to scan or compare information. Mobile does not have
 to reproduce the desktop arrangement or simply stack every block.
 
-In Overview, the narrative and seven-day rhythm form one reading column, while the two related metrics remain a compact comparison grid. No content or
+In Overview, the narrative and seven-day rhythm form one reading column, while the four metrics form a responsive comparison grid. No content or
 evidence is removed.
 
 ## Component guides
@@ -64,3 +64,7 @@ The health station consumes `overview-factory-station`, derived from
 These queries include all workflows in CAO and targeted repositories without
 requiring campaign membership. The station links to Workflows; campaign
 navigation remains separate.
+
+The other stations show repository coverage, retained Issues & PRs, and
+observed grader results under Value gains. Observed grader results are not
+verified improvements.

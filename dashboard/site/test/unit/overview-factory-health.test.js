@@ -78,7 +78,7 @@ it('wires the floor view to the all-workflow contract without a campaign-health 
     viewId: 'overview-floor', queries: dashboard.queries, views: dashboard.views
   });
   expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-floor').data.sources)
-    .toEqual(['overview-factory-station', 'overview-repository-station']);
+    .toEqual(['overview-factory-station', 'overview-repository-station', 'overview-issue-station', 'overview-value-station']);
   expect(payload.queries.some((query) => String(query.name).endsWith(':dependency:overview-workflow-health-summary'))).toBe(true);
   expect(payload.queries.some((query) => String(query.name).endsWith(':dependency:campaign-runtime-problems'))).toBe(false);
 });

@@ -550,6 +550,8 @@ describe('dashboard document validation', () => {
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
     floor.config.stations = ['campaigns', 'repositories'];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.stations = ['campaigns', 'repositories', 'issues', 'value-gains'];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     floor.config.stations = ['campaigns', 'campaigns'];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     floor.config.stations = ['campaigns', 'workers'];
@@ -563,7 +565,9 @@ describe('dashboard document validation', () => {
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
     floor.config.sources = { campaigns: 'overview-factory-station' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    floor.config.sources = { issues: 'database-issue-count' };
+    floor.config.sources = { issues: 'overview-issue-station', 'value-gains': 'overview-value-station' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.sources = { workers: 'overview-worker-summary' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     delete floor.config.sources;
     header.config = { sources: { presentation: 'overview-header-presentation' } };
@@ -1279,7 +1283,7 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-floor',
-        data: { sources: ['overview-factory-station', 'overview-repository-station'] },
+        data: { sources: ['overview-factory-station', 'overview-repository-station', 'overview-issue-station', 'overview-value-station'] },
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),

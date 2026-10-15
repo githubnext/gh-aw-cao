@@ -1,0 +1,29 @@
+{
+  "page": "overview",
+  "view": "overview-floor",
+  "sources": ["overview-factory-station", "overview-repository-station", "overview-issue-station", "overview-value-station"],
+  "stations": ["campaigns", "repositories", "issues", "value-gains"],
+  "inputs": {
+    "issues": [
+      { "id": "issue-1", "is-pull-request": false },
+      { "id": "pr-2", "is-pull-request": true }
+    ],
+    "grader-observations": [
+      { "grader": "one", "grader-value": 0 },
+      { "grader": "two", "grader-value": -1 },
+      { "grader": "three", "grader-value": 1 }
+    ]
+  },
+  "expected": {
+    "overview-issue-station": {
+      "value": 2,
+      "detail": "Retained safe outputs",
+      "description": "2 retained issues and pull requests"
+    },
+    "overview-value-station": {
+      "value": 3,
+      "detail": "Observed grader results",
+      "description": "3 observed grader results, not verified improvements"
+    }
+  }
+}

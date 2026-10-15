@@ -1098,7 +1098,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Friction', 'Models & Agents', 'Firewall', 'MCPs', 'Memory']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Operational Value', 'Friction', 'Models & Agents', 'Firewall', 'MCPs', 'Memory']);
+  await expect(data.getByRole('link', { name: 'Operational Value', exact: true })).toHaveCount(1);
   await expect(data.getByRole('link', { name: 'Friction', exact: true })).toHaveCount(1);
   await expect(evolutionSection.locator('summary')).toHaveText('Evolution');
   await evolutionSection.locator('summary').click();
@@ -1149,7 +1150,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimentalSection).not.toHaveAttribute('open', '');
   await experimentalSection.locator('summary').click();
   await expect(experimentalSection.getByRole('link')).toHaveText([
-    'Operational Value',
     'Skills',
     'Steering',
     'Simulators'
@@ -1194,9 +1194,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running')).toHaveCount(0);
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['100%', '0%']);
-  await expect(overviewPage.locator('.factory-station small')).toHaveText(['3/3 healthy workflows', '0/1 repositories reached']);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['100%', '0%', '17', 'Unavailable']);
+  await expect(overviewPage.locator('.factory-station small')).toHaveText(['3/3 healthy workflows', '0/1 repositories reached', 'Retained safe outputs', '']);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
@@ -1255,9 +1255,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Evolution', 'Experimental', 'Maintenance']);
+  const valueLink = page.locator('[data-mobile-nav-page-id="operational-value"]');
+  await expect(valueLink).toHaveAttribute('aria-label', 'Operational Value');
+  await expect(valueLink.locator('xpath=preceding-sibling::span[contains(@class, "mobile-nav-section-label")][1]')).toHaveText('Data');
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
