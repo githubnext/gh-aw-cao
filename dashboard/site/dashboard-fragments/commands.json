@@ -1,0 +1,89 @@
+{
+  "queries": [
+    {
+      "name": "command-queue",
+      "subject": "Show the durable local CLI command queue.",
+      "objective": "Inspect command lifecycle and reconnect to output without rerunning work.",
+      "acceptance": "Preserve persistent command IDs and all six server states; closing output never cancels execution. Unavailable local authority is not an empty queue.",
+      "from": "cli-commands",
+      "compute": [
+        { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
+        { "as": "command-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
+      ]
+    },
+    {
+      "name": "command-queue-summary",
+      "subject": "Report the command queue's server-owned running count and pause reason.",
+      "objective": "Expose active work and admission pauses without counting a paginated browser result.",
+      "acceptance": "Use the authoritative running and total counts, not a row count; missing authority remains unavailable.",
+      "from": "cli-command-summary"
+    }
+  ],
+  "pages": [
+    {
+      "id": "commands",
+      "kind": "custom",
+      "title": "Commands",
+      "icon": "terminal",
+      "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "views": [
+        {
+          "id": "commands-running",
+          "title": "Running commands",
+          "description": "Show the authoritative running count independently of server-paginated history.",
+          "data": { "source": "command-queue-summary" },
+          "mark": "metric",
+          "metric": { "style": "card", "icon": "terminal", "tone": "neutral", "navigation-page": "commands" },
+          "encoding": { "value": { "field": "running", "type": "quantitative", "aggregate": "max" } }
+        },
+        {
+          "id": "commands-admission",
+          "title": "Queue admission",
+          "description": "Server-owned admission pauses and total count remain visible even when history is filtered.",
+          "data": { "source": "command-queue-summary" },
+          "mark": "table",
+          "controls": "static",
+          "encoding": {
+            "columns": [
+              { "field": "total", "type": "quantitative", "title": "Total commands" },
+              { "field": "paused-reason", "type": "nominal", "title": "Admission pause" }
+            ]
+          }
+        },
+        {
+          "id": "commands-history",
+          "title": "Command queue",
+          "description": "Inspect persistent command status and open replayable output; list filters and pages execute on the local server through the data worker.",
+          "data": { "source": "command-queue" },
+          "mark": "table",
+          "encoding": {
+            "columns": [
+              { "field": "command-link", "type": "nominal", "title": "Command", "display": "evidence-link" },
+              { "field": "actionId", "type": "nominal", "title": "Action" },
+              { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
+              { "field": "createdAt", "type": "temporal", "title": "Queued" },
+              { "field": "error", "type": "nominal", "title": "Reason" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "command",
+      "kind": "custom",
+      "title": "Command output",
+      "icon": "terminal",
+      "route": { "hash-query-parameter": "command" },
+      "views": [
+        {
+          "id": "command-terminal",
+          "title": "Command output",
+          "description": "Interaction-only terminal replay, explicit cancellation and retry cannot be expressed by evidence marks. Lifecycle and streamed output use worker transport; closing or navigating away only detaches.",
+          "data": { "sources": [] },
+          "mark": "element",
+          "element": "command-terminal"
+        }
+      ]
+    }
+  ]
+}

@@ -114,10 +114,50 @@ the published site and ordinary local previews. In the dashboard canvas, each
 action appears in the **Actions** menu for a command preview. Native execution
 also requires independent confirmation in the trusted Copilot host, bound to
 the exact resolved command, working directory, and standard input. A page POST
-alone cannot authorize execution. Approval is never remembered and there is no
-unattended mode; hosts without interactive elicitation fail closed. Only one
-action per preview may await approval or run at a time. Closing a preview
-invalidates pending approvals.
+alone cannot authorize execution. Approval authorizes only the exact queued invocation; hosts without interactive
+elicitation fail closed. Approved commands run in the server-owned queue, not
+the browser request. Closing a terminal or browser detaches its output stream
+without canceling approved work. Pending approvals do not authorize execution.
+
+### CLI command queue
+
+Local admin and trusted canvas sessions share one durable FIFO queue per
+checkout, stored in `.cao/cli-actions.sqlite`. The online dashboard and ordinary
+read-only previews do not initialize a queue or request its APIs. Execution
+continues while the local server is running, even with every browser closed.
+Stopping the server terminates running work; interrupted executions are recorded
+as failed rather than silently repeated, and queued commands survive restart.
+
+**Maintenance → Commands** lists queued, running, completed, failed, canceled,
+and timed-out commands. Attach by command ID to replay retained stdout/stderr
+and follow new output. Cancel explicitly to terminate work; Retry creates a new
+entry linked to a failed or timed-out command.
+
+The queue defaults to four concurrent executions (configure with
+`--command-concurrency 1..32`) and a 15-minute execution deadline, beginning when
+a command starts. GitHub-dependent work uses the existing
+Go GitHub quota service through a local helper, refreshing quota with the same
+GitHub CLI authentication context as execution. Missing quota evidence pauses
+starts instead of bypassing protection. Running commands are not terminated
+merely because quota falls. A source checkout can run the helper with Go.
+Installed runtimes require a prebuilt `cao-cli-quota` on `PATH` or selected by
+`CAO_CLI_QUOTA_EXECUTABLE`; without it GitHub-dependent work remains paused.
+
+The capability-protected local API exposes:
+
+- `POST __cli_commands`: enqueue a declared action; an `Idempotency-Key` header
+  or `idempotencyKey` field deduplicates repeated requests.
+- `GET __cli_commands`: list commands with `status`, `limit`, and `offset`.
+- `GET __cli_commands/:id`: retrieve persistent execution details.
+- `GET __cli_commands/:id/output?after=N`: replay and stream ordered output
+  after sequence `N` as newline-delimited JSON.
+- `POST __cli_commands/:id/cancel` and `POST __cli_commands/:id/retry`: explicit
+  lifecycle operations; retries revalidate the current action and approval.
+
+Mutations require same-origin JSON requests as well as the preview capability.
+Queue retention applies only to terminal history in complete UTC Monday-based
+seven-day windows; active commands never expire. Queue files contain operational
+command history and must remain local and uncommitted.
 
 ```yaml
 dashboard:

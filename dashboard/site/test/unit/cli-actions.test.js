@@ -1,5 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+const queue = vi.hoisted(() => ({
+  enqueue: vi.fn(), attach: vi.fn(), cancel: vi.fn()
+}));
+vi.mock('../../src/data-processor.js', () => ({
+  cliQueueAvailable: () => Reflect.get(globalThis, '__CLI_QUEUE__') === true,
+  enqueueCliCommand: queue.enqueue,
+  attachCliCommand: queue.attach,
+  cancelCliCommand: queue.cancel,
+  subscribeCanonicalDashboardView: vi.fn()
+}));
 vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
   mountTerminal: (/** @type {HTMLElement} */ root) => ({
     write: (/** @type {string} */ text) => { root.textContent += text; },
@@ -13,6 +23,13 @@ import {
   renderRowCliAction,
   setDeclaredCliActions
 } from '../../src/components/cli-actions.js';
+
+beforeEach(() => {
+  vi.stubGlobal('__CLI_QUEUE__', true);
+  queue.enqueue.mockReset().mockResolvedValue({ id: 'command-1', status: 'queued' });
+  queue.attach.mockReset().mockResolvedValue({ result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'succeeded' } });
+  queue.cancel.mockReset().mockResolvedValue({ id: 'command-1', status: 'cancelled' });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -62,7 +79,8 @@ describe('CLI actions', () => {
     expect(rendered?.querySelector('.cli-action-command')?.textContent).toBe(command);
     expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toBe(label);
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('uses the action label without a confirmation prefix for operational prompts', () => {
@@ -301,11 +319,10 @@ describe('CLI actions', () => {
     ));
   });
 
-  it('streams inline by default, optionally moves the same terminal into a window, and cancels fresh runs', async () => {
-    const fetch = vi.fn((_url, options) => new Promise((_resolve, reject) => {
-      options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true });
+  it('streams inline, moves the same terminal into a window, and detaches without cancellation', async () => {
+    queue.attach.mockImplementation((_id, _onOutput, signal) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new DOMException('Detached', 'AbortError')), { once: true });
     }));
-    vi.stubGlobal('fetch', fetch);
     const root = renderCliActions([{
       id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
     }]);
@@ -313,21 +330,21 @@ describe('CLI actions', () => {
     document.body.append(root);
     const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
     const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
-    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel'));
+    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-detach'));
     const checkbox = /** @type {HTMLInputElement} */ (root.querySelector('input[type="checkbox"]'));
     const terminalDialog = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-terminal-dialog'));
     expect(root.querySelector('.cli-action-dialog')?.contains(terminalDialog)).toBe(false);
     trigger.click();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(queue.enqueue).not.toHaveBeenCalled();
     expect(checkbox.checked).toBe(false);
     confirm.click();
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
     expect(confirm.hidden).toBe(true);
     expect(confirm.disabled).toBe(true);
     expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(true);
     confirm.click();
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(fetch.mock.calls[0][1].body).arguments).toEqual({});
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue.mock.calls[0][0].arguments).toEqual({});
     const terminal = root.querySelector('.cli-action-terminal');
     expect(terminalDialog.open).toBe(false);
     expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
@@ -335,35 +352,36 @@ describe('CLI actions', () => {
     checkbox.click();
     expect(terminalDialog.open).toBe(true);
     expect(terminalDialog.contains(terminal)).toBe(true);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
     terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
     expect(terminalDialog.open).toBe(false);
     expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
-    expect(fetch.mock.calls[0][1].signal.aborted).toBe(false);
+    expect(queue.attach.mock.calls[0][2].aborted).toBe(false);
     checkbox.click();
     expect(terminalDialog.open).toBe(true);
     expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
     expect(cancel.disabled).toBe(false);
-    expect(cancel.textContent).toBe('Cancel command');
+    expect(cancel.textContent).toBe('Detach');
     cancel.click();
     await vi.waitFor(() => expect(root.querySelector('.cli-action-status')?.textContent)
-      .toBe('Cancelled. Completed changes are not undone.'));
-    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+      .toBe('Detached. The command continues in Maintenance → Commands.'));
+    expect(queue.attach.mock.calls[0][2].aborted).toBe(true);
+    expect(queue.cancel).not.toHaveBeenCalled();
     expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(false);
-    expect(root.querySelector('.cli-action-dialog')?.hasAttribute('open')).toBe(true);
-    expect(terminal?.textContent).toContain('Cancelled.');
+    expect(root.querySelector('.cli-action-dialog')?.hasAttribute('open')).toBe(false);
+    expect(terminal?.textContent).toContain('Detached.');
     confirm.click();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
     expect(confirm.hidden).toBe(true);
     terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
     cancel.click();
     trigger.click();
     expect(confirm.hidden).toBe(false);
     confirm.click();
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(2));
     expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
-    expect(fetch.mock.calls[1][1].signal.aborted).toBe(false);
-    expect(terminal?.textContent).toContain('Cancelled.');
+    expect(queue.attach.mock.calls[1][2].aborted).toBe(false);
+    expect(terminal?.textContent).toContain('Detached.');
     cancel.click();
     await vi.waitFor(() => expect(cancel.textContent).toBe('Close'));
     expect(confirm.disabled).toBe(true);
@@ -371,6 +389,10 @@ describe('CLI actions', () => {
   });
 
   it('requires a fresh confirmation before every execution', async () => {
+    queue.attach.mockImplementation(async (_id, onOutput) => {
+      onOutput({ stream: 'stdout', data: 'compiled\n' });
+      return { result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'succeeded' } };
+    });
     const streamingBody = () => {
       const encoder = new TextEncoder();
       return new ReadableStream({
@@ -406,7 +428,7 @@ describe('CLI actions', () => {
     document.body.append(root);
     const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
     const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
-    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel'));
+    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-detach'));
 
     trigger.click();
     expect(fetch).not.toHaveBeenCalled();
@@ -418,10 +440,11 @@ describe('CLI actions', () => {
       .toBe('gh aw compile --strict --pre-releases');
 
     confirm.click();
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
+    expect(queue.enqueue.mock.calls[0][0]).toEqual({
       id: 'compile-workflows',
-      arguments: { 'pre-releases': true }
+      arguments: { 'pre-releases': true },
+      idempotencyKey: expect.any(String)
     });
     await vi.waitFor(() => expect(root.querySelector('.cli-action-dialog .cli-action-terminal')?.textContent)
       .toContain('compiled\n'));
@@ -429,16 +452,16 @@ describe('CLI actions', () => {
       .toBe('Read-only command terminal');
     expect(confirm.hidden).toBe(true);
     confirm.click();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
 
     cancel.click();
     trigger.click();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
     expect(checkbox.checked).toBe(false);
     expect(root.querySelector('.cli-action-command')?.textContent).toBe('gh aw compile --strict');
     fetch.mockResolvedValueOnce({ ok: true, body: streamingBody() });
     confirm.click();
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
   });
 
   it('renders a row action command with repository context', () => {
@@ -524,7 +547,7 @@ describe('CLI actions', () => {
     document.body.append(/** @type {HTMLElement} */ (rendered));
     rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
 
     expect(output.debug).not.toHaveBeenCalled();
 
@@ -533,6 +556,8 @@ describe('CLI actions', () => {
   });
 
   it('logs only scalar metadata under its predictable category when enabled', async () => {
+    queue.attach.mockResolvedValueOnce({ result: { ok: true }, command: { id: 'command-1', status: 'succeeded' } })
+      .mockRejectedValueOnce(new Error('boom'));
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {
       const actual = /** @type {typeof import('../../src/debug.js')} */ (

@@ -33,6 +33,7 @@ import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugEagerIngest, debugShardLimit, diagnosticErrorName, isDebugEnabled } from './debug.js';
 import { withRetries } from './retry.js';
 import { prepareMemoryFile } from './data/repository-memory-jsonl.js';
+import { cliQueueOperation, cliQueueEnabled, configureCliQueue, isCliQueueQuery, queryCliQueue } from './data/cli-queue.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
@@ -852,11 +853,16 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, command?: unknown, commandId?: unknown, after?: unknown, idempotencyKey?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'cli-queue') {
+    return cliQueueOperation(/** @type {Record<string, unknown>} */ (request), signal, (event) => {
+      workerScope?.postMessage({ type: 'cli-queue-output', id: request.id, event });
+    });
+  }
   if (request?.operation === 'validate-query-editor-document') {
     signal?.throwIfAborted();
     return import('./data/query-editor.js').then(({ validateQueryEditorDocument }) => {
@@ -884,6 +890,9 @@ export function processDataRequest(request, signal) {
     return queryRepositoryMemory(/** @type {Record<string, unknown>} */ (request), signal);
   }
   if (request?.operation === 'query-canonical-dashboard') {
+    if (isCliQueueQuery(dashboardContext(request.context).queries, requestedSourceNames(request.sourceNames))) {
+      return queryCliQueue(request, signal);
+    }
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return queryLiveDashboard(
@@ -1332,6 +1341,41 @@ export function processDataRequest(request, signal) {
 const inFlight = new Map();
 /** @type {Map<number, string>} */
 const inFlightOperations = new Map();
+/** @type {Map<string, AbortController>} */
+const queueSubscriptions = new Map();
+
+/** @param {Record<string, any>} request */
+async function subscribeCliQueue(request) {
+  const id = request.subscriptionId;
+  queueSubscriptions.get(id)?.abort();
+  const controller = new AbortController();
+  queueSubscriptions.set(id, controller);
+  try {
+    while (!controller.signal.aborted) {
+      try {
+        const data = await queryCliQueue(request, controller.signal);
+        if (!controller.signal.aborted) workerScope?.postMessage({ subscriptionId: id, data });
+        if (!cliQueueEnabled()) break;
+      } catch (error) {
+        if (!controller.signal.aborted) workerScope?.postMessage({
+          subscriptionId: id, error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      await new Promise((resolve) => {
+        const finish = () => {
+          clearTimeout(timer);
+          controller.signal.removeEventListener('abort', finish);
+          resolve(undefined);
+        };
+        const timer = setTimeout(finish, 1500);
+        controller.signal.addEventListener('abort', finish, { once: true });
+        if (controller.signal.aborted) finish();
+      });
+    }
+  } finally {
+    if (queueSubscriptions.get(id) === controller) queueSubscriptions.delete(id);
+  }
+}
 const debugRequests = createDebug('data:worker');
 
 /**
@@ -1350,7 +1394,15 @@ function cancelInFlight(ids) {
 if (typeof document === 'undefined' && workerScope) {
   workerScope.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'configure-cli-queue') {
+      configureCliQueue(event.data.enabled === true, event.data.endpoint);
+      return;
+    }
     if (event.data?.operation === 'subscribe-canonical-dashboard') {
+      if (isCliQueueQuery(event.data.context?.queries ?? [], event.data.sourceNames ?? [])) {
+        void subscribeCliQueue(event.data);
+        return;
+      }
       const subscriptionId = event.data.subscriptionId;
       if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
       try {
@@ -1390,6 +1442,7 @@ if (typeof document === 'undefined' && workerScope) {
       return;
     }
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
+      queueSubscriptions.get(event.data.subscriptionId)?.abort();
       dashboardSubscriptions.get(event.data.subscriptionId)?.controller?.abort();
       dashboardSubscriptions.delete(event.data.subscriptionId);
       dirtyDashboardSubscriptions.delete(event.data.subscriptionId);

@@ -113,7 +113,8 @@ export const VIEW_ELEMENT_VALUES = [
   'all-campaign-memory',
   'link-button-list',
   'markdown',
-  'query-editor'
+  'query-editor',
+  'command-terminal'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
 export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];
@@ -148,7 +149,9 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'work-roadmap',
   'evidence',
   'insights',
-  'query-editor'
+  'query-editor',
+  'commands',
+  'command'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];
@@ -656,7 +659,11 @@ export const SERVER_SOURCE_FIELDS = {
   ]
 };
 
-export const SYNTHETIC_SOURCE_FIELDS = { 'simulation-days': ['day', 'date'] };
+export const SYNTHETIC_SOURCE_FIELDS = {
+  'simulation-days': ['day', 'date'],
+  'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values'],
+  'cli-command-summary': ['running', 'total', 'paused-reason', 'revision']
+};
 
 export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES, ...Object.keys(SYNTHETIC_SOURCE_FIELDS)];
 export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS, ...SYNTHETIC_SOURCE_FIELDS };

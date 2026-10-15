@@ -27,7 +27,10 @@ const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedV
     issues: []
   }
 }));
-vi.mock('../../src/data-processor.js', () => ({ queryCanonicalDatabaseDiagnostics }));
+vi.mock('../../src/data-processor.js', async () => ({
+  ...await vi.importActual('../../src/data-processor.js'),
+  queryCanonicalDatabaseDiagnostics
+}));
 
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';

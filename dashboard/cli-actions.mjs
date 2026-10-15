@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const maximumOutputBytes = 1024 * 1024;
-const timeoutMilliseconds = 5 * 60 * 1000;
-const timeoutErrorMessage = "The CLI action exceeded its five-minute time limit.";
+const timeoutMilliseconds = 15 * 60 * 1000;
+const timeoutErrorMessage = "The CLI action exceeded its time limit.";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
 const ghAwVersionPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
@@ -38,6 +38,7 @@ async function executeFile(executable, args, options) {
   const result = await runDashboardCommandStreaming({
     ghExecutable: executable, args, workingDirectory: options.cwd, env: options.env,
     input: options.input,
+    timeoutMs: options.timeout ?? timeoutMilliseconds,
     signal: options.signal ? AbortSignal.any([options.signal, outputLimit.signal]) : outputLimit.signal,
     onOutput: ({ stream, data }) => {
       if (outputLimit.signal.aborted) return;
@@ -360,8 +361,12 @@ export async function executeDashboardCommand({
   onOutput,
   streamCommand = runDashboardCommandStreaming,
   signal = /** @type {AbortSignal | undefined} */ (undefined),
+  timeoutMs = timeoutMilliseconds,
+  deadline = Date.now() + timeoutMs,
 }) {
   signal?.throwIfAborted();
+  const deadlineSignal = AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, deadline - Date.now())));
+  signal = signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal;
   const tokens = parseDashboardCommand(command);
   const resolvedGithubToken = await resolveGithubToken({
     githubToken,
@@ -400,6 +405,7 @@ export async function executeDashboardCommand({
       input,
       onOutput,
       signal,
+      timeoutMs: Math.max(1, Math.min(timeoutMs, deadline - Date.now())),
     });
   }
   try {
@@ -407,7 +413,7 @@ export async function executeDashboardCommand({
       cwd: workingDirectory,
       env: commandEnvironment(resolvedGithubToken, gitIdentity),
       maxBuffer: maximumOutputBytes,
-      timeout: timeoutMilliseconds,
+      timeout: Math.max(1, Math.min(timeoutMs, deadline - Date.now())),
       windowsHide: true,
       signal,
       ...(input === undefined ? {} : { input }),
@@ -428,7 +434,7 @@ export async function executeDashboardCommand({
       stdout: typeof error?.stdout === "string" ? error.stdout : "",
       stderr: typeof error?.stderr === "string" ? error.stderr : "",
       error: error?.killed
-        ? "The CLI action exceeded its five-minute time limit."
+        ? timeoutErrorMessage
         : "The CLI action did not complete successfully.",
     };
   }
@@ -444,6 +450,7 @@ export function runDashboardCommandStreaming({
   input,
   onOutput,
   signal = /** @type {AbortSignal | undefined} */ (undefined),
+  timeoutMs = timeoutMilliseconds,
 }) {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
@@ -464,6 +471,8 @@ export function runDashboardCommandStreaming({
     let settled = false;
     let timedOut = false;
     let killTimer;
+    let outputError = false;
+    let outputPending = Promise.resolve();
     /** @param {NodeJS.Signals} signal */
     const kill = (signal) => signalCommand(child, signal);
     const terminate = () => {
@@ -475,10 +484,21 @@ export function runDashboardCommandStreaming({
     const timer = setTimeout(() => {
       timedOut = true;
       terminate();
-    }, timeoutMilliseconds);
+    }, timeoutMs);
     const emit = (stream, chunk) => {
       const data = chunk.toString("utf8");
-      if (data) onOutput({ stream, data });
+      if (!data || outputError) return;
+      child.stdout.pause();
+      child.stderr.pause();
+      outputPending = outputPending.then(async () => {
+        if (!outputError) await onOutput({ stream, data });
+      }).catch(() => {
+        outputError = true;
+        terminate();
+      }).finally(() => {
+        child.stdout.resume();
+        child.stderr.resume();
+      });
     };
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
@@ -496,15 +516,16 @@ export function runDashboardCommandStreaming({
         reject(error);
       }
     });
-    child.once("close", (exitCode) => {
+    child.once("close", async (exitCode) => {
       if (settled) return;
+      await outputPending;
       settled = true;
       if (signal?.aborted || timedOut) kill("SIGKILL");
       clearTimeout(timer);
       clearTimeout(killTimer);
       signal?.removeEventListener("abort", terminate);
       resolve({
-        ok: !timedOut && !signal?.aborted && exitCode === 0,
+        ok: !timedOut && !signal?.aborted && !outputError && exitCode === 0,
         exitCode,
         stdout: "",
         stderr: "",
@@ -512,6 +533,8 @@ export function runDashboardCommandStreaming({
           ? { error: "The CLI action was cancelled." }
           : timedOut
           ? { error: timeoutErrorMessage }
+          : outputError
+            ? { error: "The CLI action output could not be persisted." }
           : exitCode === 0
             ? {}
             : { error: "The CLI action did not complete successfully." }),

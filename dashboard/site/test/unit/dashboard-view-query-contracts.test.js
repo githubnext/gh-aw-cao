@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { configureCliQueue, isCliQueueQuery } from '../../src/data/cli-queue.js';
+import commandQueueFixture from '../fixtures/cli-command-queue.json' with { type: 'json' };
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -1119,11 +1121,12 @@ describe('dashboard view query contracts', () => {
     expect([...queryNames].filter((name) => !retained.has(name))).toEqual([]);
   });
 
-  it('materializes worker-resolvable view queries through the production worker handler', () => {
+  it('materializes worker-resolvable view queries through the production worker handler', async () => {
     expect([...dashboardQueryDefects(queries).entries()]).toEqual([]);
     const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
       .filter((name) => queryNames.has(name));
-    const workerRequested = requested.filter((name) => !requiresServerSource(name));
+    const runtimeRequested = requested.filter((name) => isCliQueueQuery(queries, [name]));
+    const workerRequested = requested.filter((name) => !requiresServerSource(name) && !runtimeRequested.includes(name));
     expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes']);
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
@@ -1137,6 +1140,24 @@ describe('dashboard view query contracts', () => {
       expect(results[name]?.source).toBe(name);
       expect(results[name]?.rows).toEqual(expect.any(Array));
       expect(results[name]?.metadata.availability, name).not.toBe('unavailable');
+    }
+    configureCliQueue(true);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json(commandQueueFixture)));
+    try {
+      const runtime = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        sourceNames: runtimeRequested,
+        context: { queries, pages: dashboard.pages }
+      }));
+      expect(Object.keys(runtime).sort()).toEqual(runtimeRequested.sort());
+      for (const name of runtimeRequested) {
+        expect(runtime[name]?.source).toBe(name);
+        expect(runtime[name]?.rows.length).toBeGreaterThan(0);
+        expect(runtime[name]?.metadata.availability).toBe('available');
+      }
+    } finally {
+      configureCliQueue(false);
+      vi.unstubAllGlobals();
     }
   });
 });
