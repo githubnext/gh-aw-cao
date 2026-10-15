@@ -1,18 +1,63 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { promisify } from "node:util";
 
-const executeFile = promisify(execFile);
 const maximumOutputBytes = 1024 * 1024;
 const timeoutMilliseconds = 5 * 60 * 1000;
+const timeoutErrorMessage = "The CLI action exceeded its five-minute time limit.";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
 const ghAwVersionPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
 const caoConfigurationPath = join(".github", "workflows", "cao.json");
 const repositoryPattern = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const workflowInputPattern = /^[A-Za-z_][A-Za-z0-9_-]*=.*$/s;
+
+/** @param {import("node:child_process").ChildProcess} child @param {NodeJS.Signals} signal */
+function signalCommand(child, signal) {
+  if (process.platform === "win32" || !child.pid) {
+    child.kill(signal);
+    return;
+  }
+  try {
+    process.kill(-child.pid, signal);
+  } catch (error) {
+    if (error.code !== "ESRCH") throw error;
+  }
+}
+
+/**
+ * @param {string} executable
+ * @param {readonly string[]} args
+ * @param {import("node:child_process").ExecFileOptions & { input?: string }} options
+ */
+async function executeFile(executable, args, options) {
+  let stdout = "";
+  let stderr = "";
+  const outputLimit = new AbortController();
+  const result = await runDashboardCommandStreaming({
+    ghExecutable: executable, args, workingDirectory: options.cwd, env: options.env,
+    input: options.input,
+    signal: options.signal ? AbortSignal.any([options.signal, outputLimit.signal]) : outputLimit.signal,
+    onOutput: ({ stream, data }) => {
+      if (outputLimit.signal.aborted) return;
+      const next = (stream === "stdout" ? stdout : stderr) + data;
+      if (Buffer.byteLength(next) > (options.maxBuffer ?? maximumOutputBytes)) {
+        outputLimit.abort();
+      } else if (stream === "stdout") stdout = next;
+      else stderr = next;
+    },
+  });
+  options.signal?.throwIfAborted();
+  if (!result.ok) {
+    throw Object.assign(new Error(outputLimit.signal.aborted
+      ? "The CLI action exceeded its output buffer limit."
+      : result.error), {
+      code: result.exitCode, killed: result.error === timeoutErrorMessage, stdout, stderr,
+    });
+  }
+  return { stdout, stderr };
+}
 
 function validWorkflowDispatchArguments(args) {
   if (!args[0] || args[0].startsWith("-")) return false;
@@ -182,6 +227,7 @@ export async function installGhAwWithCurl({
   githubToken,
   workingDirectory,
   execute = executeFile,
+  signal = /** @type {AbortSignal | undefined} */ (undefined),
 }) {
   const ghAwVersion = await resolveGhAwCompilerVersion(workingDirectory);
   const directory = await mkdtemp(join(tmpdir(), "cao-gh-aw-install-"));
@@ -191,6 +237,7 @@ export async function installGhAwWithCurl({
     maxBuffer: maximumOutputBytes,
     timeout: timeoutMilliseconds,
     windowsHide: true,
+    signal,
   };
   try {
     await execute("curl", ["-fsSL", ghAwInstallerUrl, "-o", installerPath], options);
@@ -206,17 +253,20 @@ export async function ensureGhAwAvailable({
   ghExecutable = "gh",
   execute = executeFile,
   installWithCurl = installGhAwWithCurl,
+  signal = /** @type {AbortSignal | undefined} */ (undefined),
 }) {
   const options = {
     env: commandEnvironment(githubToken),
     maxBuffer: maximumOutputBytes,
     timeout: timeoutMilliseconds,
     windowsHide: true,
+    signal,
   };
   try {
     await execute(ghExecutable, ["aw", "--help"], options);
     return;
   } catch (error) {
+    signal?.throwIfAborted();
     if (error?.code === "ENOENT") {
       throw new Error("GitHub CLI is required to run dashboard actions.");
     }
@@ -227,12 +277,14 @@ export async function ensureGhAwAvailable({
   try {
     await execute(ghExecutable, ["extension", "install", "github/gh-aw", "--pin", ghAwVersion], options);
   } catch {
-    await installWithCurl({ githubToken, workingDirectory, execute });
+    signal?.throwIfAborted();
+    await installWithCurl({ githubToken, workingDirectory, execute, signal });
   }
 
   try {
     await execute(ghExecutable, ["aw", "--help"], options);
   } catch {
+    signal?.throwIfAborted();
     throw new Error(`Could not install GitHub Agentic Workflows ${ghAwVersion}.`);
   }
 }
@@ -241,6 +293,7 @@ async function resolveGithubToken({
   githubToken,
   ghExecutable,
   execute,
+  signal,
 }) {
   if (typeof githubToken === "string" && githubToken.length > 0) return githubToken;
   try {
@@ -249,10 +302,12 @@ async function resolveGithubToken({
       maxBuffer: maximumOutputBytes,
       timeout: timeoutMilliseconds,
       windowsHide: true,
+      signal,
     });
     const token = result.stdout.trim();
     if (token) return token;
   } catch {
+    signal?.throwIfAborted();
     // Report one stable authentication error below.
   }
   throw new Error("Authenticate GitHub CLI before running dashboard actions.");
@@ -262,6 +317,7 @@ async function resolveGitIdentity({
   githubToken,
   ghExecutable,
   execute,
+  signal,
 }) {
   let user;
   try {
@@ -270,9 +326,11 @@ async function resolveGitIdentity({
       maxBuffer: maximumOutputBytes,
       timeout: timeoutMilliseconds,
       windowsHide: true,
+      signal,
     });
     user = JSON.parse(result.stdout);
   } catch {
+    signal?.throwIfAborted();
     throw new Error(
       "Could not determine the current GitHub CLI user for Git commit attribution.",
     );
@@ -301,12 +359,15 @@ export async function executeDashboardCommand({
   input,
   onOutput,
   streamCommand = runDashboardCommandStreaming,
+  signal = /** @type {AbortSignal | undefined} */ (undefined),
 }) {
+  signal?.throwIfAborted();
   const tokens = parseDashboardCommand(command);
   const resolvedGithubToken = await resolveGithubToken({
     githubToken,
     ghExecutable,
     execute,
+    signal,
   });
   const isGhAwCommand = tokens[0] === "gh" && tokens[1] === "aw";
   const isCaoCommand = tokens[0] === "./cao.sh";
@@ -319,14 +380,17 @@ export async function executeDashboardCommand({
       workingDirectory,
       ghExecutable,
       execute,
+      signal,
     });
     gitIdentity = await resolveGitIdentity({
       githubToken: resolvedGithubToken,
       ghExecutable,
       execute,
+      signal,
     });
   }
   if (typeof onOutput === "function") {
+    signal?.throwIfAborted();
     return streamCommand({
       ghExecutable: commandExecutable,
       args: commandArguments,
@@ -335,6 +399,7 @@ export async function executeDashboardCommand({
       gitIdentity,
       input,
       onOutput,
+      signal,
     });
   }
   try {
@@ -344,6 +409,7 @@ export async function executeDashboardCommand({
       maxBuffer: maximumOutputBytes,
       timeout: timeoutMilliseconds,
       windowsHide: true,
+      signal,
       ...(input === undefined ? {} : { input }),
     });
     return {
@@ -374,15 +440,19 @@ export function runDashboardCommandStreaming({
   workingDirectory,
   githubToken,
   gitIdentity,
+  env = commandEnvironment(githubToken, gitIdentity),
   input,
   onOutput,
+  signal = /** @type {AbortSignal | undefined} */ (undefined),
 }) {
+  signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const child = spawn(ghExecutable, args, {
       cwd: workingDirectory,
-      env: commandEnvironment(githubToken, gitIdentity),
+      env,
       shell: false,
       windowsHide: true,
+      detached: process.platform !== "win32",
       stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
     if (input !== undefined) {
@@ -393,22 +463,35 @@ export function runDashboardCommandStreaming({
     }
     let settled = false;
     let timedOut = false;
+    let killTimer;
+    /** @param {NodeJS.Signals} signal */
+    const kill = (signal) => signalCommand(child, signal);
+    const terminate = () => {
+      kill("SIGTERM");
+      killTimer ??= setTimeout(() => kill("SIGKILL"), 2000);
+      killTimer.unref();
+    };
+    signal?.addEventListener("abort", terminate, { once: true });
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
+      terminate();
     }, timeoutMilliseconds);
     const emit = (stream, chunk) => {
       const data = chunk.toString("utf8");
       if (data) onOutput({ stream, data });
     };
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => emit("stdout", chunk));
     child.stderr.on("data", (chunk) => emit("stderr", chunk));
     child.once("error", (error) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(killTimer);
+      signal?.removeEventListener("abort", terminate);
       if (error?.code === "ENOENT") {
-        reject(new Error("GitHub CLI is required to run dashboard actions."));
+        reject(Object.assign(new Error("GitHub CLI is required to run dashboard actions."), { code: "ENOENT" }));
       } else {
         reject(error);
       }
@@ -416,14 +499,19 @@ export function runDashboardCommandStreaming({
     child.once("close", (exitCode) => {
       if (settled) return;
       settled = true;
+      if (signal?.aborted || timedOut) kill("SIGKILL");
       clearTimeout(timer);
+      clearTimeout(killTimer);
+      signal?.removeEventListener("abort", terminate);
       resolve({
-        ok: !timedOut && exitCode === 0,
+        ok: !timedOut && !signal?.aborted && exitCode === 0,
         exitCode,
         stdout: "",
         stderr: "",
-        ...(timedOut
-          ? { error: "The CLI action exceeded its five-minute time limit." }
+        ...(signal?.aborted
+          ? { error: "The CLI action was cancelled." }
+          : timedOut
+          ? { error: timeoutErrorMessage }
           : exitCode === 0
             ? {}
             : { error: "The CLI action did not complete successfully." }),

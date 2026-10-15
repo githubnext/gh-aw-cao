@@ -24,6 +24,8 @@ if (args[0] === "api") {
     process.stdout.write("success\\tmain\\t.github/workflows/cao-dashboard.yml\\n");
   } else if (args[1].includes("/actions/artifacts?")) {
     process.stdout.write("42\\n");
+  } else if (args[1] === "repos/github/gh-aw/releases/latest") {
+    process.stdout.write("v0.92.0\\n");
   } else {
     process.stdout.write("main\\n");
   }

@@ -52,6 +52,53 @@ missing artifacts from an existing successful
 run, and invalid restored snapshots still fail rather than being treated as
 normal startup.
 
+## Local administrative actions
+
+Local previews refresh the latest stable gh-aw release from GitHub when
+downloading their data. The **Latest** compiler version and upgrade state use
+this current release, not the release recorded in an older published snapshot.
+Installed versions and their observation times remain snapshot evidence.
+If release discovery fails, startup reports an error rather than presenting
+the snapshot's stale release as current.
+
+Run `npm run dashboard:local -- --admin --repo OWNER/REPOSITORY` to opt in to
+dashboard-declared CLI actions on the local preview server. Without `--admin`,
+the local preview remains copy-only. Admin mode is limited to a loopback host;
+it cannot be combined with canvas mode or the hosted Go server.
+
+Each action opens a command-review dialog and requires explicit confirmation
+for every run. Each confirmed command starts a fresh headless process and shows
+live stdout and stderr in a scrollable, read-only terminal inside the approval
+dialog, with ANSI colors, progress updates, selection, and scrollback.
+While a command runs, the dialog fills the viewport and hides the approval
+description, options, and command preview, leaving the terminal and cancellation
+control. HTTP and HTTPS URLs in terminal output open in a separate tab without
+opener access.
+Select **Open terminal window** to move the same terminal into a separate
+dashboard dialog. The option is unchecked whenever the approval dialog opens,
+and can also move retained output after a command completes. Closing the terminal window
+returns output to the approval dialog and leaves the command running;
+**Cancel command** stops it. Reopening the terminal reuses
+the existing window and retained output instead of starting another command.
+Terminal input is disabled: commands must not require interactive keyboard input. The terminal
+emulator is an interaction-only extension of the existing declarative
+`cli-actions` contract, not a dashboard data query or an arbitrary shell.
+
+Commands run in the server's working directory with the local GitHub CLI
+credentials and the existing supported-command allowlist, without shell
+interpolation. Actions using `gh aw` may install the pinned extension first.
+Only one action runs at a time. **Cancel** dismisses the approval dialog without
+starting anything; **Cancel command** stops a running command and its subprocesses.
+The approval dialog stays open after cancellation, and terminal output is retained. Cancellation does not
+undo changes already completed. The execution button disappears once a run
+starts: only **Cancel command** is offered while running, and **Close** afterward.
+Preparing another run requires closing and reopening the approval dialog for
+fresh confirmation, and reuses its existing terminal, preserving scrollback.
+Disconnecting the output stream or stopping the server also cancels the command.
+Keep the capability URL private and
+do not expose or forward the admin server to other users. This switch does not
+change CAO rollout policy or grant remote workflow authority.
+
 ## Hosted server data pipeline
 
 Server-backed deployments keep the browser isolated from both databases. The

@@ -43,6 +43,8 @@ import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalC
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
 import { lookupDialogOptions } from "./dialog-selector.mjs";
+import { executeDashboardCommand } from "../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
+import { refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease } from "./local-release-metadata.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -278,6 +280,16 @@ async function downloadDashboardData(destination, repository, ghExecutable, work
   } catch {
     throw new Error(`Unable to download ${dataArtifactName} from workflow run ${runId}.`);
   }
+  try {
+    const result = await executeFile(ghExecutable, [
+      "api", "repos/github/gh-aw/releases/latest", "--jq", ".tag_name",
+    ], options);
+    const latestGhAwVersion = result.stdout.trim();
+    refreshDashboardCompilerRelease({}, latestGhAwVersion);
+    return { latestGhAwVersion };
+  } catch {
+    throw new Error("Unable to refresh the latest stable gh-aw release. Check GitHub CLI authentication and try again.");
+  }
 }
 
 async function findCanonicalDashboardData(root) {
@@ -339,13 +351,17 @@ function redactJsonSecrets(source) {
   return JSON.stringify(redact(JSON.parse(source)), null, 2);
 }
 
-async function redactJsonlSecretsFile(sourcePath, destinationPath) {
+async function redactJsonlSecretsFile(sourcePath, destinationPath, latestGhAwVersion) {
   const decoder = new TextDecoder();
   const hash = createHash("sha256");
   let pending = "";
-  const redactLine = (line) => line.trim()
-    ? JSON.stringify(JSON.parse(redactJsonSecrets(line)))
-    : "";
+  const redactLine = (line) => {
+    if (!line.trim()) return "";
+    const value = JSON.parse(redactJsonSecrets(line));
+    return JSON.stringify(latestGhAwVersion
+      ? refreshCanonicalCompilerRelease(value, latestGhAwVersion)
+      : value);
+  };
   const emit = (stream, content) => {
     hash.update(content);
     stream.push(content);
@@ -610,12 +626,13 @@ function readWebsocketFrames(buffer) {
  *   catalogRoot?: string | null,
  *   repository?: string,
  *   ghExecutable?: string,
- *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void>,
+ *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { latestGhAwVersion: string }>,
  *   canvas?: boolean,
+ *   admin?: boolean,
  *   generateQuery?: (intent: import('./query-editor-contract.mjs').QueryEditorIntent, options: { signal: AbortSignal }) => Promise<{ document: string }>,
  *   enhanceQueryIntent?: (request: import('./query-editor-contract.mjs').QueryEditorEnhancement, options: { signal: AbortSignal }) => Promise<import('./query-editor-contract.mjs').QueryEditorAuthoring>,
  *   dataBackend?: 'sqlite' | 'indexeddb',
- *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
+ *   executeCliAction?: (action: { id: string, command: string, input?: string, signal?: AbortSignal, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   lookupSelector?: typeof lookupDialogOptions,
  *   traceFile?: string,
@@ -634,6 +651,7 @@ export async function startDashboardServer({
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
   canvas = false,
+  admin = false,
   dataBackend = "sqlite",
   executeCliAction,
   approveCliAction,
@@ -651,6 +669,24 @@ export async function startDashboardServer({
 } = {}) {
   if (!["sqlite", "indexeddb"].includes(dataBackend)) {
     throw new Error("Dashboard data backend must be sqlite or indexeddb.");
+  }
+  if (admin && (canvas || !isLoopbackHost(host))) {
+    throw new Error("Admin mode requires a loopback host and cannot be combined with canvas mode.");
+  }
+  if (admin) {
+    executeCliAction ??= (invocation) => executeDashboardCommand({
+      ...invocation, workingDirectory, ghExecutable,
+    });
+  }
+  let terminalBundle;
+  if (admin || canvas) {
+    const { build } = createRequire(new URL("./site/package.json", import.meta.url))("esbuild");
+    const result = await build({
+      entryPoints: [join(scriptDirectory, "site/src/components/cli-terminal-runtime.js")],
+      bundle: true, write: false, platform: "browser", format: "esm",
+      target: "es2023", minify: true, loader: { ".css": "text" },
+    });
+    terminalBundle = result.outputFiles[0].text;
   }
   if (canvas && typeof executeCliAction !== "function") {
     throw new Error("Canvas mode requires a CLI action executor.");
@@ -701,7 +737,10 @@ export async function startDashboardServer({
   const splitSourceContent = new Map();
   let sqliteBackend;
   try {
-    await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
+    const downloaded = await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
+    const prepareSources = (content) => redactJsonSecrets(downloaded?.latestGhAwVersion
+      ? JSON.stringify(refreshDashboardCompilerRelease(JSON.parse(content), downloaded.latestGhAwVersion))
+      : content);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
       const payloadHashes = {};
@@ -711,14 +750,16 @@ export async function startDashboardServer({
           if (!entry.isFile() || !/^[A-Za-z0-9._-]+\.jsonl$/.test(entry.name)) continue;
           const outputPath = join(temporaryDirectory, shardDirectoryName, entry.name);
           await mkdir(dirname(outputPath), { recursive: true });
-          const hash = await redactJsonlSecretsFile(join(shardDirectory, entry.name), outputPath);
+          const hash = await redactJsonlSecretsFile(
+            join(shardDirectory, entry.name), outputPath, downloaded?.latestGhAwVersion,
+          );
           const publishedName = `${shardDirectoryName}/${entry.name}`;
           dashboardDataShards.set(`/${publishedName}`, outputPath);
           payloadHashes[publishedName] = hash;
         }
       }
       payloadHashesContent = JSON.stringify(payloadHashes);
-      inventorySourcesContent = redactJsonSecrets(
+      inventorySourcesContent = prepareSources(
         await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
       );
       const memoryDirectory = await realpath(join(canonicalDataDirectory, "memory")).catch(() => undefined);
@@ -726,7 +767,7 @@ export async function startDashboardServer({
         ? memoryDirectory
         : undefined;
     } else {
-      sourcesContent = redactJsonSecrets(
+      sourcesContent = prepareSources(
         await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
       );
       const parsedSources = JSON.parse(sourcesContent);
@@ -756,6 +797,9 @@ export async function startDashboardServer({
   let refreshRetryCount = 0;
   let closed = false;
   let cliActionInProgress = false;
+  const cliCommands = new AbortController();
+  /** @type {Promise<unknown> | undefined} */
+  let cliCommandPending;
   /** @type {AbortController | null} */
   let queryGeneration = null;
   /** @type {Promise<{ document: string } | import('./query-editor-contract.mjs').QueryEditorAuthoring> | null} */
@@ -944,7 +988,7 @@ export async function startDashboardServer({
       }
       if ((pathname === "/" || pathname === "/index.html")
           && !url.searchParams.has("local-preview")) {
-        url.searchParams.set("local-preview", canvas ? "canvas" : "enabled");
+        url.searchParams.set("local-preview", canvas ? "canvas" : admin ? "admin" : "enabled");
         response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
         return;
       }
@@ -1112,7 +1156,7 @@ export async function startDashboardServer({
         return;
       }
       if (pathname === "/__dialog_selector") {
-        if (!canvas) { response.writeHead(404).end("Not found\n"); return; }
+        if (!canvas && !admin) { response.writeHead(404).end("Not found\n"); return; }
         if (request.method !== "POST") { response.writeHead(405, { Allow: "POST" }).end(); return; }
         if (!isAllowedOrigin(request.headers.origin)
           || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
@@ -1145,7 +1189,7 @@ export async function startDashboardServer({
         return;
       }
       if (pathname === "/__cli_action") {
-        if (!canvas || typeof executeCliAction !== "function") {
+        if ((!canvas && !admin) || typeof executeCliAction !== "function") {
           response.writeHead(404).end("Not found\n");
           return;
         }
@@ -1241,7 +1285,7 @@ export async function startDashboardServer({
         try {
           let approved;
           try {
-            approved = await approveCliAction(invocation);
+            approved = admin ? true : await approveCliAction(invocation);
           } catch (error) {
             if (!closed && !response.destroyed) {
               sendJson(response, 503, {
@@ -1265,11 +1309,24 @@ export async function startDashboardServer({
             }
           };
           try {
-            const result = await executeCliAction({
-              ...invocation,
-              onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
-            });
-            emit({ type: "complete", result });
+            const lifetime = new AbortController();
+            const abort = () => lifetime.abort();
+            response.once("close", abort);
+            cliCommands.signal.addEventListener("abort", abort, { once: true });
+            try {
+              const pending = executeCliAction({
+                ...invocation,
+                signal: lifetime.signal,
+                onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
+              });
+              cliCommandPending = pending;
+              const result = await pending;
+              emit({ type: "complete", result });
+            } finally {
+              cliCommandPending = undefined;
+              response.removeListener("close", abort);
+              cliCommands.signal.removeEventListener("abort", abort);
+            }
           } catch (error) {
             emit({
               type: "error",
@@ -1326,6 +1383,10 @@ export async function startDashboardServer({
       }
       if (pathname === "/src/data/query-editor.js" && queryEditorValidationBundle) {
         sendContent(request, response, contentTypes.get(".js"), queryEditorValidationBundle);
+        return;
+      }
+      if (pathname === "/src/components/cli-terminal-runtime.js" && terminalBundle) {
+        sendContent(request, response, contentTypes.get(".js"), terminalBundle);
         return;
       }
       if (pathname === "/sources/manifest.json") {
@@ -1489,7 +1550,7 @@ export async function startDashboardServer({
         if (isLoopbackHost(address.address)) {
           localhostAuthority = `localhost:${address.port}`;
         }
-        if (process.env.CODESPACES === "true" && process.env.CODESPACE_NAME
+        if (!admin && process.env.CODESPACES === "true" && process.env.CODESPACE_NAME
             && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
           codespaceAuthority = `${process.env.CODESPACE_NAME}-${address.port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`;
         }
@@ -1519,6 +1580,7 @@ export async function startDashboardServer({
     async close() {
       if (closed) return;
       closed = true;
+      cliCommands.abort();
       queryGeneration?.abort();
       output("Stopping dashboard server.");
       clearTimeout(refreshTimer);
@@ -1527,6 +1589,7 @@ export async function startDashboardServer({
       const shutdown = new Promise((accept, reject) => server.close((error) => error ? reject(error) : accept()));
       server.closeAllConnections();
       await shutdown;
+      if (cliCommandPending) await Promise.allSettled([cliCommandPending]);
       if (queryGenerationPending) await Promise.allSettled([queryGenerationPending]);
       if (customViewSavePending) await Promise.allSettled([customViewSavePending]);
       await refreshPromise;
@@ -1617,6 +1680,7 @@ export function parseDashboardServerArguments(arguments_) {
     const argument = arguments_[index];
     if (argument === "--help") return { help: true };
     if (argument === "--canvas") options.canvas = true;
+    else if (argument === "--admin") options.admin = true;
     else if (argument === "--data-backend") {
       options.dataBackend = arguments_[index += 1];
       if (!["sqlite", "indexeddb", "postgres"].includes(options.dataBackend)) {
@@ -1660,6 +1724,7 @@ export function parseDashboardServerArguments(arguments_) {
     }
     for (const [flag, value] of [
       ["--canvas", options.canvas],
+      ["--admin", options.admin],
       ["--replace-existing", options.replaceExisting],
       ["--trace-file", options.traceFile],
       ["--repo", options.repository],
@@ -1674,6 +1739,9 @@ export function parseDashboardServerArguments(arguments_) {
     throw new Error("--policy, --site, --cert, and --key require --data-backend postgres or --operational-store redis|memory|postgres");
   }
   if (!options.host) options.host = "127.0.0.1";
+  if (options.admin && (options.canvas || !isLoopbackHost(options.host))) {
+    throw new Error("--admin requires a loopback host and cannot be combined with --canvas");
+  }
   const port = options.port ?? (options.canvas ? 0 : 4173);
   const minimumPort = options.canvas ? 0 : 1;
   if (!Number.isInteger(port) || port < minimumPort || port > 65535) {
@@ -1690,7 +1758,8 @@ export function parseDashboardServerArguments(arguments_) {
 async function main() {
   const options = parseDashboardServerArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: local-server.mjs [--canvas] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("usage: local-server.mjs [--canvas | --admin] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("--admin enables explicitly confirmed dashboard CLI actions using local GitHub CLI credentials (loopback only).");
     console.log("Data backend defaults to SQLite; use --data-backend indexeddb for browser IndexedDB.");
     console.log("       local-server.mjs --data-backend postgres [--operational-store redis|memory|postgres] [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");

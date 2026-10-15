@@ -240,6 +240,7 @@ async function bundleSiteJavascript(destinationPath) {
       minify: true,
       outdir: bundlePath,
       platform: "browser",
+      loader: { ".css": "text" },
       sourcemap: true,
       target: "es2022",
     };

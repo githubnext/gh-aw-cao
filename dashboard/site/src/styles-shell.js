@@ -273,9 +273,18 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-argument small { color: var(--muted); font-size: .75rem; }
 .cli-action-command, .cli-action-output { overflow: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font-family: var(--font-mono, ui-monospace, monospace); font-size: .75rem; white-space: pre-wrap; word-break: break-word; }
 .cli-action-output { min-height: 160px; flex: 1 1 auto; margin: 0; }
+.cli-action-terminal { height: min(360px, 45dvh); min-height: 160px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #0d1117; }
+.cli-action-terminal[hidden] { display: none; }
+.cli-action-dialog.cli-action-running { inset: 0; width: 100vw; height: 100dvh; max-width: 100vw; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; grid-template-rows: minmax(0, 1fr) auto; }
+.cli-action-running > .cli-action-dialog-header { display: none; }
+.cli-action-running > .cli-action-dialog-body { gap: 0; padding: 0; overflow: hidden; }
+.cli-action-running > .cli-action-dialog-body > :not(.cli-action-terminal-output):not(.cli-action-terminal) { display: none; }
+.cli-action-running .cli-action-terminal-output { min-height: 0; height: 100%; }
+.cli-action-running .cli-action-terminal { min-height: 0; height: 100%; border: 0; border-radius: 0; }
 .cli-action-dialog-footer { min-height: 58px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
-.cli-action-status { min-width: 0; flex: 1; color: var(--muted); font-size: .75rem; }
+.cli-action-status, .cli-action-terminal-status { min-width: 0; flex: 1; color: var(--muted); font-size: .75rem; }
 .cli-action-cancel, .cli-action-confirm { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+.cli-action-cancel[hidden], .cli-action-confirm[hidden] { display: none; }
 .cli-action-cancel { background: var(--canvas); color: var(--fg); }
 .cli-action-confirm { border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .cli-action-cancel:hover { background: var(--neutral-muted); }
