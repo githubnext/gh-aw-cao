@@ -33,6 +33,8 @@ import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugEagerIngest, debugShardLimit, diagnosticErrorName, isDebugEnabled } from './debug.js';
 import { withRetries } from './retry.js';
 import { prepareMemoryFile } from './data/repository-memory-jsonl.js';
+import { createGitHubDataService } from './data/github-service.js';
+import { isGitHubQuerySource, githubSnapshotSource } from './data/github-query-sources.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
@@ -153,7 +155,7 @@ async function* responseChunks(body) {
   }
 }
 
-/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
+/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number, hosted?: boolean } | null} */
 let liveDashboard = null;
 let hasCompleteDashboardSnapshot = false;
 /**
@@ -164,10 +166,47 @@ let hasCompleteDashboardSnapshot = false;
  */
 let publicationPhase = 'complete';
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, controller?: AbortController, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, controller?: AbortController, githubController?: AbortController, githubSources?: Record<string, import('./presenter.js').LogicalSourceInput>, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput>, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
+/** @type {ReturnType<typeof createGitHubDataService> | undefined} */
+let githubDataService;
+
+/**
+ * @param {string[]} names
+ * @param {{ queries?: unknown[], dashboardRepository?: string | null }} context
+ * @param {import('./data/github-service.js').GitHubBackendConfiguration | undefined} configuration
+ * @param {AbortSignal} signal
+ * @param {(name: string, source: import('./presenter.js').LogicalSourceInput) => void} notify
+ */
+function subscribeGitHubQuerySources(names, context, configuration, signal, notify) {
+  signal.throwIfAborted();
+  const resources = resolveDashboardQuerySources(context.queries ?? [], names).filter(isGitHubQuerySource);
+  const [owner, repo, extra] = (context.dashboardRepository ?? '').split('/');
+  githubDataService ??= createGitHubDataService();
+  return Promise.all(resources.map((name) => new Promise((resolve, reject) => {
+    const aborted = () => reject(new DashboardQueryCancelledError('GitHub source query was cancelled', 'aborted'));
+    signal.addEventListener('abort', aborted, { once: true });
+    const ready = () => { signal.removeEventListener('abort', aborted); resolve(undefined); };
+    if (!owner || !repo || extra) {
+      notify(name, githubSnapshotSource(name, { data: null, status: 'unavailable', source: 'none', error: 'repository-unconfigured', retryAt: null }));
+      ready();
+      return;
+    }
+    try {
+      githubDataService?.subscribe({
+        owner, repo, resource: name === 'github-latest-release' ? 'latest-release' : 'repository'
+      }, configuration ?? { baseUrl: null }, (snapshot) => {
+        notify(name, githubSnapshotSource(name, snapshot));
+        if (snapshot.data || snapshot.error) ready();
+      }, { signal });
+    } catch (error) {
+      signal.removeEventListener('abort', aborted);
+      reject(error);
+    }
+  })));
+}
 /** @type {Map<number, Record<string, unknown>>} */
 const inFlightDashboardSources = new Map();
 /** @type {Set<string>} */
@@ -428,7 +467,7 @@ function subscriptionDatabaseSources(subscription, sourceNames = subscription.so
     .map((definition) => /** @type {{ name?: unknown }} */ (definition).name)
     .filter((name) => typeof name === 'string'));
   return resolveDashboardQuerySources(subscription.context.queries, sourceNames)
-    .filter((name) => !queryNames.has(name));
+    .filter((name) => !queryNames.has(name) && !isGitHubQuerySource(name));
 }
 
 /** @param {DashboardSubscription} subscription */
@@ -533,7 +572,7 @@ async function executeLiveDashboardQuery(
           evaluatedAt,
           queries: context.queries,
           views: context.views,
-          backend: 'static',
+          backend: dashboard.hosted ? 'hosted' : 'static',
           viewId,
           sourceNames: requested,
           partial
@@ -546,7 +585,7 @@ async function executeLiveDashboardQuery(
       ...viewPayload.aliases
     ]);
     const requestedWithDependencies = resolveDashboardQuerySources(executionQueries, executionRequested);
-    const nativeSources = await queryIndexedDatabaseSources(
+    const nativeSources = dashboard.hosted ? {} : await queryIndexedDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
       executionQueries,
@@ -563,7 +602,7 @@ async function executeLiveDashboardQuery(
     const databaseRequired = required.filter((name) => !nativeSourceNames.has(name));
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let databaseMetrics;
-    const databasePayload = await queryDatabaseSources(
+    const databasePayload = dashboard.hosted ? dashboard.logicalSources : await queryDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
       databaseRequired,
@@ -672,6 +711,10 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
+        const queryDashboard = subscription.githubSources ? {
+          ...dashboard, hosted: subscription.hostedSources !== undefined,
+          logicalSources: { ...dashboard.logicalSources, ...subscription.hostedSources, ...subscription.githubSources }
+        } : dashboard;
         const controller = new AbortController();
         subscription.controller = controller;
         try {
@@ -691,7 +734,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
               subscription.routeParameters,
               subscription.queryContext,
               subscription.viewId,
-              dashboard,
+              queryDashboard,
               true
             );
             if (dashboardSubscriptions.get(id) !== subscription || liveDashboard !== dashboard) continue;
@@ -713,7 +756,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.routeParameters,
             subscription.queryContext,
             subscription.viewId,
-            dashboard
+            queryDashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             subscription.emitted = true;
@@ -852,7 +895,7 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown, githubConfiguration?: import('./data/github-service.js').GitHubBackendConfiguration, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput> }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -886,7 +929,19 @@ export function processDataRequest(request, signal) {
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
-    return queryLiveDashboard(
+    return (async () => {
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      signal?.addEventListener('abort', abort, { once: true });
+      if (signal?.aborted) abort();
+      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
+      const githubSources = {};
+      try {
+        await subscribeGitHubQuerySources([...requested], {
+          ...context, .../** @type {{ dashboardRepository?: string | null }} */ (request.context ?? {})
+        }, request.githubConfiguration, controller.signal, (name, source) => { githubSources[name] = source; });
+        const dashboard = await loadActiveDashboard();
+        return await queryLiveDashboard(
       requested,
       context,
       /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
@@ -895,8 +950,17 @@ export function processDataRequest(request, signal) {
       typeof request.pageId === 'string' ? request.pageId : undefined,
       routeParameters(request.routeParameters),
       queryContext(request.queryContext),
-      typeof request.viewId === 'string' ? request.viewId : undefined
-    );
+      typeof request.viewId === 'string' ? request.viewId : undefined,
+      Object.keys(githubSources).length ? {
+        ...dashboard, hosted: request.hostedSources !== undefined,
+        logicalSources: { ...dashboard.logicalSources, ...request.hostedSources, ...githubSources }
+      } : dashboard
+        );
+      } finally {
+        controller.abort();
+        signal?.removeEventListener('abort', abort);
+      }
+    })();
   }
   if (request?.operation === 'load-canonical-dashboard') {
     if (typeof request.sourceUrl !== 'string' || !request.sourceUrl.trim()) {
@@ -1348,14 +1412,48 @@ function cancelInFlight(ids) {
 }
 
 if (typeof document === 'undefined' && workerScope) {
+  const githubResources = githubDataService ??= createGitHubDataService();
+  /** @type {Map<string, AbortController>} */
+  const githubSubscriptions = new Map();
   workerScope.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'subscribe-github-resource') {
+      const subscriptionId = event.data.subscriptionId;
+      if (typeof subscriptionId !== 'string' || !subscriptionId) return;
+      githubSubscriptions.get(subscriptionId)?.abort();
+      const controller = new AbortController();
+      githubSubscriptions.set(subscriptionId, controller);
+      try {
+        githubResources.subscribe(event.data.resource, event.data.configuration, (snapshot) => {
+          workerScope.postMessage({ type: 'github-resource', subscriptionId, snapshot });
+        }, { signal: controller.signal });
+      } catch {
+        controller.abort();
+        githubSubscriptions.delete(subscriptionId);
+        workerScope.postMessage({ type: 'github-resource', subscriptionId, error: 'Unable to subscribe to GitHub resource.' });
+      }
+      return;
+    }
+    if (event.data?.operation === 'unsubscribe-github-resource') {
+      githubSubscriptions.get(event.data.subscriptionId)?.abort();
+      githubSubscriptions.delete(event.data.subscriptionId);
+      return;
+    }
+    if (event.data?.operation === 'update-github-dashboard-sources') {
+      const subscription = dashboardSubscriptions.get(event.data.subscriptionId);
+      if (subscription?.githubSources && subscription.hostedSources !== undefined) {
+        subscription.hostedSources = event.data.sources;
+        if (liveDashboard) liveDashboard = { ...liveDashboard, revision: liveDashboard.revision + 1 };
+        scheduleDashboardSubscriptions([event.data.subscriptionId]);
+      }
+      return;
+    }
     if (event.data?.operation === 'subscribe-canonical-dashboard') {
       const subscriptionId = event.data.subscriptionId;
       if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
       try {
         const context = dashboardContext(event.data.context);
-        const subscription = {
+        const subscription = /** @type {DashboardSubscription} */ ({
           sourceNames: [...requestedSourceNames(event.data.sourceNames)],
           context,
           requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
@@ -1366,9 +1464,29 @@ if (typeof document === 'undefined' && workerScope) {
           queryContext: queryContext(event.data.queryContext),
           revision: liveDashboard?.revision ?? null,
           emitted: false
-        };
+        });
         dashboardSubscriptions.get(subscriptionId)?.controller?.abort();
+        dashboardSubscriptions.get(subscriptionId)?.githubController?.abort();
         dashboardSubscriptions.set(subscriptionId, subscription);
+        if (resolveDashboardQuerySources(context.queries, subscription.sourceNames).some(isGitHubQuerySource)) {
+          subscription.githubController = new AbortController();
+          subscription.githubSources = {};
+          subscription.hostedSources = event.data.hostedSources;
+          liveDashboard ??= { logicalSources: {}, revision: 0 };
+          void subscribeGitHubQuerySources(subscription.sourceNames, {
+            ...context, dashboardRepository: subscription.requestContext.dashboardRepository
+          }, event.data.githubConfiguration, subscription.githubController.signal, (name, source) => {
+            if (dashboardSubscriptions.get(subscriptionId) !== subscription) return;
+            subscription.githubSources ??= {};
+            subscription.githubSources[name] = source;
+            if (liveDashboard) liveDashboard = { ...liveDashboard, revision: liveDashboard.revision + 1 };
+            scheduleDashboardSubscriptions([subscriptionId]);
+          }).catch(() => {
+            if (dashboardSubscriptions.get(subscriptionId) === subscription) workerScope.postMessage({
+              subscriptionId, error: 'GitHub dashboard source unavailable.'
+            });
+          });
+        }
         if (liveDashboard && event.data.emitCurrent !== false) {
           const partialSource = subscriptionPartialSource(subscription);
           if (isPhaseSubscription(subscription, publicationPhase)
@@ -1391,6 +1509,7 @@ if (typeof document === 'undefined' && workerScope) {
     }
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
       dashboardSubscriptions.get(event.data.subscriptionId)?.controller?.abort();
+      dashboardSubscriptions.get(event.data.subscriptionId)?.githubController?.abort();
       dashboardSubscriptions.delete(event.data.subscriptionId);
       dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
       if (dirtyDashboardSubscriptions.size === 0 && subscriptionFlushTimer !== null) {

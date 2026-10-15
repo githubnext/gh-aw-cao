@@ -42,6 +42,7 @@ import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "
 import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
+import { createLocalGitHubService } from "./local-github-service.mjs";
 import { lookupDialogOptions } from "./dialog-selector.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -916,6 +917,7 @@ export async function startDashboardServer({
       return false;
     }
   };
+  const githubService = createLocalGitHubService();
   const server = createServer(async (request, response) => {
     const requestStarted = performance.now();
     let requestPath = "<outside-preview>";
@@ -1055,6 +1057,25 @@ export async function startDashboardServer({
           }
         } finally {
           customViewSavePending = null;
+        }
+        return;
+      }
+      if (pathname.startsWith("/api/v1/github/")) {
+        if (request.method !== "GET") {
+          response.writeHead(405, { Allow: "GET" }).end();
+          return;
+        }
+        if ((request.headers.origin && !isAllowedOrigin(request.headers.origin))
+            || request.headers["sec-fetch-site"] === "cross-site") {
+          sendJson(response, 403, { error: "Forbidden." });
+          return;
+        }
+        const result = await githubService.request(pathname, request.headers["if-none-match"]);
+        for (const [name, value] of Object.entries(result.headers)) response.setHeader(name, value);
+        if (result.status === 304) response.writeHead(304).end();
+        else {
+          response.writeHead(result.status, { "Content-Type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify(result.body));
         }
         return;
       }
@@ -1406,6 +1427,10 @@ export async function startDashboardServer({
       let content;
       if (pathname === "/dashboard.json") content = dashboardContent;
       else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
+      if (extension === ".html") {
+        content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
+<meta name="dashboard-github-api-base" content="${routePrefix}/">`);
+      }
       if (sqliteBackend && extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
 <meta name="dashboard-data-backend" content="server-http">

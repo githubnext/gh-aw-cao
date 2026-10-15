@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.4.0')
+  assert.equal(openapi.info.version, '2.5.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -106,6 +106,30 @@ test('the generated contract describes the implemented security and wire formats
   )
 })
 
+test('GitHub resource operations describe authenticated conditional reads and graceful unavailability', () => {
+  for (const [path, model] of [
+    ['/api/v1/github/repos/{owner}/{repo}', 'GitHubRepository'],
+    ['/api/v1/github/repos/{owner}/{repo}/releases/latest', 'GitHubRelease']
+  ]) {
+    const operation = openapi.paths[path].get
+    assert.ok(operation.security.some(entry => 'BearerAuth' in entry))
+    assert.ok(operation.security.some(entry => 'ApiKeyAuth' in entry))
+    assert.ok(operation.parameters.some(parameter => parameter.name === 'If-None-Match'))
+    assert.equal(operation.responses['200'].content['application/json'].schema.$ref, `#/components/schemas/${model}`)
+    for (const status of ['200', '304']) {
+      assert.ok(operation.responses[status].headers.ETag)
+      assert.ok(operation.responses[status].headers['Cache-Control'])
+    }
+    assert.equal(operation.responses['304'].content, undefined)
+    for (const status of ['400', '401', '403', '404', '429', '503']) {
+      assert.ok(operation.responses[status])
+    }
+    for (const status of ['429', '503']) {
+      assert.ok(operation.responses[status].headers['Retry-After'])
+    }
+  }
+})
+
 test('structured payload fields stay in sync with Go JSON tags', () => {
   const pairs = [
     ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],
@@ -119,6 +143,8 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
     ['../internal/server/operations.go', 'rebuildStatus', 'RebuildStatus'],
     ['../internal/server/logs.go', 'serverLogSnapshot', 'ServerLogSnapshot'],
     ['../internal/server/logs.go', 'serverLogRedis', 'ServerLogRedis'],
+    ['../internal/server/github_resources.go', 'githubRepositoryResource', 'GitHubRepository'],
+    ['../internal/server/github_resources.go', 'githubReleaseResource', 'GitHubRelease'],
     ['../internal/collect/recovery.go', 'Status', 'CollectionStatus'],
     ['../internal/githubquota/usage.go', 'UsageReport', 'QuotaUsage'],
     ['../internal/repositorymemory/memory.go', 'Campaign', 'MemoryCampaign']

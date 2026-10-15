@@ -4,7 +4,8 @@ import {
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
 import { resolveDashboardQuerySources } from "./data/queries/declarative.js";
-import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
+import { csrfHeaders, csrfToken, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
+import { usesRemoteDataBackend } from "./backend-mode.js";
 import { createDebug, diagnosticErrorName } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
 import { publishNotification } from "./notification-service.js";
@@ -13,6 +14,8 @@ export { disableRemoteDashboardPwa, usesRemoteDataBackend } from "./backend-mode
 const debugRemoteBackend = createDebug("remote-data-backend");
 
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
+/** @type {string | undefined} */
+let githubSessionCacheIdentity;
 
 export class DashboardServerError extends Error {
   /**
@@ -87,6 +90,20 @@ function accessToken() {
   } catch {
     return "";
   }
+
+}
+
+/** Serializable backend configuration for worker-owned GitHub resource requests. */
+export function githubWorkerBackendConfiguration() {
+  const configured = usesRemoteDataBackend()
+    || Boolean(globalThis.document?.querySelector?.('meta[name="dashboard-api-base"]')?.getAttribute("content"));
+  const oauth = usesGitHubAuthentication();
+  return {
+    baseUrl: configured ? apiUrl("/api/v1/github/") : null,
+    token: oauth ? "" : accessToken(),
+    credentials: /** @type {RequestCredentials} */ (oauth ? "same-origin" : "omit"),
+    cacheIdentity: oauth ? csrfToken() || (githubSessionCacheIdentity ??= crypto.randomUUID()) : ""
+  };
 }
 
 /**

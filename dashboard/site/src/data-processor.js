@@ -11,8 +11,11 @@ import {
   queryRemoteRepositoryMemory,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
+  githubWorkerBackendConfiguration,
   usesRemoteDataBackend
 } from './remote-data-backend.js';
+import { githubResourcePath } from './data/github-service.js';
+import { isGitHubQuerySource } from './data/github-query-sources.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -53,6 +56,8 @@ const pending = new Map();
  */
 /** @type {Map<string, ViewSubscription>} */
 const subscriptions = new Map();
+/** @type {Map<string, { processor: Worker, notify: (snapshot: import('./data/github-service.js').GitHubResourceSnapshot) => void, onError?: (error: Error) => void, stop: () => void }>} */
+const githubSubscriptions = new Map();
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
 /** @type {Set<string>} */
@@ -163,6 +168,35 @@ export function subscribeWorkerLoadingProgress(listener) {
 export function subscribeDatabaseUpgrade(listener) {
   databaseUpgradeListeners.add(listener);
   return () => databaseUpgradeListeners.delete(listener);
+}
+
+/**
+ * Subscribes through the data worker in both hosted and static modes. Backend
+ * credentials never enter resource results or persistent storage.
+ * @param {import('./data/github-service.js').GitHubResource} resource
+ * @param {(snapshot: import('./data/github-service.js').GitHubResourceSnapshot) => void} notify
+ * @param {{ signal: AbortSignal, onError?: (error: Error) => void }} options
+ */
+export function subscribeGitHubResource(resource, notify, { signal, onError }) {
+  githubResourcePath(resource);
+  if (typeof notify !== 'function') throw new TypeError('A GitHub resource listener is required.');
+  if (signal.aborted) return () => {};
+  const configuration = githubWorkerBackendConfiguration();
+  const processor = getWorker();
+  if (!processor) throw new Error('GitHub resources require a data worker.');
+  const subscriptionId = `github-resource-${++nextRequestId}`;
+  const stop = () => {
+    signal.removeEventListener('abort', stop);
+    if (!githubSubscriptions.delete(subscriptionId)) return;
+    processor.postMessage({ operation: 'unsubscribe-github-resource', subscriptionId });
+  };
+  githubSubscriptions.set(subscriptionId, { processor, notify, onError, stop });
+  signal.addEventListener('abort', stop, { once: true });
+  processor.postMessage({
+    operation: 'subscribe-github-resource', subscriptionId, resource,
+    configuration
+  });
+  return stop;
 }
 
 /**
@@ -376,12 +410,17 @@ export function processRepositoryMemoryFile(path, content, signal) {
  * the renderer.
  * @param {string} sourceUrl
  * @param {string[]} sourceNames
- * @param {{ githubUrlBase?: string, pages: unknown[] }} context
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
+  if (githubDashboardDependencies(sourceNames, context)) {
+    if (usesRemoteDataBackend()) return loadCanonicalDashboardPage(sourceNames, context, pagination, options);
+    return loadCanonicalDashboardSources(sourceUrl, [], context, undefined, {})
+      .then(() => loadCanonicalDashboardPage(sourceNames, context, pagination, options));
+  }
   if (usesRemoteDataBackend()) {
     return queryRemoteDashboard(sourceNames, context, pagination, options).then(({ sources }) => sources);
   }
@@ -396,12 +435,23 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * Refreshes the canonical dashboard and reports whether fresh data was written.
  * @param {string} sourceUrl
  * @param {string[]} sourceNames
- * @param {{ githubUrlBase?: string, pages: unknown[] }} context
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
 export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
+  const githubDependencies = githubDashboardDependencies(sourceNames, context);
+  if (githubDependencies) {
+    return (async () => {
+      const refreshed = usesRemoteDataBackend()
+        ? githubDependencies.length
+          ? await refreshRemoteDashboard(githubDependencies, { ...context, pages: [], queries: [] })
+          : { changed: false }
+        : await refreshCanonicalDashboardSources(sourceUrl, [], context);
+      return { sources: await loadCanonicalDashboardPage(sourceNames, context, pagination, options), changed: refreshed.changed };
+    })();
+  }
   if (usesRemoteDataBackend()) {
     return refreshRemoteDashboard(sourceNames, context, pagination, options);
   }
@@ -422,6 +472,23 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
   const { signal, ...queryOptions } = options;
+  const githubDependencies = githubDashboardDependencies(sourceNames, context);
+  if (githubDependencies) {
+    return (async () => {
+      const hostedSources = usesRemoteDataBackend()
+        ? githubDependencies.length
+          ? (await queryRemoteDashboard(githubDependencies, { ...context, pages: [], queries: [] }, undefined, { signal })).sources
+          : {}
+        : undefined;
+      return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+        {
+          operation: 'query-canonical-dashboard', sourceNames, context, pagination, ...queryOptions,
+          githubConfiguration: githubWorkerBackendConfiguration(), hostedSources
+        },
+        () => Promise.reject(new Error('GitHub dashboard queries require a data worker.')), false, signal
+      ));
+    })();
+  }
   if (usesRemoteDataBackend()) {
     return queryRemoteDashboard(sourceNames, context, pagination, options).then(({ sources }) => sources);
   }
@@ -468,7 +535,7 @@ export function loadDashboardSnapshotMetadata() {
  *
  * @param {string} viewId
  * @param {string[]} sourceNames
- * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
@@ -524,7 +591,13 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   }
   const unsubscribeFromSignal = () => unsubscribe();
   options.signal?.addEventListener('abort', unsubscribeFromSignal, { once: true });
-  if (usesRemoteDataBackend()) {
+  if (githubDashboardDependencies(sourceNames, context)) {
+    const processor = getWorker();
+    if (processor) {
+      registerSubscription(processor, subscription);
+      if (usesRemoteDataBackend()) registerRemoteGitHubSubscription(processor, subscription);
+    }
+  } else if (usesRemoteDataBackend()) {
     registerRemoteSubscription(subscription);
   } else {
     const processor = getWorker();
@@ -559,6 +632,52 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.registeredWorker = null;
   };
   return unsubscribe;
+}
+
+/**
+ * Returns only unresolved non-GitHub inputs, never computes source rows.
+ * @param {string[]} names
+ * @param {{ queries?: unknown[] }} context
+ */
+function githubDashboardDependencies(names, context) {
+  const queries = context.queries ?? [];
+  const resolved = resolveDashboardQuerySources(queries, names);
+  if (!resolved.some(isGitHubQuerySource)) return null;
+  const queryNames = new Set(queries.flatMap((query) => (
+    query && typeof query === 'object' && 'name' in query ? [query.name] : []
+  )));
+  return resolved.filter((name) => !queryNames.has(name) && !isGitHubQuerySource(name));
+}
+
+/** @param {Worker} processor @param {ViewSubscription} subscription */
+function registerRemoteGitHubSubscription(processor, subscription) {
+  if (subscription.remoteStop) return;
+  const names = githubDashboardDependencies(subscription.sourceNames, subscription.context) ?? [];
+  if (!names.length) return;
+  const controller = new AbortController();
+  let running = false;
+  let queued = false;
+  const refresh = async () => {
+    if (controller.signal.aborted) return;
+    if (running) { queued = true; return; }
+    running = true;
+    try {
+      const result = await queryRemoteDashboard(names, { ...subscription.context, pages: [], queries: [] }, undefined, { signal: controller.signal });
+      if (!controller.signal.aborted) processor.postMessage({
+        operation: 'update-github-dashboard-sources', subscriptionId: subscription.id, sources: result.sources
+      });
+    } catch (error) {
+      if (!controller.signal.aborted) for (const listener of subscription.listeners) {
+        invokeSubscriber(() => listener.onError?.(error instanceof Error ? error : new Error('Remote dashboard sources unavailable.')));
+      }
+    } finally {
+      running = false;
+      if (queued) { queued = false; void refresh(); }
+    }
+  };
+  const stopRevision = subscribeRemoteRevision(() => { void refresh(); });
+  subscription.remoteStop = () => { controller.abort(); stopRevision(); };
+  void refresh();
 }
 
 /** @param {ViewSubscription} subscription */
@@ -743,7 +862,11 @@ function registerSubscription(processor, subscription) {
     routeParameters: subscription.routeParameters,
     queryContext: subscription.queryContext,
     pagination: subscription.pagination,
-    emitCurrent: subscription.emitCurrent
+    emitCurrent: subscription.emitCurrent,
+    ...(githubDashboardDependencies(subscription.sourceNames, subscription.context) ? {
+      githubConfiguration: githubWorkerBackendConfiguration(),
+      hostedSources: usesRemoteDataBackend() ? {} : undefined
+    } : {})
   });
 }
 
@@ -835,6 +958,16 @@ function getWorker() {
   const processor = worker;
   debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
+    if (event.data?.type === 'github-resource') {
+      const subscription = githubSubscriptions.get(event.data.subscriptionId);
+      if (subscription?.processor !== processor) return;
+      if (event.data.snapshot) invokeSubscriber(() => subscription.notify(event.data.snapshot));
+      else if (typeof event.data.error === 'string') {
+        subscription.stop();
+        invokeSubscriber(() => subscription.onError?.(new Error(event.data.error)));
+      }
+      return;
+    }
     if (event.data?.type === 'database-upgrade') {
       for (const listener of databaseUpgradeListeners) listener(event.data.versions);
       return;
@@ -928,12 +1061,21 @@ function getWorker() {
     terminateWorkerSubscriptions(failedWorker, error);
     resetWorker(failedWorker);
   });
-  for (const subscription of subscriptions.values()) registerSubscription(worker, subscription);
+  for (const subscription of subscriptions.values()) {
+    if (usesRemoteDataBackend() && !githubDashboardDependencies(subscription.sourceNames, subscription.context)) continue;
+    registerSubscription(worker, subscription);
+    if (usesRemoteDataBackend()) registerRemoteGitHubSubscription(worker, subscription);
+  }
   return worker;
 }
 
 /** @param {Worker | null} processor */
 function resetWorker(processor) {
+  for (const subscription of [...githubSubscriptions.values()]) {
+    if (subscription.processor !== processor) continue;
+    subscription.stop();
+    invokeSubscriber(() => subscription.onError?.(new Error('Data worker stopped.')));
+  }
   processor?.terminate();
   if (worker !== processor) return;
   worker = null;
@@ -949,7 +1091,13 @@ function resetWorker(processor) {
   if (browserFirstLoad.get().ingestion) {
     browserFirstLoad.set((current) => ({ ...current, ingestion: undefined }));
   }
-  for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
+  for (const subscription of subscriptions.values()) {
+    if (subscription.registeredWorker === processor) {
+      subscription.remoteStop?.();
+      subscription.remoteStop = undefined;
+    }
+    subscription.registeredWorker = null;
+  }
 }
 
 /** @param {Worker} processor @param {Error} error */
@@ -957,6 +1105,8 @@ function terminateWorkerSubscriptions(processor, error) {
   for (const [id, subscription] of subscriptions) {
     if (subscription.registeredWorker !== processor) continue;
     subscriptions.delete(id);
+    subscription.remoteStop?.();
+    subscription.remoteStop = undefined;
     subscription.latest = null;
     subscription.snapshot = null;
     if (subscription.frame !== null && typeof globalThis.cancelAnimationFrame === 'function') {

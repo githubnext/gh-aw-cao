@@ -84,6 +84,37 @@ async function requestWithHost(url, host) {
   });
 }
 
+test("local GitHub routes enforce read-only same-origin access and advertise their worker API base", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-github-http-"));
+  const siteRoot = path.join(root, "site");
+  const catalogRoot = path.join(root, "catalog");
+  await mkdir(siteRoot);
+  await mkdir(catalogRoot);
+  await writeFile(path.join(siteRoot, "index.html"), "<!doctype html><html><head></head><body>preview</body></html>");
+  await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("preview"));
+  const preview = await startDashboardServer({
+    siteRoot, catalogRoot, workingDirectory: root, dataBackend: "indexeddb", port: 0,
+    downloadData: async (destination) => {
+      await mkdir(destination, { recursive: true });
+      await writeFile(path.join(destination, "sources.json"), "{}");
+    },
+    output: () => {},
+    requestOutput: () => {},
+  });
+  try {
+    const html = await (await fetch(`${preview.url}/`)).text();
+    assert.match(html, /<meta name="dashboard-github-api-base" content="[^"]*\/">/);
+    const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-aw-cao`;
+    assert.equal((await fetch(resource, { method: "POST" })).status, 405);
+    assert.equal((await fetch(resource, { headers: { Origin: "https://untrusted.example" } })).status, 403);
+    assert.equal((await fetch(resource, { headers: { "Sec-Fetch-Site": "cross-site" } })).status, 403);
+    assert.equal((await fetch(`${resource}/issues`)).status, 400);
+  } finally {
+    await preview.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("local dashboard server composes campaign dashboards and reloads after updates", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
   const siteRoot = path.join(root, "site");

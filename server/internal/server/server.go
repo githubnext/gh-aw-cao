@@ -118,6 +118,7 @@ type App struct {
 	cacheOnce        sync.Once
 	cacheMetrics     *queryCacheTelemetry
 	cacheError       error
+	githubResources  githubResourceCache
 }
 
 func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
@@ -671,6 +672,8 @@ func (a *App) Handler() http.Handler {
 	}
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
+	register("GET /api/v1/github/repos/{owner}/{repo}", a.gitHubRepositoryResource)
+	register("GET /api/v1/github/repos/{owner}/{repo}/releases/latest", a.gitHubReleaseResource)
 	mux.HandleFunc("/", a.static)
 	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(mux))))
 	switch a.config.HostProfile.Listener {

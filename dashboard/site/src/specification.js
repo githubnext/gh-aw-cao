@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
+import { GITHUB_QUERY_SOURCE_FIELDS } from './data/github-query-sources.js';
 export {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
@@ -656,7 +657,7 @@ export const SERVER_SOURCE_FIELDS = {
   ]
 };
 
-export const SYNTHETIC_SOURCE_FIELDS = { 'simulation-days': ['day', 'date'] };
+export const SYNTHETIC_SOURCE_FIELDS = { 'simulation-days': ['day', 'date'], ...GITHUB_QUERY_SOURCE_FIELDS };
 
 export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES, ...Object.keys(SYNTHETIC_SOURCE_FIELDS)];
 export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS, ...SYNTHETIC_SOURCE_FIELDS };
