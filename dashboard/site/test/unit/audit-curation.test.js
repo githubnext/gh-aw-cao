@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { IDBCursor, IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { IDBCursor, IDBFactory, IDBIndex, IDBObjectStore } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { discardAudit } from '../../src/data/model/audit-curation.js';
 import { normalize } from '../../src/data/normalize/index.js';
@@ -81,6 +81,8 @@ describe('first-pass canonical Audit curation', () => {
     expect((await readCollection(indexedDB, 'audits')).some((audit) => audit.id === 'working-set-marker')).toBe(true);
   });
 
+  // fake-indexeddb deletes scan every index per record; retain the multi-page
+  // fixture and enforce bounded reads below rather than timing the emulator.
   it('batches Audit deletions without invalidating cursor prefetch per record', async () => {
     const indexedDB = new IDBFactory();
     const incoming = batch();
@@ -94,6 +96,7 @@ describe('first-pass canonical Audit curation', () => {
     });
     await upsertCanonicalBatch(indexedDB, incoming);
     const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const indexGetAll = vi.spyOn(IDBIndex.prototype, 'getAll');
     const cursorDelete = vi.spyOn(IDBCursor.prototype, 'delete');
     const originalDelete = IDBObjectStore.prototype.delete;
     const storeDelete = vi.spyOn(IDBObjectStore.prototype, 'delete');
@@ -118,18 +121,21 @@ describe('first-pass canonical Audit curation', () => {
       const maintained = await maintainCanonicalDatabase(indexedDB, options);
       expect(maintained.prunedAudits).toBe(2105);
       expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
+      expect(indexGetAll.mock.calls).toHaveLength(3);
+      expect(indexGetAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
       expect(cursorDelete).not.toHaveBeenCalled();
       expect(pendingDeletes).toEqual(Array(2105).fill(0));
       expect(auditCursorReads).toBe(0);
     } finally {
       getAll.mockRestore();
+      indexGetAll.mockRestore();
       cursorDelete.mockRestore();
       storeDelete.mockRestore();
       openCursor.mockRestore();
     }
     expect((await readCollection(indexedDB, 'audits')).map((audit) => audit.id)).toEqual(['audit:retained']);
     expect((await maintainCanonicalDatabase(indexedDB, options)).prunedAudits).toBe(0);
-  }, 15_000);
+  }, 60_000);
 
   it('validates old transport counts before pruning and cleans unchanged shards', async () => {
     const indexedDB = new IDBFactory();

@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { usesGitHubAuthentication } from '../auth.js';
 import { createDebug, diagnosticErrorName } from '../debug.js';
-import { effect, state } from '../reactive.js';
+import { effect, render, state } from '../reactive.js';
 import { fetchServerLogs, usesRemoteDataBackend } from '../remote-data-backend.js';
 import { errorMessage } from './count-formatters.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -68,13 +68,15 @@ export function renderServerLogsView(onBack) {
   }
   scope.signal.addEventListener('abort', () => request?.abort(), { once: true });
   effect(() => {
+    refresh.disabled = content.get().status === 'loading';
+  }, { signal: scope.signal });
+  render(body, () => {
     const current = content.get();
-    refresh.disabled = current.status === 'loading';
-    body.replaceChildren(current.status === 'loading'
+    return current.status === 'loading'
       ? renderLoadingMessage('Loading server logs...')
       : current.status === 'error'
         ? renderEmptyMessage(`Unable to load server logs. ${current.text}`, { role: 'alert' })
-        : renderFileContent(current.text));
+        : renderFileContent(current.text);
   }, { signal: scope.signal });
   scope.bind(root);
   load();

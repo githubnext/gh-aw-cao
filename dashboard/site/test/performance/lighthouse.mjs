@@ -47,9 +47,8 @@ const mime = {
   '.txt': 'text/plain; charset=utf-8'
 };
 
-async function startServer() {
+async function startServer(retentionAsOf) {
   const compressed = new Map();
-  const retentionAsOf = Date.now();
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -64,6 +63,7 @@ async function startServer() {
       if (!path.startsWith(`${root}${sep}`)) { response.writeHead(403).end(); return; }
       const details = await stat(path);
       if (!details.isFile()) { response.writeHead(404).end(); return; }
+      // Measure the published snapshot at its evidence time, not its download time.
       // Keep retention cutoffs stable across the long repeated-navigation audit.
       const prefix = relative === 'src/data-worker.js'
         ? Buffer.from(`Date.now = () => ${retentionAsOf};\n`) : null;
@@ -186,7 +186,7 @@ async function main() {
   await mkdir(temporaryRoot, { recursive: true });
   const dataset = await preparePerformanceData(fullRoot, emptyRoot, dataUrl, Boolean(process.env.DASHBOARD_PERFORMANCE_DATA_ROOT));
   await writeFile(join(outputRoot, 'dataset.json'), JSON.stringify(dataset, null, 2));
-  const { server, origin, retentionAsOf } = await startServer();
+  const { server, origin, retentionAsOf } = await startServer(dataset.retentionAsOf);
   const results = [];
   const states = {};
   const writeSummary = (status, error) => writeFile(join(outputRoot, 'summary.json'), JSON.stringify({
@@ -220,8 +220,8 @@ async function main() {
         const refresh = await page.evaluate(() => Reflect.get(window, '__dashboardPerformanceRefresh'));
         if (refresh.status !== 'completed') throw new Error(`${state} ingestion failed: ${JSON.stringify(refresh)}`);
         const counts = await canonicalCounts(page);
-        assertCanonicalCounts(state, counts, state === 'full' ? dataset.shards : 2);
         states[state] = { ingestionMs: performance.now() - started, counts, refresh, journeys: [] };
+        assertCanonicalCounts(state, counts, state === 'full' ? dataset.shards : 2);
         await page.evaluate(() => navigator.serviceWorker.ready);
         for (const profile of ['desktop', 'mobile']) {
           await page.setViewportSize(profile === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 });

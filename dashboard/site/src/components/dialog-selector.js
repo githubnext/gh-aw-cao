@@ -1,7 +1,10 @@
 import { h } from '../dom.js';
 import { debounce } from '../debounce.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
 import { effect, render, state } from '../reactive.js';
 import { renderLiveRegion } from './ui-primitives.js';
+
+const debugSelector = createDebug('components:dialog-selector');
 
 /**
  * A transient external selector: its server-declared query and mapping own the
@@ -37,6 +40,7 @@ export function createDialogSelector(actionId, definition, { signal, select }) {
     const current = generation;
     request = new AbortController();
     busy.set(true);
+    debugSelector({ event: 'search.start', textLength: text.length });
     message.set('Searching repositories...');
     slowSearchTimer = setTimeout(() => {
       if (current !== generation || signal.aborted) return;
@@ -51,11 +55,13 @@ export function createDialogSelector(actionId, definition, { signal, select }) {
       if (!response.ok) throw new Error(result.error || 'Repository search failed.');
       if (current !== generation || signal.aborted) return;
       choices.set(result.options);
+      debugSelector({ event: 'search.result', status: 'ok', count: result.options.length, limit: definition.query.limit });
       message.set(result.options.length === definition.query.limit
         ? `Showing the first ${definition.query.limit} repositories. Refine your search to narrow the results.`
         : result.options.length ? 'Select a repository below.' : 'No repositories found.');
     } catch (error) {
       if (current !== generation || signal.aborted) return;
+      debugSelector({ event: 'search.result', status: 'error', error: diagnosticErrorName(error) });
       message.set(error instanceof Error ? error.message : 'Repository search failed.');
     } finally {
       if (current === generation && !signal.aborted) {

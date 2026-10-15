@@ -305,13 +305,13 @@ func TestMCPCatalogAndNamedQueryUseSharedData(t *testing.T) {
 	}
 
 	count, err := session.CallTool(t.Context(), &mcp.CallToolParams{
-		Name: "cao_query", Arguments: map[string]any{"id": "database-campaign-count", "limit": 1},
+		Name: "cao_query", Arguments: map[string]any{"id": "indexing-campaigns-table-count", "limit": 1},
 	})
 	if err != nil || count.IsError {
 		t.Fatalf("campaign count query failed: result=%#v err=%v", count, err)
 	}
 	countPayload := count.StructuredContent.(map[string]any)
-	if countPayload["query"] != "database-campaign-count" {
+	if countPayload["query"] != "indexing-campaigns-table-count" {
 		t.Fatalf("unexpected campaign count query: %#v", countPayload)
 	}
 	if countPayload["metadata"].(map[string]any)["availability"] == "unavailable" {

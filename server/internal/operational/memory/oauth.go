@@ -5,8 +5,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var oauthLog = logger.New("cao:operational:memory:oauth")
+
+// nextRevocation picks the namespace's revocation with the smallest order
+// greater than cursor, wrapping to the oldest one when none follows. An
+// order of zero means the namespace has no revocations.
+func nextRevocation(revocations map[revocationKey]revocationValue, namespace string, cursor uint64) (next revocationKey, order uint64, wrapped bool) {
+	var first revocationKey
+	var firstOrder uint64
+	for k, v := range revocations {
+		if k.namespace != namespace {
+			continue
+		}
+		if firstOrder == 0 || v.order < firstOrder {
+			first, firstOrder = k, v.order
+		}
+		if v.order > cursor && (order == 0 || v.order < order) {
+			next, order = k, v.order
+		}
+	}
+	if order == 0 {
+		return first, firstOrder, firstOrder != 0
+	}
+	return next, order, false
+}
 
 func (s *Store) SessionRecord(ctx context.Context, id string) (string, error) {
 	if err := s.enter(ctx); err != nil {
@@ -170,25 +196,12 @@ func (s *Store) PendingRevocation(ctx context.Context, namespace string) (operat
 	if err := s.namespace(namespace); err != nil {
 		return operational.Revocation{}, err
 	}
-	cursor := s.revocationCursor[namespace]
-	var first, next revocationKey
-	var firstOrder, nextOrder uint64
-	for k, v := range s.revocations {
-		if k.namespace != namespace {
-			continue
-		}
-		if firstOrder == 0 || v.order < firstOrder {
-			first, firstOrder = k, v.order
-		}
-		if v.order > cursor && (nextOrder == 0 || v.order < nextOrder) {
-			next, nextOrder = k, v.order
-		}
-	}
-	if nextOrder == 0 {
-		next, nextOrder = first, firstOrder
-	}
+	next, nextOrder, wrapped := nextRevocation(s.revocations, namespace, s.revocationCursor[namespace])
 	if nextOrder == 0 {
 		return operational.Revocation{}, nil
+	}
+	if wrapped {
+		oauthLog.Printf("revocation cursor wrapped pending=%d", len(s.revocations))
 	}
 	s.revocationCursor[strings.Clone(namespace)] = nextOrder
 	return operational.Revocation{ID: next.id, Value: s.revocations[next].value}, nil

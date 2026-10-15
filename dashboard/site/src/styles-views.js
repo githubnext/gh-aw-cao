@@ -16,6 +16,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .layout-section .page-section { min-width: 0; }
 .custom-view.page-section > :is(h2, h3, h4) { width: 1px; height: 1px; position: absolute; overflow: hidden; margin: -1px; padding: 0; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .custom-view[data-view-mark="chart"][data-disclosure="essential"] { min-height: 280px; }
+.custom-view[data-view-mark="chart"] > .dashboard-view-skeleton { height: 280px; overflow: hidden; }
 .layout-section .page-section > :is(h3, h4), .layout-section .page-section > .chart-prompt-heading > :is(h3, h4) { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
 .view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }

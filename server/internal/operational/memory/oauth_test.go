@@ -113,3 +113,47 @@ func TestOAuthCapacityNamespacesRetryAndExpiry(t *testing.T) {
 	}
 	invariant(t, s)
 }
+
+func TestNextRevocationOrdersAndWraps(t *testing.T) {
+	revocations := map[revocationKey]revocationValue{
+		{"a", "one"}: {"v1", 3}, {"a", "two"}: {"v2", 5}, {"b", "other"}: {"v3", 1},
+	}
+	for _, tt := range []struct {
+		name, namespace string
+		cursor, order   uint64
+		id              string
+		wrapped         bool
+	}{
+		{"empty cursor takes oldest", "a", 0, 3, "one", false},
+		{"advances past cursor", "a", 3, 5, "two", false},
+		{"wraps after last", "a", 5, 3, "one", true},
+		{"other namespace isolated", "b", 0, 1, "other", false},
+		{"unknown namespace empty", "c", 0, 0, "", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			key, order, wrapped := nextRevocation(revocations, tt.namespace, tt.cursor)
+			if order != tt.order || key.id != tt.id || wrapped != tt.wrapped {
+				t.Fatalf("got (%q, %d, %t), want (%q, %d, %t)", key.id, order, wrapped, tt.id, tt.order, tt.wrapped)
+			}
+		})
+	}
+}
+
+func TestPendingRevocationRoundRobinsThroughStore(t *testing.T) {
+	s, _ := fixture(t, Config{})
+	ctx := t.Context()
+	must(t, s.QueueRevocation(ctx, "one", "enc-1", "ns"))
+	must(t, s.QueueRevocation(ctx, "two", "enc-2", "ns"))
+	for _, want := range []string{"one", "two", "one"} {
+		got, err := s.PendingRevocation(ctx, "ns")
+		must(t, err)
+		if got.ID != want {
+			t.Fatalf("pending = %q, want %q", got.ID, want)
+		}
+	}
+	empty, err := s.PendingRevocation(ctx, "other")
+	must(t, err)
+	if empty != (operational.Revocation{}) {
+		t.Fatalf("empty namespace returned %+v", empty)
+	}
+}
