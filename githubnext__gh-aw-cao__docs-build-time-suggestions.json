@@ -1,7 +1,48 @@
 {
-  "source_sha": "e4b5039e7438ee9eafc5646b91f4ce84abf0f075",
+  "source_sha": "568e4658e020e4b76fff2c9a579e62b66e3bb9a4",
   "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T20:04:52Z",
+      "worker_run_id": 38797065367,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38797432449,
+        38797264867,
+        38796829058,
+        38796586060,
+        38796519517,
+        38796478125,
+        38794718540,
+        38794593405,
+        38793404965,
+        38793332560,
+        38793028625,
+        38792973429,
+        38792951504,
+        38792719714,
+        38792050541,
+        38792031923,
+        38790485612,
+        38788381413,
+        38786829281,
+        38786748085
+      ],
+      "docs_window": {
+        "start": "2026-10-15T18:34:30Z",
+        "end": "2026-10-15T19:52:45Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 3,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 1,
+      "dashboard_success_run_ids": [
+        38765614002
+      ],
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 568e4658e020e4b76fff2c9a579e62b66e3bb9a4. In the latest 20 completed docs.yml runs from 2026-10-15T18:34:30Z through 2026-10-15T19:52:45Z, 11 runs concluded success, 7 concluded skipped, and 2 concluded cancelled; there were no failed, action_required, or timed_out runs in the inspected window. Only 3 comparable successful docs runs executed both build and deploy: 38788381413, 38793028625, and 38796586060. Two additional successful schedule runs, 38790485612 and 38794593405, skipped build and deploy after freshness concluded the published docs and dashboard were current. Six successful push runs, 38786748085, 38792031923, 38792951504, 38794718540, 38796478125, and 38797264867, rebuilt documentation with warm cache restores but still skipped deploy. Trusted build metadata on the 3 comparable runs showed the Build documentation step lasting 9s, 15s, and 13s, and trusted logs from runs 38796586060 and 38797264867 confirmed cache restores for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache. In the latest 20 completed cao-dashboard.yml runs, only 1 successful dashboard-generation sample was available: workflow_dispatch run 38765614002. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped without an actionable Astro documentation generation suggestion."
+    },
     {
       "evaluated_at": "2026-10-15T19:38:32Z",
       "worker_run_id": 38795006895,
@@ -1070,42 +1111,6 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-15T00:30:43Z through 2026-10-15T04:27:09Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 3 comparable successful docs runs executed the build job (38677403256 on workflow_run, 38662491959 on schedule, and 38660438161 on push), all on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907, and only 2 of those comparable runs completed deploy. The remaining 12 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38681509701 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper Astro documentation generation analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-15T03:58:26Z",
-      "worker_run_id": 38678693607,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38678535133,
-        38677662705,
-        38677403256,
-        38676364836,
-        38674119808,
-        38673466029,
-        38673220743,
-        38671480474,
-        38668899599,
-        38668674585,
-        38668119237,
-        38666336199,
-        38665705831,
-        38665174021,
-        38664443059,
-        38662491959,
-        38660438161,
-        38659406439,
-        38657836174,
-        38657227056
-      ],
-      "docs_window": {
-        "start": "2026-10-14T23:57:51Z",
-        "end": "2026-10-15T03:52:56Z"
-      },
-      "docs_success_count": 14,
-      "docs_comparable_success_count": 3,
-      "docs_deployed_success_count": 2,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T23:57:51Z through 2026-10-15T03:52:56Z, 14 runs concluded success and 6 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 3 comparable successful docs runs executed the build job (38677403256 on workflow_run, 38662491959 on schedule, and 38660438161 on push), all on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907, and only 2 of those comparable runs completed deploy. The remaining 11 successful runs were schedule freshness no-ops with build and deploy skipped, and a bounded log read from run 38673220743 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
     }
   ]
 }
