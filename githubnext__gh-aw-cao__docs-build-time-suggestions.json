@@ -1,7 +1,43 @@
 {
   "source_sha": "b8061ef6adc6be1ba20d293b303199d0dc5a4466",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T10:43:10Z",
+      "worker_run_id": 38721778902,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38721416049,
+        38720407044,
+        38720005017,
+        38717994847,
+        38717304093,
+        38717262064,
+        38715824085,
+        38714700760,
+        38713058457,
+        38709934397,
+        38708814657,
+        38706361395,
+        38702848366,
+        38700874870,
+        38699687652,
+        38699100564,
+        38697305043,
+        38695989146,
+        38693618999,
+        38690460137
+      ],
+      "docs_window": {
+        "start": "2026-10-15T06:06:18Z",
+        "end": "2026-10-15T10:36:20Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 0,
+      "docs_deployed_success_count": 0,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T06:06:18Z through 2026-10-15T10:36:20Z, 14 runs concluded success and 6 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. All 20 runs used source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. Zero comparable successful docs runs executed both build and deploy. The 14 successful runs all stopped after schedule-freshness with build and deploy skipped, and a bounded log read from run 38721416049 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper scheduling, concurrency, and avoidable rebuilds analysis and emitted no actionable suggestion."
+    },
     {
       "evaluated_at": "2026-10-15T10:27:15Z",
       "worker_run_id": 38719919322,
@@ -1066,42 +1102,6 @@
       ],
       "decision": "noop_not_actionable",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T14:13:56Z through 2026-10-14T17:23:04Z, 16 runs concluded success and 4 workflow_run callbacks concluded skipped. Six comparable successful runs executed the build job (38589303043, 38586781924, 38581918668, 38580883952, 38580300957, 38578660302) as three push/schedule same-SHA pairs across source SHAs 5a7695bddf77510a9663d3d31cb1225a52683cda, a93bcd762f01a2a343dae574d01b662c5f8d2bb1, and be024f93753e3be8f54a3f651a0924b0c9a68ba8; 3 of those schedule-triggered runs also completed deploy. Workflow queue time was 0s in all comparable docs runs and in the latest five successful cao-dashboard.yml runs. Across the six comparable docs runs, workflow execution measured median 78.5s and p90 92.0s; the build job measured median 43.5s and p90 52.0s; the deploy job measured median 20.0s and p90 26.4s on the three deployed schedule runs. Ten successful schedule runs were freshness no-ops with build and deploy skipped (median 13.5s, p90 16.2s), and four workflow_run callbacks were fast skips (median 2.0s, p90 9.0s). Trusted build metadata plus bounded logs from docs run 38589303043 showed setup-node npm cache hit, explicit node_modules cache hit, and central-agentic-ops-dashboard cache hit, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact all skipped. The latest five successful cao-dashboard.yml runs (38410368012, 38408906957, 38403527237, 38292945328, 38182741457) measured workflow execution median 1466s and p90 1894s, with build-job median 1438s and p90 1450s. Their repeated cost remained Restore collected activity data (median 152s, p90 245.4s) and Upgrade fallback activity data (median 1242s, p90 1266s), while bounded logs from dashboard run 38410368012 showed the activity cache restoring from key cao-activity-v5-37765769970-1 (~2.165 GiB) and dashboard dependency installation adding only 3 packages in 1s. Because dependency installation and caching are already effective in docs.yml and dashboard dependency installation is negligible, no repository-controlled change in this category is supported to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety. The larger caching opportunity remains the existing reusable-dashboard item in open issue #16825, so no new suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-14T15:30:17Z",
-      "worker_run_id": 38589098361,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38588878646,
-        38586781924,
-        38585814229,
-        38583803289,
-        38581918668,
-        38580883952,
-        38580300957,
-        38579883184,
-        38578660302,
-        38576902796,
-        38574886731,
-        38573030043,
-        38571371711,
-        38571021506,
-        38568429746,
-        38567381292,
-        38564841364,
-        38564500151,
-        38560884517,
-        38559092610
-      ],
-      "docs_window": {
-        "start": "2026-10-14T11:47:44Z",
-        "end": "2026-10-14T15:23:38Z"
-      },
-      "docs_success_count": 16,
-      "docs_comparable_success_count": 6,
-      "docs_deployed_success_count": 3,
-      "decision": "noop_not_actionable",
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T11:47:44Z through 2026-10-14T15:23:38Z, 16 runs concluded success and 4 workflow_run callbacks concluded skipped. Six comparable successful runs executed the build job (38586781924, 38581918668, 38580883952, 38580300957, 38578660302, 38559092610) across three source SHAs and both push and schedule triggers, and 3 of those schedule-triggered runs also completed deploy. Workflow queue time was 0s in all comparable docs runs. Across those six comparable runs, docs workflow execution measured median 73.5s and p90 90.0s; the build job measured median 43.5s and p90 52.0s; the deploy job measured median 20.0s and p90 26.4s on the three deployed schedule runs. Build-step timings stayed concentrated in Checkout (median 6.0s), Set up Node.js (4.5s), Restore node_modules (6.0s), Build documentation (12.5s), and Upload Pages artifact (6.0s). Ten successful schedule runs were freshness no-ops whose only work was the schedule-freshness job (median 9.0s, p90 11.2s), and bounded logs from run 38585814229 confirmed they ended with \"Documentation build skipped because the deployed docs and dashboard are current.\" The four workflow_run callbacks were also fast skips (1-12s end to end) that followed skipped CAO Dashboard runs rather than queuing real work. Trusted logs for representative build run 38581918668 still showed cache hits for setup-node npm cache, the explicit node_modules cache, and the central-agentic-ops-dashboard cache, while recent successful cao-dashboard.yml runs remained dominated by Restore collected activity data and Upgrade fallback activity data rather than any docs-workflow scheduling bottleneck. The avoidable work visible in this category is limited to small 9-12s freshness polls and skipped callbacks; reducing the 15-minute schedule cadence or removing the workflow_run backstop would weaken freshness guarantees, and queue time/concurrency provided no evidence of delay to recover. Because no repository-controlled scheduling or concurrency change in this category is supported to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety, no actionable suggestion was emitted."
     }
   ]
 }
