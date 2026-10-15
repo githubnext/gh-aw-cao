@@ -26,6 +26,23 @@ async function syntheticSnapshot() {
     "--shards", "1",
     "--workflows", "3",
   ], { stdio: ["ignore", "ignore", "pipe"] });
+  await writeFile(path.join(shards, "operational-values.jsonl"), `${JSON.stringify({
+    schema_version: 2,
+    kind: "operational_value",
+    operational_value: {
+      timestamp: new Date().toISOString(),
+      repository: "octo/api",
+      campaign: "optimization",
+      value_id: "worker.remaining",
+      value: 4,
+      metric_role: "primary",
+      metric_unit: "alerts",
+      metric_direction: "decrease",
+      maturity_status: "matured",
+      evaluator_digest: "a".repeat(64),
+      cadence_days: 1,
+    },
+  })}\n`);
   execFileSync(process.execPath, [
     "activity/cao.mjs",
     "ingest-jsonl",

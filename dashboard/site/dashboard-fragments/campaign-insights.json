@@ -3,6 +3,8 @@
     {
       "name": "operational-value-campaign-run-health",
       "subject": "Daily concluded campaign execution counts, not target outcome evidence.",
+      "objective": "Place outcome history beside retained campaign execution health without attributing runs to measured targets.",
+      "acceptance": "Group completed retained attempts by campaign and start day. Count distinct control-repository run/attempt identities, successes and declared failed conclusions. Do not reconstruct prior retries or claim outcome attainment.",
       "from": "campaign-runs",
       "filter": { "predicates": [{ "field": "run-status", "equals": "completed" }] },
       "compute": [
@@ -21,12 +23,16 @@
     {
       "name": "operational-value-run-context-subjects",
       "subject": "Measured repository identities to bind campaign execution context without target attribution.",
+      "objective": "Identify outcome-page subjects eligible to display campaign-wide run context.",
+      "acceptance": "Emit one row per observed campaign, organization and repository, with the retained observation count. Never infer target execution from a measured repository identity.",
       "from": "operational-values",
       "aggregate": { "by": ["campaign", "organization", "repository"], "values": [{ "field": "observed-at", "as": "observations", "reducer": "count" }] }
     },
     {
       "name": "operational-value-repository-campaign-run-health",
       "subject": "Campaign-wide run health scoped to the selected outcome page, never target-attributed.",
+      "objective": "Show campaign execution context beside a repository outcome timeline without inventing target-run relationships.",
+      "acceptance": "Join measured repository subjects to every matching campaign/day execution row using inner-many. Preserve counts, order days ascending, and omit unmatched subjects. Counts remain campaign-wide, not repository-attributed.",
       "from": "operational-value-run-context-subjects",
       "joins": [{
         "source": "operational-value-campaign-run-health", "type": "inner-many",
@@ -142,6 +148,8 @@
     {
       "name": "operational-value-repository-evidence-order",
       "subject": "Identify oldest and newest latest primary evidence per repository.",
+      "objective": "Expose date bounds across the latest retained primary measures for a repository.",
+      "acceptance": "Partition by campaign and repository, retaining all input rows. Identify first rows in ascending and descending observation order, with ID tie-breaks. Do not infer freshness or fill gaps.",
       "from": "operational-value-latest",
       "window": [
         { "operation": "change", "field": "observation-marker", "as": "before-newest", "groupby": ["campaign", "repository-coordinate"], "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }] },
@@ -151,6 +159,8 @@
     {
       "name": "operational-value-repository-counts",
       "subject": "Latest primary movement counts per campaign and target repository.",
+      "objective": "Summarize comparable and missing primary-measure evidence without combining native values.",
+      "acceptance": "Group by campaign and repository; count goals and improving, worsening and unchanged measures. Preserve oldest/newest retained dates. Incomparable goals remain in the total, not in comparable counts.",
       "from": "operational-value-repository-evidence-order",
       "aggregate": {
         "by": ["campaign", "organization", "repository", "repository-coordinate"],
@@ -167,6 +177,7 @@
     {
       "name": "operational-value-repository-signals",
       "subject": "One conservative direction signal per campaign and target repository.",
+      "objective": "Rank repository investigations while preserving disagreement and evidence gaps.",
       "acceptance": "Any incomparable primary measure makes the repository insufficient; opposing comparable measures are Mixed. Count each repository once.",
       "from": "operational-value-repository-counts",
       "compute": [
@@ -184,6 +195,8 @@
     {
       "name": "operational-value-campaign-evidence-order",
       "subject": "Identify date bounds across latest repository evidence in a campaign.",
+      "objective": "Carry campaign evidence date bounds without treating asynchronous observations as one snapshot.",
+      "acceptance": "Partition by campaign and retain all repository signals. Identify newest/oldest evidence rows with deterministic repository tie-breaks. Dates describe retained evidence, not a common cutoff or freshness guarantee.",
       "from": "operational-value-repository-signals",
       "compute": [{ "as": "repository-marker", "function": "literal", "args": [{ "value": 1 }] }],
       "window": [
@@ -194,6 +207,8 @@
     {
       "name": "operational-value-signal-counts",
       "subject": "Campaign direction and coverage counts, one vote per measured repository.",
+      "objective": "Summarize the portfolio's evidence distribution without averaging unlike outcomes.",
+      "acceptance": "Group by campaign and count each measured repository once in Improving, Worsening, Mixed, Unchanged or Insufficient evidence. Preserve oldest/newest dates. Counts do not represent complete enrolled scope.",
       "from": "operational-value-campaign-evidence-order",
       "aggregate": {
         "by": ["campaign"],
@@ -256,6 +271,8 @@
     {
       "name": "operational-value-direction-campaigns",
       "subject": "Fleet direction distribution per campaign in repository counts, never native-value averages.",
+      "objective": "Compare campaign movement distributions without hiding mixed or insufficient evidence.",
+      "acceptance": "Group by campaign and direction signal, count repositories, and retain the campaign identity. Never sum or average native operational-value measures across repositories.",
       "from": "operational-value-repository-signals",
       "compute": [
         { "as": "campaign-label", "function": "title-case", "args": [{ "field": "campaign" }] },
