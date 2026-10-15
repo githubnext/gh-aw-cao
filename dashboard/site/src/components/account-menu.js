@@ -1,4 +1,4 @@
-import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication } from '../auth.js';
+import { csrfHeaders, ensureCsrfToken, usesGitHubAuthentication, setGitHubResourcePrincipal, invalidateGitHubResourceAuthentication } from '../auth.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { updateRateLimitNotification } from '../rate-limit-notification.js';
@@ -52,6 +52,7 @@ async function loadAccount(debug) {
     }
   }
   debug('session.available');
+  setGitHubResourcePrincipal(account.login);
   return { login: account.login, avatarUrl };
 }
 
@@ -60,6 +61,7 @@ async function loadAccount(debug) {
  * @param {(event: string) => void} debug
  */
 async function switchAccount(busy, debug) {
+  invalidateGitHubResourceAuthentication();
   busy.set(true);
   debug('switch.request_started');
   try {
@@ -103,6 +105,7 @@ async function switchAccount(busy, debug) {
  * @param {(event: string) => void} debug
  */
 async function logout(busy, debug) {
+  invalidateGitHubResourceAuthentication();
   busy.set(true);
   debug('logout.request_started');
   try {

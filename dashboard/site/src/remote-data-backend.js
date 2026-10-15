@@ -4,7 +4,7 @@ import {
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
 import { resolveDashboardQuerySources } from "./data/queries/declarative.js";
-import { csrfHeaders, csrfToken, ensureCsrfToken, usesGitHubAuthentication } from "./auth.js";
+import { csrfHeaders, csrfToken, ensureCsrfToken, usesGitHubAuthentication, githubResourcePrincipal, invalidateGitHubResourceAuthentication } from "./auth.js";
 import { usesRemoteDataBackend } from "./backend-mode.js";
 import { createDebug, diagnosticErrorName } from "./debug.js";
 import { updateRateLimitNotification } from "./rate-limit-notification.js";
@@ -16,6 +16,9 @@ const debugRemoteBackend = createDebug("remote-data-backend");
 const ACCESS_TOKEN_STORAGE_KEY = "cao-dashboard-access-token";
 /** @type {string | undefined} */
 let githubSessionCacheIdentity;
+/** @type {string | undefined} */
+let githubObservedAuthentication;
+globalThis.addEventListener?.('cao-authentication-change', () => { githubSessionCacheIdentity = undefined; });
 
 export class DashboardServerError extends Error {
   /**
@@ -100,16 +103,21 @@ export function githubWorkerBackendConfiguration() {
     baseUrl: new URL("api/v1/github/", new URL(previewBase, globalThis.location?.origin ?? "https://localhost")).href,
     token: "",
     credentials: /** @type {RequestCredentials} */ ("omit"),
-    cacheIdentity: ""
+    cacheIdentity: `preview:${githubSessionCacheIdentity ??= crypto.randomUUID()}`
   };
   const configured = usesRemoteDataBackend()
     || Boolean(globalThis.document?.querySelector?.('meta[name="dashboard-api-base"]')?.getAttribute("content"));
   const oauth = usesGitHubAuthentication();
+  const token = oauth ? "" : accessToken();
+  const authentication = JSON.stringify([oauth, oauth ? csrfToken() : token]);
+  const changed = githubObservedAuthentication !== undefined && githubObservedAuthentication !== authentication;
+  githubObservedAuthentication = authentication;
+  if (changed) invalidateGitHubResourceAuthentication(true);
   return {
     baseUrl: configured ? apiUrl("/api/v1/github/") : null,
-    token: oauth ? "" : accessToken(),
+    token,
     credentials: /** @type {RequestCredentials} */ (oauth ? "same-origin" : "omit"),
-    cacheIdentity: oauth ? csrfToken() || (githubSessionCacheIdentity ??= crypto.randomUUID()) : ""
+    cacheIdentity: `${oauth ? githubResourcePrincipal() || "unverified" : "capability"}:${githubSessionCacheIdentity ??= crypto.randomUUID()}`
   };
 }
 

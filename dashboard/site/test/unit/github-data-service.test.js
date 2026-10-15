@@ -5,7 +5,7 @@ import { createGitHubDataService, githubResourcePath } from '../../src/data/gith
 import { deleteCanonicalDatabase, readTransactions, readCollection } from '../../src/data/storage/indexeddb.js';
 
 const resource = { owner: 'githubnext', repo: 'gh-aw-cao' };
-const configuration = { baseUrl: 'https://dashboard.example/api/v1/github/', token: 'test-dashboard-credential' };
+const configuration = { baseUrl: 'https://dashboard.example/api/v1/github/', token: 'test-dashboard-credential', cacheIdentity: 'test-principal:session-one' };
 const repository = { full_name: 'githubnext/gh-aw-cao', description: 'Catalog', stargazers_count: 42 };
 /** @type {AbortController[]} */
 let controllers = [];
@@ -164,7 +164,7 @@ describe('worker GitHub resource service', () => {
     const first = subscribe(createGitHubDataService({ fetch, now: () => now }));
     await vi.waitFor(() => expect(first.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
     first.stop();
-    const second = subscribe(createGitHubDataService({ fetch, now: () => now }), { ...configuration, token: 'different-credential' });
+    const second = subscribe(createGitHubDataService({ fetch, now: () => now }), { ...configuration, token: 'different-credential', cacheIdentity: 'test-principal:session-two' });
     await vi.waitFor(() => expect(second.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, status: 'unavailable', error: 'unavailable' })));
     second.stop();
     now += 86_700_001;
@@ -263,5 +263,77 @@ describe('worker GitHub resource service', () => {
     expect(() => subscribe(service, { baseUrl: 'https://api.github.com/' })).toThrow(/backend URL/);
     expect(() => githubResourcePath({ owner: 'a/b', repo: 'test' })).toThrow();
     expect(() => githubResourcePath({ owner: 'test', repo: '..' })).toThrow();
+  });
+
+  it('keys persistent receipts only by backend and opaque principal/session scope, not credential material', async () => {
+    const fetch = vi.fn(async () => response());
+    const active = subscribe(createGitHubDataService({ fetch }));
+    await vi.waitFor(() => expect(active.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([
+      configuration.baseUrl, 'omit', configuration.cacheIdentity
+    ])));
+    const partition = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    expect((await readTransactions(indexedDB))[0]?.id).toBe(`github-resource:${partition}:repos/githubnext/gh-aw-cao`);
+  });
+
+  it('clears active private results on logout and cannot reuse them under a new session or backend', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(response({ ...repository, visibility: 'private' }))
+      .mockRejectedValue(new Error('offline'));
+    const service = createGitHubDataService({ fetch });
+    const first = subscribe(service);
+    await vi.waitFor(() => expect(first.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
+    service.invalidateAuthentication();
+    expect(first.listener).toHaveBeenLastCalledWith({
+      data: null, status: 'unavailable', source: 'none', error: 'authentication-changed', retryAt: null
+    });
+    const second = subscribe(service, { ...configuration, cacheIdentity: 'another-principal:another-session' });
+    await vi.waitFor(() => expect(second.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, error: 'unavailable' })));
+    const third = subscribe(service, { ...configuration, baseUrl: 'https://another-dashboard.example/api/v1/github/' });
+    await vi.waitFor(() => expect(third.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, error: 'unavailable' })));
+  });
+
+  it('removes cached private data after an authoritative permission denial and never resurrects it offline', async () => {
+    let now = Date.now();
+    const fetch = vi.fn().mockResolvedValueOnce(response({ ...repository, visibility: 'private' }))
+      .mockResolvedValueOnce(new Response(null, { status: 403 })).mockRejectedValue(new Error('offline'));
+    const first = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(first.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
+    first.stop();
+    now += 300_001;
+    const denied = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(denied.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, status: 'unavailable', error: 'http-403' })));
+    denied.stop();
+    const offline = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(offline.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, error: 'unavailable' })));
+  });
+
+  it('subtracts Age from 304 freshness and honors stale Warning plus Retry-After without extending stale retention', async () => {
+    let now = Date.now();
+    const fetch = vi.fn().mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(new Response(null, { status: 304, headers: {
+        Age: '100', 'Cache-Control': 'private, max-age=300, stale-while-revalidate=86400'
+      } }))
+      .mockResolvedValueOnce(Response.json(repository, { headers: {
+        Age: '600', Warning: '110 - "Response is stale"', 'Retry-After': '60',
+        'Cache-Control': 'private, max-age=0, stale-while-revalidate=86400'
+      } }));
+    const first = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(first.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
+    first.stop();
+    now += 300_001;
+    const validated = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(validated.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network', status: 'available' })));
+    const receipt = (await readTransactions(indexedDB))[0];
+    expect(receipt?.freshUntil).toBe(now + 200_000);
+    expect(receipt?.staleUntil).toBe(now + 86_600_000);
+    validated.stop();
+    now += 200_001;
+    const stale = subscribe(createGitHubDataService({ fetch, now: () => now }));
+    await vi.waitFor(() => expect(stale.listener).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: repository, status: 'stale', error: 'stale-response', retryAt: now + 60_000
+    })));
+    const staleReceipt = (await readTransactions(indexedDB))[0];
+    expect(staleReceipt?.freshUntil).toBe(now);
+    expect(Number(staleReceipt?.staleUntil)).toBeLessThanOrEqual(Number(receipt?.staleUntil));
   });
 });

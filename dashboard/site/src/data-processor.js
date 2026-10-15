@@ -16,6 +16,7 @@ import {
 } from './remote-data-backend.js';
 import { githubResourcePath } from './data/github-service.js';
 import { isGitHubQuerySource } from './data/github-query-sources.js';
+import { invalidateGitHubResourceAuthentication } from './auth.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -25,7 +26,7 @@ const debugDataProcessor = createDebug('data-processor');
 /** @type {Worker | null} */
 let worker = null;
 let nextRequestId = 0;
-/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void, cleanup: () => void, processor: Worker }>} */
+/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void, cleanup: () => void, processor: Worker, githubEpoch?: number }>} */
 const pending = new Map();
 /**
  * @typedef {{ notify: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void, onError?: (error: Error) => void, cleanup: () => void, frame: number | null }} SubscriptionListener
@@ -56,8 +57,47 @@ const pending = new Map();
  */
 /** @type {Map<string, ViewSubscription>} */
 const subscriptions = new Map();
-/** @type {Map<string, { processor: Worker, notify: (snapshot: import('./data/github-service.js').GitHubResourceSnapshot) => void, onError?: (error: Error) => void, stop: () => void }>} */
+/** @type {Map<string, { processor: Worker, resource: import('./data/github-service.js').GitHubResource, notify: (snapshot: import('./data/github-service.js').GitHubResourceSnapshot) => void, onError?: (error: Error) => void, stop: () => void }>} */
 const githubSubscriptions = new Map();
+let githubAuthenticationEpoch = 0;
+globalThis.addEventListener?.('cao-authentication-change', (event) => {
+  githubAuthenticationEpoch++;
+  worker?.postMessage({ operation: 'invalidate-github-authentication', epoch: githubAuthenticationEpoch });
+  for (const subscription of subscriptions.values()) {
+    if (githubDashboardDependencies(subscription.sourceNames, subscription.context)) {
+      subscription.latest = null;
+      subscription.snapshot = null;
+      subscription.snapshotRevision = null;
+      for (const listener of subscription.listeners) cancelSubscriberFrame(listener);
+      subscription.remoteStop?.();
+      subscription.remoteStop = undefined;
+    }
+  }
+  if (/** @type {CustomEvent<{ resume?: boolean }>} */ (event).detail?.resume !== true) return;
+  queueMicrotask(() => {
+    if (!worker) return;
+    const configuration = githubWorkerBackendConfiguration();
+    for (const [subscriptionId, subscription] of githubSubscriptions) {
+      subscription.processor.postMessage({
+        operation: 'subscribe-github-resource', subscriptionId, resource: subscription.resource, configuration
+      });
+    }
+    for (const subscription of subscriptions.values()) {
+      if (!githubDashboardDependencies(subscription.sourceNames, subscription.context)) continue;
+      subscription.registeredWorker = null;
+      registerSubscription(worker, subscription);
+      if (usesRemoteDataBackend()) registerRemoteGitHubSubscription(worker, subscription);
+    }
+  });
+});
+globalThis.addEventListener?.('storage', (event) => {
+  if ('key' in event && (event.key === 'cao-dashboard-access-token' || event.key === null)) {
+    invalidateGitHubResourceAuthentication(true);
+  }
+});
+globalThis.addEventListener?.('focus', () => {
+  if (worker) githubWorkerBackendConfiguration();
+});
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
 /** @type {Set<string>} */
@@ -190,7 +230,7 @@ export function subscribeGitHubResource(resource, notify, { signal, onError }) {
     if (!githubSubscriptions.delete(subscriptionId)) return;
     processor.postMessage({ operation: 'unsubscribe-github-resource', subscriptionId });
   };
-  githubSubscriptions.set(subscriptionId, { processor, notify, onError, stop });
+  githubSubscriptions.set(subscriptionId, { processor, resource, notify, onError, stop });
   signal.addEventListener('abort', stop, { once: true });
   processor.postMessage({
     operation: 'subscribe-github-resource', subscriptionId, resource,
@@ -941,7 +981,8 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
       resolve: (value) => resolve(/** @type {T} */ (value)),
       reject,
       cleanup: () => signal?.removeEventListener('abort', onAbort),
-      processor
+      processor,
+      githubEpoch: 'githubConfiguration' in request ? githubAuthenticationEpoch : undefined
     });
     processor.postMessage({ id, ...request });
     if (signal?.aborted) onAbort();
@@ -959,6 +1000,7 @@ function getWorker() {
   debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'github-resource') {
+      if ((event.data.githubEpoch ?? 0) !== githubAuthenticationEpoch) return;
       const subscription = githubSubscriptions.get(event.data.subscriptionId);
       if (subscription?.processor !== processor) return;
       if (event.data.snapshot) invokeSubscriber(() => subscription.notify(event.data.snapshot));
@@ -1027,6 +1069,8 @@ function getWorker() {
     }
     if (typeof event.data?.subscriptionId === 'string') {
       const subscription = subscriptions.get(event.data.subscriptionId);
+      if (subscription && githubDashboardDependencies(subscription.sourceNames, subscription.context)
+          && (event.data.githubEpoch ?? 0) !== githubAuthenticationEpoch) return;
       if (subscription?.registeredWorker === processor
           && event.data.data && typeof event.data.data === 'object') {
         enqueueSubscriptionUpdate(subscription, event.data.data, event.data.revision, event.data.partial === true);
@@ -1045,6 +1089,10 @@ function getWorker() {
     if (!request) return;
     pending.delete(event.data.id);
     request.cleanup();
+    if (request.githubEpoch !== undefined && request.githubEpoch !== githubAuthenticationEpoch) {
+      request.reject(new Error('GitHub authentication changed.'));
+      return;
+    }
     if (typeof event.data.error === 'string') {
       const error = new Error(event.data.error);
       if (event.data.cancelled) error.name = 'DataProcessingCancelledError';
@@ -1060,6 +1108,9 @@ function getWorker() {
     rejectWorkerRequests(failedWorker, error);
     terminateWorkerSubscriptions(failedWorker, error);
     resetWorker(failedWorker);
+  });
+  if (githubAuthenticationEpoch > 0) worker.postMessage({
+    operation: 'invalidate-github-authentication', epoch: githubAuthenticationEpoch
   });
   for (const subscription of subscriptions.values()) {
     if (usesRemoteDataBackend() && !githubDashboardDependencies(subscription.sourceNames, subscription.context)) continue;

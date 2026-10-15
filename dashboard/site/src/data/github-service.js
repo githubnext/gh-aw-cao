@@ -61,7 +61,8 @@ function normalizedResource(input, release) {
 
 /**
  * Worker-owned ancillary cache. Receipts share the existing bounded transaction
- * store, not canonical entities; credentials are hashed into isolated cache keys.
+ * store, not canonical entities. Only opaque authentication scopes enter keys;
+ * callers must rotate their scope at every principal/session boundary.
  * @param {{ fetch?: typeof globalThis.fetch, indexedDB?: IDBFactory, now?: () => number, timeoutMs?: number, retryBaseMs?: number }} [dependencies]
  */
 export function createGitHubDataService(dependencies = {}) {
@@ -72,6 +73,9 @@ export function createGitHubDataService(dependencies = {}) {
   const entries = new Map();
   /** @type {Map<string, { until: number, nextStart: number }>} */
   const limits = new Map();
+  /** @type {Map<string, string>} */
+  const ephemeralScopes = new Map();
+  let authenticationGeneration = 0;
   let activeRequests = 0;
 
   /** @param {ResourceEntry} entry @param {GitHubResourceSnapshot} snapshot */
@@ -113,7 +117,20 @@ export function createGitHubDataService(dependencies = {}) {
         || /(^|\.)github(?:usercontent)?\.com$/i.test(base.hostname) || base.hostname === 'api.github.com')) {
       throw new TypeError('GitHub resources require a dashboard backend URL.');
     }
-    const identity = JSON.stringify([base?.href ?? '', configuration.credentials ?? 'omit', configuration.token ?? '', configuration.cacheIdentity ?? '']);
+    const credentials = JSON.stringify([configuration.credentials ?? 'omit', configuration.token ?? '']);
+    let scope = configuration.cacheIdentity;
+    if (!scope) {
+      scope = ephemeralScopes.get(credentials);
+      if (!scope) {
+        if (ephemeralScopes.size >= MAX_RESOURCES) ephemeralScopes.delete(ephemeralScopes.keys().next().value ?? '');
+        scope = crypto.randomUUID();
+        ephemeralScopes.set(credentials, scope);
+      }
+    }
+    const identity = JSON.stringify([
+      base?.href ?? '', configuration.credentials ?? 'omit',
+      authenticationGeneration ? `${scope}:epoch:${authenticationGeneration}` : scope
+    ]);
     const key = `${identity}:${path}`;
     let entry = entries.get(key);
     const initializing = !entry;
@@ -136,7 +153,7 @@ export function createGitHubDataService(dependencies = {}) {
       current.controller.abort();
       clearTimeout(current.timer);
       clearTimeout(current.expiryTimer);
-      entries.delete(key);
+      if (entries.get(key) === current) entries.delete(key);
     };
     signal.addEventListener('abort', stop, { once: true });
     if (signal.aborted) stop();
@@ -200,7 +217,15 @@ export function createGitHubDataService(dependencies = {}) {
               const delay = header && /^\d+$/.test(header) ? Number(header) * 1000 : header ? Date.parse(header) - now() : 0;
               limit.until = Math.max(limit.until, now() + Math.max(1000, Number.isFinite(delay) ? delay : 0));
             }
-            if (!response.ok && response.status !== 304) throw new Error(`http-${response.status}`);
+            if (!response.ok && response.status !== 304) {
+              if ([401, 403, 404].includes(response.status)) {
+                current.cached = null;
+                await recordTransaction(database, {
+                  id, kind: 'github-resource-invalidated', createdAt: new Date(now()).toISOString()
+                }).catch(() => undefined);
+              }
+              throw new Error(`http-${response.status}`);
+            }
             let data = current.cached?.data;
             if (response.status !== 304) {
               const text = await response.text();
@@ -251,5 +276,22 @@ export function createGitHubDataService(dependencies = {}) {
       }
     }
   }
-  return { subscribe };
+  function invalidateAuthentication() {
+    authenticationGeneration++;
+    for (const entry of entries.values()) {
+      if (entry.cached) void recordTransaction(database, {
+        id: entry.cached.id, kind: 'github-resource-invalidated', createdAt: new Date(now()).toISOString()
+      }).catch(() => undefined);
+      entry.cached = null;
+      snapshot(entry, 'cache', 'authentication-changed');
+      entry.controller.abort();
+      clearTimeout(entry.timer);
+      clearTimeout(entry.expiryTimer);
+      entry.listeners.clear();
+    }
+    entries.clear();
+    limits.clear();
+    ephemeralScopes.clear();
+  }
+  return { subscribe, invalidateAuthentication };
 }

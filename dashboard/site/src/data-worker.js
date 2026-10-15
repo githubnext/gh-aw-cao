@@ -172,6 +172,7 @@ let publicationPhase = 'complete';
 const dashboardSubscriptions = new Map();
 /** @type {ReturnType<typeof createGitHubDataService> | undefined} */
 let githubDataService;
+let githubAuthenticationEpoch = 0;
 
 /**
  * @param {string[]} names
@@ -747,7 +748,10 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
               true
             );
             if (dashboardSubscriptions.get(id) !== subscription || liveDashboard !== dashboard) continue;
-            workerScope?.postMessage({ subscriptionId: id, revision: dashboard.revision, data: partial, partial: true });
+            workerScope?.postMessage({
+              subscriptionId: id, revision: dashboard.revision, data: partial, partial: true,
+              ...(subscription.githubSources ? { githubEpoch: githubAuthenticationEpoch } : {})
+            });
             if (!isPhaseSubscription(subscription, publicationPhase)) {
               subscription.emitted = true;
               subscription.revision = dashboard.revision;
@@ -771,12 +775,16 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.emitted = true;
             subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            workerScope?.postMessage({ subscriptionId: id, revision: dashboard.revision, data });
+            workerScope?.postMessage({
+              subscriptionId: id, revision: dashboard.revision, data,
+              ...(subscription.githubSources ? { githubEpoch: githubAuthenticationEpoch } : {})
+            });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             workerScope?.postMessage({
               subscriptionId: id,
+              ...(subscription.githubSources ? { githubEpoch: githubAuthenticationEpoch } : {}),
               error: error instanceof Error ? error.message : String(error)
             });
           }
@@ -1429,6 +1437,11 @@ if (typeof document === 'undefined' && workerScope) {
   const githubSubscriptions = new Map();
   workerScope.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'invalidate-github-authentication') {
+      githubAuthenticationEpoch = Number.isSafeInteger(event.data.epoch) ? event.data.epoch : githubAuthenticationEpoch + 1;
+      githubResources.invalidateAuthentication();
+      return;
+    }
     if (event.data?.operation === 'subscribe-github-resource') {
       const subscriptionId = event.data.subscriptionId;
       if (typeof subscriptionId !== 'string' || !subscriptionId) return;
@@ -1437,12 +1450,12 @@ if (typeof document === 'undefined' && workerScope) {
       githubSubscriptions.set(subscriptionId, controller);
       try {
         githubResources.subscribe(event.data.resource, event.data.configuration, (snapshot) => {
-          workerScope.postMessage({ type: 'github-resource', subscriptionId, snapshot });
+          workerScope.postMessage({ type: 'github-resource', subscriptionId, snapshot, githubEpoch: githubAuthenticationEpoch });
         }, { signal: controller.signal });
       } catch {
         controller.abort();
         githubSubscriptions.delete(subscriptionId);
-        workerScope.postMessage({ type: 'github-resource', subscriptionId, error: 'Unable to subscribe to GitHub resource.' });
+        workerScope.postMessage({ type: 'github-resource', subscriptionId, error: 'Unable to subscribe to GitHub resource.', githubEpoch: githubAuthenticationEpoch });
       }
       return;
     }
@@ -1495,7 +1508,7 @@ if (typeof document === 'undefined' && workerScope) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }).catch(() => {
             if (dashboardSubscriptions.get(subscriptionId) === subscription) workerScope.postMessage({
-              subscriptionId, error: 'GitHub dashboard source unavailable.'
+              subscriptionId, githubEpoch: githubAuthenticationEpoch, error: 'GitHub dashboard source unavailable.'
             });
           });
         }

@@ -61,10 +61,26 @@ it('honors the local preview GitHub API route prefix without forwarding stored b
   document.head.innerHTML = '<meta name="dashboard-github-api-base" content="/cao/">';
   localStorage.setItem('cao-dashboard-access-token', 'must-not-reach-preview');
   const { githubWorkerBackendConfiguration } = await import('../../src/remote-data-backend.js');
-  expect(githubWorkerBackendConfiguration()).toEqual({
+  expect(githubWorkerBackendConfiguration()).toMatchObject({
     baseUrl: new URL('/cao/api/v1/github/', location.origin).href,
-    token: '', credentials: 'omit', cacheIdentity: ''
+    token: '', credentials: 'omit', cacheIdentity: expect.stringMatching(/^preview:/)
   });
+});
+
+it('rotates opaque cache scopes after credential changes, principal changes, and logout without persisting credentials', async () => {
+  const remote = await import('../../src/remote-data-backend.js');
+  const auth = await import('../../src/auth.js');
+  localStorage.setItem('cao-dashboard-access-token', 'first-credential');
+  const first = remote.githubWorkerBackendConfiguration();
+  expect(first.cacheIdentity).not.toContain('first-credential');
+  localStorage.setItem('cao-dashboard-access-token', 'second-credential');
+  const second = remote.githubWorkerBackendConfiguration();
+  expect(second.cacheIdentity).not.toBe(first.cacheIdentity);
+  auth.setGitHubResourcePrincipal('another-account');
+  const another = remote.githubWorkerBackendConfiguration();
+  expect(another.cacheIdentity).not.toBe(second.cacheIdentity);
+  auth.invalidateGitHubResourceAuthentication();
+  expect(remote.githubWorkerBackendConfiguration().cacheIdentity).not.toBe(another.cacheIdentity);
 });
 
 it('reports worker failure and removes listeners, and does nothing for an already aborted signal', async () => {
@@ -138,4 +154,34 @@ it('forwards only raw hosted inputs to the worker for mixed declarative queries 
   controller.abort();
   expect(stopRevision).toHaveBeenCalledOnce();
   ResourceWorker.current?.listeners.get('error')?.({ message: 'cleanup' });
+});
+
+it('rejects queued private responses from a previous authentication epoch after logout', async () => {
+  vi.stubGlobal('Worker', ResourceWorker);
+  const { subscribeGitHubResource, loadCanonicalDashboardPage } = await import('../../src/data-processor.js');
+  const { invalidateGitHubResourceAuthentication } = await import('../../src/auth.js');
+  const controller = new AbortController();
+  const notify = vi.fn();
+  subscribeGitHubResource({ owner: 'a', repo: 'private' }, notify, { signal: controller.signal });
+  const worker = ResourceWorker.current;
+  const subscriptionId = worker?.postMessage.mock.calls[0]?.[0].subscriptionId;
+  const loaded = loadCanonicalDashboardPage(['github-repository'], { pages: [], dashboardRepository: 'a/private' });
+  await vi.waitFor(() => expect(worker?.postMessage.mock.calls.some(([message]) => message.operation === 'query-canonical-dashboard')).toBe(true));
+  const request = worker?.postMessage.mock.calls.find(([message]) => message.operation === 'query-canonical-dashboard')?.[0];
+  invalidateGitHubResourceAuthentication();
+  expect(worker?.postMessage).toHaveBeenLastCalledWith({ operation: 'invalidate-github-authentication', epoch: 1 });
+  worker?.listeners.get('message')?.({ data: {
+    type: 'github-resource', subscriptionId, githubEpoch: 0,
+    snapshot: { data: { full_name: 'a/private' }, status: 'available' }
+  } });
+  expect(notify).not.toHaveBeenCalled();
+  worker?.listeners.get('message')?.({ data: { id: request.id, data: { 'github-repository': { rows: [{ full_name: 'a/private' }] } } } });
+  await expect(loaded).rejects.toThrow('authentication changed');
+  worker?.listeners.get('message')?.({ data: {
+    type: 'github-resource', subscriptionId, githubEpoch: 1,
+    snapshot: { data: null, status: 'unavailable', error: 'authentication-changed' }
+  } });
+  expect(notify).toHaveBeenCalledWith(expect.objectContaining({ data: null, error: 'authentication-changed' }));
+  controller.abort();
+  worker?.listeners.get('error')?.({ message: 'cleanup' });
 });
