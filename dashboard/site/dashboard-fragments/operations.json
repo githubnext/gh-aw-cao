@@ -2161,7 +2161,6 @@
       "description": "Choose a campaign, then a repository to see its plots.",
       "icon": "graph",
       "class-name": "value-page",
-      "experimental": true,
       "view-mode-control": false,
       "route": {
         "tab": "overview",
@@ -2233,7 +2232,6 @@
       "title": "Operational Value",
       "description": "Measurement availability and latest native values. Missing evidence is not zero value.",
       "icon": "graph",
-      "experimental": true,
       "view-mode-control": false,
       "route": {
         "navigation-page": "operational-value",

@@ -673,7 +673,6 @@
       "title": "Operational Value",
       "description": "Choose a repository to see its plots.",
       "icon": "graph",
-      "experimental": true,
       "view-mode-control": false,
       "route": {
         "hash-query-parameter": "campaign",
@@ -870,7 +869,6 @@
       "kind": "custom",
       "filter-bar": true,
       "view-mode-control": false,
-      "experimental": true,
       "title": "Operational Value",
       "description": "Measurements over time. Select a point to inspect its value.",
       "route": {
