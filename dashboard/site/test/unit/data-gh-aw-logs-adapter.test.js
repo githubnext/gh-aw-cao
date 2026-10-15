@@ -41,6 +41,19 @@ describe('gh-aw logs adapter', () => {
       attempt: 2, aicTotal: null, inputTokens: null
     });
     expect(adapt([measured, { ...sparse, token_usage_summary: { total_aic: 0 } }]).aicTotal).toBe(0);
+    for (const aic of [0, 1.25]) {
+      for (const token_usage_summary of [null, {}, { total_aic: null }]) {
+        const corrected = { ...sparse, aic, token_usage_summary };
+        for (const records of [[measured, corrected], [corrected, measured]]) {
+          expect(adapt(records)).toMatchObject({ aicTotal: aic, inputTokens: 100 });
+        }
+      }
+      const corrected = { ...sparse, token_usage: { total_aic: aic } };
+      expect(adapt([measured, corrected])).toMatchObject({ aicTotal: aic, inputTokens: 100 });
+    }
+    expect(adapt([measured, {
+      ...sparse, aic: 5, token_usage_summary: { total_aic: 1.25 }
+    }]).aicTotal).toBe(1.25);
     const mixed = [
       { schema_version: 2, kind: 'run', run: {
         ...measured, tool_calls: [{ tool: 'report_incomplete', server: 'safeoutputs', status: 'incomplete' }]

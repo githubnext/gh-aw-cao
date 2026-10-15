@@ -545,6 +545,12 @@ function preferNewer(left, right) {
     }
     value[field] = summary;
   }
+  const currentAic = runMetadata(newer.value).aicTotal;
+  const summaryField = value.token_usage_summary != null ? 'token_usage_summary' : 'token_usage';
+  const summary = value[summaryField];
+  if (currentAic !== null && summary && typeof summary === 'object' && !Array.isArray(summary)) {
+    value[summaryField] = { ...objectValue(summary, `run.${summaryField}`), total_aic: currentAic };
+  }
   return {
     ...newer,
     value

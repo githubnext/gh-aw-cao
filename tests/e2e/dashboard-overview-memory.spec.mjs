@@ -31,6 +31,7 @@ test.beforeAll(async () => {
   test.setTimeout(900_000);
   preview = await startDashboardServer({
     downloadData: (destination) => downloadDeployedDashboardData(destination, sourceUrl),
+    dataBackend: "indexeddb",
     host: "127.0.0.1",
     port: 0,
   });

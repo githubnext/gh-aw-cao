@@ -229,6 +229,9 @@ Reported output items are safe-output counts from successful attempts, not
 confirmed merges or resolved problems. Average AIC includes only successful
 attempts with recorded positive cost. These facts do not measure improvements in
 target repositories, and missing collection history is not reconstructed.
+Sparse refreshes retain earlier cost and token totals only within the same run
+attempt. A newer explicit credit measurement, including zero, takes precedence
+over a preserved summary.
 
 The experimental **Operational Value** page lists every registered campaign's
 measurement coverage, latest primary repository outcomes, and retained observation
