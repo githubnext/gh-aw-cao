@@ -529,6 +529,7 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
       'activity/upgrade-gh-aw.mjs',
       'activity/control-settings.mjs',
       'activity/repository-visibility.mjs',
+      'activity/recycle-snapshot.mjs',
       'activity/collect-logs.sh',
       'activity/marketplace.mjs',
       'activity/problem-clustering.mjs',

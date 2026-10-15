@@ -56,6 +56,30 @@ change collection authority. For example:
 gh workflow run cao-activity.yml --ref BRANCH -f fast=true -f force-recycle=true
 ```
 
+For maintenance without any repository collection, use `recycle-only=true`:
+
+```sh
+gh workflow run cao-activity.yml --ref BRANCH -f recycle-only=true
+```
+
+This takes precedence over `fast` and `force-recycle`. It requires an existing
+compatible snapshot whose repository scope matches the current resolved policy;
+a cache miss, unavailable policy, or scope change fails closed. It skips the
+authentication plan, collector jobs, fragment download, issue enrichment,
+operational-value collection, and repository-memory fetches. No GitHub API
+evidence requests are made. Checkout and Actions cache/artifact transport still
+use GitHub services.
+
+Maintenance expires and bounds raw evidence, clears disposable normalization
+payloads, and rebuilds the SQLite database and both normalized phases from the
+retained raw shards rather than keeping rows for evicted runs. Cached inventory
+and repository memory keep their original observation timestamps; missing legacy
+memory is represented by an empty manifest, not a fresh collection. The workflow
+then validates the database, recomputes payload hashes, and verifies the complete
+snapshot before saving a new cache. Invalid or unsupported raw evidence prevents
+publication. An empty retained run set is represented explicitly. Branch
+dispatches save branch-scoped Actions caches; they do not replace main's cache.
+
 Each `gh aw logs` invocation uses `--cached-jsonl` with a repository-specific
 trailing wildcard shard prefix instead of a single growing file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`

@@ -11,7 +11,7 @@ const workflow = parse(readFileSync(path.join(root, '.github/workflows/cao-activ
 const step = (job, name) => workflow.jobs[job].steps.find((entry) => entry.name === name);
 
 test('manual fast collection narrows download budgets without changing scope or retention', () => {
-  for (const name of ['fast', 'force-recycle']) {
+  for (const name of ['fast', 'force-recycle', 'recycle-only']) {
     assert.deepEqual(
       { type: workflow.on.workflow_dispatch.inputs[name].type, default: workflow.on.workflow_dispatch.inputs[name].default },
       { type: 'boolean', default: false }
@@ -54,7 +54,9 @@ test('forced recycling runs before new downloads and safely clears only disposab
   ]) {
     const steps = workflow.jobs[job].steps;
     const maintenance = step(job, 'Force recycling of restored activity cache');
-    assert.equal(maintenance.if, '${{ inputs.force-recycle == true }}');
+    assert.equal(maintenance.if, job === 'collect'
+      ? '${{ inputs.force-recycle == true }}'
+      : '${{ inputs.force-recycle == true || inputs.recycle-only == true }}');
     assert.ok(steps.indexOf(maintenance) > steps.findIndex((entry) => entry.name === 'Restore activity cache'));
     assert.ok(steps.indexOf(maintenance) < steps.findIndex((entry) => entry.name === download));
     assert.match(maintenance.run, /--retention-days 30 --max-bytes "\$REPORT_MAX_CACHE_BYTES"/);
@@ -74,4 +76,34 @@ test('forced recycling runs before new downloads and safely clears only disposab
     assert.equal(readFileSync(path.join(shards, 'mixed.jsonl'), 'utf8'), `${JSON.stringify(current)}\n`);
     assert.deepEqual(readdirSync(payloads), []);
   }
+});
+
+test('recycle-only bypasses repository collection and API evidence requests but requires coherent publication', () => {
+  assert.equal(workflow.jobs.collect.if, '${{ inputs.recycle-only != true }}');
+  assert.equal(step('plan', 'Resolve activity collection plan').if, '${{ inputs.recycle-only != true }}');
+  assert.match(workflow.jobs.index.if, /!cancelled\(\).*needs\.plan\.result == 'success'.*needs\.collect\.result == 'success' \|\| inputs\.recycle-only == true/);
+  for (const name of [
+    'Download owner-scoped activity fragments', 'Merge owner-scoped activity fragments',
+    'Fetch repository memory refs into a separate checkout', 'Collect campaign repository memory'
+  ]) assert.equal(step('index', name).if, '${{ inputs.recycle-only != true }}');
+  const steps = workflow.jobs.index.steps;
+  const verify = step('index', 'Validate restored snapshot for recycle-only maintenance');
+  const reset = step('index', 'Rebuild recycled snapshot projection from retained evidence');
+  assert.equal(verify.if, '${{ inputs.recycle-only == true }}');
+  assert.equal(reset.if, '${{ inputs.recycle-only == true }}');
+  assert.ok(steps.indexOf(verify) < steps.indexOf(step('index', 'Force recycling of restored activity cache')));
+  assert.ok(steps.indexOf(reset) < steps.indexOf(step('index', 'Generate phased activity shards')));
+  for (const name of [
+    'Generate phased activity shards', 'Ingest activity database', 'Validate activity database',
+    'Hash activity payloads', 'Upload activity snapshot'
+  ]) {
+    assert.equal(step('index', name).if, undefined);
+    assert.ok(steps.indexOf(reset) < steps.indexOf(step('index', name)));
+  }
+  assert.equal(workflow.jobs.cache.needs, 'index');
+  const cache = workflow.jobs.cache.steps;
+  assert.ok(cache.indexOf(step('cache', 'Verify activity snapshot')) < cache.indexOf(step('cache', 'Save activity cache')));
+  assert.equal(workflow.jobs.index.permissions.actions, 'read');
+  assert.equal(workflow.jobs.cache.permissions.actions, 'write');
+  assert.ok(!JSON.stringify(workflow.jobs.index).includes('GH_TOKEN'));
 });
