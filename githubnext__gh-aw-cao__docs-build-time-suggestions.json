@@ -1,7 +1,46 @@
 {
-  "source_sha": "c07eaee32f6f890c24e297266dd5302874cc7971",
+  "source_sha": "3ff54d6f7863c61c1c101c9800a45ff5b00136e7",
   "next_category": "reusable dashboard generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T22:26:33Z",
+      "worker_run_id": 38816664170,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38816726101,
+        38815998616,
+        38814233540,
+        38813962452,
+        38813951269,
+        38812389899,
+        38812374506,
+        38812321559,
+        38810844842,
+        38810326287,
+        38809471925,
+        38809116438,
+        38807631070,
+        38806647932,
+        38806377294,
+        38805745072,
+        38804796944,
+        38802995042,
+        38802950209,
+        38801430881
+      ],
+      "docs_window": {
+        "start": "2026-10-15T20:22:38Z",
+        "end": "2026-10-15T22:23:06Z"
+      },
+      "docs_success_count": 9,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 4,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 0,
+      "dashboard_success_run_ids": [],
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"reusable dashboard generation\" on current source SHA 3ff54d6f7863c61c1c101c9800a45ff5b00136e7. In the latest 20 completed docs.yml runs from 2026-10-15T20:22:38Z through 2026-10-15T22:23:06Z, 9 runs concluded success, 10 concluded skipped, and 1 concluded action_required; there were no failed, cancelled, or timed_out runs in the inspected window. Only 4 comparable successful docs runs executed both build and deploy: 38801430881, 38809471925, 38810844842, and 38814233540, all on schedule. Two additional successful push runs, 38807631070 and 38812374506, rebuilt documentation but skipped deploy, so they were disclosed as non-comparable outliers. Five successful schedule runs, 38802995042, 38804796944, 38806647932, 38812321559, and 38816726101, skipped build and deploy after the freshness gate. Trusted run and job metadata for the 4 comparable runs showed median queue time 0s, docs workflow execution 98.5s (p90 102s), build 50s (p90 60s), and deploy 25s (p90 33s). Trusted build metadata for those runs showed Build documentation taking 9s, 14s, 14s, and 15s; Restore cached CAO Dashboard taking 2s, 2s, 3s, and 4s; and Upload Pages artifact taking 12s, 14s, 14s, and 15s. Trusted build logs from run 38814233540 confirmed cache hits for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache, with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped. In the latest 20 completed cao-dashboard.yml runs, all 20 runs were skipped workflow_run callbacks, so there were 0 successful dashboard-generation samples in the inspected window. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, and there were no successful dashboard-generation runs to measure reusable dashboard generation directly, this evaluation stopped without an actionable reusable-dashboard suggestion."
+    },
     {
       "evaluated_at": "2026-10-15T21:28:11Z",
       "worker_run_id": 38809436203,
@@ -1078,42 +1117,6 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T01:33:55Z through 2026-10-15T05:25:30Z, 16 runs concluded success and 4 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 2 comparable successful docs runs executed the build job and completed deploy (38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466, and 38677403256 on workflow_run at source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907). The remaining 14 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38684569639 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper artifact-transfer or Pages-packaging analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-15T05:04:00Z",
-      "worker_run_id": 38683796464,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38683517634,
-        38682665940,
-        38681755362,
-        38681509701,
-        38679321249,
-        38679037833,
-        38678535133,
-        38677662705,
-        38677403256,
-        38676364836,
-        38674119808,
-        38673466029,
-        38673220743,
-        38671480474,
-        38668899599,
-        38668674585,
-        38668119237,
-        38666336199,
-        38665705831,
-        38665174021
-      ],
-      "docs_window": {
-        "start": "2026-10-15T01:21:09Z",
-        "end": "2026-10-15T04:50:05Z"
-      },
-      "docs_success_count": 14,
-      "docs_comparable_success_count": 1,
-      "docs_deployed_success_count": 1,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-15T01:21:09Z through 2026-10-15T04:50:05Z, 14 runs concluded success and 6 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs run executed the build job (38677403256 on workflow_run), on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907, and that same run completed deploy. The remaining 13 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38683517634 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper reusable-dashboard or CAO Dashboard timing analysis and no actionable suggestion was emitted."
     }
   ]
 }
