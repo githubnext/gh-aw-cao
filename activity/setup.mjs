@@ -495,6 +495,11 @@ export async function setupCaoControlPlane({
           hint: 'Organizations in one enterprise',
         },
       {
+        value: 'approved-app',
+        label: 'Reuse approved private GitHub Apps',
+        hint: 'Existing read/write Apps; no new App registration',
+      },
+      {
         value: 'token',
         label: 'Fine-grained personal access tokens',
         hint: 'User-bound; separate credentials per owner',
@@ -514,19 +519,19 @@ export async function setupCaoControlPlane({
     await writeJsonAtomically(intendedPolicyPath, intendedPolicy);
 
     const authenticationArguments = ['--repo', control.repository];
-    if (profile === 'github-app' || profile === 'token') {
+    if (profile === 'github-app' || profile === 'approved-app' || profile === 'token') {
       authenticationArguments.push('--policy', intendedPolicyPath);
     }
-    if (profile === 'github-app' || profile === 'enterprise-app' || profile === 'token') {
+    if (profile === 'github-app' || profile === 'approved-app' || profile === 'enterprise-app' || profile === 'token') {
       authenticationArguments.push('--write-repository', control.repository);
     }
-    if (profile === 'enterprise-app') {
-      authenticationArguments.push('--policy', intendedPolicyPath);
+    if (profile === 'enterprise-app' || profile === 'approved-app') {
+      if (profile === 'enterprise-app') authenticationArguments.push('--policy', intendedPolicyPath);
       const requiredClientId = (value) => value ? undefined : 'Enter the App client ID.';
       const readClientId = await interactive.text('Read App client ID', '', requiredClientId);
       const writeClientId = await interactive.text('Write App client ID', '', requiredClientId);
       if (!readClientId || !writeClientId) {
-        throw new UsageError('Enterprise App setup requires both client IDs');
+        throw new UsageError('Existing App setup requires both client IDs');
       }
       authenticationArguments.push(
         '--read-client-id', readClientId,
@@ -568,7 +573,11 @@ export async function setupCaoControlPlane({
     }
     applyStage = 'credentials';
     interactive.step?.('Connecting read and review-output credentials');
-    const authentication = await setupAuthentication(profile, authenticationArguments, { execute });
+    const authentication = await setupAuthentication(
+      profile === 'approved-app' ? 'github-app' : profile,
+      authenticationArguments,
+      { execute },
+    );
     if (authentication?.cancelled) throw new SetupCancelled();
     applyStage = 'policy';
     interactive.step?.('Saving the exact repository scope');

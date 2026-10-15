@@ -122,6 +122,39 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	}
 }
 
+func TestOAuthLoginScopeMatchesApplicationType(t *testing.T) {
+	for _, test := range []struct {
+		clientID string
+		scope    string
+	}{
+		{"legacy-oauth-client", "read:org"},
+		{"Ov23liOAuthClient", "read:org"},
+		{"Iv1.github-app", "offline_access"},
+		{"Iv23liGitHubApp", "offline_access"},
+	} {
+		t.Run(test.clientID, func(t *testing.T) {
+			oauth := newGitHubOAuth(GitHubOAuthConfig{
+				ClientID:      test.clientID,
+				AuthURL:       "https://github.test/login/oauth/authorize",
+				RedirectURL:   "https://dashboard.example.com/auth/callback",
+				SessionSecret: "0123456789abcdef0123456789abcdef",
+			}, nil, nil, nil)
+			response := httptest.NewRecorder()
+			oauth.login(response, azureRequest(t, http.MethodGet, "/auth/login"))
+			location, err := url.Parse(response.Header().Get("Location"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != http.StatusFound || location.Query().Get("scope") != test.scope {
+				t.Fatalf("unexpected authorization scope: %s", response.Header().Get("Location"))
+			}
+			if location.Query().Get("state") == "" || location.Query().Get("prompt") != "select_account" {
+				t.Fatal("login must retain state and account selection")
+			}
+		})
+	}
+}
+
 func TestAzureOAuthRejectsInvalidStateAndDeniedMembership(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)

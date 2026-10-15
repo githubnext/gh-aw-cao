@@ -34,7 +34,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Collection GitHub App | A read-only GitHub App installed only on the repositories this deployment may collect. Its webhook sends collection events to the dashboard. |
 | Evidence volume | A persistent named Docker volume. Compose creates it on first deployment and mounts it read-write only in the private collection roles. |
 | Recovery artifact volume | An external Docker volume containing one complete, verified dashboard payload. It remains mounted read-only for rollback to the snapshot profile. |
-| GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
+| Browser sign-in app | A GitHub OAuth app, or a GitHub App with organization **Members: read**, with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters, shared only between the collection App and the dashboard admission endpoint. |
 | Deployment automation | A Git-backed Coolify resource configured for automatic deployments from the protected `main` branch. |
 
@@ -52,6 +52,14 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    resource. Put both resources on the same server and destination.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+
+   Alternatively, reuse a GitHub App with organization **Members: read** and
+   that callback URL. CAO requests `offline_access` for its `Iv...` client ID to
+   receive expiring user tokens and server-side refresh tokens. This requires
+   GitHub.com or GHES 3.23 or later. Configure its client secret from the App's
+   **Credentials** tab; no browser sign-in private key is needed. See
+   [Authentication](authentication.md#offline-dashboard-access).
+
 1. Register a separate GitHub App for collection.
 
    1. Set its webhook URL to `https://PUBLIC-HOST/api/github/webhook`, enable the webhook, and use the value that you will store as `CAO_GITHUB_WEBHOOK_SECRET_ROTATED`.
@@ -228,8 +236,8 @@ The `server/coolify/compose.yml` file reads the following variables.
 | `CAO_POLICY_PATH` | Set by Compose. | No | Points at the baked-in `cao.coolify.json` deployment profile, which extends `cao.json`. |
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
 | `CAO_TRUSTED_PROXY_CIDRS` | Yes | No | Exact private CIDR of the Coolify proxy network. |
-| `CAO_GITHUB_CLIENT_ID` | Yes | No | Client ID of the OAuth app. |
-| `CAO_GITHUB_CLIENT_SECRET_ROTATED` | Yes | Yes | Client secret of the OAuth app. Compose maps it to the server's `CAO_GITHUB_CLIENT_SECRET` runtime variable. |
+| `CAO_GITHUB_CLIENT_ID` | Yes | No | Client ID of the browser sign-in OAuth App or GitHub App. |
+| `CAO_GITHUB_CLIENT_SECRET_ROTATED` | Yes | Yes | Client secret of the browser sign-in App. Compose maps it to the server's `CAO_GITHUB_CLIENT_SECRET` runtime variable. |
 | `CAO_GITHUB_REDIRECT_URL` | Yes | No | `https://PUBLIC-HOST/auth/callback` |
 | `CAO_SESSION_SECRET_ROTATED` | Yes | Yes | Session key. At least 32 characters. Compose maps it to the server's `CAO_SESSION_SECRET` runtime variable. |
 | `CAO_SESSION_SECRET_PREVIOUS` | No | Yes | Previous session key, used during rotation. |
@@ -308,7 +316,7 @@ Follow these rules when you add the values.
   ```
 
   Use the same `CAO_GITHUB_WEBHOOK_SECRET_ROTATED` value in the GitHub webhook configuration. A webhook secret is required even when you don't send webhooks.
-- **Take the OAuth values from your OAuth app.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET_ROTATED` come from the GitHub OAuth app that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
+- **Take the OAuth values from your browser sign-in App.** `CAO_GITHUB_CLIENT_ID` and `CAO_GITHUB_CLIENT_SECRET_ROTATED` come from the OAuth App or GitHub App that you registered, and `CAO_GITHUB_REDIRECT_URL` must exactly match that app's **Authorization callback URL**, `https://PUBLIC-HOST/auth/callback`.
 - **Enable Runtime.** The server reads every operator-provided variable at startup, so each one needs the **Runtime** scope. Coolify injects `SOURCE_COMMIT` into the build when **Include Source Commit in Build** is enabled.
 - **Leave managed variables alone.** Compose sets `CAO_POLICY_PATH`, `CAO_COLLECT_ADMIT_ONLY`, `CAO_COLLECT_LAKE_DIRECTORY`, and `CAO_COLLECT_CATALOG_ROOT`. It deliberately does not set `CAO_SOURCE_DIRECTORY`. Don't override any of them.
 - **Duplicate the values for Preview if you use preview deployments.** Coolify keeps **Production** and **Preview** values separate, so a preview deployment fails on the same required variables until you set them again for **Preview**. Give each preview its own canonical `REDIS_NAMESPACE`, `CAO_OPERATIONAL_NAMESPACE`, evidence and recovery volumes, host name, OAuth app, collection App, and secrets. Sharing a namespace, evidence volume, App installation, or session secret with production lets a preview build read or write production state. If you don't use preview deployments, turn them off instead of copying production credentials.

@@ -363,6 +363,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
     });
     assert.deepEqual(prompt.selections[0].choices.map(({ value }) => value), [
       "enterprise-app",
+      "approved-app",
       "token",
     ]);
     assert.equal(prompt.notes.some((line) => line.includes("Campaigns: none")), true);
@@ -405,7 +406,8 @@ test("cao setup offers organization Apps for one-owner private scope", async () 
 
     assert.equal(prompt.selections[0].choices.some(({ value }) => value === "workflow-token"), false);
     assert.equal(prompt.selections[0].choices[0].value, "github-app");
-    assert.equal(prompt.selections[0].choices[1].value, "token");
+    assert.equal(prompt.selections[0].choices[1].value, "approved-app");
+    assert.equal(prompt.selections[0].choices[2].value, "token");
     assert.equal(authenticationCalls[0][0], "github-app");
     assert.deepEqual(authenticationCalls[0][1].slice(0, 2), ["--repo", "acme/control"]);
     assert.equal(authenticationCalls[0][1][2], "--policy");
