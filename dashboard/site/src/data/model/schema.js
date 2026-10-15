@@ -103,6 +103,68 @@ export function canonicalTimestamp(value, field) {
   return new Date(milliseconds).toISOString();
 }
 
+/** @param {unknown} value @returns {number | null} */
+export function timestampMilliseconds(value) {
+  if (typeof value !== 'string') return null;
+  const parts = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$/.exec(value);
+  if (!parts) return null;
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  if (year === 0 || day > [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]) return null;
+  const milliseconds = Date.parse(value);
+  return Number.isFinite(milliseconds) ? milliseconds : null;
+}
+
+export const OPERATIONAL_VALUE_PERIOD_FIELDS = {
+  windowStart: 'window-start', windowEnd: 'window-end', measurementKind: 'measurement-kind',
+  coverageStatus: 'coverage-status', missingReason: 'missing-reason', eligibleCount: 'eligible-count',
+  populationDigest: 'population-digest', evidenceDigest: 'evidence-digest'
+};
+
+/** @param {Record<string, unknown>} record @param {string} observedAt @param {string} field */
+export function operationalValuePeriod(record, observedAt, field) {
+  /** @type {Record<string, string | number>} */
+  const metadata = {};
+  const required = ['windowStart', 'windowEnd', 'measurementKind', 'coverageStatus'];
+  if (required.some((key) => Object.hasOwn(record, key))) {
+    if (timestampMilliseconds(record.windowStart) === null || timestampMilliseconds(record.windowEnd) === null) {
+      throw new TypeError(`${field} must contain valid RFC 3339 measurement timestamps`);
+    }
+    const start = canonicalTimestamp(record.windowStart, `${field}.windowStart`);
+    const end = canonicalTimestamp(record.windowEnd, `${field}.windowEnd`);
+    if (Date.parse(start) >= Date.parse(end) || Date.parse(end) > Date.parse(observedAt)
+      || typeof record.measurementKind !== 'string'
+      || !['interval', 'snapshot'].includes(record.measurementKind)
+      || typeof record.coverageStatus !== 'string'
+      || !['complete', 'partial', 'missing', 'unknown'].includes(record.coverageStatus)) {
+      throw new TypeError(`${field} must contain a valid measurement period and coverage`);
+    }
+    Object.assign(metadata, { windowStart: start, windowEnd: end,
+      measurementKind: record.measurementKind, coverageStatus: record.coverageStatus });
+  }
+  for (const key of ['populationDigest', 'evidenceDigest']) {
+    if (!Object.hasOwn(record, key)) continue;
+    const value = record[key];
+    if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) {
+      throw new TypeError(`${field}.${key} must be a SHA-256 fingerprint`);
+    }
+    metadata[key] = value;
+  }
+  if (Object.hasOwn(record, 'eligibleCount')) {
+    const count = record.eligibleCount;
+    if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) {
+      throw new TypeError(`${field}.eligibleCount must be a non-negative safe integer`);
+    }
+    metadata.eligibleCount = count;
+  }
+  if (Object.hasOwn(record, 'missingReason')) {
+    metadata.missingReason = requiredString(record.missingReason, `${field}.missingReason`);
+  }
+  return metadata;
+}
+
 /**
  * Reports mandatory relationship failures without preventing partial entities
  * from existing during normalization.

@@ -5,6 +5,7 @@ import {
   capCanonicalBatchSize,
   estimateCanonicalBatchBytes,
   mergeRetainedRecords,
+  OPERATIONAL_VALUE_RETENTION_MS,
   RETENTION_WINDOW_DAYS
 } from '../../src/data/storage/retention.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
@@ -61,6 +62,22 @@ function batch(events) {
 }
 
 describe('canonical retention merge', () => {
+  it('retains compact browser outcomes for a year without retaining old run details', () => {
+    const day = 86_400_000;
+    const previous = batch([{ eventId: 'event:old', timestamp: new Date(NOW - 40 * day).toISOString() }]);
+    previous.operationalValues.push(...[40, 365, 366].map((age) => ({
+      id: `value:${age}`, repositoryId: 'repository:1', campaign: 'dependabot',
+      valueId: 'alerts', value: 0, timestamp: new Date(NOW - age * day).toISOString()
+    })));
+    const merged = mergeRetainedRecords(previous, normalize([]), {
+      now: NOW, retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+    });
+    expect(BROWSER_RETENTION_WINDOWS_MS.operationalValues).toBe(OPERATIONAL_VALUE_RETENTION_MS);
+    expect(merged.operationalValues.map(({ id }) => id).sort()).toEqual(['value:365', 'value:40']);
+    expect(merged.audits).toEqual([]);
+    expect(merged.repositories.map(({ id }) => id)).toEqual(['repository:1']);
+  });
+
   it('upserts a partial collection onto retained events', () => {
     const previous = batch([
       { eventId: 'event:1', timestamp: '2026-09-01T04:00:00Z' },

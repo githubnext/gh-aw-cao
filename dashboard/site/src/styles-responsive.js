@@ -111,6 +111,8 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-page-header .overview-header { width: 100%; min-width: 0; flex: none; }
   .mobile-page-header .breadcrumb-context { display: none; }
+  .mobile-page-header .breadcrumb-context:has([data-route-breadcrumb] ~ [data-route-breadcrumb]) { display: flex; max-width: 100%; gap: 0 8px; }
+  .mobile-page-header .breadcrumb-context > [data-route-breadcrumb] { display: inline-flex; align-items: center; min-height: 44px; white-space: normal; }
   /* Desktop reserves hidden descriptions as a stable spacer; collapse it in the compact mobile title bar without adding another display override. */
   .mobile-page-header .overview-header .lede { height: 0; min-height: 0; margin: 0; overflow: hidden; line-height: 0; visibility: hidden; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }

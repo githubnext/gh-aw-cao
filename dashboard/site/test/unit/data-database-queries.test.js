@@ -14,6 +14,7 @@ import {
   queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { createDashboardQueryBudget, executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
@@ -355,6 +356,7 @@ describe('canonical view sources', () => {
       repository: 'githubnext/gh-aw-cao',
       campaign: 'dependabot',
       valueId: 'dependabot-vulnerability-alerts',
+      'cadence-days': 7,
       value: 4,
       timestamp: '2026-09-09T04:00:00Z',
       observedAt: '2026-09-09T04:00:00Z'
@@ -368,9 +370,57 @@ describe('canonical view sources', () => {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'operational-value-definition': 'dependabot-vulnerability-alerts',
+      'cadence-days': 7,
       'operational-value': 4,
       'observed-at': '2026-09-09T04:00:00Z'
     })]);
+  });
+
+  it('renders campaignless repository outcomes from canonical storage through worker view payloads', async () => {
+    await processDataRequest({ operation: 'query-canonical-database-diagnostics' });
+    const records = [];
+    for (const [index, value] of [4, 0].entries()) {
+      const day = index + 8;
+      const timestamp = `2026-09-${String(day).padStart(2, '0')}T04:00:00Z`;
+      records.push({
+        schema_version: 2, kind: 'operational_value',
+        operational_value: {
+          repository: 'octo/standalone', value_id: 'remaining-alerts', value, timestamp,
+          workflow_slug: 'standalone', metric_role: 'primary',
+          metric_name: 'Remaining alerts', metric_unit: 'alerts',
+          metric_direction: 'decrease', maturity_status: 'matured',
+          evaluator_digest: 'a'.repeat(64), cadence_days: 1,
+          measurement_kind: 'snapshot', coverage_status: 'complete',
+          window_start: `2026-09-${String(day - 1).padStart(2, '0')}T04:00:00Z`,
+          window_end: timestamp
+        }
+      });
+    }
+    await ingestCachedGhAwJsonl(indexedDB, `${records.map(row => JSON.stringify(row)).join('\n')}\n`, {
+      now: Date.parse(metadata['as-of'])
+    });
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['repositories', 'operational-values']);
+    for (const [pageId, viewId, expected] of [
+      ['operational-value', 'operational-value-signals', {
+        'repository-coordinate': 'octo/standalone', signal: 'Improving', 'measured-goals': 1
+      }],
+      ['operational-value-repository', 'repository-outcome-comparison', {
+        'operational-value': 0, 'native-change': -4, movement: 'Improving', 'value-workflow': 'standalone'
+      }]
+    ]) {
+      const page = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === pageId);
+      const payload = compileDashboardViewPayloadQueries(page, String(pageId), {
+        viewId: String(viewId), queries: dashboardQueries,
+        routeParameters: { organization: 'octo', repository: 'standalone' },
+        evaluatedAt: metadata['as-of']
+      });
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'execute-dashboard-queries', queries: payload.queries,
+        sourceNames: payload.aliases, sources: projected
+      }));
+      expect(result[payload.aliases[0]].metadata?.availability).toBe('available');
+      expect(result[payload.aliases[0]].rows).toMatchObject([expected]);
+    }
   });
 
   it('projects safe-output links declaratively for issues and pull requests', async () => {

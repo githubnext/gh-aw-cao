@@ -13,7 +13,7 @@ test("setup keyboard walkthrough validates scope, selects with arrows, and appli
   const result = await walk(f, [
     ["Repositories CAO should read", "not-a-coordinate\r"],
     ["Use owner/repository names", "\u0015acme/service\r"],
-    ["How should CAO authenticate?", "\u001b[B\r"],
+    ["How should CAO authenticate?", "\u001b[B\u001b[B\r"],
     ["Apply this setup?", "\u001b[D\r"],
   ]);
   assert.equal(result.code, 0, result.stdout + result.stderr);
@@ -55,7 +55,7 @@ test("setup plain terminal rejects partial menu numbers and keeps safe defaults"
   const result = await walk(f, [
     ["Repositories CAO should read", "\r"],
     ["Choose [1]:", "1x\r"],
-    ["Enter a number from 1 to 2.", "1\r"],
+    ["Enter a number from 1 to 3.", "1\r"],
     ["Apply this setup?", "\r"],
   ], "");
   assert.equal(result.code, 0, result.stdout + result.stderr);

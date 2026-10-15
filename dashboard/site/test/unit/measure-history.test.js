@@ -19,6 +19,62 @@ afterEach(() => {
 });
 
 describe('Measure history', () => {
+  it('uses query-declared gap limits without inventing legacy cadence', () => {
+    const render = (/** @type {number | null} */ cadence) => renderMeasureHistory({
+      title: 'Outcome history', sourceNames: ['panels'],
+      sources: { panels: { source: 'panels', metadata, rows: [{
+        metric: 'value', 'plot-title': 'Repository value', 'plot-cadence-days': cadence,
+        'plot-max-gap-days': cadence ?? 1,
+        'maturity-status': 'matured', 'evaluation-mode': 'attainment-only',
+        'adoption-at': '2026-09-01T00:00:00Z',
+        series: [{ id: 'one', label: 'octo/api', points: [
+          { x: '2026-09-20T00:00:00Z', y: 3 },
+          { x: '2026-09-21T00:00:00Z', y: 2 },
+          { x: '2026-09-23T00:00:00Z', y: 1 }
+        ] }]
+      }] } },
+      elementConfig: { 'measure-source': 'operational-value' },
+      pageId: 'test', contextDetails: [], headingTag: 'h3'
+    });
+    expect(render(1).querySelectorAll('polyline')).toHaveLength(1);
+    const unknown = render(null);
+    expect(unknown.querySelectorAll('polyline')).toHaveLength(1);
+    expect(unknown.querySelectorAll('.temporal-plot-point')).toHaveLength(3);
+    expect(unknown.textContent).toContain('Cadence was not retained');
+  });
+
+  it('renders query-associated per-panel run context and maturity without mixing campaigns', () => {
+    const root = renderMeasureHistory({
+      title: 'Outcome timelines',
+      sourceNames: ['panels'],
+      sources: { panels: { source: 'panels', metadata, rows: [
+        {
+          metric: 'remaining', 'plot-title': 'Alpha / Remaining',
+          'maturity-status': 'matured', 'evaluation-mode': 'attainment-only',
+          'adoption-at': '2026-09-01T00:00:00Z',
+          series: [{ id: 'repo', label: 'octo/repo', points: [{ x: '2026-09-24T00:00:00Z', y: 0 }] }],
+          'run-days': [{ 'run-day': '2026-09-23', 'successful-runs': 2, 'failed-runs': 1, 'concluded-runs': 3 }]
+        },
+        {
+          metric: 'remaining', 'plot-title': 'Beta / Remaining',
+          'maturity-status': 'interim', 'evaluation-mode': 'attainment-only',
+          'adoption-at': '2026-09-01T00:00:00Z',
+          series: [{ id: 'repo', label: 'octo/repo', points: [{ x: '2026-09-24T00:00:00Z', y: 3 }] }],
+          'run-days': [{ 'run-day': '2026-09-24', 'successful-runs': 4, 'failed-runs': 0, 'concluded-runs': 4 }]
+        }
+      ] } },
+      elementConfig: { 'measure-source': 'operational-value' },
+      pageId: 'test', contextDetails: [], headingTag: 'h3'
+    });
+    const panels = root.querySelectorAll('[data-operational-value-metric]');
+    expect(panels[0].textContent).toContain('Alpha / Remaining');
+    expect(panels[0].getAttribute('data-operational-value-state')).toBe('observed-value');
+    expect(panels[0].querySelector('.temporal-plot-run-outcome')?.getAttribute('aria-label')).toContain('2 successful and 1 failed');
+    expect(panels[1].textContent).toContain('Beta / Remaining');
+    expect(panels[1].getAttribute('data-operational-value-state')).toBe('interim-evidence');
+    expect(panels[1].querySelector('.temporal-plot-run-outcome')?.getAttribute('aria-label')).toContain('4 successful and 0 failed');
+  });
+
   it('does not query all campaigns before a campaign is selected', () => {
     const loader = vi.fn();
     configureSourceLoader(loader);
@@ -90,6 +146,7 @@ describe('Measure history', () => {
       contextDetails: [],
       headingTag: 'h3'
     });
+
     document.body.append(root);
     expect(root.textContent).toContain('Loading repository operational value');
     expect(loader.mock.calls.map(([name]) => name)).toEqual(names);
@@ -123,6 +180,30 @@ describe('Measure history', () => {
     });
     await Promise.resolve();
     expect(root.querySelector('.temporal-metric-plot')).toBe(plot);
+  });
+
+  it('separates the same repository name across campaign and organization routes', async () => {
+    /** @type {Map<string, (source: import('../../src/presenter.js').LogicalSourceInput) => void>} */
+    const pending = new Map();
+    configureSourceLoader((name, options) => new Promise((resolve) => {
+      const route = options?.routeParameters;
+      pending.set(`${route?.campaign}/${route?.organization}`, resolve);
+    }));
+    const context = {
+      title: 'Repository history', sourceNames: ['panels'], sources: {},
+      elementConfig: { 'measure-source': /** @type {const} */ ('operational-value') },
+      pageId: 'repository-outcomes', viewId: 'history', routeParameter: 'repository',
+      contextDetails: [], headingTag: /** @type {'h3'} */ ('h3')
+    };
+    const first = renderBoundMeasureHistory({ ...context, routeParameters: { campaign: 'alpha', organization: 'one', repository: 'api' } });
+    const second = renderBoundMeasureHistory({ ...context, routeParameters: { campaign: 'beta', organization: 'one', repository: 'api' } });
+    const third = renderBoundMeasureHistory({ ...context, routeParameters: { campaign: 'beta', organization: 'two', repository: 'api' } });
+    document.body.append(first, second, third);
+    expect(pending.size).toBe(3);
+    pending.get('alpha/one')?.({ source: 'panels', metadata, rows: [] });
+    await vi.waitFor(() => expect(first.textContent).toContain('No measure history was observed'));
+    expect(second.textContent).toContain('Loading repository operational value');
+    expect(third.textContent).toContain('Loading repository operational value');
   });
 
   it('labels interim repository operational value without a heading badge', () => {
@@ -182,13 +263,17 @@ describe('Measure history', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered.querySelector('h2')?.textContent).toBe('Operational value');
+    expect(rendered.querySelector('h2')).toBeNull();
+    const help = rendered.querySelector(':scope > details');
+    expect(help?.querySelector('summary')?.textContent).toBe('How to read these plots');
+    expect(help?.hasAttribute('open')).toBe(false);
+    expect(help?.textContent).toContain('2 interim observations');
     expect(rendered.querySelector('.insights-section-heading .insights-dubious-flag')).toBeNull();
     expect(rendered.textContent).toContain('2 interim observations');
     expect(rendered.querySelector('.temporal-plot-heading h3')?.textContent)
       .toBe('Verified opportunity share');
     expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent)
-      .toBe('Higher is better');
+      .toBe('Higher is better / Provisional');
     expect(rendered.querySelector('[data-chart-temporal-marker="2026-09-15T23:30:36Z"]')).not.toBeNull();
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-success')).toHaveLength(2);
@@ -256,7 +341,7 @@ describe('Measure history', () => {
       contextDetails: [],
       headingTag: 'h3'
     });
-    expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent).toBe('Lower is better');
+    expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent).toBe('Lower is better / Provisional');
     expect([...rendered.querySelectorAll('.temporal-plot-point')].map((point) => point.getAttribute('aria-label')))
       .toEqual([
         expect.stringContaining('12.5 aic-per-run'),

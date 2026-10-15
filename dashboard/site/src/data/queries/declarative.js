@@ -33,7 +33,7 @@ const debugQuery = createDebug('data:query');
  *   ['stores-by-source']?: Record<string, string[]>,
  *   union?: string[],
  *   time?: { range?: string, start?: string, end?: string },
- *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
+ *   joins?: Array<{ source: string, type?: 'inner'|'left'|'inner-many', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }>, search?: { fields: string[], query: string } },
  *   compute?: import('../../data-operations.js').ComputedField[],
  *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
@@ -370,6 +370,9 @@ function queryStructuralDefect(definition) {
         || typeof series.series !== 'string'
         || (series.shape !== undefined && !['tidy', 'groups', 'panels'].includes(series.shape))
         || (series.link !== undefined && (series.shape !== 'panels' || typeof series.link !== 'string'))
+        || (series['point-carry'] !== undefined && (series.shape !== 'panels'
+          || !Array.isArray(series['point-carry']) || series['point-carry'].length === 0
+          || series['point-carry'].length > 16 || series['point-carry'].some((field) => typeof field !== 'string' || !field)))
         || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
         || (series.trend !== undefined && (series.shape !== 'groups' || !isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
         || (!Array.isArray(measures) || measures.length > 64)
@@ -997,8 +1000,7 @@ export function compileRowOperators(definition) {
 
 /**
  * Applies one constrained equality join. The joined source must contain at
- * most one row per join key, so many-to-many expansion is rejected instead of
- * silently multiplying rows.
+ * most one row per join key unless inner-many explicitly requests expansion.
  *
  * @param {Row[]} rows
  * @param {NonNullable<DashboardQuery['joins']>[number]} join
@@ -1010,15 +1012,17 @@ export function compileRowOperators(definition) {
 function applyJoin(rows, join, joinedRows, sourceName, budget) {
   enforceLimit(joinedRows.length, 'max-input-rows', sourceName);
   budget.spend(joinedRows.length);
-  /** @type {Map<string, Row>} */
+  /** @type {Map<string, Row[]>} */
   const byKey = new Map();
   for (const row of joinedRows) {
     const key = joinKey(row, join.on.map((pair) => pair.right));
     if (key === null) continue;
-    if (byKey.has(key)) {
+    if (byKey.has(key) && join.type !== 'inner-many') {
       throw new Error(`joined source "${sourceName}" contains more than one row per join key`);
     }
-    byKey.set(key, row);
+    const matches = byKey.get(key) ?? [];
+    matches.push(row);
+    byKey.set(key, matches);
   }
   const type = join.type ?? 'inner';
   /** @type {Row[]} */
@@ -1026,15 +1030,18 @@ function applyJoin(rows, join, joinedRows, sourceName, budget) {
   for (const row of rows) {
     if (joined.length % CANCELLATION_CHECK_INTERVAL === 0) budget.checkpoint();
     const key = joinKey(row, join.on.map((pair) => pair.left));
-    const match = key === null ? undefined : byKey.get(key);
-    if (!match && type === 'inner') continue;
-    joined.push({
-      ...row,
-      ...Object.fromEntries(join.fields.map((field) => [field.as, match?.[field.field] ?? null]))
-    });
+    const matches = key === null ? undefined : byKey.get(key);
+    if (!matches && type !== 'left') continue;
+    for (const match of matches ?? [undefined]) {
+      enforceLimit(joined.length + 1, 'max-join-rows', sourceName);
+      budget.spend(1);
+      joined.push({
+        ...row,
+        ...Object.fromEntries(join.fields.map((field) => [field.as, match?.[field.field] ?? null]))
+      });
+    }
   }
   enforceLimit(joined.length, 'max-join-rows', sourceName);
-  budget.spend(joined.length);
   return joined;
 }
 

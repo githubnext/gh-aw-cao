@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -33,18 +34,118 @@ console.log(JSON.stringify({
   metricRole: "primary",
   metricName: "Current value",
   metricUnit: "items",
+  cadenceDays: 2.5,
   metricDirection: "decrease",
   maturityStatus: "matured",
   adoptionAt: "2026-09-15T23:30:36Z",
   evaluationMode: "baseline-comparable",
   workflowSlug: "example-worker",
   workflowName: "Example Worker",
+  windowStart: new Date(Date.parse(request.timestamp) - 7 * 86400000).toISOString(),
+  windowEnd: request.timestamp,
+  measurementKind: "interval",
+  coverageStatus: "unknown",
+  missingReason: "source-window-coverage-unverified",
+  eligibleCount: 2,
+  populationDigest: "a".repeat(64),
+  evidenceDigest: "b".repeat(64),
   rollupNumerator: 3,
   rollupDenominator: 1
 }));
 `
 
+func TestBatchedHistoryMatchesActivityCollector(t *testing.T) {
+	root := repositoryRoot(t)
+	temporary := t.TempDir()
+	campaign := filepath.Join(temporary, "example")
+	if err := os.MkdirAll(campaign, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	batchAdapter := strings.Replace(adapter,
+		`kind: "operational_value_definition",`,
+		`kind: "operational_value_definition", historyBatch: true,`, 1)
+	batchAdapter = strings.Replace(batchAdapter,
+		`timestamp: request.timestamp,`,
+		`timestamp,`, 1)
+	batchAdapter = strings.Replace(batchAdapter, "Date.parse(request.timestamp)", "Date.parse(timestamp)", 1)
+	batchAdapter = strings.Replace(batchAdapter, "windowEnd: request.timestamp,", "windowEnd: timestamp,", 1)
+	batchAdapter = strings.Replace(batchAdapter,
+		`console.log(JSON.stringify({
+  timestamp,`,
+		`for (const timestamp of (request.historyTimestamps ?? [request.timestamp])) console.log(JSON.stringify({
+  timestamp,`, 1)
+	batchAdapter += `
+import { appendFileSync } from "node:fs";
+appendFileSync(new URL("./calls.jsonl", import.meta.url), JSON.stringify(request) + "\n");
+`
+	if err := os.WriteFile(filepath.Join(campaign, "operational-value.mjs"), []byte(batchAdapter), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now, _ := time.Parse(time.RFC3339, "2026-09-24T10:00:00Z")
+	goOutput := filepath.Join(temporary, "go.jsonl")
+	nodeOutput := filepath.Join(temporary, "node.jsonl")
+	for _, output := range []string{goOutput, nodeOutput} {
+		retained := testEnvelope("example-worker.current", 99)
+		retained.OperationalValue.Repository = "githubnext/gh-aw-cao"
+		retained.OperationalValue.Timestamp = "2026-09-12T10:00:00.000Z"
+		if err := writeEnvelopes(output, []envelope{retained}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := Config{
+		Root: temporary, Database: filepath.Join(temporary, "archive.sqlite"),
+		Output: goOutput, ObservedAt: now,
+		Repositories: []string{"githubnext/gh-aw-cao"}, HistoryCampaign: "example",
+		Retention: 30 * day, Environment: testEnvironment(),
+	}
+	result, err := Collect(t.Context(), config)
+	if err != nil || len(result.Warnings) != 0 || result.HistoryValues != 11 {
+		t.Fatalf("batch failed: %+v, %v", result, err)
+	}
+	node := exec.CommandContext(t.Context(), "node", filepath.Join(root, "activity", "cao.mjs"), // #nosec G204 -- fixed Node binary and test-owned temporary paths.
+		"operational-value", "--root", temporary, "--database", config.Database,
+		"--output", nodeOutput, "--timestamp", now.Format(time.RFC3339),
+		"--repository", config.Repositories[0], "--history-campaign", "example",
+		"--retention-days", "30")
+	node.Env = testEnvironment()
+	if output, err := node.CombinedOutput(); err != nil {
+		t.Fatalf("Activity collector failed: %v\n%s", err, output)
+	}
+	if !reflect.DeepEqual(readJSONL(t, goOutput), readJSONL(t, nodeOutput)) {
+		t.Fatal("Go and Node batch publication differ")
+	}
+	calls := readJSONL(t, filepath.Join(campaign, "calls.jsonl"))
+	if len(calls) != 4 {
+		t.Fatalf("got %d calls, want current + batch for each collector", len(calls))
+	}
+	for _, index := range []int{1, 3} {
+		if len(calls[index]["historyTimestamps"].([]any)) != 11 {
+			t.Fatal("expected all missing instants in one batch")
+		}
+	}
+	repeated, err := Collect(t.Context(), config)
+	if err != nil || len(repeated.Warnings) != 0 || repeated.HistoryValues != 0 {
+		t.Fatalf("batch not idempotent: %+v, %v", repeated, err)
+	}
+	if len(readJSONL(t, filepath.Join(campaign, "calls.jsonl"))) != 5 {
+		t.Fatal("complete history should only run the current adapter")
+	}
+}
+
 func TestGoCollectorMatchesActivityCollector(t *testing.T) {
+	compareActivityCollector(t, adapter)
+}
+
+func TestUnavailablePeriodsMatchActivityCollector(t *testing.T) {
+	script := strings.Replace(adapter, "value: 3,", "value: null,", 1)
+	script = strings.Replace(script, `maturityStatus: "matured",`, `maturityStatus: "unavailable",`, 1)
+	script = strings.Replace(script, "rollupNumerator: 3,", "", 1)
+	script = strings.Replace(script, "rollupDenominator: 1", "", 1)
+	compareActivityCollector(t, script)
+}
+
+func compareActivityCollector(t *testing.T, script string) {
+	t.Helper()
 	root := repositoryRoot(t)
 	temporary := t.TempDir()
 	packages := filepath.Join(temporary, "packages")
@@ -52,7 +153,7 @@ func TestGoCollectorMatchesActivityCollector(t *testing.T) {
 	if err := os.MkdirAll(campaign, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(campaign, "operational-value.mjs"), []byte(adapter), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(campaign, "operational-value.mjs"), []byte(script), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	nodeOutput := filepath.Join(temporary, "node.jsonl")

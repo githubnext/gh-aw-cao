@@ -9,6 +9,241 @@ import { runOperationalValue } from '../../activity/operational-value.mjs';
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
 
+test('standard adapter batches local history once and preserves accepted partial snapshots', async () => {
+  mkdirSync(path.join(root, '.tmp'), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, '.tmp', 'value-history-batch-'));
+  const campaign = path.join(temporary, 'example');
+  const modulePath = path.join(campaign, 'operational-value', 'example-worker.mjs');
+  const calls = path.join(temporary, 'calls.jsonl');
+  const output = path.join(temporary, 'values.jsonl');
+  const script = path.join(campaign, 'operational-value.mjs');
+  mkdirSync(path.dirname(modulePath), { recursive: true });
+  writeFileSync(script, readFileSync(path.join(root,
+    '.github/skills/add-operational-value/templates/campaign-operational-value.mjs')));
+  writeFileSync(modulePath, `
+import { appendFileSync } from "node:fs";
+export const historyBatch = true;
+export const definition = {
+  slug: "example-worker", adoption: { adoptedAt: "2026-09-15T00:00:00Z" },
+  evaluation: { mode: "baseline-comparable" },
+  evidence: { measurementKind: "interval", repositories: ["octo/api"], window: { durationDays: 7, maturationDays: 0, cadenceDays: 1 } },
+  metrics: ["first", "second"].map(id => ({id, role:"primary", name:id, unit:"items", direction:"decrease"}))
+};
+export function collectBatch(windows, context) {
+  appendFileSync(${JSON.stringify(calls)}, JSON.stringify({windows, context}) + "\\n");
+  return windows.map(() => ({evidence:{value:3}}));
+}
+export function scoreMetric(id, evidence) { return evidence.value; }
+`);
+  writeFileSync(output, JSON.stringify({
+    schema_version: 2, kind: 'operational_value',
+    operational_value: {
+      campaign: 'example', repository: 'octo/api', value_id: 'example-worker.first',
+      timestamp: '2026-09-11T12:00:00.000Z', value: 99
+    }
+  }) + '\n');
+  const config = {
+    root: temporary, outputPath: output, databasePath: path.join(temporary, 'unused.sqlite'),
+    timestamp: '2026-09-18T00:00:00Z', repositories: ['octo/api'],
+    historyCampaign: 'example', retentionWindow: 365 * 86_400_000
+  };
+  try {
+    const result = await runOperationalValue(config);
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.historyValues, 11);
+    const batches = readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(batches.length, 2);
+    assert.equal(batches[0].windows.length, 1);
+    assert.equal(batches[1].windows.length, 6);
+    assert.equal(batches[1].context.history, true);
+    const records = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(records.find(({operational_value: value}) => (
+      value.timestamp === '2026-09-11T12:00:00.000Z' && value.value_id === 'example-worker.first'
+    )).operational_value.value, 99);
+    const repeat = await runOperationalValue(config);
+    assert.deepEqual(repeat.warnings, []);
+    assert.equal(repeat.historyValues, 0);
+    assert.equal(readFileSync(calls, 'utf8').trim().split('\n').length, 3);
+    for (const historyTimestamps of [
+      [], Array(367).fill('2026-09-12T00:00:00Z'),
+      ['invalid'], ['2026-09-12T00:00:00Z', '2026-09-12T00:00:00Z'],
+      ['2026-09-13T00:00:00Z', '2026-09-12T00:00:00Z'],
+      ['2026-09-19T00:00:00Z']
+    ]) {
+      const invalid = spawnSync(process.execPath, [script], {
+        input: JSON.stringify({schemaVersion: 1, timestamp: config.timestamp,
+          repositories: config.repositories, historyTimestamps}),
+        env: {...process.env, CAO_OPERATIONAL_VALUE_MODULE: 'example-worker'},
+        encoding: 'utf8'
+      });
+      assert.notEqual(invalid.status, 0);
+      assert.match(invalid.stderr, /Invalid operational value history batch/);
+    }
+    for (const timestamp of [
+      '2026-09-18', '2026-09-18T00:00:00Z', '2026-09-18T01:00:00.000+01:00'
+    ]) {
+      const invalid = spawnSync(process.execPath, [script], {
+        input: JSON.stringify({schemaVersion: 1, timestamp,
+          repositories: config.repositories, historyTimestamps: [timestamp]}),
+        env: {...process.env, CAO_OPERATIONAL_VALUE_MODULE: 'example-worker'},
+        encoding: 'utf8'
+      });
+      assert.notEqual(invalid.status, 0);
+      assert.match(invalid.stderr, /Invalid operational value history batch/);
+    }
+  } finally {
+    rmSync(temporary, {recursive: true, force: true});
+  }
+});
+
+test('period-aware collection retains adjacent cutoffs even when assessments share a legacy cadence bucket', async (t) => {
+  mkdirSync(path.join(root, '.tmp'), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, '.tmp', 'value-period-retention-'));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const campaign = path.join(temporary, 'example');
+  mkdirSync(path.join(campaign, 'operational-value'), { recursive: true });
+  writeFileSync(path.join(campaign, 'operational-value.mjs'), readFileSync(path.join(root,
+    '.github/skills/add-operational-value/templates/campaign-operational-value.mjs')));
+  writeFileSync(path.join(campaign, 'operational-value', 'example-worker.mjs'), `
+export const historyBatch = true;
+export const definition = {
+  slug: "example-worker", adoption: { adoptedAt: "2026-09-15T00:00:00Z" },
+  evaluation: { mode: "attainment-only" },
+  evidence: { measurementKind: "interval", repositories: ["octo/api"], window: { durationDays: 7, maturationDays: 0, cadenceDays: 1 } },
+  metrics: [{id:"current", role:"primary", name:"Current", unit:"items", direction:"decrease"}]
+};
+export function collectBatch(windows) {
+  return windows.map(window => ({evidence:{value:3, coverageStatus:"complete"}}));
+}
+export function scoreMetric(id, evidence) { return evidence.value; }
+`);
+  const outputPath = path.join(temporary, 'values.jsonl');
+  const config = {
+    root: temporary, outputPath, databasePath: path.join(temporary, 'unused.sqlite'),
+    repositories: ['octo/api'], retentionWindow: 30 * 86_400_000
+  };
+  for (const timestamp of ['2026-09-23T12:00:00Z', '2026-09-24T00:00:00Z']) {
+    assert.deepEqual((await runOperationalValue({ ...config, timestamp })).warnings, []);
+  }
+  const records = readFileSync(outputPath, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(records.map(row => row.operational_value.window_end), [
+    '2026-09-23T00:00:00.000Z', '2026-09-24T00:00:00.000Z'
+  ]);
+  const history = await runOperationalValue({
+    ...config, timestamp: '2026-09-24T12:00:00Z', historyCampaign: 'example'
+  });
+  assert.deepEqual(history.warnings, []);
+  const retained = readFileSync(outputPath, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.ok(retained.every(row => Date.parse(row.operational_value.window_end) > Date.parse(row.operational_value.window_start)));
+  assert.ok(retained.some(row => row.operational_value.timestamp === '2026-09-23T12:00:00.000Z'));
+});
+
+test('standard adapters reuse versioned observations only within cadence and retain real timestamps', () => {
+  mkdirSync(path.join(root, '.tmp'), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, '.tmp', 'value-cadence-test-'));
+  const campaign = path.join(temporary, 'example');
+  const modulePath = path.join(campaign, 'operational-value', 'example-worker.mjs');
+  const database = path.join(temporary, 'values.sqlite');
+  const output = path.join(temporary, 'values.jsonl');
+  const calls = path.join(temporary, 'calls.jsonl');
+  mkdirSync(path.dirname(modulePath), { recursive: true });
+  const template = readFileSync(path.join(root,
+    '.github/skills/add-operational-value/templates/campaign-operational-value.mjs'), 'utf8');
+  writeFileSync(path.join(campaign, 'operational-value.mjs'), template);
+  const moduleSource = `
+import { appendFileSync } from "node:fs";
+export const definition = {
+  slug: "example-worker", name: "Example",
+  adoption: { adoptedAt: "2026-09-01T00:00:00Z" },
+  evaluation: { mode: "attainment-only" },
+  evidence: { measurementKind: "interval", repositories: ["octo/api"], window: { durationDays: 7, maturationDays: 0, cadenceDays: 1 } },
+  metrics: [{ id: "remaining", name: "Remaining", role: "primary", unit: "alerts", direction: "decrease" }]
+};
+export function collectBatch(windows) {
+  appendFileSync(${JSON.stringify(calls)}, JSON.stringify(windows) + "\\n");
+  return windows.map(window => ({
+    evidence: { value: 0, maturityStatus: "matured", coverageStatus: "complete", eligibleCount: 2,
+      populationDigest: "a".repeat(64) },
+    provenance: [{ source: "fixture", cutoff: window.windowEnd }]
+  }));
+}
+export function scoreMetric(id, evidence) { return evidence.value; }
+`;
+  writeFileSync(modulePath, moduleSource);
+  const run = (timestamp) => JSON.parse(execFileSync(process.execPath, [
+    cao, 'operational-value', '--database', database, '--root', temporary,
+    '--output', output, '--timestamp', timestamp, '--repository', 'octo/api',
+    '--retention-days', '30'
+  ], { encoding: 'utf8' }));
+  const ingest = () => execFileSync(process.execPath, [
+    cao, 'ingest-jsonl', '--database', database, '--input', output
+  ]);
+  const callCount = () => readFileSync(calls, 'utf8').trim().split('\n').length;
+  try {
+    for (const name of ['dependabot', 'optimization']) {
+      assert.equal(readFileSync(path.join(root, name, 'operational-value.mjs'), 'utf8'), template);
+    }
+    const first = run('2026-09-24T10:00:00Z');
+    assert.deepEqual(first.warnings, []);
+    assert.equal(first.values[0].value, 0);
+    assert.equal(first.values[0].cadenceDays, 1);
+    assert.equal(first.values[0].windowStart, '2026-09-17T00:00:00.000Z');
+    assert.equal(first.values[0].windowEnd, '2026-09-24T00:00:00.000Z');
+    assert.equal(first.values[0].measurementKind, 'interval');
+    assert.equal(first.values[0].coverageStatus, 'complete');
+    assert.equal(first.values[0].eligibleCount, 2);
+    assert.match(first.values[0].evidenceDigest, /^[0-9a-f]{64}$/);
+    assert.match(first.values[0].evaluatorDigest, /^[0-9a-f]{64}$/);
+    ingest();
+    const stored = JSON.parse(execFileSync(process.execPath, [
+      cao, 'query', '--database', database, '--collection', 'operationalValues'
+    ], { encoding: 'utf8' }));
+    assert.equal(stored[0]?.['evaluator-digest'], first.values[0].evaluatorDigest, JSON.stringify(stored));
+    assert.equal(stored[0]?.['cadence-days'], 1);
+    const reused = run('2026-09-24T11:00:00Z');
+    assert.deepEqual(reused.warnings, []);
+    assert.equal(callCount(), 1);
+    assert.equal(reused.values[0].timestamp, first.values[0].timestamp);
+    assert.equal(reused.values[0].metricUnit, 'alerts');
+    assert.equal(reused.values[0].cadenceDays, 1);
+    assert.equal(reused.values[0].evaluatorDigest, first.values[0].evaluatorDigest);
+    assert.equal(reused.values[0].evidenceDigest, first.values[0].evidenceDigest);
+    assert.equal(reused.values[0].populationDigest, first.values[0].populationDigest);
+    assert.equal(readFileSync(output, 'utf8').trim().split('\n').length, 1);
+
+    const accepted = JSON.parse(readFileSync(output, 'utf8').trim());
+    const unavailable = { ...accepted, operational_value: {
+      ...accepted.operational_value, timestamp: '2026-09-24T11:30:00.000Z',
+      value: null, maturity_status: 'unavailable', coverage_status: 'missing', missing_reason: 'source-inaccessible'
+    } };
+    writeFileSync(output, [accepted, unavailable].map(record => JSON.stringify(record)).join('\n') + '\n');
+    ingest();
+    const reassessed = run('2026-09-24T12:00:00Z');
+    assert.equal(callCount(), 2);
+    assert.equal(reassessed.values[0].timestamp, '2026-09-24T12:00:00.000Z');
+    assert.equal(reassessed.values[0].value, 0);
+    ingest();
+
+    const expired = run('2026-09-25T00:00:00Z');
+    assert.equal(callCount(), 3);
+    assert.equal(expired.values[0].timestamp, '2026-09-25T00:00:00.000Z');
+    assert.equal(expired.values[0].windowEnd, '2026-09-25T00:00:00.000Z');
+    ingest();
+    writeFileSync(modulePath, `${moduleSource}\n`);
+    const changed = run('2026-09-25T01:00:00Z');
+    assert.equal(callCount(), 4);
+    assert.notEqual(changed.values[0].evaluatorDigest, first.values[0].evaluatorDigest);
+    ingest();
+    writeFileSync(path.join(campaign, 'operational-value.mjs'), `${template}\n`);
+    const adapterChanged = run('2026-09-25T02:00:00Z');
+    assert.equal(callCount(), 5);
+    assert.notEqual(adapterChanged.values[0].evaluatorDigest, changed.values[0].evaluatorDigest);
+    assert.ok(readFileSync(output, 'utf8').trim().split('\n').length >= 2);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 function writeProcessTreeWorker(packageDirectory, config) {
   writeFileSync(path.join(packageDirectory, 'config.json'), JSON.stringify(config));
   writeFileSync(path.join(packageDirectory, 'descendant.mjs'), `
@@ -223,6 +458,67 @@ for (const repository of request.repositories) {
       { role: 'diagnostic', name: 'Example count', unit: 'percent', direction: 'decrease', maturity: 'interim', adoptionAt: '2026-09-15T23:30:36.000Z', evaluationMode: 'attainment-only', workflowSlug: 'example-worker', workflowName: 'Example Worker', rollupNumerator: 100, rollupDenominator: 2 },
     ],
   );
+});
+
+test('cao operational-value rejects malformed optional cadence metadata', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-cadence-'));
+  const packageDirectory = path.join(temporary, 'example');
+  mkdirSync(packageDirectory);
+  try {
+    for (const cadenceDays of [0, -1, null, '7']) {
+      writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"octo/api",valueId:"primary",value:4,cadenceDays:${JSON.stringify(cadenceDays)}}));`);
+      const result = await runOperationalValue({
+        indexedDB: null,
+        root: temporary,
+        databasePath: path.join(temporary, 'values.sqlite'),
+        outputPath: path.join(temporary, 'values.jsonl'),
+        timestamp: '2026-09-24T10:00:00Z',
+        repositories: ['octo/api']
+      });
+      assert.deepEqual(result.values, []);
+      assert.match(result.warnings[0]?.message, /cadenceDays must be a positive finite number/);
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cao operational-value accepts only string SHA-256 evaluator fingerprints or omitted legacy metadata', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-digest-'));
+  const packageDirectory = path.join(temporary, 'example');
+  mkdirSync(packageDirectory);
+  try {
+    for (const evaluatorDigest of [
+      null, 64, {}, ['a'.repeat(64)], '', 'a'.repeat(63), 'A'.repeat(64),
+      'g'.repeat(64), 'a'.repeat(64), undefined
+    ]) {
+      const record = {
+        timestamp: '2026-09-24T10:00:00Z', repository: 'octo/api',
+        valueId: 'primary', value: 4, evaluatorDigest
+      };
+      writeFileSync(path.join(packageDirectory, 'operational-value.mjs'),
+        `console.log(${JSON.stringify(JSON.stringify(record))});`);
+      const result = await runOperationalValue({
+        indexedDB: null,
+        root: temporary,
+        databasePath: path.join(temporary, 'values.sqlite'),
+        outputPath: path.join(temporary, 'values.jsonl'),
+        timestamp: record.timestamp,
+        repositories: [record.repository]
+      });
+      if (evaluatorDigest === undefined || evaluatorDigest === 'a'.repeat(64)) {
+        assert.deepEqual(result.warnings, []);
+        assert.equal(result.values.length, 1);
+        assert.equal(result.values[0].evaluatorDigest, evaluatorDigest);
+      } else {
+        assert.deepEqual(result.values, []);
+        assert.match(result.warnings[0]?.message, /evaluatorDigest must be a SHA-256 fingerprint/);
+      }
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('cao operational-value keeps shared metric IDs isolated per campaign', async () => {
@@ -515,7 +811,13 @@ test('cao operational-value warns on non-numeric metrics and bounds retained out
   writeFileSync(script, `process.stdin.resume();
 process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",valueId:"example",value:1})));\n`);
   chmodSync(script, 0o755);
-  writeFileSync(output, [
+  const retained = [
+    JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
+      timestamp: '2025-09-23T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'expired', value: 1
+    } }),
+    JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
+      timestamp: '2025-09-24T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'boundary', value: 1
+    } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
       timestamp: '2026-08-01T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'old', value: 1
     } }),
@@ -525,7 +827,8 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
       timestamp: '2026-09-20T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'retained', value: 1
     } })
-  ].join('\n'));
+  ].join('\n');
+  writeFileSync(output, retained);
 
   execFileSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
@@ -534,6 +837,15 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
   ]);
   const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
   assert.deepEqual(envelopes.map((entry) => entry.operational_value.value_id), ['retained', 'example']);
+
+  writeFileSync(output, retained);
+  execFileSync(process.execPath, [
+    cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary, '--output', output, '--timestamp', '2026-09-24T10:00:00Z',
+    '--repository', 'githubnext/gh-aw-cao'
+  ]);
+  assert.deepEqual(readFileSync(output, 'utf8').trim().split('\n')
+    .map((line) => JSON.parse(line).operational_value.value_id), ['boundary', 'old', 'retained', 'example']);
 
   writeFileSync(script, `process.stdin.resume();
 process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"githubnext/gh-aw-cao",valueId:"invalid",value:null})));\n`);

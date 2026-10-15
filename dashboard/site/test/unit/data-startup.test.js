@@ -22,6 +22,7 @@ vi.mock("../../src/dashboard-data-updates.js", () => updates);
 import { createBatchedSourceLoader, startDashboardData } from "../../src/data/startup.js";
 import { dashboardViewAliasName } from "../../src/data/queries/view-payload-compiler.js";
 import { browserFirstLoad } from "../../src/browser-first-load.js";
+import { dashboardDataStatus } from "../../src/dashboard-data-status.js";
 
 const cachedSources = {
   runs: { source: "runs", rows: [{ run: "cached" }] },
@@ -170,6 +171,9 @@ describe("dashboard data startup", () => {
     await startDashboardData(options());
 
     expect(document.querySelector("dialog")).toBeNull();
+    expect(dashboardDataStatus.get()).toEqual({
+      phase: "cached", snapshot: { createdAt: "2026-09-28T12:00:00.000Z" }
+    });
     expect(dataProcessor.subscribeWorkerLoadingProgress).not.toHaveBeenCalled();
     expect(calls).toEqual([
       "render:cached",
@@ -231,6 +235,7 @@ describe("dashboard data startup", () => {
     expect(calls).toContain("render:loading");
     expect(dataProcessor.loadDashboardSnapshotMetadata).toHaveBeenCalledTimes(2);
     expect(browserFirstLoad.get().status).toBe("inactive");
+    expect(dashboardDataStatus.get().phase).toBe("ready");
     expect(document.querySelector("dialog")).toBeNull();
   });
 
@@ -241,6 +246,7 @@ describe("dashboard data startup", () => {
     const stop = await startDashboardData(options());
     expect(document.querySelector("dialog")?.open).toBe(true);
     expect(browserFirstLoad.get().status).toBe("loading");
+    expect(dashboardDataStatus.get()).toEqual({ phase: "loading", snapshot: null });
     const progress = dataProcessor.subscribeWorkerLoadingProgress.mock.calls[0]?.[0];
     progress({ id: "ingestion", phase: "update", completed: 1, total: 4 });
     expect(browserFirstLoad.get()).toMatchObject({ completed: 1, total: 4 });
@@ -343,13 +349,16 @@ describe("dashboard data startup", () => {
     const startupOptions = options();
     const stop = await startDashboardData(startupOptions);
     await vi.waitFor(() => expect(browserFirstLoad.get().status).toBe("failed"));
+    expect(dashboardDataStatus.get()).toEqual({ phase: "stale", snapshot: null });
     expect(document.querySelector("dialog")?.textContent).toContain("could not finish");
     browserFirstLoad.set((current) => ({ ...current, dismissed: true }));
     dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue({ createdAt: "2026-09-28T12:00:00.000Z" });
     startupOptions.browserWindow.dispatchEvent(new Event("dashboard-refresh-request"));
     expect(browserFirstLoad.get().status).toBe("loading");
+    expect(dashboardDataStatus.get().phase).toBe("loading");
     expect(document.querySelector("dialog")?.open).toBe(false);
     await vi.waitFor(() => expect(browserFirstLoad.get().status).toBe("inactive"));
+    expect(dashboardDataStatus.get().phase).toBe("ready");
     stop();
     vi.restoreAllMocks();
   });
@@ -379,6 +388,19 @@ describe("dashboard data startup", () => {
     expect(document.querySelector("dialog")).toBeNull();
     expect(browserFirstLoad.get().status).toBe("inactive");
     expect(dataProcessor.subscribeWorkerLoadingProgress).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("publishes hosted refresh completion without requiring a local snapshot or a page rerender", async () => {
+    const marker = document.createElement("meta");
+    marker.name = "dashboard-data-backend";
+    marker.content = "server-http";
+    document.head.append(marker);
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: true });
+    const stop = await startDashboardData(options());
+    await vi.waitFor(() => expect(dashboardDataStatus.get()).toEqual({ phase: "ready", snapshot: null }));
+    expect(calls).not.toContain("render:ready");
     stop();
   });
 

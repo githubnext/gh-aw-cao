@@ -14,6 +14,26 @@ function observation(kind, sourceId, observedAt, data, source = 'dashboard-sourc
 }
 
 describe('canonical normalization', () => {
+  it('keeps measured usage through sparse refreshes but not across run attempts', () => {
+    const run = { owner: 'octo', repository: 'api', githubRunId: '303', attempt: 1 };
+    const measured = observation('run', 'measured', '2026-10-01T00:00:00Z',
+      { ...run, aicTotal: 2.5, inputTokens: 100, outputTokens: 0 });
+    const sparse = observation('run', 'refresh', '2026-10-02T00:00:00Z',
+      { ...run, aicTotal: null, inputTokens: null, outputTokens: null, conclusion: 'success' });
+    expect(normalize([sparse, measured]).runs[0]).toMatchObject({
+      aicTotal: 2.5, inputTokens: 100, outputTokens: 0, conclusion: 'success'
+    });
+    expect(normalize([measured, {
+      ...sparse, data: { ...sparse.data, aicTotal: 0 }
+    }]).runs[0]).toMatchObject({ aicTotal: 0 });
+    expect(normalize([measured, {
+      ...sparse, data: { ...run, attempt: 2, aicTotal: null }
+    }]).runs[0]).toMatchObject({ attempt: 2, aicTotal: null });
+    expect(normalize([measured, {
+      ...sparse, data: { ...run, attempt: 2 }
+    }]).runs[0]).not.toHaveProperty('inputTokens');
+  });
+
   it('normalizes marketplace packages without credential-shaped fields', () => {
     const batch = normalize([observation(
       'marketplace-package',
@@ -174,6 +194,20 @@ describe('canonical normalization', () => {
         value: 0.5
       }
     ]);
+  });
+
+  it('deduplicates standalone operational values without colliding with campaign measurements', () => {
+    const common = { repository: 'octo/api', valueId: 'remaining-alerts', timestamp: '2026-09-24T10:00:00Z', value: 0 };
+    const standalone = observation('operational-value', 'standalone', common.timestamp, common);
+    const batch = normalize([
+      standalone, standalone,
+      observation('operational-value', 'campaign', common.timestamp, { ...common, campaign: 'alpha', value: 4 })
+    ]);
+    expect(batch.operationalValues).toHaveLength(2);
+    expect(batch.operationalValues.find(row => row.campaign === undefined)?.value).toBe(0);
+    expect(new Set(batch.operationalValues.map(row => row.id)).size).toBe(2);
+    expect(batch.operationalValues.find(row => row.campaign === 'alpha')?.id)
+      .toBe(`operational-value:${encodeURIComponent(`alpha:octo/api:remaining-alerts:${common.timestamp}`)}`);
   });
 
   it('orders run-linked records independently of ingestion order', () => {

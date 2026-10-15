@@ -7,6 +7,7 @@ import { createFactoryScope } from './factory-elements.js';
 import { effect, state } from '../reactive.js';
 import { assertActionLevel, normalizeAction, actionPresentation } from '../action-model.js';
 import { createDialogSelector } from './dialog-selector.js';
+import { createCliTerminal } from './cli-terminal.js';
 
 const debugCliActions = createDebug('cli-actions');
 
@@ -37,8 +38,9 @@ export function declaredAgentTaskActionId() {
  * @param {Record<string, string>} templateValues
  * @param {(event: { stream: 'stdout'|'stderr', data: string }) => void} onOutput
  * @param {string | undefined} [input]
+ * @param {AbortSignal} [signal]
  */
-async function executeAction(id, argumentsValue, templateValues, onOutput, input) {
+async function executeAction(id, argumentsValue, templateValues, onOutput, input, signal) {
   /** @type {Record<string, unknown>} */
   const payload = { id, arguments: argumentsValue };
   if (Object.keys(templateValues).length > 0) payload.values = templateValues;
@@ -46,7 +48,8 @@ async function executeAction(id, argumentsValue, templateValues, onOutput, input
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal
   });
   if (!response.ok) {
     const result = await response.json().catch(() => null);
@@ -58,7 +61,7 @@ async function executeAction(id, argumentsValue, templateValues, onOutput, input
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  /** @type {{ ok: boolean, error?: string, stdout?: string, stderr?: string } | undefined} */
+  /** @type {{ ok: boolean, exitCode?: number | null, error?: string, stdout?: string, stderr?: string } | undefined} */
   let result;
   /** @param {string} line */
   const consume = (line) => {
@@ -136,7 +139,7 @@ export function createPromptCliActionControl(actionId, getPrompt, options = {}) 
         busy.set(false);
       }
     }
-  }, options.level === 'operate' ? `Confirm ${options.label ?? 'operation'}` : 'Start agent task'));
+  }, options.level === 'operate' ? options.label ?? action.label : 'Start agent task'));
   effect(() => {
     button.disabled = busy.get();
     status.textContent = statusText.get();
@@ -190,8 +193,7 @@ function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
   const canExecute = options.canExecute !== false && action['copy-only'] !== true;
-  const confirmationLabel = action.selector ? presentation.label
-    : presentation.confirmation ? `Confirm ${presentation.label}` : `Run ${presentation.label}`;
+  const confirmationLabel = presentation.label;
   const templateValues = { ...options.templateValues };
   const preview = () => action.selector && !templateValues[action.selector.mapping.target]
     ? 'Select a repository to review the command.'
@@ -248,7 +250,10 @@ function renderCliActionControl(action, options = {}) {
     onFallbackClose: () => trigger.focus()
   });
   const close = () => {
-    if (busy.get()) return;
+    if (busy.get()) {
+      cancelRun();
+      return;
+    }
     selector?.cancel();
     closeModal();
   };
@@ -263,16 +268,70 @@ function renderCliActionControl(action, options = {}) {
   });
   const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'cli-action-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
+  const inlineOutput = h('div', { className: 'cli-action-terminal-output', hidden: true }, output);
+  /** @type {Awaited<ReturnType<typeof createCliTerminal>> | undefined} */
+  let terminal;
 
-  // `busy`, `statusText`, `outputVisible`, `outputText`, and `confirmLabel` are
-  // the dialog's entire executable-run state; the effect below is the only
-  // place that writes them onto the owned `status`/`output`/`confirm` nodes.
   const scope = createFactoryScope();
   const busy = state(false);
   const statusText = state('');
   const outputVisible = state(false);
-  const outputText = state('');
-  const confirmLabel = state(confirmationLabel);
+  const showTerminalWindow = state(false);
+  const terminalReady = state(false);
+  const cancelling = state(false);
+  /** @type {AbortController | undefined} */
+  let runController;
+  const cancelRun = () => {
+    if (!runController || cancelling.get()) return;
+    cancelling.set(true);
+    statusText.set('Cancelling command…');
+    runController.abort();
+  };
+  const terminalCheckbox = /** @type {HTMLInputElement} */ (h('input', {
+    type: 'checkbox',
+    checked: false,
+    onChange: (/** @type {Event} */ event) => {
+      showTerminalWindow.set(/** @type {HTMLInputElement} */ (event.currentTarget).checked);
+    }
+  }));
+  const { dialog: terminalDialog, open: openTerminal, close: closeTerminal } = createModalDialog({
+    className: 'cli-action-dialog cli-action-terminal-dialog',
+    ariaLabel: `Terminal: ${action.label}`,
+    onFallbackClose: () => (busy.get() ? cancel : terminalCheckbox).focus()
+  });
+  const terminalStatus = renderLiveRegion('output', 'cli-action-terminal-status');
+  const terminalBody = h('div', { className: 'cli-action-dialog-body' });
+  const terminalCancel = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'cli-action-cancel',
+    onClick: cancelRun
+  }, 'Cancel command'));
+  const terminalClose = h('button', {
+    type: 'button',
+    className: 'cli-action-cancel',
+    onClick: () => showTerminalWindow.set(false)
+  }, 'Close terminal');
+  terminalDialog.append(
+    h('header', { className: 'cli-action-dialog-header' },
+      h('h2', null, `Terminal: ${action.label}`),
+      renderCloseButton({
+        className: 'cli-action-dialog-close',
+        label: 'Close terminal window',
+        onClick: () => showTerminalWindow.set(false)
+      })
+    ),
+    terminalBody,
+    h('footer', { className: 'cli-action-dialog-footer' }, terminalStatus, terminalCancel, terminalClose)
+  );
+  terminalDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showTerminalWindow.set(false);
+  });
+  terminalDialog.addEventListener('close', (event) => {
+    event.stopPropagation();
+    if (!terminalDialog.open && dialog.open) (busy.get() ? cancel : terminalCheckbox).focus();
+  });
   const selectionReady = state(!action.selector);
   const selector = action.selector ? createDialogSelector(action.id, action.selector, {
     signal: scope.signal,
@@ -281,8 +340,6 @@ function renderCliActionControl(action, options = {}) {
       if (!target) return;
       statusText.set('');
       outputVisible.set(false);
-      outputText.set('');
-      confirmLabel.set(confirmationLabel);
       if (value === null) delete templateValues[target];
       else templateValues[target] = value;
       try {
@@ -306,42 +363,80 @@ function renderCliActionControl(action, options = {}) {
       type: 'button',
       className: 'cli-action-confirm',
       onClick: async () => {
-        if (busy.get() || !selectionReady.get()) return;
+        if (busy.get() || outputVisible.get() || !selectionReady.get()) return;
+        const controller = new AbortController();
+        runController = controller;
+        const abort = () => controller.abort();
+        scope.signal.addEventListener('abort', abort, { once: true });
+        cancelling.set(false);
         busy.set(true);
         statusText.set('Running…');
-        outputText.set('');
         outputVisible.set(true);
+        cancel.focus();
         debugCliActions({ event: 'execute-started', actionId: action.id });
         try {
+          if (!terminal) {
+            terminal = await createCliTerminal(scope.signal);
+            output.replaceWith(terminal.root);
+            terminalReady.set(true);
+          }
+          terminal.root.hidden = false;
+          controller.signal.throwIfAborted();
+          terminal.write(`$ ${commandPreviewText.get()}\r\n`);
+          let hasOutput = false;
           const result = await executeAction(action.id, argumentValues, templateValues, ({ data }) => {
-            outputText.set((current) => current + data);
-            output.scrollTop = output.scrollHeight;
-          });
+            hasOutput = true;
+            terminal?.write(data);
+          }, undefined, controller.signal);
           statusText.set(result.ok ? 'Completed' : (result.error || 'Action failed'));
-          if (!outputText.get()) outputText.set(resultText(result));
-          confirmLabel.set(`${confirmationLabel} again`);
+          if (!hasOutput) terminal.write(resultText(result));
+          const exitStatus = Number.isInteger(result.exitCode) ? ` (exit ${result.exitCode})` : '';
+          terminal.write(`\r\n${result.ok ? 'Completed' : result.error || 'Action failed'}${exitStatus}\r\n`);
           debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
         } catch (error) {
-          statusText.set(error instanceof Error ? error.message : 'Action failed.');
+          const message = controller.signal.aborted
+            ? 'Cancelled. Completed changes are not undone.'
+            : error instanceof Error ? error.message : 'Action failed.';
+          statusText.set(message);
+          terminal?.write(`\r\n${message}\r\n`);
           debugCliActions({
             event: 'execute-failed',
             actionId: action.id,
             errorName: error instanceof Error ? error.name : 'UnknownError'
           });
         } finally {
+          scope.signal.removeEventListener('abort', abort);
+          runController = undefined;
+          cancelling.set(false);
           busy.set(false);
         }
       }
     }, 'Run action'));
   if (canExecute) {
     effect(() => {
-      confirm.disabled = busy.get() || !selectionReady.get();
-      cancel.disabled = busy.get();
-      selector?.setDisabled(busy.get());
+      dialog.classList.toggle('cli-action-running', busy.get());
+      terminalDialog.classList.toggle('cli-action-running', busy.get());
+      confirm.hidden = outputVisible.get();
+      confirm.disabled = busy.get() || outputVisible.get() || !selectionReady.get();
+      cancel.disabled = cancelling.get();
+      cancel.textContent = busy.get() ? 'Cancel command' : outputVisible.get() ? 'Close' : 'Cancel';
+      for (const { input } of inputs) input.disabled = busy.get() || outputVisible.get();
+      selector?.setDisabled(busy.get() || outputVisible.get());
       status.textContent = statusText.get();
       output.hidden = !outputVisible.get();
-      output.textContent = outputText.get();
-      confirm.textContent = confirmLabel.get();
+      if (terminal) terminal.root.hidden = !outputVisible.get();
+      confirm.textContent = confirmationLabel;
+      terminalCheckbox.checked = showTerminalWindow.get();
+      terminalStatus.textContent = statusText.get();
+      terminalCancel.hidden = !busy.get();
+      terminalClose.hidden = busy.get();
+      terminalCancel.disabled = cancelling.get();
+      const terminalOpen = outputVisible.get() && terminalReady.get() && showTerminalWindow.get();
+      inlineOutput.hidden = !outputVisible.get() || terminalOpen;
+      const terminalParent = terminalOpen ? terminalBody : inlineOutput;
+      if (terminal && terminal.root.parentNode !== terminalParent) terminalParent.append(terminal.root);
+      if (terminalOpen && !terminalDialog.open) openTerminal();
+      else if (!terminalOpen && terminalDialog.open) closeTerminal();
     }, { signal: scope.signal });
   }
   trigger = /** @type {HTMLButtonElement} */ (h(
@@ -360,7 +455,8 @@ function renderCliActionControl(action, options = {}) {
         if (canExecute) {
           statusText.set('');
           outputVisible.set(false);
-          confirmLabel.set(confirmationLabel);
+          showTerminalWindow.set(false);
+          if (terminal) terminal.root.hidden = true;
         }
         resetArguments();
         selector?.reset();
@@ -407,7 +503,14 @@ function renderCliActionControl(action, options = {}) {
           : 'This command is declared as read-only investigation. Review its exact target and command before running.'
         : 'Copy this command and run it in your terminal.'),
       command,
-      canExecute ? output : null
+      canExecute ? h('label', { className: 'cli-action-argument' },
+        terminalCheckbox,
+        h('span', null,
+          h('strong', null, 'Open terminal window'),
+          h('small', null, 'Output appears here by default. Closing the terminal window does not cancel the command.')
+        )
+      ) : null,
+      canExecute ? inlineOutput : null
     ),
     h('footer', { className: 'cli-action-dialog-footer' }, status, cancel, confirm)
   );
@@ -416,11 +519,14 @@ function renderCliActionControl(action, options = {}) {
     trigger.focus();
   });
   dialog.addEventListener('cancel', (event) => {
-    if (busy.get()) event.preventDefault();
+    if (busy.get()) {
+      event.preventDefault();
+      cancelRun();
+    }
     else selector?.cancel();
   });
   scope.bind(trigger);
-  return { trigger, dialog };
+  return { trigger, dialog, terminalDialog: canExecute ? terminalDialog : null };
 }
 
 /**
@@ -432,7 +538,7 @@ function renderCliActionControl(action, options = {}) {
 export function renderRowCliAction(actionId, templateValues, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action) return null;
-  const { trigger, dialog } = renderCliActionControl({
+  const { trigger, dialog, terminalDialog } = renderCliActionControl({
     ...action,
     ...(options.level && { level: options.level }),
     ...(options.verb && { verb: options.verb }),
@@ -444,7 +550,7 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
     canExecute: declaredCliActionsCanExecute,
     showRowLabel: options.showLabel === true
   });
-  return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
+  return h('span', { className: 'table-cli-action-control' }, trigger, dialog, terminalDialog);
 }
 
 /**
@@ -459,7 +565,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
     templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
     canExecute: declaredCliActionsCanExecute
   });
-  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
+  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog, rendered.terminalDialog);
 }
 
 /**
@@ -515,9 +621,10 @@ export function renderCliActions(actions, options = {}) {
 
   for (const declared of visibleActions) {
     const action = { ...normalizeAction(declared, { id: declared.id, type: 'cli' }), ...declared };
-    const { trigger, dialog } = renderCliActionControl(action, options);
+    const { trigger, dialog, terminalDialog } = renderCliActionControl(action, options);
     list.append(trigger);
     root.append(dialog);
+    if (terminalDialog) root.append(terminalDialog);
   }
   return root;
 }

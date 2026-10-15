@@ -5,8 +5,6 @@ sidebar:
   order: 1361
 ---
 
-# Control Policy
-
 Use this page when changing campaign enablement, rollout, target authority, or
 worker admission. `.github/workflows/cao.json` is the sole persistent non-secret
 CAO policy authority: CAO governs rollout and target authority, while gh-aw

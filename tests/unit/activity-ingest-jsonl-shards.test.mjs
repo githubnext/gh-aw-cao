@@ -129,14 +129,14 @@ async function queryTransactions(databasePath) {
   return JSON.parse(stdout).filter((transaction) => transaction.kind !== 'audit-curation');
 }
 
-test('schema-v4 shards ingest and publish normalized payloads without CLI help output', async () => {
+test('schema-v5 shards ingest and publish normalized payloads without CLI help output', async () => {
   const { root, shardDirectory, databasePath } = await fixture();
   try {
     const input = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
     const original = await readFile(input, 'utf8');
     const content = original.trim().split('\n').map((line) => {
       const envelope = JSON.parse(line);
-      envelope.schema_version = 4;
+      envelope.schema_version = 5;
       return JSON.stringify(envelope);
     }).join('\n') + '\n';
     await writeFile(input, content);
@@ -158,7 +158,7 @@ test('schema-v4 shards ingest and publish normalized payloads without CLI help o
     assert.ok(Object.keys(hashes).some((name) => name.startsWith('gh-aw-logs-runs/')));
     assert.doesNotMatch(stderr, /Usage:/);
 
-    await writeFile(input, '{"schema_version":5,"kind":"run","run":{}}\n');
+    await writeFile(input, '{"schema_version":6,"kind":"run","run":{}}\n');
     await assert.rejects(
       execFileAsync(process.execPath, [
         path.resolve('activity/cao.mjs'), 'ingest-jsonl',
@@ -167,7 +167,7 @@ test('schema-v4 shards ingest and publish normalized payloads without CLI help o
       (error) => {
         assert.equal(error.code, 1);
         assert.equal(error.stdout, '');
-        assert.match(error.stderr, /Unsupported gh-aw JSONL schema version at line 1: 5/);
+        assert.match(error.stderr, /Unsupported gh-aw JSONL schema version at line 1: 6/);
         assert.doesNotMatch(error.stderr, /Usage:/);
         return true;
       },

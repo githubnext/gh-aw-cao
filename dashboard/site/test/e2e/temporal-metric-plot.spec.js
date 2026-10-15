@@ -3,8 +3,17 @@ import observations from '../fixtures/campaign-operational-value-observations.js
 
 registerSmokeRoutes();
 
-for (const width of [1200, 390]) {
-  test(`operational-value tooltip opens the observed run report at ${width}px`, async ({ page, context }) => {
+for (const { width, history } of [1200, 390].flatMap((width) =>
+  ['single', 'gap', 'consecutive', 'legacy-consecutive', 'legacy-gap'].map((history) => ({ width, history })))) {
+  const singleObservation = history === 'single';
+  const consecutive = history.endsWith('consecutive');
+  const rows = (singleObservation ? observations.slice(0, 1) : observations).map((row, index) => ({
+    ...row,
+    ...(history.startsWith('legacy') ? {} : { 'evaluator-digest': 'a'.repeat(64) }),
+    ...(consecutive && index === 1 ? { 'observed-at': '2026-09-23T20:56:21Z' } : {}),
+    ...(history.startsWith('legacy') ? { 'cadence-days': undefined } : {})
+  }));
+  test(`operational-value ${history} tooltip opens the observed run report at ${width}px`, async ({ page, context }) => {
     await page.setViewportSize({ width, height: 844 });
     await context.route('https://github.com/githubnext/gh-aw-cao/actions/runs/101', (route) => route.fulfill({
       contentType: 'text/html', body: '<h1>Run report 101</h1>'
@@ -21,11 +30,11 @@ for (const width of [1200, 390]) {
         const sources = processDataRequest({
           operation: 'execute-dashboard-queries',
           queries: ${JSON.stringify(authoritativeDashboard.dashboard.queries)},
-          sourceNames: ['campaign-operational-value-primary-series'],
+          sourceNames: ['operational-value-plot-series'],
           sources: {
             'operational-values': {
               source: 'operational-values',
-              rows: ${JSON.stringify(observations)},
+              rows: ${JSON.stringify(rows)},
               metadata: {
                 'source-id': 'value-fixture', 'source-kind': 'fixture',
                 'as-of': '2026-09-24T20:56:21Z', 'retrieved-at': '2026-09-24T20:56:21Z',
@@ -36,8 +45,8 @@ for (const width of [1200, 390]) {
         });
         document.querySelector('#root').append(renderMeasureHistory({
           title: 'Repository operational value',
-          pageId: 'campaign-insights',
-          sourceNames: ['campaign-operational-value-primary-series'],
+          pageId: 'operational-value-campaign',
+          sourceNames: ['operational-value-plot-series'],
           sources,
           elementConfig: { 'measure-source': 'operational-value' },
           contextDetails: [],
@@ -45,6 +54,24 @@ for (const width of [1200, 390]) {
         }));
       </script>
     `);
+    await expect(page.locator('.temporal-plot-observation-count')).toContainText(
+      singleObservation ? '1 observation; trend unavailable' : '2 observation times'
+    );
+    await expect(page.locator('.temporal-plot-metric')).toHaveCount(consecutive && !history.startsWith('legacy') ? 1 : 0);
+    await expect(page.locator('.temporal-plot-evidence-dates')).toContainText('Latest observation is not a live measurement');
+    await expect(page.locator('.temporal-plot-trend')).toHaveCount(0);
+    await expect(page.locator('.temporal-plot-comparison-note')).not.toBeVisible();
+    await expect(page.locator('.temporal-plot-coverage-note')).not.toBeVisible();
+    await expect(page.locator('.temporal-plot-continuity-note')).not.toBeVisible();
+    await expect(page.locator('.temporal-plot-latest-date')).toBeVisible();
+    const disclosure = page.getByText('Evidence details', { exact: true });
+    await disclosure.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.temporal-plot-comparison-note')).toContainText('not a combined trend');
+    await expect(page.locator('.temporal-plot-continuity-note')).toContainText('missing provenance');
+    await expect(page.locator('.temporal-plot-coverage-note')).toContainText('Source-window coverage is not recorded here');
+    await disclosure.click();
+    await expect(page.locator('.temporal-plot-coverage-note')).not.toBeVisible();
     const point = page.locator('.temporal-plot-point-trigger').first();
     await point.hover();
     const link = page.getByRole('link', { name: 'View run 101' });

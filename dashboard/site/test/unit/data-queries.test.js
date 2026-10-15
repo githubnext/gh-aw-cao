@@ -197,12 +197,12 @@ describe('declarative dashboard queries', () => {
   });
 
   it.each([
-    ['delivering value', { successes: 0, failures: 0, active: 0, graders: 1 }, 'Your campaigns are delivering value.'],
-    ['active', { successes: 0, failures: 2, active: 1, graders: 0 }, 'Your campaigns are humming.'],
-    ['under strain', { successes: 1, failures: 2, active: 0, graders: 0 }, 'Your campaigns are under strain.'],
-    ['needs attention', { successes: 2, failures: 1, active: 0, graders: 0 }, 'Your campaigns need attention.'],
-    ['successful', { successes: 1, failures: 0, active: 0, graders: 0 }, 'Your campaigns are humming.'],
-    ['idle', { successes: 0, failures: 0, active: 0, graders: 0 }, 'Your campaigns are idle.']
+    ['delivering value', { successes: 0, failures: 0, active: 0, graders: 1 }, 'Your factory is delivering value.'],
+    ['active', { successes: 0, failures: 2, active: 1, graders: 0 }, 'Your factory is humming.'],
+    ['under strain', { successes: 1, failures: 2, active: 0, graders: 0 }, 'Your factory is under strain.'],
+    ['needs attention', { successes: 2, failures: 1, active: 0, graders: 0 }, 'Your factory needs attention.'],
+    ['successful', { successes: 1, failures: 0, active: 0, graders: 0 }, 'Your factory is humming.'],
+    ['idle', { successes: 0, failures: 0, active: 0, graders: 0 }, 'Your factory is idle.']
   ])('classifies factory status as %s in Dashboard Language', (_state, counts, expected) => {
     const runs = [
       ...Array.from({ length: counts.successes }, (_, index) => ({ run: `success-${index}`, 'run-conclusion': 'success', 'run-status': 'completed' })),
@@ -237,7 +237,7 @@ describe('declarative dashboard queries', () => {
     );
 
     expect(result['overview-factory-status'].metadata.availability).toBe('available');
-    expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your campaigns are humming.' }]);
+    expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your factory is humming.' }]);
   });
 
   it('uses retained failure descriptions as campaign problem titles', () => {
@@ -334,24 +334,31 @@ describe('declarative dashboard queries', () => {
         },
         runs: { source: 'runs', rows: [], metadata: metadata('runs') },
         'overview-runs': overviewRuns([]),
-        workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'one.md' },
+            { organization: 'github', repository: 'target', workflow: 'two.yml' }
+          ],
+          metadata: metadata('workflows')
+        },
         'grader-observations': {
           source: 'grader-observations',
           rows: [{ grader: 'value-created' }],
           metadata: metadata('grader-observations')
         }
       },
-      ['overview-header-presentation', 'overview-campaign-station']
+      ['overview-header-presentation', 'overview-factory-station']
     );
 
     expect(result['overview-header-presentation'].rows).toEqual([{
-      heading: 'Your campaigns are delivering value.'
+      heading: 'Your factory is delivering value.'
     }]);
-    expect(result['overview-campaign-station'].rows).toEqual([{
+    expect(result['overview-factory-station'].rows).toEqual([{
       value: 1,
       'display-value': '100%',
-      detail: '2/2 healthy campaigns',
-      description: '100% campaign health',
+      detail: '2/2 healthy workflows',
+      description: '100% factory health',
       active: false
     }]);
   });
@@ -533,22 +540,21 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
-  it('counts campaigns used by the Overview presentation queries', () => {
+  it('keeps Factory health undefined when no workflows are registered', () => {
     const sources = {
-      campaigns: {
-        source: 'campaigns',
-        rows: [{ id: 'campaign:activity', campaign: 'activity' }, { id: 'campaign:dashboard', campaign: 'dashboard' }],
-        metadata: metadata('campaigns')
-      }
+      workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
+      'overview-runs': overviewRuns([])
     };
 
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-campaign-count']
+      ['overview-factory-health-presentation']
     );
 
-    expect(result['database-campaign-count'].rows).toEqual([{ campaigns: 2 }]);
+    expect(result['overview-factory-health-presentation'].rows).toEqual([
+      expect.objectContaining({ 'factory-health': null })
+    ]);
   });
 
   it('derives one compiler upgrade decision per repository', () => {
@@ -1556,10 +1562,28 @@ describe('declarative dashboard queries', () => {
 
   describe('join operator edge cases', () => {
     /**
-     * @typedef {{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
+     * @typedef {{ source: string, type?: 'inner'|'left'|'inner-many', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
      */
     /** @param {TestJoin[]} joins */
     const query = (joins) => ({ name: 'join-test', from: 'left', joins });
+    it('expands only explicit many joins in stable input order and drops unmatched keys', () => {
+      const result = executeDashboardQuery(query([join({ type: 'inner-many' })]), {
+        left: source('left', [{ id: 'a', order: 1 }, { id: 'none' }, { id: 'a', order: 2 }, { id: null }]),
+        right: source('right', [{ id: 'a', value: 9 }, { id: 'a', value: 0 }, { id: null, value: 3 }])
+      });
+      expect(result.metadata.availability).toBe('available');
+      expect(result.rows).toEqual([
+        { id: 'a', order: 1, 'joined-value': 9 }, { id: 'a', order: 1, 'joined-value': 0 },
+        { id: 'a', order: 2, 'joined-value': 9 }, { id: 'a', order: 2, 'joined-value': 0 }
+      ]);
+    });
+    it('charges expanded matches against the operation budget before materializing all rows', () => {
+      const budget = createDashboardQueryBudget({ maxOperations: 40 });
+      expect(() => executeDashboardQuery(query([join({ type: 'inner-many' })]), {
+        left: source('left', Array.from({ length: 10 }, () => ({ id: 'a' }))),
+        right: source('right', Array.from({ length: 10 }, (_, value) => ({ id: 'a', value })))
+      }, undefined, budget).rows).toThrow(DashboardQueryCancelledError);
+    });
     /**
      * @param {Partial<TestJoin>} [overrides]
      * @returns {TestJoin}

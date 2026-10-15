@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ import (
 var collectLog = logger.New("cao:operationalvalue")
 
 const (
+	// DefaultRetention keeps compact outcome observations independent of run detail.
+	DefaultRetention       = 365 * 24 * time.Hour
 	baselineObservations   = 3
 	maxHistoryObservations = 366
 	defaultWorkerTimeout   = 2 * time.Minute
@@ -69,6 +72,7 @@ type script struct {
 }
 
 type definition struct {
+	HistoryBatch   bool
 	WorkflowSlug   string
 	AdoptedAt      time.Time
 	EvaluationMode string
@@ -78,6 +82,7 @@ type definition struct {
 }
 
 type definitionRecord struct {
+	HistoryBatch   bool     `json:"historyBatch"`
 	Kind           string   `json:"kind"`
 	WorkflowSlug   string   `json:"workflowSlug"`
 	AdoptedAt      string   `json:"adoptedAt"`
@@ -88,6 +93,16 @@ type definitionRecord struct {
 }
 
 type valueRecord struct {
+	WindowStart       *string  `json:"windowStart"`
+	WindowEnd         *string  `json:"windowEnd"`
+	MeasurementKind   *string  `json:"measurementKind"`
+	CoverageStatus    *string  `json:"coverageStatus"`
+	MissingReason     *string  `json:"missingReason"`
+	EligibleCount     *float64 `json:"eligibleCount"`
+	PopulationDigest  *string  `json:"populationDigest"`
+	EvidenceDigest    *string  `json:"evidenceDigest"`
+	CadenceDays       *float64 `json:"cadenceDays"`
+	EvaluatorDigest   *string  `json:"evaluatorDigest"`
 	Timestamp         string   `json:"timestamp"`
 	Repository        string   `json:"repository"`
 	ValueID           string   `json:"valueId"`
@@ -117,12 +132,22 @@ type envelope struct {
 }
 
 type operationalValue struct {
+	WindowStart       *string  `json:"window_start,omitempty"`
+	WindowEnd         *string  `json:"window_end,omitempty"`
+	MeasurementKind   *string  `json:"measurement_kind,omitempty"`
+	CoverageStatus    *string  `json:"coverage_status,omitempty"`
+	MissingReason     *string  `json:"missing_reason,omitempty"`
+	EligibleCount     *float64 `json:"eligible_count,omitempty"`
+	PopulationDigest  *string  `json:"population_digest,omitempty"`
+	EvidenceDigest    *string  `json:"evidence_digest,omitempty"`
+	CadenceDays       *float64 `json:"cadence_days,omitempty"`
+	EvaluatorDigest   *string  `json:"evaluator_digest,omitempty"`
 	Timestamp         string   `json:"timestamp"`
 	Repository        string   `json:"repository"`
 	Campaign          string   `json:"campaign"`
 	CampaignID        string   `json:"campaign_id"`
 	ValueID           string   `json:"value_id"`
-	Value             float64  `json:"value"`
+	Value             *float64 `json:"value"`
 	MetricRole        string   `json:"metric_role"`
 	MetricName        string   `json:"metric_name"`
 	MetricUnit        *string  `json:"metric_unit,omitempty"`
@@ -217,17 +242,41 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 			if len(supported) == 0 {
 				continue
 			}
+			if item.HistoryBatch {
+				for _, retainedItem := range retained {
+					value := retainedItem.OperationalValue
+					if value.Campaign == entry.campaign && slices.Contains(item.ValueIDs, value.ValueID) {
+						retainedKeys[cadenceKey(value, item)] = struct{}{}
+					}
+				}
+			}
 			times, historyErr := historicalTimes(item, observedAt, config.Retention)
 			if historyErr != nil {
 				result.Warnings = append(result.Warnings, historyErr.Error())
 				break historyDefinitions
 			}
+			var missing []time.Time
 			for _, timestamp := range times {
 				if historyComplete(entry.campaign, supported, item.ValueIDs, timestamp, retainedKeys) {
 					continue
 				}
+				missing = append(missing, timestamp)
+			}
+			var batches [][]time.Time
+			if item.HistoryBatch && len(missing) > 0 {
+				batches = append(batches, missing)
+			} else {
+				for _, timestamp := range missing {
+					batches = append(batches, []time.Time{timestamp})
+				}
+			}
+			for _, batch := range batches {
+				var historyTimes []time.Time
+				if item.HistoryBatch {
+					historyTimes = batch
+				}
 				history, historyErr := runAdapter(
-					ctx, config, entry, timestamp, supported, item.WorkflowSlug,
+					ctx, config, entry, batch[len(batch)-1], supported, item.WorkflowSlug, historyTimes...,
 				)
 				if historyErr != nil {
 					result.Warnings = append(result.Warnings, historyErr.Error())
@@ -238,8 +287,12 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 					expected[valueID] = struct{}{}
 				}
 				valid := true
+				expectedTimes := make(map[string]bool, len(batch))
+				for _, timestamp := range batch {
+					expectedTimes[formatTimestamp(timestamp)] = true
+				}
 				for _, value := range history.values {
-					if value.Timestamp != formatTimestamp(timestamp) {
+					if !expectedTimes[value.Timestamp] {
 						valid = false
 					}
 					if _, ok := expected[value.ValueID]; !ok {
@@ -252,9 +305,17 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 					break historyDefinitions
 				}
 				historyEnvelopes := envelopes(entry.campaign, history.values)
-				values = append(values, historyEnvelopes...)
-				result.HistoryValues += len(historyEnvelopes)
 				for _, value := range historyEnvelopes {
+					if _, exists := retainedKeys[valueKey(value.OperationalValue)]; exists {
+						continue
+					}
+					if value.OperationalValue.WindowStart != nil {
+						if _, exists := retainedKeys[cadenceKey(value.OperationalValue, item)]; exists {
+							continue
+						}
+					}
+					values = append(values, value)
+					result.HistoryValues++
 					retainedKeys[valueKey(value.OperationalValue)] = struct{}{}
 				}
 			}
@@ -324,13 +385,22 @@ func runAdapter(
 	timestamp time.Time,
 	repositories []string,
 	module string,
+	historyTimes ...time.Time,
 ) (parsedOutput, error) {
-	request, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"schemaVersion": 1,
 		"timestamp":     formatTimestamp(timestamp),
 		"repositories":  repositories,
 		"database":      absolute(config.Database),
-	})
+	}
+	if len(historyTimes) > 0 {
+		timestamps := make([]string, len(historyTimes))
+		for index, timestamp := range historyTimes {
+			timestamps[index] = formatTimestamp(timestamp)
+		}
+		payload["historyTimestamps"] = timestamps
+	}
+	request, err := json.Marshal(payload)
 	if err != nil {
 		return parsedOutput{}, err
 	}
@@ -354,6 +424,7 @@ func runAdapter(
 	command.Env = append([]string{}, config.Environment...)
 	command.Env = append(command.Env,
 		"CAO_DATABASE="+absolute(config.Database),
+		"CAO_ACTIVITY_CLI="+absolute(filepath.Join(config.Root, "activity", "cao.mjs")),
 		"CAO_OPERATIONAL_VALUE_TIMESTAMP="+formatTimestamp(config.ObservedAt),
 	)
 	if module != "" {
@@ -586,6 +657,7 @@ func validateDefinition(
 		WorkflowSlug: record.WorkflowSlug, AdoptedAt: adoptedAt,
 		EvaluationMode: record.EvaluationMode, CadenceDays: record.CadenceDays,
 		Repositories: repositories, ValueIDs: append([]string{}, record.ValueIDs...),
+		HistoryBatch: record.HistoryBatch,
 	}, nil
 }
 
@@ -610,8 +682,17 @@ func validateValue(
 	if !identifierPattern.MatchString(record.ValueID) {
 		return fmt.Errorf("%s:%d.valueId must be a lowercase metric identifier", source, line)
 	}
-	if record.Value == nil || math.IsNaN(*record.Value) || math.IsInf(*record.Value, 0) {
+	if err := validatePeriod(record, fields, timestamp, source, line); err != nil {
+		return err
+	}
+	unavailable := fieldIsNull(fields, "value") && record.WindowStart != nil &&
+		record.MissingReason != nil && record.MaturityStatus != nil && *record.MaturityStatus == "unavailable"
+	if !unavailable && (record.Value == nil || math.IsNaN(*record.Value) || math.IsInf(*record.Value, 0)) {
 		return fmt.Errorf("%s:%d.value must be a finite number", source, line)
+	}
+	if fieldIsNull(fields, "cadenceDays") || (record.CadenceDays != nil &&
+		(math.IsNaN(*record.CadenceDays) || math.IsInf(*record.CadenceDays, 0) || *record.CadenceDays <= 0)) {
+		return fmt.Errorf("%s:%d.cadenceDays must be a positive finite number", source, line)
 	}
 	if record.MetricRole != nil && *record.MetricRole != "primary" && *record.MetricRole != "diagnostic" {
 		return fmt.Errorf("%s:%d.metricRole must be primary or diagnostic", source, line)
@@ -653,6 +734,10 @@ func validateValue(
 			!oneOf(*record.EvaluationMode, "baseline-comparable", "attainment-only")) {
 		return fmt.Errorf("%s:%d.evaluationMode is invalid", source, line)
 	}
+	if fieldIsNull(fields, "evaluatorDigest") ||
+		(record.EvaluatorDigest != nil && !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(*record.EvaluatorDigest)) {
+		return fmt.Errorf("%s:%d.evaluatorDigest must be a SHA-256 fingerprint", source, line)
+	}
 	for name, value := range map[string]*string{
 		"workflowSlug": record.WorkflowSlug, "workflowName": record.WorkflowName,
 	} {
@@ -670,11 +755,49 @@ func validateValue(
 	_, hasNumerator := fields["rollupNumerator"]
 	_, hasDenominator := fields["rollupDenominator"]
 	if hasNumerator != hasDenominator ||
+		(record.Value == nil && hasNumerator) ||
 		(hasNumerator &&
 			(record.RollupNumerator == nil || record.RollupDenominator == nil ||
 				!finiteNonNegative(*record.RollupNumerator) ||
 				!finitePositive(*record.RollupDenominator))) {
 		return fmt.Errorf("%s:%d must emit a valid rollup numerator and denominator together", source, line)
+	}
+	return nil
+}
+
+func validatePeriod(record *valueRecord, fields map[string]json.RawMessage, observed time.Time, source string, line int) error {
+	hasPeriod := false
+	for _, name := range []string{"windowStart", "windowEnd", "measurementKind", "coverageStatus"} {
+		_, present := fields[name]
+		hasPeriod = hasPeriod || present
+	}
+	if hasPeriod {
+		if record.WindowStart == nil || record.WindowEnd == nil || record.MeasurementKind == nil || record.CoverageStatus == nil {
+			return fmt.Errorf("%s:%d must emit a valid measurement period and coverage", source, line)
+		}
+		start, startErr := parseTimestamp(*record.WindowStart)
+		end, endErr := parseTimestamp(*record.WindowEnd)
+		if startErr != nil || endErr != nil || !start.Before(end) || end.After(observed) ||
+			!oneOf(*record.MeasurementKind, "interval", "snapshot") ||
+			!oneOf(*record.CoverageStatus, "complete", "partial", "missing", "unknown") {
+			return fmt.Errorf("%s:%d must emit a valid measurement period and coverage", source, line)
+		}
+		*record.WindowStart, *record.WindowEnd = formatTimestamp(start), formatTimestamp(end)
+	}
+	for name, value := range map[string]*string{"populationDigest": record.PopulationDigest, "evidenceDigest": record.EvidenceDigest} {
+		if fieldIsNull(fields, name) || (value != nil && !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(*value)) {
+			return fmt.Errorf("%s:%d.%s must be a SHA-256 fingerprint", source, line, name)
+		}
+	}
+	if fieldIsNull(fields, "eligibleCount") || (record.EligibleCount != nil &&
+		(!finiteNonNegative(*record.EligibleCount) || math.Trunc(*record.EligibleCount) != *record.EligibleCount || *record.EligibleCount > 9007199254740991)) {
+		return fmt.Errorf("%s:%d.eligibleCount must be a non-negative safe integer", source, line)
+	}
+	if fieldIsNull(fields, "missingReason") || (record.MissingReason != nil && strings.TrimSpace(*record.MissingReason) == "") {
+		return fmt.Errorf("%s:%d.missingReason must be a non-empty string", source, line)
+	}
+	if record.MissingReason != nil {
+		*record.MissingReason = strings.TrimSpace(*record.MissingReason)
 	}
 	return nil
 }
@@ -700,11 +823,17 @@ func envelopes(campaign string, records []valueRecord) []envelope {
 			OperationalValue: operationalValue{
 				Timestamp: record.Timestamp, Repository: record.Repository,
 				Campaign: campaign, CampaignID: "campaign:" + campaign,
-				ValueID: record.ValueID, Value: *record.Value,
+				ValueID: record.ValueID, Value: record.Value,
+				WindowStart: record.WindowStart, WindowEnd: record.WindowEnd,
+				MeasurementKind: record.MeasurementKind, CoverageStatus: record.CoverageStatus,
+				MissingReason: record.MissingReason, EligibleCount: record.EligibleCount,
+				PopulationDigest: record.PopulationDigest, EvidenceDigest: record.EvidenceDigest,
 				MetricRole: role, MetricName: name, MetricUnit: record.MetricUnit,
 				MetricDirection: direction, MaturityStatus: maturity,
 				AdoptionAt: record.AdoptionAt, EvaluationMode: record.EvaluationMode,
 				WorkflowSlug: record.WorkflowSlug, WorkflowName: record.WorkflowName,
+				EvaluatorDigest:   record.EvaluatorDigest,
+				CadenceDays:       record.CadenceDays,
 				RollupNumerator:   record.RollupNumerator,
 				RollupDenominator: record.RollupDenominator,
 			},
@@ -830,6 +959,8 @@ func historicalTimes(
 	origin := item.AdoptedAt
 	if item.EvaluationMode == "baseline-comparable" {
 		origin = origin.Add(-baselineObservations * cadence)
+	} else {
+		origin = origin.Add(cadence)
 	}
 	cutoff := origin
 	if retainedCutoff := observedAt.Add(-retention); retainedCutoff.After(cutoff) {
@@ -873,6 +1004,15 @@ func definitionKey(campaign, valueID string) string {
 }
 
 func cadenceKey(value operationalValue, item definition) string {
+	if value.WindowStart != nil && value.WindowEnd != nil && value.MeasurementKind != nil {
+		digest := "unversioned"
+		if value.EvaluatorDigest != nil {
+			digest = *value.EvaluatorDigest
+		}
+		return strings.ToLower(value.Campaign) + "\x00" + strings.ToLower(value.Repository) +
+			"\x00" + value.ValueID + "\x00" + digest + "\x00" + *value.MeasurementKind +
+			"\x00" + *value.WindowStart + "\x00" + *value.WindowEnd
+	}
 	cadence := time.Duration(item.CadenceDays * float64(day))
 	timestamp, _ := parseTimestamp(value.Timestamp)
 	bucket := math.Ceil(float64(timestamp.Sub(item.AdoptedAt)) / float64(cadence))

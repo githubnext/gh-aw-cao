@@ -7,9 +7,10 @@ import {
   workflowCoordinateId,
   workflowSourcePath
 } from '../model/ids.js';
-import { canonicalTimestamp, requiredString } from '../model/schema.js';
+import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
+import { parseUnifiedSession } from './unified-session.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -522,10 +523,38 @@ function repositoryCoordinates(repositoryName, fallbackOwner = '') {
 function preferNewer(left, right) {
   const rightIsNewer = Date.parse(right.observedAt) > Date.parse(left.observedAt)
     || (right.observedAt === left.observedAt && right.line > left.line);
-  if (!rightIsNewer) return left;
+  const newer = rightIsNewer ? right : left;
+  const older = rightIsNewer ? left : right;
+  const attempt = (/** @type {Record<string, unknown>} */ value) => Number(value.run_attempt ?? value.attempt ?? 1);
+  if (attempt(newer.value) !== attempt(older.value)) return newer;
+  const value = { ...older.value, ...newer.value };
+  for (const field of ['aic', 'token_usage_summary', 'token_usage']) {
+    if (value[field] == null && older.value[field] != null) value[field] = older.value[field];
+  }
+  for (const field of ['token_usage_summary', 'token_usage']) {
+    const previous = older.value[field];
+    const current = newer.value[field];
+    if (!previous || typeof previous !== 'object' || Array.isArray(previous)
+        || !current || typeof current !== 'object' || Array.isArray(current)) continue;
+    const previousSummary = objectValue(previous, `run.${field}`);
+    const summary = { ...previousSummary, ...objectValue(current, `run.${field}`) };
+    for (const key of ['total_aic', 'total_input_tokens', 'total_output_tokens',
+      'total_cache_read_tokens', 'total_cache_write_tokens']) {
+      if (summary[key] == null && typeof previousSummary[key] === 'number' && Number.isFinite(previousSummary[key])) {
+        summary[key] = previousSummary[key];
+      }
+    }
+    value[field] = summary;
+  }
+  const currentAic = runMetadata(newer.value).aicTotal;
+  const summaryField = value.token_usage_summary != null ? 'token_usage_summary' : 'token_usage';
+  const summary = value[summaryField];
+  if (currentAic !== null && summary && typeof summary === 'object' && !Array.isArray(summary)) {
+    value[summaryField] = { ...objectValue(summary, `run.${summaryField}`), total_aic: currentAic };
+  }
   return {
-    ...right,
-    value: { ...left.value, ...right.value }
+    ...newer,
+    value
   };
 }
 
@@ -674,8 +703,8 @@ function firewallEvents(runId, file) {
 }
 
 /**
- * Converts gh-aw's raw agent, gateway, and firewall JSONL files into its
- * unified timeline vocabulary for one canonical Run.
+ * Prefers gh-aw's published unified session, with raw agent, gateway, and
+ * firewall JSONL as the legacy fallback for one canonical Run.
  *
  * @param {unknown} input
  * @param {string} runId
@@ -684,6 +713,12 @@ function firewallEvents(runId, file) {
 export function adaptGhAwTimelineFiles(input, runId) {
   const canonicalRunId = requiredString(runId, 'gh-aw logs runId');
   const files = logFiles(input);
+  const sessions = files.filter((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
+  if (sessions.length > 1) throw new TypeError('Multiple unified sessions found for one run');
+  if (sessions.length === 1) {
+    const file = sessions[0];
+    return sessionObservations(parseUnifiedSession(file.content, file.path), file.path, canonicalRunId);
+  }
   const gateway = files.find((file) => /(^|\/)gateway\.jsonl$/.test(file.path));
   const rpc = gateway ? undefined : files.find((file) => /(^|\/)rpc-messages\.jsonl$/.test(file.path));
   return [
@@ -693,10 +728,24 @@ export function adaptGhAwTimelineFiles(input, runId) {
   ];
 }
 
+/** @param {unknown} input @param {string} path @param {string} runId */
+function sessionObservations(input, path, runId) {
+  if (!Array.isArray(input)) throw new TypeError('Unified session evidence must be an array');
+  return input.map((value) => {
+    const event = objectValue(value, 'unified session evidence');
+    return eventObservation(
+      runId, path, positiveInteger(event.line, 'session line'),
+      canonicalTimestamp(event.timestamp, 'session timestamp'),
+      requiredString(event.source, 'session source'), requiredString(event.type, 'session type'),
+      objectValue(event.fields, 'session fields')
+    );
+  });
+}
+
 /**
  * Converts raw gh-aw run artifact files into a complete canonical observation
- * graph. The input carries GitHub identity context; Event data remains sourced
- * from gh-aw's agent, gateway, and firewall JSONL files.
+ * graph. The input carries GitHub identity context; events come from the
+ * published unified session or legacy agent, gateway, and firewall files.
  *
  * @param {unknown} input
  * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
@@ -1070,12 +1119,12 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.workflow_path`
       );
       const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-      positiveInteger(
+      const runAttempt = positiveInteger(
         run.run_attempt ?? 1,
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
       const id = runId(coordinates.owner, coordinates.name, githubRunId);
-      if (hasReportIncompleteOutcome(run)) reportIncompleteRunIds.add(id);
+      if (hasReportIncompleteOutcome(run)) reportIncompleteRunIds.add(`${id}:${runAttempt}`);
       const observedAt = canonicalTimestamp(
         run.updated_at ?? run.created_at,
         `gh-aw JSONL line ${line}.run.updated_at`
@@ -1167,16 +1216,37 @@ function createCachedGhAwJsonlAccumulator(options) {
     const campaignId = typeof value.campaign_id === 'string' && value.campaign_id.trim()
       ? value.campaign_id.trim()
       : campaign ? sourceId('campaign', 'inventory', campaign) : undefined;
+    const period = operationalValuePeriod(Object.fromEntries(
+      Object.entries(OPERATIONAL_VALUE_PERIOD_FIELDS).flatMap(([key, canonical]) => {
+        const transport = canonical.replaceAll('-', '_');
+        return Object.hasOwn(value, transport) ? [[key, value[transport]]] : [];
+      })
+    ), observedAt, `gh-aw JSONL line ${line}.operational_value`);
     const metric = finiteNumber(value.value);
-    if (metric === null) {
+    const unavailable = value.value === null && period.windowStart
+      && period.missingReason && value.maturity_status === 'unavailable';
+    if (metric === null && !unavailable) {
       throw new TypeError(`gh-aw JSONL line ${line}.operational_value.value must be a finite number`);
     }
     const hasRollupNumerator = Object.hasOwn(value, 'rollup_numerator');
+    const cadenceDays = value.cadence_days;
+    if (Object.hasOwn(value, 'cadence_days') && (
+      typeof cadenceDays !== 'number' || !Number.isFinite(cadenceDays) || cadenceDays <= 0
+    )) {
+      throw new TypeError(`gh-aw JSONL line ${line}.operational_value.cadence_days must be a positive finite number`);
+    }
+    const evaluatorDigest = value.evaluator_digest;
+    if (Object.hasOwn(value, 'evaluator_digest') && (
+      typeof evaluatorDigest !== 'string' || !/^[0-9a-f]{64}$/.test(evaluatorDigest)
+    )) {
+      throw new TypeError(`gh-aw JSONL line ${line}.operational_value.evaluator_digest must be a SHA-256 fingerprint`);
+    }
     const hasRollupDenominator = Object.hasOwn(value, 'rollup_denominator');
     const rollupNumerator = finiteNumber(value.rollup_numerator);
     const rollupDenominator = finiteNumber(value.rollup_denominator);
     if (
       hasRollupNumerator !== hasRollupDenominator
+      || (metric === null && hasRollupNumerator)
       || (hasRollupNumerator && (
         rollupNumerator === null
         || rollupDenominator === null
@@ -1221,6 +1291,10 @@ function createCachedGhAwJsonlAccumulator(options) {
         'evaluation-mode': optionalString(value.evaluation_mode),
         'workflow-slug': optionalString(value.workflow_slug),
         'workflow-name': optionalString(value.workflow_name),
+        'evaluator-digest': evaluatorDigest,
+        ...Object.fromEntries(Object.entries(OPERATIONAL_VALUE_PERIOD_FIELDS)
+          .flatMap(([key, canonical]) => Object.hasOwn(period, key) ? [[canonical, period[key]]] : [])),
+        ...(cadenceDays !== undefined ? { 'cadence-days': cadenceDays } : {}),
         ...(hasRollupNumerator ? {
           'rollup-numerator': rollupNumerator,
           'rollup-denominator': rollupDenominator
@@ -1279,7 +1353,8 @@ function createCachedGhAwJsonlAccumulator(options) {
     const structural = /** @type {CachedRun} */ (enriched ?? raw);
     const { repository, workflow } = structuralIds(structural);
     const rawValue = raw?.value ?? {};
-    const enrichedValue = enriched?.value ?? {};
+    const enrichedValue = enriched && (!raw || Number(raw.value.attempt ?? 1) === Number(enriched.value.run_attempt ?? 1))
+      ? enriched.value : {};
     const githubRunId = identifier(
       rawValue.databaseId ?? enrichedValue.run_id,
       `${id}.githubRunId`
@@ -1291,7 +1366,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const metadata = runMetadata(enrichedValue);
     const failure = runFailureMetadata(rawValue, enrichedValue);
     const aggregates = runAggregates(enrichedValue);
-    const reportIncomplete = reportIncompleteRunIds.has(id);
+    const reportIncomplete = reportIncompleteRunIds.has(`${id}:${attempt}`);
     const title = optionalString(rawValue.displayTitle)
       ?? optionalString(enrichedValue.display_title)
       ?? `Run ${githubRunId}`;
@@ -1494,6 +1569,15 @@ function createCachedGhAwJsonlAccumulator(options) {
 
   for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
     const run = enriched.value;
+    const raw = rawRuns.get(id);
+    if (raw && Number(raw.value.attempt ?? 1) !== Number(run.run_attempt ?? 1)) continue;
+    const session = run.cao_unified_session === undefined ? null
+      : objectValue(run.cao_unified_session, 'run.cao_unified_session');
+    if (session) {
+      const sessionPath = requiredString(session.path, 'run.cao_unified_session.path');
+      if (session.version !== 1) throw new TypeError('Unsupported unified session evidence version');
+      observations.push(...sessionObservations(session.events, sessionPath, id));
+    }
     const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
       ? /** @type {Record<string, unknown>} */ (run.aw_info)
       : {};
@@ -1973,7 +2057,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       && runMcpToolUsage.tool_calls.length > 0
       ? runMcpToolUsage
       : auditMcpToolUsage;
-    const toolCalls = Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
+    const toolCalls = !session && Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
     toolCalls.forEach((toolCall, index) => {
       const record = toolCall && typeof toolCall === 'object' && !Array.isArray(toolCall)
         ? /** @type {Record<string, unknown>} */ (toolCall)
@@ -2055,7 +2139,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const skillActivationsValue = Object.hasOwn(run, 'skill_activations')
       ? run.skill_activations
       : audit.skill_activations;
-    const skillActivations = Array.isArray(skillActivationsValue) ? skillActivationsValue : [];
+    const skillActivations = !session && Array.isArray(skillActivationsValue) ? skillActivationsValue : [];
     skillActivations.forEach((entry, index) => {
       const record = entry && typeof entry === 'object' && !Array.isArray(entry)
         ? /** @type {Record<string, unknown>} */ (entry)
@@ -2102,7 +2186,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       && !Array.isArray(firewallAnalysis.requests_by_domain)
       ? /** @type {Record<string, unknown>} */ (firewallAnalysis.requests_by_domain)
       : {};
-    for (const [host, counts] of Object.entries(requestsByDomain)) {
+    for (const [host, counts] of Object.entries(session ? {} : requestsByDomain)) {
       const domain = firewallDomain(host);
       if (!domain || !counts || typeof counts !== 'object' || Array.isArray(counts)) continue;
       const record = /** @type {Record<string, unknown>} */ (counts);

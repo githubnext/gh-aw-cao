@@ -1,0 +1,53 @@
+{
+  "plotPresentationContract": {
+    "viewOrder": ["repository-outcome-history", "repository-outcome-comparison"],
+    "comparisonDisclosure": "Comparison details",
+    "pointMetadataFields": ["plot-context-key", "plot-max-gap-days", "plot-provisional", "plot-point-description", "evaluator-digest", "maturity-status", "cadence-days", "window-start", "window-end", "adoption-at", "evaluation-mode"]
+  },
+  "plotHorizonContract": {
+    "page": "operational-value-repository",
+    "filterBar": true,
+    "start": "2026-09-17T11:00:00Z",
+    "end": "2026-09-24T11:00:00Z",
+    "startField": "plot-window-start-ms",
+    "endField": "plot-window-end-ms"
+  },
+  "repositorySummaryContract": {
+    "page": "operational-value",
+    "view": "operational-value-signals",
+    "source": "operational-value-measured-repositories",
+    "fields": ["repository-coordinate", "signal", "goals", "evidence-reason", "oldest-evidence-at", "newest-evidence-at"]
+  },
+  "views": [
+    { "page": "operational-value", "id": "operational-value-summary", "source": "operational-value-overview-summary" },
+    { "page": "operational-value", "id": "operational-value-signals", "source": "operational-value-measured-repositories" },
+    { "page": "operational-value", "id": "operational-value-unmeasured", "source": "operational-value-unmeasured-repositories" },
+    { "page": "operational-value-evidence", "id": "operational-value-coverage", "source": "operational-value-repository-coverage" },
+    { "page": "operational-value-evidence", "id": "operational-value-latest", "source": "operational-value-latest" },
+    { "page": "operational-value-evidence", "id": "operational-value-direction-chart", "source": "operational-value-direction-repositories" }
+  ],
+  "repositories": [
+    { "organization": "octo", "repository": "api" },
+    { "organization": "octo", "repository": "unmeasured" }
+  ],
+  "campaigns": [
+    { "campaign": "alpha", "campaign-name": "Alpha" },
+    { "campaign": "beta", "campaign-name": "Beta" },
+    { "campaign": "unmeasured", "campaign-name": "No retained measurements" }
+  ],
+  "workflows": [
+    { "campaign": "alpha", "workflow": "alpha-worker", "repository": "control", "organization": "ops" },
+    { "campaign": "beta", "workflow": "beta-worker", "repository": "control", "organization": "ops" }
+  ],
+  "runs": [
+    { "workflow": "alpha-worker", "repository": "control", "organization": "ops", "run": "101", "run-attempt": 1, "started-at": "2026-09-23T09:00:00Z", "run-status": "completed", "run-conclusion": "success" },
+    { "workflow": "alpha-worker", "repository": "control", "organization": "ops", "run": "102", "run-attempt": 1, "started-at": "2026-09-23T09:00:00Z", "run-status": "completed", "run-conclusion": "failure" },
+    { "workflow": "beta-worker", "repository": "control", "organization": "ops", "run": "103", "run-attempt": 1, "started-at": "2026-09-24T09:00:00Z", "run-status": "completed", "run-conclusion": "success" }
+  ],
+  "observations": [
+    { "id": "a1", "campaign": "alpha", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Remaining alerts", "operational-value-role": "primary", "operational-value-unit": "alerts", "operational-value-direction": "decrease", "operational-value": 4, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-23T10:00:00Z", "measurement-kind": "snapshot", "cadence-days": 1, "coverage-status": "complete", "window-start": "2026-09-22T10:00:00Z", "window-end": "2026-09-23T10:00:00Z" },
+    { "id": "a2", "campaign": "alpha", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Remaining alerts", "operational-value-role": "primary", "operational-value-unit": "alerts", "operational-value-direction": "decrease", "operational-value": 0, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-24T10:00:00Z", "measurement-kind": "snapshot", "cadence-days": 1, "coverage-status": "complete", "window-start": "2026-09-23T10:00:00Z", "window-end": "2026-09-24T10:00:00Z" },
+    { "id": "b1", "campaign": "beta", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Accepted changes", "operational-value-role": "primary", "operational-value-unit": "changes", "operational-value-direction": "increase", "operational-value": 0, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-23T10:00:00Z", "measurement-kind": "interval", "cadence-days": 1, "coverage-status": "complete", "window-start": "2026-09-22T10:00:00Z", "window-end": "2026-09-23T10:00:00Z" },
+    { "id": "b2", "campaign": "beta", "organization": "octo", "repository": "api", "operational-value-definition": "worker.remaining", "operational-value-name": "Accepted changes", "operational-value-role": "primary", "operational-value-unit": "changes", "operational-value-direction": "increase", "operational-value": 3, "maturity-status": "matured", "adoption-at": "2026-09-01T00:00:00Z", "evaluation-mode": "attainment-only", "evaluator-digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "observed-at": "2026-09-24T10:00:00Z", "measurement-kind": "interval", "cadence-days": 1, "coverage-status": "complete", "window-start": "2026-09-23T10:00:00Z", "window-end": "2026-09-24T10:00:00Z" }
+  ]
+}

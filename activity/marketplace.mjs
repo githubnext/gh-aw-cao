@@ -110,21 +110,37 @@ function includes(source) {
 
 export function parsePackageManifest(source, coordinates) {
   if (Buffer.byteLength(source) > MAX_MANIFEST_BYTES) throw new Error("package manifest exceeds size limit");
+  const workflow = coordinates.format === "workflows";
+  let body = "";
+  if (workflow) {
+    const document = source.replace(/\r\n/g, "\n").match(/^---\n([\s\S]*?)\n---(?:\n|$)([\s\S]*)$/);
+    if (!document || !/^on[ \t]*:/m.test(document[1])) return null;
+    source = document[1];
+    body = document[2].trim();
+    if (scalar(source, "private") === "true") return null;
+  }
   const readme = typeof coordinates.readme === "string" ? coordinates.readme : "";
-  const readmePath = readme ? String(coordinates.readmePath ?? "") : "";
-  const name = scalar(source, "name");
+  const readmePath = readme ? String(coordinates.readmePath ?? "") : workflow && body ? coordinates.path : "";
+  const name = scalar(source, "name") || (workflow
+    ? body.match(/^#\s+(.+)$/m)?.[1]?.trim() || coordinates.path.split("/").at(-1).replace(/\.md$/, "")
+    : "");
   if (!name) throw new Error("package manifest name is required");
-  const contents = includes(source);
+  const contents = workflow ? [coordinates.path] : includes(source);
   const version = scalar(source, "version") || coordinates.ref;
-  const packagePath = coordinates.path.replace(/\/?aw\.yml$/, "");
+  const packagePath = workflow ? coordinates.path : coordinates.path.replace(/\/?aw\.yml$/, "");
   const sourceCoordinate = `${coordinates.repository}${packagePath ? `/${packagePath}` : ""}@${coordinates.resolvedCommit}`;
+  let description = scalar(source, "description");
+  if (workflow && /^[|>][-+]?$/.test(description)) {
+    const lines = source.match(/^description:[ \t]*[|>][-+]?[ \t]*\n((?:[ \t]+[^\n]*(?:\n|$)|\n)*)/m)?.[1] ?? "";
+    description = lines.trim().split("\n").map((line) => line.trim()).join(description.startsWith(">") ? " " : "\n");
+  }
   return {
     id: `${coordinates.repository}${packagePath ? `/${packagePath}` : ""}`.toLowerCase(),
     "registry-id": coordinates.registryId,
     "registry-name": coordinates.registryName,
     "registry-precedence": coordinates.precedence,
     name,
-    description: scalar(source, "description"),
+    description,
     publisher: coordinates.repository.split("/")[0],
     repository: coordinates.repository,
     "repository-link": repositoryLink(coordinates.repository, coordinates.apiUrl ?? "https://api.github.com"),
@@ -135,10 +151,10 @@ export function parsePackageManifest(source, coordinates) {
     icon: scalar(source, "icon").replace(/^:([a-z0-9]+(?:-[a-z0-9]+)*):$/, "$1") || "workflow",
     artwork: scalar(source, "artwork") || "",
     contents,
-    readme,
+    readme: readme || (workflow ? body : ""),
     "readme-path": readmePath,
     source: sourceCoordinate,
-    "add-command": `./cao.sh add ${sourceCoordinate}`,
+    "add-command": `${workflow ? "gh aw" : "./cao.sh"} add ${sourceCoordinate}`,
     stars: coordinates.repositoryCounts?.stars ?? null,
     forks: coordinates.repositoryCounts?.forks ?? null,
   };
@@ -150,6 +166,9 @@ function validateRegistry(registry, index) {
   if (!REPOSITORY_PATTERN.test(registry.repository ?? "")) throw new Error(`registry ${registry.id} repository is invalid`);
   if (typeof registry.ref !== "string" || !registry.ref.trim()) throw new Error(`registry ${registry.id} ref is required`);
   if (!SAFE_PATH_PATTERN.test(registry.path ?? "")) throw new Error(`registry ${registry.id} path is invalid`);
+  if (registry.format !== undefined && !["packages", "workflows"].includes(registry.format)) {
+    throw new Error(`registry ${registry.id} format must be packages or workflows`);
+  }
   return {
     ...registry,
     path: String(registry.path ?? "").replace(/^\/|\/$/g, ""),
@@ -234,13 +253,16 @@ async function resolveRegistry(registry, precedence, options) {
     throw new Error("registry tree is unavailable or truncated");
   }
   const prefix = registry.path ? `${registry.path}/` : "";
+  const workflow = registry.format === "workflows";
   const manifests = treePayload.tree
     .filter((entry) => entry?.type === "blob"
       && typeof entry.path === "string"
       && entry.path.startsWith(prefix)
-      && entry.path.endsWith("/aw.yml")
-      && entry.path !== `${prefix}aw.yml`)
-    .filter((entry) => !INTERNAL_PACKAGES.has(entry.path.slice(prefix.length).split("/", 1)[0]))
+      && (workflow
+        ? SAFE_PATH_PATTERN.test(entry.path)
+          && /^[^/]+\.md$/.test(entry.path.slice(prefix.length)) && !/^readme\.md$/i.test(entry.path.slice(prefix.length))
+        : entry.path.endsWith("/aw.yml") && entry.path !== `${prefix}aw.yml`))
+    .filter((entry) => workflow || !INTERNAL_PACKAGES.has(entry.path.slice(prefix.length).split("/", 1)[0]))
     .slice(0, MAX_PACKAGES_PER_REGISTRY);
   const readmes = readmeEntries(treePayload.tree, prefix);
   return Promise.all(manifests.map(async (entry) => {
@@ -248,13 +270,16 @@ async function resolveRegistry(registry, precedence, options) {
     const blob = await blobResponse.json();
     if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new Error("package manifest blob is invalid");
     const manifest = Buffer.from(blob.content.replace(/\s/g, ""), "base64").toString("utf8");
-    if (scalar(manifest, "private") === "true") return null;
-    const readmeEntry = readmes.get(entry.path.slice(0, -"aw.yml".length));
+    if (!workflow && scalar(manifest, "private") === "true") return null;
+    const readmeEntry = workflow
+      ? treePayload.tree.find((candidate) => candidate.type === "blob" && candidate.path === `docs/${entry.path.split("/").at(-1)}`)
+      : readmes.get(entry.path.slice(0, -"aw.yml".length));
     const readme = readmeEntry
       ? await fetchReadme(readmeEntry, { base, repositoryPath, token, fetchImpl: options.fetchImpl })
       : "";
     return parsePackageManifest(manifest, {
       registryId: registry.id,
+      format: registry.format,
       registryName: registry.name,
       precedence,
       repository: registry.repository,

@@ -776,7 +776,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },
@@ -965,7 +965,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },
@@ -1102,7 +1102,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },
@@ -1267,7 +1267,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },
@@ -1417,7 +1417,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },
@@ -1557,7 +1557,7 @@
         "tabs": [
           {
             "id": "insights",
-            "label": "Operational Value",
+            "label": "Insights",
             "icon": "graph",
             "page": "campaign-insights"
           },

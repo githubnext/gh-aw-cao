@@ -15,7 +15,10 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	if definition.Link != "" && definition.Shape != "panels" {
 		return SQLRelation{}, errors.New("temporal link requires panels")
 	}
-	if len(definition.Carry) > 16 || len(definition.Measures) > 64 || len(definition.Maps) > 64 ||
+	if definition.PointCarry != nil && (definition.Shape != "panels" || len(definition.PointCarry) == 0) {
+		return SQLRelation{}, errors.New("temporal point-carry requires panels and 1 to 16 fields")
+	}
+	if len(definition.Carry) > 16 || len(definition.PointCarry) > 16 || len(definition.Measures) > 64 || len(definition.Maps) > 64 ||
 		len(definition.Measures)+len(definition.Maps) == 0 {
 		return SQLRelation{}, errors.New("invalid temporal-series declaration bounds")
 	}
@@ -77,6 +80,21 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		}
 		link = "CASE WHEN " + column.Presence + " THEN jsonb_build_object('link', " +
 			column.Expression + ") ELSE '{}'::jsonb END"
+	}
+	if len(definition.PointCarry) > 0 {
+		metadata := "'{}'::jsonb"
+		for _, field := range definition.PointCarry {
+			if field == "" {
+				return SQLRelation{}, errors.New("temporal point-carry requires non-empty fields")
+			}
+			column := sqlField(input, field)
+			if column.Kind == SQLStructured {
+				return SQLRelation{}, errors.New("temporal point-carry requires scalar fields")
+			}
+			metadata += " || CASE WHEN " + column.Presence + " THEN jsonb_build_object(" +
+				c.bind(field) + "::text, " + column.Expression + ") ELSE '{}'::jsonb END"
+		}
+		link += " || jsonb_build_object('metadata', " + metadata + ")"
 	}
 	var branches []string
 	appendBranch := func(declaration int, entry, metric, key, name, kind, group, value, lateral string) {

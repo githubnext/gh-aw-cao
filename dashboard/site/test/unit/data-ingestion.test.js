@@ -84,6 +84,36 @@ afterEach(() => {
 });
 
 describe('database table ingestion and queries', () => {
+  it('keeps cached credit enrichment when only the raw run-list shard changes', async () => {
+    const options = { now: Date.parse('2026-10-10T00:00:00Z') };
+    const measured = JSON.stringify({
+      schema_version: 2, kind: 'run',
+      run: {
+        run_id: 303, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+        workflow_name: 'Worker', workflow_path: '.github/workflows/worker.lock.yml',
+        created_at: '2026-10-09T00:00:00Z', updated_at: '2026-10-09T00:01:00Z',
+        status: 'completed', conclusion: 'success', token_usage_summary: { total_aic: 172.72252 }
+      }
+    });
+    const enrichment = { ...options, payloadScope: 'enrichment-shard' };
+    await ingestCachedGhAwJsonl(indexedDB, measured, enrichment);
+    const raw = (/** @type {number} */ attempt) => JSON.stringify({
+      schema_version: 2, kind: 'workflow_runs',
+      request: { host: 'github.com', repository: 'octo/api', args: ['run', 'list'] },
+      payload: [{
+        databaseId: 303, attempt, workflowName: 'Worker',
+        createdAt: '2026-10-09T00:00:00Z', updatedAt: '2026-10-09T00:02:00Z',
+        status: 'completed', conclusion: 'success'
+      }]
+    });
+    await ingestCachedGhAwJsonl(indexedDB, raw(1), { ...options, payloadScope: 'run-list-shard' });
+    await expect(ingestCachedGhAwJsonl(indexedDB, measured, enrichment))
+      .resolves.toMatchObject({ skipped: true });
+    expect((await readCanonicalBatch(indexedDB)).runs[0]).toMatchObject({ aicTotal: 172.72252, attempt: 1 });
+    await ingestCachedGhAwJsonl(indexedDB, raw(2), { ...options, payloadScope: 'run-list-shard' });
+    expect((await readCanonicalBatch(indexedDB)).runs[0]).toMatchObject({ aicTotal: null, attempt: 2 });
+  });
+
   it('streams normalized JSONL across chunk boundaries and skips published repeats', async () => {
     await ingestDashboardSources(indexedDB, sources);
     const inventoryRepository = (await readCanonicalBatch(indexedDB)).repositories[0];
@@ -823,9 +853,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v7$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v9$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 7,
+        ingestionVersion: 9,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),

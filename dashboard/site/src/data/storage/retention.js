@@ -6,6 +6,8 @@ const debugRetention = createDebug('retention');
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+export const OPERATIONAL_VALUE_RETENTION_DAYS = 365;
+export const OPERATIONAL_VALUE_RETENTION_MS = OPERATIONAL_VALUE_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
@@ -52,6 +54,7 @@ const RUN_LINKED_STORES = /** @type {const} */ ([
 ]);
 export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
   runs: Number.MAX_SAFE_INTEGER,
+  operationalValues: OPERATIONAL_VALUE_RETENTION_MS,
   ...Object.fromEntries(RUN_LINKED_STORES.map((store) => [store, 7 * 24 * 60 * 60 * 1000]))
 });
 

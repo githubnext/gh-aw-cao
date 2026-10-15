@@ -1,6 +1,195 @@
 import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import valueTracking from '../fixtures/operational-value-tracking.json' with { type: 'json' };
 
 registerSmokeRoutes();
+
+test('persisted display horizons settle without restarting page queries as the clock advances', async ({ page }) => {
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      import { HORIZON_FILTER_STORAGE_KEY } from 'http://dashboard.test/src/components/filter-bar.js';
+      let clock = Date.parse('2026-10-15T08:00:00Z');
+      Date.now = () => clock += 1000;
+      localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: '30d' }));
+      let loads = 0;
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'stable-horizon', title: 'Stable horizon',
+            defaults: { time: { range: '1w' } },
+            pages: [{
+              id: 'runs', kind: 'custom', title: 'Runs', 'filter-bar': true,
+              views: [{ id: 'runs-table', data: { source: 'runs' }, mark: 'table',
+                encoding: { columns: [{ field: 'run' }] } }]
+            }]
+          }
+        },
+        sources: {},
+        loadPageSources: async () => {
+          document.body.dataset.pageQueryLoads = String(++loads);
+          if (loads > 4) localStorage.removeItem(HORIZON_FILTER_STORAGE_KEY);
+          return {};
+        }
+      }));
+    </script>
+  `);
+  await expect(page.locator('.horizon-toggle')).toHaveAttribute('aria-label', /Horizon 30 days/);
+  await expect(page.locator('body')).toHaveAttribute('data-page-query-loads', '2');
+  await page.locator('.horizon-toggle').click();
+  await expect(page.getByRole('combobox', { name: 'Time window' })).toHaveValue('30d');
+  await expect(page.locator('body')).toHaveAttribute('data-page-query-loads', '2');
+});
+
+for (const width of [1200, 390]) {
+  for (const unversioned of [false, true]) {
+  test(`Operational Value offers repository-first overview, standalone outcomes and native drill-down at ${width}px (${unversioned ? 'unversioned' : 'comparable'})`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.setContent(`
+      <div id="root"></div>
+      <script type="module">
+        import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+        import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
+        import { configureSourceLoader } from 'http://dashboard.test/src/source-store.js';
+        import { dashboardViewAliasName } from 'http://dashboard.test/src/data/queries/view-payload-compiler.js';
+        const documentModel = ${JSON.stringify(authoritativeDashboard)};
+        const fixture = ${JSON.stringify(valueTracking)};
+        const metadata = {
+          'source-id': 'value-tracking', 'source-kind': 'fixture',
+          'as-of': '2026-09-24T10:00:00Z', 'retrieved-at': '2026-09-24T10:00:00Z',
+          completeness: 'complete', freshness: 'unknown', availability: 'available'
+        };
+        localStorage.setItem('central-agentic-ops.dashboard.horizon-filter-settings', JSON.stringify({ range: 'all' }));
+        window.location.hash = '#page-operational-value';
+        const rawSources = {
+          repositories: { source: 'repositories', metadata, rows: fixture.repositories },
+          workflows: { source: 'workflows', metadata, rows: fixture.workflows },
+          runs: { source: 'runs', metadata, rows: fixture.runs },
+          'operational-values': { source: 'operational-values', metadata, rows: fixture.observations.map(row =>
+            ${unversioned} ? { ...row, 'evaluator-digest': undefined } : row).concat(${unversioned} ? [] : [{
+              ...fixture.observations[0], id: 'legacy-alpha', 'evaluator-digest': undefined, 'observed-at': '2026-09-22T10:00:00Z'
+            }]).concat([{
+              ...fixture.observations[1], campaign: undefined, repository: 'standalone',
+              workflow: '.github/workflows/standalone.md', id: 'standalone-zero'
+            }]) }
+        };
+        const prepared = await Promise.all([
+          prepareDashboardViewSources(documentModel, 'operational-value', rawSources, { evaluatedAt: metadata['as-of'] }),
+          prepareDashboardViewSources(documentModel, 'operational-value-evidence', rawSources, { evaluatedAt: metadata['as-of'] }),
+          prepareDashboardViewSources(documentModel, 'campaign-insights', rawSources, { evaluatedAt: metadata['as-of'], routeParameters: { campaign: 'alpha' } }),
+          prepareDashboardViewSources(documentModel, 'operational-value-repository', rawSources, {
+            evaluatedAt: metadata['as-of'], routeParameters: { organization: 'octo', repository: 'api' }
+          })
+        ]);
+        const sources = Object.assign({}, ...prepared);
+        configureSourceLoader(async (name, request) => {
+          const resolved = await prepareDashboardViewSources(documentModel, request.pageId, rawSources, {
+            ...request, evaluatedAt: metadata['as-of']
+          });
+          const alias = dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex, name, request.sourceIndex);
+          return resolved[alias];
+        });
+        document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      </script>
+    `);
+    const view = page.locator('[data-page-id="operational-value"]');
+    await expect(view).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Operational Value', exact: true })).toBeVisible();
+    await expect(view.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(view.getByText(`2 of 3 repositories measured · ${unversioned ? 0 : 2} comparable goals`, { exact: true })).toBeVisible();
+    const signals = view.locator('[data-view-id="operational-value-signals"] .entity-card-list-card');
+    await expect(signals).toHaveCount(2);
+    await expect(signals.filter({ hasText: 'octo/api' })).toContainText('2');
+    if (unversioned) await expect(signals.filter({ hasText: 'octo/api' })).toContainText('Insufficient evidence');
+    await expect(signals.filter({ hasText: 'octo/api' })).not.toContainText('Measurement version missing.');
+    const unmeasured = view.locator('details').filter({ has: page.locator('summary', { hasText: 'Repositories without retained measurements' }) });
+    await expect(unmeasured).not.toHaveAttribute('open');
+    await expect(view.getByText('octo/unmeasured', { exact: true })).not.toBeVisible();
+    await unmeasured.locator('summary').click();
+    await expect(unmeasured.getByText('octo/unmeasured', { exact: true })).toBeVisible();
+    await expect(unmeasured).toContainText('Not measured');
+    await unmeasured.locator('summary').click();
+    await expect(view.locator('.temporal-metric-plot')).toHaveCount(0);
+    await expect(view.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(0);
+    await expect(view.getByRole('link', { name: 'Evidence', exact: true })).toHaveCount(0);
+    await page.evaluate(() => { window.location.hash = '#page-operational-value-evidence'; });
+    const evidence = page.locator('[data-page-id="operational-value-evidence"]');
+    await expect(evidence).toBeVisible();
+    await expect(evidence.getByRole('link', { name: 'Evidence', exact: true })).toHaveCount(0);
+    const latest = evidence.locator('[data-view-id="operational-value-latest"]').getByRole('table');
+    await expect(latest.locator('tbody > tr')).toHaveCount(3);
+    await expect(latest.getByRole('cell', { name: unversioned ? 'Unversioned evidence' : 'Improving', exact: true })).toHaveCount(2);
+    await expect(latest.getByRole('cell', { name: 'alerts', exact: true })).toHaveCount(2);
+    await expect(latest.getByRole('cell', { name: '0', exact: true })).toHaveCount(2);
+    await expect(latest.locator('.table-summary-row')).toHaveCount(0);
+    const distribution = evidence.locator('details').filter({ has: page.locator('summary', { hasText: 'Comparable outcome distribution' }) });
+    await expect(distribution).not.toHaveAttribute('open');
+    await distribution.locator('summary').click();
+    if (unversioned) {
+      await expect(distribution).toContainText('No comparable outcome directions are available.');
+    } else {
+      await expect(distribution.locator('a.horizontal-bar-chart-track[href="#page-operational-value-repository?organization=octo&repository=api"]')).toBeVisible();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await evidence.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(view).toBeVisible();
+    await signals.filter({ hasText: 'octo/api' }).locator('[data-card-drill]').click();
+    await expect(page).toHaveURL(/#page-operational-value-repository\?/);
+    await expect(page).not.toHaveURL(/campaign=/);
+    const detail = page.locator('[data-page-id="operational-value-repository"]');
+    await expect(detail.locator('select[aria-label="Time window"]')).toHaveCount(1);
+    await expect(detail.locator('.temporal-metric-plot')).toHaveCount(2);
+    await expect(detail.locator('.temporal-plot-point')).toHaveCount(unversioned ? 4 : 5);
+    await expect(page.getByRole('heading', { level: 1, name: 'Operational Value', exact: true })).toBeVisible();
+    const repositoryCrumbs = page.getByRole('navigation', { name: 'Breadcrumb', exact: true });
+    await expect(repositoryCrumbs.getByRole('link', { name: 'Operational Value', exact: true })).toHaveAttribute('href', '#page-operational-value');
+    await expect(repositoryCrumbs.getByRole('link', { name: 'Alpha', exact: true })).toHaveCount(0);
+    await expect(repositoryCrumbs.locator('[aria-current="page"]')).toHaveText('octo/api');
+    await expect(detail.getByRole('heading', {
+      name: 'Remaining alerts', exact: true
+    })).toBeVisible();
+    await expect(detail.getByRole('button', { name: 'Cards', exact: true })).toHaveCount(0);
+    const comparisonDisclosure = detail.locator('details').filter({ has: page.locator('summary', { hasText: 'Comparison details' }) });
+    await expect(comparisonDisclosure).not.toHaveAttribute('open');
+    const comparison = detail.locator('[data-view-id="repository-outcome-comparison"]');
+    await expect(comparison).not.toBeVisible();
+    await comparisonDisclosure.locator('summary').click();
+    await expect(comparison).toBeVisible();
+    await expect(comparison).toContainText(unversioned ? 'Unversioned evidence' : 'Improving');
+    if (unversioned) {
+      await expect(comparison.getByText('-4', { exact: true })).toHaveCount(0);
+    } else {
+      await expect(comparison.getByText('-4', { exact: true })).toBeVisible();
+      await expect(comparison).toContainText('Cutoff 2026-09-24T10:00:00Z vs 2026-09-23T10:00:00Z');
+      await expect(comparison).toContainText('Cutoff-state change, not a count of remediations.');
+    }
+    await detail.locator('summary').filter({ hasText: 'Evidence details' }).first().click();
+    await detail.locator('.temporal-plot-point-trigger').first().focus();
+    await expect(detail.getByRole('tooltip').first()).toContainText('Adoption: 2026-09-01T00:00:00Z');
+    await expect(detail.locator('.temporal-plot-run-outcome')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (width < 600) {
+      await page.getByRole('button', { name: 'Back to Operational Value', exact: true }).click();
+    } else {
+      await repositoryCrumbs.getByRole('link', { name: 'Operational Value', exact: true }).click();
+    }
+    await expect(view).toBeVisible();
+    await signals.filter({ hasText: 'octo/standalone' }).locator('[data-card-drill]').click();
+    await expect(page).toHaveURL(/repository=standalone/);
+    await expect(detail.locator('.temporal-metric-plot')).toHaveCount(1);
+    await expect(detail.locator('.temporal-plot-point')).toHaveCount(1);
+    await expect(detail.locator('.temporal-plot-point-trigger')).toHaveAttribute('aria-label', /0/);
+    await page.evaluate(() => { window.location.hash = '#page-campaign-insights?campaign=alpha'; });
+    const insights = page.locator('[data-page-id="campaign-insights"]');
+    await expect(insights).toBeVisible();
+    await expect(insights.getByRole('navigation', { name: 'Alpha views' })).toBeVisible();
+    await expect(insights.locator('.temporal-metric-plot')).toHaveCount(0);
+    await expect(insights.getByText('Repositories behind the signal', { exact: true })).toHaveCount(0);
+    await expect(insights.getByText('Repository outcome changes', { exact: true })).toHaveCount(0);
+  });
+  }
+}
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
@@ -403,7 +592,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1', '1']);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
   await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
@@ -490,10 +679,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
-  await campaignNavigation.getByRole('link', { name: 'Operational Value' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights.locator('.custom-view-grid > .custom-view').first()).toHaveCSS('padding-left', '14px');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const prompt = campaignInsights.locator('.semantic-prompt-action').first();
   if (await prompt.count() > 0) {
     await expect(prompt).toHaveCSS('position', 'static');
@@ -513,8 +702,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     }
   }
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
+  for (let step = 0; step < 3 && await campaignInsights.getAttribute('data-view-mode') !== 'table'; step++) {
+    const before = await campaignInsights.getAttribute('data-view-mode');
+    await page.locator('.mobile-view-mode-toggle').click();
+    await expect(campaignInsights).not.toHaveAttribute('data-view-mode', before ?? '');
+  }
   await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
-  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
+  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(1);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
@@ -522,9 +716,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
   const performanceBaseline = campaignInsights.locator('[data-view-id="campaign-performance-baseline"]');
   await expect(performanceBaseline).toBeVisible();
-  await expect(performanceBaseline).toContainText('Run success');
-  await expect(performanceBaseline).toContainText('Produced outputs');
-  await expect(performanceBaseline).toContainText('Average AIC / successful run');
+  await expect(performanceBaseline).toContainText('Execution reliability');
+  await expect(performanceBaseline).toContainText('Success rate');
+  await expect(performanceBaseline).toContainText('Successful attempts');
+  await expect(performanceBaseline).toContainText('Reported output items');
+  await expect(performanceBaseline).toContainText('Average AIC / costed successful attempt');
+  await expect(performanceBaseline).toContainText('gh aw logs');
+  await expect(performanceBaseline).toContainText('reruns count separately');
   const outcomeDistribution = campaignInsights.locator('[data-view-id="campaign-baseline-outcomes"]');
   await expect(outcomeDistribution).not.toBeVisible();
   await campaignInsights.locator('details')
@@ -532,28 +730,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     .locator(':scope > summary').click();
   await expect(outcomeDistribution).toBeVisible();
   await expect(performanceBaseline).toBeVisible();
-  const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
-  await expect(operationalValueHistory).toContainText('Repository value');
-  await expect(operationalValueHistory).toContainText('Higher is better');
-  await expect(operationalValueHistory.locator('.temporal-metric-plot:visible')).toHaveCount(1);
-  await expect(operationalValueHistory.getByRole(
-    'combobox',
-    { name: 'Operational value repository scope' }
-  )).toHaveCount(0);
-  await expect(operationalValueHistory).toContainText('campaign rollups are omitted');
-  await expect(operationalValueHistory).toContainText('gh-aw-cao');
-  await page.setViewportSize({ width: 1920, height: 900 });
-  await expect(operationalValueHistory).toHaveCSS('gap', '16px');
-  await expect(operationalValueHistory).toHaveCSS('padding-bottom', '16px');
-  await expect(operationalValueHistory.locator('.temporal-plot-axis').first()).toHaveCSS('font-size', '10px');
-  await page.setViewportSize({ width: 1200, height: 750 });
-  await expect(operationalValueHistory.locator('.temporal-plot-axis').first()).toHaveCSS('font-size', '19px');
-  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
-  const main = page.locator('main.dashboard-prototype');
-  await expect.poll(() => main.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-  await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(campaignInsights.locator('.measure-history-operational-value')).toHaveCount(0);
+  await expect(campaignInsights.getByText('All native repository timelines', { exact: true })).toHaveCount(0);
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();

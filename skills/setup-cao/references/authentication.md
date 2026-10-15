@@ -26,6 +26,22 @@ Preview App or PAT setup before mutation where the command supports `--dry-run`.
 Private keys and tokens must enter only through GitHub or a secure interactive
 prompt, never files, chat, arguments, workflow inputs, or commits.
 
+Prefer reusing an approved private read/write App pair before registering new
+Apps or offering a PAT fallback. Guided setup offers **Reuse approved private
+GitHub Apps**; the direct command is `./cao.sh setup-auth github-app --repo
+OWNER/CONTROL --read-client-id READ-ID --write-client-id WRITE-ID`, with
+`--dry-run` for preview. It authenticates each App with a hidden key prompt and
+verifies selected-repository membership without organization-wide installation
+discovery by the CLI user. Repository administrators can add their repositories
+to existing approved installations, including Apps with organization
+permissions, unless organization policy restricts this to owners. Initial
+installation approval and access to App keys remain separate requirements.
+On GHES, this installation change requires 3.24 or later.
+
+Do not add `repository_creation` or `installation_repositories` permissions to
+CAO runtime Apps or PATs. These are separate provisioning capabilities, not
+campaign authority, and setup does not automatically enroll repositories.
+
 Target-repository authentication and model-provider authentication are
 independent. A GitHub App or PAT does not authenticate Copilot or another model
 provider. Organization billing checks are optional during setup and must not

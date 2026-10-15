@@ -12,6 +12,7 @@ import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
 import { DashboardServerError } from '../../src/remote-data-backend.js';
 import { resetSourceStore } from '../../src/source-store.js';
+import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
@@ -464,7 +465,7 @@ describe('dashboard DOM provenance', () => {
     expect(floor?.classList.contains('factory-floor')).toBe(true);
     expect(floor?.querySelector('.semantic-prompt-heading')).toBeNull();
     expect(floor?.querySelector('.semantic-prompt-action')).toBeNull();
-    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     disposeDashboard(rendered);
   });
@@ -851,7 +852,7 @@ describe('dashboard DOM provenance', () => {
       const workflows = deliver('workflows', [{
         campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'workflow-role': 'orchestrator'
       }]);
-      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value'));
+      await vi.waitFor(() => expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights'));
       const shell = rendered.querySelector('[data-view-id="campaign-insights-navigation"]');
       expect(shell?.textContent).not.toContain('This view cannot be shown');
       requests.get('campaign-problem-tab-counts').reject(new Error('dashboard queries exceeded the max-duration-ms limit of 60000'));
@@ -2487,11 +2488,11 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
-    expect(page?.querySelectorAll('.factory-station')).toHaveLength(2);
-    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your campaigns are idle.');
-    expect(page?.querySelector('.factory-station')?.textContent).toContain('0/0 healthy campaigns');
-    expect(page?.querySelector('.link-button-list-empty')?.textContent).toBe('No campaigns are registered.');
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
+    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
+    expect(page?.querySelector('.factory-station')?.textContent).toContain('1/1 healthy workflows');
+    expect(page?.querySelector('.link-button-list-view')).toBeNull();
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
     expect(page?.querySelector('.factory-all-clear')).toBeNull();
@@ -3235,6 +3236,49 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.dashboard-horizon .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.dashboard-horizon .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
+  });
+
+  it('keeps a persisted display horizon stable while source-free page queries bind', async () => {
+    const previous = window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY);
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: '30d' }));
+    let clock = Date.parse('2026-10-15T08:00:00Z');
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock += 1000);
+    const loadPageSources = vi.fn(async (_pageId, _options) => {
+      if (loadPageSources.mock.calls.length > 4) window.localStorage.removeItem(HORIZON_FILTER_STORAGE_KEY);
+      return {};
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'stable-horizon', title: 'Stable horizon',
+          defaults: { time: { range: '1w' } },
+          pages: [{
+            id: 'runs', kind: 'custom', title: 'Runs', 'filter-bar': true,
+            views: [{ id: 'runs-table', data: { source: 'runs' }, mark: 'table',
+              encoding: { columns: [{ field: 'run' }] } }]
+          }]
+        }
+      },
+      sources: {}, loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalledTimes(2));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(loadPageSources).toHaveBeenCalledTimes(2);
+      const window = loadPageSources.mock.calls.at(-1)?.[1].queryContext?.timeWindow;
+      expect(Date.parse(window.end) - Date.parse(window.start)).toBe(30 * 86_400_000);
+      expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('30 days');
+      expect([...rendered.querySelectorAll('.dashboard-horizon time')].map((time) => time.getAttribute('datetime')))
+        .toEqual([window.start, window.end]);
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      now.mockRestore();
+      if (previous === null) globalThis.window.localStorage.removeItem(HORIZON_FILTER_STORAGE_KEY);
+      else globalThis.window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, previous);
+    }
   });
 
   it('renders the configured Horizon immediately and updates it when page sources load', async () => {
@@ -4529,7 +4573,16 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('keeps route tabs visible while a sibling view loads', async () => {
+  it('keeps route tabs visible and uses a tab transition while a sibling view loads', async () => {
+    /** @type {Array<string | undefined>} */
+    const transitions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitions.push(document.documentElement.dataset.navigationTransition);
+        callback();
+      })
+    });
     const root = document.createElement('div');
     root.innerHTML = `
       <a data-nav-page-id="first" href="#page-first?campaign=ambient-context">First</a>
@@ -4561,8 +4614,16 @@ describe('presenter built-in and custom pages', () => {
       expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
       expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
       expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      expect(transitions).toEqual(['tab']);
+      window.history.replaceState(null, '', '/#page-first?campaign=ambient-context');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('tab');
+      window.history.replaceState(null, '', '/#page-second?campaign=different');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('page');
       disposeNavigation();
     } finally {
+      Reflect.deleteProperty(document, 'startViewTransition');
       root.remove();
       window.history.replaceState(null, '', '/');
     }

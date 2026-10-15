@@ -20,9 +20,7 @@ const valid = typeof observations.repository === "string"
   && Date.parse(observations.window.startAt) < Date.parse(observations.window.endAt)
   && observations.evidenceCoverage && typeof observations.evidenceCoverage === "object"
   && Array.isArray(observations.snapshots)
-  && observations.snapshots.length >= (
-    definition.evaluation?.mode === "attainment-only" ? 1 : 2
-  )
+  && observations.snapshots.length >= 1
   && observations.snapshots.every((item) => item.evidence && typeof item.evidence === "object"
     && (definition.schemaVersion !== 3 || (item.window?.startAt && item.window?.endAt
       && Array.isArray(item.provenance) && item.provenance.length > 0)))
@@ -44,29 +42,77 @@ const snapshots = observations.snapshots.map((snapshot, index) => {
 });
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
 const baselineAt = Date.parse(definition.adoption.baselineAt ?? definition.adoption.adoptedAt);
+const periodOrder = (left, right) =>
+  Date.parse(left.window?.endAt ?? left.observedAt) - Date.parse(right.window?.endAt ?? right.observedAt)
+  || Date.parse(left.observedAt) - Date.parse(right.observedAt);
 const beforeSnapshot = mode === "baseline-comparable"
-  ? snapshots.filter(({ observedAt }) => Date.parse(observedAt) <= baselineAt).at(-1)
+  ? snapshots.filter((snapshot) => Date.parse(snapshot.window?.endAt ?? snapshot.observedAt) <= baselineAt)
+    .toSorted(periodOrder).at(-1)
   : null;
-const afterSnapshot = snapshots.at(-1);
-const first = beforeSnapshot?.metrics ?? snapshots[0].metrics;
+const afterSnapshot = snapshots.toSorted(periodOrder).at(-1);
 const last = afterSnapshot.metrics;
 const improvement = (metric, before, after) => {
   if (before === null || after === null) return null;
   if (metric.direction === "increase") return after - before;
   if (metric.direction === "decrease") return before - after;
-  return Math.abs(before - metric.target) - Math.abs(after - metric.target);
+  return Number.isFinite(metric.target)
+    ? Math.abs(before - metric.target) - Math.abs(after - metric.target) : null;
+};
+const kind = definition.evidence.measurementKind;
+const coverage = (snapshot) => snapshot?.evidence.coverageStatus
+  ?? (kind === "snapshot" && snapshot?.evidence.valid === true ? "complete" : "unknown");
+const complete = (snapshot) => snapshot
+  && Date.parse(snapshot.observedAt) <= Date.parse(observations.window.endAt)
+  && coverage(snapshot) === "complete"
+  && snapshot.evidence.maturityStatus !== "interim"
+  && snapshot.evidence.maturityStatus !== "unavailable"
+  && snapshot.evidence.dubious !== true
+  && duration(snapshot) === definition.evidence.window.durationDays * 86_400_000;
+const duration = (snapshot) => Date.parse(snapshot?.window?.endAt) - Date.parse(snapshot?.window?.startAt);
+const reference = snapshots.findLast((snapshot) => snapshot !== afterSnapshot
+  && Date.parse(snapshot.window?.endAt) === Date.parse(afterSnapshot.window?.startAt)
+  && duration(snapshot) === duration(afterSnapshot));
+const comparison = (metric, before, after, reason) => {
+  const beforeValue = before?.metrics[metric.id] ?? null;
+  const afterValue = after?.metrics[metric.id] ?? null;
+  const eligible = !reason && complete(before) && complete(after)
+    && beforeValue !== null && afterValue !== null
+    && ["interval", "snapshot"].includes(kind);
+  return {
+    status: eligible ? "available" : "unavailable",
+    reason: reason ?? (eligible ? null : "Incomplete, provisional or unverified period evidence."),
+    referenceWindow: before?.window ?? null,
+    currentWindow: after?.window ?? null,
+    referenceValue: beforeValue,
+    currentValue: afterValue,
+    nativeDelta: eligible ? afterValue - beforeValue : null,
+    directionAwareGain: eligible ? improvement(metric, beforeValue, afterValue) : null,
+    referenceDenominator: before?.evidence[metric.rollup?.denominatorField] ?? null,
+    currentDenominator: after?.evidence[metric.rollup?.denominatorField] ?? null,
+    populationChanged: before?.evidence.populationDigest && after?.evidence.populationDigest
+      ? before.evidence.populationDigest !== after.evidence.populationDigest : null,
+  };
 };
 const reviewMetrics = definition.metrics.map((metric) => {
-  const before = mode === "attainment-only" ? null : (first[metric.id] ?? null);
   const after = last[metric.id] ?? null;
+  const assessmentAge = Date.parse(observations.window.endAt) - Date.parse(afterSnapshot.observedAt);
+  const stale = !Number.isFinite(assessmentAge) || assessmentAge < 0
+    || assessmentAge >= definition.evidence.window.cadenceDays * 86_400_000;
+  const postAdoption = Date.parse(kind === "snapshot"
+    ? afterSnapshot.window?.endAt : afterSnapshot.window?.startAt) >= Date.parse(definition.adoption.adoptedAt);
   return {
     ...metric,
-    status: ((mode === "attainment-only" && after !== null) || (before !== null && after !== null))
-      ? "evaluated" : "unevaluated",
-    beforeValue: before,
-    afterValue: after,
-    attainmentValue: mode === "attainment-only" ? after : null,
-    improvement: improvement(metric, before, after),
+    status: after !== null ? "evaluated" : "unevaluated",
+    currentValue: after,
+    recentComparison: comparison(metric, reference, afterSnapshot,
+      stale ? "The latest assessment is stale or future relative to the analysis endpoint."
+        : reference ? null : "The immediately preceding equal-duration period is unavailable."),
+    adoptionComparison: comparison(metric, beforeSnapshot, afterSnapshot,
+      stale ? "The latest assessment is stale or future relative to the analysis endpoint."
+        : mode === "attainment-only" || !beforeSnapshot
+        ? "No accepted pre-adoption reference."
+        : !postAdoption ? "The current period is not wholly post-adoption."
+          : duration(beforeSnapshot) !== duration(afterSnapshot) ? "Measurement durations differ." : null),
   };
 });
 const {
@@ -83,13 +129,14 @@ const {
 } = observations;
 const timeline = {
   ...base,
-  schemaVersion: 2,
+  schemaVersion: 3,
   definitionSchemaVersion: definition.schemaVersion,
   generatedAt: existingGeneratedAt ?? nowUtc(),
   workflowSlug: definition.slug,
   sourcePath: definition.sourcePath,
   valueFunction: { path: valueFunction, sha256: initialSha, definition },
   metricReview: {
+    comparisonPolicy: "adjacent-period-v1",
     architecture: definition.model.architecture,
     recommendation: definition.model.recommendation,
     presentation: definition.model.presentation,

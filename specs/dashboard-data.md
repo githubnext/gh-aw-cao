@@ -437,10 +437,13 @@ MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. IndexedDB SHALL retain detailed
-run-linked records for seven days and Operational Value records for 30 days;
+run-linked records for seven days and Operational Value records for 365 days;
 the Activity SQLite database SHALL retain run-linked detail for seven days by
-default, while retaining Run and Operational Value records for 30 days by
-default. Explicit historical retention windows MAY override these defaults.
+default, while retaining Run records for 30 days and Operational Value records
+for at least 365 days by default. Shortening run or detail retention MUST NOT
+shorten this compact observation history. Explicitly longer historical SQLite
+run windows SHALL also preserve the corresponding longer outcome history.
+Explicit per-store historical retention windows MAY override these defaults.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
@@ -1902,7 +1905,7 @@ measure or substitute display names for canonical relationship IDs.
 
 ## 14.4 Cached gh-aw JSONL
 
-The normative mapping for cached schema-v2 and schema-v4 activity shard input is
+The normative mapping for cached schema-v2, schema-v4, and schema-v5 activity shard input is
 defined in [Cached gh-aw JSONL Mapping](dashboard-gh-aw-jsonl-mapping.md).
 
 ---
@@ -2408,6 +2411,58 @@ treated as durable evidence.
 ---
 
 # 31. Query-only derived results
+
+## 31.1 Campaign outcome signals
+
+The Operational Value overview SHALL derive campaign signals from retained,
+repository-scoped primary Operational Value observations, not run conclusions.
+SQL and IndexedDB query execution SHALL use the same Dashboard Language queries.
+This presentation introduces no derived-result store or interactive acquisition.
+Canonical operational-value records and typed storage preserve optional period,
+coverage, missingness, cohort and evidence metadata; legacy records are not
+backfilled with invented proof. Retention remains unchanged.
+
+Movement SHALL compare complete, mature native measurements in the latest
+period and the immediately preceding equal-duration period within the same
+campaign, subject repository, measure, evaluator fingerprint, unit, direction,
+measurement kind and cadence. Interval periods SHALL abut without overlap;
+snapshot periods SHALL compare their declared cutoffs, not summed backlogs.
+Adoption and evaluation mode describe historical context, not a requirement
+that recent comparisons cross adoption. Exact period boundaries and coverage
+proof are required; legacy metadata SHALL NOT be inferred. Unknown versions,
+missing or stale periods, partial coverage, interim evidence and unsupported
+goal directions SHALL remain insufficient evidence. New unavailable assessments
+SHALL remain visible and SHALL NOT reveal an older result as the latest value.
+Latest selection SHALL precede campaign aggregation so historical report volume
+cannot inflate repository counts or hide a newer incomplete observation.
+
+A repository SHALL count once per campaign. It SHALL be insufficient when any
+latest retained primary measure lacks comparable movement; otherwise opposing
+measure directions SHALL be Mixed, followed by Worsening, Improving, or Unchanged.
+Campaign summaries SHALL expose all five counts and measured repository coverage,
+rank worsening and mixed evidence before gains, and retain campaigns with no
+measurements. Counts SHALL NOT imply complete enrolled-target coverage where an
+authoritative target denominator is absent. Observation dates SHALL stay visible;
+retained evidence SHALL NOT be represented as a fresh all-clear.
+
+The default headline SHALL expose native change and its actual reference
+period, separately from historical adoption association. Eligible cohort and
+denominator changes SHALL be exposed when retained. Zero change SHALL NOT imply
+target attainment or system health. No anomaly, sustained-drift or change-point
+claim is permitted without a separately versioned calibrated assessment.
+Measurement duration, cadence, display horizon and reference period SHALL remain
+distinct. Changing the display horizon SHALL NOT recompute a frozen evaluator
+with different semantics or create a growing lifetime average.
+
+Direction distribution charts SHALL count each latest assessed repository once
+under the same quality-gated period policy. They SHALL NOT fill missing
+evidence, average native values across measures, infer sustained improvement, or
+attribute movement causally to a campaign. Repository drill-downs SHALL preserve
+native measurement history, adoption and actual available baseline evidence.
+Campaign-wide run context SHALL be labeled as such, never as target-attributed
+execution. Missing inputs SHALL propagate unavailable states through the
+production query boundary. Active views SHALL requery on database changes within
+their abort-scoped subscription lifetime.
 
 Derived query results SHALL be computed from canonical records on demand.
 No derived-result generation, metadata pointer, or persistent projection

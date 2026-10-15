@@ -153,18 +153,18 @@ describe('bounded element query contracts', () => {
   });
 
   it('projects ordered metric panels and preserves duplicate observations and individual run links', () => {
-    const definition = dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === 'campaign-operational-value-primary-series');
+    const definition = dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === 'operational-value-plot-series');
     expect(dashboardQueryOutputFields(definition, () => TABLE_FIELDS['operational-values'])).toEqual(contract.temporalPanelFields);
     const base = {
       campaign: 'selected', organization: 'org', repository: 'z',
-      'operational-value-definition': 'metric', 'operational-value': 10,
+      'operational-value-definition': 'metric', 'operational-value-role': 'primary', 'operational-value': 10,
       'operational-value-name': 'Metric', 'operational-value-unit': 'count', 'operational-value-direction': 'increase'
     };
     const links = [1, 2, 3].map((run) => ({ relation: 'run', href: `https://github.com/org/repo/actions/runs/${run}` }));
     const payload = compileDashboardViewPayloadQueries(
-      dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'campaign-insights'), 'campaign-insights',
-      { queries: dashboard.queries, viewId: 'campaign-operational-value-history',
-        sourceNames: ['campaign-operational-value-primary-series'], routeParameters: { campaign: 'selected' } }
+      dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value-repository'), 'operational-value-repository',
+      { queries: dashboard.queries, viewId: 'repository-outcome-history',
+        sourceNames: ['operational-value-plot-series'], routeParameters: { organization: 'org', repository: 'z' } }
     );
     const result = execute(payload, sources({
       'operational-values': [
@@ -178,10 +178,11 @@ describe('bounded element query contracts', () => {
       ]
     }))[payload.aliases[0]];
     expect(result.metadata.availability).toBe('available');
-    expect(result.rows).toHaveLength(1);
-    const series = /** @type {{ id: string, points: { x: string, link?: unknown }[] }[]} */ (result.rows[0].series);
-    expect(series.map((entry) => entry.id)).toEqual(['org/a', 'org/z']);
-    expect(series[1].points.map((point) => point.link)).toEqual([links[1], links[2], links[0]]);
-    expect(series[0].points[0]).not.toHaveProperty('link');
+    expect(result.rows).toHaveLength(2);
+    const selected = result.rows.filter(row => row.campaign === 'selected');
+    const series = /** @type {{ id: string, points: { x: string, link?: unknown }[] }[]} */ (selected.flatMap((row) => row.series));
+    expect(series.map((entry) => entry.id)).toEqual(['org/z']);
+    expect(series.find((entry) => entry.id === 'org/z')?.points.map((point) => point.link)).toEqual([links[1], links[2], links[0]]);
+    expect(series.find((entry) => entry.id === 'org/a')).toBeUndefined();
   });
 });

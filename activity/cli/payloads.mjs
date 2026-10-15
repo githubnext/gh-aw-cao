@@ -15,6 +15,7 @@ import { consolidationBucket, normalizedPhaseBatch, relationshipSafeEvidenceBatc
 import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from '../normalized-shards.mjs';
 import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../../dashboard/site/src/data/model/audit-curation.js';
 import { jsonlLines, hashFileContents } from './files.mjs';
+import { DEFAULT_NORMALIZATION_CACHE_BYTES, pruneNormalizationCaches } from './cache.mjs';
 
 const debugHash = createDebug('hash-payloads');
 
@@ -179,8 +180,12 @@ export async function hashActivityPayloads({
   runsDirectory,
   recordsDirectory,
   inventoryPath,
-  maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES
+  maxBytes = DEFAULT_NORMALIZED_JSONL_SHARD_BYTES,
+  maxCacheBytes = DEFAULT_NORMALIZATION_CACHE_BYTES
 }) {
+  if (!Number.isSafeInteger(maxCacheBytes) || maxCacheBytes < 0) {
+    throw new RangeError('Normalization cache byte limit must be a non-negative integer');
+  }
   const hashFile = async (filePath) => {
     const digest = await hashFileContents(filePath);
     debugHash('hashed %s -> %s', filePath, digest);
@@ -227,6 +232,15 @@ export async function hashActivityPayloads({
     if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(cacheDirectories.runs, { recursive: true });
     if (recordsDirectory) await mkdir(cacheDirectories.records, { recursive: true });
+    const rawHashes = new Map();
+    const expectedCacheNames = new Set();
+    for (const name of shardNames) {
+      const rawHash = await hashFile(path.join(shardDirectory, name));
+      rawHashes.set(name, rawHash);
+      expectedCacheNames.add(`${path.parse(name).name}-${rawHash}-${normalizationContext}.jsonl`);
+    }
+    const disposableDirectories = Object.values(cacheDirectories).filter(Boolean);
+    await pruneNormalizationCaches(disposableDirectories, { retainedNames: expectedCacheNames, maxBytes: maxCacheBytes });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       if ((await stat(shardPath)).size === 0) {
@@ -234,7 +248,7 @@ export async function hashActivityPayloads({
         debugHash('dropped empty source shard %s', shardPath);
         continue;
       }
-      const rawHash = await hashFile(shardPath);
+      const rawHash = rawHashes.get(name);
       if (!runsDirectory && !recordsDirectory) {
         hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
       }
@@ -343,6 +357,9 @@ export async function hashActivityPayloads({
         }
       }
     }
+    const cache = await pruneNormalizationCaches(disposableDirectories, { maxBytes: maxCacheBytes });
+    debugHash('normalization cache retainedBytes=%d removedBytes=%d maxBytes=%d',
+      cache.retainedBytes, cache.removedBytes, cache.maxBytes);
   }
   return hashes;
 }

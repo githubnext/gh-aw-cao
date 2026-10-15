@@ -52,6 +52,57 @@ missing artifacts from an existing successful
 run, and invalid restored snapshots still fail rather than being treated as
 normal startup.
 
+## Local administrative actions
+
+The shared CLI executor is packaged in `dashboard/cli-actions.mjs` so installed
+campaigns can run local administrative actions without the Copilot extension.
+The extension re-exports the same executor rather than maintaining a separate copy.
+
+Local previews refresh the latest stable gh-aw release from GitHub when
+downloading their data. The **Latest** compiler version and upgrade state use
+this current release, not the release recorded in an older published snapshot.
+Installed versions and their observation times remain snapshot evidence.
+If release discovery fails, startup reports an error rather than presenting
+the snapshot's stale release as current.
+
+Run `npm run dashboard:local -- --admin --repo OWNER/REPOSITORY` to opt in to
+dashboard-declared CLI actions on the local preview server. Without `--admin`,
+the local preview remains copy-only. Admin mode is limited to a loopback host;
+it cannot be combined with canvas mode or the hosted Go server.
+
+Each action opens a command-review dialog and requires explicit confirmation
+for every run. Each confirmed command starts a fresh headless process and shows
+live stdout and stderr in a scrollable, read-only terminal inside the approval
+dialog, with ANSI colors, progress updates, selection, and scrollback.
+While a command runs, the dialog fills the viewport and hides the approval
+description, options, and command preview, leaving the terminal and cancellation
+control. HTTP and HTTPS URLs in terminal output open in a separate tab without
+opener access.
+Select **Open terminal window** to move the same terminal into a separate
+dashboard dialog. The option is unchecked whenever the approval dialog opens,
+and can also move retained output after a command completes. Closing the terminal window
+returns output to the approval dialog and leaves the command running;
+**Cancel command** stops it. Reopening the terminal reuses
+the existing window and retained output instead of starting another command.
+Terminal input is disabled: commands must not require interactive keyboard input. The terminal
+emulator is an interaction-only extension of the existing declarative
+`cli-actions` contract, not a dashboard data query or an arbitrary shell.
+
+Commands run in the server's working directory with the local GitHub CLI
+credentials and the existing supported-command allowlist, without shell
+interpolation. Actions using `gh aw` may install the pinned extension first.
+Only one action runs at a time. **Cancel** dismisses the approval dialog without
+starting anything; **Cancel command** stops a running command and its subprocesses.
+The approval dialog stays open after cancellation, and terminal output is retained. Cancellation does not
+undo changes already completed. The execution button disappears once a run
+starts: only **Cancel command** is offered while running, and **Close** afterward.
+Preparing another run requires closing and reopening the approval dialog for
+fresh confirmation, and reuses its existing terminal, preserving scrollback.
+Disconnecting the output stream or stopping the server also cancels the command.
+Keep the capability URL private and
+do not expose or forward the admin server to other users. This switch does not
+change CAO rollout policy or grant remote workflow authority.
+
 ## Hosted server data pipeline
 
 Server-backed deployments keep the browser isolated from both databases. The
@@ -293,5 +344,21 @@ queries, instead of through collections, see
 [Agent analysis](agent-analysis.md).
 
 Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
+
+### Choose a local preview data backend
+
+`npm run dashboard:local` selects the dashboard's query backend with `--data-backend`:
+
+| Backend | Behavior |
+|---------|----------|
+| `sqlite` | Default for local previews. Ingests the downloaded inventory and Activity shards into a temporary server-side SQLite projection; the page uses the remote HTTP query backend instead of browser IndexedDB. |
+| `indexeddb` | Opt-in browser backend. The page uses the static browser backend. |
+| `postgres` | Selects the Go/PostgreSQL server. It needs the reviewed host policy, built site, database, and OAuth/HTTPS configuration, and does not support canvas previews. |
+
+```bash
+npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY
+```
+
+SQLite initialization failures stop startup; the preview does not silently fall back to IndexedDB. The canvas open input accepts `dataBackend: "sqlite"` or `"indexeddb"`.
 
 For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

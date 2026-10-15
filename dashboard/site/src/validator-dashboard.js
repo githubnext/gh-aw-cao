@@ -793,6 +793,18 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
         }
       });
     }
+    if (isPlainObject(page.route) && Array.isArray(page.route.breadcrumbs)) {
+      page.route.breadcrumbs.forEach((breadcrumb, breadcrumbIndex) => {
+        if (!isPlainObject(breadcrumb) || typeof breadcrumb.page !== 'string' || !IDENTIFIER_PATTERN.test(breadcrumb.page)) return;
+        if (!pageIds.has(breadcrumb.page)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route breadcrumb page must reference a declared dashboard page id.',
+            `$.dashboard.pages[${index}].route.breadcrumbs[${breadcrumbIndex}].page`
+          ));
+        }
+      });
+    }
     const views = page.kind === 'built-in' && isPlainObject(page.definition)
       ? page.definition.views
       : page.views;

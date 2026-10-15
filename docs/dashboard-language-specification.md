@@ -244,11 +244,11 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `filter` | `predicates` |
 | Query predicate | `field`, `equals`, `in`, `includes` |
 | Query computed field | `as`, `function`, `args` |
-| Query computed argument | exactly one of `field`, `value`, `context`, or `parameter`; `context` is `time-end` |
+| Query computed argument | exactly one of `field`, `value`, `context`, or `parameter`; `context` is `time-start` or `time-end` |
 | Query `aggregate` | `by`, `values` |
 | Query aggregate value | `field`, `as`, `reducer` |
 | Query `predict` entry | `field`, `on`, `method`, `order`, `groupby`, `as` |
-| Query `temporal-series` | `time`, `series`, `shape`, `link`, `carry`, `measures`, `maps`, `trend` |
+| Query `temporal-series` | `time`, `series`, `shape`, `link`, `carry`, `point-carry`, `measures`, `maps`, `trend` |
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
@@ -260,7 +260,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Radio option | `value`, `label` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
-| Custom page `route` | `hash-query-parameter`, `navigation-page`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
+| Custom page `route` | `hash-query-parameter`, `navigation-page`, `breadcrumbs`, `availability-view`, `availability-message`, `partial-message`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
 | View | `id`, `title`, `show-title`, `description`, `subject`, `objective`, `acceptance`, `locked`, `requires`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `facet`, `columns`, `treemap`, `layer`, `resolve`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `filter-bar`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | Chart layer | `chart`, `encoding`, `layer` |
 | Layer resolution | `scale` with `y: shared` or `y: independent` |
@@ -292,7 +292,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-007:** A validator **MUST** reject unknown keys, unknown enumerated values, and duplicate mapping keys.
 - **DLS-DOC-008:** `defaults`, when present, **MUST** be a mapping containing only `scope`, `time`, and `filters`.
 - **DLS-DOC-009:** Every page **MUST** set `kind` to `built-in` or `custom` and satisfy the corresponding page shape in Sections 10 or 11.
-- **DLS-DOC-009a:** `config`, when present, **MUST** appear only on `mark: element` views. Version 0.1.0 defines `config.body` only for the `workflow-route-page`, `campaign-route`, and `outcome-detail-section` elements. For `workflow-route-page`, it **MUST** be one of `insights`, `reports`, or `runs`. For `campaign-route`, it **MUST** be one of `overview`, `workflows`, `runs`, `issues`, `pull-requests`, `repositories`, `insights`, or `reports`; the legacy value `dispatches` **MUST** remain accepted as an alias for `runs`. A campaign route presenter **MUST** expose `overview`, `workflows`, and `runs` as the initial campaign-scoped resource navigation: horizontal tabs on desktop and touch-sized vertical navigation buttons on narrow mobile viewports. Every navigation target **MUST** retain the campaign route binding, and each selected page's views **MUST** apply that binding through the declarative query boundary. For `outcome-detail-section`, `config.body` **MUST** be `discussion` or `metadata`. A conforming presenter **MUST** derive companion navigation, route targets, labels, and icons for route-aware compositions from canonical body values instead of hard-coding page-specific identities in a view component. Version 0.1.0 defines `config.stations` for `factory-floor`; it **MUST** be a non-empty list of unique values selected from `campaigns` and `repositories`, in the order those stations appear. Version 0.1.0 defines `config.labels` and `config.animate: number` for `factory-floor`; labels **MUST** be a non-empty mapping keyed by canonical kebab-case label identifiers whose values are plural text variables containing exactly the non-empty strings `singular` and `plural`. Version 0.1.0 defines `config.sources` for `factory-header` and `factory-floor`; it **MUST** be a non-empty mapping from canonical presentation role identifiers to declared source names, using only the roles `presentation` and `rhythm` for `factory-header`, and `campaigns` and `repositories` for `factory-floor`. A role not overridden through `config.sources` **MUST** resolve to that element's default source name for the overview page. The bound sources **MUST** contain presentation-ready values; the presenter **MUST NOT** join source records, calculate operational metrics, or reconstruct business relationships. A conforming presenter **MUST** resolve every presentation role solely through `config.sources`, never through a hard-coded source name, so `factory-header` and `factory-floor` can be bound to differently named sources on any page. The generic `markdown` element **MUST** declare `config.content-field`; it **MAY** declare `config.path-field`, `config.base-link-field`, and `config.empty-message`. Relative links **MUST** resolve only beneath the safe HTTPS repository identified by the configured relation-specific link field.
+- **DLS-DOC-009a:** `config`, when present, **MUST** appear only on `mark: element` views. Version 0.1.0 defines `config.body` only for the `workflow-route-page`, `campaign-route`, and `outcome-detail-section` elements. For `workflow-route-page`, it **MUST** be one of `insights`, `reports`, or `runs`. For `campaign-route`, it **MUST** be one of `overview`, `workflows`, `runs`, `issues`, `pull-requests`, `repositories`, `insights`, or `reports`; the legacy value `dispatches` **MUST** remain accepted as an alias for `runs`. A campaign route presenter **MUST** expose `overview`, `workflows`, and `runs` as the initial campaign-scoped resource navigation: horizontal tabs on desktop and touch-sized vertical navigation buttons on narrow mobile viewports. Every navigation target **MUST** retain the campaign route binding, and each selected page's views **MUST** apply that binding through the declarative query boundary. For `outcome-detail-section`, `config.body` **MUST** be `discussion` or `metadata`. A conforming presenter **MUST** derive companion navigation, route targets, labels, and icons for route-aware compositions from canonical body values instead of hard-coding page-specific identities in a view component. Version 0.1.0 defines `config.stations` for `factory-floor`; it **MUST** be a non-empty list of unique values selected from `campaigns`, `repositories`, `issues`, and `value-gains`, in the order those stations appear. Version 0.1.0 defines `config.labels` and `config.animate: number` for `factory-floor`; labels **MUST** be a non-empty mapping keyed by canonical kebab-case label identifiers whose values are plural text variables containing exactly the non-empty strings `singular` and `plural`. Version 0.1.0 defines `config.sources` for `factory-header` and `factory-floor`; it **MUST** be a non-empty mapping from canonical presentation role identifiers to declared source names, using only the roles `presentation` and `rhythm` for `factory-header`, and `campaigns`, `repositories`, `issues`, and `value-gains` for `factory-floor`. A role not overridden through `config.sources` **MUST** resolve to that element's default source name for the overview page. The bound sources **MUST** contain presentation-ready values; the presenter **MUST NOT** join source records, calculate operational metrics, or reconstruct business relationships. A conforming presenter **MUST** resolve every presentation role solely through `config.sources`, never through a hard-coded source name, so `factory-header` and `factory-floor` can be bound to differently named sources on any page. The generic `markdown` element **MUST** declare `config.content-field`; it **MAY** declare `config.path-field`, `config.base-link-field`, and `config.empty-message`. Relative links **MUST** resolve only beneath the safe HTTPS repository identified by the configured relation-specific link field.
 - **DLS-DOC-010:** Titles and descriptions **MUST** be strings; IDs, references, and timestamps **MUST NOT** rely on YAML implicit type coercion.
 - **DLS-DOC-011:** `github-url-base`, when present, **MUST** be an absolute HTTPS URL without credentials, query, or fragment. It identifies the GitHub web URL base used to resolve GitHub-addressable entity links and defaults to `https://github.com`.
 - **DLS-DOC-012:** `repository`, when present, **MUST** be a non-empty `owner/repo` slug identifying the GitHub repository hosting the dashboard. A presenter **MUST NOT** fabricate a report action toolbar's GitHub repository link when `repository` is absent.
@@ -529,7 +529,7 @@ Query-level filtering and computation execute first. Group tuples are then forme
 
 #### 5.5.1 Computed-Field Vocabulary
 
-Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is exactly one `field` reference valid at that point in the query, one scalar `value` literal, or the execution `context` value `time-end`.
+Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is exactly one `field` reference valid at that point in the query, one scalar `value` literal (including explicit `null`), or an execution `context` value: `time-start` or `time-end`.
 
 | Function | Arguments | Result |
 |---|---|---|
@@ -546,6 +546,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `if` | 3 | second argument when the first is true; otherwise the third |
 | `format-count`, `format-percent` | 1 | locale-stable display text |
 | `number` | 1 | finite number or null |
+| `timestamp` | 1 | UTC epoch milliseconds for valid RFC 3339 timestamp text with an explicit zone, or null; rejects invalid calendar dates, relative expressions and non-text values, and never reads the clock |
 | `sum`, `product` | 2–8 | finite number or null |
 | `difference`, `quotient` | 2 | finite number or null |
 
@@ -617,6 +618,8 @@ The built-in methods require no registry or external configuration. Future langu
 
 `shape: panels` emits one row per carried-field and metric tuple with a `series` sequence instead of `points`. Each series has `id`, `label`, and timestamp-ordered `points`; series are ordered by their labels. Optional `link` names a source link field retained on each point, without making provenance a grouping key. This allows multi-repository measure histories to render query-owned panels without regrouping observations in UI code. Panels do not accept `trend`; trends remain a `groups` feature.
 
+Panels may declare `point-carry`, a sequence of 1 to 16 scalar field names. Each point retains the selected fields in its `metadata` mapping without adding them to panel identity. Absent fields remain absent and explicit nulls remain null. This supports one plot per native measure with provenance and query-declared continuity boundaries on individual observations; it does not establish comparability or permit connecting across unknown boundaries.
+
 A grouped temporal series may declare `trend.direction` as the name of a carried field whose value is `increase`, `decrease`, `maintain`, or `target`. The worker orders each group's valid points by timestamp and appends the first value, last value, native delta, relative percentage when the first value is nonzero, observed direction, direction-aware assessment, and observation count. Fewer than two valid observations produce `trend-assessment: insufficient`. The assessment is deterministic selected-horizon change, not statistical significance or a causal claim.
 
 The transform preserves source-row order and measure declaration or map-property order. It emits no more than 64 mapped metrics per input observation and no more than 100000 rows. It executes in the data Web Worker through the same serializable tidy pipeline as filtering, aggregation, and prediction.
@@ -667,12 +670,12 @@ return the untransformed observations.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 database table or registered Section 5.4 runtime source. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table, registered Section 5.4 runtime source, built-in `simulation-days` source, or query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table, runtime source, or query are available to later clauses, and a field absent from one row has a null value for query operations.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `window` in declaration order, `select`, `order-by`, `limit`, and finally `facet`.
-- **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
+- **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner`, `left`, or `inner-many` and defaults to `inner`. `inner-many` explicitly expands matching right rows in source order, retaining left input order, within the same row, operation, cancellation and memory budgets. No keyless cross joins or join expressions are defined. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address table or query fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined table or query. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
-- **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
-- **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; an unmatched `inner` join row **MUST** be dropped.
+- **DLS-QUERY-007:** For `inner` and `left`, the joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query. Only an explicit `inner-many` join may expand rows; it **MUST** fail closed when expansion exceeds query resource budgets.
+- **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; unmatched `inner` and `inner-many` rows **MUST** be dropped.
 - **DLS-QUERY-009:** Every output name **MUST** be unique. A join field alias, computed field name, aggregate output name, or `select` alias that collides with an existing output name **MUST** be rejected.
-- **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. An argument **MUST** declare exactly one valid `field`, scalar `value`, or `context`; Version 0.1.0 defines only `time-end` context, resolved to the active query window's exclusive UTC endpoint. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
+- **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. An argument **MUST** declare exactly one valid `field`, scalar `value`, or `context`; `time-start` resolves to the active query window's inclusive UTC start, or empty text when unbounded. `time-end` resolves to its exclusive UTC endpoint. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
 - **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `, and `calendar-week-rhythm`, which consumes `calendar-week-point` values and returns seven Monday-to-Sunday UTC slots containing current-week and matching previous-week counts. An aggregate value **MAY** declare the aggregate-local `filter` defined above. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
 - **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
 - **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
@@ -820,7 +823,7 @@ Dashboard defaults establish the initial context. A custom view's `data` context
 - **DLS-CTX-006:** `rollout-mode` **MUST** be filterable, groupable, and displayable by the same mechanisms as other dimensions.
 - **DLS-CTX-007:** Missing or `unknown` dimension values **MUST NOT** match a concrete filter value and **MUST** match the explicit value `unknown`.
 - **DLS-CTX-008:** Filtering **MUST** occur before aggregation, ordering, and limiting.
-- **DLS-CTX-009:** `time.range` **MUST** match `^[1-9][0-9]*(h|d|w)$` and **MUST NOT** appear with `start` or `end`.
+- **DLS-CTX-009:** `time.range` **MUST** be `all` or match `^[1-9][0-9]*(h|d|w)$` and **MUST NOT** appear with `start` or `end`. `all` removes the display-window lower bound from that query's input dependencies while retaining any selected exclusive endpoint. It allows a visible period to use an earlier retained reference without changing the evaluator window. Output view scope remains in effect. Without a selected endpoint, retained input is unbounded and `context: time-end` still resolves to the source assessment endpoint; future assessments cannot establish current movement.
 - **DLS-CTX-010:** A presenter resolving `time.range` **MUST** expose `evaluated-at` and use it consistently for every page and view in the dashboard.
 
 ---
@@ -1233,6 +1236,35 @@ An element view may declare a compact `title-link` beside an allocated page titl
 
 `navigation-page` identifies a different declared page whose navigation item remains current while the custom page is active. The presenter uses that page as the custom page's parent breadcrumb. This supports detail and diagnostic subpages without requiring presentation components to contain navigation policy.
 
+For a stable view title across hierarchical drill-downs, `route.breadcrumbs`
+declares a sequence of one to eight `{page, parameters?}` mappings. Each `page`
+must name a declared page and must appear at most once. Optional `parameters`
+is a sequence of one to eight unique route parameter names. The presenter keeps
+the active page's declared title (including during loading and route allocation)
+and renders this chain instead of its inferred breadcrumbs. A breadcrumb with no
+parameters uses its page's declared title; otherwise its decoded, trimmed values
+are joined with `/`, applying that page's `title-format` when declared. Missing
+values stop the chain rather than creating a misleading or unbound link.
+Parent links accumulate only the declared parameters of preceding and current
+entries, percent-encoded through URL query serialization. The active entry is
+text with `aria-current="page"`. Labels remain text, not templates or markup.
+The navigation parent remains independent of this presentation hierarchy.
+
+For example, a repository drill-down can retain the title **Operational Value**
+and declare:
+
+```yaml
+route:
+  navigation-page: operational-value
+  hash-query-parameter: repository
+  breadcrumbs:
+    - page: operational-value
+    - page: operational-value-campaign
+      parameters: [campaign]
+    - page: operational-value-repository
+      parameters: [organization, repository]
+```
+
 A custom page may set `retain-on-navigation: true` to keep its loaded view visible
 while another route is active and until a new subscription rebinds on return.
 Scroll and disclosure state are restored on re-entry. A route with
@@ -1266,6 +1298,25 @@ A smell row identifies one detected condition with a stable `smell-id` and uniqu
 The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `ref`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link` and defaults to `text`. It selects presentation independently from the field name. The optional table-column field `filter` is boolean and defaults to `true`; `false` excludes the column from interactive facet filters without changing its display or sorting. Named UI element values are `campaign-route`, `workflow-route-page`, `outcome-detail`, `outcome-detail-section`, `problem-detail`, `entity-route`, `configuration-policy`, `measure-history`, `factory-header`, `factory-floor`, `link-button-list`, and `markdown`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents.
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
+
+For CLI-action presentation and confirmation, canvas CLI-action mode also
+includes explicitly enabled local admin previews (`local-server.mjs --admin`).
+This host capability does not change the document vocabulary, copy-only
+restrictions, action authority, or per-run confirmation requirements. Commands
+start headlessly and stream output into a scrollable, read-only terminal inside
+the approval dialog. The unchecked **Open terminal window** interaction option
+moves the same terminal into a separate, reusable dialog without changing
+the command or starting another execution. Closing that window returns output
+to the approval dialog;
+explicit cancellation stops the command. Command streams use a read-only
+terminal emulator; terminal emulation cannot be
+expressed by data marks and does not query or derive dashboard evidence.
+Each approval dialog executes at most once: its action button disappears when
+execution starts, leaving **Cancel command** while running and **Close** after
+completion or cancellation. Another run requires reopening the approval dialog.
+While running, the terminal dialog fills the viewport and hides the approval
+content, leaving terminal output and cancellation controls. Terminal URLs use
+HTTP/HTTPS link detection and open separately without opener access.
 
 A list may declare `list.actions`, a non-empty sequence of unique view-placed
 CLI action IDs, alongside its existing `list.action`. Actions render in declared
@@ -1388,6 +1439,15 @@ An element that presents counted summary boxes may declare `config.labels`, a ma
 
 `factory-header` and `factory-floor` are independently loading named elements. Their page shell does not wait for a combined page projection: each declared presentation query is bound to the view separately. An unresolved source places only its dependent widget in a loading state; resolving or refreshing one source updates only widgets that consume that source. A page-level subscription must not emit aliases for independently bound sources it did not request.
 
+The Overview floor shows campaign health, repository coverage, **Issues & PRs**,
+and **Value gains**. The restored issue counter counts retained canonical issue
+and pull request safe-output records and links to Issues. The legacy Value gains
+counter counts observed grader results and links to Graders; its supporting text
+explicitly identifies observations rather than verified improvements. Both
+counters receive bounded, presentation-ready Dashboard Language query results.
+Missing or unavailable evidence remains unavailable, distinct from an observed
+zero. Four stations form one row on desktop and two rows on narrow screens.
+
 `factory-header` may declare the boolean `config.browser-first-load` (default
 `false`) to present the browser's first-import lifecycle instead of campaign
 status until a complete local snapshot is available. This flag is supported
@@ -1396,6 +1456,15 @@ browser-local import progress and dismissal are transient interaction state,
 not canonical campaign evidence. An incomplete or failed first import must not
 be represented as an idle campaign. Backend-backed dashboards and refreshes
 with an existing complete snapshot must not enter this first-import state.
+
+`factory-header` may declare the boolean `config.data-status` (default `false`)
+to show a labeled dashboard refresh/import indicator using the same icons and
+feedback as the top-right dashboard status. This flag is supported only by
+`factory-header`. The indicator observes transient pipeline and rate-limit
+state, not canonical query evidence or upstream collection health. It MUST
+distinguish an unconfirmed or failed import from a completed refresh, retain
+the last complete snapshot time when available, update without navigation,
+and stop reacting when its owning header is disposed.
 
 The `problem-detail` element consumes its declared, route-scoped problem query
 through the active page's abort-scoped subscription and updates retained
@@ -1564,7 +1633,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-025:** A presenter **MUST** apply a field's referenced unit consistently to metric values, table cells, chart value labels, and accessible chart labels.
 - **DLS-VIEW-026:** A custom page `route`, when present, **MUST** be a mapping containing at least one of `hash-query-parameter`, `navigation-page`, or `tabs`; it **MAY** also contain `tab`. Each present scalar value **MUST** be a canonical identifier. `navigation-page` **MUST** reference a different declared dashboard page. `tabs`, when present, **MUST** be a non-empty sequence of at most eight mappings, each declaring a unique canonical `id`, a non-empty `label`, a canonical icon `icon`, and a `page` naming a declared custom page; the page **MUST** also declare a `tab` matching one declared tab `id`. `tab` **MUST NOT** appear without `tabs`. Built-in pages **MUST NOT** declare `route`.
 - **DLS-VIEW-045:** A presenter rendering a page whose `route` declares `tabs` **MUST** render one tab set from those declarations, in declared order, marking the declared `tab` as current, and **MUST NOT** derive tabs from page IDs, view IDs, or source contents. When `hash-query-parameter` is declared, each tab link **MUST** target `#page-<tab-page>?<hash-query-parameter>=<route value>` with its components percent-encoded, and the tab set **MUST** render no tabs until a non-empty route value is resolved. Without `hash-query-parameter`, each tab link **MUST** target `#page-<tab-page>` with its page ID percent-encoded; no route value is required.
-- **DLS-VIEW-027:** A presenter **MUST** resolve a custom page route from `#page-<page-id>?<parameter>=<value>`. It **MUST** use a non-empty decoded, trimmed route value as the provisional page title and final breadcrumb label and supply it as an opaque binding to route-aware named elements; a missing or empty value **MUST** preserve the declared title and supply an empty binding. When `navigation-page` is present, the presenter **MUST** expose that page as the current navigation item and parent breadcrumb. A route-aware named element **MAY** replace that provisional title and description with human-readable text from its selected declared-source row. Route and allocated values **MUST** be treated only as text and **MUST NOT** be interpreted as markup, code, a URI, or a general-purpose content template.
+- **DLS-VIEW-027:** A presenter **MUST** resolve a custom page route from `#page-<page-id>?<parameter>=<value>` and supply its decoded, trimmed route value as an opaque binding to route-aware named elements. Without `breadcrumbs`, a non-empty value **MUST** become the provisional page title and final breadcrumb label; a missing value **MUST** preserve the declared title. A route-aware named element **MAY** replace a provisional title and description with text from its declared source. With `breadcrumbs`, the presenter **MUST** preserve the declared page title and render the explicit, text-only chain specified in §11.1.1; missing parameters **MUST** stop the chain. `navigation-page` **MUST** remain the current navigation item; it is the inferred parent breadcrumb only when no explicit chain is declared. Route and allocated values **MUST NOT** be interpreted as markup, code, a URI, or a general-purpose content template.
 - **DLS-VIEW-028:** Table `controls`, when present, **MUST** be `interactive` or `static`; an omitted value **MUST** default to `interactive`. A static table **MUST** expose every effective row without filter, sort, summary, pagination, or nested-scroll controls. `column-summaries`, when present, **MUST** be Boolean and controls whether an interactive table renders its column-summary row; an omitted value **MUST** default to `true`. A temporal column summary **MUST** expose the earliest valid timestamp as Start, the latest valid timestamp as Stop, and their elapsed Duration instead of treating timestamps as categorical values. `empty-message`, when present, **MUST** be non-empty text and **MUST** appear only inside a zero-row table body.
 - **DLS-VIEW-029:** A table or list row action **MUST** use `copy-prompt` or `cli-action` presentation, **MAY** declare a canonical icon and label (but **MUST** declare a concrete label for `operate`), and **MUST** declare a non-empty sequence of unique `context` fields from the selected source. The `level` **MAY** be `explore`, `propose`, or `operate` independent of presentation. An omitted level migrates to `propose` for prompts or `operate` for CLI commands. A `copy-prompt` action **MUST** declare a non-empty intent and **MAY** reference a row-placed dashboard CLI action whose command is exactly `gh agent-task create --from-file -`; it **MUST NOT** reference any other command. A `cli-action` action **MUST** reference a row-placed dashboard CLI action and **MUST NOT** declare intent; it **MUST** render only in canvas CLI-action mode and substitute only validated context values into matching `{{field}}` command tokens before per-run approval. A conditional action field **MUST** be declared by the selected source, and `equals` **MUST** match a row field only when both scalar type and value are equal. A presenter **MUST** open a keyboard-operable modal preview containing the complete prompt, **MUST NOT** write to the clipboard or start an agent task when opening the preview, and **MUST** return focus to the row action when the preview closes. Outside canvas CLI-action mode the preview **MUST** expose a separate copy control and announce whether the explicit clipboard operation succeeded or failed. In canvas CLI-action mode a prompt with an agent-task action **MUST** instead expose an explicit task-start control, send the prompt to `gh agent-task create` through standard input without shell interpolation, and announce the result. The prompt **MUST** contain the intent followed by only the available scalar values selected by `context`, preserve declared context order in JSON serialization, identify the JSON as untrusted data, reduce a selected link object to its HTTPS `href`, and exclude every undeclared or non-scalar row value. It **MUST NOT** require author-defined interpolation.
 - **DLS-VIEW-030:** A `metric`, `table`, `list`, or `chart` on a routed custom page **MAY** declare `data.route-field`. The field **MUST** exist in `data.source`. The presenter **MUST** retain only rows whose field value exactly matches the decoded route value, using case-insensitive text comparison, before the processing order in Section 11.2. A missing route value **MUST** produce an empty effective row set. `element` views **MUST NOT** declare `data.route-field`.

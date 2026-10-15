@@ -45,7 +45,7 @@ describe('factory-header debug logging', () => {
     const { renderFactoryHeader, output } = await loadFactoryHeaderWithDebug('');
     const controller = new AbortController();
     const sources = {
-      'overview-header-presentation': binding({ rows: [{ heading: 'Your campaigns are delivering value.' }] }),
+      'overview-header-presentation': binding({ rows: [{ heading: 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding()
     };
 
@@ -62,7 +62,7 @@ describe('factory-header debug logging', () => {
     const { renderFactoryHeader, output } = await loadFactoryHeaderWithDebug('?debug=factory-header');
     const controller = new AbortController();
     const sources = {
-      'overview-header-presentation': binding({ rows: [{ heading: 'Your campaigns are delivering value.' }] }),
+      'overview-header-presentation': binding({ rows: [{ heading: 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding()
     };
 

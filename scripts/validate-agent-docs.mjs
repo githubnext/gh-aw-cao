@@ -28,7 +28,7 @@ const commonTaskRoutes = [
 const requiredSkills = commonTaskRoutes.map(([, skill]) => skill);
 const demotedHeadings = [
   "Activity cache compression analysis",
-  "Campaign rhythm",
+  "Weekly rhythm",
   "Dashboard view catalog",
 ];
 const requiredResourceTypes = [

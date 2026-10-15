@@ -12,5 +12,5 @@
     "types": ["node", "vitest/globals"],
     "typeRoots": ["./node_modules/@types", "./node_modules"]
   },
-  "include": ["src/**/*.js", "test/**/*.js", "*.config.mjs"]
+  "include": ["src/**/*.js", "src/**/*.d.ts", "test/**/*.js", "*.config.mjs"]
 }

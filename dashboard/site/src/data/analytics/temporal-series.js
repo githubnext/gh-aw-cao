@@ -9,6 +9,7 @@ const debugTemporalSeries = createDebug('temporal-series');
 
 const MAX_METRICS_PER_OBSERVATION = 64;
 const MAX_OUTPUT_ROWS = 100_000;
+const POINT_METADATA = Symbol('temporal-point-metadata');
 
 /** @typedef {Record<string, unknown>} Row */
 
@@ -19,6 +20,7 @@ const MAX_OUTPUT_ROWS = 100_000;
  *   shape?: 'tidy'|'groups'|'panels',
  *   link?: string,
  *   carry?: string[],
+ *   ['point-carry']?: string[],
  *   measures?: Array<{ field: string, key?: string, kind: string }>,
  *   maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>,
  *   trend?: { direction: string }
@@ -31,6 +33,11 @@ const MAX_OUTPUT_ROWS = 100_000;
  * @returns {Row[]}
  */
 export function projectTemporalSeries(rows, definition) {
+  const pointFields = definition['point-carry'];
+  if (pointFields !== undefined && (definition.shape !== 'panels' || !Array.isArray(pointFields)
+    || pointFields.length === 0 || pointFields.length > 16 || pointFields.some(field => typeof field !== 'string' || !field))) {
+    throw new TypeError('temporal-series point-carry requires panels and 1 to 16 named fields.');
+  }
   debugTemporalSeries({ event: 'projection-started', inputRows: rows.length, shape: definition.shape ?? 'tidy' });
   /** @type {Row[]} */
   const projected = [];
@@ -41,6 +48,17 @@ export function projectTemporalSeries(rows, definition) {
     const series = scalarText(row[definition.series]);
     const carried = Object.fromEntries((definition.carry ?? []).map((field) => [field, row[field]]));
     const linked = definition.link ? { link: row[definition.link] } : {};
+    const pointMetadata = pointFields ? {
+      [POINT_METADATA]: Object.fromEntries(pointFields
+        .filter((field) => row[field] !== undefined)
+        .map((field) => {
+          const value = row[field];
+          if (value !== null && !['string', 'number', 'boolean'].includes(typeof value)) {
+            throw new TypeError('temporal-series point-carry requires scalar fields.');
+          }
+          return [field, value];
+        }))
+    } : {};
 
     for (const measure of definition.measures ?? []) {
       const value = finiteNumber(row[measure.field]);
@@ -49,6 +67,7 @@ export function projectTemporalSeries(rows, definition) {
       append(projected, {
         ...carried,
         ...linked,
+        ...pointMetadata,
         time,
         series,
         metric,
@@ -71,6 +90,7 @@ export function projectTemporalSeries(rows, definition) {
         append(projected, {
           ...carried,
           ...linked,
+          ...pointMetadata,
           time,
           series,
           metric,
@@ -113,6 +133,7 @@ function groupTemporalPanels(rows, carry) {
       x: row.time,
       y: row.value,
       key: `${String(row['metric-key'])}:${index}`,
+      ...(Object.hasOwn(row, POINT_METADATA) ? { metadata: Reflect.get(row, POINT_METADATA) } : {}),
       ...(row.link !== undefined ? { link: row.link } : {})
     });
     panel.series.set(id, series);

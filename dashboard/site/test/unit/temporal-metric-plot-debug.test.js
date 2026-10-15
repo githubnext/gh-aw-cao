@@ -74,7 +74,7 @@ describe('temporal metric plot debug logging', () => {
     });
   });
 
-  it('logs outcomes-filtered with provided and kept counts', async () => {
+  it('does not query run dates in the presenter after the worker has scoped run context', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=temporal-metric-plot');
     const { renderTemporalMetricPlot } = await import('../../src/components/temporal-metric-plot.js');
@@ -84,7 +84,7 @@ describe('temporal metric plot debug logging', () => {
     expect(debugFn).toHaveBeenCalledWith('[cao:temporal-metric-plot]', {
       event: 'outcomes-filtered',
       providedCount: 2,
-      keptCount: 1
+      keptCount: 2
     });
   });
 

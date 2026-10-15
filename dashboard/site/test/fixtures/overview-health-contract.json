@@ -1,0 +1,26 @@
+{
+  "workflows": [
+    { "organization": "acme", "repository": "control", "workflow": "campaign.md", "campaign": "one", "workflow-role": "worker" },
+    { "organization": "acme", "repository": "control", "workflow": "ci.yml", "workflow-role": "standalone" },
+    { "organization": "acme", "repository": "target", "workflow": "ci.yml", "workflow-role": "standalone" },
+    { "organization": "another", "repository": "target", "workflow": "ci.yml", "workflow-role": "standalone" },
+    { "organization": "acme", "repository": "target", "workflow": "idle.yml", "workflow-role": "standalone" }
+  ],
+  "runs": [
+    { "organization": "acme", "repository": "control", "workflow": "campaign.md", "run": "1", "run-status": "completed", "run-conclusion": "success", "started-at": "2026-10-15T10:00:00Z" },
+    { "organization": "acme", "repository": "control", "workflow": "ci.yml", "run": "2", "run-status": "completed", "run-conclusion": "failure", "started-at": "2026-10-15T10:00:00Z" },
+    { "organization": "acme", "repository": "control", "workflow": "ci.yml", "run": "3", "run-status": "in_progress", "started-at": "2026-10-15T11:00:00Z" },
+    { "organization": "acme", "repository": "target", "workflow": "ci.yml", "run": "4", "run-status": "completed", "run-conclusion": "failure", "started-at": "2026-10-15T10:00:00Z" },
+    { "organization": "acme", "repository": "target", "workflow": "ci.yml", "run": "5", "run-status": "completed", "run-conclusion": "success", "started-at": "2026-10-15T11:00:00Z" },
+    { "organization": "another", "repository": "target", "workflow": "ci.yml", "run": "6", "run-status": "completed", "run-conclusion": "timed-out", "started-at": "2026-10-15T11:00:00Z" }
+  ],
+  "summary": { "workflows": 5, "healthy-workflows": 3 },
+  "station": {
+    "value": 0.6,
+    "display-value": "60%",
+    "detail": "3/5 healthy workflows",
+    "description": "60% factory health",
+    "active": true
+  },
+  "heading": "Your factory needs attention."
+}

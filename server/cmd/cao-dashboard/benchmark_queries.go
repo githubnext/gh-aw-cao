@@ -200,6 +200,7 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	if err != nil {
 		return report, err
 	}
+	benchmarkLog.Printf("benchmark ingest completed sources=%d records=%d", len(result.Counts), report.Records)
 	definitions, err := loadBenchmarkDefinitions(databasePath, dashboardPath, result.EvaluatedAt, candidates)
 	if err != nil {
 		return report, err
@@ -211,14 +212,7 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 		var metrics model.Metrics
 		err := store.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
 			var err error
-			sources, metrics, err = reader.ExecuteSQLPlanWithOptions(ctx, definitions, []string{name}, postgresx.SQLExecutionOptions{
-				Pages: map[string]postgresx.SQLPage{name: {Limit: benchmarkPageLimit}},
-				ResourceLimits: &postgresx.SQLResourceLimits{
-					MaxInputRows:    query.MaxWorkingRows,
-					MaxOperations:   10 * query.MaxOperations,
-					MaxWorkingBytes: 4 * query.MaxWorkingBytes,
-				},
-			})
+			sources, metrics, err = reader.ExecuteSQLPlanWithOptions(ctx, definitions, []string{name}, benchmarkExecutionOptions(name))
 			return err
 		})
 		if err != nil {
@@ -232,6 +226,20 @@ func benchmarkQueries(ctx context.Context, store *postgresx.Store, source, datab
 	}
 	benchmarkLog.Printf("benchmark completed measurements=%d", len(report.Measurements))
 	return report, nil
+}
+
+// benchmarkExecutionOptions builds the paging and resource budgets for
+// measuring one candidate query. The budgets are deliberately larger than
+// production limits so the benchmark reports cost instead of failing closed.
+func benchmarkExecutionOptions(name string) postgresx.SQLExecutionOptions {
+	return postgresx.SQLExecutionOptions{
+		Pages: map[string]postgresx.SQLPage{name: {Limit: benchmarkPageLimit}},
+		ResourceLimits: &postgresx.SQLResourceLimits{
+			MaxInputRows:    query.MaxWorkingRows,
+			MaxOperations:   10 * query.MaxOperations,
+			MaxWorkingBytes: 4 * query.MaxWorkingBytes,
+		},
+	}
 }
 
 // buildBenchmarkMeasurement validates one candidate query's result and

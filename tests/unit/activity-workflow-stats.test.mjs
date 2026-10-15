@@ -13,6 +13,9 @@ function fakeGh(runs) {
     if (arguments_[0] === 'run' && arguments_[1] === 'list') {
       return { status: 0, stdout: JSON.stringify(runs), stderr: '' };
     }
+    if (arguments_[0] === 'run' && arguments_[1] === 'view') {
+      return { status: 0, stdout: JSON.stringify(runs.find((run) => String(run.databaseId) === arguments_[2])), stderr: '' };
+    }
     if (arguments_[0] === 'run' && arguments_[1] === 'download') {
       const runId = arguments_[2];
       const directoryIndex = arguments_.indexOf('--dir');
@@ -65,6 +68,22 @@ test('activity-stats reports download duration, payload sizes, and hash files fo
   assert.equal(stats.summary.totalHashFiles, 2);
   assert.equal(stats.summary.totalUniqueRuns, run.uniqueRuns);
   assert.equal(stats.summary.totalDuplicateRunObservations, run.duplicateRunObservations);
+});
+
+test('activity-stats inspects the exact selected run without racing newer runs', async () => {
+  const runs = [
+    { databaseId: 333, status: 'completed', conclusion: 'success' },
+    { databaseId: 111, status: 'completed', conclusion: 'success' },
+  ];
+  const calls = [];
+  const execute = fakeGh(runs);
+  const stats = await activityWorkflowStats({ repo: 'acme/cao', runId: 111 }, (command, arguments_) => {
+    calls.push(arguments_);
+    return execute(command, arguments_);
+  });
+  assert.equal(stats.summary.runsWithArtifact, 1);
+  assert.deepEqual(stats.runs.map((run) => run.runId), ['111']);
+  assert.ok(!calls.some((arguments_) => arguments_[1] === 'list'));
 });
 
 test('activity-stats records a per-run error when the artifact download fails', async () => {

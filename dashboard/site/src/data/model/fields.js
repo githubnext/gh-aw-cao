@@ -87,3 +87,24 @@ export function pruneCanonicalRecord(collection, record) {
   if (collection === 'evalObservations') record = retainFact(record, 'evalResult', 'answer');
   return Object.fromEntries(Object.entries(record).filter(([field]) => !fields.includes(field)));
 }
+
+/**
+ * Missing usage in a refresh is not a retraction of measured usage. Reruns
+ * have separate usage, even though their canonical run identity is shared.
+ * @param {Record<string, unknown> | undefined} existing
+ * @param {Record<string, unknown>} incoming
+ */
+export function mergeCanonicalRun(existing, incoming) {
+  if (!existing || !Number.isInteger(existing.attempt) || Number(existing.attempt) < 1
+      || existing.attempt !== incoming.attempt) return incoming;
+  let merged = incoming;
+  for (const field of ['aicTotal', 'inputTokens', 'outputTokens', 'cacheReadTokens',
+    'cacheWriteTokens', 'reasoningTokens']) {
+    if (incoming[field] == null && typeof existing[field] === 'number'
+        && Number.isFinite(existing[field]) && existing[field] >= 0) {
+      if (merged === incoming) merged = { ...incoming };
+      merged[field] = existing[field];
+    }
+  }
+  return merged;
+}

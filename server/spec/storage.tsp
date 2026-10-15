@@ -368,6 +368,16 @@ model issues {
 }
 
 model operationalValues {
+  @minValueExclusive(0)
+  `cadence-days`?: decimal;
+  `window-start`?: utcDateTime;
+  `window-end`?: utcDateTime;
+  `measurement-kind`?: string;
+  `coverage-status`?: string;
+  `missing-reason`?: string;
+  `eligible-count`?: int64;
+  `population-digest`?: string;
+  `evidence-digest`?: string;
   `adoption-at`?: utcDateTime;
   `baseline-value`?: decimal;
   campaign?: string;

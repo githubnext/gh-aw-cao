@@ -786,6 +786,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         categoryContent.setAttribute('aria-label', `${point.link.label}: ${fullCategory}`);
         hasInteractiveLink = true;
       }
+      const bar = h('span', {
+        className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
+        style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`,
+        'aria-hidden': 'true'
+      });
+      const track = point.link
+        ? renderSafeLink(bar, { ...point.link, label: `${label}: ${point.link.label}` })
+        : h('span', { 'aria-hidden': 'true' }, bar);
+      if (track instanceof HTMLElement) track.classList.add('horizontal-bar-chart-track');
       return h(
         'li',
         { className: 'horizontal-bar-chart-row' },
@@ -797,14 +806,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         },
         categoryContent
         ),
-        h(
-          'span',
-          { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
-          h('span', {
-            className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
-            style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
-          })
-        ),
+        track,
         h('span', {
           className: 'horizontal-bar-chart-value',
           tabIndex: 0,

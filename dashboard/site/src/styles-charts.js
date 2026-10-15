@@ -198,6 +198,8 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .temporal-metric-plot .temporal-plot-metric { fill: none; }
 .temporal-metric-plot.temporal-metric-plot-provisional .temporal-plot-metric { stroke: var(--attention); stroke-dasharray: 8 6; }
 .temporal-metric-plot.temporal-metric-plot-provisional .temporal-plot-point { fill: var(--attention-muted); stroke: var(--attention); stroke-width: 3; }
+.temporal-plot-metric.temporal-plot-metric-provisional { stroke: var(--attention); stroke-dasharray: 8 6; }
+.temporal-plot-point.temporal-plot-point-provisional { fill: var(--attention-muted); stroke: var(--attention); stroke-width: 3; }
 .line-chart-context { opacity: .3; stroke-width: 1.1; }
 .chart-point-context { opacity: .35; }
 .line-chart-current { opacity: 1; stroke-width: 2; }

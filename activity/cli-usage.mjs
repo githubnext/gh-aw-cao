@@ -37,8 +37,16 @@ export const DEFAULT_GH_LIMIT = 30;
 export const USAGE = `Usage:
   cao init
   cao setup [--json]
-  cao quickstart [--target OWNER/REPO] [--campaign PACKAGE] [--json]
+  cao quickstart [--step install | --wait] --target OWNER/REPO [--campaign PACKAGE] [--json]
+  cao quickstart --step run|collect|dashboard [--json]
+    Default: install only. Install and --wait require explicit --target; --campaign is optional.
+    Later stages use the sole target in committed policy and reject --target/--campaign.
+    Explains selections, components, policy, authentication, public Pages, and commit/push effects before each phase.
+    Each stage ends with an inspection checkpoint; --json keeps stdout machine-readable.
+    run dispatches one review; collect snapshots evidence; dashboard checks deployment.
+    --wait explicitly runs and waits for the entire legacy journey.
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
+    Reuse approved private Apps with --read-client-id ID --write-client-id ID; keys are prompted securely.
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
@@ -56,6 +64,7 @@ export const USAGE = `Usage:
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
+  cao recycle-cache --input-dir SHARD_DIRECTORY [--retention-days DAYS|all] [--max-bytes BYTES]
   cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
   cao pages [PAGE_ID] [--dashboard FILE] [--json]
   cao queries [--dashboard FILE] [--json]
@@ -71,7 +80,7 @@ export const USAGE = `Usage:
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao validate [--json] [--strict-warnings]
   cao download [--url URL] [--output DIRECTORY] [--manifest-sha256 DIGEST]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE] [--max-bytes BYTES]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE] [--max-bytes BYTES] [--max-cache-bytes BYTES]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao validate-activity-data --database FILE --shard-dir DIRECTORY --payload-hashes FILE --control-settings FILE --inventory FILE --memory-manifest FILE
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]

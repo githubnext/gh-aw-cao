@@ -1,11 +1,112 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { createDatabase } from "../../activity/cli/ingestion.mjs";
+import { upsertCanonicalBatch } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import {
   buildEvidence,
+  collectBatch,
   definition,
   efficiencyQuery,
   scoreMetric,
 } from "../../optimization/operational-value/optimization-token-optimizer.mjs";
+
+test("Optimization backfill materializes real canonical SQLite history and is idempotent", async () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  mkdirSync(path.join(root, ".tmp"), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, ".tmp", "optimization-sqlite-history-"));
+  const database = path.join(temporary, "archive.sqlite");
+  const output = path.join(temporary, "values.jsonl");
+  try {
+    const indexedDB = await createDatabase(database);
+    await upsertCanonicalBatch(indexedDB, {
+      repositories: [{id:"repo", owner:"github", name:"gh-aw"}],
+      workflows: [{id:"workflow", repositoryId:"repo", owner:"github",
+        repository:"gh-aw", path:".github/workflows/example.md"}],
+      runs: Array.from({length:3}, (_, index) => ({
+        id:`run-${index}`, repositoryId:"repo", workflowId:"workflow",
+        owner:"github", repository:"gh-aw", githubRunId:index + 1,
+        startedAt:`2026-09-12T0${index}:00:00Z`, conclusion:"success", aicTotal:10,
+      }))
+    });
+    const args = [
+      path.join(root, "activity/cao.mjs"), "operational-value", "--root", root,
+      "--database", database, "--output", output, "--campaign", "optimization",
+      "--history-campaign", "optimization", "--repository", "github/gh-aw",
+      "--retention-days", "365", "--timestamp", "2026-09-18T12:00:00Z"
+    ];
+    const first = JSON.parse(execFileSync(process.execPath, args, {encoding:"utf8"}));
+    assert.deepEqual(first.warnings, []);
+    assert.equal(first.historyValues, 18);
+    const records = readFileSync(output, "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(records.length, 18);
+    const primary = records.map((record) => record.operational_value)
+      .filter((value) => value.metric_role === "primary");
+    assert.equal(primary.length, 6);
+    assert.equal(new Set(primary.map((value) => value.window_end)).size, primary.length);
+    assert.ok(primary.some((value) => value.timestamp === "2026-09-18T12:00:00.000Z"
+      && value.window_end === "2026-09-17T23:30:36.000Z"));
+    assert.ok(primary.every((value) => value.value === 10 && value.metric_unit === "aic-per-run"));
+    assert.equal(primary[1].timestamp, "2026-09-12T23:30:36.000Z");
+    const repeated = JSON.parse(execFileSync(process.execPath, args, {encoding:"utf8"}));
+    assert.deepEqual(repeated.warnings, []);
+    assert.equal(repeated.historyValues, 0);
+    assert.deepEqual(readFileSync(output, "utf8").trim().split("\n").map(JSON.parse), records);
+  } finally {
+    rmSync(temporary, {recursive:true, force:true});
+  }
+});
+
+test("Optimization history uses one local canonical projection for all windows and repositories", async () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  mkdirSync(path.join(root, ".tmp"), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, ".tmp", "optimization-batch-"));
+  const cli = path.join(temporary, "query.mjs");
+  const calls = path.join(temporary, "calls.jsonl");
+  const database = path.join(temporary, "archive.sqlite");
+  writeFileSync(database, "preserved fixture");
+  const runs = Array.from({ length: 3 }, (_, index) => ({
+    owner: "github", repository: "gh-aw",
+    declaredWorkflowPath: ".github/workflows/example.md",
+    githubRunId: index + 1, conclusion: "success", aicTotal: 10,
+    startedAt: `2026-09-10T0${index}:00:00Z`
+  }));
+  writeFileSync(cli, `
+import { appendFileSync, readFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(calls)}, readFileSync(0,"utf8"));
+console.log(${JSON.stringify(JSON.stringify(runs))});
+`);
+  const previous = process.env.CAO_ACTIVITY_CLI;
+  process.env.CAO_ACTIVITY_CLI = cli;
+  try {
+    const collections = await collectBatch([
+      request,
+      {...request, repository: "github/gh-aw-actions"},
+      {...request, windowStart: "2026-09-09T00:00:00Z", windowEnd: "2026-09-16T00:00:00Z",
+        observedAt: "2026-09-16T00:00:00Z"},
+      {...request, windowStart: "2026-08-01T00:00:00Z", windowEnd: "2026-08-08T00:00:00Z"}
+    ], { database, history: true });
+    assert.equal(collections.length, 4);
+    assert.equal(scoreMetric("aic-per-successful-run", collections[0].evidence), 10);
+    assert.equal(scoreMetric("aic-per-successful-run", collections[1].evidence), null);
+    assert.equal(scoreMetric("aic-per-successful-run", collections[2].evidence), 10);
+    assert.equal(scoreMetric("aic-per-successful-run", collections[3].evidence), null);
+    const queries = readFileSync(calls, "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(queries.length, 1);
+    assert.equal(queries[0].aggregate, undefined);
+    assert.deepEqual(queries[0].filter.predicates.slice(0, 2), [
+      {field:"startedAt", gte:"2026-08-01T00:00:00.000Z"},
+      {field:"startedAt", lt:"2026-09-16T00:00:00.000Z"}
+    ]);
+    await assert.rejects(collectBatch([request], {history: true}), /remote acquisition is disabled/);
+  } finally {
+    if (previous === undefined) delete process.env.CAO_ACTIVITY_CLI;
+    else process.env.CAO_ACTIVITY_CLI = previous;
+    rmSync(temporary, {recursive:true, force:true});
+  }
+});
 
 const request = {
   repository: "github/gh-aw",
@@ -46,6 +147,10 @@ test("token optimizer measures native repository efficiency and reliability", ()
   assert.deepEqual(evidence, {
     maturityStatus: "matured",
     dubious: false,
+    coverageStatus: "unknown",
+    missingReason: "source-window-coverage-unverified",
+    eligibleCount: 2,
+    populationDigest: "42eef0d1c60c7bd18a2dfd7d30c1537fa7e344b7c5307b77f44985062fe118cf",
     eligibleWorkflowCount: 2,
     successfulRunCount: 10,
     successfulRunAicTotal: 104,

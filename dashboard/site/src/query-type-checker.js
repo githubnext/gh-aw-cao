@@ -558,6 +558,7 @@ function aggregateType(reducer, field, fields) {
  * @returns {'read'|'scalar'|'numeric'}
  */
 function computeArgumentUsage(functionName, argumentIndex) {
+  if (functionName === 'timestamp') return 'scalar';
   if (
     typeof functionName === 'string'
     && (

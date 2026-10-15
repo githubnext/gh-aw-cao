@@ -95,6 +95,53 @@ func TestTemporalSQLTidyCompilation(t *testing.T) {
 	}
 }
 
+func TestTemporalSQLPointMetadataCompilation(t *testing.T) {
+	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
+	definition := TemporalSeries{
+		Time: "observed-at", Series: "repository", Shape: "panels",
+		PointCarry: []string{"label", "missing", "undeclared"},
+		Measures:   []TemporalMeasure{{Field: "value", Kind: "primary"}},
+	}
+	plan := temporalTestPlan(t, input, definition)
+	if !strings.Contains(plan.CTEs, "jsonb_build_object('metadata',") ||
+		!strings.Contains(plan.CTEs, "CASE WHEN") {
+		t.Fatal("point metadata must preserve per-field presence inside chart points")
+	}
+	definition.Shape = "groups"
+	compiler := sqlCompiler{}
+	if _, err := compiler.temporal(input, definition, "invalid"); err == nil {
+		t.Fatal("point metadata must require panels")
+	}
+}
+
+func TestTemporalSQLPostgresPointMetadata(t *testing.T) {
+	connection := temporalTestConnection(t)
+	input := temporalTestInput(`
+		(1,'2026-01-01'::text,'r'::text,0::numeric,'increase'::text,true,'metric'::text,'known'::text,NULL::text,true),
+		(2,'2026-01-02','r',2,'increase',true,'metric','unknown',NULL,false)`)
+	definition := TemporalSeries{
+		Time: "observed-at", Series: "repository", Shape: "panels",
+		PointCarry: []string{"label", "missing", "undeclared"},
+		Measures:   []TemporalMeasure{{Field: "value", Kind: "primary"}},
+	}
+	rows, err := temporalTestRows(t, connection, temporalTestPlan(t, input, definition))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("point metadata split a native metric into multiple panels: %v", rows)
+	}
+	points := rows[0]["series"].([]any)[0].(map[string]any)["points"].([]any)
+	if len(points) != 2 {
+		t.Fatalf("point metadata lost observations: %v", points)
+	}
+	for index, want := range []map[string]any{{"label": "known", "missing": nil}, {"label": "unknown"}} {
+		if got := points[index].(map[string]any)["metadata"]; !reflect.DeepEqual(got, want) {
+			t.Fatalf("point %d metadata = %#v, want %#v", index, got, want)
+		}
+	}
+}
+
 func TestTemporalSQLRejectsInvalidDeclarations(t *testing.T) {
 	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
 	cases := []TemporalSeries{
@@ -141,7 +188,7 @@ func TestTemporalSQLDeployedCampaignQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, definition := range fragment.Queries {
-		if definition.Name != "campaign-operational-value-primary-series" {
+		if definition.Name != "operational-value-plot-series" {
 			continue
 		}
 		series := definition.TemporalSeries

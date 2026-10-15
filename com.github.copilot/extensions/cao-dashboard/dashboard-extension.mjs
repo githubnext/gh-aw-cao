@@ -216,13 +216,14 @@ export function createDashboardExtension({
                   if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
                   return approved === true;
                 },
-                executeCliAction: ({ command, input: commandInput, onOutput }) =>
+                executeCliAction: ({ command, input: commandInput, onOutput, signal }) =>
                   executeCommand({
                     command,
                     input: commandInput,
                     workingDirectory: previewWorkingDirectory,
                     githubToken: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
                     onOutput,
+                    signal,
                   }),
               });
               previews.set(context.instanceId, pending);

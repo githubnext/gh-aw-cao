@@ -2,8 +2,34 @@ package query
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
+
+func TestArgumentJSONRoundTrip(t *testing.T) {
+	for _, wire := range []string{
+		`{"value":null}`, `{"value":false}`, `{"value":0}`, `{"value":""}`,
+		`{"field":"status"}`, `{"context":"time-start"}`, `{"parameter":"days"}`,
+	} {
+		t.Run(wire, func(t *testing.T) {
+			var original Argument
+			if err := json.Unmarshal([]byte(wire), &original); err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := json.Marshal(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var decoded Argument
+			if err := json.Unmarshal(encoded, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			if string(encoded) != wire || !reflect.DeepEqual(original, decoded) {
+				t.Fatalf("argument round trip: %s -> %s -> %+v", wire, encoded, decoded)
+			}
+		})
+	}
+}
 
 func TestParseDefinitionsRejectsUnsupportedObservationWindows(t *testing.T) {
 	for _, window := range []string{

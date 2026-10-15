@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { executeDashboardQuery } from "../../dashboard/site/src/data/queries/declarative.js";
 
 const DAY_MS = 86_400_000;
 const ACTIVITY_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
@@ -20,6 +21,8 @@ const TERMINAL_CONCLUSIONS = [
 ];
 const FAILURE_CONCLUSIONS = ["failure", "timed_out", "startup_failure"];
 
+export const historyBatch = true;
+
 export const definition = {
   schemaVersion: 3,
   slug: "optimization-token-optimizer",
@@ -35,6 +38,7 @@ export const definition = {
   evaluation: { mode: "baseline-comparable" },
   evidence: {
     key: "target-repository-agentic-workflow-efficiency",
+    measurementKind: "interval",
     repositories: [
       "github/gh-aw",
       "github/gh-aw-actions",
@@ -250,10 +254,12 @@ export function buildEvidence(rows, request) {
   let concludedRunCount = 0;
   let failedRunCount = 0;
   let cancelledRunCount = 0;
+  const eligibleWorkflows = [];
 
   for (const row of rows.filter(inScope).filter((candidate) => !isOptimizationWorkflow(candidate.declaredWorkflowPath))) {
     if (!eligibleRow(row)) continue;
     eligibleWorkflowCount += 1;
+    eligibleWorkflows.push(`${repositoryCoordinate(row)}/${row.declaredWorkflowPath}`);
     successfulRunCount += row.successfulRuns;
     successfulRunAicTotal += row.aicPerSuccessfulRun * row.successfulRuns;
     concludedRunCount += row.concludedRuns;
@@ -267,6 +273,10 @@ export function buildEvidence(rows, request) {
       ? "interim"
       : "matured",
     dubious: duration < definition.evidence.window.durationDays * DAY_MS,
+    coverageStatus: "unknown",
+    missingReason: eligibleWorkflowCount === 0 ? "no-eligible-opportunities" : "source-window-coverage-unverified",
+    eligibleCount: eligibleWorkflowCount,
+    populationDigest: createHash("sha256").update(JSON.stringify(eligibleWorkflows.sort())).digest("hex"),
     eligibleWorkflowCount,
     successfulRunCount,
     successfulRunAicTotal: round(successfulRunAicTotal),
@@ -351,15 +361,27 @@ export function efficiencyQuery(start, end) {
   };
 }
 
-function queryEfficiencyWindow(database, start, end) {
+function queryEfficiencyWindows(database, requests) {
+  const start = new Date(Math.min(...requests.map((request) => Date.parse(request.windowStart)))).toISOString();
+  const end = new Date(Math.max(...requests.map((request) => Date.parse(request.windowEnd)))).toISOString();
+  const projection = efficiencyQuery(start, end);
+  delete projection.aggregate;
+  const repositories = requests.map((request) => request.repository?.split("/")[1]);
+  if (repositories.every(Boolean)) {
+    projection.filter.predicates.push({ field: "repository", in: [...new Set(repositories)] });
+  }
+  projection.select = [
+    "owner", "repository", "declaredWorkflowPath", "githubRunId", "startedAt",
+    "conclusion", "aicTotal",
+  ].map((field) => ({ field }));
   const output = run(process.execPath, [
-    ACTIVITY_CLI,
+    process.env.CAO_ACTIVITY_CLI || ACTIVITY_CLI,
     "query",
     "--database",
     database,
     "--stdin",
   ], {
-    input: `${JSON.stringify(efficiencyQuery(start, end))}\n`,
+    input: `${JSON.stringify(projection)}\n`,
   });
   const rows = JSON.parse(output);
   if (!Array.isArray(rows)) fail("Activity query returned invalid efficiency evidence");
@@ -367,6 +389,9 @@ function queryEfficiencyWindow(database, start, end) {
 }
 
 export async function collectBatch(requests, context = {}) {
+  if (context.history && !context.database) {
+    fail("Historical Optimization collection requires a preserved Activity database; remote acquisition is disabled");
+  }
   const supported = new Set(
     definition.evidence.repositories.map((repository) => repository.toLowerCase()),
   );
@@ -435,11 +460,20 @@ export async function collectBatch(requests, context = {}) {
     }
     if (!existsSync(database)) fail("CAO Activity database is unavailable");
 
+    const canonicalRows = queryEfficiencyWindows(database, requests);
     const rowsByWindow = new Map();
     const readWindow = (start, end) => {
       const key = `${start}\0${end}`;
       if (!rowsByWindow.has(key)) {
-        rowsByWindow.set(key, queryEfficiencyWindow(database, start, end));
+        const query = efficiencyQuery(start, end);
+        delete query.joins;
+        const result = executeDashboardQuery(query, {
+          runs: { rows: canonicalRows, metadata: { availability: "available" } },
+        });
+        if (result.metadata?.availability === "unavailable") {
+          fail(String(result.metadata["query-diagnostic"] ?? "Efficiency query is unavailable"));
+        }
+        rowsByWindow.set(key, result.rows);
       }
       return rowsByWindow.get(key);
     };

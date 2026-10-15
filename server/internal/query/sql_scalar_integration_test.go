@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"testing"
@@ -45,6 +46,13 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 		{"format-count", []Argument{field("value")}, "12,345.679"},
 		{"format-percent", []Argument{{Value: 0.1234}}, "12.3%"},
 		{"date-day", []Argument{field("observed")}, "2026-09-23"},
+		{"timestamp", []Argument{field("observed")}, "1790186400000"},
+		{"timestamp", []Argument{{Value: "1969-12-31T23:59:59.999Z"}}, "-1"},
+		{"timestamp", []Argument{{Value: "2026-09-24T11:00:00.123+01:00"}}, "1790244000123"},
+		{"timestamp", []Argument{{Value: "invalid"}}, "null"},
+		{"timestamp", []Argument{{Value: "now"}}, "null"},
+		{"timestamp", []Argument{{Value: "2026-02-30T00:00:00Z"}}, "null"},
+		{"timestamp", []Argument{{Value: 123}}, "null"},
 		{"link", []Argument{{Value: "https://example.com"}, {Value: "example"}}, `{"href": "https://example.com", "label": "example"}`},
 		{"failure-streak-point", []Argument{field("observed"), field("run"), field("failed")}, "[1790186400000, \"r1\", true]"},
 		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: "success"}}, "[1790186400000, 1790208000000, true]"},
@@ -61,13 +69,16 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var result string
+			var result sql.NullString
 			var present bool
 			if err := db.QueryRowContext(t.Context(), statement, args...).Scan(&result, &present); err != nil {
 				t.Fatalf("native function %s failed: %v", testcase.name, err)
 			}
-			if result != testcase.want || !present {
-				t.Fatalf("native function %s = %q, want %q", testcase.name, result, testcase.want)
+			if !result.Valid && testcase.want == "null" && present {
+				return
+			}
+			if !result.Valid || result.String != testcase.want || !present {
+				t.Fatalf("native function %s = %+v, want %q", testcase.name, result, testcase.want)
 			}
 		})
 	}

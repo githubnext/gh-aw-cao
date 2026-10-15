@@ -108,7 +108,8 @@
                     "type": "string"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "inner and left require unique right keys; inner-many explicitly expands all matching rows within query budgets. Missing or blank keys never match."
                 },
                 "on": {
                     "type": "array",

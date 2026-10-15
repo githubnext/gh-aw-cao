@@ -37,7 +37,7 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
   assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
   assert.match(installerSource, /quickstart_arguments=\(quickstart\)/);
   assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
-  assert.match(installerSource, /default_quickstart_control_repository/);
+  assert.doesNotMatch(installerSource, /default_quickstart_control_repository|default_repository_name/);
   assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
   assert.match(installerSource, /Quickstart selected stable CAO release \$quickstart_release/);
 });
@@ -147,22 +147,16 @@ if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   printf '%b\\n' "\${FAKE_REPOSITORY_OWNERS:-alpha-user\\\\nalpha-org}"
   exit 0
 fi
-if [[ "$*" == "api user --jq .login" ]]; then
-  printf '%s\\n' "\${FAKE_USER_LOGIN:-alpha-user}"
-  exit 0
-fi
 if [[ "\${1:-}" == api && "\${2:-}" == repos/*/pages ]]; then
   printf '{"build_type":"workflow","public":true,"html_url":"https://example.invalid/cao/"}\\n'
   exit 0
 fi
 if [[ "\${1:-}" == api && "\${2:-}" == repos/* && "$#" -eq 2 ]]; then
-  if [[ -n "\${FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE:-}" ||
-    "\${2#repos/}" == "\${FAKE_REPOSITORY_CHECK_FAILURE:-}" ]]; then
+  if [[ "\${2#repos/}" == "\${FAKE_REPOSITORY_CHECK_FAILURE:-}" ]]; then
     echo "gh: service unavailable (HTTP 503)" >&2
     exit 1
   fi
-  if [[ -n "\${FAKE_DEFAULT_REPOSITORY_EXISTS:-}" && "$2" == repos/*/cao ]] ||
-    [[ ",\${FAKE_EXISTING_REPOSITORIES:-}," == *",\${2#repos/},"* ]]; then
+  if [[ ",\${FAKE_EXISTING_REPOSITORIES:-}," == *",\${2#repos/},"* ]]; then
     exit 0
   fi
   echo "gh: Not Found (HTTP 404)" >&2
@@ -287,12 +281,6 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     ["gh.cmd", "@echo off\r\nbash \"%~dp0gh\" %*\r\n"],
     ["curl", fakeCurl],
     ["curl.exe", fakeCurl],
-    ["date", `#!/usr/bin/env bash
-set -euo pipefail
-[[ "$*" == "-u +%Y%m%d-%H%M%S" ]] || exit 2
-[[ -z "\${FAKE_DATE_FAILURE:-}" ]] || exit 1
-printf '%s\\n' "\${FAKE_DATE_TIMESTAMP:-20261014-111151}"
-`],
     ["npm", "#!/usr/bin/env bash\necho 'npm must not run during installation' >&2\nexit 1\n"],
   ]) {
     await writeFile(path.join(bin, name), source);
@@ -392,6 +380,14 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { a
         id: "official",
         name: "Official CAO catalog",
         repository: "githubnext/gh-aw-cao",
+        ref: "main",
+        auth: { type: "none" },
+      }, {
+        id: "agentics",
+        name: "Agentics workflows",
+        repository: "githubnext/agentics",
+        path: "workflows",
+        format: "workflows",
         ref: "main",
         auth: { type: "none" },
       }],
@@ -788,38 +784,38 @@ test("install.sh interactively selects an eligible owner and repository name", {
     cwd: consumer,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "\x1b[B\ncontrol\nn\n",
+    input: "alpha-org\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Prerequisites and GitHub sign-in verified/);
   assert.match(result.stdout, /Create a private CAO control repository/);
-  assert.match(result.stdout, /alpha-user/);
-  assert.match(result.stdout, /> alpha-org/);
-  assert.match(result.stdout, /enter select/);
-  assert.match(result.stdout, /Repository owner\s+alpha-org/);
+  assert.match(result.stdout, /Repository owner \(OWNER\):/);
+  assert.doesNotMatch(result.stdout, /enter select|Owner \[1-/);
   assert.match(result.stdout, /Repository name\s+control/);
   assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
   await assertNothingInstalled(consumer);
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh suggests the available cao repository name", { skip: process.platform === "win32" }, async (t) => {
-  const repository = "alpha-org/cao";
+test("install.sh requires typing both owner and repository name without defaults", { skip: process.platform === "win32" }, async (t) => {
+  const repository = "alpha-org/control";
   const { consumer, env, log } = await createConsumer(t, supportedGhAw, { repository });
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
     cwd: consumer,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "\x1b[B\n\nn\n",
+    input: "\nalpha-org\n\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Repository name\s+cao/);
+  assert.match(result.stdout, /blank input does not choose an owner/);
+  assert.doesNotMatch(result.stdout, /Repository name\s+cao|Repository name \[/);
+  assert.match(result.stdout, /Repository name\s+control/);
   assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
-  await assertCompleteInstall(path.join(consumer, "cao"), env, supportedGhAw, repository);
+  await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh does not suggest cao when that repository exists", { skip: process.platform === "win32" }, async (t) => {
+test("install.sh rejects an ineligible typed owner before accepting an eligible owner", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -829,19 +825,19 @@ test("install.sh does not suggest cao when that repository exists", { skip: proc
       TERM: "xterm-256color",
       ACCESSIBLE: "",
       NO_COLOR: "",
-      FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
     },
     timeout,
-    input: "\x1b[B\ncontrol\nn\n",
+    input: "unknown-owner\nalpha-org\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.doesNotMatch(result.stdout, /Repository name\s+cao/);
   assert.match(result.stdout, /Repository name\s+control/);
+  assert.match(result.stdout, /Type an account where you can create repositories/);
   assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh reports default-name availability failures before creating files", { skip: process.platform === "win32" }, async (t) => {
+test("install.sh reports explicit-name availability failures before creating files", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -851,13 +847,13 @@ test("install.sh reports default-name availability failures before creating file
       TERM: "xterm-256color",
       ACCESSIBLE: "",
       NO_COLOR: "",
-      FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE: "1",
+      FAKE_REPOSITORY_CHECK_FAILURE: "alpha-org/control",
     },
     timeout,
-    input: "\x1b[B\n",
+    input: "alpha-org\ncontrol\n",
   });
   assert.notEqual(result.code, 0);
-  assert.match(result.stdout + result.stderr, /Unable to check whether alpha-org\/cao is available/);
+  assert.match(result.stdout + result.stderr, /Unable to check whether alpha-org\/control is available/);
   assert.equal(await log(), "owners-query\n");
   await assertNothingInstalled(consumer);
 });
@@ -876,7 +872,7 @@ test("install.sh offers to create a private GitHub repository for a checkout wit
       FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
     },
     timeout,
-    input: "y\n\x1b[B\ncontrol\nn\n",
+    input: "y\nalpha-org\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /No GitHub control repository found/);
@@ -902,6 +898,30 @@ test("install.sh defaults missing-remote repository creation to no", { skip: pro
   await assertNothingInstalled(consumer);
 });
 
+for (const [environment, message] of [
+  [{ FAKE_EXISTING_REPOSITORIES: "alpha-org/control" }, /Repository alpha-org\/control already exists/],
+  [{ FAKE_REPOSITORY_CHECK_FAILURE: "alpha-org/control" }, /Unable to check whether alpha-org\/control is available/],
+]) {
+  test(`install.sh validates the typed remote name before in-place creation: ${message}`, { skip: process.platform === "win32" }, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
+    const result = await runTerminal("bash", [installScript], {
+      cwd: consumer,
+      env: {
+        ...env, ...environment, TERM: "", ACCESSIBLE: "1", NO_COLOR: "1",
+        FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
+      },
+      timeout,
+      input: "y\nalpha-org\ncontrol\n",
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stdout + result.stderr, message);
+    assert.equal(await log(), "owners-query\n");
+    assert.equal((await executeFile("git", ["remote"], { cwd: consumer })).stdout, "");
+    await assertNothingInstalled(consumer);
+  });
+}
+
 test("install.sh offers to create and clone from outside a Git checkout", { skip: process.platform === "win32" }, async (t) => {
   const { root, env, repository, log } = await createConsumer(t, supportedGhAw);
   const start = path.join(root, "start");
@@ -911,7 +931,7 @@ test("install.sh offers to create and clone from outside a Git checkout", { skip
     cwd: start,
     env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "" },
     timeout,
-    input: "y\n\x1b[B\ncontrol\nn\n",
+    input: "y\nalpha-org\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Create and clone a new private control repository/);
@@ -919,18 +939,21 @@ test("install.sh offers to create and clone from outside a Git checkout", { skip
   await assertCompleteInstall(path.join(start, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh uses numbered repository-owner prompts in accessible mode", { skip: process.platform === "win32" }, async (t) => {
+test("install.sh requires typed owner and name in accessible mode", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
     cwd: consumer,
     env: { ...env, TERM: "", ACCESSIBLE: "1", NO_COLOR: "1" },
     timeout,
-    input: "2\ncontrol\nn\n",
+    input: "2\nalpha-org\n\ncontrol\nn\n",
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /1\) alpha-user/);
-  assert.match(result.stdout, /2\) alpha-org/);
+  assert.match(result.stdout, /Repository owner \(OWNER\):/);
+  assert.match(result.stdout, /Repository name \(NAME\):/);
+  assert.match(result.stdout, /Type an account where you can create repositories/);
+  assert.match(result.stdout, /Use a repository name containing/);
+  assert.doesNotMatch(result.stdout, /1\) alpha-user|2\) alpha-org|Repository name \[/);
   assert.doesNotMatch(result.stdout, /enter select/);
   assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
   await assertNothingInstalled(consumer);
@@ -1091,7 +1114,7 @@ test("install.sh refuses an explicit clone path occupied by a dangling symlink",
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const occupied = path.join(consumer, "control");
   await fs.promises.symlink("missing-clone", occupied);
-  const result = await runStreamed(consumer, env, ["--quickstart", "--create-repo", "alpha-org/control"]);
+  const result = await runStreamed(consumer, env, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Cannot clone into existing path/);
   assert.equal(await log(), "");
@@ -1162,7 +1185,7 @@ test("headless guided reinstallation preserves incompatible operator-owned polic
 test("headless quickstart selects the current checkout and validates it before mutation", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await writeFile(path.join(consumer, "README.md"), "existing change\n");
-  const result = await runStreamed(consumer, { ...env, CI: "1" }, ["--quickstart"]);
+  const result = await runStreamed(consumer, { ...env, CI: "1" }, ["--quickstart", "--target", "alpha-org/project"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /requires a clean control-repository checkout/);
   assert.doesNotMatch(result.stderr, /Interactive repository creation requires a terminal/);
@@ -1177,7 +1200,7 @@ test("implicit quickstart pins the latest stable CAO release", async (t) => {
     CI: "1",
     FAKE_ADD_FAILURE: "1",
     FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
-  }, ["--quickstart"]);
+  }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
@@ -1199,7 +1222,7 @@ test("quickstart skips malformed tags, drafts, and prereleases when selecting a 
       "false\tfalse\tv1.2.3",
       "false\tfalse\tv1.2.2",
     ].join("\n"),
-  }, ["--quickstart"]);
+  }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
@@ -1217,7 +1240,7 @@ for (const releases of [
       ...env,
       CI: "1",
       FAKE_CAO_RELEASE_LIST: releases || "\n",
-    }, ["--quickstart"]);
+    }, ["--quickstart", "--target", "alpha-org/project"]);
 
     assert.notEqual(result.code, 0);
     assert.match(result.stderr, /Unable to resolve the latest stable CAO release with a vX\.Y\.Z tag/);
@@ -1244,7 +1267,7 @@ test("implicit quickstart refreshes an existing control plane to the stable rele
     CI: "1",
     FAKE_ADD_FAILURE: "1",
     FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
-  }, ["--quickstart"]);
+  }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.match(result.stdout, /Refreshing control plane components/);
@@ -1259,7 +1282,7 @@ test("quickstart preserves an explicit main source", async (t) => {
     FAKE_ADD_FAILURE: "1",
     FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@main",
     FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
-  }, ["githubnext/gh-aw-cao@main", "--quickstart"]);
+  }, ["githubnext/gh-aw-cao@main", "--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest stable CAO release/);
@@ -1272,7 +1295,7 @@ test("quickstart fails closed when no stable CAO release can be resolved", async
     ...env,
     CI: "1",
     FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
-  }, ["--quickstart"]);
+  }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
@@ -1287,7 +1310,7 @@ test("quickstart rejects a prerelease as the implicit stable source", async (t) 
     ...env,
     CI: "1",
     FAKE_LATEST_CAO_RELEASE: "v1.2.3-rc.1",
-  }, ["--quickstart"]);
+  }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
@@ -1295,147 +1318,98 @@ test("quickstart rejects a prerelease as the implicit stable source", async (t) 
   await assertNothingInstalled(consumer);
 });
 
-test("headless quickstart keeps USERNAME/cao when the repository and clone path are available", async (t) => {
-  const { root, env, log } = await createConsumer(t, supportedGhAw);
-  const outsideCheckout = path.join(root, "outside-checkout");
-  await mkdir(outsideCheckout);
-  const result = await runStreamed(outsideCheckout, {
-    ...env,
-    CI: "1",
-    FAKE_CONTROL_REPOSITORY: "alpha-user/cao",
-    FAKE_ADD_FAILURE: "1",
-  }, ["--quickstart"]);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Created private control repository alpha-user\/cao\./);
-  assert.doesNotMatch(result.stderr, /creating a fresh private control repository/);
-  assert.equal(await log(), "create-private\nadd\n");
-  await assertNothingInstalled(outsideCheckout);
-});
-
-test("headless quickstart selects a UTC timestamp when USERNAME/cao exists", async (t) => {
-  const { root, env, log } = await createConsumer(t, supportedGhAw);
-  const outsideCheckout = path.join(root, "outside-checkout");
-  await mkdir(outsideCheckout);
-  const result = await runStreamed(outsideCheckout, {
-    ...env,
-    CI: "1",
-    FAKE_CONTROL_REPOSITORY: "alpha-user/cao-20261014-111151",
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
-    FAKE_ADD_FAILURE: "1",
-  }, ["--quickstart"]);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /alpha-user\/cao already exists; creating a fresh private control repository: alpha-user\/cao-20261014-111151\./);
-  assert.match(result.stdout, /Created private control repository alpha-user\/cao-20261014-111151\./);
-  assert.equal(await log(), "create-private\nadd\n");
-  await assertNothingInstalled(outsideCheckout);
-});
-
-for (const kind of ["directory", "file", "symlink"]) {
-  test(`quickstart preserves an occupied local cao ${kind} and selects a timestamp`, {
-    skip: kind === "symlink" && process.platform === "win32",
-  }, async (t) => {
-    const { root, env, log } = await createConsumer(t, supportedGhAw);
-    const outsideCheckout = path.join(root, "outside-checkout");
-    await mkdir(outsideCheckout);
-    const occupied = path.join(outsideCheckout, "cao");
-    if (kind === "directory") {
-      await mkdir(occupied);
-      await writeFile(path.join(occupied, "keep.txt"), "preserve\n");
-    } else if (kind === "file") {
-      await writeFile(occupied, "preserve\n");
+for (const location of ["outside", "disconnected", "disconnected-with-policy"]) {
+  test(`quickstart requires explicit creation: ${location}`, async (t) => {
+    const { root, consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const inCheckout = location !== "outside";
+    const start = inCheckout ? consumer : path.join(root, "outside-checkout");
+    if (inCheckout) {
+      await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
     } else {
-      await fs.promises.symlink("missing-clone", occupied);
+      await mkdir(start);
     }
-    const result = await runStreamed(outsideCheckout, {
-      ...env,
-      CI: "1",
-      FAKE_CONTROL_REPOSITORY: "alpha-user/cao-20261014-111151",
-      FAKE_ADD_FAILURE: "1",
-    }, ["--quickstart"]);
-    assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /Local clone path cao already exists; creating a fresh private control repository: alpha-user\/cao-20261014-111151\./);
-    assert.equal(await log(), "create-private\nadd\n");
-    if (kind === "symlink") {
-      assert.equal(await fs.promises.readlink(occupied), "missing-clone");
-    } else {
-      assert.equal(await readFile(kind === "directory" ? path.join(occupied, "keep.txt") : occupied, "utf8"), "preserve\n");
+    if (location === "disconnected-with-policy") {
+      await mkdir(path.join(consumer, ".github/workflows"), { recursive: true });
+      await writeFile(path.join(consumer, policyPath), '{"operator":"preserve"}\n');
     }
-  });
-}
-
-test("quickstart handles timestamp collisions in both remote names and local clone paths", async (t) => {
-  const { root, env, log } = await createConsumer(t, supportedGhAw);
-  const outsideCheckout = path.join(root, "outside-checkout");
-  await mkdir(outsideCheckout);
-  const occupied = path.join(outsideCheckout, "cao-20261014-111151-2");
-  await mkdir(occupied);
-  const result = await runStreamed(outsideCheckout, {
-    ...env,
-    CI: "1",
-    FAKE_CONTROL_REPOSITORY: "alpha-user/cao-20261014-111151-3",
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
-    FAKE_EXISTING_REPOSITORIES: "alpha-user/cao-20261014-111151",
-    FAKE_ADD_FAILURE: "1",
-  }, ["--quickstart"]);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Created private control repository alpha-user\/cao-20261014-111151-3\./);
-  assert.equal(await log(), "create-private\nadd\n");
-  assert.ok((await stat(occupied)).isDirectory());
-});
-
-for (const [name, environment, message] of [
-  ["default lookup fails", { FAKE_DEFAULT_REPOSITORY_CHECK_FAILURE: "1" }, /Unable to check whether alpha-user\/cao is available/],
-  ["timestamp lookup fails", {
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
-    FAKE_REPOSITORY_CHECK_FAILURE: "alpha-user/cao-20261014-111151",
-  }, /Unable to check whether alpha-user\/cao-20261014-111151 is available/],
-  ["timestamp generation fails", {
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1", FAKE_DATE_FAILURE: "1",
-  }, /Unable to generate a UTC timestamp/],
-  ["timestamp is invalid", {
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1", FAKE_DATE_TIMESTAMP: "invalid",
-  }, /Unable to generate a UTC timestamp/],
-  ["all timestamped names are occupied", {
-    FAKE_DEFAULT_REPOSITORY_EXISTS: "1",
-    FAKE_EXISTING_REPOSITORIES: Array.from({ length: 10 }, (_, index) =>
-      `alpha-user/cao-20261014-111151${index ? `-${index + 1}` : ""}`).join(","),
-  }, /Unable to find an available quickstart repository after 10 timestamped names/],
-]) {
-  test(`quickstart fails without mutation when ${name}`, async (t) => {
-    const { root, env, log } = await createConsumer(t, supportedGhAw);
-    const outsideCheckout = path.join(root, "outside-checkout");
-    await mkdir(outsideCheckout);
-    const result = await runStreamed(outsideCheckout, {
-      ...env, CI: "1", ...environment,
-    }, ["--quickstart"]);
+    const result = await runStreamed(start, {
+      ...env, CI: "1", FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
+    }, ["--quickstart", "--target", "alpha-org/project"]);
     assert.notEqual(result.code, 0);
-    assert.match(result.stderr, message);
+    assert.match(result.stderr, /connected GitHub checkout or explicit --create-repo OWNER\/NAME/);
     assert.equal(await log(), "");
-    assert.deepEqual(await fs.promises.readdir(outsideCheckout), []);
+    if (location === "disconnected-with-policy") {
+      assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), '{"operator":"preserve"}\n');
+      assert.equal(await exists(path.join(consumer, "cao.sh")), false);
+    } else {
+      await assertNothingInstalled(start);
+    }
+    if (!inCheckout) assert.deepEqual(await fs.promises.readdir(start), []);
   });
 }
 
-for (const remoteExists of [false, true]) {
-  test(`quickstart connects a checkout without remotes in place${remoteExists ? " using a timestamp on collision" : " without checking a clone path"}`, async (t) => {
-    const repository = `alpha-user/${remoteExists ? "cao-20261014-111151" : "cao"}`;
-    const { consumer, env, log } = await createConsumer(t, supportedGhAw, { repository });
-    await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
-    await mkdir(path.join(consumer, "cao"));
-    const result = await runStreamed(consumer, {
-      ...env,
-      CI: "1",
-      FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
-      FAKE_DEFAULT_REPOSITORY_EXISTS: remoteExists ? "1" : "",
-      FAKE_ADD_FAILURE: "1",
-    }, ["--quickstart"]);
+for (const arguments_ of [
+  ["--quickstart"],
+  ["--quickstart", "--create-repo", "alpha-org/control"],
+  ["--quickstart", "--create-repo"],
+]) {
+  test(`quickstart requires target before mutation: ${arguments_.join(" ")}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, arguments_);
     assert.notEqual(result.code, 0);
-    assert.match(result.stdout, new RegExp(`Created private control repository ${repository}\\.`));
-    assert.equal(await log(), "create-private-current\nadd\n");
-    assert.equal((await executeFile("git", ["remote", "get-url", "origin"], { cwd: consumer })).stdout.trim(), `https://github.com/${repository}.git`);
-    assert.ok((await stat(path.join(consumer, "cao"))).isDirectory());
+    assert.match(result.stderr, /--quickstart requires explicit --target OWNER\/REPO/);
+    assert.doesNotMatch(result.stderr, /gh auth login|Interactive repository creation/);
+    assert.equal(await log(), "");
     await assertNothingInstalled(consumer);
   });
 }
+
+for (const [name, environment, message] of [
+  ["the selected name is occupied", { FAKE_EXISTING_REPOSITORIES: "alpha-org/control" }, /Repository alpha-org\/control already exists/],
+  ["the availability check fails", { FAKE_REPOSITORY_CHECK_FAILURE: "alpha-org/control" }, /Unable to check whether alpha-org\/control is available/],
+]) {
+  test(`explicit creation fails before mutation when ${name}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, {
+      ...env, CI: "1", ...environment,
+    }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, message);
+    assert.equal(await log(), "");
+    assert.equal(await exists(path.join(consumer, "control")), false);
+    await assertNothingInstalled(consumer);
+  });
+}
+
+test("quickstart explicitly creates the requested private repository outside a checkout", async (t) => {
+  const { root, env, log } = await createConsumer(t, supportedGhAw);
+  const start = path.join(root, "outside-checkout");
+  await mkdir(start);
+  const result = await runStreamed(start, {
+    ...env, CI: "1", FAKE_ADD_FAILURE: "1",
+  }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Created private control repository alpha-org\/control/);
+  assert.equal(await log(), "create-private\nadd\n");
+  await assertNothingInstalled(start);
+});
+
+test("interactive quickstart requires manually typed owner and name for explicit creation", { skip: process.platform === "win32" }, async (t) => {
+  const { root, env, log } = await createConsumer(t, supportedGhAw);
+  const start = path.join(root, "outside-checkout");
+  await mkdir(start);
+  const result = await runTerminal("bash", [installScript, "--quickstart", "--target", "alpha-org/project", "--create-repo"], {
+    cwd: start,
+    env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "", FAKE_ADD_FAILURE: "1" },
+    timeout,
+    input: "\nalpha-org\n\ncontrol\n",
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /blank input does not choose an owner/);
+  assert.match(result.stdout, /Repository name\s+control/);
+  assert.match(result.stdout, /Repo Assist for alpha-org\/project/);
+  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
+});
 
 test("quickstart never changes an explicitly requested repository name on collision", async (t) => {
   const { root, env, log } = await createConsumer(t, supportedGhAw);
@@ -1444,10 +1418,9 @@ test("quickstart never changes an explicitly requested repository name on collis
   const result = await runStreamed(outsideCheckout, {
     ...env,
     CI: "1",
-    FAKE_CONTROL_REPOSITORY: "alpha-user/cao",
+    FAKE_CONTROL_REPOSITORY: "alpha-org/control",
     FAKE_CREATE_REPOSITORY_FAILURE: "1",
-    FAKE_DATE_FAILURE: "1",
-  }, ["--quickstart", "--create-repo", "alpha-user/cao"]);
+  }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Repository already exists/);
   assert.doesNotMatch(result.stderr, /UTC timestamp|creating a fresh private control repository/);

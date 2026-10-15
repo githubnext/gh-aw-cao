@@ -21,6 +21,7 @@ model Filter {
 model SelectedField { field: string; as?: string; }
 model Join {
   source: string;
+  /** inner and left require unique right keys; inner-many explicitly expands all matching rows within query budgets. Missing or blank keys never match. */
   type?: string;
   on: { left: string; right: string }[];
   fields: SelectedField[];

@@ -111,6 +111,35 @@ exact allowlist. The field accepts exact `OWNER/REPOSITORY` coordinates only.
 Omitting it preserves the fail-closed rule: workflow-token mode rejects broader
 collection scope rather than inferring a control-repository-only subset.
 
+### Reuse approved Apps
+
+If private read/write Apps are already approved, use
+`./cao.sh setup-auth github-app --repo OWNER/CONTROL --read-client-id READ-ID --write-client-id WRITE-ID`
+instead of registering replacements. Add `--dry-run` to preview exact scopes.
+Setup prompts securely for the keys and verifies App identity, permission
+ceilings, and selected repositories using the App's own credentials, without
+requiring the operator to list every organization installation. Repository
+administrators can extend an approved installation to their repositories where
+organization policy permits, even if the App has organization permissions.
+New installations still require the appropriate approval. Approval does not
+supply private keys: an authorized App credential manager must provide them
+through the secure prompts. A rerun with stored client IDs prompts for the same
+keys again instead of forcing App replacement.
+
+Repository-administrator enrollment of approved Apps is available on GitHub.com
+and GHES 3.24 or later. An organization owner must still approve new
+installations with organization-level permissions, repository administration,
+or repository creation, and organization policy can restrict installation
+changes to owners.
+
+GitHub's separate provisioning permissions,
+`repository_creation:write` and `installation_repositories:write`, allow
+repository creation without broad administration and exact-repository
+installation management with fine-grained credentials. CAO deliberately does
+not add either permission to its runtime Apps or PATs and does not automatically
+enroll repositories. Installation changes never expand the reviewed policy.
+See the [GitHub App improvements announcement](https://github.blog/changelog/2026-10-13-github-app-improvements-for-least-privilege-and-management/).
+
 ### Automated App setup
 
 Use this path when the control repository and every target belong to one organization.
@@ -147,7 +176,12 @@ Then create and configure the Apps:
 
 Choose **Only select repositories** and select only those printed by the command. CAO stores client IDs as repository variables and sends private keys directly to Actions secrets.
 
-Automated setup uses the same selected-repository installation scope for both Apps while keeping their permissions separate. When the write App must cover fewer repositories than the read App, create and install the Apps manually: install the read App on every evidence source and the write App only on approved output destinations. Then configure the credentials:
+Automated setup installs the read App on the control repository and every exact
+allowlisted evidence source. The write App defaults to only the control
+repository. Repeat `--write-repository OWNER/REPO` to replace that default with
+approved output destinations; do not add write access merely because a
+repository supplies read evidence. Existing manually installed credentials can
+also be stored directly, but the verified setup path is preferred:
 
 ```bash
 gh variable set GH_AW_GITHUB_READ_APP_ID \
@@ -464,4 +498,15 @@ Before promotion, verify:
 
 ## Offline dashboard access
 
-GitHub Apps have no `offline_access` repository permission or OAuth scope to request. The hosted dashboard uses GitHub's expiring user access tokens and server-side refresh tokens for authenticated requests while connected; these credentials are not copied to the browser cache. The static dashboard can display previously downloaded data offline, but authentication and server-backed operations require a connection.
+`offline_access` is a GitHub App **user-authorization scope**, not a repository
+permission or offline data grant. Hosted sign-in requests it for GitHub App
+client IDs (`Iv...`) to receive an expiring user token and refresh token even
+when expiration is disabled globally on that App. The App's configured
+permissions still govern access; organization/team checks require
+organization **Members: read** and an approved installation in each allowed
+organization. OAuth App clients retain `read:org`.
+This GitHub App scope is available on GitHub.com and GHES 3.23 or later.
+
+Tokens and refresh tokens remain server-side, never in browser caches. The
+static dashboard can display previously downloaded data offline, but sign-in,
+refresh, and server-backed operations require a connection.

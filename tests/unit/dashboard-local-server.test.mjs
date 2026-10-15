@@ -7,6 +7,28 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { parseDashboardServerArguments, runGoDashboardServer, startDashboardServer } from "../../dashboard/local-server.mjs";
+import { refreshDashboardCompilerRelease } from "../../dashboard/local-release-metadata.mjs";
+
+test("local release refresh preserves snapshot evidence and recomputes upgrade state", () => {
+  const snapshot = {
+    workflows: {
+      metadata: { "as-of": "2026-10-01T00:00:00Z" },
+      rows: ["v0.91.5", "v0.92.0", "unknown"].map((version) => ({
+        "gh-aw-version": version, "gh-aw-current-version": "v0.89.21",
+        "gh-aw-update-state": "up-to-date", "observed-at": "2026-10-01T00:00:00Z",
+      })),
+    },
+  };
+  const refreshed = refreshDashboardCompilerRelease(snapshot, "v0.92.0");
+  assert.deepEqual(refreshed.workflows.rows.map((row) => row["gh-aw-current-version"]), ["v0.92.0", "v0.92.0", "v0.92.0"]);
+  assert.deepEqual(refreshed.workflows.rows.map((row) => row["gh-aw-update-state"]), ["update-available", "up-to-date", "unknown"]);
+  assert.deepEqual(refreshed.workflows.rows.map((row) => row["gh-aw-version"]), ["v0.91.5", "v0.92.0", "unknown"]);
+  assert.deepEqual(refreshed.workflows.metadata, snapshot.workflows.metadata);
+  assert.equal(refreshed.workflows.rows[0]["observed-at"], snapshot.workflows.rows[0]["observed-at"]);
+  assert.equal(snapshot.workflows.rows[0]["gh-aw-current-version"], "v0.89.21");
+  assert.throws(() => refreshDashboardCompilerRelease(snapshot, ""), /invalid latest stable/);
+  assert.throws(() => refreshDashboardCompilerRelease(snapshot, "v0.93.0-rc.1"), /invalid latest stable/);
+});
 
 const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
@@ -135,6 +157,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     siteRoot,
     catalogRoot: campaignRoot,
     downloadData,
+    dataBackend: "indexeddb",
     allowMissingOrigin: true,
     workingDirectory: root,
     requestOutput: (message) => requestLogs.push(message),
@@ -145,6 +168,11 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.equal(indexResponse.status, 200);
     assert.equal(new URL(indexResponse.url).searchParams.get("local-preview"), "enabled");
     const index = await indexResponse.text();
+    assert.equal((await fetch(`${preview.url}/__cli_action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: new URL(preview.url).origin },
+      body: JSON.stringify({ id: "compile-workflows" }),
+    })).status, 404);
     assert.doesNotMatch(index, /location\.reload/);
     assert.doesNotMatch(index, /<script[^>]+src=.*copilot-prompt/);
     assert.doesNotMatch(index, new RegExp(syntheticToken));
@@ -208,6 +236,128 @@ test("local dashboard server composes campaign dashboards and reloads after upda
       (await updatedResponse.json()).dashboard.pages.map(({ id }) => id),
       ["built-in", "campaign-two"],
     );
+  } finally {
+    await preview.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("admin mode is explicit and restricted to the local Node server", async () => {
+  assert.equal(parseDashboardServerArguments(["--admin"]).admin, true);
+  for (const args of [
+    ["--admin", "--canvas"],
+    ["--admin", "--host", "0.0.0.0"],
+    ["--admin", "--host", "example.com"],
+    ["--admin", "--data-backend", "postgres"],
+  ]) {
+    assert.throws(() => parseDashboardServerArguments(args), /admin|loopback/i);
+  }
+  await assert.rejects(startDashboardServer({ admin: true, host: "0.0.0.0" }), /loopback/);
+});
+
+test("admin actions stream incrementally, reject untrusted requests, and cancel on disconnect", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-admin-actions-"));
+  await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
+  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
+    id: "compile-workflows", label: "Compile", icon: "play", command: "gh aw compile",
+  }]));
+  const calls = [];
+  let finish;
+  let cancelled;
+  const preview = await startDashboardServer({
+    admin: true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+    dataBackend: "indexeddb",
+    output: () => {}, traceOutput: () => {}, requestOutput: () => {},
+    downloadData: async (destination) => {
+      await mkdir(destination, { recursive: true });
+      await writeFile(path.join(destination, "sources.json"), "{}");
+    },
+    executeCliAction: async ({ command, onOutput, signal }) => {
+      calls.push(command);
+      onOutput({ stream: "stdout", data: "\u001b[32mRunning\u001b[0m\r\n" });
+      await new Promise((resolve) => {
+        finish = resolve;
+        signal.addEventListener("abort", () => { cancelled = true; resolve(); }, { once: true });
+      });
+      return { ok: true, exitCode: 0 };
+    },
+  });
+  try {
+    const page = await fetch(`${preview.url}/`);
+    assert.equal(new URL(page.url).searchParams.get("local-preview"), "admin");
+    const url = `${preview.url}/__cli_action`;
+    const headers = { "Content-Type": "application/json", Origin: new URL(url).origin };
+    const request = (body, customHeaders = headers) => fetch(url, {
+      method: "POST", headers: customHeaders, body: JSON.stringify(body),
+    });
+    assert.equal((await request({ id: "compile-workflows" }, { ...headers, Origin: "https://attacker.example" })).status, 403);
+    assert.equal((await request({ id: "compile-workflows" }, { "Content-Type": "application/json" })).status, 403);
+    assert.equal((await request({ id: "unknown" })).status, 404);
+    assert.equal((await request({ id: "compile-workflows", command: "whoami" })).status, 400);
+    const lifetime = new AbortController();
+    const response = await fetch(url, {
+      method: "POST", headers, body: JSON.stringify({ id: "compile-workflows" }),
+      signal: lifetime.signal,
+    });
+    const reader = response.body.getReader();
+    const first = new TextDecoder().decode((await reader.read()).value);
+    assert.match(first, /Running/);
+    assert.equal(calls.length, 1);
+    assert.equal((await request({ id: "compile-workflows" })).status, 409);
+    lifetime.abort();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(cancelled, true);
+    assert.equal((await fetch(`${preview.url}/src/components/cli-terminal-runtime.js`)).status, 200);
+  } finally {
+    finish?.();
+    await preview.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("admin mode runs declared commands through the local CLI without an injected executor", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-admin-cli-"));
+  const ghExecutable = path.join(root, "gh");
+  await writeFile(ghExecutable, `#!${process.execPath}
+const args = process.argv.slice(2).join(" ");
+if (args === "auth token") console.log("test-authentication");
+else if (args === "aw --help") console.log("gh aw");
+else if (args === "api user") console.log(JSON.stringify({ login: "test-user", id: 123 }));
+else if (args === "aw compile") {
+  console.log("compile started");
+  setTimeout(() => { process.stderr.write("compile complete\\n"); }, 50);
+} else process.exitCode = 2;
+`);
+  await chmod(ghExecutable, 0o700);
+  await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
+  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [
+    { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
+    { id: "unsupported", label: "Unsupported", icon: "play", command: "sh -c whoami" },
+  ]));
+  const preview = await startDashboardServer({
+    admin: true, ghExecutable, siteRoot: root, catalogRoot: null,
+    workingDirectory: root, port: 0, dataBackend: "indexeddb",
+    output: () => {}, traceOutput: () => {}, requestOutput: () => {},
+    downloadData: async (destination) => {
+      await mkdir(destination, { recursive: true });
+      await writeFile(path.join(destination, "sources.json"), "{}");
+    },
+  });
+  try {
+    const invoke = (id) => fetch(`${preview.url}/__cli_action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: new URL(preview.url).origin },
+      body: JSON.stringify({ id }),
+    });
+    const response = await invoke("compile");
+    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
+    assert.equal(events[0].type, "output");
+    assert.equal(events[0].data, "compile started\n");
+    assert.equal(events[1].stream, "stderr");
+    assert.equal(events.at(-1).result.ok, true);
+    assert.equal(events.at(-1).result.exitCode, 0);
+    const rejected = await invoke("unsupported");
+    assert.match(await rejected.text(), /must be an explicit/);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });
@@ -357,7 +507,8 @@ test("canvas dashboard executes only declared CLI actions through the provided e
     },
     canvas: true,
     approveCliAction: async () => true,
-    executeCliAction: async ({ onOutput, ...action }) => {
+    executeCliAction: async ({ onOutput, signal, ...action }) => {
+      assert.ok(signal instanceof AbortSignal);
       calls.push(action);
       onOutput({ stream: "stdout", data: "comp" });
       onOutput({ stream: "stdout", data: "iled\n" });
@@ -726,6 +877,11 @@ if [ "$1" = "api" ]; then
     printf 'success\\tmain\\t.github/workflows/cao-dashboard.yml\\n'
     exit
   fi
+  if [ "$2" = "repos/github/gh-aw/releases/latest" ]; then
+    [ ! -f ${JSON.stringify(path.join(root, "release-unavailable"))} ] || exit 5
+    printf 'v0.92.0\\n'
+    exit
+  fi
   exit 2
 fi
 [ "$1" = "run" ] &&
@@ -738,7 +894,7 @@ fi
   [ "$9" = "acme/control" ] || exit 3
 mkdir -p "$7/cao/gh-aw-logs-runs"
 printf '%s\n' '{"schema_version":2,"repository":"acme/control","token":"sensitive"}' > "$7/cao/gh-aw-logs-runs/logs-1.jsonl"
-printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventory-sources.json"
+printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":[{"gh-aw-version":"v0.91.5","gh-aw-current-version":"v0.89.21","gh-aw-update-state":"up-to-date"}]}}' > "$7/cao/inventory-sources.json"
 `);
   await chmod(ghExecutable, 0o755);
 
@@ -747,6 +903,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     catalogRoot: null,
     repository: "acme/control",
     ghExecutable,
+    dataBackend: "indexeddb",
     workingDirectory: root,
     port: 0,
   });
@@ -767,7 +924,15 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
     assert.deepEqual(await inventoryResponse.json(), {
       repositories: { rows: [{ repository: "control" }] },
+      workflows: { rows: [{
+        "gh-aw-version": "v0.91.5", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "update-available",
+      }] },
     });
+    await writeFile(path.join(root, "release-unavailable"), "");
+    await assert.rejects(startDashboardServer({
+      siteRoot: root, catalogRoot: null, repository: "acme/control",
+      ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
+    }), /Unable to refresh the latest stable gh-aw release/);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });

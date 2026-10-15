@@ -243,6 +243,11 @@ export function createQuickstartProgress({
     };
     return {
       start() {},
+      note(message, title) {
+        clear();
+        if (title) writeStyledLine(output, '◇', ANSI.cyan, title);
+        for (const line of String(message).split('\n')) output.write(`   ${line}\n`);
+      },
       async step(message) {
         clear();
         active = {
@@ -269,6 +274,10 @@ export function createQuickstartProgress({
   const write = (message) => output.write(`${message}\n`);
   return {
     start() {},
+    note(message, title) {
+      if (title) write(title);
+      write(message);
+    },
     step: (message) => write(`==> ${message}`),
     success: (message) => write(`OK: ${message}`),
     warning: (message) => write(`Warning: ${message}`),

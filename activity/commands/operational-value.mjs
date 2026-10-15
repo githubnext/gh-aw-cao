@@ -1,3 +1,5 @@
+import { OPERATIONAL_VALUE_RETENTION_MS } from '../../dashboard/site/src/data/storage/retention.js';
+
 export function runOperationalValueCommand({
   options,
   indexedDB,
@@ -45,7 +47,7 @@ export function runOperationalValueCommand({
     timestamp: option(options, "timestamp", false) || new Date().toISOString(),
     repositories,
     rateLimitReserve: operationalValueReserve(option(options, "max-github-api-rate-limit", false), UsageError),
-    retentionWindow,
+    retentionWindow: retentionWindow ?? OPERATIONAL_VALUE_RETENTION_MS,
     signal,
   });
 }

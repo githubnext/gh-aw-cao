@@ -344,11 +344,49 @@ test('async Factory Overview elements receive their chunked query definitions', 
   const overview = page.locator('[data-page-id="overview"]');
   await expect(overview).not.toContainText('No custom views available.');
   await expect(overview.locator(':scope > .custom-view-grid > .custom-view')).toHaveCount(3);
-  await expect(overview.getByRole('heading', { name: 'Your campaigns are humming.' })).toBeVisible();
+  await expect(overview.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overview.locator('.factory-station').nth(0)).toContainText('1');
   await expect(overview.locator('.factory-station').nth(1)).toContainText('1');
   await expect(overview).not.toContainText('Unavailable');
   await expect.poll(() => chunkRequests.filter((id) => id === 'overview').length).toBe(1);
+  await expect(overview.getByText('Weekly rhythm', { exact: true })).toBeVisible();
+  const ingestion = overview.locator('.dashboard-ingestion-status');
+  await expect(ingestion.getByText('Data ingestion', { exact: true })).toBeVisible();
+  await expect(ingestion.locator('strong')).toHaveText('Current');
+  await expect(ingestion.locator('.octicon-check-circle-fill')).toBeVisible();
+  await expect(overview.locator('.factory-station').first()).toContainText('Factory health');
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await expect(overview.locator('.factory-station').first()).toBeVisible();
+    await expect(ingestion).toBeVisible();
+    const path = test.info().outputPath(`factory-overview-${viewport.width}.png`);
+    await page.screenshot({ path, fullPage: true });
+    await test.info().attach(`factory-overview-${viewport.width}`, {
+      path,
+      contentType: 'image/png'
+    });
+  }
+});
+
+test('Overview ingestion status follows refresh failure and recovery without navigation', async ({ page }) => {
+  await page.goto(`${origin}/#page-overview`);
+  const status = page.locator('[data-page-id="overview"] .dashboard-ingestion-status');
+  await expect(status.locator('strong')).toHaveText('Current');
+  await page.route(`${origin}/payload-hashes.json`, (route) => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: '{"error":"Temporarily unavailable"}'
+  }));
+  await page.evaluate(() => window.dispatchEvent(new Event('dashboard-refresh-request')));
+  await expect(status.locator('strong')).toHaveText('Refresh failed');
+  await expect(status.locator('.octicon-alert')).toBeVisible();
+  await expect(status).toContainText('last complete snapshot');
+  await expect(status.locator('.octicon-check-circle-fill')).toHaveCount(0);
+  await page.unroute(`${origin}/payload-hashes.json`);
+  await page.evaluate(() => window.dispatchEvent(new Event('dashboard-refresh-request')));
+  await expect(status.locator('strong')).toHaveText('Current');
+  await expect(status.locator('.octicon-check-circle-fill')).toBeVisible();
+  await expect(page).toHaveURL(`${origin}/#page-overview`);
 });
 
 test('marketplace page renders canonical package cards after ingestion', async ({ page }) => {

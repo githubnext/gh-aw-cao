@@ -98,12 +98,13 @@ usage() {
     'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]] [--target OWNER/REPO]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
-    '--create-repo prompts for an eligible owner and repository name; pass OWNER/NAME for non-interactive use.' \
+    '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao (adding a UTC timestamp if occupied), then targets the public' \
-    'github/gh-aw Repo Assist example. Pass --target OWNER/REPO to assist your own public repository.' \
-    'It runs existing Repo Assist maintenance in review mode (default budget up to 1,250 AI credits), collects Activity, and deploys a public dashboard.' \
-    'It pauses the orchestrator after dispatch; proposals are optional, not requirements for using CAO.' \
+    '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest stable CAO release.' \
+    'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
+    'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
+    'Continue with ./cao.sh quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
+    'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
     'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
@@ -220,141 +221,55 @@ confirm_repository_creation() {
     printf 'Repository creation cancelled. No CAO files were written.\n'
     return 1
   fi
-  repository_creation_prompt_started=true
   if styled_prompt_enabled; then
     printf '\033[32m✓\033[0m Create a private GitHub control repository\n' > /dev/tty
   fi
 }
 
-select_repository_owner_plain() {
+select_repository_owner() {
   local -a owners=("$@")
-  printf 'Choose the account that will own the private control repository:\n' > /dev/tty
-  local index
-  for index in "${!owners[@]}"; do
-    printf '  %d) %s\n' "$((index + 1))" "${owners[$index]}" > /dev/tty
-  done
-
+  printf 'Create a private CAO control repository. Type its eligible owner; no owner is preselected.\n' > /dev/tty
   local selection
+  local owner
   while true; do
-    printf 'Owner [1-%d]: ' "${#owners[@]}" > /dev/tty
+    printf 'Repository owner (OWNER): ' > /dev/tty
     if ! IFS= read -r selection < /dev/tty; then
       printf 'Repository creation cancelled.\n' >&2
       return 1
     fi
-    if [[ "$selection" =~ ^[0-9]+$ ]] &&
-      (( selection >= 1 && selection <= ${#owners[@]} )); then
-      printf '%s\n' "${owners[$((selection - 1))]}"
-      return
+    if [[ "$selection" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
+      for owner in "${owners[@]}"; do
+        if [[ "$(printf '%s' "$selection" | tr '[:upper:]' '[:lower:]')" == "$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')" ]]; then
+          printf '%s\n' "$owner"
+          return
+        fi
+      done
     fi
-    printf 'Choose a number from 1 to %d.\n' "${#owners[@]}" > /dev/tty
+    printf 'Type an account where you can create repositories; blank input does not choose an owner.\n' > /dev/tty
   done
 }
 
-render_repository_owners() {
-  local selected="$1"
-  shift
-  local -a owners=("$@")
-  local index
-  for index in "${!owners[@]}"; do
-    if (( index == selected )); then
-      printf '  \033[33m>\033[0m \033[1m%s\033[0m\n' "${owners[$index]}" > /dev/tty
-    else
-      printf '    %s\n' "${owners[$index]}" > /dev/tty
-    fi
-  done
-  printf '  \033[2m↑/k up • ↓/j down • enter select\033[0m\n' > /dev/tty
-}
-
-select_repository_owner_styled() {
-  local -a owners=("$@")
-  local selected=0
-  local key
-  local sequence
-  local rendered_rows="$((${#owners[@]} + 1))"
-  local header_rows=0
-
-  if [[ "${repository_creation_prompt_started:-false}" != true ]]; then
-    printf '\n\033[1;35mCreate a private CAO control repository\033[0m\n' > /dev/tty
-    printf '\033[2mChoose the account that will own it.\033[0m\n' > /dev/tty
-    header_rows=2
-  fi
-  render_repository_owners "$selected" "${owners[@]}"
-  printf '\033[?25l' > /dev/tty
-  trap 'printf "\033[?25h" > /dev/tty; exit 130' INT TERM
-
-  while true; do
-    key=""
-    if ! IFS= read -rsn1 key < /dev/tty; then
-      printf '\033[?25h' > /dev/tty
-      trap - INT TERM
-      printf 'Repository creation cancelled.\n' >&2
-      return 1
-    fi
-    if [[ "$key" == $'\033' ]]; then
-      sequence=""
-      IFS= read -rsn2 -t 1 sequence < /dev/tty || true
-      key+="$sequence"
-    fi
-    case "$key" in
-      $'\033[A'|k)
-        selected="$((selected > 0 ? selected - 1 : ${#owners[@]} - 1))"
-        ;;
-      $'\033[B'|j)
-        selected="$((selected + 1 < ${#owners[@]} ? selected + 1 : 0))"
-        ;;
-      "")
-        printf '\033[%dA\r\033[J\033[?25h' "$((rendered_rows + header_rows))" > /dev/tty
-        trap - INT TERM
-        printf '\033[32m✓\033[0m Repository owner  \033[1m%s\033[0m\n' "${owners[$selected]}" > /dev/tty
-        printf '%s\n' "${owners[$selected]}"
-        return
-        ;;
-      $'\033')
-        printf '\033[%dA\r\033[J\033[?25h' "$((rendered_rows + header_rows))" > /dev/tty
-        trap - INT TERM
-        printf 'Repository creation cancelled.\n' >&2
-        return 1
-        ;;
-      *)
-        continue
-        ;;
-    esac
-    printf '\033[%dA\r\033[J' "$rendered_rows" > /dev/tty
-    render_repository_owners "$selected" "${owners[@]}"
-  done
-}
-
-select_repository_owner() {
-  if styled_prompt_enabled; then
-    select_repository_owner_styled "$@"
-  else
-    select_repository_owner_plain "$@"
-  fi
-}
-
-default_repository_name() {
-  local owner="$1"
-  local candidate="${2:-cao}"
+assert_repository_available() {
+  local repository="$1"
   local result
-  if result="$(gh api "repos/$owner/$candidate" 2>&1 >/dev/null)"; then
-    return
+  if result="$(gh api "repos/$repository" 2>&1 >/dev/null)"; then
+    printf 'Repository %s already exists. Choose an unused explicit OWNER/NAME. No CAO files were written.\n' "$repository" >&2
+    return 1
   fi
   if [[ "$result" == *"(HTTP 404)"* ]]; then
-    printf '%s\n' "$candidate"
-    return
+    return 0
   fi
-  printf 'Unable to check whether %s/%s is available: %s\n' "$owner" "$candidate" "$result" >&2
+  printf 'Unable to check whether %s is available: %s\n' "$repository" "$result" >&2
   return 1
 }
 
 read_repository_name_styled() {
-  local default_name="$1"
   local value=""
   local key
   local selected
 
   printf '\033[1;35mRepository name\033[0m\n' > /dev/tty
-  printf '\033[35m> \033[0m\033[2m%s\033[0m' "$default_name" > /dev/tty
+  printf '\033[35m> \033[0m' > /dev/tty
   while true; do
     key=""
     if ! IFS= read -rsn1 key < /dev/tty; then
@@ -363,7 +278,7 @@ read_repository_name_styled() {
     fi
     case "$key" in
       "")
-        selected="${value:-$default_name}"
+        selected="$value"
         if [[ -z "$selected" ]]; then
           printf '\a' > /dev/tty
           continue
@@ -393,8 +308,6 @@ read_repository_name_styled() {
     printf '\r\033[J\033[35m> \033[0m' > /dev/tty
     if [[ -n "$value" ]]; then
       printf '%s' "$value" > /dev/tty
-    else
-      printf '\033[2m%s\033[0m' "$default_name" > /dev/tty
     fi
   done
 }
@@ -422,27 +335,18 @@ prompt_create_repository() {
     return 1
   fi
 
-  local default_name
-  if ! default_name="$(default_repository_name "$owner")"; then
-    return 1
-  fi
   local name
   while true; do
     if styled_prompt_enabled; then
-      if ! name="$(read_repository_name_styled "$default_name")"; then
+      if ! name="$(read_repository_name_styled)"; then
         return 1
       fi
     else
-      if [[ -n "$default_name" ]]; then
-        printf 'Repository name [%s]: ' "$default_name" > /dev/tty
-      else
-        printf 'Repository name: ' > /dev/tty
-      fi
+      printf 'Repository name (NAME): ' > /dev/tty
       if ! IFS= read -r name < /dev/tty; then
         printf 'Repository creation cancelled.\n' >&2
         return 1
       fi
-      name="${name:-$default_name}"
     fi
     if [[ "$name" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
       break
@@ -455,54 +359,6 @@ prompt_create_repository() {
   done
 
   printf '%s/%s\n' "$owner" "$name"
-}
-
-default_quickstart_control_repository() {
-  local clone_repository="${1:-true}"
-  local owner
-  if ! owner="$(gh api user --jq .login)" ||
-    [[ ! "$owner" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
-    printf 'Unable to resolve the signed-in GitHub username for the default quickstart repository.\n' >&2
-    return 1
-  fi
-  local name
-  if ! name="$(default_repository_name "$owner")"; then
-    return 1
-  fi
-  if [[ -n "$name" ]] &&
-    { [[ "$clone_repository" == false ]] || [[ ! -e "$name" && ! -L "$name" ]]; }; then
-    printf '%s/%s\n' "$owner" "$name"
-    return
-  fi
-  local reason="$owner/cao already exists"
-  if [[ -n "$name" ]]; then
-    reason="Local clone path $name already exists"
-  fi
-  local timestamp
-  if ! timestamp="$(date -u +%Y%m%d-%H%M%S)" ||
-    [[ ! "$timestamp" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
-    printf 'Unable to generate a UTC timestamp for the quickstart repository. No CAO files were written.\n' >&2
-    return 1
-  fi
-  local candidate
-  local attempt
-  for ((attempt = 1; attempt <= 10; attempt++)); do
-    candidate="cao-$timestamp"
-    if (( attempt > 1 )); then
-      candidate+="-$attempt"
-    fi
-    if ! name="$(default_repository_name "$owner" "$candidate")"; then
-      return 1
-    fi
-    if [[ -n "$name" ]] &&
-      { [[ "$clone_repository" == false ]] || [[ ! -e "$name" && ! -L "$name" ]]; }; then
-      note "$reason; creating a fresh private control repository: $owner/$name." >&2
-      printf '%s/%s\n' "$owner" "$name"
-      return
-    fi
-  done
-  printf 'Unable to find an available quickstart repository after 10 timestamped names. Pass --create-repo OWNER/NAME. No CAO files were written.\n' >&2
-  return 1
 }
 
 install_gh_aw() {
@@ -587,13 +443,12 @@ main() {
   local materializer=".github/workflows/shared/materialize-cao.mjs"
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
   local required_gh="v2.68.0"
-  local required_gh_aw="v0.91.5"
+  local required_gh_aw="v0.92.0"
   local catalog_source="githubnext/gh-aw-cao"
   local package_source
   local explicit_source=false
   local setup=false
   local quickstart=false
-  local repository_creation_prompt_started=false
   local create_repository_requested=false
   local create_repository=""
   local target_repository=""
@@ -661,6 +516,10 @@ main() {
     printf '%s\n' '--target requires --quickstart.' >&2
     return 1
   fi
+  if [[ "$quickstart" == true && -z "$target_repository" ]]; then
+    printf '%s\n' '--quickstart requires explicit --target OWNER/REPO. No CAO files were written.' >&2
+    return 1
+  fi
 
   for tool in node gh git curl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -693,11 +552,7 @@ main() {
     return 1
   fi
   if [[ "$quickstart" == true ]]; then
-    if [[ -n "$target_repository" ]]; then
-      note "Quickstart runs Repo Assist maintenance on $target_repository, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
-    else
-      note "Quickstart runs Repo Assist maintenance on github/gh-aw, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
-    fi
+    note "Quickstart configures review-only Repo Assist for $target_repository and public Pages, commits and pushes, then stops with the orchestrator paused."
   fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -709,10 +564,8 @@ main() {
         return 1
       fi
     elif [[ "$quickstart" == true ]]; then
-      create_repository_requested=true
-      if ! create_repository="$(default_quickstart_control_repository)"; then
-        return 1
-      fi
+      printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
+      return 1
     elif terminal_available &&
       confirm_repository_creation 'Create and clone a new private control repository?'; then
       create_repository_requested=true
@@ -724,18 +577,16 @@ main() {
     fi
   fi
 
-  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true && ! -f "$policy_path" ]]; then
+  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true ]] &&
+    { [[ "$quickstart" == true ]] || [[ ! -f "$policy_path" ]]; }; then
     if control_repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" &&
       [[ "$control_repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
       :
     else
       git_remotes="$(git remote)"
       if [[ -z "$git_remotes" && "$quickstart" == true ]]; then
-        if ! create_repository="$(default_quickstart_control_repository false)"; then
-          return 1
-        fi
-        create_repository_requested=true
-        create_repository_in_place=true
+        printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
+        return 1
       elif [[ -z "$git_remotes" ]] && terminal_available &&
         confirm_repository_creation 'Create a new private GitHub repository for this checkout?'; then
           create_repository_requested=true
@@ -773,6 +624,9 @@ main() {
       printf 'Cannot clone into existing path %s. Open that checkout or choose another repository name.\n' "$directory" >&2
       return 1
     fi
+  fi
+  if [[ -n "$create_repository" ]] && ! assert_repository_available "$create_repository"; then
+    return 1
   fi
 
   if [[ "$quickstart" == true && "$explicit_source" == false ]]; then

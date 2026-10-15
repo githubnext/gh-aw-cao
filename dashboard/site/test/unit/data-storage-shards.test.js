@@ -41,6 +41,53 @@ async function expectAccurateTotals(indexedDB) {
 }
 
 describe('incremental canonical storage shards', () => {
+  it('preserves usage through the production normalized-shard ingestion boundary', async () => {
+    const indexedDB = new IDBFactory();
+    const run = { id: 'run:303', attempt: 1, startedAt: '2026-10-09T00:00:00Z' };
+    const ingest = (/** @type {Record<string, unknown>} */ record, /** @type {string} */ scope) => {
+      const content = [
+        { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: 4, phase: 'runs', records: 1 },
+        { kind: 'record', collection: 'runs', record }
+      ].map((row) => JSON.stringify(row)).join('\n');
+      async function* chunks() { yield content; }
+      return ingestNormalizedJsonl(indexedDB, chunks(), {
+        now, payloadIdentity: scope, payloadScope: scope, expectedPhase: 'runs', deferMaintenance: true
+      });
+    };
+    await ingest({ ...run, aicTotal: 172.72252, inputTokens: 100 }, 'measured');
+    await ingest({ ...run, aicTotal: null, inputTokens: null }, 'sparse-refresh');
+    expect((await readCollection(indexedDB, 'runs'))[0]).toMatchObject({
+      aicTotal: 172.72252, inputTokens: 100
+    });
+    await expect(ingest({ ...run, aicTotal: null, inputTokens: null }, 'sparse-refresh'))
+      .resolves.toMatchObject({ skipped: true });
+    await expectAccurateTotals(indexedDB);
+  });
+
+  it('retains measured run usage across transport batches with accurate accounting and rerun isolation', async () => {
+    const indexedDB = new IDBFactory();
+    const run = { id: 'run:1', attempt: 1, startedAt: '2026-10-01T00:00:00Z' };
+    const write = (/** @type {Record<string, unknown>[]} */ runs) =>
+      upsertCanonicalBatch(indexedDB, { ...normalize([]), runs }, { validateRelationships: false });
+    await write([{ ...run, aicTotal: 2.5, inputTokens: 100, outputTokens: 0 }]);
+    await write([{ ...run, aicTotal: null, inputTokens: null, outputTokens: null, conclusion: 'success' }]);
+    expect((await readCollection(indexedDB, 'runs'))[0]).toMatchObject({
+      aicTotal: 2.5, inputTokens: 100, outputTokens: 0, conclusion: 'success'
+    });
+    await expectAccurateTotals(indexedDB);
+    await write([{ ...run, aicTotal: 4 }, { ...run, aicTotal: null }]);
+    expect((await readCollection(indexedDB, 'runs'))[0].aicTotal).toBe(4);
+    await expectAccurateTotals(indexedDB);
+    await write([{ ...run, attempt: 2, aicTotal: null }]);
+    expect((await readCollection(indexedDB, 'runs'))[0]).toMatchObject({ attempt: 2, aicTotal: null });
+    expect((await readCollection(indexedDB, 'runs'))[0]).not.toHaveProperty('inputTokens');
+    await expectAccurateTotals(indexedDB);
+    await write([{ ...run, attempt: 2, aicTotal: 0 }]);
+    await write([{ ...run, attempt: 2, aicTotal: null }]);
+    expect((await readCollection(indexedDB, 'runs'))[0].aicTotal).toBe(0);
+    await expectAccurateTotals(indexedDB);
+  });
+
   it('rechecks a retained audit when its last evidence reference expires', async () => {
     const indexedDB = new IDBFactory();
     const batch = normalize([]);
