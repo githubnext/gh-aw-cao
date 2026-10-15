@@ -1,7 +1,48 @@
 {
-  "source_sha": "fb26e0c448a2ade3523b2b6455cb7cca27bb2a51",
-  "next_category": "dependency installation and caching",
+  "source_sha": "e4b5039e7438ee9eafc5646b91f4ce84abf0f075",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T19:38:32Z",
+      "worker_run_id": 38795006895,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38794718540,
+        38794593405,
+        38793404965,
+        38793332560,
+        38793028625,
+        38792973429,
+        38792951504,
+        38792719714,
+        38792050541,
+        38792031923,
+        38790485612,
+        38788381413,
+        38786829281,
+        38786748085,
+        38785904080,
+        38785478491,
+        38785466418,
+        38784429999,
+        38784409262,
+        38782330033
+      ],
+      "docs_window": {
+        "start": "2026-10-15T17:44:34Z",
+        "end": "2026-10-15T19:42:34Z"
+      },
+      "docs_success_count": 11,
+      "docs_comparable_success_count": 4,
+      "docs_deployed_success_count": 4,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 1,
+      "dashboard_success_run_ids": [
+        38765614002
+      ],
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA e4b5039e7438ee9eafc5646b91f4ce84abf0f075. In the latest 20 completed docs.yml runs from 2026-10-15T17:44:34Z through 2026-10-15T19:42:34Z, 11 runs concluded success, 8 concluded skipped, and 1 concluded cancelled; there were no failed, action_required, or timed_out runs in the inspected window. Only 4 comparable successful docs runs executed both build and deploy: 38782330033, 38785904080, 38788381413, and 38793028625. Five additional successful push runs built documentation but skipped deploy: 38784409262, 38786748085, 38792031923, 38792951504, and 38794718540. Trusted build logs from comparable run 38793028625 confirmed a setup-node npm cache restore, a Linux-node-24 node_modules cache hit, and a central-agentic-ops-dashboard cache hit, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped. In the latest 20 completed cao-dashboard.yml runs, only 1 successful dashboard-generation sample was available: workflow_dispatch run 38765614002. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped without an actionable dependency-installation or caching suggestion."
+    },
     {
       "evaluated_at": "2026-10-15T19:24:38Z",
       "worker_run_id": 38792947392,
@@ -1065,42 +1106,6 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T23:57:51Z through 2026-10-15T03:52:56Z, 14 runs concluded success and 6 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 3 comparable successful docs runs executed the build job (38677403256 on workflow_run, 38662491959 on schedule, and 38660438161 on push), all on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907, and only 2 of those comparable runs completed deploy. The remaining 11 successful runs were schedule freshness no-ops with build and deploy skipped, and a bounded log read from run 38673220743 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-15T03:00:00Z",
-      "worker_run_id": 38673523733,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38673466029,
-        38673220743,
-        38671480474,
-        38668899599,
-        38668674585,
-        38668119237,
-        38666336199,
-        38665705831,
-        38665174021,
-        38664443059,
-        38662491959,
-        38660438161,
-        38659406439,
-        38657836174,
-        38657227056,
-        38656105342,
-        38654563610,
-        38653573965,
-        38653304261,
-        38653104809
-      ],
-      "docs_window": {
-        "start": "2026-10-14T23:16:58Z",
-        "end": "2026-10-15T02:54:30Z"
-      },
-      "docs_success_count": 12,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 1,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T23:16:58Z through 2026-10-15T02:54:30Z, 12 runs concluded success, 7 concluded skipped, and 1 workflow_run callback concluded action_required before jobs were created; there were no failed or cancelled runs in the inspected window. Only 2 comparable successful docs runs executed the build job (38662491959 on schedule and 38660438161 on push), both on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907; just 1 of those comparable runs completed deploy. The remaining 10 successful runs were schedule freshness no-ops with build and deploy skipped, and a bounded log read from run 38673220743 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
     }
   ]
 }
