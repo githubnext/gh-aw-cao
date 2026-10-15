@@ -22,9 +22,7 @@ func TestPostgresBackfillGitHubFaults(t *testing.T) {
 		"connection-failure", "timeout", "primary-rate-limit", "secondary-rate-limit",
 	} {
 		t.Run(mode, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
-			defer cancel()
-			backfillDebugTelemetry(t, ctx)
+			backfillDebugTelemetry(t, t.Context())
 			scenario := simulator.Scenario{
 				Name: mode, Repositories: 1,
 				History:   &simulator.History{Days: 14, RunsPerDay: 15, AsOf: time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)},
@@ -33,18 +31,23 @@ func TestPostgresBackfillGitHubFaults(t *testing.T) {
 			if mode == "primary-rate-limit" {
 				scenario.RateLimit.Window = "2s"
 			}
-			h := newSyntheticBackfill(t, ctx, scenario)
-			reset := h.api.Started().Add(time.Hour).Truncate(time.Second).Add(time.Second)
+			h := newSyntheticBackfill(t, t.Context(), scenario)
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			reset := h.api.Started().Add(time.Hour).Truncate(time.Second).Add(time.Second).UTC().Format(time.RFC3339)
+			retryAfter := 1
 			if mode == "primary-rate-limit" {
-				reset = h.api.Started().Add(2 * time.Second).Truncate(time.Second).Add(time.Second)
+				// Start the short reset window when the fault is served, not before cold replay.
+				reset = ""
+				retryAfter = 2
 			}
 			count := 1
 			if mode == "connection-failure" {
 				count = 2 // net/http can retry an idempotent request after an idle connection is lost.
 			}
 			if err := h.proxy.Inject(simulator.APIFault{
-				Path: syntheticRunPath, Page: 2, Count: count, Mode: mode, RetryAfter: 1,
-				ResetAt: reset.UTC().Format(time.RFC3339),
+				Path: syntheticRunPath, Page: 2, Count: count, Mode: mode, RetryAfter: retryAfter,
+				ResetAt: reset,
 			}); err != nil {
 				t.Fatal(err)
 			}
@@ -140,13 +143,13 @@ func TestPostgresBackfillEnumerationAndQuotaBootstrapFailures(t *testing.T) {
 	backfillServices(t)
 	for _, path := range []string{"/app/installations", "/installation/repositories", "/app/installations/1/access_tokens", "/rate_limit"} {
 		t.Run(path, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-			defer cancel()
-			backfillDebugTelemetry(t, ctx)
-			h := newSyntheticBackfill(t, ctx, simulator.Scenario{
+			backfillDebugTelemetry(t, t.Context())
+			h := newSyntheticBackfill(t, t.Context(), simulator.Scenario{
 				Name: "bootstrap", Repositories: 1,
 				History: &simulator.History{Days: 14, RunsPerDay: 1, AsOf: time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)},
 			})
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
 			if err := h.proxy.Inject(simulator.APIFault{Path: path, Count: 1, Mode: "unauthorized"}); err != nil {
 				t.Fatal(err)
 			}

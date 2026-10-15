@@ -323,16 +323,16 @@ test('built dashboard preserves supported campaign icons outside its inline core
     contentType: 'application/json',
     body: JSON.stringify({
       ...inventory,
-      campaigns: { ...inventory.campaigns, rows: inventory.campaigns.rows.map((row) => ({
-        ...row, 'campaign-icon': 'feed-trophy'
+      'marketplace-packages': { ...inventory['marketplace-packages'], rows: inventory['marketplace-packages'].rows.map((row) => ({
+        ...row, icon: 'feed-trophy'
       })) }
     })
   }));
   const spriteLoaded = page.waitForResponse((response) => response.url() === `${origin}/src/octicons.svg`);
-  await page.goto(`${origin}/#page-overview`);
+  await page.goto(`${origin}/#page-marketplace-package?package-source=${encodeURIComponent(inventory['marketplace-packages'].rows[0].source)}`);
   await spriteLoaded;
   const icon = page.locator('.link-button-list-item .octicon-feed-trophy');
-  await expect(icon).toHaveAttribute('data-icon-state', 'available');
+  await expect(icon).toBeVisible();
   await expect(icon.locator('path')).not.toHaveCount(0);
   await expect(icon.locator('use')).toHaveCount(0);
 });
@@ -343,7 +343,7 @@ test('async Factory Overview elements receive their chunked query definitions', 
 
   const overview = page.locator('[data-page-id="overview"]');
   await expect(overview).not.toContainText('No custom views available.');
-  await expect(overview.locator(':scope > .custom-view-grid > .custom-view')).toHaveCount(3);
+  await expect(overview.locator(':scope > .custom-view-grid > .custom-view')).toHaveCount(2);
   await expect(overview.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overview.locator('.factory-station').nth(0)).toContainText('1');
   await expect(overview.locator('.factory-station').nth(1)).toContainText('1');

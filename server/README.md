@@ -1746,9 +1746,16 @@ queue/deduplication metric samples. Fault tests exercise paginated resume after
 primary/secondary limits, bootstrap/token-mint failures, and cancellation.
 Missing quota headers must leave unknown request cost reserved.
 
+If the OpenObserve image registry rate-limits its pull, the harness reports the
+reason and runs all PostgreSQL/Redis replay, fault, and stress assertions without
+OpenObserve. Only telemetry export, searches, and telemetry artifacts are
+disabled for that run. The pull log is retained as `openobserve-pull.log`.
+Other image-pull errors and service readiness failures remain fatal.
+
 Service-backed replay/fault tests also run during ordinary Go tests when
-Postgres and Redis endpoints are configured. Explicit OTEL runs fail rather
-than skip when any required service or exporter configuration is missing. The
+Postgres and Redis endpoints are configured. Outside the explicit registry
+rate-limit fallback, OTEL runs fail rather than skip when a required service
+or exporter configuration is missing. The
 separate **Postgres backfill and OpenObserve integration** job in
 `.github/workflows/cgo.yml` runs the same harness and uploads Go results and
 service logs to `go-server-backfill`. Local reports are in `.tmp/go-backfill/`
