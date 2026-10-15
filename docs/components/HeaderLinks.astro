@@ -38,6 +38,33 @@ const links = [
 }
 <Default><slot /></Default>
 
+<script>
+  const enhanceSkipLink = () => {
+    const target = document.getElementById("_top");
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
+
+    const focusTarget = () => {
+      if (window.location.hash !== "#_top") return;
+      requestAnimationFrame(() => {
+        target.focus({ preventScroll: true });
+      });
+    };
+
+    document.querySelectorAll<HTMLAnchorElement>('a.sl-skip-link[href="#_top"]').forEach((link) => {
+      if (link.dataset.skipLinkReady === "true") return;
+      link.dataset.skipLinkReady = "true";
+      link.addEventListener("click", focusTarget);
+    });
+
+    focusTarget();
+  };
+
+  enhanceSkipLink();
+  document.addEventListener("astro:page-load", enhanceSkipLink);
+  window.addEventListener("hashchange", enhanceSkipLink);
+</script>
+
 <style>
   .cao-primary-nav {
     display: flex;
