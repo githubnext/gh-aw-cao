@@ -54,6 +54,10 @@ normal startup.
 
 ## Local administrative actions
 
+The shared CLI executor is packaged in `dashboard/cli-actions.mjs` so installed
+campaigns can run local administrative actions without the Copilot extension.
+The extension re-exports the same executor rather than maintaining a separate copy.
+
 Local previews refresh the latest stable gh-aw release from GitHub when
 downloading their data. The **Latest** compiler version and upgrade state use
 this current release, not the release recorded in an older published snapshot.

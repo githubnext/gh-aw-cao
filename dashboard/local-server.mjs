@@ -43,7 +43,7 @@ import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalC
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
 import { lookupDialogOptions } from "./dialog-selector.mjs";
-import { executeDashboardCommand } from "../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
+import { executeDashboardCommand } from "./cli-actions.mjs";
 import { refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease } from "./local-release-metadata.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));

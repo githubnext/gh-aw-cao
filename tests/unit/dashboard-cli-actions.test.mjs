@@ -13,7 +13,16 @@ import {
   resolveGhAwCompilerVersion,
   runDashboardCommandStreaming,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
+import * as bundledCliActions from "../../dashboard/cli-actions.mjs";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+
+test("the dashboard bundle and Copilot extension share the CLI action executor", () => {
+  assert.equal(executeDashboardCommand, bundledCliActions.executeDashboardCommand);
+  assert.equal(runDashboardCommandStreaming, bundledCliActions.runDashboardCommandStreaming);
+  assert.equal(parseDashboardCommand, bundledCliActions.parseDashboardCommand);
+  assert.equal(ensureGhAwAvailable, bundledCliActions.ensureGhAwAvailable);
+  assert.equal(resolveGhAwCompilerVersion, bundledCliActions.resolveGhAwCompilerVersion);
+});
 
 test("buffered CLI commands preserve results and bound captured output", { skip: process.platform === "win32" }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "cao-buffered-command-"));
