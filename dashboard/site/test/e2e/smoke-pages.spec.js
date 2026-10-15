@@ -192,8 +192,6 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
           metadata
         },
-        'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
-        'overview-healthy-campaign-count': { source: 'overview-healthy-campaign-count', rows: [{ 'healthy-campaigns': 1 }], metadata },
         'overview-repository-coverage': { source: 'overview-repository-coverage', rows: [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
@@ -834,8 +832,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
           metadata
         },
-        'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
-        'overview-healthy-campaign-count': { source: 'overview-healthy-campaign-count', rows: [{ 'healthy-campaigns': 1 }], metadata },
         'overview-repository-coverage': { source: 'overview-repository-coverage', rows: [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
@@ -1196,11 +1192,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.getByRole('heading', { name: 'Your campaigns are humming.' })).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running')).toHaveCount(0);
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['100%', '0%']);
-  await expect(overviewPage.locator('.factory-station small')).toHaveText(['2/2 healthy campaigns', '0/1 repositories reached']);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['100%', '0%', '17', 'Unavailable']);
+  await expect(overviewPage.locator('.factory-station small')).toHaveText(['3/3 healthy workflows', '0/1 repositories reached', 'Retained safe outputs', '']);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
@@ -1259,7 +1255,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Evolution', 'Experimental', 'Maintenance']);
   const valueLink = page.locator('[data-mobile-nav-page-id="operational-value"]');

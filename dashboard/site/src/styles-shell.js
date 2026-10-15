@@ -315,6 +315,13 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .dashboard-current-status-limited .tooltip-trigger { color: var(--attention); }
 .dashboard-current-status-refreshing .tooltip-trigger { color: var(--muted); }
 .dashboard-current-status-refreshing .octicon-sync { animation: dashboard-refresh-spin 1s linear infinite; }
+.dashboard-ingestion-status { display: grid; gap: 6px; margin-top: 20px; font-size: .75rem; }
+.dashboard-ingestion-status-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.dashboard-ingestion-status-heading .octicon { width: 16px; height: 16px; color: var(--muted); }
+.dashboard-ingestion-status[data-tone="success"] .octicon { color: var(--success); }
+.dashboard-ingestion-status[data-tone="attention"] .octicon { color: var(--attention); }
+.dashboard-ingestion-status[data-tone="danger"] .octicon { color: var(--danger); }
+.dashboard-ingestion-status p { margin: 0; color: var(--muted); line-height: 1.5; }
 @keyframes dashboard-refresh-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-current-status-refreshing .octicon-sync { animation: none; }

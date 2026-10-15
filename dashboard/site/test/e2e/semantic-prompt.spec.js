@@ -68,7 +68,7 @@ test('an independently loading element hides its prompt until all busy widgets s
       configureSourceLoader((name) => new Promise((resolve) => resolutions.set(name, resolve)));
       window.resolveHeaderSource = (name) => resolutions.get(name)({
         source: name,
-        rows: name === 'overview-header-presentation' ? [{ heading: 'Campaign health', summary: 'Ready' }] : [],
+        rows: name === 'overview-header-presentation' ? [{ heading: 'Factory health', summary: 'Ready' }] : [],
         metadata: {
           'source-id': name, 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
           availability: name === 'overview-header-presentation' ? 'available' : 'empty',
@@ -101,7 +101,7 @@ test('an independently loading element hides its prompt until all busy widgets s
   await expect(action).toBeHidden();
   await expect(view.getByRole('button', { name: 'Create prompt for Campaign header' })).toHaveCount(0);
   await page.evaluate(() => Reflect.get(window, 'resolveHeaderSource')('overview-header-presentation'));
-  await expect(view.locator('#agent-factory-heading')).toHaveText('Campaign health');
+  await expect(view.locator('#agent-factory-heading')).toHaveText('Factory health');
   await expect(action).toBeHidden();
   await page.evaluate(() => Reflect.get(window, 'resolveHeaderSource')('overview-rhythm'));
   await expect(action).toBeVisible();

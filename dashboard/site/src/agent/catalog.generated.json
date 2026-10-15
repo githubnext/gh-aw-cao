@@ -845,7 +845,7 @@
       "parameters": [],
       "queries": [
         "overview-campaign-links",
-        "overview-campaign-station",
+        "overview-factory-station",
         "overview-header-presentation",
         "overview-issue-station",
         "overview-repository-station",
@@ -5147,25 +5147,6 @@
       }
     },
     {
-      "id": "database-campaign-count",
-      "subject": "Count campaigns in the dashboard database.",
-      "objective": "Establish the retained campaign inventory denominator for Overview health presentation.",
-      "acceptance": "The campaigns count matches canonical campaign identities in the selected snapshot; missing inventory is reported as incomplete rather than interpreted as no campaigns.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "campaigns"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "campaigns"
-        ]
-      }
-    },
-    {
       "id": "overview-run-summary",
       "subject": "Summarize successful, failed, and active runs with rollout-mode counts.",
       "objective": "Expose observed success, failure, and active run counts, including active live and review modes, for the selected horizon.",
@@ -5485,84 +5466,80 @@
       }
     },
     {
-      "id": "overview-healthy-campaign-count",
-      "subject": "Count campaigns with no retained workflow or target errors.",
-      "objective": "Count campaigns with no retained runtime problem partitions for the Overview health display.",
-      "acceptance": "healthy-campaigns counts canonical campaigns without observed problem partitions; missing runtime evidence is not independent proof of healthy execution.",
+      "id": "overview-workflow-health-groups",
+      "subject": "Assess current runtime failures for every workflow across CAO and targeted repositories.",
+      "objective": "Compute the latest consecutive completed-run failure streak for each repository-scoped workflow without requiring campaign membership.",
+      "acceptance": "Group by organization, repository, and workflow; in-flight retries do not clear failures, and later non-failing completed runs reset the streak within the selected horizon.",
       "description": "",
       "parameters": [],
       "sources": [
-        "campaign-runtime-problem-counts",
-        "campaigns"
+        "overview-runs"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
+          "overview-runs"
+        ]
+      }
+    },
+    {
+      "id": "overview-workflow-health-summary",
+      "subject": "Count all registered workflows and those without current observed runtime failures.",
+      "objective": "Provide Factory health numerator and denominator across CAO and targeted repositories, including standalone and campaign workflows.",
+      "acceptance": "Each repository-scoped workflow counts once regardless of campaign or role; no retained failure is not proof of successful execution, missing inventory remains unavailable, and missing run evidence marks the result incomplete.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "overview-workflow-health-groups",
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
           "overview-runs",
           "workflows"
         ]
       }
     },
     {
-      "id": "overview-campaign-count-presentation-input",
-      "subject": "Prepare the campaign inventory count for Overview presentation queries.",
-      "objective": "Project the campaign inventory count into the health presentation join.",
-      "acceptance": "The campaigns value matches database-campaign-count; the presentation key does not expand the campaign scope.",
+      "id": "overview-workflow-health-presentation-input",
+      "subject": "Prepare all-workflow health counts for Overview presentation.",
+      "objective": "Carry Factory health counts into the header and station presentation.",
+      "acceptance": "Both counts match overview-workflow-health-summary and preserve missing evidence metadata.",
       "description": "",
       "parameters": [],
       "sources": [
-        "database-campaign-count"
+        "overview-workflow-health-summary"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns"
-        ]
-      }
-    },
-    {
-      "id": "overview-healthy-campaign-presentation-input",
-      "subject": "Prepare the healthy campaign count for Overview presentation queries.",
-      "objective": "Project the campaigns without retained problems into the health presentation join.",
-      "acceptance": "The healthy-campaigns value matches overview-healthy-campaign-count and remains an absence-of-observed-problems measure, not verified health.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "overview-healthy-campaign-count"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "campaigns",
           "overview-runs",
           "workflows"
         ]
       }
     },
     {
-      "id": "overview-campaign-health-presentation",
-      "subject": "Produce presentation-ready campaign health values for the Overview header and floor.",
-      "objective": "Display the ratio of campaigns without retained runtime problems to registered campaigns with both underlying counts.",
-      "acceptance": "The percentage and detail agree with healthy-campaigns and campaigns; a missing or zero denominator remains unavailable, and the displayed ratio is not proof of impact.",
+      "id": "overview-factory-health-presentation",
+      "subject": "Produce presentation-ready Factory health values for the Overview header and floor.",
+      "objective": "Display the ratio of workflows without current observed runtime failures to all registered workflows with both underlying counts.",
+      "acceptance": "The percentage and detail agree with healthy-workflows and workflows; a missing or zero denominator remains unavailable, and the ratio is not proof of impact.",
       "description": "",
       "parameters": [],
       "sources": [
-        "overview-campaign-count-presentation-input",
-        "overview-healthy-campaign-presentation-input"
+        "overview-workflow-health-presentation-input"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
           "overview-runs",
           "workflows"
         ]
@@ -5590,13 +5567,13 @@
     },
     {
       "id": "overview-header-presentation",
-      "subject": "Resolve the Overview heading from declarative status and campaign-health evidence.",
-      "objective": "Display the configured heading corresponding to observed run status and campaign health.",
+      "subject": "Resolve the Overview heading from declarative status and factory-health evidence.",
+      "objective": "Display the configured heading corresponding to observed run status and factory health.",
       "acceptance": "The selected heading follows the declared presentation branches; numeric branch boundaries are UI classification only, not operational targets or rollout thresholds.",
       "description": "",
       "parameters": [],
       "sources": [
-        "overview-campaign-health-presentation",
+        "overview-factory-health-presentation",
         "overview-header-status-presentation-input"
       ],
       "used-by-pages": [
@@ -5606,7 +5583,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
           "grader-observations",
           "overview-runs",
           "workflows"
@@ -5633,14 +5609,14 @@
       }
     },
     {
-      "id": "overview-campaign-station",
-      "subject": "Provide the presentation-ready campaign health station for Overview.",
-      "objective": "Show the retained-problem-free campaign ratio, supporting counts, and observed run motion together.",
-      "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of problems nor run motion is verified campaign effectiveness.",
+      "id": "overview-factory-station",
+      "subject": "Provide the presentation-ready Factory health station for Overview.",
+      "objective": "Show the all-workflow runtime health ratio, supporting counts, and observed run motion together.",
+      "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of failures nor run motion is verified workflow effectiveness.",
       "description": "",
       "parameters": [],
       "sources": [
-        "overview-campaign-health-presentation",
+        "overview-factory-health-presentation",
         "overview-run-motion-presentation-input"
       ],
       "used-by-pages": [
@@ -5650,7 +5626,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "campaigns",
           "overview-runs",
           "workflows"
         ]

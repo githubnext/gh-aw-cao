@@ -490,12 +490,12 @@ export function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
-      if (view.config['browser-first-load'] !== undefined) {
-        if (view.element !== 'factory-header' || typeof view.config['browser-first-load'] !== 'boolean') {
+      for (const key of ['browser-first-load', 'data-status']) {
+        if (view.config[key] !== undefined && (view.element !== 'factory-header' || typeof view.config[key] !== 'boolean')) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'config.browser-first-load must be a boolean on the factory-header element.',
-            `${path}.config.browser-first-load`
+            `config.${key} must be a boolean on the factory-header element.`,
+            `${path}.config.${key}`
           ));
         }
       }

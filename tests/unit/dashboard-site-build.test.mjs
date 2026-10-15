@@ -94,7 +94,7 @@ test("dashboard build uses GitHub Actions repository and server URL for the chro
     const queries = JSON.parse(await readFile(path.join(root, "output", "src/agent/queries.generated.json"), "utf8"));
     const catalog = JSON.parse(await readFile(path.join(root, "output", "src/agent/catalog.generated.json"), "utf8"));
     assert.deepEqual(queries, document.dashboard.queries);
-    assert.ok(queries.some(({ name }) => name === "database-campaign-count"));
+    assert.ok(queries.some(({ name }) => name === "overview-workflow-health-summary"));
     assert.equal(catalog.pages.find((page) => page.id === "friction")?.experimental, false);
     assert.ok(dashboard.dashboard.navigation.some(
       (section) => section.label === "Data" && section.pages.includes("friction"),

@@ -13,12 +13,12 @@ const debugFactoryFloor = createDebug('factory-floor');
 /** @type {Record<FactoryStationId, { icon: string, label: string, href: string, format: 'count'|'percent', unavailableDetail: string, unavailableDescription: string }>} */
 const STATION_DEFINITIONS = {
   campaigns: {
-    icon: 'organization',
-    label: 'Campaign health',
-    href: '#page-campaigns',
+    icon: 'workflow',
+    label: 'Factory health',
+    href: '#page-workflows',
     format: 'percent',
-    unavailableDetail: '0/0 healthy campaigns',
-    unavailableDescription: 'Campaign health unavailable'
+    unavailableDetail: '0/0 healthy workflows',
+    unavailableDescription: 'Factory health unavailable'
   },
   repositories: {
     icon: 'repo',
@@ -107,7 +107,7 @@ export function renderFactoryFloor(sources, animateNumbers, scope, roleNames, se
  * @type {Record<string, string>}
  */
 export const FLOOR_DEFAULT_SOURCES = {
-  campaigns: 'overview-campaign-station',
+  campaigns: 'overview-factory-station',
   repositories: 'overview-repository-station',
   issues: 'overview-issue-station',
   'value-gains': 'overview-value-station'

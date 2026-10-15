@@ -1,22 +1,6 @@
 {
   "queries": [
     {
-      "name": "database-campaign-count",
-      "subject": "Count campaigns in the dashboard database.",
-      "objective": "Establish the retained campaign inventory denominator for Overview health presentation.",
-      "acceptance": "The campaigns count matches canonical campaign identities in the selected snapshot; missing inventory is reported as incomplete rather than interpreted as no campaigns.",
-      "from": "campaigns",
-      "aggregate": {
-        "values": [
-          {
-            "field": "campaign",
-            "as": "campaigns",
-            "reducer": "count"
-          }
-        ]
-      }
-    },
-    {
       "name": "overview-run-summary",
       "subject": "Summarize successful, failed, and active runs with rollout-mode counts.",
       "objective": "Expose observed success, failure, and active run counts, including active live and review modes, for the selected horizon.",
@@ -382,10 +366,10 @@
               "field": "has-successful-runs"
             },
             {
-              "value": "Your campaigns are humming."
+              "value": "Your factory is humming."
             },
             {
-              "value": "Your campaigns are idle."
+              "value": "Your factory is idle."
             }
           ]
         },
@@ -397,7 +381,7 @@
               "field": "has-failed-runs"
             },
             {
-              "value": "Your campaigns need attention."
+              "value": "Your factory needs attention."
             },
             {
               "field": "successful-heading"
@@ -412,7 +396,7 @@
               "field": "failures-exceed-successes"
             },
             {
-              "value": "Your campaigns are under strain."
+              "value": "Your factory is under strain."
             },
             {
               "field": "attention-heading"
@@ -427,7 +411,7 @@
               "field": "has-active-runs"
             },
             {
-              "value": "Your campaigns are humming."
+              "value": "Your factory is humming."
             },
             {
               "field": "strain-heading"
@@ -442,7 +426,7 @@
               "field": "has-value-gains"
             },
             {
-              "value": "Your campaigns are delivering value."
+              "value": "Your factory is delivering value."
             },
             {
               "field": "active-heading"
@@ -658,36 +642,91 @@
       ]
     },
     {
-      "name": "overview-healthy-campaign-count",
-      "subject": "Count campaigns with no retained workflow or target errors.",
-      "objective": "Count campaigns with no retained runtime problem partitions for the Overview health display.",
-      "acceptance": "healthy-campaigns counts canonical campaigns without observed problem partitions; missing runtime evidence is not independent proof of healthy execution.",
-      "from": "campaigns",
+      "name": "overview-workflow-health-groups",
+      "subject": "Assess current runtime failures for every workflow across CAO and targeted repositories.",
+      "objective": "Compute the latest consecutive completed-run failure streak for each repository-scoped workflow without requiring campaign membership.",
+      "acceptance": "Group by organization, repository, and workflow; in-flight retries do not clear failures, and later non-failing completed runs reset the streak within the selected horizon.",
+      "from": "overview-runs",
+      "filter": {
+        "predicates": [
+          {
+            "field": "run-status",
+            "equals": "completed"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "is-runtime-failure",
+          "function": "equals-any",
+          "args": [
+            { "field": "run-conclusion" },
+            { "value": "failure" },
+            { "value": "startup-failure" },
+            { "value": "stale" },
+            { "value": "timed-out" }
+          ]
+        },
+        {
+          "as": "runtime-failure-streak-point",
+          "function": "failure-streak-point",
+          "args": [
+            { "field": "started-at" },
+            { "field": "run" },
+            { "field": "is-runtime-failure" }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          {
+            "field": "runtime-failure-streak-point",
+            "as": "failure-count",
+            "reducer": "latest-failure-streak"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-workflow-health-summary",
+      "subject": "Count all registered workflows and those without current observed runtime failures.",
+      "objective": "Provide Factory health numerator and denominator across CAO and targeted repositories, including standalone and campaign workflows.",
+      "acceptance": "Each repository-scoped workflow counts once regardless of campaign or role; no retained failure is not proof of successful execution, missing inventory remains unavailable, and missing run evidence marks the result incomplete.",
+      "from": "workflows",
       "joins": [
         {
-          "source": "campaign-runtime-problem-counts",
+          "source": "overview-workflow-health-groups",
           "type": "left",
           "on": [
             {
-              "left": "campaign",
-              "right": "campaign"
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
             }
           ],
           "fields": [
             {
-              "field": "problem-partitions",
-              "as": "observed-problem-workflows"
+              "field": "failure-count",
+              "as": "observed-failures"
             }
           ]
         }
       ],
       "compute": [
         {
-          "as": "normalized-problem-workflows",
+          "as": "normalized-failures",
           "function": "coalesce",
           "args": [
             {
-              "field": "observed-problem-workflows"
+              "field": "observed-failures"
             },
             {
               "value": 0
@@ -699,7 +738,7 @@
           "function": "greater-than",
           "args": [
             {
-              "field": "normalized-problem-workflows"
+              "field": "normalized-failures"
             },
             {
               "value": 0
@@ -710,8 +749,13 @@
       "aggregate": {
         "values": [
           {
-            "field": "campaign",
-            "as": "healthy-campaigns",
+            "field": "workflow",
+            "as": "workflows",
+            "reducer": "count"
+          },
+          {
+            "field": "workflow",
+            "as": "healthy-workflows",
             "reducer": "count",
             "filter": {
               "predicates": [
@@ -726,11 +770,11 @@
       }
     },
     {
-      "name": "overview-campaign-count-presentation-input",
-      "subject": "Prepare the campaign inventory count for Overview presentation queries.",
-      "objective": "Project the campaign inventory count into the health presentation join.",
-      "acceptance": "The campaigns value matches database-campaign-count; the presentation key does not expand the campaign scope.",
-      "from": "database-campaign-count",
+      "name": "overview-workflow-health-presentation-input",
+      "subject": "Prepare all-workflow health counts for Overview presentation.",
+      "objective": "Carry Factory health counts into the header and station presentation.",
+      "acceptance": "Both counts match overview-workflow-health-summary and preserve missing evidence metadata.",
+      "from": "overview-workflow-health-summary",
       "compute": [
         {
           "as": "overview-presentation-key",
@@ -750,130 +794,86 @@
           "field": "overview-presentation-key"
         },
         {
-          "field": "campaigns"
-        }
-      ]
-    },
-    {
-      "name": "overview-healthy-campaign-presentation-input",
-      "subject": "Prepare the healthy campaign count for Overview presentation queries.",
-      "objective": "Project the campaigns without retained problems into the health presentation join.",
-      "acceptance": "The healthy-campaigns value matches overview-healthy-campaign-count and remains an absence-of-observed-problems measure, not verified health.",
-      "from": "overview-healthy-campaign-count",
-      "compute": [
-        {
-          "as": "overview-presentation-key",
-          "function": "concat",
-          "args": [
-            {
-              "value": "overview"
-            },
-            {
-              "value": "-presentation"
-            }
-          ]
-        }
-      ],
-      "select": [
-        {
-          "field": "overview-presentation-key"
+          "field": "workflows"
         },
         {
-          "field": "healthy-campaigns"
+          "field": "healthy-workflows"
         }
       ]
     },
     {
-      "name": "overview-campaign-health-presentation",
-      "subject": "Produce presentation-ready campaign health values for the Overview header and floor.",
-      "objective": "Display the ratio of campaigns without retained runtime problems to registered campaigns with both underlying counts.",
-      "acceptance": "The percentage and detail agree with healthy-campaigns and campaigns; a missing or zero denominator remains unavailable, and the displayed ratio is not proof of impact.",
-      "from": "overview-healthy-campaign-presentation-input",
-      "joins": [
-        {
-          "source": "overview-campaign-count-presentation-input",
-          "type": "left",
-          "on": [
-            {
-              "left": "overview-presentation-key",
-              "right": "overview-presentation-key"
-            }
-          ],
-          "fields": [
-            {
-              "field": "campaigns",
-              "as": "campaigns"
-            }
-          ]
-        }
-      ],
+      "name": "overview-factory-health-presentation",
+      "subject": "Produce presentation-ready Factory health values for the Overview header and floor.",
+      "objective": "Display the ratio of workflows without current observed runtime failures to all registered workflows with both underlying counts.",
+      "acceptance": "The percentage and detail agree with healthy-workflows and workflows; a missing or zero denominator remains unavailable, and the ratio is not proof of impact.",
+      "from": "overview-workflow-health-presentation-input",
       "compute": [
         {
-          "as": "campaign-health",
+          "as": "factory-health",
           "function": "quotient",
           "args": [
             {
-              "field": "healthy-campaigns"
+              "field": "healthy-workflows"
             },
             {
-              "field": "campaigns"
+              "field": "workflows"
             }
           ]
         },
         {
-          "as": "campaign-health-display",
+          "as": "factory-health-display",
           "function": "format-percent",
           "args": [
             {
-              "field": "campaign-health"
+              "field": "factory-health"
             }
           ]
         },
         {
-          "as": "healthy-campaigns-display",
+          "as": "healthy-workflows-display",
           "function": "format-count",
           "args": [
             {
-              "field": "healthy-campaigns"
+              "field": "healthy-workflows"
             }
           ]
         },
         {
-          "as": "campaigns-display",
+          "as": "workflows-display",
           "function": "format-count",
           "args": [
             {
-              "field": "campaigns"
+              "field": "workflows"
             }
           ]
         },
         {
-          "as": "campaign-health-detail",
+          "as": "factory-health-detail",
           "function": "concat",
           "args": [
             {
-              "field": "healthy-campaigns-display"
+              "field": "healthy-workflows-display"
             },
             {
               "value": "/"
             },
             {
-              "field": "campaigns-display"
+              "field": "workflows-display"
             },
             {
-              "value": " healthy campaigns"
+              "value": " healthy workflows"
             }
           ]
         },
         {
-          "as": "campaign-health-description",
+          "as": "factory-health-description",
           "function": "concat",
           "args": [
             {
-              "field": "campaign-health-display"
+              "field": "factory-health-display"
             },
             {
-              "value": " campaign health"
+              "value": " factory health"
             }
           ]
         }
@@ -883,16 +883,16 @@
           "field": "overview-presentation-key"
         },
         {
-          "field": "campaign-health"
+          "field": "factory-health"
         },
         {
-          "field": "campaign-health-display"
+          "field": "factory-health-display"
         },
         {
-          "field": "campaign-health-detail"
+          "field": "factory-health-detail"
         },
         {
-          "field": "campaign-health-description"
+          "field": "factory-health-description"
         }
       ]
     },
@@ -927,13 +927,13 @@
     },
     {
       "name": "overview-header-presentation",
-      "subject": "Resolve the Overview heading from declarative status and campaign-health evidence.",
-      "objective": "Display the configured heading corresponding to observed run status and campaign health.",
+      "subject": "Resolve the Overview heading from declarative status and factory-health evidence.",
+      "objective": "Display the configured heading corresponding to observed run status and factory health.",
       "acceptance": "The selected heading follows the declared presentation branches; numeric branch boundaries are UI classification only, not operational targets or rollout thresholds.",
       "from": "overview-header-status-presentation-input",
       "joins": [
         {
-          "source": "overview-campaign-health-presentation",
+          "source": "overview-factory-health-presentation",
           "type": "left",
           "on": [
             {
@@ -943,19 +943,19 @@
           ],
           "fields": [
             {
-              "field": "campaign-health",
-              "as": "campaign-health"
+              "field": "factory-health",
+              "as": "factory-health"
             }
           ]
         }
       ],
       "compute": [
         {
-          "as": "campaign-health-positive",
+          "as": "factory-health-positive",
           "function": "greater-than",
           "args": [
             {
-              "field": "campaign-health"
+              "field": "factory-health"
             },
             {
               "value": 0
@@ -963,26 +963,26 @@
           ]
         },
         {
-          "as": "campaign-health-below-threshold",
+          "as": "factory-health-below-threshold",
           "function": "greater-than",
           "args": [
             {
               "value": 0.66
             },
             {
-              "field": "campaign-health"
+              "field": "factory-health"
             }
           ]
         },
         {
-          "as": "positive-campaign-health-heading",
+          "as": "positive-factory-health-heading",
           "function": "if",
           "args": [
             {
-              "field": "campaign-health-below-threshold"
+              "field": "factory-health-below-threshold"
             },
             {
-              "value": "Your campaigns need attention."
+              "value": "Your factory needs attention."
             },
             {
               "field": "factory-heading"
@@ -994,10 +994,10 @@
           "function": "if",
           "args": [
             {
-              "field": "campaign-health-positive"
+              "field": "factory-health-positive"
             },
             {
-              "field": "positive-campaign-health-heading"
+              "field": "positive-factory-health-heading"
             },
             {
               "field": "factory-heading"
@@ -1053,11 +1053,11 @@
       ]
     },
     {
-      "name": "overview-campaign-station",
-      "subject": "Provide the presentation-ready campaign health station for Overview.",
-      "objective": "Show the retained-problem-free campaign ratio, supporting counts, and observed run motion together.",
-      "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of problems nor run motion is verified campaign effectiveness.",
-      "from": "overview-campaign-health-presentation",
+      "name": "overview-factory-station",
+      "subject": "Provide the presentation-ready Factory health station for Overview.",
+      "objective": "Show the all-workflow runtime health ratio, supporting counts, and observed run motion together.",
+      "acceptance": "Station value, display, detail, description, and active flag match their input queries; neither absence of failures nor run motion is verified workflow effectiveness.",
+      "from": "overview-factory-health-presentation",
       "joins": [
         {
           "source": "overview-run-motion-presentation-input",
@@ -1078,19 +1078,19 @@
       ],
       "select": [
         {
-          "field": "campaign-health",
+          "field": "factory-health",
           "as": "value"
         },
         {
-          "field": "campaign-health-display",
+          "field": "factory-health-display",
           "as": "display-value"
         },
         {
-          "field": "campaign-health-detail",
+          "field": "factory-health-detail",
           "as": "detail"
         },
         {
-          "field": "campaign-health-description",
+          "field": "factory-health-description",
           "as": "description"
         },
         {
@@ -1975,7 +1975,7 @@
           "title": "How are we doing?",
           "show-title": false,
           "prompt": "none",
-          "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
+          "description": "Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution.",
           "data": {
             "sources": [
               "overview-header-presentation",
@@ -1984,21 +1984,22 @@
           },
           "mark": "element",
           "element": "factory-header",
-          "objective": "Show browser-local first-import progress instead of campaign status until a complete snapshot is available; backend dashboards use the declarative campaign evidence directly.",
+          "objective": "Show browser-local first-import progress instead of factory status until a complete snapshot is available; backend dashboards use the declarative factory evidence directly.",
           "config": {
-            "browser-first-load": true
+            "browser-first-load": true,
+            "data-status": true
           },
           "layout": "full"
         },
         {
           "id": "overview-floor",
-          "title": "Campaign overview",
+          "title": "Factory overview",
           "show-title": false,
           "prompt": "none",
-          "subject": "Show campaign health, repository coverage, retained issues and pull requests, and observed grader results with their investigation routes.",
+          "subject": "Show all-workflow Factory health, repository coverage, retained issues and pull requests, and observed grader results with their investigation routes.",
           "data": {
             "sources": [
-              "overview-campaign-station",
+              "overview-factory-station",
               "overview-repository-station",
               "overview-issue-station",
               "overview-value-station"
