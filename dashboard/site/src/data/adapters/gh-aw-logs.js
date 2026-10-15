@@ -10,6 +10,7 @@ import {
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
+import { parseUnifiedSession } from './unified-session.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -702,8 +703,8 @@ function firewallEvents(runId, file) {
 }
 
 /**
- * Converts gh-aw's raw agent, gateway, and firewall JSONL files into its
- * unified timeline vocabulary for one canonical Run.
+ * Prefers gh-aw's published unified session, with raw agent, gateway, and
+ * firewall JSONL as the legacy fallback for one canonical Run.
  *
  * @param {unknown} input
  * @param {string} runId
@@ -712,6 +713,12 @@ function firewallEvents(runId, file) {
 export function adaptGhAwTimelineFiles(input, runId) {
   const canonicalRunId = requiredString(runId, 'gh-aw logs runId');
   const files = logFiles(input);
+  const sessions = files.filter((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
+  if (sessions.length > 1) throw new TypeError('Multiple unified sessions found for one run');
+  if (sessions.length === 1) {
+    const file = sessions[0];
+    return sessionObservations(parseUnifiedSession(file.content, file.path), file.path, canonicalRunId);
+  }
   const gateway = files.find((file) => /(^|\/)gateway\.jsonl$/.test(file.path));
   const rpc = gateway ? undefined : files.find((file) => /(^|\/)rpc-messages\.jsonl$/.test(file.path));
   return [
@@ -721,10 +728,24 @@ export function adaptGhAwTimelineFiles(input, runId) {
   ];
 }
 
+/** @param {unknown} input @param {string} path @param {string} runId */
+function sessionObservations(input, path, runId) {
+  if (!Array.isArray(input)) throw new TypeError('Unified session evidence must be an array');
+  return input.map((value) => {
+    const event = objectValue(value, 'unified session evidence');
+    return eventObservation(
+      runId, path, positiveInteger(event.line, 'session line'),
+      canonicalTimestamp(event.timestamp, 'session timestamp'),
+      requiredString(event.source, 'session source'), requiredString(event.type, 'session type'),
+      objectValue(event.fields, 'session fields')
+    );
+  });
+}
+
 /**
  * Converts raw gh-aw run artifact files into a complete canonical observation
- * graph. The input carries GitHub identity context; Event data remains sourced
- * from gh-aw's agent, gateway, and firewall JSONL files.
+ * graph. The input carries GitHub identity context; events come from the
+ * published unified session or legacy agent, gateway, and firewall files.
  *
  * @param {unknown} input
  * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
@@ -1548,6 +1569,15 @@ function createCachedGhAwJsonlAccumulator(options) {
 
   for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
     const run = enriched.value;
+    const raw = rawRuns.get(id);
+    if (raw && Number(raw.value.attempt ?? 1) !== Number(run.run_attempt ?? 1)) continue;
+    const session = run.cao_unified_session === undefined ? null
+      : objectValue(run.cao_unified_session, 'run.cao_unified_session');
+    if (session) {
+      const sessionPath = requiredString(session.path, 'run.cao_unified_session.path');
+      if (session.version !== 1) throw new TypeError('Unsupported unified session evidence version');
+      observations.push(...sessionObservations(session.events, sessionPath, id));
+    }
     const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
       ? /** @type {Record<string, unknown>} */ (run.aw_info)
       : {};
@@ -2027,7 +2057,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       && runMcpToolUsage.tool_calls.length > 0
       ? runMcpToolUsage
       : auditMcpToolUsage;
-    const toolCalls = Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
+    const toolCalls = !session && Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
     toolCalls.forEach((toolCall, index) => {
       const record = toolCall && typeof toolCall === 'object' && !Array.isArray(toolCall)
         ? /** @type {Record<string, unknown>} */ (toolCall)
@@ -2109,7 +2139,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const skillActivationsValue = Object.hasOwn(run, 'skill_activations')
       ? run.skill_activations
       : audit.skill_activations;
-    const skillActivations = Array.isArray(skillActivationsValue) ? skillActivationsValue : [];
+    const skillActivations = !session && Array.isArray(skillActivationsValue) ? skillActivationsValue : [];
     skillActivations.forEach((entry, index) => {
       const record = entry && typeof entry === 'object' && !Array.isArray(entry)
         ? /** @type {Record<string, unknown>} */ (entry)
@@ -2156,7 +2186,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       && !Array.isArray(firewallAnalysis.requests_by_domain)
       ? /** @type {Record<string, unknown>} */ (firewallAnalysis.requests_by_domain)
       : {};
-    for (const [host, counts] of Object.entries(requestsByDomain)) {
+    for (const [host, counts] of Object.entries(session ? {} : requestsByDomain)) {
       const domain = firewallDomain(host);
       if (!domain || !counts || typeof counts !== 'object' || Array.isArray(counts)) continue;
       const record = /** @type {Record<string, unknown>} */ (counts);
