@@ -278,13 +278,16 @@ func TestGitHubResourceRateLimitPreservesStale(t *testing.T) {
 	app.githubResources.put(key, cached)
 	for range 2 {
 		response := resourceGet(t, app, path, "")
-		if response.Code != http.StatusTooManyRequests || response.Header().Get("Retry-After") == "" ||
-			strings.Contains(response.Body.String(), "secret") {
+		retryAfter, retryErr := strconv.Atoi(response.Header().Get("Retry-After"))
+		if response.Code != http.StatusOK || retryErr != nil || retryAfter < 115 || retryAfter > 120 ||
+			response.Header().Get("Warning") != `110 - "Response is stale"` ||
+			response.Header().Get("Cache-Control") != "private, max-age=0, stale-while-revalidate=86400" ||
+			response.Body.String() != first.Body.String() || strings.Contains(response.Body.String(), "secret") {
 			t.Fatalf("rate limit response: %d %s", response.Code, response.Body.String())
 		}
 	}
 	retained, found := app.githubResources.get(key)
-	if !found || string(retained.body) != first.Body.String() || reads.Load() != 2 {
+	if !found || string(retained.body) != first.Body.String() || reads.Load() != 2 || !retained.validated.Equal(cached.validated) {
 		t.Fatalf("stale payload lost or parked bucket ignored: found=%t reads=%d", found, reads.Load())
 	}
 	state, err := app.quota.State(t.Context(), githubquota.BucketID{App: "local-cli", Installation: 1})
@@ -341,7 +344,7 @@ func TestGitHubResourceErrorKeepsPreviousPayload(t *testing.T) {
 	response := resourceGet(t, app, "/api/v1/github/repos/owner/repo", "")
 	if response.Code != http.StatusOK || response.Header().Get("Warning") != `110 - "Response is stale"` ||
 		response.Header().Get("Cache-Control") != "private, max-age=0, stale-while-revalidate=86400" ||
-		response.Body.String() != first.Body.String() {
+		response.Header().Get("Retry-After") == "" || response.Body.String() != first.Body.String() {
 		t.Fatalf("malformed upstream status=%d", response.Code)
 	}
 	retained, found := app.githubResources.get(key)
@@ -547,5 +550,37 @@ func TestGitHubResourceHostedUsesInstallationCredentials(t *testing.T) {
 	app.config.Collector.AdmitOnly = true
 	if response := resourceGet(t, app, "/api/v1/github/repos/owner/repo", ""); response.Code != http.StatusServiceUnavailable {
 		t.Fatal("admission-only credential boundary was bypassed")
+	}
+}
+
+func TestGitHubResourceDoesNotServeStaleAfterAccessRevoked(t *testing.T) {
+	for _, upstreamStatus := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		t.Run(strconv.Itoa(upstreamStatus), func(t *testing.T) {
+			var reads atomic.Int64
+			app := resourceTestApp(t, func(request *http.Request) (*http.Response, error) {
+				if request.URL.Path == "/rate_limit" {
+					return resourceResponse(http.StatusOK, `{}`), nil
+				}
+				if reads.Add(1) == 1 {
+					return resourceResponse(http.StatusOK, resourceRepositoryJSON), nil
+				}
+				return resourceResponse(upstreamStatus, `{}`), nil
+			})
+			path := "/api/v1/github/repos/owner/repo"
+			if first := resourceGet(t, app, path, ""); first.Code != http.StatusOK {
+				t.Fatalf("initial status=%d", first.Code)
+			}
+			key := githubResourceKey(1, "repos/owner/repo", nil, "test-credential")
+			cached, _ := app.githubResources.get(key)
+			cached.validated = time.Now().Add(-6 * time.Minute)
+			app.githubResources.put(key, cached)
+			response := resourceGet(t, app, path, "")
+			if response.Code != http.StatusServiceUnavailable && response.Code != http.StatusNotFound {
+				t.Fatalf("access revocation returned stale private data: %d %s", response.Code, response.Body.String())
+			}
+			if response.Header().Get("Warning") != "" {
+				t.Fatal("access revocation was treated as a stale success")
+			}
+		})
 	}
 }

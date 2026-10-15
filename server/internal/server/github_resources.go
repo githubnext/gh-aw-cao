@@ -98,8 +98,9 @@ func (c *githubResourceCache) put(key string, entry githubResourceEntry) {
 }
 
 type githubResourceError struct {
-	status int
-	retry  time.Time
+	status    int
+	retry     time.Time
+	denyStale bool
 }
 
 type githubResourceCredentials struct {
@@ -147,6 +148,7 @@ func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release boo
 	key := githubResourceKey(installation, path, r.Header, credentials.token)
 	entry, ok := a.githubResources.get(key)
 	stale := false
+	var staleError error
 	if !ok || time.Since(entry.validated) >= githubResourceFreshFor {
 		result := a.githubResources.flight.DoChan(key, func() (any, error) {
 			if cached, found := a.githubResources.get(key); found && time.Since(cached.validated) < githubResourceFreshFor {
@@ -166,6 +168,7 @@ func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release boo
 					return
 				}
 				stale = true
+				staleError = fetched.Err
 			} else {
 				entry = fetched.Val.(githubResourceEntry)
 			}
@@ -177,6 +180,7 @@ func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release boo
 	if stale {
 		w.Header().Set("Cache-Control", "private, max-age=0, stale-while-revalidate=86400")
 		w.Header().Set("Warning", `110 - "Response is stale"`)
+		writeGitHubResourceRetryAfter(w, staleError)
 	}
 	if !stale && githubETagMatches(r.Header.Get("If-None-Match"), entry.etag) {
 		w.WriteHeader(http.StatusNotModified)
@@ -338,6 +342,9 @@ func (a *App) fetchGitHubResource(ctx context.Context, credentials githubResourc
 	if response.StatusCode == http.StatusNotFound {
 		return githubResourceEntry{}, &githubResourceError{status: http.StatusNotFound}
 	}
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+	}
 	if response.StatusCode == http.StatusNotModified && exists {
 		cached.validated = time.Now()
 		if etag := response.Header.Get("ETag"); etag != "" {
@@ -407,35 +414,44 @@ func githubResourceRateLimit(status int, quota githubquota.ResponseQuota) error 
 func githubResourceTransientError(err error) bool {
 	var resourceError *githubResourceError
 	if errors.As(err, &resourceError) {
-		return resourceError.status == http.StatusServiceUnavailable
+		return !resourceError.denyStale && (resourceError.status == http.StatusServiceUnavailable || resourceError.status == http.StatusTooManyRequests)
 	}
-	var quotaError *githubquota.UnavailableError
-	return !errors.As(err, &quotaError)
+	return true
 }
 
 func writeGitHubResourceError(w http.ResponseWriter, err error) {
 	status := http.StatusServiceUnavailable
-	retry := time.Now().Add(time.Minute)
 	var resourceError *githubResourceError
 	var unavailable *githubquota.UnavailableError
 	switch {
 	case errors.As(err, &resourceError):
 		status = resourceError.status
-		if !resourceError.retry.IsZero() {
-			retry = resourceError.retry
-		}
 	case errors.As(err, &unavailable):
 		if unavailable.Status == githubquota.StatusExhausted || unavailable.Status == githubquota.StatusParked {
 			status = http.StatusTooManyRequests
-			if !unavailable.RetryAt.IsZero() {
-				retry = unavailable.RetryAt
-			}
 		}
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
-		seconds := max(1, int(time.Until(retry).Seconds()+1))
-		w.Header().Set("Retry-After", strconv.Itoa(seconds))
+		writeGitHubResourceRetryAfter(w, err)
 	}
 	writeError(w, status, "GitHub resource is unavailable")
+}
+
+func writeGitHubResourceRetryAfter(w http.ResponseWriter, err error) {
+	retry := time.Now().Add(time.Minute)
+	var resourceError *githubResourceError
+	var unavailable *githubquota.UnavailableError
+	switch {
+	case errors.As(err, &resourceError):
+		if !resourceError.retry.IsZero() {
+			retry = resourceError.retry
+		}
+	case errors.As(err, &unavailable):
+		if !unavailable.RetryAt.IsZero() {
+			retry = unavailable.RetryAt
+		}
+	}
+	seconds := max(1, int(time.Until(retry).Seconds()+1))
+	w.Header().Set("Retry-After", strconv.Itoa(seconds))
 }

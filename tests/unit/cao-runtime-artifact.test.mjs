@@ -86,6 +86,7 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.js"]);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
   assert.ok(metadata.files["activity/setup-prompt.mjs"]);
+  assert.ok(metadata.files["dashboard/local-github-service.mjs"]);
   const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
   const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
   assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);

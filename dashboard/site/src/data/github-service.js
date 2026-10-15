@@ -195,8 +195,8 @@ export function createGitHubDataService(dependencies = {}) {
                 ...(current.cached?.etag ? { 'If-None-Match': current.cached.etag } : {})
               }
             });
-            if (response.status === 429 || response.status === 503) {
-              const header = response.headers.get('Retry-After');
+            const header = response.headers.get('Retry-After');
+            if (header || response.status === 429 || response.status === 503) {
               const delay = header && /^\d+$/.test(header) ? Number(header) * 1000 : header ? Date.parse(header) - now() : 0;
               limit.until = Math.max(limit.until, now() + Math.max(1000, Number.isFinite(delay) ? delay : 0));
             }
@@ -209,18 +209,24 @@ export function createGitHubDataService(dependencies = {}) {
             }
             if (!data) throw new Error('invalid-response');
             const cacheControl = response.headers.get('Cache-Control') ?? '';
-            const freshMs = Math.min(FRESH_MS, Number(cacheControl.match(/(?:^|,)\s*max-age=(\d+)/i)?.[1] ?? 300) * 1000);
+            const lifetimeMs = Math.min(FRESH_MS, Number(cacheControl.match(/(?:^|,)\s*max-age=(\d+)/i)?.[1] ?? 300) * 1000);
             const staleMs = Math.min(STALE_MS, Number(cacheControl.match(/(?:^|,)\s*stale-while-revalidate=(\d+)/i)?.[1] ?? 86400) * 1000);
+            const age = Number(response.headers.get('Age') ?? 0);
+            const ageMs = Number.isFinite(age) ? Math.max(0, age * 1000) : 0;
+            const staleResponse = /(?:^|,)\s*110\b/.test(response.headers.get('Warning') ?? '');
+            const freshMs = staleResponse ? 0 : Math.max(0, lifetimeMs - ageMs);
+            const staleUntil = now() + Math.max(0, lifetimeMs + staleMs - ageMs);
             if (signal.aborted) return;
             current.cached = {
               id, kind: 'github-resource-cache', createdAt: new Date(now()).toISOString(), data,
               etag: response.headers.get('ETag') ?? (response.status === 304 ? current.cached?.etag ?? null : null),
-              freshUntil: now() + freshMs, staleUntil: now() + freshMs + staleMs
+              freshUntil: now() + freshMs,
+              staleUntil: staleResponse ? Math.min(current.cached?.staleUntil ?? staleUntil, staleUntil) : staleUntil
             };
             await recordTransaction(database, current.cached).catch(() => undefined);
             current.attempts = 0;
-            snapshot(current, 'network');
-            schedule(Math.max(1000, freshMs));
+            snapshot(current, 'network', staleResponse ? 'stale-response' : null, limit.until > now() ? limit.until : null);
+            schedule(Math.max(staleResponse ? 30_000 : 1000, freshMs, limit.until - now()));
           } catch (error) {
             if (signal.aborted) return;
             current.attempts++;

@@ -95,6 +95,13 @@ function accessToken() {
 
 /** Serializable backend configuration for worker-owned GitHub resource requests. */
 export function githubWorkerBackendConfiguration() {
+  const previewBase = globalThis.document?.querySelector?.('meta[name="dashboard-github-api-base"]')?.getAttribute("content");
+  if (previewBase) return {
+    baseUrl: new URL("api/v1/github/", new URL(previewBase, globalThis.location?.origin ?? "https://localhost")).href,
+    token: "",
+    credentials: /** @type {RequestCredentials} */ ("omit"),
+    cacheIdentity: ""
+  };
   const configured = usesRemoteDataBackend()
     || Boolean(globalThis.document?.querySelector?.('meta[name="dashboard-api-base"]')?.getAttribute("content"));
   const oauth = usesGitHubAuthentication();

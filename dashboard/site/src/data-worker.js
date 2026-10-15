@@ -711,6 +711,15 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
+        if (subscription.githubSources
+            && resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
+              .some((name) => isGitHubQuerySource(name) && !Object.hasOwn(subscription.githubSources ?? {}, name))) {
+          continue;
+        }
+        if (subscription.hostedSources !== undefined
+            && subscriptionDatabaseSources(subscription).some((name) => !Object.hasOwn(subscription.hostedSources ?? {}, name))) {
+          continue;
+        }
         const queryDashboard = subscription.githubSources ? {
           ...dashboard, hosted: subscription.hostedSources !== undefined,
           logicalSources: { ...dashboard.logicalSources, ...subscription.hostedSources, ...subscription.githubSources }
@@ -929,6 +938,20 @@ export function processDataRequest(request, signal) {
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
+    /** @param {typeof liveDashboard} [dashboard] */
+    const query = (dashboard) => queryLiveDashboard(
+      requested,
+      context,
+      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
+      signal,
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
+      typeof request.pageId === 'string' ? request.pageId : undefined,
+      routeParameters(request.routeParameters),
+      queryContext(request.queryContext),
+      typeof request.viewId === 'string' ? request.viewId : undefined,
+      dashboard
+    );
+    if (!resolveDashboardQuerySources(context.queries, requested).some(isGitHubQuerySource)) return query();
     return (async () => {
       const controller = new AbortController();
       const abort = () => controller.abort();
@@ -941,21 +964,10 @@ export function processDataRequest(request, signal) {
           ...context, .../** @type {{ dashboardRepository?: string | null }} */ (request.context ?? {})
         }, request.githubConfiguration, controller.signal, (name, source) => { githubSources[name] = source; });
         const dashboard = await loadActiveDashboard();
-        return await queryLiveDashboard(
-      requested,
-      context,
-      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
-      signal,
-      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
-      typeof request.pageId === 'string' ? request.pageId : undefined,
-      routeParameters(request.routeParameters),
-      queryContext(request.queryContext),
-      typeof request.viewId === 'string' ? request.viewId : undefined,
-      Object.keys(githubSources).length ? {
-        ...dashboard, hosted: request.hostedSources !== undefined,
-        logicalSources: { ...dashboard.logicalSources, ...request.hostedSources, ...githubSources }
-      } : dashboard
-        );
+        return await query({
+          ...dashboard, hosted: request.hostedSources !== undefined,
+          logicalSources: { ...dashboard.logicalSources, ...request.hostedSources, ...githubSources }
+        });
       } finally {
         controller.abort();
         signal?.removeEventListener('abort', abort);

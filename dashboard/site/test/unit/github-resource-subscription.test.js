@@ -57,6 +57,16 @@ it('leaves static Pages unconfigured and never attaches bearer credentials in OA
   expect(githubWorkerBackendConfiguration().cacheIdentity).toBe(githubWorkerBackendConfiguration().cacheIdentity);
 });
 
+it('honors the local preview GitHub API route prefix without forwarding stored bearer credentials', async () => {
+  document.head.innerHTML = '<meta name="dashboard-github-api-base" content="/cao/">';
+  localStorage.setItem('cao-dashboard-access-token', 'must-not-reach-preview');
+  const { githubWorkerBackendConfiguration } = await import('../../src/remote-data-backend.js');
+  expect(githubWorkerBackendConfiguration()).toEqual({
+    baseUrl: new URL('/cao/api/v1/github/', location.origin).href,
+    token: '', credentials: 'omit', cacheIdentity: ''
+  });
+});
+
 it('reports worker failure and removes listeners, and does nothing for an already aborted signal', async () => {
   vi.stubGlobal('Worker', ResourceWorker);
   const { subscribeGitHubResource } = await import('../../src/data-processor.js');
