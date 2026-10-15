@@ -4573,7 +4573,16 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('keeps route tabs visible while a sibling view loads', async () => {
+  it('keeps route tabs visible and uses a tab transition while a sibling view loads', async () => {
+    /** @type {Array<string | undefined>} */
+    const transitions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitions.push(document.documentElement.dataset.navigationTransition);
+        callback();
+      })
+    });
     const root = document.createElement('div');
     root.innerHTML = `
       <a data-nav-page-id="first" href="#page-first?campaign=ambient-context">First</a>
@@ -4605,8 +4614,16 @@ describe('presenter built-in and custom pages', () => {
       expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
       expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
       expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      expect(transitions).toEqual(['tab']);
+      window.history.replaceState(null, '', '/#page-first?campaign=ambient-context');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('tab');
+      window.history.replaceState(null, '', '/#page-second?campaign=different');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(transitions.at(-1)).toBe('page');
       disposeNavigation();
     } finally {
+      Reflect.deleteProperty(document, 'startViewTransition');
       root.remove();
       window.history.replaceState(null, '', '/');
     }

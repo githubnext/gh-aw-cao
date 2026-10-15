@@ -73,6 +73,9 @@ indicator, and each has a directly addressable route:
 Repositories opens at `#page-maintenance`; Campaigns opens at
 `#page-maintenance-campaigns`. Repository enrollment and compiler upgrade actions
 remain in Repositories, while campaign package update actions remain in Campaigns.
+Switching sibling tabs, including browser back and forward, cross-fades only the
+tab content. The shared navigation and tab bar stay outside the full-page
+transition used when opening a different dashboard view.
 
 These records do not constitute an inventory of vendored agents or project
 skills. Runtime skill calls are retained as Skill records, but a call

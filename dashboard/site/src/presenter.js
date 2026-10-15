@@ -524,17 +524,16 @@ async function enableDashboardDomProvenanceWhenDebugging(root, document) {
 }
 
 /**
- * Retains route tabs while moving between sibling views so only the selected
- * view body enters its loading state.
+ * Matches a sibling tab without crossing the declared route binding.
  * @param {HTMLElement} page
  * @param {string} pageId
  * @param {URLSearchParams} parameters
  * @returns {HTMLElement | null}
  */
-function cloneRouteTabsForPage(page, pageId, parameters) {
+function routeTabForPage(page, pageId, parameters) {
   const tabs = page.querySelector('[data-route-tabs]');
   if (!(tabs instanceof HTMLElement)) return null;
-  const target = [...tabs.querySelectorAll('a')].find((link) => {
+  return [...tabs.querySelectorAll('a')].find((link) => {
     const href = link.getAttribute('href') ?? '';
     const [route, query = ''] = href.split('?');
     if (!route.startsWith('#page-')) return false;
@@ -544,8 +543,20 @@ function cloneRouteTabsForPage(page, pageId, parameters) {
     } catch {
       return false;
     }
-  });
+  }) ?? null;
+}
+
+/**
+ * @param {HTMLElement} page
+ * @param {string} pageId
+ * @param {URLSearchParams} parameters
+ * @returns {HTMLElement | null}
+ */
+function cloneRouteTabsForPage(page, pageId, parameters) {
+  const target = routeTabForPage(page, pageId, parameters);
   if (!target) return null;
+  const tabs = target.closest('[data-route-tabs]');
+  if (!(tabs instanceof HTMLElement)) return null;
   const clone = /** @type {HTMLElement} */ (tabs.cloneNode(true));
   for (const link of clone.querySelectorAll('a')) {
     if (link.getAttribute('href') === target.getAttribute('href')) {
@@ -1658,6 +1669,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   };
   /**
+   * @param {string} pageId
+   * @param {URLSearchParams} [parameters]
+   */
+  const navigationTransitionKind = (pageId, parameters = new URLSearchParams()) => {
+    const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
+    return activePage && pageId !== activePageId && routeTabForPage(activePage, pageId, parameters)
+      ? 'tab' : 'page';
+  };
+  /**
    * Defers expensive rendering until the lightweight title and skeleton update
    * has had an opportunity to paint.
    * @param {() => void} populate
@@ -2057,6 +2077,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
+    const transitionKind = navigationTransitionKind(pageId, new URLSearchParams(link.hash.split('?', 2)[1] ?? ''));
     const provisionalTitle = link.dataset.routeTitle ?? '';
     const provisionalDescription = link.dataset.routeDescription ?? '';
     commitScrollTop();
@@ -2076,7 +2097,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       updateWithViewTransition(
         root.ownerDocument,
         navigate,
-        'forward'
+        'forward',
+        transitionKind
       );
     }
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
@@ -2146,13 +2168,14 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     primePageChrome(route?.pageId ?? initialPageId);
     const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
     const targetId = route?.pageId ?? initialPageId;
+    const transitionKind = navigationTransitionKind(targetId, route?.parameters);
     const navigate = () => {
       activate(targetId, route?.parameters, true);
       syncHistoryBack();
     };
     if (pages.find((candidate) => candidate.dataset.pageId === targetId)?.dataset.retainOnNavigation === 'true'
       || pages.find((candidate) => candidate.dataset.pageId === activePageId)?.dataset.retainOnNavigation === 'true') navigate();
-    else updateWithViewTransition(root.ownerDocument, navigate, navigationDirection);
+    else updateWithViewTransition(root.ownerDocument, navigate, navigationDirection, transitionKind);
     if (historyScrollTop !== undefined && !route?.parameters.has('section')) {
       const scrollingElement = pageScroller instanceof HTMLElement
         ? pageScroller
