@@ -1,11 +1,8 @@
 import { expect, it } from 'vitest';
-import { executeDashboardQueries, executeDashboardQuery } from '../../src/data/queries/declarative.js';
+import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const dashboard = authoritativeDashboard.dashboard;
-const query = dashboard.queries.find(
-  (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-campaign-links'
-);
 const problemGroupsQuery = dashboard.queries.find(
   (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-problem-error-groups'
 );
@@ -41,77 +38,6 @@ const metadata = {
   completeness: 'complete',
   freshness: 'fresh'
 };
-
-it('opens campaigns with runtime problems on Problems and healthy campaigns on Insights', () => {
-  const result = executeDashboardQuery(query, {
-    campaigns: {
-      source: 'campaigns',
-      metadata,
-      rows: [
-        { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear' },
-        { campaign: 'dependabot', 'campaign-name': 'Dependabot', 'campaign-icon': 'dependabot' }
-      ]
-    },
-    'campaign-runtime-problem-counts': {
-      source: 'campaign-runtime-problem-counts',
-      metadata,
-      rows: [{ campaign: 'aw-doctor', 'problem-partitions': 2 }]
-    }
-  });
-
-  expect(result.rows).toEqual([
-    expect.objectContaining({
-      campaign: 'aw-doctor',
-      'problem-indicator': 'alert',
-      'campaign-dashboard-link': expect.objectContaining({
-        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor'
-      })
-    }),
-    expect.objectContaining({
-      campaign: 'dependabot',
-      'problem-indicator': '',
-      'campaign-dashboard-link': expect.objectContaining({
-        'dashboard-href': '#page-campaign-insights?campaign=dependabot'
-      })
-    })
-  ]);
-});
-
-it('labels only campaigns with a GitHub-disabled dispatcher, not disabled workers or unknown dispatchers', () => {
-  const disabledDispatchersQuery = dashboard.queries.find(
-    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-disabled-dispatchers'
-  );
-  const sources = executeDashboardQueries([disabledDispatchersQuery, query], {
-    campaigns: {
-      source: 'campaigns',
-      metadata,
-      rows: ['aw-doctor', 'dependabot', 'unknown'].map((campaign) => ({
-        campaign, 'campaign-name': campaign, 'campaign-icon': 'gear'
-      }))
-    },
-    workflows: {
-      source: 'workflows',
-      metadata,
-      rows: [
-        { campaign: 'aw-doctor', workflow: 'doctor.md', 'workflow-role': 'orchestrator', 'workflow-active': 'false' },
-        { campaign: 'dependabot', workflow: 'worker.md', 'workflow-role': 'worker', 'workflow-active': 'false' },
-        { campaign: 'dependabot', workflow: 'planner.md', 'workflow-role': 'orchestrator', 'workflow-active': 'true' },
-        { campaign: 'unknown', workflow: 'unknown.md', 'workflow-role': 'orchestrator', 'workflow-active': 'unknown' }
-      ]
-    },
-    'campaign-runtime-problem-counts': {
-      source: 'campaign-runtime-problem-counts',
-      metadata,
-      rows: []
-    }
-  }, ['overview-campaign-links']);
-
-  expect(sources['overview-campaign-links'].rows.map((row) => [row.campaign, row['disabled-label']])).toEqual([
-    ['aw-doctor', 'Disabled'],
-    ['dependabot', ''],
-    ['unknown', '']
-  ]);
-});
 
 it('counts logical repository identities without internal database ids', () => {
   const sources = executeDashboardQueries(overviewInventoryQueries, {

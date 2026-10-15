@@ -106,6 +106,13 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('keeps Overview focused on the header and stations without a campaign list', () => {
+    const overview = dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    expect(viewsOf(overview).map((view) => view.id)).toEqual(['overview-header', 'overview-floor']);
+    expect(viewsOf(overview).flatMap(sourceNamesOf)).not.toContain('overview-campaign-links');
+    expect(dashboard.pages.some((/** @type {{ id?: string }} */ page) => page.id === 'campaign-insights')).toBe(true);
+  });
+
   it('declares experimental evidence pages without presenting observation counts as campaign completion', () => {
     const evolutionSection = dashboard.navigation.find(
       (/** @type {{ label?: string }} */ section) => section.label === 'Evolution'

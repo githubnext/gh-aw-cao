@@ -866,7 +866,6 @@
       "experimental": false,
       "parameters": [],
       "queries": [
-        "overview-campaign-links",
         "overview-factory-station",
         "overview-header-presentation",
         "overview-issue-station",
@@ -1655,44 +1654,6 @@
       }
     },
     {
-      "id": "campaign-runtime-problem-candidates",
-      "subject": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
-      "objective": "Flag runtime-health groups with a nonzero latest retained failure streak for focused investigation.",
-      "acceptance": "Preserve the group identity and failure-count; has-current-failure reflects only failure-count greater than zero, while absent or incomplete run evidence cannot establish health.",
-      "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
-      "parameters": [],
-      "sources": [
-        "campaign-runtime-health-groups"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "overview-runs"
-        ]
-      }
-    },
-    {
-      "id": "campaign-current-runtime-failures",
-      "subject": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
-      "objective": "Select failing retained runtime-health partitions for review of their underlying runs.",
-      "acceptance": "Return only groups flagged has-current-failure with their identity and streak count in declared order; no rows mean no matching observed streak, not verified healthy operation.",
-      "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
-      "parameters": [],
-      "sources": [
-        "campaign-runtime-problem-candidates"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "overview-runs"
-        ]
-      }
-    },
-    {
       "id": "workflow-run-observation-counts",
       "subject": "Count retained Runs for each workflow identity in the selected horizon.",
       "objective": "Measure retained run presence by workflow identity to compare with active orchestrator declarations.",
@@ -1761,27 +1722,6 @@
       "parameters": [],
       "sources": [
         "campaign-unobserved-orchestrator-candidates"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "overview-runs",
-          "workflows"
-        ]
-      }
-    },
-    {
-      "id": "campaign-runtime-problems",
-      "subject": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
-      "objective": "Present observed failing streaks and unobserved active orchestrators together, without conflating the two conditions.",
-      "acceptance": "Union the two candidate sets with their problem kind and identifying context; missing run evidence remains an observation gap rather than a confirmed runtime failure.",
-      "description": "Current campaign runtime problems requiring investigation.",
-      "parameters": [],
-      "sources": [
-        "campaign-current-runtime-failures",
-        "campaign-unobserved-orchestrators"
       ],
       "used-by-pages": [],
       "execution": {
@@ -5600,26 +5540,6 @@
       }
     },
     {
-      "id": "campaign-runtime-problem-counts",
-      "subject": "Count current failing workflow and runtime repository partitions for each campaign.",
-      "objective": "Project campaign-level counts of retained runtime problem partitions for health and navigation.",
-      "acceptance": "Each campaign's problem-partitions count reflects campaign-runtime-problems rows, not distinct incidents or all possible faults; absent reports are not proof of health.",
-      "description": "Current retained runtime problem counts by campaign.",
-      "parameters": [],
-      "sources": [
-        "campaign-runtime-problems"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "overview-runs",
-          "workflows"
-        ]
-      }
-    },
-    {
       "id": "overview-repository-coverage-summary",
       "subject": "Aggregate reached and total repositories across the resolved organization scope.",
       "objective": "Pair observed reached-repositories and registered-repositories-total for a comparable coverage denominator.",
@@ -5866,50 +5786,6 @@
         "requirements": [
           "overview-runs",
           "repositories"
-        ]
-      }
-    },
-    {
-      "id": "overview-disabled-dispatchers",
-      "subject": "Identify campaigns whose dispatcher is disabled in GitHub Actions.",
-      "objective": "Surface campaigns with observed inactive orchestrator workflows for operator verification.",
-      "acceptance": "disabled-dispatchers counts workflow-role orchestrator records with workflow-active false per campaign; verify current GitHub state before acting, and do not infer a policy change.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "workflows"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "workflows"
-        ]
-      }
-    },
-    {
-      "id": "overview-campaign-links",
-      "subject": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
-      "objective": "Let operators navigate to each campaign while showing observed dispatcher and runtime-problem indicators.",
-      "acceptance": "Each row retains its canonical campaign identity and link, with indicator counts derived only from the named inputs; missing status does not mean enabled or healthy.",
-      "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
-      "parameters": [],
-      "sources": [
-        "campaign-runtime-problem-counts",
-        "campaigns",
-        "overview-disabled-dispatchers"
-      ],
-      "used-by-pages": [
-        "overview"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "campaigns",
-          "overview-runs",
-          "workflows"
         ]
       }
     },
