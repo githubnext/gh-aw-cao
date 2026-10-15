@@ -43,12 +43,12 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /different from `gh aw doctor`/);
 });
 
-test("quickstart documents the complete bounded first-success journey", () => {
+test("quickstart documents separate component stages and explicit checkpoints", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
   const command = quickstart.indexOf("bash -s -- --quickstart");
-  const campaign = quickstart.indexOf("Install Repo Assist");
-  const activity = quickstart.indexOf("Collect a CAO Activity snapshot");
-  const dashboard = quickstart.indexOf("Wait for the data-bearing dashboard deployment");
+  const campaign = quickstart.indexOf("./cao.sh quickstart --step run");
+  const activity = quickstart.indexOf("./cao.sh quickstart --step collect");
+  const dashboard = quickstart.indexOf("./cao.sh quickstart --step dashboard");
   const nextStep = quickstart.indexOf("## Next: assist another repository");
   const firstSuccess = quickstart.slice(0, nextStep);
 
@@ -58,6 +58,17 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.ok(activity > campaign);
   assert.ok(dashboard > activity);
   assert.ok(nextStep > dashboard);
+  assert.match(firstSuccess, /does \*\*not\*\* dispatch Repo Assist or Activity, or wait for remote jobs/);
+  assert.match(firstSuccess, /## 2\. Install and understand the control plane/);
+  assert.match(firstSuccess, /## 3\. Run one Repo Assist review/);
+  assert.match(firstSuccess, /## 4\. Collect a CAO Activity snapshot/);
+  assert.match(firstSuccess, /## 5\. Check and explore your dashboard/);
+  assert.equal((firstSuccess.match(/\*\*Checkpoint:\*\*/g) || []).length, 4);
+  assert.match(firstSuccess, /Do not repeat `--step run` just to check progress/);
+  assert.match(firstSuccess, /Do not repeat `--step collect` as a status check/);
+  assert.match(firstSuccess, /read-only step/);
+  assert.match(firstSuccess, /\.\/cao\.sh quickstart --wait/);
+  assert.match(firstSuccess, /Do not use it to resume a staged installation/);
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*1,250 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);

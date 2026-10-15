@@ -42,8 +42,16 @@ default, configurable in gh-aw). The default total is **1,250 AI credits**,
 not expected consumption or a measured token count. Normal validation and
 review-bundle behavior are unchanged.
 
-Quickstart pauses the orchestrator through `gh workflow disable` immediately
-after requesting its first run. The requested run can finish, but the six-hour
+Quickstart installs and commits the control plane, then stops with the
+orchestrator paused. Continue with `./cao.sh quickstart --step run` when ready
+to request one review; inspect its outcome in Actions, then use
+`./cao.sh quickstart --step collect` and `./cao.sh quickstart --step dashboard`.
+These separate stages do not wait for remote completion. See the
+[onboarding guide](../docs/setup-quickstarts.md) for component explanations
+and checkpoints.
+
+The run stage pauses the orchestrator through `gh workflow disable` immediately
+after requesting its run. The requested run can finish, but the six-hour
 schedule will not keep spending credits. Re-enable it explicitly for further
 manual runs or scheduled operation:
 

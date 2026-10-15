@@ -102,8 +102,9 @@ usage() {
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
     '--quickstart pins the latest stable CAO release, uses a clean current control repository or creates USERNAME/cao (adding a UTC timestamp if occupied), then targets the public' \
     'github/gh-aw Repo Assist example. Pass --target OWNER/REPO to assist your own public repository.' \
-    'It runs existing Repo Assist maintenance in review mode (default budget up to 1,250 AI credits), collects Activity, and deploys a public dashboard.' \
-    'It pauses the orchestrator after dispatch; proposals are optional, not requirements for using CAO.' \
+    'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
+    'Continue with ./cao.sh quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
+    'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
     'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
 }
@@ -694,9 +695,9 @@ main() {
   fi
   if [[ "$quickstart" == true ]]; then
     if [[ -n "$target_repository" ]]; then
-      note "Quickstart runs Repo Assist maintenance on $target_repository, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
+      note "Quickstart configures review-only Repo Assist for $target_repository and public Pages, commits and pushes, then stops with the orchestrator paused."
     else
-      note "Quickstart runs Repo Assist maintenance on github/gh-aw, publishes a public dashboard, and may use up to 1,250 AI credits under default limits."
+      note "Quickstart configures review-only Repo Assist for github/gh-aw and public Pages, commits and pushes, then stops with the orchestrator paused."
     fi
   fi
   if [[ "$create_repository_requested" == false ]]; then

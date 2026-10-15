@@ -11,7 +11,7 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
-Reach a first data-bearing dashboard with:
+Start the [step-by-step onboarding guide](docs/setup-quickstarts.md) with:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -37,8 +37,18 @@ It works even when the target has no Agentic Workflows or Actions history.
 Quickstart runs the existing maintenance worker, not a special assessment.
 A control review issue and downloadable patch bundle let you decide whether
 to apply the improvement.
-The review issue is the first useful result; Activity
-collection and the public GitHub Pages dashboard follow. This one run can use
+Installation configures and commits the control plane, then stops with Repo
+Assist paused. Continue from the printed control-repository directory:
+
+1. **Run:** `./cao.sh quickstart --step run` requests one review and returns an
+   Actions link. Inspect the orchestrator and maintenance worker there.
+2. **Collect:** after the worker finishes, `./cao.sh quickstart --step collect`
+   requests an Activity snapshot and returns without waiting.
+3. **Explore:** `./cao.sh quickstart --step dashboard` checks publication
+   read-only. Repeat this check if pending, then open the verified dashboard.
+
+Each step explains a different component; there is no long default terminal
+wait. The review issue is the first useful result. Starting the campaign can use
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
 + 400 output checking; configured output-check limits may differ), not a
 measured token budget or expected consumption.
@@ -47,8 +57,9 @@ readiness grades, required templates, or practice checklists; keeping the
 repository unchanged is a valid result. Only maintenance is enabled; quickstart
 pauses the orchestrator after dispatch so recurring runs need explicit re-enablement.
 CAO never modifies the target.
-Elapsed progress distinguishes the short local installation phases from the
-longer Repo Assist, Activity, and dashboard jobs running on GitHub Actions.
+Remote jobs continue in GitHub Actions between stages. Use `--wait` on
+`./cao.sh quickstart` only to explicitly opt into the original end-to-end flow
+immediately after bare installation, not to resume or check a staged run.
 Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
 repository explicitly.
 
@@ -79,8 +90,8 @@ create only the signed-in user's `cao` control repository or its timestamped
 fallback.
 Missing prerequisites (including an installed gh-aw that is too old) fail
 instead of reporting success. Explicit `--quickstart` is the bounded headless
-first-success path and performs the documented control-repository and workflow
-effects without prompting.
+onboarding path: installation performs the documented control-repository effects
+without prompting; separate stage commands authorize workflow dispatches.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime

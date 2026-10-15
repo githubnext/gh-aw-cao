@@ -286,22 +286,31 @@ broader existing scope, or non-empty campaigns. It MUST use plain unstyled
 output and MUST NOT prompt, open a browser, install a campaign, dispatch,
 commit, or push.
 
-`--quickstart` MUST be a separate, explicit end-to-end path rather than an
+`--quickstart` MUST be a separate, explicit staged guide rather than an
 implicit continuation of install or setup. It MUST use a clean current public
 or private control repository, default to creating the private
 `USERNAME/cao` control repository outside a checkout, using the UTC timestamped
 fallback above when its name or local clone path is occupied, or create another
 private control repository only when `--create-repo OWNER/NAME` requests it. It MUST
-disclose before execution that it publishes a public dashboard, creates the
+disclose before execution that it configures public Pages, creates the
 private `USERNAME/cao` control repository or its timestamped fallback when
 needed, targets the public
 Repo Assist example in the public `github/gh-aw` repository unless
-`--target OWNER/REPO` selects another existing public target, runs Repo Assist
-maintenance against that target in review mode, and may consume up to 1,250 AI
+`--target OWNER/REPO` selects another existing public target, and commits and
+pushes bounded CAO configuration. Before the run stage it MUST disclose that
+Repo Assist maintenance runs in review mode and may consume up to 1,250 AI
 credits under default limits (250 orchestration, 600 maintenance, 400 output
-checking; configured output-check limits may differ). The flag itself
-authorizes the bounded campaign installation, commit, push, dispatch,
-collection, and deployment effects in interactive and headless use; the
+checking; configured output-check limits may differ). The installer flag
+authorizes bounded campaign installation, configuration, commit, and push,
+but MUST NOT automatically dispatch Repo Assist or Activity or wait for remote
+completion. The install stage MUST leave the orchestrator paused. Separate
+`--step run` and `--step collect` commands authorize their respective dispatches
+and MUST return without watching remote jobs. `--step dashboard` MUST be
+read-only, report pending work without polling, and be safe to repeat.
+Every stage MUST explain its component and provide the next command or Actions
+link. Explicit `cao quickstart --wait` MAY retain the end-to-end installation,
+dispatch, collection, and deployment waits for unattended use immediately
+after bare installation; it MUST NOT be presented as a resume command. The
 installer MUST NOT add a redundant post-install confirmation.
 Each potentially long quickstart phase MUST expose elapsed progress and end in
 an explicit success, warning, or failure state. Node experimental-runtime
@@ -334,7 +343,10 @@ The quickstart MUST:
   budget without claiming measured tokens or expected cost;
 - compile installed workflows with `--schedule-seed githubnext/gh-aw-cao`
   before committing, matching the deterministic lock-file validator;
-- pause the orchestrator through `gh workflow disable` immediately after
+- use existing validated policy for later stages without broadening authority;
+  the run stage MUST reject ambiguous targets or non-review worker settings;
+- explicitly enable the orchestrator for the run stage and pause it through
+  `gh workflow disable` immediately after
   requesting the initial run, including on dispatch failure, to prevent
   recurring six-hour runs without modifying campaign sources; pause failures
   MUST be explicit, and re-enabling MUST be disclosed as also resuming schedule;
@@ -359,12 +371,13 @@ The quickstart MUST:
 - dispatch one Repo Assist orchestrator and at most one maintenance worker,
   preserving blocked, incomplete, or failed outcomes rather than converting
   missing evidence into a finding;
-- dispatch Activity with a correlatable request ID, require a successful
+- dispatch Activity only in its requested collection stage (or explicit `--wait`)
+  with a correlatable request ID; to report dashboard readiness require a successful
   data-bearing Activity artifact with at least one unique run, then require the
   corresponding dashboard deployment to succeed; and
 - never modify the selected target; and
-- print the target, dashboard, workflow-run, and control-repository URLs only after
-  those success conditions are verified.
+- print target, control-repository, and Actions links as navigation during stages,
+  but MUST NOT report a ready dashboard until those success conditions are verified.
 
 `control-plane.activity.repositories`, when present, MUST contain exact
 repository coordinates, contain at least one entry, remain within

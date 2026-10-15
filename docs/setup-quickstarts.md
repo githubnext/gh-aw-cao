@@ -1,9 +1,21 @@
 ---
 title: CAO Quickstart
-description: Run one bounded Repo Assist maintenance proposal in review mode and open your first CAO dashboard.
+description: Learn the control plane, run one review-only campaign, collect evidence, and open your dashboard in separate steps.
 ---
 
-Your first Central Agentic Ops (CAO) run answers a practical question:
+This guide introduces Central Agentic Ops (CAO) one component at a time.
+Each command finishes its own stage and tells you what to do next.
+You can stop between stages; you do not need to keep a terminal waiting for
+GitHub Actions.
+
+| Component | What you learn | Checkpoint |
+| --- | --- | --- |
+| **Control repository** | Where workflows, credentials, and rollout policy live | Inspect the installed policy before running anything |
+| **Repo Assist campaign** | How an orchestrator selects work and a worker proposes a change | Review a proposal, no-op, or incomplete outcome |
+| **Activity** | How workflow evidence becomes dashboard data | Inspect the collection run and its artifact |
+| **Dashboard** | How collected evidence is published for exploration | Open the verified, data-bearing Pages deployment |
+
+Your first campaign run answers a practical question:
 **can Repo Assist make one useful maintenance improvement?**
 You do not need existing Agentic Workflows, Actions history, or telemetry.
 
@@ -32,12 +44,9 @@ normal worker checkout.
 Its existing automations are not prerequisites for your own repository.
 No demo repository is created, and useful findings are not guaranteed.
 
-**Time:** depends on GitHub Actions queueing, installation, and dashboard deployment.
-The normal workflow timeouts are 15 minutes for orchestration and 45 minutes
-for maintenance; these are ceilings, not measured completion times.
-
-**You get:** a private control repository, a validated maintenance proposal or no-op,
-and a public GitHub Pages dashboard.
+**You build:** a private control repository, a review-only campaign, an Activity
+snapshot, and a public GitHub Pages dashboard. Installation does not automatically
+start the campaign or wait for a dashboard.
 
 ## 1. Check your tools
 
@@ -52,7 +61,7 @@ gh auth status
 
 Run `gh auth login` if needed.
 
-## 2. Run the quickstart
+## 2. Install and understand the control plane
 
 For the simplest experience, run this outside a Git checkout:
 
@@ -82,66 +91,119 @@ cannot be resolved; it never silently falls back to `main`. Maintainers can opt
 into the development build by passing `githubnext/gh-aw-cao@main` before
 `--quickstart`.
 
-Then watch CAO:
+This stage will:
 
-1. Pin the latest stable CAO release.
-2. Create private `USERNAME/cao` (or its timestamped fallback), your control repository.
-3. Select the public example or validate your explicit public target.
-4. Install Repo Assist in `review` mode for that exact target.
-5. Enable only its existing maintenance worker and dispatch ordinary Repo Assist.
-6. Pause the orchestrator after dispatch to prevent automatic six-hour reruns;
-   the requested run continues to select, implement, and validate one improvement.
-7. Publish one review proposal and patch bundle only in the control repository,
-   or record a no-op without manufacturing work.
-8. Collect a CAO Activity snapshot and require at least one collected run.
-9. Wait for the data-bearing dashboard deployment.
+1. Install Repo Assist pinned to the same CAO release.
+2. Configure only its existing maintenance worker in `review` mode for the exact
+   public target, with Activity scope limited to the control repository.
+3. Configure public Actions-backed Pages and repository-token authentication.
+4. Commit and push only the bounded CAO paths, then pause the Repo Assist
+   orchestrator so its six-hour schedule does not start recurring work.
 
-The command shows progress while GitHub Actions does the longer work.
-Quickstart works without a terminal and when `CI` is set.
+It does **not** dispatch Repo Assist or Activity, or wait for remote jobs.
+The quickstart works without a terminal and when `CI` is set.
 
-> [!TIP]
-> **The maintenance outcome is the first useful result.** When the Repo Assist
-> maintenance worker completes, inspect its run outcome and any control review
-> issue or review-bundle artifact. Success alone does not imply a patch was
-> produced or applied. Activity collection and dashboard deployment continue afterward.
+**Checkpoint:** enter the control-repository directory printed by the installer.
+Run every remaining command from that checkout, not from the target repository.
+Inspect `.github/workflows/cao.json` and `.github/workflows/`:
+
+- **Policy** names the exact target, keeps the campaign in `review`, and caps
+  selection at one repository. Credentials alone do not authorize more targets.
+- **Orchestrator** (`repo-assist`) selects and dispatches bounded work.
+- **Worker** (`repo-assist-maintenance`) analyzes that one target and publishes
+  review outputs in the control repository, never in the target.
+- **Activity and Dashboard workflows** collect and publish evidence separately.
+
+You are ready for the next step when the installed policy matches the repository
+you intend to assist. Do not rerun installation to continue.
 
 > [!NOTE]
-> Quickstart publishes a public GitHub Pages dashboard. Under default limits,
-> one run can consume up to **1,250 AI credits**: 250 orchestration + 600
+> Quickstart configures a public GitHub Pages dashboard. Starting Repo Assist in
+> the next stage can consume up to **1,250 AI credits**
+> under default limits:
+> 250 orchestration + 600
 > maintenance + 400 model-based output checking. Output-check limits are
 > configurable, so configured consumption ceilings may differ.
 > Credits are an execution ceiling, not a measured token count or cost estimate.
-> There is no second confirmation: `--quickstart` is your approval for
-> control-repository creation when needed, the bounded commit and push, and
-> workflow runs.
+> There is no second confirmation: `--quickstart` approves control-repository
+> creation when needed, configuration, and the bounded commit and push.
+> The separate `run` and `collect` commands authorize their workflow dispatches.
 
-## 3. Open your dashboard
+## 3. Run one Repo Assist review
 
-Quickstart waits for real Activity data and prints a summary like this:
+Start the campaign only when you are ready:
 
-```text
-CAO quickstart complete.
-Dashboard: https://USERNAME.github.io/cao/
-Target: https://github.com/github/gh-aw (public Repo Assist example)
-Repo Assist: https://github.com/USERNAME/cao/actions/runs/... (success)
-Activity: https://github.com/USERNAME/cao/actions/runs/... (... collected runs)
-Control repository: https://github.com/USERNAME/cao
+```bash
+./cao.sh quickstart --step run
 ```
 
-Open **Dashboard**, select **Repo Assist**, then open **Reports**.
-Use the actual repository name and dashboard URL printed by quickstart; a
-timestamped control repository has its own matching dashboard URL.
-If there is a proposal, open its review issue and download the patch bundle
-from the worker run's Artifacts section. Review the observed problem, smallest
-change, application prompt, and exact validation outcomes before deciding
-whether to apply it. Applying the proposal is not a requirement for using CAO.
-If there is no issue, inspect the worker's no-op or incomplete reason.
-There are no pass/fail or readiness ratings of the repository.
+This uses the target already recorded in policy; it does not reinstall or
+broaden scope. It briefly enables the orchestrator, dispatches one bounded
+review, and pauses it again, including if dispatch fails.
+The requested run continues while your terminal returns.
 
-Only the existing maintenance worker is enabled by quickstart. The orchestrator
-is paused after its requested dispatch, so it will not automatically run every
-six hours. Re-enable it explicitly for further work; enabling additional workers
-or live authority is a separate reviewed policy decision.
+Open the printed Actions link. First inspect **Repo Assist**, then the
+**Repo Assist maintenance** worker it dispatches. GitHub Actions queueing and
+normal workflow timeouts still apply; splitting the guide does not make the
+remote work synchronous or reduce its analysis.
+
+**Checkpoint:** wait in Actions, not in the installer, until the orchestrator
+and any dispatched maintenance worker finish. If there is a proposal, open its
+control review issue and download the review bundle from the worker run's
+Artifacts section. Review the observed problem, proposed change, application
+prompt, and exact validation outcomes before deciding whether to apply it.
+If there is no proposal, inspect the no-op, blocked, failed, or incomplete reason.
+Success alone does not imply a patch was produced or applied.
+
+The maintenance outcome is your first useful result. Applying a proposal is
+not a requirement for using CAO, and there are no pass/fail readiness ratings.
+Do not repeat `--step run` just to check progress: it requests another run.
+
+## 4. Collect a CAO Activity snapshot
+
+Activity turns the control-plane workflow runs into evidence the dashboard can
+display. It does not rerun the maintenance analysis or apply a proposal.
+After reviewing the completed campaign, request collection:
+
+```bash
+./cao.sh quickstart --step collect
+```
+
+The command dispatches Activity and returns its Actions link without waiting.
+**Checkpoint:** inspect **CAO Activity** in Actions and its data artifact.
+We require at least one collected run before calling the dashboard ready.
+A successful Activity run triggers Dashboard publication automatically.
+Do not repeat `--step collect` as a status check; it requests a new snapshot.
+
+## 5. Check and explore your dashboard
+
+Check publication without starting another workflow:
+
+```bash
+./cao.sh quickstart --step dashboard
+```
+
+This read-only step checks for successful, data-bearing Activity and its
+subsequent successful dashboard deployment. If either is pending, inspect the
+printed Actions link and repeat **only this command** later. It does not poll
+until completion or report a ready dashboard prematurely.
+
+**Checkpoint:** open the verified Dashboard URL, select **Repo Assist**, then
+open **Reports**. Follow the report back to its run and review evidence.
+Use the actual control-repository name and URL printed by quickstart; a
+timestamped repository has its own matching dashboard URL.
+
+You have now followed the complete path: **policy → orchestrator → worker →
+Activity → dashboard**. The orchestrator remains paused. Enabling additional
+workers or live authority is a separate reviewed policy decision.
+
+### Optional: wait for the whole flow
+
+For deliberate unattended use immediately after bare installation,
+`./cao.sh quickstart --wait` retains the end-to-end installation, run,
+collection, and deployment flow. It commits and pushes, starts workflows, and
+waits for remote completion. Do not use it to resume a staged installation or
+as a status check. The staged guide above is the default onboarding experience.
 
 ## What this demonstrates
 
@@ -266,5 +328,7 @@ for advanced authentication choices.
   Run `gh workflow disable repo-assist.lock.yml` in the control repository
   to prevent recurring runs before troubleshooting.
 
-Quickstart never reports a dashboard URL until Activity contains real run data
+If installation succeeded, continue with the next stage rather than reinstalling.
+For failed remote jobs, inspect the run's logs before requesting new work.
+The dashboard check never reports readiness until Activity contains real run data
 and the matching dashboard deployment succeeds.

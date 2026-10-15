@@ -524,7 +524,7 @@ Private/internal repositories and incompatible existing policy fail before
 Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
-`activity/quickstart.mjs` owns a distinct explicit first-success flow. It
+`activity/quickstart.mjs` owns a distinct explicit, staged first-success guide. It
 uses a clean public, private, or internal control repository on its checked-out
 default branch, preserving any existing commits. Outside a checkout the
 installer defaults to the signed-in user's available private `cao` control
@@ -559,7 +559,11 @@ no-op, is the first useful result. Proposals are not requirements for using CAO;
 there are no readiness grades,
 required practices, or source-convention admission gates. CAO admission depends
 on policy and access, not tests, CI, agent instructions, or recommendation adoption.
-Immediately after requesting the normal orchestrator, quickstart disables it
+The default install stage configures and commits the control plane, disables
+the orchestrator, and returns without dispatching Repo Assist or Activity or
+waiting for remote completion. Explicit `--step run` uses the installed,
+validated policy without rewriting scope, enables the normal orchestrator for
+one dispatch, then disables it
 with `gh workflow disable`, including when dispatch fails, to prevent six-hour
 reruns without changing workflow sources or policy semantics. Disabling does
 not cancel the requested run. Pause failures are surfaced explicitly.
@@ -574,17 +578,26 @@ creates or copies a target repository. Quickstart installs Repo Assist
 at the selected catalog revision, configures exact
 review-only authority for the selected target, requires public Pages, commits
 and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
-`.vscode/settings.json` project settings, dispatches one orchestrator and at
-most one worker, collects Activity, and waits for the Activity-triggered
-dashboard deployment. Campaign execution never modifies the target. Quickstart
+`.vscode/settings.json` project settings. The guide separates installation,
+`--step run`, `--step collect`, and the read-only `--step dashboard` readiness
+check. Run and collect return Actions links without waiting; repeating them
+requests new work. Operators inspect the maintenance outcome before requesting
+Activity. The dashboard check verifies data-bearing Activity and a subsequent
+successful deployment, returning pending rather than polling when either is
+unfinished. No local checkpoint file grants authority; stages revalidate the
+installed policy. Explicit `--wait`, immediately after bare installation,
+retains the original end-to-end flow, dispatching one orchestrator and at most
+one worker, collecting Activity, and waiting for dashboard deployment; it is
+not a resume or status command. Campaign execution never modifies the target. Quickstart
 reports Repo Assist blocked, incomplete, and failed outcomes without
-converting unknowns into findings, and does not report success until the
+converting unknowns into findings, and does not report dashboard readiness until the
 Activity artifact contains at least one unique run and the dashboard
 deployment succeeds. Installer handoff preserves the controlling terminal when
 present and otherwise uses plain headless progress, uses elapsed progress for
 each long operation, and suppresses Node's experimental-runtime diagnostic
-rather than mixing it into user progress. `--quickstart` is the authorization
-boundary for these effects in interactive and headless use; ordinary install
+rather than mixing it into user progress. `--quickstart` authorizes installation
+effects; separate stage commands authorize their dispatches, while `--wait`
+explicitly authorizes the whole flow in interactive and headless use. Ordinary install
 and `cao setup` retain their non-effectful boundaries.
 
 The policy may declare `control-plane.activity.repositories` as an exact,

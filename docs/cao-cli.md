@@ -58,7 +58,11 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `./cao.sh quickstart [--target OWNER/REPO]` | Select the public example or another public target, run Repo Assist with only its existing maintenance worker in review mode, pause the orchestrator after dispatch, collect first Activity, and wait for the public dashboard. |
+| `./cao.sh quickstart [--target OWNER/REPO]` | Install and commit the review-only control plane; leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
+| `./cao.sh quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
+| `./cao.sh quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
+| `./cao.sh quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
+| `./cao.sh quickstart --wait` | Explicitly opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -81,11 +85,14 @@ the policy before activation at a reviewed workflow SHA.
 
 Use `./cao.sh quickstart` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing
-commits are allowed; the quickstart adds one bounded CAO commit. It can consume
+commits are allowed; the install stage adds one bounded CAO commit and pauses
+Repo Assist without dispatching it. Continue with `--step run`, inspect its
+outcome in Actions, then use `--step collect` and `--step dashboard`.
+Only the read-only dashboard step is a repeatable status check; repeating run
+or collect requests new work. The run stage can consume
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
 + 400 output checking; configured output-check limits may differ),
-and owns the bounded commit, push, workflow dispatches,
-and public dashboard deployment documented in the
+with each stage owning only its documented effects in the
 [quickstart](setup-quickstarts.md). Use `./cao.sh setup` for
 review-before-apply configuration. The individual `setup-auth` commands remain
 available for manual and non-interactive administration.
@@ -105,7 +112,8 @@ or no-op, not to grade its readiness or eligibility for CAO. Applying the propos
 is never required for using CAO. Existing Agentic Workflows, Actions
 history, or telemetry are not required.
 Only the existing maintenance worker is enabled. The normal orchestrator is
-paused through `gh workflow disable` after requesting the first run. Re-enable
+paused after installation; the run step enables it only for its dispatch and
+pauses it again through `gh workflow disable`. Re-enable
 it explicitly for further runs; doing so also resumes its six-hour schedule.
 `--target OWNER/REPO` selects another existing public repository. The checkout,
 target-visibility and default-branch preflight remain
