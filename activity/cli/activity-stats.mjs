@@ -107,13 +107,17 @@ export async function activityWorkflowStats({
   workflow = DEFAULT_ACTIVITY_STATS_WORKFLOW,
   artifact = DEFAULT_ACTIVITY_STATS_ARTIFACT,
   limit = DEFAULT_ACTIVITY_STATS_LIMIT,
+  runId,
   keep = false
 } = {}, execute = spawnSync) {
   if (!repo) throw new UsageError('Missing required option --repo (or GITHUB_REPOSITORY environment variable)');
   const limitCount = Number(limit);
   if (!Number.isInteger(limitCount) || limitCount < 1) throw new UsageError('--limit must be a positive integer');
 
-  const list = execute('gh', [
+  const list = execute('gh', runId ? [
+    'run', 'view', String(runId), '--repo', repo,
+    '--json', 'databaseId,status,conclusion,createdAt,updatedAt,url',
+  ] : [
     'run', 'list',
     '--repo', repo,
     '--workflow', workflow,
@@ -126,6 +130,7 @@ export async function activityWorkflowStats({
   let runs;
   try {
     runs = JSON.parse(list.stdout || '[]');
+    if (runId) runs = [runs];
   } catch (error) {
     throw new Error(`Unable to parse "gh run list" output: ${error instanceof Error ? error.message : String(error)}`);
   }

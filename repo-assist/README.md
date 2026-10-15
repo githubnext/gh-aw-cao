@@ -23,11 +23,10 @@ The CAO quickstart uses **Repo Assist**, not a separate repository assessment.
 It enables only the existing maintenance worker, in review mode, for one exact
 public target. Issue triage, issue fix, and PR upkeep remain disabled.
 There is no special worker, snapshot helper, or reduced assessment profile.
-With no `--target`, quickstart uses the actively maintained public
-[`github/gh-aw`](https://github.com/github/gh-aw) repository and the normal
-worker checkout. Use `--target OWNER/REPOSITORY` for your own public repository.
-No demo repository is created, and the example's existing automations are not
-prerequisites for your repository.
+Quickstart installation requires `--target OWNER/REPOSITORY` to select your
+existing public target explicitly; no owner or repository is suggested.
+The normal worker checkout is used. No demo repository is created, and existing
+automations are not prerequisites for your repository.
 
 Maintenance proposes **one small validated patch** in a control-repository
 review issue and downloadable review bundle, or records a **no-op** if nothing
@@ -42,8 +41,16 @@ default, configurable in gh-aw). The default total is **1,250 AI credits**,
 not expected consumption or a measured token count. Normal validation and
 review-bundle behavior are unchanged.
 
-Quickstart pauses the orchestrator through `gh workflow disable` immediately
-after requesting its first run. The requested run can finish, but the six-hour
+Quickstart installs and commits the control plane, then stops with the
+orchestrator paused. Continue with `./cao.sh quickstart --step run` when ready
+to request one review; inspect its outcome in Actions, then use
+`./cao.sh quickstart --step collect` and `./cao.sh quickstart --step dashboard`.
+These separate stages do not wait for remote completion. See the
+[onboarding guide](../docs/setup-quickstarts.md) for component explanations
+and checkpoints.
+
+The run stage pauses the orchestrator through `gh workflow disable` immediately
+after requesting its run. The requested run can finish, but the six-hour
 schedule will not keep spending credits. Re-enable it explicitly for further
 manual runs or scheduled operation:
 

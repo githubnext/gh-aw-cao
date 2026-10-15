@@ -37,7 +37,14 @@ export const DEFAULT_GH_LIMIT = 30;
 export const USAGE = `Usage:
   cao init
   cao setup [--json]
-  cao quickstart [--target OWNER/REPO] [--campaign PACKAGE] [--json]
+  cao quickstart [--step install | --wait] --target OWNER/REPO [--campaign PACKAGE] [--json]
+  cao quickstart --step run|collect|dashboard [--json]
+    Default: install only. Install and --wait require explicit --target; --campaign is optional.
+    Later stages use the sole target in committed policy and reject --target/--campaign.
+    Explains selections, components, policy, authentication, public Pages, and commit/push effects before each phase.
+    Each stage ends with an inspection checkpoint; --json keeps stdout machine-readable.
+    run dispatches one review; collect snapshots evidence; dashboard checks deployment.
+    --wait explicitly runs and waits for the entire legacy journey.
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]

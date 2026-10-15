@@ -1,9 +1,21 @@
 ---
 title: CAO Quickstart
-description: Run one bounded Repo Assist maintenance proposal in review mode and open your first CAO dashboard.
+description: Learn the control plane, run one review-only campaign, collect evidence, and open your dashboard in separate steps.
 ---
 
-Your first Central Agentic Ops (CAO) run answers a practical question:
+This guide introduces Central Agentic Ops (CAO) one component at a time.
+Each command finishes its own stage and tells you what to do next.
+You can stop between stages; you do not need to keep a terminal waiting for
+GitHub Actions.
+
+| Component | What you learn | Checkpoint |
+| --- | --- | --- |
+| **Control repository** | Where workflows, credentials, and rollout policy live | Inspect the installed policy before running anything |
+| **Repo Assist campaign** | How an orchestrator selects work and a worker proposes a change | Review a proposal, no-op, or incomplete outcome |
+| **Activity** | How workflow evidence becomes dashboard data | Inspect the collection run and its artifact |
+| **Dashboard** | How collected evidence is published for exploration | Open the verified, data-bearing Pages deployment |
+
+Your first campaign run answers a practical question:
 **can Repo Assist make one useful maintenance improvement?**
 You do not need existing Agentic Workflows, Actions history, or telemetry.
 
@@ -26,18 +38,14 @@ publish job rather than reporting success without a bundle.
 There are no readiness grades or required practice checklists. The repository
 can stay exactly as it is; CAO admission is governed by policy and access.
 
-With no explicit target, quickstart uses public
-[`github/gh-aw`](https://github.com/github/gh-aw) as a real example, using the
-normal worker checkout.
-Its existing automations are not prerequisites for your own repository.
+Choose the public target explicitly with `--target TARGET_OWNER/TARGET_REPOSITORY`.
+Quickstart does not suggest or select an owner or repository for you.
+The target uses the normal worker checkout.
 No demo repository is created, and useful findings are not guaranteed.
 
-**Time:** depends on GitHub Actions queueing, installation, and dashboard deployment.
-The normal workflow timeouts are 15 minutes for orchestration and 45 minutes
-for maintenance; these are ceilings, not measured completion times.
-
-**You get:** a private control repository, a validated maintenance proposal or no-op,
-and a public GitHub Pages dashboard.
+**You build:** a private control repository, a review-only campaign, an Activity
+snapshot, and a public GitHub Pages dashboard. Installation does not automatically
+start the campaign or wait for a dashboard.
 
 ## 1. Check your tools
 
@@ -52,28 +60,31 @@ gh auth status
 
 Run `gh auth login` if needed.
 
-## 2. Run the quickstart
+## 2. Install and understand the control plane
 
-For the simplest experience, run this outside a Git checkout:
+Choose a control repository and an existing public target before installing.
+In the command below, replace both coordinates with your choices; the uppercase
+names are placeholders, not suggested owners or repositories.
+Run this outside a Git checkout to create a new private control repository:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --quickstart
+  bash -s -- --quickstart \
+    --create-repo CONTROL_OWNER/CONTROL_REPOSITORY \
+    --target TARGET_OWNER/TARGET_REPOSITORY
 ```
 
-To use your own existing public repository immediately, replace the final
-line with `bash -s -- --quickstart --target OWNER/REPOSITORY`.
-
-Outside a checkout, quickstart creates private `USERNAME/cao` when both that
-repository name and the local clone path are available. Otherwise it selects a
-fresh UTC timestamped name, such as `USERNAME/cao-20261014-111151`, and prints
-the choice before creation. If that timestamp is also occupied, it checks
-numeric suffixes (`-2`, `-3`, and so on), stopping after ten timestamped
-candidates. Existing repositories and local files are never reused or overwritten.
-Use `--create-repo OWNER/NAME` for an exact name; an explicit name is never
-silently changed. To reuse an existing control repository, run from its clean
-checkout instead.
+To use an existing control repository, run from its clean default-branch checkout
+and omit `--create-repo`; keep the explicit `--target` argument.
+To enter the control owner and name interactively, use `--create-repo` without
+a coordinate. Neither prompt has a default; blank input does not select one.
+Headless creation requires `--create-repo OWNER/NAME`.
+Existing repositories and local files are never reused or overwritten.
+An explicit name is never silently changed: if it is occupied, choose a different
+coordinate yourself, or use the existing repository's clean checkout.
+Missing `--target` stops before installation or repository creation; the later
+run, collect, and dashboard stages reuse the target in committed policy.
 
 With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
 release and pins the control plane, Repo Assist campaign, and verified
@@ -82,66 +93,146 @@ cannot be resolved; it never silently falls back to `main`. Maintainers can opt
 into the development build by passing `githubnext/gh-aw-cao@main` before
 `--quickstart`.
 
-Then watch CAO:
+The command teaches these choices in five numbered sections **before each
+corresponding change**, rather than hiding them in a transient progress line:
 
-1. Pin the latest stable CAO release.
-2. Create private `USERNAME/cao` (or its timestamped fallback), your control repository.
-3. Select the public example or validate your explicit public target.
-4. Install Repo Assist in `review` mode for that exact target.
-5. Enable only its existing maintenance worker and dispatch ordinary Repo Assist.
-6. Pause the orchestrator after dispatch to prevent automatic six-hour reruns;
-   the requested run continues to select, implement, and validate one improvement.
-7. Publish one review proposal and patch bundle only in the control repository,
-   or record a no-op without manufacturing work.
-8. Collect a CAO Activity snapshot and require at least one collected run.
-9. Wait for the data-bearing dashboard deployment.
+1. **Repositories and source:** the actual control repository, visibility,
+   default branch, local checkout, public target, why it was selected, and
+   the selected Repo Assist package revision.
+2. **Installed components:** the CLI and runtimes, core workflows, Repo Assist
+   orchestrator and worker files, and the roles they play.
+3. **Authority:** the policy file, exact repository and Activity scopes,
+   review mode, one-target limit, enabled/disabled workers, and output routing.
+4. **Connections:** repository-token authentication and the public Pages
+   dashboard, even when the control repository is private.
+5. **Publication:** the bounded paths, commit identity, default-branch push,
+   and orchestrator pause, including independent Activity triggers.
 
-The command shows progress while GitHub Actions does the longer work.
-Quickstart works without a terminal and when `CI` is set.
+These explanations stay in terminal scrollback, including in plain/CI output;
+they are not truncated spinner messages. Each stage finishes with **Before
+continuing** instructions telling you what to inspect before its **Next**
+command. There are no extra confirmation prompts or automatic advances to the
+next stage. With `--json`, progress is silent and the installation result
+includes the same numbered `guide` details and its `checkpoint`.
 
-> [!TIP]
-> **The maintenance outcome is the first useful result.** When the Repo Assist
-> maintenance worker completes, inspect its run outcome and any control review
-> issue or review-bundle artifact. Success alone does not imply a patch was
-> produced or applied. Activity collection and dashboard deployment continue afterward.
+This stage will:
+
+1. Install Repo Assist pinned to the same CAO release.
+2. Configure only its existing maintenance worker in `review` mode for the exact
+   public target, with Activity scope limited to the control repository.
+3. Configure public Actions-backed Pages and repository-token authentication.
+4. Commit and push only the bounded CAO paths, then pause the Repo Assist
+   orchestrator so its six-hour schedule does not start recurring work.
+
+It does **not** dispatch Repo Assist or Activity, or wait for remote jobs.
+The quickstart works without a terminal and when `CI` is set.
+The installed Activity workflow still has its normal push and scheduled
+triggers, so the installation commit can start a baseline collection and
+dashboard build automatically. That does not run Repo Assist or replace the
+post-review snapshot you request in step 4.
+
+**Checkpoint:** enter the control-repository directory printed by the installer.
+Run every remaining command from that checkout, not from the target repository.
+Inspect `.github/workflows/cao.json` and `.github/workflows/`:
+
+- **Policy** names the exact target, keeps the campaign in `review`, and caps
+  selection at one repository. Credentials alone do not authorize more targets.
+- **Orchestrator** (`repo-assist`) selects and dispatches bounded work.
+- **Worker** (`repo-assist-maintenance`) analyzes that one target and publishes
+  review outputs in the control repository, never in the target.
+- **Activity and Dashboard workflows** collect and publish evidence separately.
+
+You are ready for the next step when the installed policy matches the repository
+you intend to assist. Do not rerun installation to continue.
 
 > [!NOTE]
-> Quickstart publishes a public GitHub Pages dashboard. Under default limits,
-> one run can consume up to **1,250 AI credits**: 250 orchestration + 600
+> Quickstart configures a public GitHub Pages dashboard. Starting Repo Assist in
+> the next stage can consume up to **1,250 AI credits**
+> under default limits:
+> 250 orchestration + 600
 > maintenance + 400 model-based output checking. Output-check limits are
 > configurable, so configured consumption ceilings may differ.
 > Credits are an execution ceiling, not a measured token count or cost estimate.
-> There is no second confirmation: `--quickstart` is your approval for
-> control-repository creation when needed, the bounded commit and push, and
-> workflow runs.
+> There is no second confirmation: `--quickstart` approves control-repository
+> creation when needed, configuration, and the bounded commit and push.
+> The separate `run` and `collect` commands authorize their workflow dispatches.
 
-## 3. Open your dashboard
+## 3. Run one Repo Assist review
 
-Quickstart waits for real Activity data and prints a summary like this:
+Start the campaign only when you are ready:
 
-```text
-CAO quickstart complete.
-Dashboard: https://USERNAME.github.io/cao/
-Target: https://github.com/github/gh-aw (public Repo Assist example)
-Repo Assist: https://github.com/USERNAME/cao/actions/runs/... (success)
-Activity: https://github.com/USERNAME/cao/actions/runs/... (... collected runs)
-Control repository: https://github.com/USERNAME/cao
+```bash
+./cao.sh quickstart --step run
 ```
 
-Open **Dashboard**, select **Repo Assist**, then open **Reports**.
-Use the actual repository name and dashboard URL printed by quickstart; a
-timestamped control repository has its own matching dashboard URL.
-If there is a proposal, open its review issue and download the patch bundle
-from the worker run's Artifacts section. Review the observed problem, smallest
-change, application prompt, and exact validation outcomes before deciding
-whether to apply it. Applying the proposal is not a requirement for using CAO.
-If there is no issue, inspect the worker's no-op or incomplete reason.
-There are no pass/fail or readiness ratings of the repository.
+This uses the target already recorded in policy; it does not reinstall or
+broaden scope. It briefly enables the orchestrator, dispatches one bounded
+review, and pauses it again, including if dispatch fails.
+The requested run continues while your terminal returns.
 
-Only the existing maintenance worker is enabled by quickstart. The orchestrator
-is paused after its requested dispatch, so it will not automatically run every
-six hours. Re-enable it explicitly for further work; enabling additional workers
-or live authority is a separate reviewed policy decision.
+Open the printed Actions link. First inspect **Repo Assist**, then the
+**Repo Assist maintenance** worker it dispatches. GitHub Actions queueing and
+normal workflow timeouts still apply; splitting the guide does not make the
+remote work synchronous or reduce its analysis.
+
+**Checkpoint:** wait in Actions, not in the installer, until the orchestrator
+and any dispatched maintenance worker finish. If there is a proposal, open its
+control review issue and download the review bundle from the worker run's
+Artifacts section. Review the observed problem, proposed change, application
+prompt, and exact validation outcomes before deciding whether to apply it.
+If there is no proposal, inspect the no-op, blocked, failed, or incomplete reason.
+Success alone does not imply a patch was produced or applied.
+
+The maintenance outcome is your first useful result. Applying a proposal is
+not a requirement for using CAO, and there are no pass/fail readiness ratings.
+Do not repeat `--step run` just to check progress: it requests another run.
+
+## 4. Collect a CAO Activity snapshot
+
+Activity turns the control-plane workflow runs into evidence the dashboard can
+display. It does not rerun the maintenance analysis or apply a proposal.
+After reviewing the completed campaign, request collection:
+
+```bash
+./cao.sh quickstart --step collect
+```
+
+The command dispatches Activity and returns its Actions link without waiting.
+**Checkpoint:** inspect **CAO Activity** in Actions and its data artifact.
+We require at least one collected run before calling the dashboard ready.
+A successful Activity run triggers Dashboard publication automatically.
+Do not repeat `--step collect` as a status check; it requests a new snapshot.
+
+## 5. Check and explore your dashboard
+
+Check publication without starting another workflow:
+
+```bash
+./cao.sh quickstart --step dashboard
+```
+
+This read-only step checks for successful, data-bearing Activity and its
+subsequent successful Pages deployment job, not merely a successful build.
+If either is pending, inspect the
+printed Actions link and repeat **only this command** later. It does not poll
+until completion or report a ready dashboard prematurely.
+
+**Checkpoint:** open the verified Dashboard URL, select **Repo Assist**, then
+open **Reports**. Follow the report back to its run and review evidence.
+Use the actual control-repository name and URL printed by quickstart; a
+control repository has its own matching dashboard URL.
+
+You have now followed the complete path: **policy → orchestrator → worker →
+Activity → dashboard**. The orchestrator remains paused. Enabling additional
+workers or live authority is a separate reviewed policy decision.
+
+### Optional: wait for the whole flow
+
+For deliberate unattended use immediately after bare installation,
+`./cao.sh quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
+collection, and deployment flow. It commits and pushes, starts workflows, and
+waits for remote completion. Do not use it to resume a staged installation or
+as a status check. The staged guide above is the default onboarding experience.
 
 ## What this demonstrates
 
@@ -158,7 +249,7 @@ or live authority is a separate reviewed policy decision.
   change, target issue, pull request, or enabled workflow.
 
 CAO configures Pages and repository `GITHUB_TOKEN` access, then commits only
-its runtime and policy to the control repository. The shared starter target is never modified.
+its runtime and policy to the control repository. The selected target is never modified.
 Installer-created control repositories remain private. In a public control repository,
 policy, workflow runs, dashboard data, and review outputs are also public.
 
@@ -179,19 +270,19 @@ complete onboarding. Your one real maintenance run may honestly produce a no-op.
 
 Reuse the same control repository and installed Repo Assist campaign.
 Do not run the installer or `cao add` again.
-Replace `USERNAME/cao` below with the actual control repository printed by
-quickstart, including any timestamp suffix.
+Replace `CONTROL_OWNER/CONTROL_REPOSITORY` below with your actual control
+repository, and `OWNER/REPOSITORY` with the new target you choose.
 
 In the control repository, edit `.github/workflows/cao.json`:
 
 1. Add `OWNER` to `control-plane.scope.allowed-owners`.
-2. Replace the sample repository with `OWNER/REPOSITORY` in
-   `control-plane.scope.allowed-repositories`, retaining `USERNAME/cao`.
-3. Replace the sample entry under
+2. Replace the previous target with `OWNER/REPOSITORY` in
+   `control-plane.scope.allowed-repositories`, retaining `CONTROL_OWNER/CONTROL_REPOSITORY`.
+3. Replace the previous target entry under
    `control-plane.campaigns.repo-assist.targets` with
    `"OWNER/REPOSITORY": { "mode": "review" }`.
 
-Keep `control-plane.activity.repositories` set to `USERNAME/cao`; Activity
+Keep `control-plane.activity.repositories` set to `CONTROL_OWNER/CONTROL_REPOSITORY`; Activity
 collects the control-plane runs, not source data from the target.
 
 Validate, commit, and push the reviewed policy change:
@@ -209,7 +300,7 @@ Then run the already-installed campaign:
 gh workflow enable repo-assist.lock.yml
 gh aw run repo-assist --ref main \
   --raw-field target_repo="OWNER/REPOSITORY" \
-  --raw-field safe_output_repo="USERNAME/cao" \
+  --raw-field safe_output_repo="CONTROL_OWNER/CONTROL_REPOSITORY" \
   --raw-field max_repos="1" \
   --raw-field rollout_percent="100" \
   --raw-field safe_output_mode="review"
@@ -251,13 +342,14 @@ for advanced authentication choices.
 
 ## If quickstart stops
 
-- **The default name or clone path already exists:** quickstart automatically
-  selects a timestamped name. To reuse the existing control repository, run
-  from its clean checkout; to select an exact new name, use `--create-repo OWNER/NAME`.
+- **An owner, control name, or target was not selected:** provide
+  `--create-repo OWNER/NAME` when creating a control repository, and always
+  provide `--target OWNER/REPOSITORY` for installation. No coordinate is inferred.
 - **A repository-name lookup fails:** restore GitHub access or availability and
   retry. Lookup failures are not treated as proof that a name is available.
-- **An explicit name is occupied or all ten timestamped names are occupied:**
-  select an available exact name with `--create-repo OWNER/NAME`.
+- **The chosen name or local clone path is occupied:** select an available exact
+  name with `--create-repo OWNER/NAME`, or use the existing repository's clean
+  checkout. Quickstart never generates a fallback name.
 - **The target is inaccessible:** restore repository access or GitHub
   availability; quickstart does not substitute another target.
 - **Required evidence is inaccessible or validation cannot complete:** inspect
@@ -266,5 +358,7 @@ for advanced authentication choices.
   Run `gh workflow disable repo-assist.lock.yml` in the control repository
   to prevent recurring runs before troubleshooting.
 
-Quickstart never reports a dashboard URL until Activity contains real run data
+If installation succeeded, continue with the next stage rather than reinstalling.
+For failed remote jobs, inspect the run's logs before requesting new work.
+The dashboard check never reports readiness until Activity contains real run data
 and the matching dashboard deployment succeeds.

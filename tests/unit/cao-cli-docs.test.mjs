@@ -43,12 +43,12 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /different from `gh aw doctor`/);
 });
 
-test("quickstart documents the complete bounded first-success journey", () => {
+test("quickstart documents separate component stages and explicit checkpoints", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
   const command = quickstart.indexOf("bash -s -- --quickstart");
-  const campaign = quickstart.indexOf("Install Repo Assist");
-  const activity = quickstart.indexOf("Collect a CAO Activity snapshot");
-  const dashboard = quickstart.indexOf("Wait for the data-bearing dashboard deployment");
+  const campaign = quickstart.indexOf("./cao.sh quickstart --step run");
+  const activity = quickstart.indexOf("./cao.sh quickstart --step collect");
+  const dashboard = quickstart.indexOf("./cao.sh quickstart --step dashboard");
   const nextStep = quickstart.indexOf("## Next: assist another repository");
   const firstSuccess = quickstart.slice(0, nextStep);
 
@@ -58,6 +58,23 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.ok(activity > campaign);
   assert.ok(dashboard > activity);
   assert.ok(nextStep > dashboard);
+  assert.match(firstSuccess, /does \*\*not\*\* dispatch Repo Assist or Activity, or wait for remote jobs/);
+  assert.match(firstSuccess, /## 2\. Install and understand the control plane/);
+  assert.match(firstSuccess, /## 3\. Run one Repo Assist review/);
+  assert.match(firstSuccess, /## 4\. Collect a CAO Activity snapshot/);
+  assert.match(firstSuccess, /## 5\. Check and explore your dashboard/);
+  assert.equal((firstSuccess.match(/\*\*Checkpoint:\*\*/g) || []).length, 4);
+  assert.match(firstSuccess, /Do not repeat `--step run` just to check progress/);
+  assert.match(firstSuccess, /Do not repeat `--step collect` as a status check/);
+  assert.match(firstSuccess, /read-only step/);
+  assert.match(firstSuccess, /normal push and scheduled\s+triggers/);
+  assert.match(firstSuccess, /successful Pages deployment job, not merely a successful build/);
+  assert.match(firstSuccess, /\.\/cao\.sh quickstart --wait/);
+  assert.match(firstSuccess, /Do not use it to resume a staged installation/);
+  assert.match(firstSuccess, /five numbered sections \*\*before each\s+corresponding change\*\*/);
+  assert.match(firstSuccess, /stay in terminal scrollback/);
+  assert.match(firstSuccess, /numbered `guide` details and its `checkpoint`/);
+  assert.match(docs, /\*\*Before continuing\*\* inspection checkpoint/);
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*1,250 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);
@@ -65,14 +82,17 @@ test("quickstart documents the complete bounded first-success journey", () => {
   assert.match(quickstart, /never silently falls back to `main`/);
   assert.match(quickstart, /githubnext\/gh-aw-cao@main/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
-  assert.match(quickstart, /starter target is never modified/);
+  assert.match(quickstart, /selected target is never modified/);
   assert.match(quickstart, /require at least one collected run/);
   assert.match(quickstart, /There is no second confirmation/);
   assert.match(quickstart, /Installer-created control repositories\s+remain private/);
-  assert.match(quickstart, /fresh UTC timestamped name/);
+  assert.match(quickstart, /Neither prompt has a default/);
   assert.match(quickstart, /Existing repositories and local files are never reused or overwritten/);
-  assert.match(quickstart, /an explicit name is never\s+silently changed/);
-  assert.match(quickstart, /stopping after ten timestamped\s+candidates/);
+  assert.match(quickstart, /An explicit name is never silently changed/);
+  assert.match(quickstart, /Missing `--target` stops before installation or repository creation/);
+  assert.doesNotMatch(firstSuccess, /github\/gh-aw|USERNAME\/cao|timestamped/);
+  assert.match(firstSuccess, /--create-repo CONTROL_OWNER\/CONTROL_REPOSITORY/);
+  assert.match(firstSuccess, /--target TARGET_OWNER\/TARGET_REPOSITORY/);
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
@@ -103,7 +123,7 @@ test("quickstart separates the first run from verified historical Repo Assist ex
   const readme = readFileSync("README.md", "utf8");
   const showcase = campaign.slice(campaign.indexOf("## See Repo Assist in action"), campaign.indexOf("## Install"));
 
-  assert.match(campaign, /With no `--target`[\s\S]*github\/gh-aw/);
+  assert.match(campaign, /requires `--target OWNER\/REPOSITORY`/);
   assert.match(campaign, /Issue triage, issue fix, and PR upkeep remain disabled/);
   assert.match(quickstart, /No demo repository is created, and useful findings are not guaranteed/);
   assert.match(quickstart, /## See more without running more/);
