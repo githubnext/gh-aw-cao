@@ -443,7 +443,7 @@ main() {
   local materializer=".github/workflows/shared/materialize-cao.mjs"
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
   local required_gh="v2.68.0"
-  local required_gh_aw="v0.91.5"
+  local required_gh_aw="v0.92.0"
   local catalog_source="githubnext/gh-aw-cao"
   local package_source
   local explicit_source=false
