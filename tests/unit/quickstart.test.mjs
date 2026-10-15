@@ -304,7 +304,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.equal(result.starterTarget, true);
   assert.equal(result.campaign, 'repo-assist');
   assert.equal(result.repoAssist.workerRunId, 102);
-  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw \(public Repo Assist example\)/);
+  assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/githubnext\/gh-aw-cao \(public Repo Assist example\)/);
   assert.match(formatQuickstartSummary(result), /Repo Assist:/);
   assert.match(formatQuickstartSummary(result), /Repo Assist is paused; re-enable it explicitly/);
   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
@@ -313,7 +313,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
     'acme/cao',
     QUICKSTART_STARTER_TARGET.repository,
   ]);
-  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'github']);
+  assert.deepEqual(policy['control-plane'].scope['allowed-owners'], ['acme', 'githubnext']);
   assert.equal(policy['control-plane'].campaigns['repo-assist'].mode, 'review');
   assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance.enabled, true);
   assert.equal(policy['control-plane'].campaigns['repo-assist'].workers.maintenance['max-mode'], 'review');

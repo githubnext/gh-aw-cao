@@ -26,9 +26,9 @@ publish job rather than reporting success without a bundle.
 There are no readiness grades or required practice checklists. The repository
 can stay exactly as it is; CAO admission is governed by policy and access.
 
-With no explicit target, quickstart uses public
-[`github/gh-aw`](https://github.com/github/gh-aw) as a real example, using the
-normal worker checkout.
+With no explicit target, quickstart uses the public CAO repository
+[`githubnext/gh-aw-cao`](https://github.com/githubnext/gh-aw-cao) as a real
+example, using the normal worker checkout.
 Its existing automations are not prerequisites for your own repository.
 No demo repository is created, and useful findings are not guaranteed.
 
@@ -122,7 +122,7 @@ Quickstart waits for real Activity data and prints a summary like this:
 ```text
 CAO quickstart complete.
 Dashboard: https://USERNAME.github.io/cao/
-Target: https://github.com/github/gh-aw (public Repo Assist example)
+Target: https://github.com/githubnext/gh-aw-cao (public Repo Assist example)
 Repo Assist: https://github.com/USERNAME/cao/actions/runs/... (success)
 Activity: https://github.com/USERNAME/cao/actions/runs/... (... collected runs)
 Control repository: https://github.com/USERNAME/cao

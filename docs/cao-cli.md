@@ -100,9 +100,9 @@ control repositories, broader existing policy, or installed campaigns.
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
 Explicit quickstart is also terminal-independent. Without `--target`, it uses
-the public `github/gh-aw` repository for one validated maintenance proposal
-or no-op, not to grade its readiness or eligibility for CAO. Applying the proposal
-is never required for using CAO. Existing Agentic Workflows, Actions
+the public `githubnext/gh-aw-cao` repository for one validated maintenance
+proposal or no-op, not to grade its readiness or eligibility for CAO. Applying
+the proposal is never required for using CAO. Existing Agentic Workflows, Actions
 history, or telemetry are not required.
 Only the existing maintenance worker is enabled. The normal orchestrator is
 paused through `gh workflow disable` after requesting the first run. Re-enable

@@ -7,7 +7,7 @@ import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
-const SAMPLE_SEED_REPOSITORY = 'github/gh-aw';
+const SAMPLE_SEED_REPOSITORY = 'githubnext/gh-aw-cao';
 const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/repo-assist';
 const REPO_ASSIST_WORKFLOW = 'repo-assist.lock.yml';
 const REPO_ASSIST_WORKER = 'repo-assist-maintenance.lock.yml';

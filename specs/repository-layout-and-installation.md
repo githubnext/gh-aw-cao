@@ -295,7 +295,7 @@ private control repository only when `--create-repo OWNER/NAME` requests it. It 
 disclose before execution that it publishes a public dashboard, creates the
 private `USERNAME/cao` control repository or its timestamped fallback when
 needed, targets the public
-Repo Assist example in the public `github/gh-aw` repository unless
+Repo Assist example in the public `githubnext/gh-aw-cao` repository unless
 `--target OWNER/REPO` selects another existing public target, runs Repo Assist
 maintenance against that target in review mode, and may consume up to 1,250 AI
 credits under default limits (250 orchestration, 600 maintenance, 400 output
@@ -315,7 +315,7 @@ The quickstart MUST:
   and collected evidence are public, without widening that visibility exception
   to another target or campaign;
 - validate an explicit target as public, or select
-  `github/gh-aw`; it MUST NOT create, fork, copy, otherwise mutate a target,
+  `githubnext/gh-aw-cao`; it MUST NOT create, fork, copy, otherwise mutate a target,
   or substitute another target when access fails; the existing worker's
   checkout and recorded base SHA MUST remain the source identity;
 - admit repositories without existing Agentic Workflows, Actions history, or
