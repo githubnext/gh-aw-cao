@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "node:test";
 import {
   createCliActionAdmission,
@@ -55,6 +56,7 @@ test("queue admission adapter exposes exactly-once reservation lifecycle", async
   const first = await admission.admission({ id: 1, command: "gh aw update", running: 0 });
   assert.equal(first.concurrency, 4);
   assert.equal(first.reservationId, "1");
+  await first.complete({ started: false });
   await first.release();
   await first.complete();
   const second = await admission.admission({ id: 2, command: "gh aw update", running: 0 });
@@ -64,6 +66,32 @@ test("queue admission adapter exposes exactly-once reservation lifecycle", async
   const third = await admission.admission({ id: 3, command: "gh aw update", running: 0 });
   assert.equal(third.reservationId, "1");
   await third.release();
+});
+
+test("queue output hook detects split secondary limits without retaining raw output", async (t) => {
+  const script = `
+    require("node:readline").createInterface({input:process.stdin}).on("line", line => {
+      const request = JSON.parse(line);
+      const valid = request.operation !== "complete"
+        || (request.rateLimited === true && request.retryAfterSeconds === 120);
+      console.log(JSON.stringify({
+        id:request.id,capacity:valid ? 2 : 0,reason:valid ? "available" : "unknown",
+        ...(request.operation === "admit" ? {reservationId:"reserved"} : {})
+      }));
+    });
+  `;
+  const admission = createCliActionAdmission({
+    helperExecutable: process.execPath, helperArguments: ["-e", script],
+  });
+  t.after(() => admission.close());
+  const decision = await admission.admission({ command: "gh aw update" });
+  decision.onOutput({ stream: "stderr", data: "Sensitive output: secondary rate lim" });
+  decision.onOutput({ stream: "stderr", data: "it\nRetry-Af" });
+  decision.onOutput({ stream: "stderr", data: "ter: 120\n" });
+  const reconciled = await decision.complete({ started: true, result: { ok: false } });
+  assert.equal(reconciled.capacity, 2);
+  assert.equal(reconciled.reason, "available");
+  assert.ok(!JSON.stringify(decision).includes("Sensitive output"));
 });
 
 test("helper unavailable, invalid, timed out, or closed pauses without raw errors", async (t) => {
@@ -80,10 +108,40 @@ test("helper unavailable, invalid, timed out, or closed pauses without raw error
     const result = await admission.admit();
     assert.equal(result.capacity, 0);
     assert.equal(result.reason, "unknown");
+    if (options.helperExecutable === "/does-not-exist-quota-helper") {
+      assert.match(result.message, /Install cao-cli-quota on PATH or set CAO_CLI_QUOTA_EXECUTABLE/);
+    }
     assert.ok(Number.isFinite(Date.parse(result.retryAt)));
     admission.close();
     assert.equal((await admission.admit()).capacity, 0);
   }
+});
+
+test("portable install without Go sources uses the prebuilt quota helper on PATH", async (t) => {
+  const directory = await mkdtemp(join(process.cwd(), ".cao-cli-quota-test-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const dashboard = join(directory, "dashboard");
+  await mkdir(dashboard);
+  await Promise.all(["cli-action-quota.mjs", "cli-actions.mjs"].map((name) =>
+    copyFile(new URL(`../../dashboard/${name}`, import.meta.url), join(dashboard, name))));
+  const executable = join(directory, "cao-cli-quota");
+  await writeFile(executable, `#!${process.execPath}
+    require("node:readline").createInterface({input:process.stdin}).on("line", line => {
+      const request = JSON.parse(line);
+      console.log(JSON.stringify({
+        id:request.id,capacity:2,reason:"available",reservationId:"prebuilt"
+      }));
+    });
+  `, { mode: 0o700 });
+  const { createCliActionAdmission: createInstalledAdmission } =
+    await import(pathToFileURL(join(dashboard, "cli-action-quota.mjs")).href);
+  const admission = createInstalledAdmission({
+    workingDirectory: directory, env: { ...process.env, PATH: directory },
+  });
+  t.after(() => admission.close());
+  assert.deepEqual(await admission.admit({ command: "gh aw update" }), {
+    capacity: 2, reason: "available", reservationId: "prebuilt",
+  });
 });
 
 test("helper inherits gh environment and requested working directory", async (t) => {
@@ -146,6 +204,7 @@ test("candidate command bypasses quota only for known offline operations", async
     assert.equal(decision.capacity, 4);
     assert.match(decision.reservationId, /^local:/);
     assert.equal((await admission.complete(decision.reservationId)).capacity, 4);
+    assert.deepEqual(await admission.admission({ command }), { concurrency: 4, reason: "available" });
   }
   for (const command of [
     "gh aw update", "./cao.sh update", "gh workflow run activity",
@@ -158,6 +217,25 @@ test("candidate command bypasses quota only for known offline operations", async
   assert.equal((await admission.admit({ command: "gh aw update" })).capacity, 0);
   // A broken GitHub helper must not pause unrelated offline work.
   assert.equal((await admission.admit({ command: "gh aw compile" })).capacity, 4);
+});
+
+test("only exact workflow dispatch commands can narrow required quota resources", async (t) => {
+  const script = `
+    require("node:readline").createInterface({input:process.stdin}).on("line", line => {
+      const request = JSON.parse(line);
+      console.log(JSON.stringify({
+        id:request.id,capacity:4,reason:"available",reservationId:request.resources.join(",")
+      }));
+    });
+  `;
+  const admission = createCliActionAdmission({
+    helperExecutable: process.execPath, helperArguments: ["-e", script],
+  });
+  t.after(() => admission.close());
+  assert.equal((await admission.admit({ command: "gh workflow run activity" })).reservationId, "core");
+  for (const command of ["gh aw update", "./cao.sh update", "gh agent-task create --from-file -"]) {
+    assert.equal((await admission.admit({ command, resources: ["core"] })).reservationId, "core,graphql");
+  }
 });
 
 test("default Go bridge observes inherited gh context and reconciles real snapshots", async (t) => {
@@ -176,8 +254,12 @@ test("default Go bridge observes inherited gh context and reconciles real snapsh
     if (args[3] === "user") console.log("987654");
     else if (args[3] === "rate_limit") {
       const remaining = JSON.parse(fs.readFileSync(${JSON.stringify(remainingPath)}, "utf8"));
-      const meter = {limit:5000, remaining, reset: ${Math.floor(Date.now() / 1000) + 3600}};
-      console.log(JSON.stringify({resources:{core:meter, graphql:meter}}));
+      const meter = resource => ({
+        limit:5000,
+        remaining: typeof remaining === "number" ? remaining : remaining[resource],
+        reset: ${Math.floor(Date.now() / 1000) + 3600}
+      });
+      console.log(JSON.stringify({resources:{core:meter("core"), graphql:meter("graphql")}}));
     } else process.exit(1);
   `, { mode: 0o700 });
   const admission = createCliActionAdmission({
@@ -198,4 +280,15 @@ test("default Go bridge observes inherited gh context and reconciles real snapsh
   const exhausted = await admission.admit();
   assert.equal(exhausted.capacity, 0);
   assert.equal(exhausted.reason, "exhausted");
+  await admission.release(second.reservationId);
+  await writeFile(remainingPath, JSON.stringify({ core: 175, graphql: 0 }));
+  assert.equal((await admission.admit({ command: "gh aw update" })).capacity, 0);
+  const dispatch = await admission.admit({ command: "gh workflow run activity" });
+  assert.equal(dispatch.capacity, 1);
+  assert.ok(dispatch.reservationId);
+  await admission.complete(dispatch.reservationId);
+  await writeFile(remainingPath, JSON.stringify({ core: 0, graphql: 0 }));
+  const blockedDispatch = await admission.admit({ command: "gh workflow run activity" });
+  assert.equal(blockedDispatch.capacity, 0);
+  assert.equal(blockedDispatch.reason, "exhausted");
 });

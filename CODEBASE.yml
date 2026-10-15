@@ -242,6 +242,18 @@ components:
   dashboard_ui:
     path: dashboard/site/
     responsibility: render bounded Dashboard Language query payloads
+  local_dashboard_server:
+    path: dashboard/local-server.mjs
+    responsibility: expose capability-protected declared CLI actions only in local admin or trusted canvas sessions, preserving trusted approval
+  local_cli_queue:
+    path: dashboard/cli-action-queue.mjs
+    responsibility: own durable single-owner FIFO operational SQLite commands independently of browser lifetimes, with bounded concurrency, deadlines, cancellation, ordered output, retry ancestry and terminal-only UTC weekly retention
+  cli_executor:
+    path: dashboard/cli-actions.mjs
+    responsibility: execute the existing validated CLI mechanism with bounded output and process-tree termination
+  cli_quota_bridge:
+    path: server/cmd/cao-cli-quota/
+    responsibility: reuse GitHub quota tracking for the local queue against authoritative execution-credential observations, failing closed when evidence is unavailable
   cao_cli:
     path: activity/cao.mjs, activity/cli/, activity/commands/
     responsibility: preserve executable and public exports in cao.mjs, separate dispatch and implementation concerns in cli/, provide one handler per command in commands/, and query Activity SQLite projections and execute extensible computation commands for local tooling and agents; implementation modules depend on shared helpers, not the entry point
@@ -262,6 +274,11 @@ dependencies:
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
   - browser_data_worker -> dashboard_language_queries
+  - browser_data_worker -> local_dashboard_server
+  - local_dashboard_server -> local_cli_queue
+  - local_cli_queue -> cli_executor
+  - local_cli_queue -> cli_quota_bridge
+  - cli_quota_bridge -> github_quota_service
   - dashboard_publisher -> dashboard_https_server
   - dashboard_https_server -> postgres_entity_store
   - postgres_entity_store -> dashboard_https_server
@@ -368,6 +385,9 @@ boundaries:
       - postgres_entity_store
 
 invariants:
+  - "Local CLI commands MUST use one server-owned operational SQLite queue and the existing executor, never browser IndexedDB or the disposable dashboard projection. Browser detachment MUST NOT cancel approved work; active work MUST NOT expire."
+  - "Unclean CLI queue recovery MUST pause starts while subprocess termination is unverified. Interrupted entries MUST fail without automatic retry; only explicit local operator acknowledgement after reconciliation may resume queued work."
+  - "CLI queue admission MUST preserve declared-action validation, trusted approval and credential-scoped authoritative GitHub quota checks. Published dashboards MUST initialize no queue, issue no queue requests and gain no execution authority."
   - "Quickstart installation does not explicitly dispatch Activity, but normal Activity push/schedule triggers remain active and may publish a baseline independently. Dashboard readiness requires an actual successful Pages deployment job; successful workflows with skipped deployments are insufficient."
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."

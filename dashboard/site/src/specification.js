@@ -134,7 +134,7 @@ export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
 export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third', 'horizontal'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
-export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
+export const VIEW_CONTROL_VALUES = ['interactive', 'filter-only', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
 export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'overview',
@@ -662,6 +662,7 @@ export const SERVER_SOURCE_FIELDS = {
 export const SYNTHETIC_SOURCE_FIELDS = {
   'simulation-days': ['day', 'date'],
   'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values'],
+  'cli-command-statuses': ['status'],
   'cli-command-summary': ['running', 'total', 'paused-reason', 'revision']
 };
 

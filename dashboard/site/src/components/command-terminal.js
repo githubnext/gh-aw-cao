@@ -87,8 +87,8 @@ export function renderCommandTerminal(context) {
   );
   effect(() => {
     statusNode.textContent = message.get();
-    cancel.hidden = !['queued', 'running', 'paused'].includes(status.get());
-    retry.hidden = !['failed', 'cancelled'].includes(status.get());
+    cancel.hidden = !['queued', 'running'].includes(status.get());
+    retry.hidden = !['failed', 'timed-out'].includes(status.get());
     /** @type {HTMLButtonElement} */ (cancel).disabled = busy.get();
     /** @type {HTMLButtonElement} */ (retry).disabled = busy.get();
   }, { signal: scope.signal });

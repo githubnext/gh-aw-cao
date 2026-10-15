@@ -31,7 +31,7 @@ func testBridge(t *testing.T, remaining int) (*bridge, *snapshot) {
 			Limit: 5000, Remaining: remaining, ResetAt: now.Add(time.Hour),
 		}
 	}
-	b := newBridge(service, func(context.Context) (snapshot, error) { return *current, nil })
+	b := newBridge(service, func(context.Context, []string) (snapshot, error) { return *current, nil })
 	b.now = func() time.Time { return now }
 	return b, current
 }
@@ -77,7 +77,7 @@ func TestUnknownGraphQLAndFailedRefreshPause(t *testing.T) {
 	if first.ReservationID == "" {
 		t.Fatal("expected reservation")
 	}
-	b.read = func(context.Context) (snapshot, error) { return snapshot{}, errors.New("unavailable") }
+	b.read = func(context.Context, []string) (snapshot, error) { return snapshot{}, errors.New("unavailable") }
 	unknown := b.handle(context.Background(), request{Operation: "complete", ReservationID: first.ReservationID})
 	if unknown.Capacity != 0 || unknown.Reason != "unknown" {
 		t.Fatalf("failed refresh should pause: %+v", unknown)
@@ -86,7 +86,7 @@ func TestUnknownGraphQLAndFailedRefreshPause(t *testing.T) {
 	if err != nil || state.Reserved != 50 {
 		t.Fatalf("failed refresh released reservation: %+v, %v", state, err)
 	}
-	b.read = func(context.Context) (snapshot, error) { return *current, nil }
+	b.read = func(context.Context, []string) (snapshot, error) { return *current, nil }
 	delete(current.observations, "graphql")
 	unknown = b.handle(context.Background(), request{Operation: "admit"})
 	if unknown.Capacity != 0 || unknown.Reason != "unknown" {
@@ -129,11 +129,60 @@ func TestExternalRunningCapacityDoesNotAcquireReservations(t *testing.T) {
 	}
 }
 
+func TestCoreOnlyDispatchIgnoresExhaustedGraphQL(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	graphql := current.observations["graphql"]
+	graphql.Remaining = 0
+	current.observations["graphql"] = graphql
+	mixed := b.handle(ctx, request{Operation: "admit"})
+	if mixed.Capacity != 0 || mixed.Reason != "exhausted" {
+		t.Fatalf("mixed-resource command ignored exhausted GraphQL: %+v", mixed)
+	}
+	dispatch := b.handle(ctx, request{Operation: "admit", Resources: []string{"core"}})
+	if dispatch.Capacity != 4 || dispatch.ReservationID == "" {
+		t.Fatalf("GraphQL exhaustion blocked core-only dispatch: %+v", dispatch)
+	}
+	if len(b.reservations[dispatch.ReservationID].buckets) != 1 {
+		t.Fatal("core-only dispatch reserved unrelated resources")
+	}
+	_ = b.handle(ctx, request{Operation: "complete", ReservationID: dispatch.ReservationID})
+	core := current.observations["core"]
+	core.Remaining = 0
+	current.observations["core"] = core
+	blocked := b.handle(ctx, request{Operation: "admit", Resources: []string{"core"}})
+	if blocked.Capacity != 0 || blocked.Reason != "exhausted" {
+		t.Fatalf("core exhaustion admitted dispatch: %+v", blocked)
+	}
+}
+
+func TestResourcesValidateAndOnlyRequiredObservationsAreUsed(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	delete(current.observations, "graphql")
+	ctx := context.Background()
+	dispatch := b.handle(ctx, request{Operation: "admit", Resources: []string{"core"}})
+	if dispatch.ReservationID == "" {
+		t.Fatalf("missing unrelated resource blocked core: %+v", dispatch)
+	}
+	completed := b.handle(ctx, request{Operation: "complete", ReservationID: dispatch.ReservationID})
+	if completed.Reason != "available" || len(b.reservations) != 0 {
+		t.Fatalf("core-only completion required GraphQL: %+v", completed)
+	}
+	if mixed := b.handle(ctx, request{Operation: "admit"}); mixed.Reason != "unknown" {
+		t.Fatalf("default mixed command accepted missing GraphQL: %+v", mixed)
+	}
+	for _, resources := range [][]string{{"core", "core"}, {"search"}, {"graphql", "invalid"}} {
+		if got := b.handle(ctx, request{Operation: "admit", Resources: resources}); got.Reason != "unknown" {
+			t.Fatalf("invalid resource set admitted: %v %+v", resources, got)
+		}
+	}
+}
+
 func TestUnclaimedReservationReleaseDoesNotRefreshOrInventConsumption(t *testing.T) {
 	b, current := testBridge(t, 5000)
 	ctx := context.Background()
 	result := b.handle(ctx, request{Operation: "admit"})
-	b.read = func(context.Context) (snapshot, error) {
+	b.read = func(context.Context, []string) (snapshot, error) {
 		t.Fatal("release refreshed GitHub for work never started")
 		return snapshot{}, nil
 	}
@@ -168,7 +217,7 @@ func TestSecondaryLimitParksBothResources(t *testing.T) {
 func TestRefreshOnEveryStartAndResetRecovery(t *testing.T) {
 	b, current := testBridge(t, 100)
 	calls := 0
-	b.read = func(context.Context) (snapshot, error) {
+	b.read = func(context.Context, []string) (snapshot, error) {
 		calls++
 		return *current, nil
 	}
@@ -225,6 +274,22 @@ func TestGhSnapshotRejectsMissingAndInvalidMeters(t *testing.T) {
 		if _, err := ghSnapshot(context.Background(), run, "gh", "github.com"); err == nil {
 			t.Fatalf("accepted incomplete quota: %s", data)
 		}
+	}
+}
+
+func TestGhSnapshotOnlyValidatesRequiredResources(t *testing.T) {
+	run := func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if args[3] == "user" {
+			return []byte("123"), nil
+		}
+		return []byte(`{"resources":{"core":{"limit":5000,"remaining":4900,"reset":1792070000}}}`), nil
+	}
+	current, err := ghSnapshot(context.Background(), run, "gh", "github.com", "core")
+	if err != nil || len(current.observations) != 1 {
+		t.Fatalf("core-only snapshot required unrelated resource: %+v, %v", current, err)
+	}
+	if _, err := ghSnapshot(context.Background(), run, "gh", "github.com"); err == nil {
+		t.Fatal("default mixed snapshot accepted missing GraphQL")
 	}
 }
 

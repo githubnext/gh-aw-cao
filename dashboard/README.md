@@ -109,8 +109,9 @@ The preview composes `dashboard/site/dashboard.json` with every installed `<camp
 
 ### Canvas CLI actions
 
-Dashboard documents may declare canvas-only CLI actions. They are hidden from
-the published site and ordinary local previews. In the dashboard canvas, each
+Dashboard documents may declare local admin and trusted canvas CLI actions.
+They are hidden from the published site and ordinary local previews. In the
+dashboard canvas, each
 action appears in the **Actions** menu for a command preview. Native execution
 also requires independent confirmation in the trusted Copilot host, bound to
 the exact resolved command, working directory, and standard input. A page POST
@@ -127,6 +128,12 @@ read-only previews do not initialize a queue or request its APIs. Execution
 continues while the local server is running, even with every browser closed.
 Stopping the server terminates running work; interrupted executions are recorded
 as failed rather than silently repeated, and queued commands survive restart.
+After an unclean crash, termination of detached subprocesses cannot be assumed:
+the queue preserves history but pauses execution across subsequent restarts.
+Verify that every interrupted subprocess has stopped before explicitly starting
+with `--acknowledge-command-recovery` to resume queued work. Interrupted entries
+remain failed and are never automatically retried. This acknowledgement is a
+local operator action, not a browser API.
 
 **Maintenance → Commands** lists queued, running, completed, failed, canceled,
 and timed-out commands. Attach by command ID to replay retained stdout/stderr
@@ -155,9 +162,15 @@ The capability-protected local API exposes:
   lifecycle operations; retries revalidate the current action and approval.
 
 Mutations require same-origin JSON requests as well as the preview capability.
-Queue retention applies only to terminal history in complete UTC Monday-based
-seven-day windows; active commands never expire. Queue files contain operational
-command history and must remain local and uncommitted.
+Queue retention defaults to 30 days and removes terminal history only in wholly
+expired UTC Monday-based seven-day windows; active commands never expire. Queue
+files contain operational command history and must remain local and uncommitted.
+Storage is bounded to 10,000 retained entries, 1 MiB output per command, 64 MiB
+retained output overall and a 128 MiB main SQLite database (excluding WAL
+overhead). Output is framed by line for cross-chunk credential redaction;
+overlong lines above 16 KiB and output beyond the budgets are discarded with an
+explicit truncation warning. Terminal output can therefore lag until a line
+ends or execution finishes.
 
 ```yaml
 dashboard:

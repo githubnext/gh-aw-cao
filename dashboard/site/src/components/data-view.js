@@ -885,7 +885,7 @@ function renderTableView(context) {
   let renderedRowCount = bodyRows.length;
   const continuation = replayableContinuation(context.continuation);
 
-  const interactive = view.controls !== 'static';
+  const interactive = view.controls !== 'static' && view.controls !== 'filter-only';
   const staticEmptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.';
   // A table can render zero rows either because the source truly has no data, or
   // because the dashboard-wide time-window filter is narrowing an otherwise

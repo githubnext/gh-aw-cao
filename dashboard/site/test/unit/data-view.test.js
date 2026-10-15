@@ -1078,6 +1078,19 @@ describe('data view renderer', () => {
     expect(rendered?.getAttribute('aria-labelledby')).toBe('maintenance-repositories-heading');
   });
 
+  it('does not expose page-local search or sorting for filter-only server-paginated tables', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'commands', title: 'Commands',
+      view: { mark: 'table', controls: 'filter-only', encoding: { columns: [{ field: 'status' }] } },
+      sourceName: 'command-queue', rows: [{ status: 'queued' }], metadata,
+      contextDetails: [], headingTag: 'h3',
+      prepareTableRows: (rows) => rows, buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
+    });
+    expect(rendered?.querySelector('input[type="search"]')).toBeNull();
+    expect(rendered?.querySelector('[aria-sort]')).toBeNull();
+    expect(rendered?.textContent).toContain('queued');
+  });
+
   it('renders a view description in the shared explanation tooltip', () => {
     const rendered = renderDataView('table', {
       pageId: 'workflow-runs',
@@ -2388,7 +2401,7 @@ describe('data view renderer', () => {
       ok: true,
       body: new ReadableStream({
         start(controller) {
-          controller.enqueue(new TextEncoder().encode('{"type":"complete","result":{"ok":true,"stdout":"Task created\\n","stderr":""},"command":{"id":"persistent-task","status":"succeeded"}}\n'));
+          controller.enqueue(new TextEncoder().encode('{"type":"complete","result":{"ok":true,"stdout":"Task created\\n","stderr":""},"command":{"id":"persistent-task","status":"completed"}}\n'));
           controller.close();
         }
       })

@@ -27,8 +27,8 @@ import {
 beforeEach(() => {
   vi.stubGlobal('__CLI_QUEUE__', true);
   queue.enqueue.mockReset().mockResolvedValue({ id: 'command-1', status: 'queued' });
-  queue.attach.mockReset().mockResolvedValue({ result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'succeeded' } });
-  queue.cancel.mockReset().mockResolvedValue({ id: 'command-1', status: 'cancelled' });
+  queue.attach.mockReset().mockResolvedValue({ result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'completed' } });
+  queue.cancel.mockReset().mockResolvedValue({ id: 'command-1', status: 'canceled' });
 });
 
 afterEach(() => {
@@ -391,7 +391,7 @@ describe('CLI actions', () => {
   it('requires a fresh confirmation before every execution', async () => {
     queue.attach.mockImplementation(async (_id, onOutput) => {
       onOutput({ stream: 'stdout', data: 'compiled\n' });
-      return { result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'succeeded' } };
+      return { result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'completed' } };
     });
     const streamingBody = () => {
       const encoder = new TextEncoder();
@@ -556,7 +556,7 @@ describe('CLI actions', () => {
   });
 
   it('logs only scalar metadata under its predictable category when enabled', async () => {
-    queue.attach.mockResolvedValueOnce({ result: { ok: true }, command: { id: 'command-1', status: 'succeeded' } })
+    queue.attach.mockResolvedValueOnce({ result: { ok: true }, command: { id: 'command-1', status: 'completed' } })
       .mockRejectedValueOnce(new Error('boom'));
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {

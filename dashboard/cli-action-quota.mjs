@@ -32,18 +32,33 @@ export function cliActionRequiresGitHubQuota(candidate) {
     /^(?:--repo(?:=|$)|-R|--check-update(?:=|$))/.test(token));
 }
 
+function requiredQuotaResources(candidate) {
+  try {
+    const tokens = parseDashboardCommand(candidate?.command);
+    if (tokens[0] === "gh" && tokens[1] === "workflow" && tokens[2] === "run") {
+      return ["core"];
+    }
+  } catch {
+    // Unknown commands cannot narrow the resources required for admission.
+  }
+  return ["core", "graphql"];
+}
+
 /**
  * Local-admin-only quota admission. Construct this only for an active local
  * queue, never for an online dashboard. The persistent helper owns all meters.
  *
  * admission(candidate) is the queue adapter: returns {concurrency, reason,
- * retryAt?, reservationId?, release?, complete?}. The queue calls release when
- * it cannot claim, or complete(indicators) after the executor settles.
+ * retryAt?, reservationId?, onOutput?, release?, complete?}. The queue forwards
+ * streaming chunks to onOutput, calls release when it cannot claim, or calls
+ * complete(indicators) after the executor settles.
  *
  * admit(candidate) reserves one start and returns {capacity, reason, retryAt,
  * reservationId}; capacity is the total safe concurrency, not free slots.
  * Call complete(reservationId, {rateLimited, retryAfterSeconds}) after exit.
  * status() refreshes without reserving. A failed helper always pauses starts.
+ * Source checkouts use go run; portable installs require cao-cli-quota on PATH
+ * or CAO_CLI_QUOTA_EXECUTABLE pointing to the prebuilt executable.
  *
  * @param {{
  * workingDirectory?: string,
@@ -178,6 +193,7 @@ export function createCliActionAdmission(options = {}) {
     }
     return request("admit", {
       running: Number.isSafeInteger(candidate?.running) ? Math.max(0, candidate.running) : 0,
+      resources: requiredQuotaResources(candidate),
     });
   }
 
@@ -207,31 +223,61 @@ export function createCliActionAdmission(options = {}) {
      * complete(indicators) (executor settled), including cancellation/errors.
      */
     async admission(candidate) {
+      if (closed) {
+        const { capacity: _capacity, ...metadata } = unknownDecision();
+        return { ...metadata, concurrency: 0 };
+      }
       if (Number.isSafeInteger(candidate?.running) && candidate.running >= maxConcurrency) {
         return { concurrency: 0, reason: "concurrency" };
+      }
+      if (!cliActionRequiresGitHubQuota(candidate)) {
+        return { concurrency: maxConcurrency, reason: "available" };
       }
       const result = await admit(candidate);
       const { capacity, ...metadata } = result;
       if (!result.reservationId) return { ...metadata, concurrency: 0 };
       let settled = false;
+      let rateLimited = false;
+      let retryAfterSeconds = 0;
+      const tails = { stdout: "", stderr: "" };
+      const observeOutput = (chunk) => {
+        if (settled || typeof chunk?.data !== "string") return;
+        const stream = chunk.stream === "stderr" ? "stderr" : "stdout";
+        const text = tails[stream] + chunk.data;
+        const indicators = detectCliRateLimit(text);
+        rateLimited ||= indicators.rateLimited;
+        retryAfterSeconds = Math.max(retryAfterSeconds, indicators.retryAfterSeconds);
+        tails[stream] = text.slice(-128);
+      };
       const settle = (finished, indicators = {}) => {
         if (settled) return Promise.resolve();
+        if (finished) {
+          for (const stream of ["stdout", "stderr"]) {
+            observeOutput({ stream, data: indicators.result?.[stream] });
+          }
+        }
         settled = true;
+        tails.stdout = tails.stderr = "";
         return finished
-          ? complete(result.reservationId, indicators)
+          ? complete(result.reservationId, {
+            rateLimited: rateLimited || indicators.rateLimited === true,
+            retryAfterSeconds: Math.max(retryAfterSeconds,
+              Number.isSafeInteger(indicators.retryAfterSeconds) ? indicators.retryAfterSeconds : 0),
+          })
           : release(result.reservationId);
       };
       return {
         ...metadata, concurrency: capacity,
+        onOutput: observeOutput,
         release: () => settle(false),
-        complete: (indicators) => settle(true, indicators),
+        complete: (indicators) => settle(indicators?.started !== false, indicators),
       };
     },
     admit,
     release,
     status: (candidate) => !closed && !cliActionRequiresGitHubQuota(candidate)
       ? Promise.resolve({ capacity: maxConcurrency, reason: "available" })
-      : request("status"),
+      : request("status", { resources: requiredQuotaResources(candidate) }),
     complete,
     close() {
       closed = true;

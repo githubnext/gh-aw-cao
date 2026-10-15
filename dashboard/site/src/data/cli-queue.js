@@ -1,7 +1,8 @@
 import { executeDashboardQueries, resolveDashboardQuerySources } from './queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from './queries/view-payload-compiler.js';
 
-export const CLI_QUEUE_SOURCES = new Set(['cli-commands', 'cli-command-summary']);
+export const CLI_QUEUE_SOURCES = new Set(['cli-commands', 'cli-command-summary', 'cli-command-statuses']);
+const COMMAND_STATUSES = ['queued', 'running', 'completed', 'failed', 'canceled', 'timed-out'];
 let enabled = false;
 let endpoint = '';
 
@@ -50,8 +51,9 @@ async function request(path, options = {}) {
  */
 export async function cliQueueOperation(payload, signal, notify = () => {}) {
   const action = payload.action;
-  const id = typeof payload.commandId === 'string' && payload.commandId
-    ? encodeURIComponent(payload.commandId) : null;
+  const id = (typeof payload.commandId === 'string' && payload.commandId)
+    || (Number.isSafeInteger(payload.commandId) && Number(payload.commandId) > 0)
+    ? encodeURIComponent(String(payload.commandId)) : null;
   if (action === 'enqueue') {
     const response = await request('', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -155,14 +157,22 @@ export async function queryCliQueue(payload, signal) {
     if (!Number.isSafeInteger(cursor.offset) || cursor.offset < 0) throw new Error('Invalid command page cursor.');
     offset = cursor.offset;
   }
-  const status = payload.queryContext?.filters?.status?.join(',') ?? '';
+  const selectedStatus = payload.queryContext?.viewFilters?.[payload.viewId]?.status
+    ?? payload.queryContext?.filters?.status;
+  const status = selectedStatus?.join(',') ?? '';
   const result = enabled ? await cliQueueOperation({ action: 'list', status, limit, offset }, signal) : null;
   /** @type {Record<string, import('../presenter.js').LogicalSourceInput>} */
   const inputs = {
-    'cli-commands': source('cli-commands', result?.commands ?? [], enabled),
+    'cli-commands': source('cli-commands', (result?.commands ?? []).map((/** @type {Record<string, unknown>} */ command) => ({
+      ...command,
+      ...Object.fromEntries(['createdAt', 'startedAt', 'completedAt'].map((field) => [
+        field, typeof command[field] === 'number' ? new Date(command[field]).toISOString() : command[field]
+      ]))
+    })), enabled),
     'cli-command-summary': source('cli-command-summary', result ? [{
       running: result.running, total: result.total, 'paused-reason': result.pausedReason ?? '', revision: result.revision
-    }] : [], enabled)
+    }] : [], enabled),
+    'cli-command-statuses': source('cli-command-statuses', COMMAND_STATUSES.map((status) => ({ status })), enabled)
   };
   const output = executeDashboardQueries(queries, inputs, names, { signal });
   for (const name of names) {

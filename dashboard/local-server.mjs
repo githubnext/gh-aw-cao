@@ -638,6 +638,7 @@ function readWebsocketFrames(buffer) {
  *   cliQueuePath?: string,
  *   cliQueueConcurrency?: number,
  *   cliQueueTimeoutMs?: number,
+ *   cliQueueAcknowledgeRecovery?: boolean,
  *   cliQueueAdmission?: (command: object) => Promise<{ concurrency: number, reason?: string }>,
  *   lookupSelector?: typeof lookupDialogOptions,
  *   traceFile?: string,
@@ -663,6 +664,7 @@ export async function startDashboardServer({
   cliQueuePath,
   cliQueueConcurrency = 4,
   cliQueueTimeoutMs = 15 * 60 * 1000,
+  cliQueueAcknowledgeRecovery = false,
   cliQueueAdmission,
   lookupSelector = lookupDialogOptions,
   generateQuery,
@@ -980,6 +982,7 @@ export async function startDashboardServer({
         filename: queuePath,
         maxConcurrency: cliQueueConcurrency,
         timeoutMs: cliQueueTimeoutMs,
+        acknowledgeRecovery: cliQueueAcknowledgeRecovery,
         admission: cliQueueAdmission ?? cliAdmission.admission,
         execute: ({ actionId, command, input, signal, onOutput }) => executeCliAction({
           id: actionId, command, ...(input === undefined ? {} : { input }), signal, onOutput,
@@ -1578,6 +1581,7 @@ export function parseDashboardServerArguments(arguments_) {
     if (argument === "--help") return { help: true };
     if (argument === "--canvas") options.canvas = true;
     else if (argument === "--admin") options.admin = true;
+    else if (argument === "--acknowledge-command-recovery") options.cliQueueAcknowledgeRecovery = true;
     else if (argument === "--command-concurrency") {
       options.cliQueueConcurrency = Number(arguments_[index += 1]);
       if (!Number.isInteger(options.cliQueueConcurrency) || options.cliQueueConcurrency < 1 || options.cliQueueConcurrency > 32) {
@@ -1629,6 +1633,7 @@ export function parseDashboardServerArguments(arguments_) {
       ["--canvas", options.canvas],
       ["--admin", options.admin],
       ["--command-concurrency", options.cliQueueConcurrency],
+      ["--acknowledge-command-recovery", options.cliQueueAcknowledgeRecovery],
       ["--replace-existing", options.replaceExisting],
       ["--trace-file", options.traceFile],
       ["--repo", options.repository],
@@ -1649,6 +1654,9 @@ export function parseDashboardServerArguments(arguments_) {
   if (options.cliQueueConcurrency && !options.admin && !options.canvas) {
     throw new Error("--command-concurrency requires --admin or --canvas");
   }
+  if (options.cliQueueAcknowledgeRecovery && !options.admin && !options.canvas) {
+    throw new Error("--acknowledge-command-recovery requires --admin or --canvas");
+  }
   const port = options.port ?? (options.canvas ? 0 : 4173);
   const minimumPort = options.canvas ? 0 : 1;
   if (!Number.isInteger(port) || port < minimumPort || port > 65535) {
@@ -1667,6 +1675,7 @@ async function main() {
   if (options.help) {
     console.log("usage: local-server.mjs [--canvas | --admin] [--command-concurrency N] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
     console.log("--admin enables explicitly confirmed dashboard CLI actions using local GitHub CLI credentials (loopback only).");
+    console.log("--acknowledge-command-recovery resumes queued work after the operator has verified interrupted subprocesses are terminated.");
     console.log("Data backend defaults to SQLite; use --data-backend indexeddb for browser IndexedDB.");
     console.log("       local-server.mjs --data-backend postgres [--operational-store redis|memory|postgres] [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");

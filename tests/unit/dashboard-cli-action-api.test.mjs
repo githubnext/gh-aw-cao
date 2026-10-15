@@ -107,6 +107,25 @@ test("output replay follows a persistent cursor and emits terminal state", async
   } finally { await server.close(); }
 });
 
+test("history polling excludes stdin and output bodies from summary rows", async () => {
+  const server = await fixture({
+    list: () => ({
+      commands: [{
+        id: "command-1", actionId: "compile", status: "completed", input: "approved prompt",
+        stdout: "retained output", stderr: "", arguments: {}, values: {},
+      }],
+      total: 300, running: 4, revision: 7,
+    }),
+  });
+  try {
+    const response = await fetch(`${server.url}/__cli_commands`);
+    assert.deepEqual(await response.json(), {
+      commands: [{ id: "command-1", actionId: "compile", status: "completed" }],
+      total: 300, running: 4, revision: 7,
+    });
+  } finally { await server.close(); }
+});
+
 test("retry revalidates the current declaration and approval before creating another entry", async () => {
   let retries = 0;
   const server = await fixture({
@@ -122,11 +141,49 @@ test("retry revalidates the current declaration and approval before creating ano
   } finally { await server.close(); }
 });
 
+test("manual retries create entries only for failed or timed-out commands", async () => {
+  let status = "failed";
+  const retries = [];
+  const server = await fixture({
+    detail: () => ({
+      status, actionId: "compile", command: "gh aw compile --strict", arguments: {}, values: {},
+    }),
+    retry: (id, key) => { retries.push({ id, key }); return { id: "new-command", status: "queued", retryOf: id }; },
+  });
+  try {
+    for (status of ["queued", "running", "completed", "canceled", "failed", "timed-out"]) {
+      const response = await fetch(`${server.url}/__cli_commands/command-1/retry`, {
+        method: "POST", headers, body: JSON.stringify({ idempotencyKey: `retry-${status}` }),
+      });
+      assert.equal(response.status, status === "failed" || status === "timed-out" ? 202 : 409);
+    }
+    assert.deepEqual(retries, [
+      { id: "command-1", key: "retry-failed" },
+      { id: "command-1", key: "retry-timed-out" },
+    ]);
+  } finally { await server.close(); }
+});
+
 test("online queue endpoints are no-ops", async () => {
   const server = await fixture(undefined);
   try {
     assert.equal((await fetch(`${server.url}/__cli_commands`)).status, 404);
     assert.equal((await fetch(`${server.url}/__cli_action`, { method: "POST", headers, body: "{}" })).status, 404);
+  } finally { await server.close(); }
+});
+
+test("retry cannot reuse an enqueue idempotency key to return its failed original", async () => {
+  const original = {
+    id: "command-1", status: "failed", actionId: "compile",
+    command: "gh aw compile --strict", arguments: {}, values: {}, retryOf: null,
+  };
+  const server = await fixture({ detail: () => original, retry: () => original });
+  try {
+    const response = await fetch(`${server.url}/__cli_commands/command-1/retry`, {
+      method: "POST", headers, body: JSON.stringify({ idempotencyKey: "original-enqueue-key" }),
+    });
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error, /idempotency key conflicts/);
   } finally { await server.close(); }
 });
 

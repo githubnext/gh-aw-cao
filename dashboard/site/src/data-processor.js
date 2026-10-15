@@ -73,7 +73,7 @@ export function cliQueueAvailable() {
 /** @param {string[]} names @param {{ pages: unknown[], queries?: unknown[] }} context */
 function usesCliQueueSources(names, context) {
   return resolveDashboardQuerySources(context.queries ?? [], names)
-    .some((name) => name === 'cli-commands' || name === 'cli-command-summary');
+    .some((name) => name === 'cli-commands' || name === 'cli-command-summary' || name === 'cli-command-statuses');
 }
 
 /**

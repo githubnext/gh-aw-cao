@@ -135,6 +135,24 @@ volatile memory adapter for an explicitly acknowledged single-process server.
 The PostgreSQL operational adapter implements durable
 deployment-scoped services in separate `cao_operational_*` tables. Operational
 adapters never store dashboard entities or execute dashboard queries.
+Local admin and trusted canvas CLI actions use a separate, single-owner
+operational SQLite queue in `.cao/cli-actions.sqlite`, never browser IndexedDB
+or the disposable dashboard projection. Capability-protected local endpoints
+admit only declared, validated actions with the existing trusted approval
+boundary. One existing CLI executor runs approved FIFO work independently of
+browser connections, with bounded concurrency, a fifteen-minute execution
+deadline, explicit cancellation, persistent ordered output and manual retries
+as new entries. Terminal history follows UTC seven-day retention windows;
+active work must not expire. Unclean shutdowns fail closed when subprocess
+termination cannot be verified: interrupted entries fail without automatic
+retry, and only explicit local operator acknowledgement after reconciliation
+resumes queued work. The local quota helper reuses the Go
+`githubquota` service against authoritative observations from the execution
+credential context; unavailable evidence fails closed. Queue operations and
+reactive runtime-source queries cross the browser data worker. Dashboard
+Language owns command selection, filtering and view composition, while terminal
+components only present output and interactions. Published dashboards initialize
+no queue, perform no queue requests and gain no execution authority.
 The HTTP and MCP query boundary uses a disposable cache-aside layer for
 expensive queries with compact output. SHA-256 query identities include the
 definitions, parameters, pagination, schema, and current authorization class,

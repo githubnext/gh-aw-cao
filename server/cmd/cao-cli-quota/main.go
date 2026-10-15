@@ -22,15 +22,16 @@ import (
 )
 
 type request struct {
-	ID                int    `json:"id"`
-	Operation         string `json:"operation"`
-	ReservationID     string `json:"reservationId"`
-	MaxConcurrency    int    `json:"maxConcurrency"`
-	EstimatedCost     int    `json:"estimatedCost"`
-	MinimumRemaining  int    `json:"minimumRemaining"`
-	Running           int    `json:"running"`
-	RateLimited       bool   `json:"rateLimited"`
-	RetryAfterSeconds int    `json:"retryAfterSeconds"`
+	ID                int      `json:"id"`
+	Operation         string   `json:"operation"`
+	ReservationID     string   `json:"reservationId"`
+	MaxConcurrency    int      `json:"maxConcurrency"`
+	EstimatedCost     int      `json:"estimatedCost"`
+	MinimumRemaining  int      `json:"minimumRemaining"`
+	Running           int      `json:"running"`
+	Resources         []string `json:"resources,omitempty"`
+	RateLimited       bool     `json:"rateLimited"`
+	RetryAfterSeconds int      `json:"retryAfterSeconds"`
 }
 
 type decision struct {
@@ -59,13 +60,13 @@ type reservation struct {
 
 type bridge struct {
 	service      *githubquota.Service
-	read         func(context.Context) (snapshot, error)
+	read         func(context.Context, []string) (snapshot, error)
 	reservations map[string]*reservation
 	now          func() time.Time
 	parkedUntil  time.Time
 }
 
-func newBridge(service *githubquota.Service, read func(context.Context) (snapshot, error)) *bridge {
+func newBridge(service *githubquota.Service, read func(context.Context, []string) (snapshot, error)) *bridge {
 	return &bridge{service: service, read: read, reservations: make(map[string]*reservation), now: time.Now}
 }
 
@@ -94,9 +95,17 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	if req.Operation != "admit" && req.Operation != "complete" && req.Operation != "status" {
 		return b.unknown(req.ID)
 	}
+	resources, err := requiredResources(req.Resources)
+	if err != nil {
+		return b.unknown(req.ID)
+	}
 	if req.Operation == "complete" {
 		if held := b.reservations[req.ReservationID]; held != nil {
 			held.finished = true
+			resources = nil
+			for _, r := range held.buckets {
+				resources = append(resources, r.Bucket.Resource)
+			}
 		}
 		if req.RateLimited {
 			wait := max(req.RetryAfterSeconds, 60)
@@ -116,11 +125,11 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	if b.parkedUntil.After(b.now()) {
 		return decision{ID: req.ID, Reason: "parked", RetryAt: b.parkedUntil.UTC().Format(time.RFC3339)}
 	}
-	current, err := b.read(ctx)
+	current, err := b.read(ctx, resources)
 	if err != nil {
 		return b.unknown(req.ID)
 	}
-	for _, resource := range []string{"core", "graphql"} {
+	for _, resource := range resources {
 		observation, ok := current.observations[resource]
 		if !ok || observation.ResetAt.Before(b.now()) || observation.Limit <= 0 {
 			return b.unknown(req.ID)
@@ -135,7 +144,12 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		done := true
 		for _, r := range held.buckets {
 			if held.finished && r.Bucket.App == current.identity {
-				if err := b.service.Commit(ctx, r, current.observations[r.Bucket.Resource]); err != nil {
+				observation, ok := current.observations[r.Bucket.Resource]
+				if !ok {
+					done = false
+					continue
+				}
+				if err := b.service.Commit(ctx, r, observation); err != nil {
 					return b.unknown(req.ID)
 				}
 			} else if r.ExpiresAt.After(b.now()) {
@@ -164,7 +178,7 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	}
 	available := concurrency
 	var retry time.Time
-	for _, resource := range []string{"core", "graphql"} {
+	for _, resource := range resources {
 		state, stateErr := b.service.State(ctx, bucket(current.identity, resource))
 		if stateErr != nil || state.Status == githubquota.StatusUnknown {
 			return b.unknown(req.ID)
@@ -187,9 +201,9 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		return result
 	}
 	var held []githubquota.Reservation
-	for _, resource := range []string{"core", "graphql"} {
+	for _, resource := range resources {
 		r, reserveErr := b.service.Reserve(ctx, bucket(current.identity, resource), githubquota.ReservationRequest{
-			EstimatedCost: cost, MinimumRemain: floor, TTL: 15 * time.Minute,
+			EstimatedCost: cost, MinimumRemain: floor, TTL: 20 * time.Minute,
 		})
 		if reserveErr != nil {
 			for _, previous := range held {
@@ -213,7 +227,25 @@ func maxTime(a, b time.Time) time.Time {
 
 type commandRunner func(context.Context, string, ...string) ([]byte, error)
 
-func ghSnapshot(ctx context.Context, run commandRunner, executable, host string) (snapshot, error) {
+func requiredResources(resources []string) ([]string, error) {
+	if len(resources) == 0 {
+		return []string{"core", "graphql"}, nil
+	}
+	seen := make(map[string]bool)
+	for _, resource := range resources {
+		if (resource != "core" && resource != "graphql") || seen[resource] {
+			return nil, errors.New("invalid GitHub quota resource set")
+		}
+		seen[resource] = true
+	}
+	return resources, nil
+}
+
+func ghSnapshot(ctx context.Context, run commandRunner, executable, host string, required ...string) (snapshot, error) {
+	resources, err := requiredResources(required)
+	if err != nil {
+		return snapshot{}, err
+	}
 	user, err := run(ctx, executable, "api", "--hostname", host, "user", "--jq", ".id")
 	if err != nil {
 		return snapshot{}, errors.New("GitHub credential identity is unavailable")
@@ -234,7 +266,7 @@ func ghSnapshot(ctx context.Context, run commandRunner, executable, host string)
 	}
 	sum := sha256.Sum256(fmt.Appendf(nil, "%s:%d", strings.ToLower(host), userID))
 	result := snapshot{identity: "gh-" + hex.EncodeToString(sum[:24]), observations: make(map[string]githubquota.Observation)}
-	for _, resource := range []string{"core", "graphql"} {
+	for _, resource := range resources {
 		m, ok := payload.Resources[resource]
 		if !ok || m.Limit == nil || m.Remaining == nil || *m.Limit <= 0 || *m.Remaining < 0 || *m.Remaining > *m.Limit || m.Reset <= 0 {
 			return snapshot{}, errors.New("GitHub quota observation is incomplete")
@@ -292,8 +324,8 @@ func run() error {
 		cmd.Dir = os.Getenv("CAO_CLI_QUOTA_WORKING_DIRECTORY")
 		return cmd.Output()
 	}
-	b := newBridge(service, func(ctx context.Context) (snapshot, error) {
-		return ghSnapshot(ctx, execute, executable, host)
+	b := newBridge(service, func(ctx context.Context, resources []string) (snapshot, error) {
+		return ghSnapshot(ctx, execute, executable, host, resources...)
 	})
 	return serve(os.Stdin, os.Stdout, b)
 }

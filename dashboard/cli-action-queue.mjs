@@ -1,13 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
-import { chmodSync, mkdirSync, realpathSync, statSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, realpathSync, statSync } from "node:fs";
 import { dirname, resolve, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { parseDashboardCommand } from "./cli-actions.mjs";
+import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
 
 export const dashboardQueueLimits = Object.freeze({
   maxConcurrency: 32,
   maxJobs: 10000,
-  maxInputBytes: 64 * 1024,
+  maxInputBytes: maximumCliActionRequestBytes,
   maxChunkBytes: 16 * 1024,
   maxOutputBytes: 1024 * 1024,
   maxDatabaseOutputBytes: 64 * 1024 * 1024,
@@ -15,7 +16,7 @@ export const dashboardQueueLimits = Object.freeze({
   maxOutputChunks: 4096,
   maxPageSize: 500,
   maxPreviewBytes: 64 * 1024,
-  retentionWeeks: 4,
+  retentionDays: 30,
 });
 
 const terminal = new Set(["completed", "failed", "canceled", "timed-out"]);
@@ -45,12 +46,15 @@ function integer(value, minimum, maximum, label) {
 
 function validateInvocation(invocation, maxBytes) {
   if (!invocation || typeof invocation !== "object") throw new Error("Invalid queue invocation.");
-  const { actionId, command, arguments: args = [], values = {}, input } = invocation;
+  const { actionId, command, arguments: args = {}, values = {}, input } = invocation;
   if (typeof actionId !== "string" || !actionId || actionId.length > 256
-    || !Array.isArray(args) || args.some((arg) => typeof arg !== "string")
+    || !args || typeof args !== "object" || Array.isArray(args)
+    || Object.values(args).some((arg) => typeof arg !== "boolean")
     || !values || typeof values !== "object" || Array.isArray(values)
     || Object.values(values).some((value) => typeof value !== "string")
-    || (input !== undefined && typeof input !== "string")) throw new Error("Invalid queue invocation.");
+    || (input !== undefined && (typeof input !== "string" || input.length > maximumCliActionInputCharacters))) {
+    throw new Error("Invalid queue invocation.");
+  }
   parseDashboardCommand(command);
   const normalized = { actionId, command, arguments: args, values, ...(input === undefined ? {} : { input }) };
   const json = JSON.stringify(normalized);
@@ -66,15 +70,19 @@ function validateInvocation(invocation, maxBytes) {
  * existing executeDashboardCommand adapter; credentials stay outside invocations.
  * Admission is rechecked before every start and periodically while blocked.
  */
-export function createDashboardActionQueue({
+export function createCliActionQueue({
   filename, execute, admission = async () => ({ concurrency: maxConcurrency }),
   maxConcurrency = 1, timeoutMs = 15 * 60 * 1000,
   limits: overrides = {}, now = Date.now, admissionPollMs = 1000, sensitiveValues = [],
+  retentionDays = overrides.retentionDays ?? dashboardQueueLimits.retentionDays,
 }) {
   if (typeof filename !== "string" || !filename || filename === ":memory:"
     || typeof execute !== "function") throw new Error("A durable filename and executor are required.");
-  const limits = { ...dashboardQueueLimits, ...overrides };
-  for (const [key, value] of Object.entries(limits)) integer(value, 1, dashboardQueueLimits[key], key);
+  const limits = { ...dashboardQueueLimits, ...overrides, retentionDays };
+  for (const [key, value] of Object.entries(limits)) {
+    integer(value, key === "retentionDays" ? 7 : 1,
+      key === "retentionDays" ? 3650 : dashboardQueueLimits[key], key);
+  }
   integer(maxConcurrency, 1, limits.maxConcurrency, "concurrency");
   integer(timeoutMs, 1, 15 * 60 * 1000, "timeout");
   integer(admissionPollMs, 1, 60000, "admission interval");
@@ -82,7 +90,8 @@ export function createDashboardActionQueue({
     throw new Error("Invalid queue sensitive values.");
   }
   const secrets = [...new Set([...sensitiveValues, ...Object.entries(process.env)
-    .filter(([key, value]) => sensitiveKey.test(key) && value?.length >= 4)
+    .filter(([key, value]) => sensitiveKey.test(key) && value?.length >= 8
+      && !["true", "false", "enabled", "disabled"].includes(value.toLowerCase()))
     .map(([, value]) => value)])];
   const sanitize = (text) => {
     for (const secret of secrets) text = text.replaceAll(secret, "[REDACTED]");
@@ -90,13 +99,34 @@ export function createDashboardActionQueue({
   };
   const requested = resolve(filename);
   mkdirSync(dirname(requested), { recursive: true, mode: 0o700 });
+  if (lstatSync(dirname(requested)).isSymbolicLink()) throw new Error("Queue directory cannot be a symbolic link.");
+  const parentPath = realpathSync(dirname(requested));
+  const parent = statSync(parentPath);
+  if (process.getuid && parent.uid !== process.getuid()) throw new Error("Queue directory must be owned by the current user.");
+  if (parent.mode & 0o077) {
+    if (basename(parentPath) !== ".cao") throw new Error("Queue directory must be owner-only.");
+    chmodSync(parentPath, 0o700);
+  }
+  const checkFile = (filename) => {
+    try {
+      const file = lstatSync(filename);
+      if (!file.isFile() || file.isSymbolicLink() || file.nlink !== 1
+        || (process.getuid && file.uid !== process.getuid())) {
+        throw new Error("Queue files must be regular, single-link files owned by the current user.");
+      }
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
+  };
+  const ownershipPath = `${requested}.owner.sqlite`;
+  for (const databasePath of [requested, ownershipPath]) {
+    for (const suffix of ["", "-wal", "-shm", "-journal"]) checkFile(`${databasePath}${suffix}`);
+  }
   let path;
   try {
     path = realpathSync(requested);
     if (statSync(path).nlink !== 1) throw new Error("Hard-linked queue databases are not supported.");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
-    path = resolve(realpathSync(dirname(requested)), basename(requested));
+    path = resolve(parentPath, basename(requested));
   }
   // An OS-backed SQLite exclusive transaction releases ownership on a crash.
   // Keep this separate from the WAL database so normal commits cannot release it.
@@ -128,6 +158,10 @@ export function createDashboardActionQueue({
         seq INTEGER NOT NULL, stream TEXT NOT NULL, data TEXT NOT NULL,
         PRIMARY KEY(job_id,seq)
       );
+      CREATE TABLE IF NOT EXISTS queue_state (key TEXT PRIMARY KEY,value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS execution_claims (
+        job_id INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE RESTRICT
+      );
     `);
     const pageSize = db.prepare("PRAGMA page_size").get().page_size;
     const maxPages = Math.floor(limits.maxDatabaseBytes / pageSize);
@@ -136,8 +170,17 @@ export function createDashboardActionQueue({
     if (!db.prepare("PRAGMA table_info(jobs)").all().some(({ name }) => name === "retry_of")) {
       db.exec("ALTER TABLE jobs ADD COLUMN retry_of INTEGER");
     }
-    db.prepare(`UPDATE jobs SET status='failed',ok=0,error='CLI action interrupted by server shutdown.',
-      completed_at=?,completion_week=? WHERE status='running'`).run(now(), monday(now()));
+    if (db.prepare("SELECT count(*) AS count FROM jobs WHERE status='running'").get().count
+      || db.prepare("SELECT count(*) AS count FROM execution_claims").get().count) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.prepare("INSERT OR REPLACE INTO queue_state VALUES('recovery_blocked',?)")
+          .run("CLI queue recovery is blocked: interrupted subprocess termination is unverified. Operator reconciliation is required.");
+        db.prepare(`UPDATE jobs SET status='failed',ok=0,error='CLI action interrupted; subprocess termination is unverified.',
+          completed_at=?,completion_week=? WHERE status='running'`).run(now(), monday(now()));
+        db.exec("COMMIT");
+      } catch (error) { db.exec("ROLLBACK"); throw error; }
+    }
   } catch {
     db?.close();
     ownership.close();
@@ -149,7 +192,10 @@ export function createDashboardActionQueue({
   let pumping = false;
   let pumpTimer;
   let closePromise;
-  let admissionReason;
+  let pumpTask = Promise.resolve();
+  const recoveryReason = db.prepare("SELECT value FROM queue_state WHERE key='recovery_blocked'").get()?.value;
+  let reconciliationFailed = Boolean(recoveryReason);
+  let admissionReason = recoveryReason;
   let revision = 0;
   const assertOpen = () => { if (closed) throw new Error("CLI queue is closed."); };
   const emit = (event) => {
@@ -159,8 +205,10 @@ export function createDashboardActionQueue({
     }
   };
   function retain() {
-    const cutoff = monday(now() - limits.retentionWeeks * 7 * 86400000);
-    db.prepare("DELETE FROM jobs WHERE completion_week < ? AND status NOT IN ('queued','running')").run(cutoff);
+    // Keep the partial cutoff week; only earlier, fully expired weeks can drop.
+    const cutoff = monday(now() - limits.retentionDays * 86400000);
+    db.prepare(`DELETE FROM jobs WHERE completion_week < ? AND status NOT IN ('queued','running')
+      AND id NOT IN (SELECT job_id FROM execution_claims)`).run(cutoff);
   }
   retain();
   function detail(id) {
@@ -217,13 +265,20 @@ export function createDashboardActionQueue({
       db.prepare("UPDATE jobs SET output_bytes=output_bytes+?,output_chunks=? WHERE id=?").run(bytes, seq, id);
       db.exec("COMMIT");
     } catch (error) { db.exec("ROLLBACK"); throw error; }
-    emit({ type: "output", status: "running", id, chunk: { seq, stream, data } });
+    emit({ type: "output", status: "running", id, chunk: { sequence: seq, stream, data } });
   }
-  function start(row) {
+  function recordTerminalExitCode(id, exitCode) {
+    if (!Number.isInteger(exitCode)) return;
+    const changed = db.prepare(`UPDATE jobs SET exit_code=? WHERE id=? AND status IN ('canceled','timed-out')`)
+      .run(exitCode, id).changes;
+    if (changed) emit({ type: "settled", id });
+  }
+  function start(row, decision) {
     const id = row.id;
     const controller = new AbortController();
     const deadline = now() + timeoutMs;
     db.prepare("UPDATE jobs SET status='running',started_at=?,deadline=? WHERE id=? AND status='queued'").run(now(), deadline, id);
+    db.prepare("INSERT INTO execution_claims(job_id) VALUES(?)").run(id);
     const buffers = { stdout: "", stderr: "" };
     const dropping = { stdout: false, stderr: false };
     const privateKey = { stdout: false, stderr: false };
@@ -263,14 +318,20 @@ export function createDashboardActionQueue({
       finish(id, "timed-out", { ok: false, error: "The CLI action exceeded its time limit." });
     }, timeoutMs);
     const state = { controller, promise: null };
+    let executionResult;
     active.set(id, state);
     state.promise = Promise.resolve().then(() => {
       controller.signal.throwIfAborted();
       return execute({
         ...JSON.parse(row.invocation), signal: controller.signal, deadline, timeoutMs,
-        onOutput: async (chunk) => consume(chunk),
+        onOutput: async (chunk) => {
+          await decision.onOutput?.(chunk);
+          consume(chunk);
+        },
       });
     }).then((result) => {
+      executionResult = result;
+      recordTerminalExitCode(id, result?.exitCode);
       if (!controller.signal.aborted) {
         for (const stream of ["stdout", "stderr"]) {
           if (typeof result?.[stream] === "string" && result[stream]) consume({ stream, data: result[stream] });
@@ -281,39 +342,65 @@ export function createDashboardActionQueue({
           ...(!result?.ok ? { error: "The CLI action did not complete successfully." } : {}),
         });
       }
-    }).catch(() => {
+    }).catch((error) => {
+      executionResult = { ok: false, exitCode: Number.isInteger(error?.code) ? error.code : null };
+      recordTerminalExitCode(id, executionResult.exitCode);
       finish(id, "failed", { ok: false, error: "The CLI action did not complete successfully." });
-    }).finally(() => {
+    }).finally(async () => {
       clearTimeout(timer);
+      await completeAdmission(decision, { started: true, result: executionResult });
+      db.prepare("DELETE FROM execution_claims WHERE job_id=?").run(id);
       active.delete(id);
       schedule();
     });
     emit({ type: "running", id, status: "running" });
   }
+  async function completeAdmission(decision, result) {
+    try {
+      if (!result.started && typeof decision?.release === "function") await decision.release();
+      else await decision?.complete?.(result);
+    } catch {
+      reconciliationFailed = true;
+      admissionReason = "CLI action admission reconciliation is unavailable.";
+    }
+  }
   function schedule(delay = 0) {
     if (closed || pumpTimer) return;
-    pumpTimer = setTimeout(() => { pumpTimer = undefined; void pump(); }, delay);
+    pumpTimer = setTimeout(() => { pumpTimer = undefined; pumpTask = pump(); }, delay);
     pumpTimer.unref();
   }
   async function pump() {
     if (closed || pumping) return;
     pumping = true;
     try {
-      while (!closed && active.size < maxConcurrency) {
+      while (!closed && !reconciliationFailed && active.size < maxConcurrency) {
         const row = db.prepare("SELECT id,invocation FROM jobs WHERE status='queued' ORDER BY id LIMIT 1").get();
         if (!row) break;
         let decision;
-        try { decision = await admission({ id: row.id, ...JSON.parse(row.invocation) }); } catch { decision = { concurrency: 0 }; }
-        if (closed) break;
+        try { decision = await admission({ id: row.id, running: active.size, ...JSON.parse(row.invocation) }); } catch { decision = { concurrency: 0 }; }
+        if (closed) {
+          await completeAdmission(decision, { started: false });
+          break;
+        }
         const concurrency = Number.isInteger(decision?.concurrency)
           ? Math.max(0, Math.min(maxConcurrency, decision.concurrency)) : 0;
+        const diagnostic = [decision?.reason, decision?.message]
+          .filter((value) => typeof value === "string" && value).join(": ");
         admissionReason = concurrency === 0
-          ? (typeof decision?.reason === "string" && decision.reason
-            ? sanitize(decision.reason.slice(0, 512)) : "CLI action admission is currently blocked.")
+          ? (diagnostic ? sanitize(diagnostic.slice(0, 512)) : "CLI action admission is currently blocked.")
           : undefined;
-        if (active.size >= concurrency) { schedule(admissionPollMs); break; }
+        if (active.size >= concurrency) {
+          await completeAdmission(decision, { started: false });
+          schedule(admissionPollMs);
+          break;
+        }
         // Cancellation may have occurred during the asynchronous admission check.
-        if (db.prepare("SELECT status FROM jobs WHERE id=?").get(row.id)?.status === "queued") start(row);
+        if (db.prepare("SELECT status FROM jobs WHERE id=?").get(row.id)?.status === "queued") {
+          try { start(row, decision); } catch {
+            await completeAdmission(decision, { started: false });
+            throw new Error("CLI queue could not claim its next action.");
+          }
+        } else await completeAdmission(decision, { started: false });
       }
     } catch {
       admissionReason = "CLI queue execution is unavailable.";
@@ -358,12 +445,11 @@ export function createDashboardActionQueue({
     },
     output(id, after = 0, limit = 100) {
       assertOpen();
-      if (!detail(id)) return null;
+      if (!detail(id)) return [];
       integer(after, 0, Number.MAX_SAFE_INTEGER, "cursor");
       integer(limit, 1, limits.maxPageSize, "page size");
-      const rows = db.prepare("SELECT seq,stream,data FROM output WHERE job_id=? AND seq>? ORDER BY seq LIMIT ?").all(Number(id), after, limit + 1);
-      const chunks = rows.slice(0, limit).map((row) => ({ ...row }));
-      return { chunks, nextCursor: chunks.at(-1)?.seq ?? after, hasMore: rows.length > limit };
+      return db.prepare("SELECT seq AS sequence,stream,data FROM output WHERE job_id=? AND seq>? ORDER BY seq LIMIT ?")
+        .all(Number(id), after, limit).map((row) => ({ ...row }));
     },
     cancel(id) {
       assertOpen();
@@ -391,7 +477,7 @@ export function createDashboardActionQueue({
       closed = true;
       clearTimeout(pumpTimer);
       for (const { controller } of active.values()) controller.abort();
-      closePromise = Promise.allSettled([...active.values()].map(({ promise }) => promise)).then(() => {
+      closePromise = Promise.allSettled([pumpTask, ...[...active.values()].map(({ promise }) => promise)]).then(() => {
         db.prepare(`UPDATE jobs SET status='failed',ok=0,error='CLI action interrupted by server shutdown.',
           completed_at=?,completion_week=? WHERE status='running'`).run(now(), monday(now()));
         db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
@@ -406,5 +492,3 @@ export function createDashboardActionQueue({
   schedule();
   return api;
 }
-
-export const createCliActionQueue = createDashboardActionQueue;

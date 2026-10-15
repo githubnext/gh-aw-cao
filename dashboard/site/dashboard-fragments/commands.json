@@ -25,26 +25,20 @@
       "kind": "custom",
       "title": "Commands",
       "icon": "terminal",
+      "filter-bar": false,
+      "view-mode-control": false,
       "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
       "views": [
-        {
-          "id": "commands-running",
-          "title": "Running commands",
-          "description": "Show the authoritative running count independently of server-paginated history.",
-          "data": { "source": "command-queue-summary" },
-          "mark": "metric",
-          "metric": { "style": "card", "icon": "terminal", "tone": "neutral", "navigation-page": "commands" },
-          "encoding": { "value": { "field": "running", "type": "quantitative", "aggregate": "max" } }
-        },
         {
           "id": "commands-admission",
           "title": "Queue admission",
           "description": "Server-owned admission pauses and total count remain visible even when history is filtered.",
-          "data": { "source": "command-queue-summary" },
+          "data": { "source": "command-queue-summary", "query-context": false },
           "mark": "table",
           "controls": "static",
           "encoding": {
             "columns": [
+              { "field": "running", "type": "quantitative", "title": "Running commands" },
               { "field": "total", "type": "quantitative", "title": "Total commands" },
               { "field": "paused-reason", "type": "nominal", "title": "Admission pause" }
             ]
@@ -54,14 +48,26 @@
           "id": "commands-history",
           "title": "Command queue",
           "description": "Inspect persistent command status and open replayable output; list filters and pages execute on the local server through the data worker.",
-          "data": { "source": "command-queue" },
+          "data": { "source": "command-queue", "query-context": false },
           "mark": "table",
+          "controls": "filter-only",
+          "filter-bar": {
+            "filters": [
+              {
+                "id": "status",
+                "label": "Status",
+                "groups": [
+                  { "label": "Command status", "field": "status", "source": "cli-command-statuses", "value-field": "status" }
+                ]
+              }
+            ]
+          },
           "encoding": {
             "columns": [
               { "field": "command-link", "type": "nominal", "title": "Command", "display": "evidence-link" },
               { "field": "actionId", "type": "nominal", "title": "Action" },
               { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
-              { "field": "createdAt", "type": "temporal", "title": "Queued" },
+              { "field": "createdAt", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
               { "field": "error", "type": "nominal", "title": "Reason" }
             ]
           }

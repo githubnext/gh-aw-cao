@@ -3,6 +3,7 @@ import commands from '../../dashboard-fragments/commands.json' with { type: 'jso
 import { cliQueueOperation, configureCliQueue, queryCliQueue } from '../../src/data/cli-queue.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { cliQueueAvailable, enqueueCliCommand } from '../../src/data-processor.js';
+import { disposeDashboard, renderDashboard } from '../../src/presenter.js';
 
 afterEach(() => {
   configureCliQueue(false);
@@ -10,6 +11,31 @@ afterEach(() => {
 });
 
 describe('worker command queue', () => {
+  it('renders the declared interaction-only route without an evidence-source compatibility path', () => {
+    const previousUrl = window.location.href;
+    window.history.replaceState({}, '', '#page-command?command=42');
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const root = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: { id: 'command-contract', title: 'Command route', pages: [
+          /** @type {import('../../src/presenter.js').PresentableCustomPage} */ (commands.pages[1])
+        ] }
+      },
+      sources: {}
+    });
+    document.body.append(root);
+    try {
+      expect(root.querySelector('.command-terminal')?.textContent).toContain('authorized local admin or canvas');
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      disposeDashboard(root);
+      root.remove();
+      window.history.replaceState({}, '', previousUrl);
+    }
+  });
+
   it('fails closed without advertised local authority and never fetches', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
@@ -25,7 +51,7 @@ describe('worker command queue', () => {
 
   it('runs real declared queries over server pages with authoritative counts', async () => {
     configureCliQueue(true);
-    const states = ['queued', 'running', 'succeeded', 'failed', 'cancelled', 'paused'];
+    const states = ['queued', 'running', 'completed', 'failed', 'canceled', 'timed-out'];
     const fetch = vi.fn().mockResolvedValue(Response.json({
       commands: states.map((status, index) => ({ id: `cmd-${index}`, actionId: 'compile', status })),
       total: 106, running: 8, revision: 20, pausedReason: 'quota'
@@ -56,6 +82,27 @@ describe('worker command queue', () => {
       pagination: { 'command-queue': { limit: 10, continuationToken: btoa(JSON.stringify({ offset: 20 })) } }
     });
     expect(String(fetch.mock.calls[0][0])).toContain('limit=10&offset=20');
+  });
+
+  it('compiles the production history view over numeric command identities and epoch timestamps', async () => {
+    configureCliQueue(true);
+    const fetch = vi.fn().mockResolvedValue(Response.json({
+      commands: [{ id: 42, actionId: 'compile', status: 'running', createdAt: 1792022400000 }],
+      total: 1, running: 1, revision: 20
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const result = await queryCliQueue({
+      sourceNames: ['command-queue'], context: { pages: commands.pages, queries: commands.queries },
+      pageId: 'commands', viewId: 'commands-history',
+      queryContext: { filters: { status: ['running'] } }
+    });
+    const output = Object.values(result)[0];
+    expect(output.metadata.availability).toBe('available');
+    expect(output.rows).toHaveLength(1);
+    expect(output.rows[0]).toMatchObject({
+      status: 'running', createdAt: '2026-10-15T00:00:00.000Z',
+      'command-link': { 'dashboard-href': '#page-command?command=42' }
+    });
   });
 
   it('enqueues only declared action arguments and returns a durable ID through worker dispatch', async () => {
@@ -90,9 +137,9 @@ describe('worker command queue', () => {
     configureCliQueue(true);
     const fetch = vi.fn().mockImplementation(async () => Response.json({ id: 'durable-1' }));
     vi.stubGlobal('fetch', fetch);
-    await cliQueueOperation({ action: 'cancel', commandId: 'durable-1' });
+    await cliQueueOperation({ action: 'cancel', commandId: 42 });
     await cliQueueOperation({ action: 'retry', commandId: 'durable-1', idempotencyKey: 'retry-once' });
-    expect(String(fetch.mock.calls[0][0])).toContain('/durable-1/cancel');
+    expect(String(fetch.mock.calls[0][0])).toContain('/42/cancel');
     expect(String(fetch.mock.calls[1][0])).toContain('/durable-1/retry');
     expect(fetch.mock.calls.every(([, options]) => options.method === 'POST')).toBe(true);
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ idempotencyKey: 'retry-once' });

@@ -60,6 +60,9 @@ test("command queue concurrency is configurable only for executable local modes"
   }
   assert.throws(() => parseDashboardServerArguments(["--command-concurrency", "2"]), /requires --admin or --canvas/);
   assert.throws(() => parseDashboardServerArguments(["--operational-store", "postgres", "--command-concurrency", "2"]), /cannot be used/);
+  assert.equal(parseDashboardServerArguments(["--admin", "--acknowledge-command-recovery"]).cliQueueAcknowledgeRecovery, true);
+  assert.throws(() => parseDashboardServerArguments(["--acknowledge-command-recovery"]), /requires --admin or --canvas/);
+  assert.throws(() => parseDashboardServerArguments(["--operational-store", "postgres", "--acknowledge-command-recovery"]), /cannot be used/);
 });
 
 async function openDashboardSocket(previewUrl) {
@@ -444,6 +447,29 @@ test("queued commands retain IDs across server restart and replay output by curs
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("admin queue refuses a persistence directory symlink outside the workspace", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-queue-path-"));
+  const outside = await mkdtemp(path.join(tmpdir(), "dashboard-queue-outside-"));
+  try {
+    await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
+    await writeFile(path.join(root, "dashboard.json"), dashboard("built-in"));
+    await symlink(outside, path.join(root, ".cao"), "dir");
+    await assert.rejects(startDashboardServer({
+      admin: true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+      dataBackend: "indexeddb", output: () => {}, traceOutput: () => {}, requestOutput: () => {},
+      downloadData: async (destination) => {
+        await mkdir(destination, { recursive: true });
+        await writeFile(path.join(destination, "sources.json"), "{}");
+      },
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
+    }), /queue database must remain within the workspace/);
+    await assert.rejects(stat(path.join(outside, "cli-actions.sqlite")), { code: "ENOENT" });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });
 

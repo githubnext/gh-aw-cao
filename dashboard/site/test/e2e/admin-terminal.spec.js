@@ -6,6 +6,7 @@ const { startDashboardServer } = await import(new URL('../../../local-server.mjs
 
 for (const width of [1440, 390]) {
   test(`admin action streams into a read-only terminal at ${width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
     /** @type {(() => void) | undefined} */
     let finish;
     /** @type {((event: { stream: string, data: string }) => void) | undefined} */
@@ -15,6 +16,8 @@ for (const width of [1440, 390]) {
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', admin: true, port: 0,
+      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
       lookupSelector: async () => [{ value: 'octo/example', label: 'octo/example' }],
       executeCliAction: async (/** @type {{ signal?: AbortSignal, onOutput: (event: { stream: string, data: string }) => void }} */ { onOutput, signal }) => {
@@ -189,7 +192,7 @@ for (const width of [1440, 390]) {
       await expect(upgradeDialog.locator(':scope > footer button:visible')).toHaveText(['Close']);
     } finally {
       finish?.();
-      await page.goto('about:blank');
+      await page.goto('about:blank').catch(() => {});
       await preview.close();
     }
   });

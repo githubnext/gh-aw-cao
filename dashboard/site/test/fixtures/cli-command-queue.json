@@ -2,10 +2,10 @@
   "commands": [
     { "id": "cmd-queued", "actionId": "compile", "status": "queued", "createdAt": "2026-10-15T00:00:00Z" },
     { "id": "cmd-running", "actionId": "compile", "status": "running", "createdAt": "2026-10-15T00:00:00Z" },
-    { "id": "cmd-succeeded", "actionId": "compile", "status": "succeeded", "createdAt": "2026-10-15T00:00:00Z" },
+    { "id": "cmd-completed", "actionId": "compile", "status": "completed", "createdAt": "2026-10-15T00:00:00Z" },
     { "id": "cmd-failed", "actionId": "compile", "status": "failed", "createdAt": "2026-10-15T00:00:00Z", "error": "Command exited with code 1." },
-    { "id": "cmd-cancelled", "actionId": "compile", "status": "cancelled", "createdAt": "2026-10-15T00:00:00Z" },
-    { "id": "cmd-paused", "actionId": "compile", "status": "paused", "createdAt": "2026-10-15T00:00:00Z" }
+    { "id": "cmd-canceled", "actionId": "compile", "status": "canceled", "createdAt": "2026-10-15T00:00:00Z" },
+    { "id": "cmd-timed-out", "actionId": "compile", "status": "timed-out", "createdAt": "2026-10-15T00:00:00Z" }
   ],
   "total": 6,
   "running": 1,

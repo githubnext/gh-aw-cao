@@ -218,7 +218,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     if (typeof view.controls === 'string' && !VIEW_CONTROL_VALUES.includes(view.controls)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'controls must use one canonical interactive or static value.',
+        'controls must use one canonical interactive, filter-only, or static value.',
         `${path}.controls`
       ));
     }

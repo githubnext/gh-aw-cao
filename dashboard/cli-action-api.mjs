@@ -184,11 +184,16 @@ export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrig
           if (legacy) await streamCommand(queue, command.id, 0, response);
           else sendJson(response, 202, command);
         } else if (!legacy && request.method === "GET") {
-          sendJson(response, 200, await queue.list({
+          const result = await queue.list({
             status: url.searchParams.get("status") || undefined,
             limit: integer(url.searchParams.get("limit"), 50, 300),
             offset: integer(url.searchParams.get("offset"), 0, 1_000_000),
-          }));
+          });
+          sendJson(response, 200, {
+            ...result,
+            commands: result.commands.map(({ input: _input, stdout: _stdout, stderr: _stderr,
+              arguments: _arguments, values: _values, ...summary }) => summary),
+          });
         } else response.writeHead(405, { Allow: legacy ? "POST" : "GET, POST" }).end();
         return true;
       }
@@ -218,7 +223,11 @@ export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrig
           });
           if (invocation.command !== original.command) throw failure(409, "CLI action declaration has changed.");
           await authorize(invocation);
-          sendJson(response, 202, await queue.retry(id, payload.idempotencyKey ?? request.headers["idempotency-key"]));
+          const retried = await queue.retry(id, payload.idempotencyKey ?? request.headers["idempotency-key"]);
+          if (String(retried.retryOf) !== String(id)) {
+            throw failure(409, "Retry idempotency key conflicts with another command.");
+          }
+          sendJson(response, 202, retried);
         }
       } else response.writeHead(405, { Allow: operation === "cancel" || operation === "retry" ? "POST" : "GET" }).end();
     } catch (error) {

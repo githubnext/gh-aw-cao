@@ -51,7 +51,7 @@ async function executeAction(id, argumentsValue, templateValues, onOutput, input
   const complete = await attachCliCommand(command.id, (event) => onOutput(
     /** @type {{ stream: 'stdout'|'stderr', data: string }} */ (event)
   ), signal);
-  if (complete.command?.status === 'cancelled') {
+  if (complete.command?.status === 'canceled') {
     return { ...complete.result, error: 'Cancelled. Completed changes are not undone.' };
   }
   return complete.result;

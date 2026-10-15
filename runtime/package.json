@@ -60,6 +60,7 @@
     "dashboard/dialog-selector.mjs",
     "dashboard/grader",
     "dashboard/local-custom-views.mjs",
+    "dashboard/local-release-metadata.mjs",
     "dashboard/local-server.mjs",
     "dashboard/local-sqlite-backend.mjs",
     "dashboard/local-sqlite-worker.mjs",
