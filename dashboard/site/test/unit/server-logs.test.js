@@ -75,4 +75,16 @@ describe('administrator server logs', () => {
     view.remove();
     await vi.waitFor(() => expect(signal.aborted).toBe(true));
   });
+
+  it('morphs the log body in place across refreshes', async () => {
+    fetchServerLogs.mockResolvedValue({ logs: [] });
+    const view = renderServerLogsView(() => {});
+    document.body.append(view);
+    await vi.waitFor(() => expect(view.querySelector('pre')).not.toBeNull());
+    const body = view.querySelector('.memory-file-body');
+    view.querySelectorAll('button')[1].click();
+    await vi.waitFor(() => expect(fetchServerLogs).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(view.querySelector('pre')).not.toBeNull());
+    expect(view.querySelector('.memory-file-body')).toBe(body);
+  });
 });
