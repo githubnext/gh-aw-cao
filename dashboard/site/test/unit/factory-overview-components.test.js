@@ -85,7 +85,7 @@ describe('Overview component boundaries', () => {
     expect(days).toHaveLength(7);
     expect(rendered.getAttribute('aria-label')).toContain('this week and last week');
     expect([...rendered.querySelector('.factory-rhythm-heading')?.children ?? []].map((child) => child.textContent))
-      .toEqual(['Campaign rhythm', 'Successful runs', 'This weekLast week']);
+      .toEqual(['Weekly rhythm', 'Successful runs', 'This weekLast week']);
     expect(rendered.querySelector('.graph-widget-y-axis-label')).toBeNull();
     expect(rendered.querySelector('.graph-widget-plot.factory-rhythm-bars')).not.toBeNull();
     expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week; 7 successful runs last week.');
@@ -158,11 +158,11 @@ describe('Overview component boundaries', () => {
   it('floor composes selected stations and owns their aggregate accessible summary', () => {
     const controller = new AbortController();
     const sources = {
-      'overview-campaign-station': binding({ rows: [{
+      'overview-factory-station': binding({ rows: [{
         value: 2 / 3,
         'display-value': '66.7%',
-        detail: '2/3 healthy campaigns',
-        description: '67% campaign health',
+        detail: '2/3 healthy workflows',
+        description: '67% factory health',
         active: true
       }] }),
       'overview-repository-station': binding({ rows: [{
@@ -176,21 +176,21 @@ describe('Overview component boundaries', () => {
       sources,
       false,
       { signal: controller.signal },
-      { campaigns: 'overview-campaign-station', repositories: 'overview-repository-station' },
+      { campaigns: 'overview-factory-station', repositories: 'overview-repository-station' },
       ['campaigns', 'repositories']
     );
 
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['66.7%', '50%']);
-    expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy campaigns', '4/6 repositories reached']);
+    expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy workflows', '4/6 repositories reached']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
-    expect(rendered.getAttribute('aria-label')).toBe('67% campaign health, 50% average repository coverage.');
+    expect(rendered.getAttribute('aria-label')).toBe('67% factory health, 50% average repository coverage.');
     controller.abort();
   });
 
   it('header presents declarative heading and rhythm composition without subtext', () => {
     const controller = new AbortController();
     const sources = {
-      'overview-header-presentation': binding({ rows: [{ heading: 'Your campaigns are delivering value.' }] }),
+      'overview-header-presentation': binding({ rows: [{ heading: 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
     const rendered = renderFactoryHeader(
@@ -200,7 +200,7 @@ describe('Overview component boundaries', () => {
     );
 
     expect(rendered.querySelector('.factory-running')).toBeNull();
-    expect(rendered.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
+    expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
     expect(rendered.querySelector('.factory-intro-copy > p')?.hasAttribute('hidden')).toBe(true);
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
 

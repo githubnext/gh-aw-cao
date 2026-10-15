@@ -27,9 +27,7 @@ const campaignDiagnosisQueries = dashboard.queries.filter(
 );
 const overviewInventoryQueries = dashboard.queries.filter(
   (/** @type {{ name?: string }} */ candidate) => [
-    'database-campaign-count',
-    'overview-registered-repository-summary',
-    'overview-healthy-campaign-count'
+    'overview-registered-repository-summary'
   ].includes(candidate.name ?? '')
 );
 
@@ -115,16 +113,8 @@ it('labels only campaigns with a GitHub-disabled dispatcher, not disabled worker
   ]);
 });
 
-it('counts logical campaign and repository identities without internal database ids', () => {
+it('counts logical repository identities without internal database ids', () => {
   const sources = executeDashboardQueries(overviewInventoryQueries, {
-    campaigns: {
-      source: 'campaigns',
-      metadata,
-      rows: [
-        { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor' },
-        { campaign: 'dependabot', 'campaign-name': 'Dependabot' }
-      ]
-    },
     repositories: {
       source: 'repositories',
       metadata,
@@ -132,23 +122,14 @@ it('counts logical campaign and repository identities without internal database 
         { organization: 'octo', repository: 'api', 'repository-coordinate': 'octo/api' },
         { organization: 'octo', repository: 'web', 'repository-coordinate': 'octo/web' }
       ]
-    },
-    'campaign-runtime-problem-counts': {
-      source: 'campaign-runtime-problem-counts',
-      metadata,
-      rows: [{ campaign: 'aw-doctor', 'problem-partitions': 1 }]
     }
   }, [
-    'database-campaign-count',
-    'overview-registered-repository-summary',
-    'overview-healthy-campaign-count'
+    'overview-registered-repository-summary'
   ]);
 
-  expect(sources['database-campaign-count'].rows).toEqual([{ campaigns: 2 }]);
   expect(sources['overview-registered-repository-summary'].rows).toEqual([
     { 'registered-repositories': 2 }
   ]);
-  expect(sources['overview-healthy-campaign-count'].rows).toEqual([{ 'healthy-campaigns': 1 }]);
 });
 
 it('keeps campaign error groups scoped to their target repository', () => {

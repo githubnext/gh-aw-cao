@@ -58,7 +58,7 @@ describe('factory-floor debug logging', () => {
 
     renderFactoryFloor(
       {
-        'overview-campaign-station': {
+        'overview-factory-station': {
           rows: () => [{ value: 1 }],
           pending: () => false,
           unavailable: () => false
@@ -71,7 +71,7 @@ describe('factory-floor debug logging', () => {
       },
       false,
       scope(),
-      { campaigns: 'overview-campaign-station', repositories: 'overview-repository-station' },
+      { campaigns: 'overview-factory-station', repositories: 'overview-repository-station' },
       ['campaigns', 'repositories']
     );
 
@@ -83,7 +83,7 @@ describe('factory-floor debug logging', () => {
 
     renderFactoryFloor(
       {
-        'overview-campaign-station': {
+        'overview-factory-station': {
           rows: () => [{ value: 1 }],
           pending: () => false,
           unavailable: () => false
@@ -96,7 +96,7 @@ describe('factory-floor debug logging', () => {
       },
       true,
       scope(),
-      { campaigns: 'overview-campaign-station', repositories: 'overview-repository-station' },
+      { campaigns: 'overview-factory-station', repositories: 'overview-repository-station' },
       ['campaigns', 'repositories']
     );
 
@@ -122,9 +122,9 @@ describe('factory-floor debug logging', () => {
       viewId: 'overview-floor',
       viewIndex: 1,
       title: 'Campaign overview',
-      sourceNames: ['overview-campaign-station', 'overview-repository-station'],
+      sourceNames: ['overview-factory-station', 'overview-repository-station'],
       sources: {
-        'overview-campaign-station': source('overview-campaign-station', [{ value: 1 }]),
+        'overview-factory-station': source('overview-factory-station', [{ value: 1 }]),
         'overview-repository-station': source('overview-repository-station', [{ value: 0.5 }])
       },
       elementConfig: { stations: ['campaigns', 'repositories'] },
@@ -149,9 +149,9 @@ describe('factory-floor debug logging', () => {
       viewId: 'overview-floor',
       viewIndex: 1,
       title: 'Campaign overview',
-      sourceNames: ['overview-campaign-station'],
+      sourceNames: ['overview-factory-station'],
       sources: {
-        'overview-campaign-station': source('overview-campaign-station', [{ value: 1 }])
+        'overview-factory-station': source('overview-factory-station', [{ value: 1 }])
       },
       elementConfig: { stations: ['campaigns', 'unknown-station'] },
       contextDetails: [],

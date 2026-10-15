@@ -184,13 +184,13 @@ it('renders a link button list skeleton until its source resolves', async () => 
 
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
-    'overview-header-presentation': source('overview-header-presentation', [{ heading: 'Your campaigns are delivering value.' }]),
+    'overview-header-presentation': source('overview-header-presentation', [{ heading: 'Your factory is delivering value.' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
 
   expect(rendered?.classList.contains('factory-intro')).toBe(true);
   expect(rendered?.querySelector('.factory-running')).toBeNull();
-  expect(rendered?.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
+  expect(rendered?.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect(rendered?.querySelector('.factory-intro-copy > p')?.hasAttribute('hidden')).toBe(true);
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
 });
@@ -209,11 +209,11 @@ it('rebinds the factory header to differently named sources through config.sourc
 
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
-    'overview-campaign-station': source('overview-campaign-station', [{
+    'overview-factory-station': source('overview-factory-station', [{
       value: 1,
       'display-value': '100%',
-      detail: '2/2 healthy campaigns',
-      description: '100% campaign health',
+      detail: '2/2 healthy workflows',
+      description: '100% factory health',
       active: true
     }]),
     'overview-repository-station': source('overview-repository-station', [{
@@ -229,7 +229,7 @@ it('renders the factory floor from its independent JSON view and configuration',
 
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
-    'Campaign health100%2/2 healthy campaigns',
+    'Factory health100%2/2 healthy workflows',
     'Repository coverage50%3/6 repositories reached'
   ]);
   expect(rendered?.querySelector('.factory-station:nth-child(1) strong .metric-number-animated')).not.toBeNull();
@@ -238,11 +238,11 @@ it('renders the factory floor from its independent JSON view and configuration',
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
-    'overview-campaign-station': source('overview-campaign-station', [{
+    'overview-factory-station': source('overview-factory-station', [{
       value: 0,
       'display-value': '0%',
-      detail: '0/0 healthy campaigns',
-      description: '0% campaign health'
+      detail: '0/0 healthy workflows',
+      description: '0% factory health'
     }]),
     'overview-repository-station': source('overview-repository-station', [], { availability: 'unavailable' })
   }, { stations: ['campaigns', 'repositories'] }));
@@ -257,15 +257,15 @@ it('rebinds the factory floor to differently named sources through config.source
     'custom-campaign-station': source('custom-campaign-station', [{
       value: 0.75,
       'display-value': '75%',
-      detail: '3/4 healthy campaigns',
-      description: '75% campaign health'
+      detail: '3/4 healthy workflows',
+      description: '75% factory health'
     }])
   }, {
     stations: ['campaigns'],
     sources: { campaigns: 'custom-campaign-station' }
   }));
 
-  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Campaign health75%3/4 healthy campaigns');
+  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Factory health75%3/4 healthy workflows');
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {
@@ -290,24 +290,24 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(requests.map(({ name }) => name)).toEqual([
     'overview-header-presentation',
     'overview-rhythm',
-    'overview-campaign-station',
+    'overview-factory-station',
     'overview-repository-station'
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
 
-  const campaignStation = source('overview-campaign-station', [{
+  const campaignStation = source('overview-factory-station', [{
     value: 0.75,
     'display-value': '75%',
-    detail: '3/4 healthy campaigns',
-    description: '75% campaign health',
+    detail: '3/4 healthy workflows',
+    description: '75% factory health',
     active: true
   }]);
-  resolvers.get('overview-floor:overview-campaign-station')?.(campaignStation);
+  resolvers.get('overview-floor:overview-factory-station')?.(campaignStation);
   await Promise.resolve();
   await Promise.resolve();
 
   expect(header?.querySelector('.factory-running')).toBeNull();
-  expect(floor?.querySelector('.factory-station:nth-child(1)')?.textContent).toBe('Campaign health75%3/4 healthy campaigns');
+  expect(floor?.querySelector('.factory-station:nth-child(1)')?.textContent).toBe('Factory health75%3/4 healthy workflows');
   expect(floor?.querySelector('.factory-station:nth-child(1)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(true);
   expect(floor?.classList.contains('custom-view')).toBe(true);

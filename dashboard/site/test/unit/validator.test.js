@@ -561,7 +561,7 @@ describe('dashboard document validation', () => {
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    floor.config.sources = { campaigns: 'overview-campaign-station' };
+    floor.config.sources = { campaigns: 'overview-factory-station' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     floor.config.sources = { issues: 'database-issue-count' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
@@ -1270,7 +1270,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
+        description: 'Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution.',
         data: { sources: ['overview-header-presentation', 'overview-rhythm'] },
         mark: 'element',
         element: 'factory-header',
@@ -1279,7 +1279,7 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-floor',
-        data: { sources: ['overview-campaign-station', 'overview-repository-station'] },
+        data: { sources: ['overview-factory-station', 'overview-repository-station'] },
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),
