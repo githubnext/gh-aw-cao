@@ -91,11 +91,11 @@ func TestServeHostedLoadsMaterializedDashboardQueriesByDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, definition := range definitions {
-		if definition.Name == "database-campaign-count" {
+		if definition.Name == "indexing-campaigns-table-count" {
 			return
 		}
 	}
-	t.Fatal("default dashboard query definitions omit database-campaign-count")
+	t.Fatal("default dashboard query definitions omit indexing-campaigns-table-count")
 }
 
 func TestServeHostedRejectsUnsupportedOperationalBackend(t *testing.T) {
