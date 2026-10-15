@@ -11,6 +11,7 @@ import { Icon } from "@astrojs/starlight/components";
 
 <script>
   const storageKey = "starlight-theme";
+  const pageTitleId = "_top";
   const colorScheme = window.matchMedia("(prefers-color-scheme: light)");
 
   function currentTheme(): "light" | "dark" {
@@ -24,6 +25,33 @@ import { Icon } from "@astrojs/starlight/components";
       button.ariaLabel = `Switch to ${nextTheme} theme`;
       button.title = `Switch to ${nextTheme} theme`;
       button.setAttribute("aria-pressed", String(theme === "dark"));
+    });
+  }
+
+  function prepareSkipTarget(): HTMLElement | null {
+    const target = document.getElementById(pageTitleId);
+    if (!(target instanceof HTMLElement)) return null;
+    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+    return target;
+  }
+
+  function focusSkipTarget(): void {
+    const target = prepareSkipTarget();
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function initSkipLink(): void {
+    prepareSkipTarget();
+    document.querySelectorAll<HTMLAnchorElement>(".sl-skip-link").forEach((link) => {
+      if (link.dataset.skipLinkReady === "true") return;
+      link.dataset.skipLinkReady = "true";
+      link.addEventListener("click", () => {
+        focusSkipTarget();
+      });
     });
   }
 
@@ -52,7 +80,15 @@ import { Icon } from "@astrojs/starlight/components";
       document.documentElement.dataset.theme = colorScheme.matches ? "light" : "dark";
       syncThemeButtons();
     });
+
+    window.addEventListener("hashchange", () => {
+      if (window.location.hash === `#${pageTitleId}`) focusSkipTarget();
+    });
+    document.addEventListener("astro:page-load", initSkipLink);
   }
+
+  initSkipLink();
+  if (window.location.hash === `#${pageTitleId}`) focusSkipTarget();
 </script>
 
 <style>
