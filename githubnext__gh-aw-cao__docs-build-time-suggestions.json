@@ -3,6 +3,35 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-15T23:36:59Z",
+      "worker_run_id": 38824231847,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38824050434,
+        38822881397,
+        38822524575,
+        38822290397,
+        38821192762,
+        38820956792,
+        38819610128,
+        38819317700,
+        38818823137,
+        38817905195,
+        38816726101,
+        38815998616,
+        38814233540,
+        38813962452,
+        38813951269,
+        38812389899,
+        38812374506,
+        38812321559,
+        38810844842,
+        38810326287
+      ],
+      "decision": "report_incomplete_api_rate_limit",
+      "outcome": "Attempted category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 5e1f1908d6c79e4a9b146fade12c68095fb4d002. While refreshing latest-run job metadata after fetching the current docs and dashboard workflow windows, GitHub Actions reads began returning API rate limit errors, so the worker stopped without completing the current timing comparison or duplicate-issue check. Unresolved work: finish the current latest-20 docs.yml and cao-dashboard.yml evaluation for run IDs 38824050434 through 38810326287, then compare any actionable result against open issue #18158 before emitting a new suggestion."
+    },
+    {
       "evaluated_at": "2026-10-15T23:27:00Z",
       "worker_run_id": 38822851016,
       "category": "artifact transfer and Pages packaging",
@@ -1087,42 +1116,6 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"Astro documentation generation\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T03:01:57Z through 2026-10-15T06:38:38Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 2 comparable successful docs runs executed the build job and completed deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466 and 38677403256 on workflow_run at source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. The remaining 13 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38693618999 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper Astro documentation generation analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-15T05:54:28Z",
-      "worker_run_id": 38689175703,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38688921214,
-        38688818783,
-        38687644366,
-        38687091140,
-        38686600515,
-        38684569639,
-        38683517634,
-        38682665940,
-        38681755362,
-        38681509701,
-        38679321249,
-        38679037833,
-        38678535133,
-        38677662705,
-        38677403256,
-        38676364836,
-        38674119808,
-        38673466029,
-        38673220743,
-        38671480474
-      ],
-      "docs_window": {
-        "start": "2026-10-15T02:00:18Z",
-        "end": "2026-10-15T05:50:07Z"
-      },
-      "docs_success_count": 15,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 2,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T02:00:18Z through 2026-10-15T05:50:07Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 2 comparable successful docs runs executed the build job and completed deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466 and 38677403256 on workflow_run at source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. The remaining 13 successful runs were schedule-freshness no-ops with build and deploy skipped, and a bounded log read from run 38688818783 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
     }
   ]
 }
