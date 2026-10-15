@@ -6,6 +6,9 @@ import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/card-filter-contract.json' with { type: 'json' };
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+const fixtureTimeOffset = Date.now() - Date.parse('2026-10-04T00:00:00Z');
+/** @param {string} value */
+const currentFixtureTime = (value) => new Date(Date.parse(value) + fixtureTimeOffset).toISOString();
 const origin = 'http://card-filters.dashboard.test';
 const dashboard = authoritativeDashboard.dashboard;
 const issuesPage = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
@@ -23,13 +26,13 @@ const documentModel = {
 
 /** @param {boolean} [updated] @param {boolean} [expanded] */
 function sources(updated = false, expanded = false) {
-  const metadata = { 'as-of': '2026-10-04T00:00:00Z', 'artifact-generation': updated ? 'updated' : 'initial' };
+  const metadata = { 'as-of': currentFixtureTime('2026-10-04T00:00:00Z'), 'artifact-generation': updated ? 'updated' : 'initial' };
   return {
     repositories: { rows: [{ organization: 'octo', repository: 'repo' }], metadata },
     workflows: { rows: [{ organization: 'octo', repository: 'repo', workflow: 'worker.md' }], metadata },
     runs: { rows: [{
       organization: 'octo', repository: 'repo', workflow: 'worker.md', run: '1', 'run-attempt': 1,
-      'started-at': '2026-10-01T00:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success'
+      'started-at': currentFixtureTime('2026-10-01T00:00:00Z'), 'run-status': 'completed', 'run-conclusion': 'success'
     }], metadata },
     issues: { rows: [
       ...contract.issues,
@@ -43,7 +46,8 @@ function sources(updated = false, expanded = false) {
       })) : [])
     ].map((row) => ({
       ...row, organization: 'octo', repository: 'repo', workflow: 'worker.md', run: '1',
-      'run-attempt': 1, 'event-source': 'safe-output'
+      'run-attempt': 1, 'event-source': 'safe-output',
+      'event-timestamp': currentFixtureTime(row['event-timestamp'])
     })), metadata }
   };
 }

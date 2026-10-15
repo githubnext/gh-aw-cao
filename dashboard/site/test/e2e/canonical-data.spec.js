@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coordinator.js';
 import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
-import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
+import { createSqliteIndexedDB, SqliteIDBKeyRange } from '../../src/data/storage/sqlite-indexeddb.js';
 import { normalizedActivityShards } from './normalized-shard.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
@@ -1327,6 +1327,8 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
 });
 
 test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }) => {
+  const originalKeyRange = globalThis.IDBKeyRange;
+  globalThis.IDBKeyRange = /** @type {typeof IDBKeyRange} */ (SqliteIDBKeyRange);
   const input = ghAwLogInput();
   const directory = mkdtempSync(join(tmpdir(), 'cao-ingestion-compliance-'));
   try {
@@ -1363,6 +1365,7 @@ test('SQLite and browser IndexedDB ingestion produce identical populated tables'
     }
     expect(browserRows).toEqual(sqliteRows);
   } finally {
+    globalThis.IDBKeyRange = originalKeyRange;
     rmSync(directory, { recursive: true, force: true });
   }
 });

@@ -1587,9 +1587,13 @@ func ResolveQueryContext(definitions []query.Definition, evaluatedAt string) {
 			definitions[definitionIndex].Compute[computedIndex].Args = slices.Clone(definitions[definitionIndex].Compute[computedIndex].Args)
 			for argumentIndex := range definitions[definitionIndex].Compute[computedIndex].Args {
 				argument := &definitions[definitionIndex].Compute[computedIndex].Args[argumentIndex]
-				if argument.Context == "time-end" {
+				switch argument.Context {
+				case "time-end":
 					argument.Context = ""
 					argument.Value = evaluatedAt
+				case "time-start":
+					argument.Context = ""
+					argument.Value = nil
 				}
 			}
 		}

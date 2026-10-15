@@ -257,6 +257,7 @@ test.beforeAll(async () => {
     },
     host: "127.0.0.1",
     port: 0,
+    dataBackend: "indexeddb",
   });
 });
 
@@ -344,7 +345,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   expect(
     [...shardResponses.keys()].sort(),
     "The dashboard must request every canonical activity shard",
-  ).toEqual(expectedActivityShardPaths);
+  ).toEqual([...expectedActivityShardPaths].sort());
   expect(
     [...shardResponses.values()].every((response) => response.ok()),
     "Dashboard activity shard requests must succeed",

@@ -323,13 +323,16 @@ func TestQueryCacheCancellationAndOperationDeadline(t *testing.T) {
 }
 func TestResolveQueryContextDoesNotMutateSharedDefinitions(t *testing.T) {
 	original := []query.Definition{{Name: "runs", Compute: []query.ComputedField{{
-		Args: []query.Argument{{Context: "time-end"}},
+		Args: []query.Argument{{Context: "time-end"}, {Context: "time-start"}},
 	}}}}
 	for _, evaluatedAt := range []string{"first", "second"} {
 		cloned := append([]query.Definition{}, original...)
 		ResolveQueryContext(cloned, evaluatedAt)
 		if original[0].Compute[0].Args[0].Context != "time-end" ||
-			cloned[0].Compute[0].Args[0].Value != evaluatedAt {
+			cloned[0].Compute[0].Args[0].Value != evaluatedAt ||
+			original[0].Compute[0].Args[1].Context != "time-start" ||
+			cloned[0].Compute[0].Args[1].Context != "" ||
+			cloned[0].Compute[0].Args[1].Value != nil {
 			t.Fatalf("shared definitions were mutated: original=%+v cloned=%+v", original, cloned)
 		}
 	}

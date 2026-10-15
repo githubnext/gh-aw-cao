@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"testing"
@@ -68,13 +69,16 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var result string
+			var result sql.NullString
 			var present bool
 			if err := db.QueryRowContext(t.Context(), statement, args...).Scan(&result, &present); err != nil {
 				t.Fatalf("native function %s failed: %v", testcase.name, err)
 			}
-			if result != testcase.want || !present {
-				t.Fatalf("native function %s = %q, want %q", testcase.name, result, testcase.want)
+			if !result.Valid && testcase.want == "null" && present {
+				return
+			}
+			if !result.Valid || result.String != testcase.want || !present {
+				t.Fatalf("native function %s = %+v, want %q", testcase.name, result, testcase.want)
 			}
 		})
 	}

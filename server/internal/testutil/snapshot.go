@@ -58,7 +58,7 @@ func RecentSnapshot(t testing.TB, source string) (string, time.Duration) {
 	if latest.IsZero() {
 		t.Fatal("snapshot requires timestamped run evidence")
 	}
-	offset := time.Now().UTC().Add(-24 * time.Hour).Sub(latest)
+	offset := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Microsecond).Sub(latest)
 	const manifestPath = "payload-hashes.json"
 	content, err := root.ReadFile(manifestPath)
 	if err != nil {

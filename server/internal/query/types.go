@@ -90,6 +90,27 @@ type Argument struct {
 	Parameter string  `json:"parameter,omitempty"`
 }
 
+func (a Argument) MarshalJSON() ([]byte, error) {
+	switch {
+	case a.Field != nil:
+		return json.Marshal(struct {
+			Field string `json:"field"`
+		}{*a.Field})
+	case a.Context != "":
+		return json.Marshal(struct {
+			Context string `json:"context"`
+		}{a.Context})
+	case a.Parameter != "":
+		return json.Marshal(struct {
+			Parameter string `json:"parameter"`
+		}{a.Parameter})
+	default:
+		return json.Marshal(struct {
+			Value any `json:"value"`
+		}{a.Value})
+	}
+}
+
 // argumentKind identifies which of the mutually exclusive shapes a compute
 // argument's raw JSON object took. It is useful for diagnosing a malformed
 // dashboard query document without logging its field names or values.

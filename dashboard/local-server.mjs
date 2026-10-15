@@ -16,6 +16,7 @@ import {
 } from "node:fs/promises";
 import { createReadStream, createWriteStream, watch } from "node:fs";
 import { isIP } from "node:net";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -659,7 +660,7 @@ export async function startDashboardServer({
   }
   let queryEditorValidationBundle;
   if (canvas && typeof generateQuery === "function") {
-    const { build } = await import("esbuild");
+    const { build } = createRequire(new URL("./site/package.json", import.meta.url))("esbuild");
     const result = await build({
       entryPoints: [join(scriptDirectory, "site/src/data/query-editor.js")],
       bundle: true, write: false, platform: "browser", format: "esm",
