@@ -1,3 +1,18 @@
+import { recordTimestamp } from '../../src/data/storage/retention.js';
+
+/** @param {string} jsonl */
+export function performanceSnapshotTimestamp(jsonl) {
+  let latest = -Infinity;
+  for (const line of jsonl.split('\n')) {
+    if (!line.trim()) continue;
+    const envelope = JSON.parse(line);
+    if (envelope.kind !== 'record') continue;
+    const timestamp = recordTimestamp(envelope.collection, envelope.record);
+    if (timestamp !== null) latest = Math.max(latest, timestamp);
+  }
+  return latest;
+}
+
 /** @param {number[]} values */
 export function median(values) {
   if (!values.length || values.some((value) => !Number.isFinite(value))) {

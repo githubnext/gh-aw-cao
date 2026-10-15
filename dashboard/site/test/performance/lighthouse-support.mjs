@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { deployedActivityShardEntries } from '../../../../tests/e2e/dashboard-deployed-refresh-helpers.mjs';
 import { downloadDeployedDashboardData } from '../../../../tests/e2e/dashboard-view-data.mjs';
+import { performanceSnapshotTimestamp } from './lighthouse-contract.js';
 
 const digest = (body) => createHash('sha256').update(body).digest('hex');
 
@@ -21,12 +22,15 @@ export async function preparePerformanceData(fullRoot, emptyRoot, sourceUrl, loc
   }
   const shards = deployedActivityShardEntries(manifest);
   let bytes = 0;
+  let retentionAsOf = -Infinity;
   for (const shard of shards) {
     if (shard.sourceName !== shard.name) throw new Error('Performance audits require normalized JSONL shards.');
     const body = await readFile(join(fullRoot, shard.name));
     if (digest(body) !== shard.hash) throw new Error(`Dashboard shard hash mismatch: ${shard.name}`);
     bytes += body.length;
+    retentionAsOf = Math.max(retentionAsOf, performanceSnapshotTimestamp(body.toString('utf8')));
   }
+  if (!Number.isFinite(retentionAsOf)) throw new Error('Performance dataset contains no timestamped canonical evidence.');
   const first = JSON.parse((await readFile(join(fullRoot, shards[0].name), 'utf8')).split('\n')[0]);
   if (first.kind !== 'metadata') throw new Error('Dashboard shard metadata is missing.');
   const emptyManifest = {};
@@ -47,7 +51,7 @@ export async function preparePerformanceData(fullRoot, emptyRoot, sourceUrl, loc
   await writeFile(join(emptyRoot, 'payload-hashes.json'), JSON.stringify(emptyManifest));
   await mkdir(join(emptyRoot, 'memory'), { recursive: true });
   await writeFile(join(emptyRoot, 'memory/manifest.json'), '{"version":1,"campaigns":[]}');
-  return { sourceUrl, manifestSha256: digest(JSON.stringify(manifest)), shards: shards.length, bytes };
+  return { sourceUrl, manifestSha256: digest(JSON.stringify(manifest)), shards: shards.length, bytes, retentionAsOf };
 }
 
 export function instrumentPerformancePage() {
