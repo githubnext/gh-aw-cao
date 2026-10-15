@@ -268,6 +268,29 @@ it('rebinds the factory floor to differently named sources through config.source
   expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Campaign health75%3/4 healthy campaigns');
 });
 
+it('renders a floor from fully declared stations without built-in presets', () => {
+  const rendered = renderUiElement('factory-floor', context('factory-floor', {
+    'review-station': source('review-station', [{
+      value: 0.25,
+      'display-value': '25%',
+      detail: '1/4 reviewed',
+      description: '25% review coverage'
+    }])
+  }, {
+    stations: [{
+      id: 'reviews',
+      source: 'review-station',
+      icon: 'repo',
+      label: 'Review coverage',
+      href: '#page-reviews'
+    }]
+  }));
+
+  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Review coverage25%1/4 reviewed');
+  expect(rendered?.querySelector('.factory-station strong a')?.getAttribute('href')).toBe('#page-reviews');
+  expect(rendered?.getAttribute('aria-label')).toBe('25% review coverage.');
+});
+
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {
   /** @type {Array<{ name: string, pageId?: string, viewId?: string }>} */
   const requests = [];

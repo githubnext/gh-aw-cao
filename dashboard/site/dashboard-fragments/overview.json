@@ -1965,8 +1965,24 @@
           "config": {
             "animate": "number",
             "stations": [
-              "campaigns",
-              "repositories"
+              {
+                "id": "campaigns",
+                "source": "overview-campaign-station",
+                "icon": "organization",
+                "label": "Campaign health",
+                "href": "#page-campaigns",
+                "unavailable-detail": "0/0 healthy campaigns",
+                "unavailable-description": "Campaign health unavailable"
+              },
+              {
+                "id": "repositories",
+                "source": "overview-repository-station",
+                "icon": "repo",
+                "label": "Repository coverage",
+                "href": "#page-repositories",
+                "unavailable-detail": "0/0 repositories reached",
+                "unavailable-description": "Repository coverage unavailable"
+              }
             ]
           },
           "layout": "full"

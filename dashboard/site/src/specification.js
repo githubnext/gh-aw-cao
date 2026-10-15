@@ -93,6 +93,7 @@ export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
+export const FACTORY_STATION_KEYS = ['id', 'source', 'icon', 'label', 'href', 'unavailable-detail', 'unavailable-description'];
 export const FACTORY_FLOOR_STATION_VALUES = ['campaigns', 'repositories'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
 export const PLURAL_LABEL_ELEMENTS = ['factory-floor'];

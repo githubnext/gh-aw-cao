@@ -208,6 +208,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       await expect(view).toHaveCSS('border-left-width', '0px');
     }
     await expect(factory.locator('.factory-floor')).toHaveCSS('border-bottom-width', '0px');
+    await expect(factory.locator('.factory-floor .factory-station')).toHaveCount(2);
+    await expect(factory.locator('.factory-floor .factory-station').first().locator('strong a')).toHaveAttribute('href', '#page-campaigns');
     await expect(campaigns.locator('.link-button-list')).toHaveCSS('border-top-width', '0px');
     const pageBounds = await page.locator('[data-page-id="overview"]').boundingBox();
     const mainBounds = await page.locator('main.dashboard-prototype').boundingBox();

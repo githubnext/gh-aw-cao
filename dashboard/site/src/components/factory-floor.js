@@ -1,6 +1,5 @@
 import { renderFactoryElement } from './factory-elements.js';
-import { renderFactoryStation } from './factory-station.js';
-import { renderReactiveGrid } from './reactive-grid.js';
+import { renderStationGrid } from './station-grid.js';
 import { createDebug } from '../debug.js';
 
 const debugFactoryFloor = createDebug('factory-floor');
@@ -10,6 +9,7 @@ const debugFactoryFloor = createDebug('factory-floor');
 /** @typedef {{ signal: AbortSignal }} FactoryFloorScope */
 /** @typedef {'campaigns'|'repositories'} FactoryStationId */
 
+/** Built-in presets selectable by canonical string in `config.stations`. */
 const STATION_DEFINITIONS = {
   campaigns: {
     icon: 'organization',
@@ -28,55 +28,62 @@ const STATION_DEFINITIONS = {
 };
 
 /**
+ * @typedef {{ id: string, source: string, icon: string, label: string, href?: string, 'unavailable-detail'?: string, 'unavailable-description'?: string }} StationEntry
+ */
+
+/**
+ * Resolves one `config.stations` entry. A canonical string selects a built-in
+ * preset bound through `roleNames`; a mapping declares the station fully.
+ * @param {unknown} entry
+ * @param {Record<string, string>} roleNames
+ * @returns {{ definition: import('./station-grid.js').StationDefinition, sourceName: string } | undefined}
+ */
+function resolveStation(entry, roleNames) {
+  if (typeof entry === 'string') {
+    if (!Object.hasOwn(STATION_DEFINITIONS, entry)) return undefined;
+    return {
+      definition: { id: entry, ...STATION_DEFINITIONS[/** @type {FactoryStationId} */ (entry)] },
+      sourceName: roleNames[entry]
+    };
+  }
+  if (!entry || typeof entry !== 'object') return undefined;
+  const station = /** @type {Record<string, unknown>} */ (entry);
+  if (![station.id, station.source, station.icon, station.label].every((value) => typeof value === 'string' && value)) return undefined;
+  return {
+    definition: {
+      id: /** @type {string} */ (station.id),
+      icon: /** @type {string} */ (station.icon),
+      label: /** @type {string} */ (station.label),
+      href: typeof station.href === 'string' ? station.href : undefined,
+      unavailableDetail: typeof station['unavailable-detail'] === 'string' ? station['unavailable-detail'] : '',
+      unavailableDescription: typeof station['unavailable-description'] === 'string'
+        ? station['unavailable-description']
+        : `${station.label} unavailable`
+    },
+    sourceName: /** @type {string} */ (station.source)
+  };
+}
+
+/**
  * @param {SourceBindings} sources
  * @param {boolean} animateNumbers
  * @param {FactoryFloorScope} scope
  * @param {Record<string, string>} roleNames
- * @param {FactoryStationId[]} selectedStations
+ * @param {Array<FactoryStationId | StationEntry>} selectedStations
  */
 export function renderFactoryFloor(sources, animateNumbers, scope, roleNames, selectedStations) {
-  const stations = selectedStations.map((id) => {
-    const definition = STATION_DEFINITIONS[id];
-    const source = sources[roleNames[id]];
-    const station = renderFactoryStation(definition.icon, {
-      animate: animateNumbers,
-      format: 'percent',
-      href: definition.href,
-      signal: scope.signal
-    });
-    station.bind(() => {
-      const row = source.rows()[0] ?? {};
-      const value = Number(row.value);
-      return {
-        pending: source.pending(),
-        unavailable: source.unavailable(),
-        label: definition.label,
-        value: Number.isFinite(value) ? value : 0,
-        displayValue: typeof row['display-value'] === 'string' ? row['display-value'] : undefined,
-        detail: {
-          text: typeof row.detail === 'string' ? row.detail : definition.unavailableDetail
-        }
-      };
-    });
-    return { id, definition, source, element: station.element };
+  const bindings = selectedStations.flatMap((entry) => {
+    const resolved = resolveStation(entry, roleNames);
+    return resolved ? [{ definition: resolved.definition, source: sources[resolved.sourceName] }] : [];
   });
-  debugFactoryFloor({ event: 'composed', stationCount: stations.length, animate: animateNumbers });
-
-  return renderReactiveGrid({
-    className: stations.length <= 2 ? 'factory-floor factory-floor-compact' : 'factory-floor',
+  debugFactoryFloor({ event: 'composed', stationCount: bindings.length, animate: animateNumbers });
+  return renderStationGrid(bindings, {
+    animate: animateNumbers,
+    signal: scope.signal,
+    className: 'factory-floor',
+    compactClassName: 'factory-floor-compact',
     activeClassName: 'factory-floor-active',
-    listClassName: 'factory-stations',
-    items: () => stations,
-    key: (station) => station.id,
-    renderItem: (station) => station.element,
-    active: () => stations.some(({ source }) => source.rows()[0]?.active === true),
-    ariaLabel: () => `${stations.map(({ definition, source }) => {
-      const row = source.rows()[0];
-      return !source.pending() && !source.unavailable() && typeof row?.description === 'string'
-        ? row.description
-        : definition.unavailableDescription;
-    }).join(', ')}.`,
-    signal: scope.signal
+    listClassName: 'factory-stations'
   });
 }
 
@@ -97,9 +104,9 @@ export const FLOOR_DEFAULT_SOURCES = {
  */
 export function renderFactoryFloorElement(context) {
   const configuredStations = Array.isArray(context.elementConfig?.stations) ? context.elementConfig.stations : null;
-  const selectedStations = configuredStations
-    ? /** @type {FactoryStationId[]} */ (configuredStations.filter((station) => station === 'campaigns' || station === 'repositories'))
-    : /** @type {FactoryStationId[]} */ (['campaigns', 'repositories']);
+  /** @type {unknown[]} */
+  const entries = configuredStations ?? ['campaigns', 'repositories'];
+  const selectedStations = /** @type {Array<FactoryStationId | StationEntry>} */ (entries.filter((entry) => resolveStation(entry, FLOOR_DEFAULT_SOURCES) !== undefined));
   if (configuredStations && selectedStations.length !== configuredStations.length) {
     debugFactoryFloor({
       event: 'station-config-filtered',
@@ -109,11 +116,19 @@ export function renderFactoryFloorElement(context) {
       selectedCount: selectedStations.length
     });
   }
-  debugFactoryFloor({ event: 'element-selected', pageId: context.pageId, viewId: context.viewId, stations: selectedStations.join(',') });
+  debugFactoryFloor({
+    event: 'element-selected',
+    pageId: context.pageId,
+    viewId: context.viewId,
+    stations: selectedStations.map((entry) => typeof entry === 'string' ? entry : entry.id).join(',')
+  });
   return renderFactoryElement(
     context,
     FLOOR_DEFAULT_SOURCES,
-    (roleNames) => selectedStations.map((station) => roleNames[station]),
+    (roleNames) => selectedStations.flatMap((entry) => {
+      const resolved = resolveStation(entry, roleNames);
+      return resolved ? [resolved.sourceName] : [];
+    }),
     (sources, scope, roleNames) => renderFactoryFloor(
       sources,
       context.elementConfig?.animate === 'number',

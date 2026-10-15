@@ -556,6 +556,27 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
+  it('validates fully declared factory floor stations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
+    const valid = { id: 'reviews', source: 'overview-campaign-station', icon: 'repo', label: 'Review coverage', href: '#page-reviews' };
+    floor.config.stations = [valid];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    for (const invalid of [
+      { ...valid, id: 'Not Kebab' },
+      { ...valid, icon: 'not-an-icon' },
+      { ...valid, href: 'https://example.com/' },
+      { ...valid, source: undefined },
+      { ...valid, script: 'alert(1)' }
+    ]) {
+      floor.config.stations = [invalid];
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    }
+    floor.config.stations = [valid, valid];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('validates declarative factory element source role rebinding', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');

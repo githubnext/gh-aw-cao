@@ -207,3 +207,31 @@ describe('Overview component boundaries', () => {
     controller.abort();
   });
 });
+describe('station grid', () => {
+  it('renders a declaratively defined station outside the overview presets', async () => {
+    const { renderStationGrid } = await import('../../src/components/station-grid.js');
+    const controller = new AbortController();
+    const rendered = renderStationGrid([{
+      definition: {
+        id: 'coverage',
+        icon: 'repo',
+        label: 'Review coverage',
+        href: '#page-reviews',
+        unavailableDetail: '0/0 reviewed',
+        unavailableDescription: 'Review coverage unavailable'
+      },
+      source: binding({ rows: [{ value: 0.25, 'display-value': '25%', detail: '1/4 reviewed', description: '25% reviewed' }] })
+    }, {
+      definition: { id: 'missing', icon: 'gear', label: 'Missing', unavailableDetail: '0/0 missing', unavailableDescription: 'Missing unavailable' },
+      source: binding({ rows: [], unavailable: true })
+    }], { animate: false, signal: controller.signal, className: 'station-grid', compactClassName: 'station-grid-compact' });
+
+    expect(rendered.classList.contains('station-grid-compact')).toBe(true);
+    expect([...rendered.querySelectorAll('.factory-station')].map((element) => element.textContent)).toEqual([
+      'Review coverage25%1/4 reviewed',
+      'MissingUnavailable0/0 missing'
+    ]);
+    expect(rendered.getAttribute('aria-label')).toBe('25% reviewed, Missing unavailable.');
+    controller.abort();
+  });
+});

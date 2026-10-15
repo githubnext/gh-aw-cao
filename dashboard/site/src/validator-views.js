@@ -1,6 +1,6 @@
 import { state } from './validator-state.js';
 import { isReadOnlyCliAction, validateActionLevel } from './action-validator.js';
-import { CALLOUT_KEYS, ERROR_CODES, FIELD_DEFINITION_KEYS, LINK_FIELD_NAMES, FACTORY_FLOOR_STATION_VALUES, FACTORY_HEADER_SOURCE_ROLES, FACTORY_FLOOR_SOURCE_ROLES, GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS, IDENTIFIER_PATTERN, MAX_ESSENTIAL_VIEWS_PER_PAGE, PAGE_FORM_KEYS, PAGE_FORM_UPDATE_KEYS, PAGE_FORM_UPDATE_STRATEGY_VALUES, PAGE_FORM_FIELD_KEYS, PAGE_FORM_CONTROL_VALUES, PAGE_FORM_OPTION_KEYS, PAGE_FORM_MIN_DELAY_MS, PAGE_FORM_MAX_DELAY_MS, PAGE_ICON_VALUES, QUERY_SOURCE_VALUES, TABLE_ACTION_KEYS, TABLE_ACTION_PRESENTATION_VALUES, TABLE_ACTION_WHEN_KEYS, TREE_TABLE_KEYS, VIEW_DATA_KEYS, VIEW_DATA_ARGUMENT_KEYS, VIEW_CHART_VALUES, VIEW_CONTROL_VALUES, VIEW_LIST_DRILL_ARGUMENT_KEYS, VIEW_LIST_DRILL_KEYS, VIEW_LIST_DRILL_TYPE_VALUES, VIEW_LIST_LAYOUT_VALUES, VIEW_LIST_APPEARANCE_VALUES, VIEW_LIST_VIEW_ALL_KEYS, VIEW_DISCLOSURE_VALUES, VIEW_ELEMENT_CONFIG_KEYS, VIEW_ELEMENT_ANIMATION_VALUES, VIEW_ELEMENT_VALUES, PLURAL_LABEL_ELEMENTS, PLURAL_TEXT_KEYS, VIEW_KEYS, VIEW_REQUIREMENT_KEYS, VIEW_BACKEND_VALUES, VIEW_LAYOUT_VALUES, VIEW_LIST_KEYS, VIEW_LIST_STYLE_VALUES, VIEW_MARK_VALUES, VIEW_METRIC_KEYS, VIEW_METRIC_ANIMATION_VALUES, VIEW_METRIC_STYLE_VALUES, VIEW_METRIC_TONE_VALUES, VIEW_TITLE_LINK_KEYS } from './specification.js';
+import { CALLOUT_KEYS, ERROR_CODES, FIELD_DEFINITION_KEYS, LINK_FIELD_NAMES, FACTORY_FLOOR_STATION_VALUES, FACTORY_STATION_KEYS, FACTORY_HEADER_SOURCE_ROLES, FACTORY_FLOOR_SOURCE_ROLES, GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS, IDENTIFIER_PATTERN, MAX_ESSENTIAL_VIEWS_PER_PAGE, PAGE_FORM_KEYS, PAGE_FORM_UPDATE_KEYS, PAGE_FORM_UPDATE_STRATEGY_VALUES, PAGE_FORM_FIELD_KEYS, PAGE_FORM_CONTROL_VALUES, PAGE_FORM_OPTION_KEYS, PAGE_FORM_MIN_DELAY_MS, PAGE_FORM_MAX_DELAY_MS, PAGE_ICON_VALUES, QUERY_SOURCE_VALUES, TABLE_ACTION_KEYS, TABLE_ACTION_PRESENTATION_VALUES, TABLE_ACTION_WHEN_KEYS, TREE_TABLE_KEYS, VIEW_DATA_KEYS, VIEW_DATA_ARGUMENT_KEYS, VIEW_CHART_VALUES, VIEW_CONTROL_VALUES, VIEW_LIST_DRILL_ARGUMENT_KEYS, VIEW_LIST_DRILL_KEYS, VIEW_LIST_DRILL_TYPE_VALUES, VIEW_LIST_LAYOUT_VALUES, VIEW_LIST_APPEARANCE_VALUES, VIEW_LIST_VIEW_ALL_KEYS, VIEW_DISCLOSURE_VALUES, VIEW_ELEMENT_CONFIG_KEYS, VIEW_ELEMENT_ANIMATION_VALUES, VIEW_ELEMENT_VALUES, PLURAL_LABEL_ELEMENTS, PLURAL_TEXT_KEYS, VIEW_KEYS, VIEW_REQUIREMENT_KEYS, VIEW_BACKEND_VALUES, VIEW_LAYOUT_VALUES, VIEW_LIST_KEYS, VIEW_LIST_STYLE_VALUES, VIEW_MARK_VALUES, VIEW_METRIC_KEYS, VIEW_METRIC_ANIMATION_VALUES, VIEW_METRIC_STYLE_VALUES, VIEW_METRIC_TONE_VALUES, VIEW_TITLE_LINK_KEYS } from './specification.js';
 import { OUTCOME_DETAIL_SECTION_BODY_VALUES, CAMPAIGN_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_BODY_VALUES } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
@@ -16,6 +16,39 @@ import { MAX_TREEMAP_LEAVES, TREEMAP_KEYS, TREEMAP_METHOD_VALUES } from './speci
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
 const debugValidatorViews = createDebug('validator-views');
+
+/**
+ * @param {Record<string, unknown>} station
+ * @param {string} path
+ * @param {unknown} node
+ * @param {any[]} errors
+ */
+function validateStationDeclaration(station, path, node, errors) {
+  validateObjectKeys(node, FACTORY_STATION_KEYS, path, errors);
+  for (const key of ['id', 'source', 'icon', 'label']) validateStringField(station[key], `${path}.${key}`, true, errors);
+  for (const key of ['href', 'unavailable-detail', 'unavailable-description']) validateStringField(station[key], `${path}.${key}`, false, errors);
+  if (typeof station.id === 'string' && !IDENTIFIER_PATTERN.test(station.id)) {
+    errors.push(createError(
+      ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'station id must use canonical kebab-case.',
+      `${path}.id`
+    ));
+  }
+  if (typeof station.icon === 'string' && !PAGE_ICON_VALUES.includes(station.icon)) {
+    errors.push(createError(
+      ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'station icon must use a canonical icon value.',
+      `${path}.icon`
+    ));
+  }
+  if (typeof station.href === 'string' && !/^#[A-Za-z0-9._~/?=&%-]+$/.test(station.href)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'station href must be an in-dashboard fragment route.',
+      `${path}.href`
+    ));
+  }
+}
 
 /**
  * @param {unknown} labels
@@ -441,24 +474,31 @@ export function validateView(view, viewNode, path, viewIds, errors) {
           ));
         } else {
           const seenStations = new Set();
+          const stationsNode = getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'stations');
           for (let index = 0; index < view.config.stations.length; index += 1) {
             const station = view.config.stations[index];
-            validateStringField(station, `${path}.config.stations[${index}]`, true, errors);
-            if (seenStations.has(station)) {
+            const stationPath = `${path}.config.stations[${index}]`;
+            const stationId = isPlainObject(station) ? station.id : station;
+            if (isPlainObject(station)) {
+              validateStationDeclaration(station, stationPath, getSequenceItemNode(stationsNode, index), errors);
+            } else {
+              validateStringField(station, stationPath, true, errors);
+              if (typeof station === 'string' && !FACTORY_FLOOR_STATION_VALUES.includes(station)) {
+                errors.push(createError(
+                  ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+                  'factory-floor config.stations must use canonical station values.',
+                  stationPath
+                ));
+              }
+            }
+            if (typeof stationId === 'string' && seenStations.has(stationId)) {
               errors.push(createError(
                 ERROR_CODES.unknownOrDuplicateKey,
                 'factory-floor config.stations values must be unique.',
-                `${path}.config.stations[${index}]`
+                stationPath
               ));
             }
-            seenStations.add(station);
-            if (typeof station === 'string' && !FACTORY_FLOOR_STATION_VALUES.includes(station)) {
-              errors.push(createError(
-                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-                'factory-floor config.stations must use canonical station values.',
-                `${path}.config.stations[${index}]`
-              ));
-            }
+            seenStations.add(stationId);
           }
         }
       }
