@@ -104,6 +104,7 @@ test('recycle-only bypasses repository collection and API evidence requests but 
     assert.ok(steps.indexOf(reset) < steps.indexOf(step('index', name)));
   }
   assert.equal(workflow.jobs.cache.needs, 'index');
+  assert.equal(workflow.jobs.cache.if, "${{ !cancelled() && needs.index.result == 'success' }}");
   const cache = workflow.jobs.cache.steps;
   assert.ok(cache.indexOf(step('cache', 'Verify activity snapshot')) < cache.indexOf(step('cache', 'Save activity cache')));
   assert.equal(workflow.jobs.index.permissions.actions, 'read');

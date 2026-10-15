@@ -601,6 +601,7 @@ jobs:
 
   cache:
     needs: index
+    if: ${{ !cancelled() && needs.index.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
