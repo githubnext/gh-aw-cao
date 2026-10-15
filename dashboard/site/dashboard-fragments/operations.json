@@ -2158,7 +2158,7 @@
       "id": "operational-value",
       "kind": "custom",
       "title": "Operational Value",
-      "description": "Choose a campaign, then a repository to see its plots.",
+      "description": "Choose a repository to see its workflow outcome plots, with or without a CAO campaign.",
       "icon": "graph",
       "class-name": "value-page",
       "view-mode-control": false,
@@ -2179,48 +2179,50 @@
             "list": { "style": "entity-cards", "card": "outcome-evidence-summary", "icon": "graph" },
             "encoding": { "columns": [{ "field": "summary", "type": "nominal", "title": "Evidence readiness" }] },
             "layout": "full",
-            "empty-message": "Campaign evidence is unavailable."
+            "empty-message": "Repository evidence is unavailable."
           },
           {
             "id": "operational-value-signals",
-            "title": "Campaigns",
-            "subject": "Direction and uncertainty across measured campaign repositories.",
+            "title": "Repositories",
+            "subject": "Direction and uncertainty across measured repositories, including standalone workflow outcomes.",
             "objective": "Find worsening or mixed outcomes, gains and evidence gaps without inspecting every timeline.",
             "acceptance": "One count per repository, not per report. Keep insufficient evidence visible and native units separate. Retained observations do not imply freshness, complete scope, sustained gains or causality.",
-            "data": { "source": "operational-value-measured-campaigns" },
+            "data": { "source": "operational-value-measured-repositories" },
             "mark": "list",
             "list": {
               "style": "entity-cards",
               "appearance": "grouped",
-              "card": "campaign-outcome-signal",
-              "icon": "graph",
+              "card": "repository-outcome-signal",
+              "icon": "repo",
               "drill": {
-                "type": "query", "page": "operational-value-campaign", "query": "operational-value-repository-signals",
-                "title-field": "campaign-name",
-                "arguments": [{ "name": "campaign", "field": "campaign" }]
+                "type": "query", "page": "operational-value-repository", "query": "operational-value-plot-series",
+                "title-field": "repository-coordinate",
+                "arguments": [
+                  { "name": "organization", "field": "organization" },
+                  { "name": "repository", "field": "repository" }
+                ]
               }
             },
             "layout": "full",
-            "empty-message": "No campaigns have retained primary measurements. See Evidence for coverage.",
+            "empty-message": "No repositories have retained primary measurements. See Evidence for coverage.",
             "encoding": { "columns": [
-              { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+              { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
               { "field": "signal", "type": "nominal", "title": "Observed direction" },
-              { "field": "direction-summary", "type": "nominal", "title": "Repositories" },
               { "field": "coverage-summary", "type": "nominal", "title": "Coverage" }
             ] }
           },
           {
             "id": "operational-value-unmeasured",
             "disclosure": "supplemental",
-            "disclosure-label": "Campaigns without retained measurements",
+            "disclosure-label": "Repositories without retained measurements",
             "description": "No retained primary measurements. Missing evidence is not zero value.",
-            "data": { "source": "operational-value-unmeasured-campaigns" },
+            "data": { "source": "operational-value-unmeasured-repositories" },
             "mark": "list",
-            "list": { "style": "entity-cards", "card": "campaign-outcome-signal", "icon": "graph" },
+            "list": { "style": "entity-cards", "card": "repository-outcome-signal", "icon": "repo" },
             "layout": "full",
-            "empty-message": "Every inventory campaign has retained primary measurements.",
+            "empty-message": "Every inventory repository has retained primary measurements.",
             "encoding": { "columns": [
-              { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+              { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
               { "field": "evidence-reason", "type": "nominal", "title": "Evidence" }
             ] }
           }
@@ -2247,18 +2249,18 @@
             "id": "operational-value-coverage",
             "disclosure": "supplemental",
             "disclosure-label": "Measurement availability",
-            "subject": "Outcome measurement coverage for every registered campaign.",
-            "objective": "Identify which campaigns have primary outcome evidence and which need a measurement contract.",
-            "acceptance": "Include campaigns without observations. Not measured is not zero value. Coverage and maturity do not verify impact or complete repository coverage.",
-            "description": "Every registered campaign is listed. Mature evidence is not necessarily comparable or current. No observations does not establish that a measurement contract is missing.",
-            "data": { "source": "operational-value-campaign-coverage" },
+            "subject": "Outcome measurement coverage for inventory and observed repositories.",
+            "objective": "Identify repositories with primary outcome evidence and evidence gaps.",
+            "acceptance": "Include repositories without observations and outcomes without campaigns. Not measured is not zero value. Maturity does not verify impact.",
+            "description": "Inventory and measured repositories are listed, including standalone workflow outcomes. Mature evidence is not necessarily comparable or current. No observations does not establish that a measurement contract is missing.",
+            "data": { "source": "operational-value-repository-coverage" },
             "mark": "table",
             "column-summaries": false,
             "layout": "full",
-            "empty-message": "Campaign inventory is unavailable; measurement coverage cannot be assessed.",
+            "empty-message": "No inventory or measured repositories are available.",
             "encoding": {
               "columns": [
-                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+                { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
                 { "field": "measurement-state", "type": "nominal", "title": "Outcome evidence" },
                 { "field": "measured-goals", "type": "quantitative", "title": "Measured repository goals" },
                 { "field": "mature-goals", "type": "quantitative", "title": "Mature repository goals" }
@@ -2280,8 +2282,8 @@
             "layout": "full",
             "empty-message": "No primary outcome measurements are retained.",
             "encoding": { "columns": [
-              { "field": "campaign-label", "type": "nominal", "title": "Campaign" },
               { "field": "repository-coordinate", "type": "nominal", "title": "Repository", "display": "repository-link" },
+              { "field": "value-workflow", "type": "nominal", "title": "Workflow" },
               { "field": "operational-value-name", "type": "nominal", "title": "Goal measure" },
               { "field": "operational-value", "type": "quantitative", "title": "Latest value" },
               { "field": "operational-value-unit", "type": "nominal", "title": "Native unit" },
@@ -2293,22 +2295,22 @@
           },
           {
             "id": "operational-value-direction-chart",
-            "subject": "Comparable repository direction counts by campaign.",
+            "subject": "Comparable outcome direction by repository.",
             "objective": "Inspect direction distribution after evaluating measurement readiness.",
-            "acceptance": "Count repositories, not native values. Omit incomparable summaries; an empty distribution is not a neutral result. Campaign links retain drill-down context.",
+            "acceptance": "Count each repository once, not native values. Omit incomparable summaries; an empty distribution is not neutral. Links open repository history directly.",
             "disclosure": "supplemental",
             "disclosure-label": "Comparable outcome distribution",
             "description": "Only fully comparable repository summaries appear. Comparison blockers remain visible in Overview; no comparable evidence is not a neutral outcome.",
-            "data": { "source": "operational-value-direction-campaigns", "limit": 100 },
+            "data": { "source": "operational-value-direction-repositories", "limit": 100 },
             "mark": "chart",
             "chart": "horizontal-bar",
             "layout": "full",
             "empty-message": "No comparable outcome directions are available. Inspect the comparison reasons in Overview.",
             "encoding": {
-              "x": { "field": "campaign-label", "type": "nominal", "title": "Campaign" },
+              "x": { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
               "y": { "field": "repositories", "type": "quantitative", "title": "Measured repositories" },
               "color": { "field": "signal", "type": "nominal", "title": "Observed direction" },
-              "href": { "field": "campaign-dashboard-link" }
+              "href": { "field": "repository-dashboard-link" }
             }
           }
         ]

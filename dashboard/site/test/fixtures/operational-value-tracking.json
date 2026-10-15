@@ -12,19 +12,23 @@
     "startField": "plot-window-start-ms",
     "endField": "plot-window-end-ms"
   },
-  "campaignSummaryContract": {
-    "page": "operational-value-campaign",
-    "view": "campaign-outcome-repositories",
-    "source": "operational-value-repository-signals",
-    "fields": ["campaign", "repository-coordinate", "signal", "goals", "evidence-reason", "oldest-evidence-at", "newest-evidence-at"]
+  "repositorySummaryContract": {
+    "page": "operational-value",
+    "view": "operational-value-signals",
+    "source": "operational-value-measured-repositories",
+    "fields": ["repository-coordinate", "signal", "goals", "evidence-reason", "oldest-evidence-at", "newest-evidence-at"]
   },
   "views": [
     { "page": "operational-value", "id": "operational-value-summary", "source": "operational-value-overview-summary" },
-    { "page": "operational-value", "id": "operational-value-signals", "source": "operational-value-measured-campaigns" },
-    { "page": "operational-value", "id": "operational-value-unmeasured", "source": "operational-value-unmeasured-campaigns" },
-    { "page": "operational-value-evidence", "id": "operational-value-coverage", "source": "operational-value-campaign-coverage" },
+    { "page": "operational-value", "id": "operational-value-signals", "source": "operational-value-measured-repositories" },
+    { "page": "operational-value", "id": "operational-value-unmeasured", "source": "operational-value-unmeasured-repositories" },
+    { "page": "operational-value-evidence", "id": "operational-value-coverage", "source": "operational-value-repository-coverage" },
     { "page": "operational-value-evidence", "id": "operational-value-latest", "source": "operational-value-latest" },
-    { "page": "operational-value-evidence", "id": "operational-value-direction-chart", "source": "operational-value-direction-campaigns" }
+    { "page": "operational-value-evidence", "id": "operational-value-direction-chart", "source": "operational-value-direction-repositories" }
+  ],
+  "repositories": [
+    { "organization": "octo", "repository": "api" },
+    { "organization": "octo", "repository": "unmeasured" }
   ],
   "campaigns": [
     { "campaign": "alpha", "campaign-name": "Alpha" },

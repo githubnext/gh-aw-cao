@@ -14,19 +14,10 @@
         "details": [{ "field": "measured-goals", "title": "Measured goals" }]
       },
       {
-        "id": "campaign-outcome-signal",
-        "icon": "graph",
-        "title": { "field": "campaign-name", "title": "Campaign" },
-        "subtitle": { "field": "coverage-summary", "title": "Measurements" },
-        "labels": [{ "field": "signal", "title": "Signal", "display": "label" }],
-        "details": [
-          { "field": "newest-evidence-at", "title": "Latest observation", "type": "temporal", "format": "human-friendly-timestamp" }
-        ]
-      },
-      {
         "id": "repository-outcome-signal",
         "icon": "repo",
         "title": { "field": "repository-coordinate", "title": "Repository" },
+        "subtitle": { "field": "coverage-summary", "title": "Measurements" },
         "labels": [{ "field": "signal", "title": "Signal", "display": "label" }],
         "details": [
           { "field": "goals", "title": "Primary measures" },
