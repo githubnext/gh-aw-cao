@@ -3,6 +3,42 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-15T13:28:51Z",
+      "worker_run_id": 38742432971,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38742855239,
+        38742172993,
+        38740692124,
+        38738635737,
+        38735734828,
+        38732834225,
+        38731662863,
+        38731096340,
+        38729853467,
+        38728238225,
+        38726847219,
+        38724388157,
+        38723065420,
+        38722913787,
+        38721416049,
+        38720407044,
+        38720005017,
+        38717994847,
+        38717304093,
+        38717262064
+      ],
+      "docs_window": {
+        "start": "2026-10-15T10:01:27Z",
+        "end": "2026-10-15T13:27:45Z"
+      },
+      "docs_success_count": 15,
+      "docs_comparable_success_count": 2,
+      "docs_deployed_success_count": 2,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. In the latest 20 completed docs.yml runs from 2026-10-15T10:01:27Z through 2026-10-15T13:27:45Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 2 comparable successful docs runs executed both build and deploy: 38724388157 on schedule at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d and 38731662863 on schedule at source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. One additional successful run, 38723065420 on push at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d, built documentation but skipped deploy, so it was disclosed as a non-comparable outlier. The remaining 12 successful schedule runs stopped after schedule-freshness with build and deploy skipped, and trusted job metadata on the two comparable runs showed Restore node_modules and Restore cached CAO Dashboard succeeded while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and cache-hit analysis and emitted no actionable suggestion."
+    },
+    {
       "evaluated_at": "2026-10-15T13:04:56Z",
       "worker_run_id": 38739096593,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -1052,42 +1088,6 @@
       "docs_deployed_success_count": 0,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T16:02:09Z through 2026-10-14T19:34:02Z, 14 runs concluded success, 5 concluded skipped, and 1 concluded action_required. Zero comparable successful runs executed the build job or completed deploy: all 14 successful runs were schedule-freshness no-ops with build and deploy skipped, the 5 workflow_run callbacks were skipped before work ran, and the action_required callback created no jobs. A bounded log read from run 38624716157 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper artifact-transfer and Pages-packaging analysis and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-14T19:25:30Z",
-      "worker_run_id": 38623102929,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        38622981661,
-        38620152927,
-        38618226448,
-        38616374195,
-        38615660612,
-        38615258686,
-        38613133054,
-        38611742867,
-        38609750166,
-        38607893151,
-        38606154801,
-        38605572469,
-        38603114252,
-        38601441351,
-        38599880033,
-        38598069721,
-        38597765513,
-        38594588659,
-        38592968634,
-        38591340424
-      ],
-      "docs_window": {
-        "start": "2026-10-14T15:40:09Z",
-        "end": "2026-10-14T19:21:44Z"
-      },
-      "docs_success_count": 15,
-      "docs_comparable_success_count": 0,
-      "docs_deployed_success_count": 0,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 5a7695bddf77510a9663d3d31cb1225a52683cda. In the latest 20 completed docs.yml runs from 2026-10-14T15:40:09Z through 2026-10-14T19:21:44Z, 15 runs concluded success, 4 concluded skipped, and 1 concluded action_required. Zero comparable successful runs executed the build job or completed deploy: all 15 successful runs were schedule-freshness no-ops with build and deploy skipped, the 4 workflow_run callbacks were skipped before work ran, and the action_required callback created no jobs. The worker requires at least five comparable successful docs workflow runs before making a timing-backed recommendation, so this evaluation stopped before deeper artifact-transfer and Pages-packaging analysis and no actionable suggestion was emitted."
     }
   ]
 }
