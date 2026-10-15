@@ -88,6 +88,12 @@ clean public or private control repository on its default branch. Existing
 commits are allowed; the install stage adds one bounded CAO commit and pauses
 Repo Assist without dispatching it. Continue with `--step run`, inspect its
 outcome in Actions, then use `--step collect` and `--step dashboard`.
+The command prints persistent, numbered explanations of the selected repositories
+and package, installed components, policy, authentication, public Pages visibility,
+and commit/push effects before applying each phase. Each stage ends with a
+**Before continuing** inspection checkpoint, not just the next command.
+`--json` suppresses progress; installation returns the same `guide` details and
+`checkpoint` as structured data without adding interactive prompts.
 Only the read-only dashboard step is a repeatable status check; repeating run
 or collect requests new work. The run stage can consume
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance

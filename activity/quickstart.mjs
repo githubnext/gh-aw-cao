@@ -162,6 +162,7 @@ export function formatQuickstartSummary(result) {
       ...(result.actionsUrl ? [`Actions: ${result.actionsUrl}`] : []),
       ...(result.dashboard?.url ? [`Dashboard: ${result.dashboard.url}`] : []),
       ...(result.inspectCommand ? [`Inspect: ${result.inspectCommand}`] : []),
+      ...(result.checkpoint ? [`Before continuing: ${result.checkpoint}`] : []),
       `Next: ${result.nextCommand}`,
     ].join('\n');
   }
@@ -244,8 +245,71 @@ async function executeCaoQuickstart({
   const starterTarget = selectedTarget === SAMPLE_SEED_REPOSITORY;
   if (starterTarget) ui.success?.(`Repo Assist example selected: ${selectedTarget}`);
 
-  await ui.step?.('Installing Repo Assist with only its existing maintenance worker enabled in review mode');
   const selectedCampaign = campaignSpec ?? `${DEFAULT_CAMPAIGN}@${resolveRootRevision('root', root)}`;
+  const guide = [
+    {
+      title: '1/5 · Understand the repositories and selected source',
+      details: [
+        `Control repository: ${controlRepository} (${visibility.toLowerCase()}), default branch: ${branch}.`,
+        `Local checkout: ${root}. CAO workflows, policy, and review outputs live here, not in the target.`,
+        visibility === 'PUBLIC'
+          ? 'This control repository is public: policy, workflow runs, and review outputs are public too.'
+          : 'The control repository is non-public, but its separately published Pages dashboard will be public.',
+        `Target: ${selectedTarget} (public; ${targetRepository ? 'explicit --target selection' : 'default public example, so no target setup is needed'}).`,
+        'The target is read for analysis and is never modified by this review-only campaign.',
+        `Repo Assist package: ${selectedCampaign}. The default uses the installed root CAO revision.`,
+      ],
+    },
+    {
+      title: '2/5 · Install the campaign components',
+      details: [
+        'The verified root installation supplies cao.sh, the activity/ and dashboard/ runtimes, and shared control code.',
+        'Core workflows: cao-validate.yml checks configuration; cao-activity.yml collects evidence; cao-dashboard.yml builds and publishes it.',
+        'Repo Assist adds an orchestrator (repo-assist.lock.yml) that selects and dispatches work.',
+        'Its maintenance worker (repo-assist-maintenance.lock.yml) analyzes one target and prepares a review proposal or an honest no-op.',
+        'Issue triage, issue fix, and PR upkeep workflows are installed but their workers will be disabled in policy.',
+        'Editable workflow sources and compiled .lock.yml files live in .github/workflows/; campaign resources live in repo-assist/.',
+      ],
+    },
+    {
+      title: '3/5 · Set the exact review-only authority',
+      details: [
+        `Policy file: ${policyPath}. This is the persistent non-secret rollout policy, not a credential store.`,
+        `Global repository scope: ${[...new Set([controlRepository, selectedTarget])].join(', ')}.`,
+        `Repo Assist target: ${selectedTarget}; mode: review; maximum repositories: 1; rollout: 100% of this exact target only.`,
+        'Only maintenance is enabled, capped at review; all other Repo Assist workers are disabled.',
+        `Activity collection scope: ${controlRepository} only; it collects workflow evidence, not the target's history.`,
+        `Review issues and downloadable patch bundles stay in ${controlRepository}. Applying a proposal is optional.`,
+      ],
+    },
+    {
+      title: '4/5 · Connect authentication and public dashboard hosting',
+      details: [
+        `Set GH_AW_GITHUB_AUTH_MODE=workflow-token on ${controlRepository}.`,
+        'Workflows use the repository-provided GITHUB_TOKEN; this path does not configure a GitHub App or PAT.',
+        'Configure GitHub Pages with GitHub Actions as its source. The dashboard and published evidence are PUBLIC, even if the control repository is private.',
+        'Pages configuration is not a verified deployment; the dashboard stage checks real evidence and the deployment job later.',
+      ],
+    },
+    {
+      title: waitForCompletion
+        ? '5/5 · Publish configuration and continue the explicit --wait flow'
+        : '5/5 · Publish configuration and stop before campaign execution',
+      details: [
+        `Stage and commit only these bounded paths: ${QUICKSTART_PATHS.join(', ')}.`,
+        `Commit as ${user.login} using their GitHub noreply address, then push to origin/${branch}. Existing commits are preserved.`,
+        waitForCompletion
+          ? 'Explicit --wait will then dispatch Repo Assist, pause its schedule, collect Activity, and wait for deployment.'
+          : 'Pause the Repo Assist orchestrator after pushing. No Repo Assist or Activity workflow is explicitly dispatched by this stage.',
+        'Normal Activity push/schedule triggers remain active and may publish a baseline independently.',
+        'Later --step run briefly enables one dispatch and pauses the orchestrator again; re-enabling it otherwise also resumes its six-hour schedule.',
+      ],
+    },
+  ];
+  const explain = (index) => ui.note?.(guide[index].details.join('\n'), guide[index].title);
+  explain(0);
+  explain(1);
+  await ui.step?.('Installing Repo Assist with only its existing maintenance worker enabled in review mode');
   await addCampaign(selectedCampaign, [], { policyPath, execute });
   run(execute, 'gh', [
     'aw', 'compile', '--strict', '--no-check-update',
@@ -280,6 +344,7 @@ async function executeCaoQuickstart({
       },
     ])),
   };
+  explain(2);
   await writeJsonAtomically(path.resolve(policyPath), policy);
   run(execute, process.execPath, [
     '.github/workflows/shared/control.mjs',
@@ -288,6 +353,7 @@ async function executeCaoQuickstart({
   ]);
   ui.success?.(`Repo Assist maintenance enabled in review mode for ${selectedTarget}; other workers remain disabled; proposals are optional, not requirements for CAO`);
 
+  explain(3);
   await ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
   if (!pages.public) {
@@ -306,6 +372,7 @@ async function executeCaoQuickstart({
   if (status.length === 0) throw new Error('Quickstart produced no files to commit');
   status.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
 
+  explain(4);
   await ui.step?.('Committing and pushing the bounded control-plane configuration');
   run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS]);
   run(execute, 'git', ['diff', '--cached', '--check']);
@@ -323,6 +390,8 @@ async function executeCaoQuickstart({
     const result = {
       command: 'quickstart', step: 'install', status: 'installed',
       controlRepository, branch, targetRepository: selectedTarget, paused: true,
+      guide,
+      checkpoint: `Open ${policyPath} and confirm the target, review mode, maintenance-only workers, and control-only Activity scope. Inspect installed workflows in .github/workflows/ before requesting a run.`,
       context: 'Installed review-only maintenance and public dashboard infrastructure. No work was dispatched. Repo Assist schedules are paused; the next stage explicitly requests one review.',
       nextCommand: './cao.sh quickstart --step run',
     };
@@ -454,6 +523,7 @@ async function executeCaoQuickstart({
 
   return {
     command: 'quickstart',
+    guide,
     controlRepository,
     targetRepository: selectedTarget,
     starterTarget,
@@ -554,6 +624,14 @@ async function executeQuickstartStage({
   const actionsUrl = (workflow) => `${serverUrl}/${repository}/actions/workflows/${workflow}`;
   const inspectCommand = (workflow) => `gh run list --repo ${repository} --branch '${branch.replaceAll("'", "'\\''")}' --workflow ${workflow}`;
   if (step === 'run') {
+    ui.note?.([
+      `Use the committed default-branch policy in ${policyPath}; do not reinstall or change scope.`,
+      `Orchestrator: ${REPO_ASSIST_WORKFLOW}; worker: ${REPO_ASSIST_WORKER}.`,
+      `Target: ${targetRepository}; review output repository: ${repository}.`,
+      'Dispatch: max_repos=1, rollout_percent=100, safe_output_mode=review.',
+      'Enable the orchestrator, request one run, then pause it even if dispatch fails. The worker may propose a patch or honestly report no-op/incomplete.',
+      'Budget ceiling: 250 orchestration + 600 maintenance + 400 output checking by default (up to 1,250 AI credits); output checking is configurable, not measured cost.',
+    ].join('\n'), 'Run · Understand the work you are requesting');
     await ui.step?.('Requesting one review-only maintenance run (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking); proposals are optional and a no-op is valid');
     let dispatchError;
     try {
@@ -578,10 +656,17 @@ async function executeQuickstartStage({
       ...base, status: 'dispatched', paused: true, actionsUrl: actionsUrl(REPO_ASSIST_WORKFLOW),
       context: 'One bounded review was requested (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking). Inspect the orchestrator and completed maintenance proposal or no-op before collecting evidence. No target changes are applied.',
       inspectCommand: inspectCommand(REPO_ASSIST_WORKER),
+      checkpoint: 'In Actions, inspect the completed orchestrator and any maintenance worker, then read the control review issue and artifact or its no-op/incomplete reason. Do not repeat run as a status check.',
       nextCommand: './cao.sh quickstart --step collect',
     };
   }
   if (step === 'collect') {
+    ui.note?.([
+      `Workflow: ${ACTIVITY_WORKFLOW}; collection scope: ${repository} only.`,
+      'Activity collects completed workflow evidence into the cao-activity-index artifact; it does not rerun maintenance or apply a proposal.',
+      `A successful collection triggers ${DASHBOARD_WORKFLOW} to build evidence; ${context.dashboardDeploy ? 'Pages deployment is enabled by policy' : 'Pages deployment is disabled by policy'}.`,
+      'Continue only after inspecting the completed maintenance outcome. This requests a new snapshot; it is not a status check.',
+    ].join('\n'), 'Collect · Understand how runs become dashboard evidence');
     const requestId = `quickstart-${randomUUID()}`;
     await ui.step?.('Collecting Activity evidence after you inspect the completed maintenance outcome');
     await dispatchWorkflow({ execute, repository, workflow: ACTIVITY_WORKFLOW, branch, attempts: 1, fields: { 'request-id': requestId } });
@@ -590,14 +675,22 @@ async function executeQuickstartStage({
       ...base, status: 'dispatched', requestId, actionsUrl: actionsUrl(ACTIVITY_WORKFLOW),
       context: 'Activity collects workflow evidence; a successful workflow alone does not prove an accepted improvement. Inspect this snapshot before checking its dashboard deployment.',
       inspectCommand: inspectCommand(ACTIVITY_WORKFLOW),
+      checkpoint: 'Inspect CAO Activity in Actions and its data artifact. After collection finishes, use the read-only dashboard step; do not repeat collect just to check progress.',
       nextCommand: './cao.sh quickstart --step dashboard',
     };
   }
+  ui.note?.([
+    `Check the latest ${ACTIVITY_WORKFLOW} run on ${branch} for successful completion and at least one collected run in its artifact.`,
+    `Then check ${DASHBOARD_WORKFLOW} for a subsequent successful Pages deploy job, not just a successful build.`,
+    'This step is read-only: it neither dispatches work nor waits for remote completion. Repeat this command if pending.',
+    'A ready dashboard shows evidence, not proof that a proposal was applied or operational value was attained.',
+  ].join('\n'), 'Dashboard · Understand what readiness verifies');
   const pending = (message, workflow = ACTIVITY_WORKFLOW) => {
     ui.finish?.(message);
     return {
       ...base, status: 'pending', context: message, actionsUrl: actionsUrl(workflow),
       inspectCommand: inspectCommand(workflow), nextCommand: './cao.sh quickstart --step dashboard',
+      checkpoint: 'Inspect the linked workflow and resolve failures before retrying this read-only check. Do not restart run or collect merely to check status.',
     };
   };
   const activity = stageRuns(execute, repository, branch, ACTIVITY_WORKFLOW)[0];
@@ -629,6 +722,7 @@ async function executeQuickstartStage({
     ...base, status: 'ready', context: 'Activity contains collected runs and its subsequent dashboard workflow succeeded. Explore the evidence; operational value still requires reviewing outcomes.',
     dashboard: { url: pages.html_url, workflowRun: dashboard.url },
     activity: { url: activity.url, uniqueRuns: stats.summary.totalUniqueRuns },
+    checkpoint: 'Open the dashboard, select Repo Assist, then Reports, and follow the evidence back to its originating run. A proposal remains optional; the orchestrator stays paused.',
     nextCommand: `gh browse --repo ${repository} --actions`,
   };
 }

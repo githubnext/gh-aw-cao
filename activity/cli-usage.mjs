@@ -39,6 +39,8 @@ export const USAGE = `Usage:
   cao setup [--json]
   cao quickstart [--step install|run|collect|dashboard | --wait] [--target OWNER/REPO] [--campaign PACKAGE] [--json]
     Default: install only. --target/--campaign: install or --wait only.
+    Explains selections, components, policy, authentication, public Pages, and commit/push effects before each phase.
+    Each stage ends with an inspection checkpoint; --json keeps stdout machine-readable.
     run dispatches one review; collect snapshots evidence; dashboard checks deployment.
     --wait explicitly runs and waits for the entire legacy journey.
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -75,10 +76,37 @@ test('plain quickstart progress starts with the first operation', () => {
   assert.doesNotMatch(output, /Complete the CAO quickstart/);
 });
 
+test('plain quickstart explanations remain readable without styling or prompts', async () => {
+  let output = '';
+  const progress = createQuickstartProgress({
+    input: { isTTY: false },
+    output: { isTTY: false, write: (value) => { output += value; } },
+    environment: { ...process.env, CI: '1', NO_COLOR: '1' },
+  });
+  progress.note('Control: acme/cao\nTarget: acme/project\nPUBLIC dashboard; review-only outputs.', '1/5 · Repositories');
+  await progress.step('Installing');
+  progress.success('Installed');
+  progress.note('Inspect the policy before requesting work.', 'Checkpoint');
+  progress.finish('Next stage is explicit');
+  assert.equal(output, [
+    '1/5 · Repositories',
+    'Control: acme/cao',
+    'Target: acme/project',
+    'PUBLIC dashboard; review-only outputs.',
+    '==> Installing',
+    'OK: Installed',
+    'Checkpoint',
+    'Inspect the policy before requesting work.',
+    'Next stage is explicit',
+    '',
+  ].join('\n'));
+  assert.doesNotMatch(output, /\u001b|\r/);
+});
+
 test('styled quickstart progress renders immediately without a UI dependency', {
   skip: process.platform === 'win32',
 }, async (t) => {
-  const directory = await mkdtemp(path.resolve('tests/.cao-quickstart-progress-'));
+  const directory = await mkdtemp(path.join(tmpdir(), 'cao-quickstart-progress-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const driver = path.join(directory, 'driver.mjs');
   await writeFile(driver, `
@@ -86,6 +114,8 @@ import { createQuickstartProgress } from ${JSON.stringify(pathToFileURL(path.res
 const progress = createQuickstartProgress();
 await progress.step('Installing Repo Assist campaign');
 progress.success('Repo Assist campaign installed');
+progress.note('Control: acme/cao. Target: acme/project. Policy: .github/workflows/cao.json. Authentication: workflow-token. The dashboard and its published evidence are PUBLIC even when the control repository is private.', '4/5 · Authentication and hosting');
+await progress.step('Continuing installation');
 progress.finish('Dashboard ready');
 `);
   const result = await runTerminal(process.execPath, [driver], {
@@ -102,6 +132,9 @@ progress.finish('Dashboard ready');
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Installing Repo Assist campaign · 0s elapsed/);
   assert.match(result.stdout, /Repo Assist campaign installed \[0s\]/);
+  assert.match(result.stdout, /4\/5 · Authentication and hosting/);
+  assert.match(result.stdout, /Authentication: workflow-token\. The dashboard and its published evidence are PUBLIC even when the control repository is private\./);
+  assert.ok(result.stdout.indexOf('4/5') < result.stdout.indexOf('Continuing installation'));
   assert.match(result.stdout, /Dashboard ready/);
 });
 
@@ -193,7 +226,7 @@ async function quickstartFixture(t, {
     if (command === 'gh' && arguments_[0] === 'api') return success('{"html_url":"https://acme.github.io/cao/","public":true}\n');
     return success();
   }
-  const directory = await mkdtemp(path.resolve('tests/.cao-quickstart-test-'));
+  const directory = await mkdtemp(path.join(tmpdir(), 'cao-quickstart-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   return {
     calls, execute, runRecords,
@@ -251,10 +284,23 @@ async function installedFixture(t, options = {}) {
 test('default quickstart installs and pauses without dispatching or polling', async (t) => {
   const fixture = await quickstartFixture(t);
   const policyPath = await fixture.policyPath();
+  let output = '';
+  const progress = createQuickstartProgress({
+    input: { isTTY: false },
+    output: { isTTY: false, write: (value) => { output += value; } },
+  });
   const result = await runCaoQuickstart({
-    policyPath, execute: fixture.execute, progress: {},
+    policyPath, progress,
+    execute(command, arguments_) {
+      if (arguments_[0] === 'variable') assert.match(output, /4\/5 · Connect authentication/);
+      if (command === 'git' && arguments_.includes('commit')) assert.match(output, /5\/5 · Publish configuration/);
+      return fixture.execute(command, arguments_);
+    },
     resolveRootRevision: () => 'a'.repeat(40),
     async addCampaign() {
+      assert.match(output, /1\/5 · Understand the repositories/);
+      assert.match(output, /2\/5 · Install the campaign components/);
+      assert.doesNotMatch(output, /3\/5/);
       const policy = JSON.parse(await readFile(policyPath, 'utf8'));
       policy['control-plane'].campaigns['repo-assist'] = {
         workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
@@ -271,21 +317,97 @@ test('default quickstart installs and pauses without dispatching or polling', as
   assert.match(formatQuickstartSummary(result), /No work was dispatched/);
   assert.match(formatQuickstartSummary(result), /Control repository: https:\/\/github\.com\/acme\/cao/);
   assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/github\/gh-aw/);
+  assert.equal(result.guide.length, 5);
+  assert.match(formatQuickstartSummary(result), /Before continuing: Open .*cao\.json/);
+  for (const detail of [
+    'acme/cao (private), default branch: main',
+    'default public example',
+    `githubnext/gh-aw-cao/repo-assist@${'a'.repeat(40)}`,
+    'cao-validate.yml', 'cao-activity.yml', 'cao-dashboard.yml',
+    'repo-assist-maintenance.lock.yml', 'Issue triage, issue fix, and PR upkeep',
+    'maximum repositories: 1; rollout: 100% of this exact target only',
+    'Activity collection scope: acme/cao only',
+    'GH_AW_GITHUB_AUTH_MODE=workflow-token',
+    'GITHUB_TOKEN', 'does not configure a GitHub App or PAT',
+    'PUBLIC, even if the control repository is private',
+    'Stage and commit only these bounded paths',
+    'Commit as octocat', 'push to origin/main',
+    'Normal Activity push/schedule triggers remain active',
+  ]) assert.ok(output.includes(detail), `Missing guidance: ${detail}`);
+  const headings = result.guide.map(({ title }) => output.indexOf(title));
+  assert.ok(headings.every((index, position) => index >= 0 && (position === 0 || index > headings[position - 1])));
   assert.ok(!fixture.calls.some((call) => call[1] === 'run'));
   assert.deepEqual(fixture.calls.filter((call) => call[1] === 'workflow'), [
     ['gh', 'workflow', 'disable', 'repo-assist.lock.yml', '--repo', 'acme/cao'],
   ]);
 });
 
+test('JSON quickstart retains selected configuration details without progress output', async (t) => {
+  const fixture = await quickstartFixture(t, { targetRepository: 'acme/project', visibility: 'PUBLIC' });
+  const policyPath = await fixture.policyPath();
+  const result = await runQuickstartCommand({
+    arguments_: ['--target', 'acme/project', '--campaign', 'acme/catalog/repo-assist@v1.0.0', '--json'],
+    UsageError: Error,
+    runCaoQuickstart(options) {
+      assert.deepEqual(options.progress, {});
+      return runCaoQuickstart({
+        ...options, policyPath, execute: fixture.execute,
+        async addCampaign() {
+          const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+          policy['control-plane'].campaigns['repo-assist'] = {
+            workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
+          };
+          await writeFile(policyPath, JSON.stringify(policy));
+        },
+        configurePages: () => ({ public: true }),
+        pause() { assert.fail('no waiting or prompts'); },
+      });
+    },
+  });
+  const json = JSON.parse(JSON.stringify(result));
+  const explanation = json.guide.flatMap(({ title, details }) => [title, ...details]).join('\n');
+  assert.match(explanation, /acme\/cao \(public\)/);
+  assert.match(explanation, /Target: acme\/project \(public; explicit --target selection\)/);
+  assert.doesNotMatch(explanation, /default public example/);
+  assert.match(explanation, /Repo Assist package: acme\/catalog\/repo-assist@v1\.0\.0/);
+  assert.match(json.checkpoint, /confirm the target, review mode/);
+  assert.ok(!fixture.calls.some((call) => call[1] === 'run'));
+});
+
 for (const step of ['run', 'collect', 'dashboard']) {
   test(`${step} stage preserves policy bytes and never watches or commits`, async (t) => {
     const fixture = await installedFixture(t);
     const before = await readFile(fixture.policyPath, 'utf8');
-    const result = await runCaoQuickstart({ ...fixture.options, step });
+    const explanations = [];
+    const result = await runCaoQuickstart({
+      ...fixture.options, step,
+      progress: { note(message, title) { explanations.push({ message, title }); } },
+      execute(command, arguments_) {
+        if (command === 'gh' && (arguments_[0] === 'workflow' || arguments_[0] === 'run')) {
+          assert.equal(explanations.length, 1, 'explain the stage before any workflow request or readiness check');
+        }
+        return fixture.execute(command, arguments_);
+      },
+    });
     assert.equal(await readFile(fixture.policyPath, 'utf8'), before);
     assert.equal(result.step, step);
     assert.equal(result.status, step === 'dashboard' ? 'ready' : 'dispatched');
     assert.match(formatQuickstartSummary(result), /Next: /);
+    assert.match(formatQuickstartSummary(result), /Before continuing: /);
+    assert.equal(explanations.length, 1);
+    if (step === 'run') {
+      assert.match(explanations[0].message, /Target: github\/gh-aw; review output repository: acme\/cao/);
+      assert.match(explanations[0].message, /max_repos=1, rollout_percent=100, safe_output_mode=review/);
+      assert.match(result.checkpoint, /Do not repeat run as a status check/);
+    } else if (step === 'collect') {
+      assert.match(explanations[0].message, /collection scope: acme\/cao only/);
+      assert.match(explanations[0].message, /cao-activity-index artifact/);
+      assert.match(result.checkpoint, /do not repeat collect/);
+    } else {
+      assert.match(explanations[0].message, /read-only/);
+      assert.match(explanations[0].message, /successful Pages deploy job, not just a successful build/);
+      assert.match(result.checkpoint, /Reports/);
+    }
     assert.ok(!fixture.calls.some((call) => ['watch', 'commit', 'push', 'add', 'compile'].includes(call[1])));
     const views = fixture.calls.filter((call) => call[1] === 'run' && call[2] === 'view');
     assert.equal(views.length, step === 'dashboard' ? 1 : 0);

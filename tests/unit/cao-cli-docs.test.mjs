@@ -71,6 +71,10 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(firstSuccess, /successful Pages deployment job, not merely a successful build/);
   assert.match(firstSuccess, /\.\/cao\.sh quickstart --wait/);
   assert.match(firstSuccess, /Do not use it to resume a staged installation/);
+  assert.match(firstSuccess, /five numbered sections \*\*before each\s+corresponding change\*\*/);
+  assert.match(firstSuccess, /stay in terminal scrollback/);
+  assert.match(firstSuccess, /numbered `guide` details and its `checkpoint`/);
+  assert.match(docs, /\*\*Before continuing\*\* inspection checkpoint/);
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*1,250 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);

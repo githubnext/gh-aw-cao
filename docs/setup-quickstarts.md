@@ -91,6 +91,28 @@ cannot be resolved; it never silently falls back to `main`. Maintainers can opt
 into the development build by passing `githubnext/gh-aw-cao@main` before
 `--quickstart`.
 
+The command teaches these choices in five numbered sections **before each
+corresponding change**, rather than hiding them in a transient progress line:
+
+1. **Repositories and source:** the actual control repository, visibility,
+   default branch, local checkout, public target, why it was selected, and
+   the selected Repo Assist package revision.
+2. **Installed components:** the CLI and runtimes, core workflows, Repo Assist
+   orchestrator and worker files, and the roles they play.
+3. **Authority:** the policy file, exact repository and Activity scopes,
+   review mode, one-target limit, enabled/disabled workers, and output routing.
+4. **Connections:** repository-token authentication and the public Pages
+   dashboard, even when the control repository is private.
+5. **Publication:** the bounded paths, commit identity, default-branch push,
+   and orchestrator pause, including independent Activity triggers.
+
+These explanations stay in terminal scrollback, including in plain/CI output;
+they are not truncated spinner messages. Each stage finishes with **Before
+continuing** instructions telling you what to inspect before its **Next**
+command. There are no extra confirmation prompts or automatic advances to the
+next stage. With `--json`, progress is silent and the installation result
+includes the same numbered `guide` details and its `checkpoint`.
+
 This stage will:
 
 1. Install Repo Assist pinned to the same CAO release.
