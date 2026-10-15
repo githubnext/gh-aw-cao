@@ -1,7 +1,43 @@
 {
   "source_sha": "17b08b9099a9aa5062174d6cae81c7a4fed33907",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-15T03:58:26Z",
+      "worker_run_id": 38678693607,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38678535133,
+        38677662705,
+        38677403256,
+        38676364836,
+        38674119808,
+        38673466029,
+        38673220743,
+        38671480474,
+        38668899599,
+        38668674585,
+        38668119237,
+        38666336199,
+        38665705831,
+        38665174021,
+        38664443059,
+        38662491959,
+        38660438161,
+        38659406439,
+        38657836174,
+        38657227056
+      ],
+      "docs_window": {
+        "start": "2026-10-14T23:57:51Z",
+        "end": "2026-10-15T03:52:56Z"
+      },
+      "docs_success_count": 14,
+      "docs_comparable_success_count": 3,
+      "docs_deployed_success_count": 2,
+      "decision": "noop_insufficient_evidence",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907. In the latest 20 completed docs.yml runs from 2026-10-14T23:57:51Z through 2026-10-15T03:52:56Z, 14 runs concluded success and 6 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 3 comparable successful docs runs executed the build job (38677403256 on workflow_run, 38662491959 on schedule, and 38660438161 on push), all on source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907, and only 2 of those comparable runs completed deploy. The remaining 11 successful runs were schedule freshness no-ops with build and deploy skipped, and a bounded log read from run 38673220743 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and caching analysis and no actionable suggestion was emitted."
+    },
     {
       "evaluated_at": "2026-10-15T03:00:00Z",
       "worker_run_id": 38673523733,
