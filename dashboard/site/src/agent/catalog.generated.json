@@ -66,7 +66,8 @@
       "parameters": [],
       "queries": [
         "issue-repository-totals",
-        "repository-activity"
+        "repository-activity",
+        "repository-run-inventory"
       ]
     },
     {
@@ -2400,6 +2401,34 @@
       }
     },
     {
+      "id": "repository-run-inventory",
+      "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
+      "objective": "Compare repository execution volume and choose repositories for drill-down.",
+      "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-activity"
+      ],
+      "used-by-pages": [
+        "repositories"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "domains",
+          "issues",
+          "outcomes",
+          "repositories",
+          "runs",
+          "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "workflow-route-record",
       "subject": "Project the selected workflow's identity and registration for its route shell.",
       "objective": "Identify the workflow and its recorded campaign registration before inspecting route-specific evidence.",
@@ -2711,7 +2740,7 @@
       "id": "campaign-worker-issues",
       "subject": "Project issue outcomes created by campaign worker workflows.",
       "objective": "Choose a campaign worker issue whose current recorded disposition needs review.",
-      "acceptance": "Every included issue outcome joins a declared worker on organization, repository, and workflow and retains its issue, run, and status evidence; missing closing details remain unknown and closure is not proof of resolution.",
+      "acceptance": "Include only issues whose producing run joins declared worker inventory on organization, repository, and workflow, even when the issue lands elsewhere. Preserve campaign and role across Activity imports. Retain run and status evidence; missing closure details stay unknown and closure is not proof of resolution.",
       "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
       "parameters": [
         {

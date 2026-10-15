@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
+import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestNormalizedJsonl } from '../../src/data/ingest/coordinator.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
@@ -182,6 +183,80 @@ afterEach(() => {
 });
 
 describe('canonical view sources', () => {
+  it.each(['acme/control', 'github/gh-aw'])('attributes a retained worker issue in %s after a normalized Activity import', async (issueRepository) => {
+    const inventory = {
+      campaigns: { rows: [{ campaign: 'repo-assist', 'campaign-name': 'Repo Assist' }], metadata },
+      repositories: { rows: [{ organization: 'acme', repository: 'control' }], metadata },
+      workflows: {
+        rows: [{
+          organization: 'acme', repository: 'control',
+          workflow: '.github/workflows/repo-assist-maintenance.md',
+          campaign: 'repo-assist', 'workflow-role': 'worker',
+          'workflow-registry-state': 'active', 'workflow-active': 'true'
+        }],
+        metadata
+      }
+    };
+    await ingestDashboardSources(indexedDB, inventory, { deferMaintenance: true });
+    const workflowId = 'workflow:acme%2Fcontrol%3A.github%2Fworkflows%2Frepo-assist-maintenance.md';
+    const runId = 'github:run:acme/control:38530688831';
+    const records = [
+      {
+        collection: 'workflows',
+        record: {
+          id: workflowId, repositoryId: 'repository:acme%2Fcontrol',
+          name: 'Repo Assist maintenance · github/gh-aw · review',
+          path: '.github/workflows/repo-assist-maintenance.md',
+          state: 'unknown', observedAt: metadata['as-of']
+        }
+      },
+      {
+        collection: 'runs',
+        record: {
+          id: runId, repositoryId: 'repository:acme%2Fcontrol', workflowId,
+          owner: 'acme', repository: 'control', githubRunId: '38530688831',
+          workflowPath: '.github/workflows/repo-assist-maintenance.md',
+          attempt: 1, status: 'completed', conclusion: 'success',
+          observedAt: metadata['as-of'], ghAwVersion: 'v0.91.5'
+        }
+      },
+      {
+        collection: 'issues',
+        record: {
+          id: `github:issue:${issueRepository}:2`, runId, type: 'safe_output.created',
+          timestamp: metadata['as-of'], observedAt: metadata['as-of'],
+          source: 'safe_outputs', summary: 'Maintenance review proposal',
+          correlationId: `https://github.com/${issueRepository}/issues/2`,
+          repositoryFullName: issueRepository, number: 2,
+          githubEntityType: 'issue', isPullRequest: false, state: 'open', closed: false,
+          sequence: 0
+        }
+      }
+    ];
+    const payload = [
+      { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: 4, phase: 'all', records: records.length },
+      ...records.map((record) => ({ kind: 'record', ...record }))
+    ].map((record) => JSON.stringify(record)).join('\n') + '\n';
+    await ingestNormalizedJsonl(indexedDB, (async function* () { yield payload; })(), {
+      payloadScope: 'activity-reports', payloadIdentity: 'a'.repeat(64), deferMaintenance: true
+    });
+    await expect(ingestDashboardSources(indexedDB, inventory, { deferMaintenance: true })).resolves.toMatchObject({ skipped: true });
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'load-dashboard-query-sources', sources: inventory,
+      queries: dashboardQueries, sourceNames: ['campaign-worker-issues', 'campaign-issue-tab-counts']
+    }));
+    expect(result['campaign-worker-issues'].metadata.availability).toBe('available');
+    expect(result['campaign-worker-issues'].rows).toEqual([
+      expect.objectContaining({
+        campaign: 'repo-assist', organization: 'acme', repository: 'control',
+        workflow: '.github/workflows/repo-assist-maintenance.md',
+        run: '38530688831', 'issue-state': 'open',
+        'issue-link': expect.objectContaining({ href: `https://github.com/${issueRepository}/issues/2` })
+      })
+    ]);
+    expect(result['campaign-issue-tab-counts'].rows).toEqual([{ campaign: 'repo-assist', items: 1 }]);
+  });
+
   it('summarizes canonical database diagnostics inside the query layer', async () => {
     const diagnostics = /** @type {import('../../src/diagnostics.js').DatabaseDiagnostics} */ (await processDataRequest({
       operation: 'query-canonical-database-diagnostics'

@@ -33,4 +33,4 @@ become a prerequisite when the operator cannot inspect billing.
 
 For exact commands, permissions, variables, secrets, multi-owner mapping, and
 data-residency behavior, use
-[Control Plane Authentication Profiles](../../../docs/control-plane-authentication.md).
+[Control Plane Authentication Profiles](https://github.com/githubnext/gh-aw-cao/blob/main/docs/control-plane-authentication.md).

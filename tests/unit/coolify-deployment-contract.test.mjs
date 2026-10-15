@@ -29,7 +29,7 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   const ghAwVersion = policy["gh-aw-version"];
 
   assert.match(dockerfile, /FROM node:24-alpine@sha256:[0-9a-f]{64} AS dashboard-build/);
-  assert.match(dockerfile, /FROM golang:1\.27-alpine@sha256:[0-9a-f]{64} AS server-build/);
+  assert.match(dockerfile, /FROM golang:1\.27\.2-alpine@sha256:[0-9a-f]{64} AS server-build/);
   assert.match(dockerfile, /FROM alpine:3\.22@sha256:[0-9a-f]{64} AS dashboard-runtime/);
   assert.match(dockerfile, /FROM node:24-alpine@sha256:[0-9a-f]{64} AS collector-runtime/);
   assert.match(dockerfile, /ARG CAO_PROFILE=cao\.json/);

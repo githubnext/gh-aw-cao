@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,10 +25,12 @@ export function portableSkill(name) {
   const references = join(directory, "references");
   const guidance = [
     readFileSync(join(directory, "SKILL.md"), "utf8"),
-    ...readdirSync(references, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .sort((left, right) => left.name.localeCompare(right.name))
-      .map((entry) => readFileSync(join(references, entry.name), "utf8")),
+    ...(existsSync(references)
+      ? readdirSync(references, { withFileTypes: true })
+          .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+          .sort((left, right) => left.name.localeCompare(right.name))
+          .map((entry) => readFileSync(join(references, entry.name), "utf8"))
+      : []),
   ].join("\n").replaceAll("\r\n", "\n");
   return `${guidance}\n${guidance.replace(/\s+/g, " ")}`;
 }

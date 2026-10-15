@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 import { commandHandlers } from "../../activity/commands/index.mjs";
@@ -19,6 +21,7 @@ test("preserves CAO public exports from their focused implementation modules", a
     "cli/activity-stats": ["activityWorkflowStats"],
     "cli/authentication": ["fineGrainedTokenSetups", "setupCaoAuthentication"],
     "cli/campaigns": ["addCaoCampaign", "updateCaoCampaigns", "setCaoCampaignMode", "setCaoCampaignWorkflowsEnabled"],
+    "cli/repositories": ["addCaoRepository"],
     "cli/dashboard": ["discoverWorkflows", "pruneDashboardFile", "analyzeDashboardComplexityFile"],
     "cli/download": ["downloadDeployedDashboardData"],
     "cli/gh-aw": ["ensureGhAwMinimumVersion", "upgradeGhAw"],
@@ -59,6 +62,24 @@ test("importing the CAO entry point does not execute the CLI", async () => {
   ]);
   assert.equal(stdout, "");
   assert.equal(stderr, "");
+});
+
+test("non-interactive commands do not load the prompt adapter", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "cao-cli-loader-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const loader = path.join(directory, "reject-prompt-loader.mjs");
+  await writeFile(loader, `
+export async function resolve(specifier, context, nextResolve) {
+  if (specifier.endsWith("setup-prompt.mjs")) throw new Error("prompt adapter loaded");
+  return nextResolve(specifier, context);
+}
+`);
+  const { stdout } = await executeFile(process.execPath, [
+    "--experimental-loader", pathToFileURL(loader).href, cao, "--help",
+  ], {
+    env: { ...process.env, NODE_NO_WARNINGS: "1" },
+  });
+  assert.match(stdout, /^Usage:/);
 });
 
 test("keeps every CAO command in its own command module", async () => {
@@ -113,6 +134,7 @@ test("reports a runtime failure without appending help", async () => {
       assert.equal(error.stdout, "");
       assert.match(error.stderr, /Dashboard data URL must use HTTP or HTTPS/);
       assert.doesNotMatch(error.stderr, /Usage:|cao init/);
+      assert.doesNotMatch(error.stderr, /\n\s+at /);
       return true;
     },
   );

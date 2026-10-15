@@ -475,6 +475,25 @@ Do not include tokens, private keys, or secret values in the incident record.
 
 If shared authentication or shared control caused the incident, perform the control-plane-wide emergency stop. Otherwise, preserve unaffected campaigns.
 
+## Publish a CAO Release
+
+Dispatch the private **Release** workflow from `main` with a patch, minor, or
+major bump. The workflow creates the version tag and a draft release, waits for
+the successful exact-SHA `cao-runtime.yml` push build, verifies its checksum and
+GitHub-hosted signed provenance, attaches the runtime archive and checksum, and
+publishes that exact release as an immutable prerelease with an explicit
+`vX.Y.Z` tag. It verifies the release ID, tag, source revision, assets, and
+immutable state before adding human-friendly release highlights.
+
+Do not publish the draft manually. After the complete Release workflow succeeds,
+review the generated notes, confirm the tag targets the intended `main` commit,
+and confirm both runtime assets are present. Then remove the prerelease
+designation and mark it as the latest release. The workflow's prerelease
+publication makes the tag and assets immutable; no workflow can add, replace, or
+remove release assets afterward. A failure before publication leaves the draft
+unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,
+never a stable release that quickstart or update can select.
+
 ## Update CAO
 
 Update campaign-owned workflows and runtime resources through a reviewable update proposal. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.

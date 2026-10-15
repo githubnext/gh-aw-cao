@@ -38,9 +38,17 @@ A general description for work performed with limited manual intervention. Autom
 
 Continuous centralized agentic work that pursues your goals for your enterprise as a whole.
 
+## Bug Bash
+
+The recommended getting-started campaign for a new control repository: it selects at most one target repository, runs one bounded defect investigation, verifies the result adversarially, and hands a maintainer either one reviewable finding or an honest `no-finding`. Nothing is written to the investigated repository; the campaign's `bug-bash` orchestrator and `bug-bash-investigation` worker publish review evidence only to the control repository. See [Bug Bash](https://github.com/githubnext/gh-aw-cao/blob/main/bug-bash/README.md).
+
 ## Canonical data
 
 The consistent entities, identities, and relationships produced by applying the dashboard data model to published activity evidence. Canonical data is source-neutral derived state, not a new source of authority.
+
+## CAO runtime
+
+The curated production bundle of canonical Activity and Dashboard code that a control repository installs and executes. It is packaged from `runtime/package.json` by `npm run runtime:pack -- DESTINATION REVISION` (see `scripts/build-cao-runtime.mjs`) and built and attested by `.github/workflows/cao-runtime.yml` as a verified exact-SHA artifact. The Release workflow verifies that artifact and attaches it to the draft before immutable publication, providing stable release assets for stable version references; successful Actions artifacts retained for 90 days serve main/SHA references. The trusted materializer verifies GitHub signed build provenance for the catalog, signer workflow, and source and signer SHAs on a GitHub-hosted runner before replacing an installed repository's bounded canonical destinations, failing closed without source or npm fallback when an artifact is missing or unverifiable. Normal installation needs Node.js and authenticated GitHub CLI artifact/attestation access, not npm; explicit local source materialization remains a developer path using npm. See [Repository Layout and Installation](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md).
 
 ## CAO validation
 
@@ -133,6 +141,10 @@ The provider-neutral storage contract in `server/internal/operational/` that exp
 ## Public control repository
 
 A control repository whose own visibility is public, so its policy, workflow runs, operational metadata, dashboard data, and review outputs are also public. Activity and Server Ingestion both fail closed and refuse to collect evidence when a public control repository's credentials can reach any non-public repository, reporting only a rejected-repository count. See [Control Repository Visibility](authentication.md#control-repository-visibility).
+
+## Quickstart
+
+The explicit `--quickstart` first-success flow run by `activity/quickstart.mjs`, distinct from ordinary install or `cao setup`. It uses a clean control repository on its default branch, creates the signed-in user's public `cao-sample` target with deterministic functional defects (or validates an explicit `--target OWNER/REPO`), installs Bug Bash in review-only mode for that exact target, commits and pushes only bounded CAO paths, dispatches one orchestrator and at most one worker, collects Activity, and waits for the public dashboard deployment. Campaign execution never modifies the target, and a failed later phase reports any partial effect rather than claiming rollback. See [CAO Quickstart](setup-quickstarts.md) and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 ## Repo memory
 

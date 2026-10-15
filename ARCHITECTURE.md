@@ -408,6 +408,196 @@ complete standalone installation entry points because gh-aw cannot invoke the
 materialization hook. Source-managed and installed control repositories
 therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 
+Activity and Dashboard use the standard npm `files` contract in the dedicated
+`runtime/package.json`, rather than copying their development directories
+wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
+command packs with lifecycle scripts disabled, bundles the YAML parser with
+esbuild and its dependency license notices, preserves the dependency-free setup
+prompt adapter as portable source, and seals an exact-revision inventory and
+checksums. Explicit developer source packing preserves the same adapter;
+installed setup never resolves it from a consumer's node_modules.
+Filesystem-relative CLI modules, workers, and build inputs remain at their
+canonical paths rather than being forced into a single-file executable.
+The conventional `cao-runtime.yml` pipeline builds on main pushes. Read-only
+build/test and source-free attestation use separate jobs, producing exact-SHA
+Actions artifacts retained for 90 days. The Release workflow creates a draft
+stable tag at an exact main SHA, waits for that SHA's successful runtime push
+run, verifies its checksum and signed provenance, and attaches the archive and
+checksum before a maintainer publishes the completed draft. Publication locks
+the tag and assets through immutable releases; no workflow mutates release
+assets afterward. Stable tag sources use release assets; main/SHA sources use
+the successful, unexpired Actions artifacts. The operator materializer verifies GitHub signed provenance bound
+to the catalog, signer workflow, source SHA and signer SHA on a GitHub-hosted
+runner before extraction, then checks the inventory, checksums and ownership.
+When the exact main/SHA runtime build is queued or running, materialization
+waits for it for at most five minutes; failed, missing, expired, timed-out, or
+unverifiable artifacts fail closed without source/npm packing or latest-release
+fallback. Explicit local source materialization remains a developer path using
+npm. Normal operator installation needs Node.js and authenticated GitHub CLI
+artifact/attestation access, not npm.
+The materializer installs only owned canonical destinations from the archive
+and does not replace consumer-owned root package metadata. Installed control
+repositories keep the
+repository-local operator CLI, collection and query runtime, local preview,
+dashboard production sources, build inputs, and dependency manifests. Tests,
+fixtures, screenshots, contributor tooling, and catalog-only component
+manifests stay in the catalog. Dashboard workflow builds install production
+dependencies only.
+
+The Agent Plugin is a separate distribution: the control-plane installer does
+not copy its manifest, Copilot extension, bundled specification documents, or
+repository-only dashboard authoring skills. Materialization preserves
+pre-existing plugin resources outside its owned runtime destinations. The
+installer adds the repository-root `aw.yml` package. That manifest explicitly
+composes only the Activity, dashboard, and validation workflows, five shared
+control-plane resources, seven portable control-repository skills (including
+the Agentic Workflows router), one Agentic Workflows agent, and the gh-aw
+project settings. The portable router is a thin adapter to the current
+canonical upstream Agentic Workflows skill on `main`, rather than a copied
+routing table, and delegates deterministic operations to `gh aw`, `cao`, and
+repository validation commands. Version-sensitive behavior remains constrained
+by the control repository's policy-pinned `gh aw` CLI. The custom agent
+delegates to that installed skill instead of maintaining a second router. The
+nonempty `agents`
+declaration prevents agent auto-discovery from installing repository-only
+agents. gh-aw v0.91.5 still auto-scans the root `skills/` directory after
+resolving explicit skill declarations, so that directory contains only the
+seven skills intended for control repositories and a contract test locks its
+exact inventory.
+Operational campaign manifests contain only their owned workflows and catalog
+resources; they do not import the root catalog package. `cao add` is the
+supported lifecycle boundary after control-plane installation and materializes
+the selected campaign's canonical runtime without reinstalling control-plane or
+Agent Plugin resources.
+
+`npm run test:runtime-install` builds the actual producer archive and validates
+its installation commit from a fresh
+checkout, including the operator CLI, local runtime and policy verification,
+the bundled YAML parser without node_modules, and a dashboard build using only
+production dependencies. The test requires npm
+registry access, but does not create credentials or dispatch workflows.
+
+### Operator onboarding
+
+`install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+readiness before installing or upgrading anything. Repository creation and
+cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
+existing clone directories are never overwritten. Bare installation ends with
+the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
+to the controlling terminal after verified materialization when one is
+available. Without a terminal or when `CI` is set, setup applies only an exact
+public-control-repository profile: self-only read and Activity scope, no
+campaigns, public Actions-backed Pages, and repository workflow-token
+authentication. Private/internal repositories, broader existing policy, or
+installed campaigns fail closed. Headless repository creation still requires
+an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
+appearing successful. Streamed bootstrap children otherwise retain null stdin.
+An implicit `--quickstart` resolves the latest stable CAO `vX.Y.Z` release
+after prerequisite and checkout validation but before repository creation or
+file installation, then installs or refreshes the owned catalog resources and
+verified runtime at that release's immutable commit. Missing, inaccessible, or non-stable release
+resolution fails without mutation or fallback to `main`. Any explicit catalog
+source, including `@main`, a tag, a SHA, or a local directory, is preserved.
+Bare installation and guided setup retain their existing unversioned source
+behavior.
+
+`activity/setup.mjs` owns scope resolution and authentication orchestration.
+`activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
+Node terminal primitives. It provides keyboard prompts, inline validation,
+cancellation, and restrained elapsed progress; terminals without styling
+support, `NO_COLOR`, and `ACCESSIBLE` use plain numbered prompts without
+animation. The injectable prompt contract keeps authority decisions outside UI.
+Setup shows Repositories, Connections, and Review/apply, with default-No
+confirmation before Pages, credential, or policy changes. The Pages source is
+verified without changing visibility, with separate default-No consent to a
+public dashboard before credentials are changed. Declining or cancelling that
+consent removes only a newly created site where possible; an existing site is
+left in place with restriction/unpublication guidance. Policy is written atomically only
+after both succeed. Failures disclose possible partial external changes rather
+than claim rollback. Setup does not install campaigns, dispatch workflows,
+commit, or push. The CLI prints next actions by default and retains structured
+stdout with `setup --json`. Non-interactive setup, including setup in CI,
+requires a public control repository with empty campaigns and absent or exact
+self-only scope. It verifies public Actions-backed Pages, selects repository
+workflow-token mode, records self-only Activity scope, and writes policy last.
+Private/internal repositories and incompatible existing policy fail before
+Pages or authentication changes. A fresh bare installation remains scoped to
+the exact control repository with no campaigns before setup.
+
+`activity/quickstart.mjs` owns a distinct explicit first-success flow. It
+uses a clean public, private, or internal control repository on its checked-out
+default branch, preserving any existing commits. Outside a checkout the
+installer defaults to the signed-in user's available private `cao` control
+repository. If that remote name or required local clone path is occupied, it
+selects a fresh `cao-YYYYMMDD-HHMMSS` name using UTC, trying numeric suffixes
+through `-10` if needed and reporting the selected coordinate before creation.
+Availability lookup or timestamp-generation failures stop without mutation;
+existing repositories and clone paths are never reused or overwritten.
+An explicit `--create-repo OWNER/NAME` selects an exact coordinate and is never
+silently renamed. In-place connection of a checkout without remotes checks only
+remote-name availability because no clone directory is created.
+Unless the operator supplies a catalog source, the installer pins quickstart to
+the latest stable CAO release before this flow begins; Repo Assist is
+then pinned to the same installed CAO commit.
+Quickstart selects the public `github/gh-aw`
+repository unless `--target OWNER/REPO` selects another existing public
+repository. Repo Assist works without existing Agentic Workflows,
+Actions history, or telemetry. Quickstart runs ordinary Repo Assist, enabling
+only its existing maintenance worker in review mode and explicitly disabling
+issue triage, issue fix, and PR upkeep. It does not define a custom worker,
+source snapshot, starter input, or separate assessment contract. Normal source
+checkout, duplicate checks, implementation, focused validation, and review
+bundles are preserved. The worker records its actual base SHA.
+Installed quickstart workflows are recompiled with the catalog schedule seed
+`githubnext/gh-aw-cao` before committing, matching lock-file validation.
+The existing budgets are 250 AI credits for orchestration and 600 for
+maintenance, plus the model-based output check, whose default is 400 credits
+and may be configured differently in gh-aw. Quickstart discloses the 1,250-credit
+default total without presenting it as measured usage or expected cost.
+One validated low-risk maintenance proposal and review bundle, or an honest
+no-op, is the first useful result. Proposals are not requirements for using CAO;
+there are no readiness grades,
+required practices, or source-convention admission gates. CAO admission depends
+on policy and access, not tests, CI, agent instructions, or recommendation adoption.
+Immediately after requesting the normal orchestrator, quickstart disables it
+with `gh workflow disable`, including when dispatch fails, to prevent six-hour
+reruns without changing workflow sources or policy semantics. Disabling does
+not cancel the requested run. Pause failures are surfaced explicitly.
+Validation records a manually paused orchestrator with active workers as a
+pause note, not a recommendation to restart the schedule.
+Further runs require explicit re-enablement, which also resumes the normal
+schedule. Other workers and live authority require a reviewed policy decision.
+A successful run does not imply a patch, applied change, or
+operational value.
+Quickstart validates target access and public visibility and never
+creates or copies a target repository. Quickstart installs Repo Assist
+at the selected catalog revision, configures exact
+review-only authority for the selected target, requires public Pages, commits
+and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
+`.vscode/settings.json` project settings, dispatches one orchestrator and at
+most one worker, collects Activity, and waits for the Activity-triggered
+dashboard deployment. Campaign execution never modifies the target. Quickstart
+reports Repo Assist blocked, incomplete, and failed outcomes without
+converting unknowns into findings, and does not report success until the
+Activity artifact contains at least one unique run and the dashboard
+deployment succeeds. Installer handoff preserves the controlling terminal when
+present and otherwise uses plain headless progress, uses elapsed progress for
+each long operation, and suppresses Node's experimental-runtime diagnostic
+rather than mixing it into user progress. `--quickstart` is the authorization
+boundary for these effects in interactive and headless use; ordinary install
+and `cao setup` retain their non-effectful boundaries.
+
+The policy may declare `control-plane.activity.repositories` as an exact,
+nonempty subset of globally allowed repositories. This separates evidence
+collection scope from campaign rollout authority without silently narrowing
+either. Authentication planning uses the declared subset when present and
+otherwise preserves its existing fail-closed behavior. The public quickstart
+uses this contract to admit the public Repo Assist target while collecting
+workflow evidence only from the selected control repository with its
+repository-provided token. A public control repository is safe for this exact
+path because the selected target, evidence, dashboard, and review outputs are
+all public; that does not authorize non-public targets or other campaigns.
+
 ## Architectural boundaries
 
 ### Authority and execution

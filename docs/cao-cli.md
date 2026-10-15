@@ -58,16 +58,58 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
+| `./cao.sh quickstart [--target OWNER/REPO]` | Select the public example or another public target, run Repo Assist with only its existing maintenance worker in review mode, pause the orchestrator after dispatch, collect first Activity, and wait for the public dashboard. |
 | `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
 | `./cao.sh setup-auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `./cao.sh setup-auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
+| `./cao.sh add --repository OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
-Use `./cao.sh setup` for initial configuration. The individual `setup-auth` commands remain available for manual and non-interactive administration.
+The canvas Updates page exposes **Add repository** beside Repositories. Its
+debounced GitHub search only selects a target; execution still requires fresh
+approval of the exact `./cao.sh add --repository OWNER/REPO` command. Enrollment
+requires existing exact owner and repository allowlists and does not rewrite a
+broad discovery policy. An already enrolled repository is unchanged. New targets
+stay in review mode even when a campaign defaults to live. The command neither
+commits nor pushes, enables campaigns, changes rollout limits, configures
+credentials, nor expands an explicitly narrowed Activity scope. Review and commit
+the policy before activation at a reviewed workflow SHA.
+
+Use `./cao.sh quickstart` only immediately after verified installation in a
+clean public or private control repository on its default branch. Existing
+commits are allowed; the quickstart adds one bounded CAO commit. It can consume
+up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
++ 400 output checking; configured output-check limits may differ),
+and owns the bounded commit, push, workflow dispatches,
+and public dashboard deployment documented in the
+[quickstart](setup-quickstarts.md). Use `./cao.sh setup` for
+review-before-apply configuration. The individual `setup-auth` commands remain
+available for manual and non-interactive administration.
+
+Without an interactive terminal or when `CI` is set, `./cao.sh setup` applies
+only the agent-safe public profile: exact current-repository read and Activity
+scope, no campaigns, public Actions-backed Pages, and repository
+`GITHUB_TOKEN` (`workflow-token`) authentication. It refuses private/internal
+control repositories, broader existing policy, or installed campaigns.
+`./cao.sh setup --json` returns the applied profile with
+`"nonInteractive": true`. Bare installation remains usable before setup with
+exact control-repository scope, no operational campaigns, and
+repository-local workflow-token Activity access.
+Explicit quickstart is also terminal-independent. Without `--target`, it uses
+the public `github/gh-aw` repository for one validated maintenance proposal
+or no-op, not to grade its readiness or eligibility for CAO. Applying the proposal
+is never required for using CAO. Existing Agentic Workflows, Actions
+history, or telemetry are not required.
+Only the existing maintenance worker is enabled. The normal orchestrator is
+paused through `gh workflow disable` after requesting the first run. Re-enable
+it explicitly for further runs; doing so also resumes its six-hour schedule.
+`--target OWNER/REPO` selects another existing public repository. The checkout,
+target-visibility and default-branch preflight remain
+fail-closed.
 
 ## Control Campaigns
 
@@ -150,6 +192,9 @@ Manual inputs may narrow checked-in policy for one run; they never widen it.
 For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
 is not a `cao mode` command or a campaign configuration.
+
+CLI failures print one actionable message by default. Set `CAO_DEBUG=1` only
+when diagnosing the CLI itself and an internal stack trace is needed.
 
 ## Inspect Activity
 

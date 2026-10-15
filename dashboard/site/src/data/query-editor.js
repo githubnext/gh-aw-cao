@@ -1,7 +1,10 @@
+import { createDebug } from '../debug.js';
 import { validateDashboardDocument } from '../validator.js';
 import { dashboardViewSourceNames } from '../view-filter-contract.js';
 
 export const MAX_QUERY_EDITOR_DOCUMENT_CHARACTERS = 131072;
+
+const debugQueryEditor = createDebug('data:query-editor');
 
 /**
  * @typedef {{ ok: true, document: import('../presenter.js').PresentationDocument, pageId: string, sourceNames: string[], errors: [] } | { ok: false, errors: import('../validator.js').ValidationError[] }} QueryEditorValidation
@@ -18,10 +21,14 @@ export function validateQueryEditorDocument(source) {
     errors: [{ code: 'QUERY-EDITOR', message, path }]
   });
   if (typeof source !== 'string' || !source.trim() || source.length > MAX_QUERY_EDITOR_DOCUMENT_CHARACTERS) {
+    debugQueryEditor({ operation: 'validate-document', status: 'rejected', reason: 'bounds' });
     return invalid('Provide a Dashboard Language document of at most 131072 characters.');
   }
   const result = validateDashboardDocument(source);
-  if (!result.ok) return result;
+  if (!result.ok) {
+    debugQueryEditor({ operation: 'validate-document', status: 'rejected', reason: 'schema', errorCount: result.errors.length });
+    return result;
+  }
   const document = /** @type {import('../presenter.js').PresentationDocument} */ (result.value);
   const dashboard = document.dashboard;
   if (dashboard.pages.length !== 1 || dashboard.pages[0].kind !== 'custom') {
@@ -66,11 +73,13 @@ export function validateQueryEditorDocument(source) {
       }
     }
   }
+  const sourceNames = [...new Set(page.views.flatMap(dashboardViewSourceNames))];
+  debugQueryEditor({ operation: 'validate-document', status: 'accepted', viewCount: page.views.length, sourceCount: sourceNames.length });
   return {
     ok: true,
     document,
     pageId: page.id,
-    sourceNames: [...new Set(page.views.flatMap(dashboardViewSourceNames))],
+    sourceNames,
     errors: []
   };
 }

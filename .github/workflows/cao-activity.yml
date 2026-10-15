@@ -14,11 +14,14 @@ on:
     paths:
       - .github/workflows/cao.json
       - .github/workflows/cao-activity.yml
+      - .github/workflows/cao-dashboard.yml
       - "activity/**"
+      - "dashboard/**"
+      - "*/dashboard.json"
       - "*/operational-value.mjs"
       - "*/operational-value/**"
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "7 * * * *"
 
 permissions:
   actions: read

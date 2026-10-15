@@ -294,4 +294,20 @@ queries, instead of through collections, see
 
 Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
 
+### Choose a local preview data backend
+
+`npm run dashboard:local` selects the dashboard's query backend with `--data-backend`:
+
+| Backend | Behavior |
+|---------|----------|
+| `sqlite` | Default for local previews. Ingests the downloaded inventory and Activity shards into a temporary server-side SQLite projection; the page uses the remote HTTP query backend instead of browser IndexedDB. |
+| `indexeddb` | Opt-in browser backend. The page uses the static browser backend. |
+| `postgres` | Selects the Go/PostgreSQL server. It needs the reviewed host policy, built site, database, and OAuth/HTTPS configuration, and does not support canvas previews. |
+
+```bash
+npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY
+```
+
+SQLite initialization failures stop startup; the preview does not silently fall back to IndexedDB. The canvas open input accepts `dataBackend: "sqlite"` or `"indexeddb"`.
+
 For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

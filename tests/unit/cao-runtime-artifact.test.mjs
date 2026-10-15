@@ -1,0 +1,257 @@
+import assert from "node:assert/strict";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import test from "node:test";
+import { parse } from "yaml";
+import {
+  downloadCaoRuntimeArtifact, extractCaoArchive, materializeCao, validateCaoRuntimeArtifact,
+} from "../../.github/workflows/shared/materialize-cao.mjs";
+import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
+import { setupTerminalFixture, walkSetupTerminal } from "../helpers/setup-terminal.mjs";
+
+const catalog = path.resolve(import.meta.dirname, "../..");
+const revision = "1".repeat(40);
+const temporary = mkdtempSync(path.join(tmpdir(), "cao-runtime-artifact-"));
+const artifact = buildCaoRuntime(catalog, path.join(temporary, "built"), revision);
+test.after(() => rmSync(temporary, { recursive: true, force: true }));
+
+function unpack(t) {
+  const destination = mkdtempSync(path.join(temporary, "unpacked-"));
+  t.after(() => rmSync(destination, { recursive: true, force: true }));
+  extractCaoArchive(artifact.archive, destination, true);
+  return path.join(destination, "package");
+}
+
+function fakeGithub(t, {
+  expired = false,
+  missing = false,
+  pendingBeforeSuccess = 0,
+  rejection = false,
+} = {}) {
+  const root = mkdtempSync(path.join(temporary, "github-"));
+  const log = path.join(root, "commands.jsonl");
+  const fake = path.join(root, "gh");
+  const script = `import { appendFileSync, cpSync, existsSync, readFileSync } from "node:fs";
+const args = process.argv.slice(2);
+const previous = existsSync(${JSON.stringify(log)}) ? readFileSync(${JSON.stringify(log)}, "utf8").trim().split("\\n").filter(Boolean).map(JSON.parse) : [];
+const workflowQueries = previous.filter((entry) => entry[0] === "api" && entry.at(-1).includes("/actions/workflows/")).length;
+appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + "\\n");
+if (args[0] === "api" && args.at(-1).includes("/actions/workflows/")) {
+  const pending = workflowQueries < ${pendingBeforeSuccess};
+  console.log(JSON.stringify([{ workflow_runs: ${missing ? "[]" : `pending ? ${JSON.stringify([
+    { id: 9, head_sha: revision, conclusion: null, event: "push", status: "in_progress" },
+  ])} : ${JSON.stringify([
+    { id: 7, head_sha: "2".repeat(40), conclusion: "success", event: "push", status: "completed" },
+    { id: 8, head_sha: revision, conclusion: "success", event: "pull_request", status: "completed" },
+    { id: 9, head_sha: revision, conclusion: "success", event: "push", status: "completed" },
+  ])}`} }]));
+} else if (args[0] === "api") {
+  console.log(JSON.stringify([{ artifacts: [{ name: "cao-runtime-${revision}", expired: ${expired} }] }]));
+} else if (args[0] === "run" || args[0] === "release") {
+  cpSync(${JSON.stringify(artifact.archive)}, args[args.indexOf("--dir") + 1] + "/cao-runtime-${revision}.tgz");
+} else if (args[0] === "attestation") {
+  if (${rejection}) { console.error("invalid signature or source digest"); process.exit(1); }
+} else { process.exit(2); }
+`;
+  writeFileSync(fake, `#!${process.execPath}\n${script}`);
+  chmodSync(fake, 0o755);
+  if (process.platform === "win32") {
+    const module = path.join(root, "fake-gh.mjs");
+    writeFileSync(module, script);
+    writeFileSync(path.join(root, "gh.cmd"), `@"${process.execPath}" "${module}" %*\r\n`);
+    cpSync(process.execPath, path.join(root, "gh.exe"));
+    writeFileSync(path.join(root, "preload.mjs"), `${script.replace("process.argv.slice(2)", "process.argv.slice(1)")}\nprocess.exit(0);\n`);
+  }
+  const previousPath = process.env.PATH;
+  const previousOptions = process.env.NODE_OPTIONS;
+  process.env.PATH = `${root}${path.delimiter}${previousPath}`;
+  if (process.platform === "win32") {
+    process.env.NODE_OPTIONS = `${previousOptions ?? ""} --import=${pathToFileURL(path.join(root, "preload.mjs")).href}`;
+  }
+  t.after(() => {
+    process.env.PATH = previousPath;
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+  });
+  return { root, commands: () => readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line)) };
+}
+
+test("producer artifact binds its production inventory to an immutable revision", (t) => {
+  const root = unpack(t);
+  validateCaoRuntimeArtifact(root, revision);
+  const metadata = JSON.parse(readFileSync(path.join(root, "cao-runtime.json"), "utf8"));
+  assert.equal(metadata.revision, revision);
+  assert.ok(metadata.files["dashboard/site/src/vendor/yaml.js"]);
+  assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
+  assert.ok(metadata.files["activity/setup-prompt.mjs"]);
+  const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
+  const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
+  assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);
+  assert.match(prompt, /from 'node:readline'/);
+  assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
+  assert.equal(existsSync(path.join(root, "node_modules")), false);
+  assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
+  assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
+  assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
+});
+
+test("producer archives are reproducible across temporary build directories", () => {
+  const rebuilt = buildCaoRuntime(catalog, path.join(temporary, "rebuilt"), revision);
+  assert.equal(rebuilt.digest, artifact.digest);
+  assert.deepEqual(readFileSync(rebuilt.archive), readFileSync(artifact.archive));
+});
+
+test("the prebuilt archive runs keyboard setup without consumer npm dependencies", { skip: process.platform === "win32" }, async (t) => {
+  const root = unpack(t);
+  const fixture = setupTerminalFixture(t, path.join(root, "activity/setup.mjs"));
+  const result = await walkSetupTerminal(fixture, [
+    ["Repositories CAO should read", "\r"],
+    ["How should CAO authenticate?", "\r"],
+    ["Apply this setup?", "\r"],
+  ]);
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /"cancelled":true/);
+  assert.ok(!fixture.calls().some(([command]) => command === "connect" || command === "api"));
+});
+
+test("artifact verification rejects altered, missing and unowned runtime files", (t) => {
+  const root = unpack(t);
+  const cli = path.join(root, "activity/cao.mjs");
+  const source = readFileSync(cli);
+  writeFileSync(cli, "altered");
+  assert.throws(() => validateCaoRuntimeArtifact(root, revision), /checksum mismatch: activity\/cao.mjs/);
+  rmSync(cli);
+  assert.throws(() => validateCaoRuntimeArtifact(root, revision), /file inventory does not match/);
+  writeFileSync(cli, source);
+  writeFileSync(path.join(root, "plugin.json"), "{}");
+  const metadataPath = path.join(root, "cao-runtime.json");
+  const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+  metadata.files["plugin.json"] = "0".repeat(64);
+  writeFileSync(metadataPath, JSON.stringify(metadata));
+  assert.throws(() => validateCaoRuntimeArtifact(root, revision), /unowned path: plugin.json/);
+});
+
+for (const [description, ref, downloadCommand] of [
+  ["main/SHA", revision, "run"],
+  ["stable release", "v1.2.3", "release"],
+]) {
+  test(`${description} acquisition verifies the archive, workflow and both exact source digests`, (t) => {
+    const { root, commands } = fakeGithub(t);
+    const archive = downloadCaoRuntimeArtifact({
+      source: `githubnext/gh-aw-cao@${ref}`, resolvedCommit: revision,
+    }, path.join(root, "download"));
+    assert.deepEqual(readFileSync(archive), readFileSync(artifact.archive));
+    const calls = commands();
+    assert.ok(calls.some((args) => args[0] === downloadCommand));
+    if (downloadCommand === "run") assert.equal(calls.find((args) => args[0] === "run")[2], "9");
+    const verification = calls.find((args) => args[0] === "attestation");
+    for (const [flag, value] of [
+      ["--repo", "githubnext/gh-aw-cao"],
+      ["--hostname", "github.com"],
+      ["--signer-workflow", "githubnext/gh-aw-cao/.github/workflows/cao-runtime.yml"],
+      ["--source-digest", revision], ["--signer-digest", revision],
+    ]) assert.equal(verification[verification.indexOf(flag) + 1], value);
+    assert.ok(verification.includes("--deny-self-hosted-runners"));
+  });
+}
+
+test("main/SHA acquisition waits for the active exact runtime build", (t) => {
+  const { root, commands } = fakeGithub(t, { pendingBeforeSuccess: 2 });
+  const waits = [];
+  const archive = downloadCaoRuntimeArtifact({
+    source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+  }, path.join(root, "download"), {
+    attempts: 2,
+    intervalMs: 5_000,
+    wait: (milliseconds) => waits.push(milliseconds),
+  });
+  assert.deepEqual(readFileSync(archive), readFileSync(artifact.archive));
+  assert.deepEqual(waits, [5_000, 5_000]);
+  assert.equal(commands().filter((args) => args[0] === "api" && args.at(-1).includes("/actions/workflows/")).length, 3);
+});
+
+for (const [description, options] of [
+  ["missing", { missing: true }],
+  ["expired", { expired: true }],
+  ["unverifiable", { rejection: true }],
+]) {
+  test(`${description} artifacts fail before any owned runtime is replaced`, async (t) => {
+    const { root, commands } = fakeGithub(t, options);
+    const consumer = path.join(root, "consumer");
+    mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
+    writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
+      package: "githubnext/gh-aw-cao", source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+    }));
+    mkdirSync(path.join(consumer, "activity"));
+    const existing = path.join(consumer, "activity/existing.mjs");
+    writeFileSync(existing, "existing");
+    await assert.rejects(materializeCao("root", consumer), /No successful, unexpired|invalid signature or source digest/);
+    assert.equal(readFileSync(existing, "utf8"), "existing");
+    assert.equal(commands().some((args) => args[0] === "release"), false);
+  });
+}
+
+test("a missing focused revision leaves an already validated root runtime untouched", async (t) => {
+  const { root } = fakeGithub(t);
+  const consumer = path.join(root, "consumer");
+  const records = path.join(consumer, ".github/aw/packages");
+  mkdirSync(records, { recursive: true });
+  for (const [name, sha] of [["root", revision], ["activity", "3".repeat(40)]]) {
+    writeFileSync(path.join(records, `${name}.json`), JSON.stringify({
+      package: `githubnext/gh-aw-cao${name === "root" ? "" : `/${name}`}`, resolvedCommit: sha,
+    }));
+  }
+  mkdirSync(path.join(consumer, "activity"));
+  const existing = path.join(consumer, "activity/existing.mjs");
+  writeFileSync(existing, "existing");
+  await assert.rejects(materializeCao("root", consumer), /No successful, unexpired/);
+  assert.equal(readFileSync(existing, "utf8"), "existing");
+  assert.equal(existsSync(path.join(consumer, "dashboard")), false);
+});
+
+test("remote materialization consumes the prebuilt package and does not invoke npm", async (t) => {
+  const { root } = fakeGithub(t);
+  const consumer = path.join(root, "consumer");
+  mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
+  writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
+    package: "githubnext/gh-aw-cao", resolvedCommit: revision,
+  }));
+  const npm = path.join(root, "npm");
+  writeFileSync(npm, "#!/bin/sh\nexit 99\n");
+  chmodSync(npm, 0o755);
+  await materializeCao("root", consumer);
+  if (process.platform !== "win32") {
+    assert.ok(statSync(path.join(consumer, "cao.sh")).mode & 0o100);
+    await materializeCao("root", consumer);
+    assert.ok(statSync(path.join(consumer, "cao.sh")).mode & 0o100, "updates must keep the launcher executable");
+  }
+  assert.deepEqual(readFileSync(path.join(consumer, "activity/cao.mjs")), readFileSync(path.join(catalog, "activity/cao.mjs")));
+  assert.equal(existsSync(path.join(consumer, "package.json")), false);
+  assert.equal(existsSync(path.join(consumer, "cao-runtime.json")), false);
+});
+
+test("the trusted runtime pipeline separates building and attestation from draft asset publication", () => {
+  const source = readFileSync(path.join(catalog, ".github/workflows/cao-runtime.yml"), "utf8");
+  const workflow = parse(source);
+  assert.deepEqual(workflow.on.push.branches, ["main"]);
+  assert.equal(workflow.on.release, undefined);
+  assert.equal(workflow.on.pull_request, undefined);
+  assert.equal(workflow.on.workflow_dispatch, undefined);
+  assert.equal(workflow.jobs.build.permissions.contents, "read");
+  assert.equal(workflow.jobs.build.permissions["id-token"], undefined);
+  const setupNode = workflow.jobs.build.steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
+  assert.ok(setupNode);
+  assert.equal(setupNode.with.cache, undefined);
+  assert.equal(setupNode.with["package-manager-cache"], false);
+  assert.equal(workflow.jobs.attest.permissions["id-token"], "write");
+  assert.equal(workflow.jobs.publish, undefined);
+  assert.match(source, /github\.repository == 'githubnext\/gh-aw-cao'/);
+  assert.match(source, /retention-days: 90/);
+  assert.doesNotMatch(source, /gh release upload|--clobber|npm publish/);
+  const attest = workflow.jobs.attest;
+  assert.ok(!attest.steps.some((step) => step.uses?.startsWith("actions/checkout")));
+  assert.doesNotMatch(attest.steps.map((step) => step.run ?? "").join("\n"), /npm|node |tar |bash .*\.sh/);
+  for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) assert.match(match[1], /^[0-9a-f]{40}$/);
+});

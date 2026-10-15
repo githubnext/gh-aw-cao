@@ -343,6 +343,9 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
       JSON.parse(readFileSync(join(consumer, ".github", "workflows", "aw.json"), "utf8")).auto_upgrade.options,
       ["--pre-releases"],
     );
+    const autoUpgrade = readFileSync(join(consumer, ".github", "workflows", "agentic-auto-upgrade.yml"), "utf8");
+    assert.match(autoUpgrade, /github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
+    assert.match(autoUpgrade, /github\/gh-aw-actions\/setup@[0-9a-f]{40}/);
     for (const relativePath of activityExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted activity file ${relativePath}`);
     }

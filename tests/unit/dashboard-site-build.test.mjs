@@ -348,22 +348,24 @@ test("dashboard agent guide describes and validates the assembled public artifac
       path.resolve("dashboard/site/scripts/llms.mjs"),
       "validate",
       destination,
-      path.resolve("."),
-    ]);
+    ], { cwd: root });
     await validateDashboardAgentArtifacts({
       sitePath: destination,
-      repositoryPath: path.resolve("."),
     });
     const llms = await readFile(path.join(destination, "llms.txt"), "utf8");
     assert.match(llms, /Agent summary.*57 bytes/);
     assert.doesNotMatch(llms, /(?:token|secret|password|private[-_ ]key)\s*[:=]\s*\S+/i);
+    await writeFile(path.join(destination, "llms.txt"), llms.replace(
+      "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/skills/setup-cao/SKILL.md", "missing-skill-url",
+    ));
+    await assert.rejects(validateDashboardAgentArtifacts({ sitePath: destination }), /missing raw skill URL: setup-cao/);
+    await writeFile(path.join(destination, "llms.txt"), llms);
 
     await assert.rejects(
       execFileAsync(process.execPath, [
         path.resolve("dashboard/site/scripts/llms.mjs"),
         "validate",
         path.join(root, "missing"),
-        path.resolve("."),
       ]),
       (error) => error?.code !== 0,
     );

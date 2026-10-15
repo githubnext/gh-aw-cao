@@ -187,6 +187,40 @@ test("preserves unavailable GitHub enablement state as unknown", () => {
   assert.equal(findings[0].severity, "warning");
 });
 
+test("reports a manually paused orchestrator with active workers as a note", () => {
+  const findings = validateEnablement(".", () => ({
+    status: 0,
+    stdout: JSON.stringify([
+      { path: ".github/workflows/sample.lock.yml", state: "disabled_manually" },
+      { path: ".github/workflows/sample-worker.lock.yml", state: "active" },
+    ]),
+    stderr: "",
+  }), [{
+    campaign: "sample", orchestrator: "sample", workers: { worker: "sample-worker" },
+  }]);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].id, "campaign-orchestrator-paused");
+  assert.equal(findings[0].severity, "note");
+  assert.doesNotMatch(findings[0].remediation, /\.\/cao\.sh enable/);
+  assert.match(findings[0].remediation, /resumes its schedule/);
+});
+
+test("does not treat unavailable or inactive workers as an intentional pause", () => {
+  for (const workerState of ["unknown", "disabled_inactivity", "disabled_manually"]) {
+    const findings = validateEnablement(".", () => ({
+      status: 0,
+      stdout: JSON.stringify([
+        { path: ".github/workflows/sample.lock.yml", state: "disabled_manually" },
+        { path: ".github/workflows/sample-worker.lock.yml", state: workerState },
+      ]),
+      stderr: "",
+    }), [{
+      campaign: "sample", orchestrator: "sample", workers: { worker: "sample-worker" },
+    }]);
+    assert.ok(!findings.some(({ id }) => id === "campaign-orchestrator-paused"), workerState);
+  }
+});
+
 test("detects bounded static security findings", async () => {
   const root = await fixture({ declaration: false });
   try {
@@ -257,6 +291,18 @@ test("doctor failures are warnings", () => {
     ? { status: 0, stdout: "https://github.com/acme/control.git\n", stderr: "" }
     : { status: 1, stdout: "", stderr: "not authenticated" };
   assert.equal(doctorFindings(".", execute)[0].severity, "warning");
+});
+
+test("CI validation uses the installed runtime without consumer npm metadata", async () => {
+  const workflow = parse(await readFile(".github/workflows/cao-validate.yml", "utf8"));
+  const steps = workflow.jobs.validate.steps;
+  const setupNode = steps.find(({ uses }) => uses?.startsWith("actions/setup-node@"));
+
+  assert.equal(workflow["run-name"], "CAO validation / ${{ github.run_id }}");
+  assert.equal(setupNode.with["node-version"], 24);
+  assert.equal(setupNode.with["package-manager-cache"], false);
+  assert.equal(setupNode.with.cache, undefined);
+  assert.ok(!steps.some(({ run }) => /\bnpm (?:ci|install)\b/.test(run ?? "")));
 });
 
 test("CI validation does not dirty a fresh checkout with its own report", async (t) => {

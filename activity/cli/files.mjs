@@ -9,7 +9,7 @@ export function isMapping(value) {
 }
 
 export function commandFailureMessage(result, fallback) {
-  return (result.stderr || '').trim() || result.error?.message || fallback;
+  return (result.stderr || result.stdout || '').trim() || result.error?.message || fallback;
 }
 
 export async function writeJsonAtomically(filePath, document) {

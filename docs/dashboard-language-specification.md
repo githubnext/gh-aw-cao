@@ -229,7 +229,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
 | Callout `visible-when` | `source`, `field`, `equals` |
 | Dashboard `horizon` | `label`, `tooltip` |
-| Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments` |
+| Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments`, `selector` |
 | Dashboard CLI action argument | `id`, `label`, `description`, `type`, `flag`, `default` |
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
@@ -1267,6 +1267,56 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
+A list may declare `list.actions`, a non-empty sequence of unique view-placed
+CLI action IDs, alongside its existing `list.action`. Actions render in declared
+order beside the list heading, including when the list has no rows.
+
+A list shows its declared description inline in the header. Presenters do not
+repeat that same explanation in a separate heading tooltip.
+
+A view-placed `operate` CLI action may declare a reusable `selector` dialog
+configuration: `label`, optional `placeholder`, `debounce-ms` (100–2000),
+`query: { command: "gh search repos", fields: [...], limit: 1–50 }`, and
+`mapping: { value, label, description?, target }`. Mapping fields must be selected
+by the query; `target` must name one command template token. For example:
+
+```json
+{
+  "id": "add-repository",
+  "level": "operate",
+  "label": "Add repository",
+  "icon": "plus",
+  "placement": "view",
+  "command": "./cao.sh add --repository {{repository}}",
+  "selector": {
+    "label": "Repository",
+    "debounce-ms": 300,
+    "query": { "command": "gh search repos", "fields": ["fullName", "description"], "limit": 20 },
+    "mapping": { "value": "fullName", "label": "fullName", "description": "description", "target": "repository" }
+  }
+}
+```
+
+Selectors render only in executable canvas mode. Lookup is a bounded read-only
+GitHub CLI search on the canvas server, not a query over canonical dashboard
+evidence. The server resolves the query and mapping from the declared action ID;
+clients cannot supply a command, fields, or mapping. Search input is a separate
+argv value, never shell-interpolated. These transient external choices do not
+become dashboard sources. Changing input immediately invalidates prior selection
+and cancels stale lookups. Closing or detaching the dialog cancels pending work.
+The presenter must label the textbox, announce loading, empty, and failed lookup
+states, and keep results in a viewport-bounded, independently scrollable list.
+Queries return at most their declared `limit`, even when hundreds of repositories
+match. At that limit, the presenter tells users to refine their search rather
+than implying that every match is shown. Slow lookups retain an explicit loading
+state and, after two seconds, explain that users can continue typing or cancel.
+The server bounds each GitHub CLI lookup to 15 seconds. Search input and
+cancellation remain available while waiting; abandoned lookups and their
+slow-search timers must not update later searches. Presenters support keyboard
+selection and disable execution until a mapped value
+passes command-template validation. Selection never executes a command; fresh,
+exact per-invocation host approval remains mandatory.
+
 A CLI action may declare `copy-only: true`. Presenters must expose its resolved
 command for copying and must not execute it.
 
@@ -1448,6 +1498,8 @@ encoding:
 The grouped example stacks daily AI Credit totals by workflow. Area charts accept the standard chart `data`, `layout`, `title`, `description`, `empty-message`, `x`, `y`, `color`, `href`, formatting, unit, and aggregation declarations. They reject nominal or quantitative `x`, non-quantitative `y`, multiple `y` fields, and `reference`, consistently with the equivalent chart validation rules.
 
 A view may set the structural `layout` hint to `full`, `full-view`, `half`, `third`, or `horizontal`. `full-view` requests the full available row and viewport height; `horizontal` requests adjacent title and visualization regions; the other values describe the preferred share of an available row, not fixed dimensions. Presenters **MAY** collapse every hint to `full` when space, accessibility, or output media requires it; source order remains the reading and focus order.
+
+The dashboard web presenter places explicit `full` pie-chart titles above their visualization without an additional padded card, keeping their heading insets consistent with other full-width charts. `horizontal` retains the adjacent title and visualization card.
 
 A table view may set `controls` to `interactive` or `static`; an omitted value defaults to `interactive`. Interactive tables may expose filtering, sorting, summaries, and progressive row disclosure. An interactive table may set `lazy-list` to `true` to reveal rows in bounded batches as its load boundary approaches the viewport, while retaining an accessible manual load control. Static tables expose all rows in source order without those controls and cannot enable `lazy-list`. A table or list may set `empty-message` to a non-empty textual description shown inside its zero-row region.
 

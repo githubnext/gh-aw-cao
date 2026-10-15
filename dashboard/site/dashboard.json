@@ -973,6 +973,31 @@
         "command": "./cao.sh add {{package-source}}",
         "placement": "row",
         "copy-only": true
+      },
+      {
+        "id": "add-repository",
+        "level": "operate",
+        "label": "Add repository",
+        "description": "Stage one exact repository in local CAO policy in review mode. Review and commit the policy change before activation; credential access is configured separately.",
+        "icon": "plus",
+        "command": "./cao.sh add --repository {{repository}}",
+        "placement": "view",
+        "selector": {
+          "label": "Repository",
+          "placeholder": "Search owner/repository",
+          "debounce-ms": 300,
+          "query": {
+            "command": "gh search repos",
+            "fields": ["fullName", "description"],
+            "limit": 20
+          },
+          "mapping": {
+            "value": "fullName",
+            "label": "fullName",
+            "description": "description",
+            "target": "repository"
+          }
+        }
       }
     ],
     "horizon": {

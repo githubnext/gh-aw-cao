@@ -10,6 +10,7 @@ import {
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import runInventoryContract from '../fixtures/repository-run-inventory-contract.json' with { type: 'json' };
 
 /** @typedef {import('../../src/presenter.js').LogicalSourceInput} Source */
 /** @typedef {import('../../src/data/queries/declarative.js').DashboardQuery} Query */
@@ -157,6 +158,88 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it('lists repository run counts and drill links through the production worker boundary', async () => {
+    const sources = await canonicalSources();
+    const query = queries.find((candidate) => candidate.name === runInventoryContract.source);
+    const view = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === runInventoryContract.page)?.definition?.views
+      ?.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.view);
+    expect(query).toBeDefined();
+    expect(view).toMatchObject({
+      mark: 'chart', chart: runInventoryContract.chart,
+      data: { source: runInventoryContract.source, limit: runInventoryContract.limit },
+      encoding: {
+        x: { field: 'repository', type: 'nominal' },
+        y: { field: 'runs', type: 'quantitative' },
+        href: { field: 'repository-link', type: 'nominal' }
+      }
+    });
+    for (const definition of [query, view]) {
+      expect(definition?.subject).toBeTruthy();
+      expect(definition?.objective).toBeTruthy();
+      expect(definition?.acceptance).toBeTruthy();
+      expect(Array.from(`${definition?.subject}${definition?.objective}${definition?.acceptance}`).length).toBeLessThanOrEqual(512);
+    }
+    const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    expect(result.rows.map(({ repository, runs }) => ({ repository, runs }))).toEqual(runInventoryContract.rows);
+    for (const row of result.rows) {
+      expect(row['repository-link']).toMatchObject({
+        'dashboard-href': `#page-repository-detail?repository=${encodeURIComponent(String(row.repository))}`
+      });
+    }
+  });
+
+  it('counts distinct run IDs across attempts within the selected horizon and organization', async () => {
+    const inputs = fixture();
+    inputs.runs.rows.push({ ...inputs.runs.rows[0], 'run-attempt': 2 });
+    const sources = await canonicalSources(inputs);
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.page);
+    const compiled = compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
+      queries, viewId: runInventoryContract.view,
+      queryContext: {
+        timeWindow: { start: '2026-09-20T00:00:00Z', end: '2026-09-24T00:00:00Z' },
+        filters: { organization: ['org'] }
+      },
+      evaluatedAt: '2026-09-24T00:00:00Z'
+    });
+    const result = workerQuery(compiled.queries, sources, compiled.aliases)[compiled.aliases[0]];
+    expect(result.rows).toHaveLength(6);
+    expect(result.rows[0]).toMatchObject({ repository: 'org/alpha', runs: 6 });
+    expect(result.rows).toContainEqual(expect.objectContaining({ repository: 'org/reported', runs: 0 }));
+    expect(result.rows.some((row) => row.repository === 'other/alpha')).toBe(false);
+  });
+
+  it('bounds the chart query to 100 repositories without truncating the full Table inventory', async () => {
+    const inputs = fixture();
+    inputs.repositories.rows = Array.from({ length: 101 }, (_, index) => {
+      const repository = `extra-${String.fromCharCode(97 + Math.floor(index / 26), 97 + index % 26)}`;
+      return {
+        organization: 'org', repository,
+        'repository-link': { href: `https://github.com/org/${repository}`, relation: 'repository' }
+      };
+    });
+    const sources = await canonicalSources(inputs);
+    expect(workerQuery(queries, sources, ['repository-activity'])['repository-activity'].rows).toHaveLength(101);
+    expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source].rows).toHaveLength(runInventoryContract.limit);
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.page);
+    const compiled = compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
+      queries, viewId: runInventoryContract.view
+    });
+    const result = workerQuery(compiled.queries, sources, compiled.aliases)[compiled.aliases[0]];
+    expect(result.rows).toHaveLength(runInventoryContract.limit);
+    expect(result.rows[0]).toMatchObject({ repository: 'org/extra-aa', runs: 0 });
+    expect(result.rows.at(-1)).toMatchObject({ repository: 'org/extra-dv', runs: 0 });
+  });
+
+  it('preserves empty and unavailable run evidence quality for repository run inventory', async () => {
+    const sources = await canonicalSources();
+    sources.runs = { ...sources.runs, rows: [], metadata: { ...sources.runs.metadata, availability: 'unavailable' } };
+    const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    expect(result.rows).toHaveLength(runInventoryContract.rows.length);
+    expect(result.metadata.completeness).toBe('partial');
+    sources.repositories = { ...sources.repositories, rows: [], metadata: { ...sources.repositories.metadata, availability: 'empty' } };
+    expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source].rows).toEqual([]);
+  });
+
   it('projects repository identities and drill links without loading activity tables before enrichment', async () => {
     const sources = await canonicalSources();
     const view = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'repositories')?.definition?.views

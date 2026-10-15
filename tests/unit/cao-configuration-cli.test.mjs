@@ -104,7 +104,7 @@ function setupExecutor(repositories, repositoryLists = {}, organizations = []) {
   };
 }
 
-test("cao setup creates a private Actions Pages site and verifies its access", () => {
+test("cao setup creates an Actions Pages site without changing its visibility", () => {
   const calls = [];
   let site;
   const execute = (command, arguments_) => {
@@ -112,59 +112,50 @@ test("cao setup creates a private Actions Pages site and verifies its access", (
     calls.push(arguments_);
     const method = arguments_[1] === "-X" ? arguments_[2] : "GET";
     if (method === "GET" && !site) return { status: 1, stderr: "gh: Not Found (HTTP 404)" };
-    if (method === "POST") {
-      site = { build_type: "workflow", public: true };
-    } else if (method === "PUT") {
-      site.public = false;
-    }
+    if (method === "POST") site = { build_type: "workflow", public: true };
     return { status: 0, stdout: JSON.stringify(site), stderr: "" };
   };
-  configureDashboardPages({ repository: "acme/control", visibility: "private", execute });
+  configureDashboardPages({ repository: "acme/control", execute });
   assert.deepEqual(calls, [
     ["api", "repos/acme/control/pages"],
     ["api", "-X", "POST", "-f", "build_type=workflow", "repos/acme/control/pages"],
-    ["api", "-X", "PUT", "-F", "public=false", "repos/acme/control/pages"],
     ["api", "repos/acme/control/pages"],
   ]);
 });
 
-test("cao setup updates an existing Pages site without changing its domain or source branch", () => {
+test("cao setup updates an existing Pages site without changing its domain or visibility", () => {
   const calls = [];
-  let site = { build_type: "legacy", public: true, cname: "reports.example.org" };
+  let site = { build_type: "legacy", public: false, cname: "reports.example.org" };
   const execute = (_, arguments_) => {
     calls.push(arguments_);
-    if (arguments_[2] === "PUT") {
-      if (arguments_[4] === "public=false") site = { ...site, public: false };
-      if (arguments_[4] === "build_type=workflow") site = { ...site, build_type: "workflow" };
+    if (arguments_[2] === "PUT" && arguments_[4] === "build_type=workflow") {
+      site = { ...site, build_type: "workflow" };
     }
     return { status: 0, stdout: JSON.stringify(site), stderr: "" };
   };
-  configureDashboardPages({ repository: "acme/control", visibility: "private", execute });
-  assert.deepEqual(calls.slice(1, 3), [
-    ["api", "-X", "PUT", "-F", "public=false", "repos/acme/control/pages"],
-    ["api", "-X", "PUT", "-f", "build_type=workflow", "repos/acme/control/pages"],
-  ]);
-  assert.equal(site.cname, "reports.example.org");
+  configureDashboardPages({ repository: "acme/control", execute });
+  assert.deepEqual(calls[1], ["api", "-X", "PUT", "-f", "build_type=workflow", "repos/acme/control/pages"]);
+  assert.equal(calls.some((arguments_) => arguments_.some((value) => value.startsWith("public="))), false);
+  assert.deepEqual(site, { build_type: "workflow", public: false, cname: "reports.example.org" });
 });
 
-test("cao setup leaves an existing restricted Actions Pages site unchanged", () => {
+test("cao setup leaves an existing Actions Pages site unchanged", () => {
   const calls = [];
   const execute = (_, arguments_) => {
     calls.push(arguments_);
-    return { status: 0, stdout: '{"build_type":"workflow","public":false}' };
+    return { status: 0, stdout: '{"build_type":"workflow","public":true}' };
   };
-  configureDashboardPages({ repository: "acme/control", visibility: "private", execute });
+  configureDashboardPages({ repository: "acme/control", execute });
   assert.deepEqual(calls, [
     ["api", "repos/acme/control/pages"],
     ["api", "repos/acme/control/pages"],
   ]);
 });
 
-test("cao setup fails closed on denied Pages access or unsupported private Pages", () => {
+test("cao setup fails on denied Pages access or an unverified Actions source", () => {
   assert.throws(
     () => configureDashboardPages({
       repository: "acme/control",
-      visibility: "private",
       execute: () => ({ status: 1, stderr: "gh: Forbidden (HTTP 403)" }),
     }),
     /Unable to inspect dashboard Pages site/,
@@ -172,35 +163,81 @@ test("cao setup fails closed on denied Pages access or unsupported private Pages
   assert.throws(
     () => configureDashboardPages({
       repository: "acme/control",
-      visibility: "private",
       execute: (_, arguments_) => arguments_[2] === "PUT"
-        ? { status: 1, stderr: "gh: Validation Failed (HTTP 422)" }
-        : { status: 0, stdout: '{"build_type":"workflow","public":true}' },
-    }),
-    /Unable to restrict dashboard Pages access/,
-  );
-  assert.throws(
-    () => configureDashboardPages({
-      repository: "acme/control",
-      visibility: "private",
-      execute: () => ({ status: 0, stdout: '{"build_type":"workflow","public":true}' }),
+        ? { status: 0, stdout: "{}" }
+        : { status: 0, stdout: '{"build_type":"legacy","public":true}' },
     }),
     /could not be verified/,
   );
 });
 
-test("cao setup configures public Pages without requesting private access", () => {
+function publicPagesSetup({ existing, confirm }) {
   const calls = [];
-  let site;
-  const execute = (_, arguments_) => {
+  let site = existing;
+  const inspect = setupExecutor({
+    "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
+  });
+  const execute = (command, arguments_) => {
+    if (arguments_[0] !== "api") return inspect(command, arguments_);
     calls.push(arguments_);
-    if (!site && arguments_[1] !== "-X") return { status: 1, stderr: "gh: Not Found (HTTP 404)" };
-    if (arguments_[2] === "POST") site = { build_type: "workflow", public: true };
-    return { status: 0, stdout: JSON.stringify(site) };
+    const method = arguments_[1] === "-X" ? arguments_[2] : "GET";
+    if (method === "GET") {
+      return site ? { status: 0, stdout: JSON.stringify(site) } : { status: 1, stderr: "gh: Not Found (HTTP 404)" };
+    }
+    if (method === "POST") site = { build_type: "workflow", public: true, html_url: "https://acme.github.io/control/" };
+    if (method === "DELETE") site = undefined;
+    return { status: 0, stdout: JSON.stringify(site ?? {}) };
   };
-  configureDashboardPages({ repository: "acme/control", visibility: "public", execute });
-  assert.equal(calls.some((arguments_) => arguments_.includes("public=false")), false);
-});
+  return { calls, execute, prompt: scriptedSetupPrompt({ repositories: "", profile: "github-app", confirm }) };
+}
+
+for (const [description, existing, confirm] of [
+  ["continues with a public dashboard after consent", undefined, true],
+  ["removes the public site it created when declined", undefined, [true, false]],
+  ["leaves an existing public site when declined", { build_type: "workflow", public: true }, [true, false]],
+]) {
+  test(`cao setup warns about public Pages and ${description}`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-public-pages-"));
+    const policyPath = path.join(root, "cao.json");
+    const original = JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
+        campaigns: {},
+      },
+    });
+    await writeFile(policyPath, original);
+    const answers = Array.isArray(confirm) ? [...confirm] : undefined;
+    const { calls, execute, prompt } = publicPagesSetup({ existing, confirm });
+    if (answers) prompt.confirm = async () => answers.shift() ?? false;
+    let authenticated = false;
+    try {
+      const result = await setupCaoControlPlane({
+        policyPath,
+        prompt,
+        execute,
+        setupAuthentication: () => {
+          authenticated = true;
+          return { command: "setup-auth" };
+        },
+      });
+      assert.ok(prompt.notes.some((note) => /Warning: the dashboard Pages site for acme\/control is public/.test(note)));
+      const deleted = calls.some((arguments_) => arguments_.includes("DELETE"));
+      if (confirm === true) {
+        assert.equal(result.dashboardPages, "public");
+        assert.equal(authenticated, true);
+        assert.equal(deleted, false);
+      } else {
+        assert.deepEqual(result, { command: "setup", cancelled: true, reason: "public-pages-declined" });
+        assert.equal(authenticated, false);
+        assert.equal(deleted, existing === undefined);
+        assert.equal(await readFile(policyPath, "utf8"), original);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test("cao init writes the minimal control-plane policy scoped to the current repository", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-"));
@@ -321,6 +358,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
       repositories: ["acme/control", "acme/service", "octo/library"],
       profile: "token",
       authentication: { command: "setup-auth", profile: "token" },
+      dashboardPages: "private",
       campaigns: [],
     });
     assert.deepEqual(prompt.selections[0].choices.map(({ value }) => value), [
@@ -624,43 +662,6 @@ test("cao setup cancellation leaves policy and credentials unchanged", async () 
       setupAuthentication() {
         assert.fail("cancelled setup must not configure credentials");
       },
-    });
-
-    test("cao setup leaves policy unchanged if Pages access cannot be restricted", async () => {
-      const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-pages-"));
-      const policyPath = path.join(root, "cao.json");
-      const original = JSON.stringify({
-        version: 1,
-        "control-plane": {
-          scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control"] },
-          campaigns: {},
-        },
-      });
-      await writeFile(policyPath, original);
-      const inspect = setupExecutor({
-        "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
-      });
-      try {
-        await assert.rejects(
-          setupCaoControlPlane({
-            policyPath,
-            prompt: scriptedSetupPrompt({ repositories: "", profile: "github-app" }),
-            execute(command, arguments_) {
-              if (arguments_[0] === "api") {
-                return arguments_[2] === "PUT"
-                  ? { status: 1, stderr: "gh: Validation Failed (HTTP 422)" }
-                  : { status: 0, stdout: '{"build_type":"workflow","public":true}' };
-              }
-              return inspect(command, arguments_);
-            },
-            setupAuthentication: () => ({ command: "setup-auth" }),
-          }),
-          /Unable to restrict dashboard Pages access/,
-        );
-        assert.equal(await readFile(policyPath, "utf8"), original);
-      } finally {
-        await rm(root, { recursive: true, force: true });
-      }
     });
 
     assert.deepEqual(result, { command: "setup", cancelled: true });
@@ -1381,6 +1382,24 @@ test("cao add installs a campaign and merges its declaration safely", async () =
       },
     }));
     await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(path.join(path.dirname(policyPath), "agentic-auto-upgrade.yml"), [
+      "# This file was automatically generated by pkg/workflow/auto_update_workflow.go (v0.89.17). DO NOT EDIT.",
+      "jobs:",
+      "  upgrade:",
+      "    steps:",
+      "      - uses: github/gh-aw-actions/setup-cli@v0.89.17",
+      "      - uses: github/gh-aw-actions/setup@v0.89.17",
+      "",
+    ].join("\n"));
+    const ghAwActionsSha = "1234567890abcdef1234567890abcdef12345678";
+    const setupActionDirectory = path.join(root, ".github", "actions", "setup-gh-aw");
+    await mkdir(setupActionDirectory, { recursive: true });
+    await writeFile(path.join(setupActionDirectory, "action.yml"), [
+      "runs:",
+      "  steps:",
+      `    - uses: github/gh-aw-actions/setup-cli@${ghAwActionsSha} # v0.89.17`,
+      "",
+    ].join("\n"));
     await writeFile(policyPath, `${JSON.stringify({
       version: 1,
       "gh-aw-version": "v0.89.17",
@@ -1437,6 +1456,9 @@ test("cao add installs a campaign and merges its declaration safely", async () =
         },
       },
     });
+    const autoUpgrade = await readFile(path.join(path.dirname(policyPath), "agentic-auto-upgrade.yml"), "utf8");
+    assert.ok(autoUpgrade.includes(`github/gh-aw-actions/setup-cli@${ghAwActionsSha} # v0.89.17`));
+    assert.ok(autoUpgrade.includes(`github/gh-aw-actions/setup@${ghAwActionsSha} # v0.89.17`));
     assert.equal(result.orchestrator, "dependabot");
   } finally {
     process.chdir(previousDirectory);

@@ -22,7 +22,7 @@ export const CARD_DETAIL_LABEL_VALUES = ['hidden', 'visible'];
 export const CARD_TEMPLATE_ACTION_KEYS = ['action', 'context', 'when'];
 export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
-export const CLI_ACTION_KEYS = ['id', 'level', 'verb', 'label', 'description', 'icon', 'command', 'placement', 'arguments', 'copy-only'];
+export const CLI_ACTION_KEYS = ['id', 'level', 'verb', 'label', 'description', 'icon', 'command', 'placement', 'arguments', 'copy-only', 'selector'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
 export const CLI_ACTION_ARGUMENT_KEYS = ['id', 'label', 'description', 'type', 'flag', 'default'];
 export const CLI_ACTION_ARGUMENT_TYPE_VALUES = ['boolean'];
@@ -123,7 +123,7 @@ export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'an
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
-export const VIEW_LIST_KEYS = ['style', 'layout', 'appearance', 'icon', 'action', 'card', 'drill', 'view-all'];
+export const VIEW_LIST_KEYS = ['style', 'layout', 'appearance', 'icon', 'action', 'actions', 'card', 'drill', 'view-all'];
 export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
 export const VIEW_LIST_LAYOUT_VALUES = ['rows', 'grid'];
 export const VIEW_LIST_APPEARANCE_VALUES = ['grouped', 'marketplace'];
@@ -517,7 +517,7 @@ export const TABLE_FIELDS = {
   'dispatch-activation-summary': ['label', 'value'],
   'campaign-dispatch-state': ['campaign', 'campaign-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
   'repository-summary': ['label', 'value', 'items'],
-  'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status', 'repository-link'],
+  'repository-activity': ['organization', 'repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status', 'repository-link'],
   'repository-detail-summary': ['repository', 'workflows', 'latest-update', 'external-link'],
   'repository-workflow-status': ['repository', 'status', 'workflows'],
   'repository-workflow-usage': ['repository', 'workflow', 'invocation', 'aic', 'workflow-link'],

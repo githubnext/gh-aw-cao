@@ -17,6 +17,10 @@ async function fixture(options) {
       "cli-actions": [
         { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
         { id: "create-task", label: "Start task", icon: "copilot", command: "gh agent-task create --from-file -" },
+        { id: "add-repository", label: "Add repository", icon: "plus", command: "./cao.sh add --repository {{repository}}",
+          selector: { label: "Repository", "debounce-ms": 300,
+            query: { command: "gh search repos", fields: ["fullName", "description"], limit: 20 },
+            mapping: { value: "fullName", label: "fullName", description: "description", target: "repository" } } },
       ],
       navigation: [{ label: "Preview", pages: ["preview"] }],
       pages: [{
@@ -43,6 +47,10 @@ async function fixture(options) {
         headers: { "Content-Type": "application/json", Origin: base.origin },
         body: JSON.stringify(payload),
       }),
+      lookup: (payload, origin = base.origin) => fetch(new URL("__dialog_selector", base), {
+        method: "POST", headers: { "Content-Type": "application/json", Origin: origin },
+        body: JSON.stringify(payload),
+      }),
       close: async () => { await preview.close(); await rm(root, { recursive: true, force: true }); },
     };
   } catch (error) {
@@ -53,6 +61,49 @@ async function fixture(options) {
 
 test("canvas mode cannot start without a trusted approval adapter", async () => {
   await assert.rejects(fixture({ executeCliAction: async () => {} }), /requires trusted CLI action approval/);
+});
+
+test("selector lookup accepts only declared action identity and bounded text in canvas mode", async () => {
+  const calls = [];
+  const testCase = await fixture({
+    approveCliAction: async () => { assert.fail("Search must not ask for mutation approval."); },
+    executeCliAction: async () => { assert.fail("Search must not execute an action."); },
+    lookupSelector: async (action, text) => {
+      calls.push({ id: action.id, text });
+      return [{ value: "octo/repo", label: "octo/repo", description: "Example" }];
+    },
+  });
+  try {
+    const response = await testCase.lookup({ id: "add-repository", text: "octo" });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { options: [{ value: "octo/repo", label: "octo/repo", description: "Example" }] });
+    assert.equal((await testCase.lookup({ id: "compile", text: "octo" })).status, 404);
+    assert.equal((await testCase.lookup({ id: "add-repository", text: "x" })).status, 400);
+    assert.equal((await testCase.lookup({ id: "add-repository", text: "octo", command: "gh api" })).status, 400);
+    assert.equal((await testCase.lookup({ id: "add-repository", text: "octo" }, "https://untrusted.example")).status, 403);
+    assert.deepEqual(calls, [{ id: "add-repository", text: "octo" }]);
+  } finally { await testCase.close(); }
+  const outsideCanvas = await fixture({ canvas: false, lookupSelector: async () => { assert.fail("Not a canvas."); } });
+  try { assert.equal((await outsideCanvas.lookup({ id: "add-repository", text: "octo" })).status, 404); }
+  finally { await outsideCanvas.close(); }
+});
+
+test("selected repository is bound to fresh trusted approval before cao add runs", async () => {
+  const approvals = [];
+  const executions = [];
+  const testCase = await fixture({
+    approveCliAction: async (request) => { approvals.push(request); return true; },
+    executeCliAction: async (request) => { executions.push(request.command); return { ok: true }; },
+  });
+  try {
+    const response = await testCase.post({ id: "add-repository", values: { repository: "octo/repo" } });
+    assert.equal(response.status, 200);
+    await response.text();
+    assert.equal(approvals[0].command, "./cao.sh add --repository octo/repo");
+    assert.deepEqual(executions, ["./cao.sh add --repository octo/repo"]);
+    assert.equal((await testCase.post({ id: "add-repository", values: { repository: "octo/repo;evil" } })).status, 400);
+    assert.equal(executions.length, 1);
+  } finally { await testCase.close(); }
 });
 
 test("direct same-origin requests cannot execute without strict trusted approval", async () => {

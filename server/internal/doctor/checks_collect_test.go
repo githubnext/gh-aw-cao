@@ -3,6 +3,7 @@ package doctor
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -433,5 +434,64 @@ func TestClassifyBudgetHeadroomPassesWhenHealthy(t *testing.T) {
 	}
 	if !strings.Contains(classification.summary, "2 installations") {
 		t.Fatalf("summary = %q, want it to mention the installation count", classification.summary)
+	}
+}
+
+func TestClassifyDirectorySizeReadFailureReportsNoneForNilError(t *testing.T) {
+	if got := classifyDirectorySizeReadFailure(nil); got != directorySizeReadFailureNone {
+		t.Fatalf("classification = %v, want %v", got, directorySizeReadFailureNone)
+	}
+}
+
+func TestClassifyDirectorySizeReadFailureReportsMissingForNotExist(t *testing.T) {
+	_, err := os.ReadDir(filepath.Join(t.TempDir(), "does-not-exist"))
+	if err == nil {
+		t.Fatal("expected a not-exist error from os.ReadDir")
+	}
+	if got := classifyDirectorySizeReadFailure(err); got != directorySizeReadFailureMissing {
+		t.Fatalf("classification = %v, want %v", got, directorySizeReadFailureMissing)
+	}
+}
+
+func TestClassifyDirectorySizeReadFailureReportsOtherForUnrelatedError(t *testing.T) {
+	if got := classifyDirectorySizeReadFailure(errors.New("permission denied")); got != directorySizeReadFailureOther {
+		t.Fatalf("classification = %v, want %v", got, directorySizeReadFailureOther)
+	}
+}
+
+func TestDirectorySizeReportsZeroForMissingDirectory(t *testing.T) {
+	files, bytes := directorySize(filepath.Join(t.TempDir(), "does-not-exist"))
+	if files != 0 || bytes != 0 {
+		t.Fatalf("files=%d bytes=%d, want 0, 0 for a missing directory", files, bytes)
+	}
+}
+
+func TestDirectorySizeCountsFilesAndBytesSkippingSubdirectories(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "a.txt"), []byte("hello"), 0o600); err != nil {
+		t.Fatalf("write first file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "b.txt"), []byte("worldwide"), 0o600); err != nil {
+		t.Fatalf("write second file: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(directory, "subdir"), 0o700); err != nil {
+		t.Fatalf("make subdirectory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "subdir", "c.txt"), []byte("ignored"), 0o600); err != nil {
+		t.Fatalf("write nested file: %v", err)
+	}
+	files, bytes := directorySize(directory)
+	if files != 2 {
+		t.Fatalf("files = %d, want 2 (subdirectory entries must be skipped)", files)
+	}
+	if want := int64(len("hello") + len("worldwide")); bytes != want {
+		t.Fatalf("bytes = %d, want %d", bytes, want)
+	}
+}
+
+func TestDirectorySizeReportsZeroForEmptyDirectory(t *testing.T) {
+	files, bytes := directorySize(t.TempDir())
+	if files != 0 || bytes != 0 {
+		t.Fatalf("files=%d bytes=%d, want 0, 0 for an empty directory", files, bytes)
 	}
 }

@@ -51,7 +51,10 @@ The supported control-plane credentials are:
 
 `GH_AW_GITHUB_AUTH_MODE` explicitly selects `app`, `pat`, or the repository-local
 `workflow-token` mode. With no mode configured, Activity uses `GITHUB_TOKEN`
-when the exact collection scope contains only the control repository. GitHub App setup
+when the exact collection scope contains only the control repository. An
+explicit `control-plane.activity.repositories` list narrows evidence collection
+within the global allowed-repository scope without narrowing campaign rollout
+authority. GitHub App setup
 writes `app` as soon as the read App credentials and selected-repository
 installations are verified, so Activity can run while write-App setup is still
 in progress. PAT setup writes `pat` only after the complete selected profile is
@@ -81,6 +84,32 @@ than the larger App/PAT reserves, so they fit the standard 1,000-request
 workflow-token quota. Owner-wide or cross-repository Activity scopes require
 `app` or `pat`; Activity rejects those scopes rather than silently collecting
 only the control repository.
+
+The public quickstart has broader rollout scope because Repo Assist
+reads its selected public target, but the agentic workflows themselves run in
+the control repository. It declares the narrower Activity scope explicitly:
+
+```json
+{
+  "control-plane": {
+    "scope": {
+      "allowed-repositories": [
+        "acme/cao",
+        "github/gh-aw"
+      ]
+    },
+    "activity": {
+      "repositories": ["acme/cao"]
+    }
+  }
+}
+```
+
+Every Activity repository must remain within `allowed-owners` and, when
+`control-plane.scope.allowed-repositories` is present, must also appear in that
+exact allowlist. The field accepts exact `OWNER/REPOSITORY` coordinates only.
+Omitting it preserves the fail-closed rule: workflow-token mode rejects broader
+collection scope rather than inferring a control-repository-only subset.
 
 ### Automated App setup
 
@@ -256,6 +285,10 @@ Keep this profile within these boundaries:
 - configure an App or PAT for private or internal targets, an alternate review repository, or any `live` cross-repository write.
 
 The workflow token is scoped to the repository containing the workflow. Public checkout does not grant target-repository write access, and a public repository's visibility does not expand the token's Actions, security, issue, or pull-request permissions. If a worker cannot read required target evidence with the available token, it must report incomplete and produce no speculative result.
+
+:::caution[No additional GitHub credentials is not the same as free]
+The built-in token removes a *GitHub credential* requirement. It does not remove *model* cost or entitlement. Every agentic run still consumes the configured engine's model entitlement and the campaign's AI credit budget, which are provisioned, billed, and rate-limited separately from GitHub permissions. A control repository can therefore satisfy this profile completely and still be unable to run: `copilot-requests: write` must be granted, the account or organization must be entitled to the configured model, and `max-ai-credits` plus any `monthly-ai-credit-budget` must have headroom. Treat missing model access as a blocked run with its own reason, never as an absence of findings.
+:::
 
 ## Credential Boundary
 

@@ -158,7 +158,9 @@ export function createDashboardExtension({
       onUserPromptSubmitted: async (input) => {
         dashboardWorkingDirectory = input.workingDirectory;
       },
-      onSessionEnd: closePreviews,
+      onSessionEnd: async ({ reason }) => {
+        if (reason === "user_exit") await closePreviews();
+      },
     },
     canvases: [
       createCanvas({

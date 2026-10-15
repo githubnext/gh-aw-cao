@@ -7,6 +7,16 @@ includes:
   - activity/aw.yml
   - dashboard/aw.yml
   - .github/workflows/cao-validate.yml
+skills:
+  - skills/agentic-workflows
+  - skills/setup-cao
+  - skills/add-cao-campaign
+  - skills/create-cao-campaign
+  - skills/debug-cao
+  - skills/analyze-cao
+  - skills/cao-cli
+agents:
+  - .github/agents/agentic-workflows.md
 resources:
   - source: .github/workflows/shared/control.mjs
     destination: .github/workflows/shared/control.mjs

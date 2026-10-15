@@ -45,8 +45,10 @@ how the browser downloads and caches its first snapshot. Dismissing it keeps
 the import running; Overview continues to show preparation progress rather
 than calling campaigns idle. The import screen is automatically removed when a
 complete snapshot is ready, and its animation timers and progress subscription
-are released. If preparation fails or is cancelled, Overview reports an incomplete
-import and lets you reopen the screen to retry. Later visits use the cached
+are released. If preparation fails or is cancelled while the screen is still
+open, it shows a **Retry import** action; Overview itself only reports that
+campaign status is not available yet, without a way to reopen the dismissed
+screen. Later visits use the cached
 snapshot during refresh. Backend-backed dashboards do not use this browser-local
 first-import experience. While the import screen is visible, 100 friendly notes
 rotate randomly every six seconds without repeating within a cycle. These notes
@@ -78,6 +80,10 @@ See the [Glossary](glossary.md) for definitions of Dashboard terms such as
 rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
+
+The canvas's local preview server stays available between agent turns, including
+completed, interrupted, or failed turns. It stops when its canvas closes, when
+you exit the session, or when its extension process stops.
 
 ### Design queries in a Copilot canvas
 

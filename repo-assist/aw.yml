@@ -4,7 +4,7 @@ description: Review-first issue triage, issue fixes, repository maintenance, and
 min-version: v0.91.5
 experimental: true
 includes:
-  - ../aw.yml
+  - README.md
   - .github/workflows/repo-assist-issue-fix.md
   - .github/workflows/repo-assist-issue-triage.md
   - .github/workflows/repo-assist-maintenance.md

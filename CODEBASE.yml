@@ -48,6 +48,9 @@ structure:
   decisions: adr/
   tests: tests/
   utilities: scripts/
+  runtime_package: runtime/package.json
+  runtime_builder: scripts/build-cao-runtime.mjs
+  runtime_distribution: .github/workflows/cao-runtime.yml
 
 architecture:
   style: policy-governed central control plane with catalog campaigns and bounded workers
@@ -78,6 +81,7 @@ architecture:
     canonical_evidence: source-neutral records with stable identities, relationships, quality, and provenance
     bounded_computation_results: partitioned, versioned measures and actionable insights with bounded evidence references
     computation_authority: authority inferred from a derived computation result
+    activity_collection_scope: exact repositories whose workflow evidence Activity may collect, independently narrowed within global rollout scope
     outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, an operational-grader result, or operational value
     request_scoped_computation_results: bounded measure results evaluated for a selected partition and version against canonical evidence
     dashboard_entity_storage: current hosted dashboard entity rows, quality metadata, diagnostics, and revision state
@@ -97,6 +101,15 @@ components:
   activity:
     path: activity/
     responsibility: collect bounded evidence, ingest JSONL, create SQLite projections, and provide the cao CLI
+  control_plane_setup:
+    path: activity/setup.mjs
+    responsibility: resolve exact repository scope, review intended authority, verify Pages source and public-visibility consent, connect credentials, and atomically save bare control-plane policy
+  control_plane_quickstart:
+    path: activity/quickstart.mjs
+    responsibility: explicitly create first success from a clean public, private, or internal default-branch checkout by selecting public github/gh-aw or one explicit public target, running ordinary Repo Assist with only maintenance in review, pausing its orchestrator after dispatch, committing and pushing bounded CAO paths, collecting data-bearing Activity, and waiting for public dashboard deployment
+  setup_prompts:
+    path: activity/setup-prompt.mjs
+    responsibility: dependency-free keyboard-driven terminal presentation and plain-terminal fallback without owning authority decisions
   dashboard:
     path: dashboard/
     responsibility: publish evidence and provide a static operational dashboard
@@ -430,6 +443,17 @@ invariants:
   - "Generated workflow lock files MUST NOT be edited directly."
   - "The trusted CAO materializer MUST replace bounded campaign-owned destinations with executable resources at the same top-level paths used by their catalog sources; .github/aw MUST remain exclusively gh-aw-owned and MUST NOT become a parallel CAO runtime tree."
   - "CAO runtime materialization MUST use a full immutable resolvedCommit SHA, MUST fail closed for tag-only or missing provenance, and MUST preserve exact focused Activity or Dashboard package ownership when root materialization runs."
+  - "Activity and Dashboard artifacts MUST use producer-side npm pack with lifecycle scripts disabled and runtime/package.json files selection, bundle compatible libraries with esbuild and license notices, retain filesystem-relative CLI, worker and build paths, and exclude development resources; packing MUST NOT publish, install dependencies or replace consumer-owned root package metadata."
+  - "Quickstart MUST recompile installed workflow sources with --schedule-seed githubnext/gh-aw-cao before committing, matching deterministic lock validation. Validation MUST report a manually paused orchestrator with active workers as a pause note rather than recommending scheduled re-enablement."
+  - "Normal root, Activity and Dashboard materialization MUST consume an exact-SHA prebuilt archive from stable release assets or successful unexpired Actions artifacts, wait at most five minutes for an already queued or running exact-SHA build, verify catalog and signer identity plus source and signer SHA through GitHub signed provenance on GitHub-hosted runners before extraction, then validate the inventory, checksums, ownership and required resources before any replacement; failed, missing, expired, timed-out or unverifiable artifacts MUST fail without latest-release or source/npm fallback."
+  - "The runtime pipeline MUST build/test with read-only permission on main pushes and attest in a source-free job. The Release workflow MUST create a draft stable tag at an exact main SHA, wait for that SHA's successful cao-runtime.yml push run, verify its checksum and GitHub-hosted signed provenance, attach exactly the runtime archive and checksum to the draft, and fail closed without publication for missing, failed, mismatched, self-hosted, incomplete, or unverifiable evidence. A maintainer publishes only the reviewed, successful draft; immutable release tags and assets MUST NOT be mutated or overwritten after publication. Main artifacts have 90-day retention. Normal installation requires Node.js and authenticated GitHub CLI artifact and attestation access, not npm; explicit developer source materialization may use npm, and dashboard builds retain production dependency installation."
+  - "The setup prompt adapter MUST use Node terminal primitives without third-party UI dependencies; producer and explicit developer source packing MUST preserve it as portable source without consumer node_modules."
+  - "Onboarding MUST check tools, Node.js 24+, sign-in and checkout-root readiness before installation; private repository creation requires explicit --create-repo OWNER/NAME and MUST NOT overwrite existing clone directories. After those checks and before repository creation or file installation, implicit --quickstart MUST resolve and pin the latest stable CAO vX.Y.Z release, install or refresh owned CAO resources at that release, fail without mutation or main fallback when release resolution is unavailable or non-stable, and preserve any explicit @main, tag, SHA, or local source; bare installation and setup retain their existing unversioned source behavior. Bare installation prints the setup next step without a handoff prompt; streamed children use null stdin except explicitly requested --setup and interactive --quickstart on the controlling terminal. ACCESSIBLE, NO_COLOR, and terminals without styling support disable animated presentation. Without a terminal or when CI is set, installation with --setup MUST apply only the exact public-repository workflow-token profile with plain output; explicit --quickstart MAY instead use a clean current default-branch checkout with plain progress. Incompatible prerequisites MUST still fail."
+  - "Setup presentation MUST remain separate from authority decisions, show Repositories, Connections and Review/apply with default-No confirmation, verify Pages source without changing visibility, require separate default-No public-dashboard consent before credentials, and save policy atomically only after both succeed. Declining/cancelling public consent removes only a newly created site where possible; existing sites remain with restriction/unpublication guidance. Failures MUST disclose partial external changes. Setup MUST NOT install campaigns, dispatch, commit or push; --json retains structured stdout. Non-interactive setup, including CI, MUST require a public control repository with empty campaigns and absent or exact self-only scope, verify public Actions-backed Pages, select repository workflow-token authentication, set self-only Activity scope, preserve unrelated policy fields, and write policy last; private/internal repositories or incompatible policy MUST fail before external mutation."
+  - "Explicit quickstart MUST work interactively or headlessly from a clean public/private/internal control checkout on its default branch, preserve existing commits, use the installer's stable release or an explicit selected source, disclose public Pages and ordinary Repo Assist budgets, and default outside a checkout to private USERNAME/cao when its remote name and local clone path are available. On collision select a fresh UTC cao-YYYYMMDD-HHMMSS name, checking remote and local availability and numeric suffixes through -10 if needed; stop without mutation on lookup/timestamp-generation failure or candidate exhaustion, print the fallback coordinate before creation, and never reuse/overwrite existing repositories or paths. In-place connection checks only remote-name availability. Other names or owners require exact --create-repo OWNER/NAME; explicit names MUST NOT be silently changed. Select public github/gh-aw or validate explicit public --target OWNER/REPO; never create/copy/modify/substitute a target. Install repo-assist at the same catalog revision without reimporting root. Use normal dispatch inputs and only existing maintenance at review, explicitly disabling other workers. No onboarding-only worker, snapshot helper, execution profile, or readiness assessment. Preserve normal checkout/base SHA, duplicate checks, implementation, focused validation and review bundles. Produce one optional validated proposal or honest no-op; unavailable evidence is incomplete. No tests/CI/instruction/adoption gate; admission depends on policy/access. Ordinary budgets are 250 orchestration + 600 maintenance + 400 output checking by default; output checking is configurable, so disclose the 1,250-credit default total without claiming measured/expected consumption or a 100-credit cap. Immediately after requesting the run, including dispatch failure, pause the orchestrator with gh workflow disable to prevent six-hour reruns; disabling does not cancel requested work. Surface pause failures; explicit re-enablement also resumes schedule. Preserve terminal/plain progress without Node experimental-runtime diagnostics, require public Actions-backed Pages, refuse pre-staged/unrelated changes, commit/push only .github, activity, dashboard, repo-assist, cao.sh, .gitattributes and .vscode/settings.json, dispatch at most one maintenance worker, require data-bearing Activity plus successful dashboard deployment, and preserve blocked/incomplete/failed/no-op outcomes. Ordinary install/setup MUST NOT inherit these effects. Runtime success is not proof of a proposal, applied change or operational value."
+  - "control-plane.activity.repositories MUST be a nonempty exact subset of globally allowed repositories; Activity authentication uses it as the declared evidence-collection scope when present and otherwise preserves fail-closed global-scope behavior. It MUST NOT grant campaign rollout authority or credential reach."
+  - "The Agent Plugin is distributed separately; the installer MUST add the repository-root aw.yml package, which MUST explicitly compose only Activity, dashboard, validation, five shared control-plane resources, seven portable control-repository skills including the Agentic Workflows router, one Agentic Workflows agent and gh-aw project settings. The portable router MUST load the current canonical upstream Agentic Workflows skill from main instead of copying its routing table, fail explicitly when that guidance cannot be loaded, and constrain version-sensitive behavior through the control repository's policy-pinned gh aw CLI; the custom agent MUST delegate to the installed router rather than maintain a second routing table. CAO skills MUST delegate parsing, mutation, compilation, querying and verification to deterministic gh aw, cao and repository validation commands. The nonempty agents declaration MUST list only .github/agents/agentic-workflows.md so agent auto-discovery cannot install repository-only agents. Because gh-aw v0.91.5 auto-scans root skills/ after resolving explicit declarations, that directory MUST contain only the seven declared portable control-repository skills. The installer MUST NOT install plugin manifests, Copilot extensions, bundled specifications or repository-only dashboard authoring skills, and MUST preserve pre-existing plugin resources outside owned runtime destinations. Additional package manifests MUST live only in campaign or component directories."
+  - "Operational campaign manifests MUST contain only campaign-owned workflows and catalog resources and MUST NOT import the root catalog package; cao add is the supported lifecycle boundary after control-plane installation and MUST materialize the selected canonical campaign runtime without reinstalling control-plane or Agent Plugin resources."
   - "Activity and Dashboard manifests are root-package components; direct component installation is incomplete because gh-aw cannot invoke canonical runtime materialization."
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
@@ -443,6 +467,15 @@ invariants:
   - "Marketplace UI access MUST cross the existing data-worker query boundary and package actions MUST be copy-only canonical CAO add commands; the dashboard MUST NOT install packages."
 
 flows:
+  first_success_quickstart:
+    - control_plane_quickstart
+    - control_repository
+    - policy_resolution
+    - orchestrator
+    - worker
+    - activity
+    - dashboard_publisher
+    - dashboard
   operation_review:
     - control_repository
     - policy_resolution
@@ -543,6 +576,12 @@ generation:
   dashboard_server_package:
     path: .github/workflows/cao-package.yml
     output: ghcr.io/githubnext/gh-aw-cao/cao-server
+  control_runtime_package:
+    source: runtime/package.json
+    builder: scripts/build-cao-runtime.mjs
+    workflow: .github/workflows/cao-runtime.yml
+    output: cao-runtime-<resolvedCommit>.tgz
+    command: npm run runtime:pack -- DESTINATION REVISION
   dashboard_postgres_schema:
     source: server/spec/storage.tsp
     emitter: server/spec/postgres-emitter.mjs
@@ -578,6 +617,7 @@ commands:
       integration_tests: npm run test:integration
       campaign_lifecycle_tests: npm run test:campaign-lifecycle
       campaign_root_tests: npm run test:campaign-root
+      runtime_installation_tests: npm run test:runtime-install
       load_tests: npm run test:load
       svg_check: npm run check:svg
       workflow_compile: npm run compile
@@ -589,6 +629,7 @@ commands:
       dashboard_server_tests: npm run dashboard:server:test
       dashboard_server_e2e: npm run test:e2e:dashboard-server
       runtime_health: cao computation runtime-health [--campaign SLUG]
+      quickstart: ./cao.sh quickstart [--target OWNER/REPO] [--campaign PACKAGE] [--json]
   dashboard_site:
     working_directory: dashboard/site/
     entries:

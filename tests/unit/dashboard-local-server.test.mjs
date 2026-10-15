@@ -135,6 +135,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     siteRoot,
     catalogRoot: campaignRoot,
     downloadData,
+    dataBackend: "indexeddb",
     allowMissingOrigin: true,
     workingDirectory: root,
     requestOutput: (message) => requestLogs.push(message),
@@ -747,6 +748,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     catalogRoot: null,
     repository: "acme/control",
     ghExecutable,
+    dataBackend: "indexeddb",
     workingDirectory: root,
     port: 0,
   });

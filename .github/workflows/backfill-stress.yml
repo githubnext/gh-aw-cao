@@ -32,7 +32,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: false
       - name: Backfill synthetic history with concurrent signed webhooks
         run: bash scripts/test-dashboard-backfill.sh

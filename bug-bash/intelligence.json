@@ -1,0 +1,120 @@
+{
+  "contractVersion": "1.0.0",
+  "campaign": "bug-bash",
+  "fields": {
+    "repositoryNativeProblem": {
+      "statement": "A proven defect class can recur where explicit numeric zero is valid but truthiness-based normalization replaces it with a nonzero default, while existing tests cover omission and positive values but miss the zero boundary.",
+      "evidence": [
+        "Stated contracts in documentation, type signatures, docstrings, and existing test expectations",
+        "The repository's own test suite and the commands it already runs",
+        "Source at one immutable revision, replayed in a fresh environment"
+      ]
+    },
+    "eligibleOpportunity": {
+      "identity": "The explicit-zero-default hypothesis at version 1.0.0 against one authorized public repository at one immutable revision.",
+      "predicate": "The repository is explicitly within CAO policy scope, a bounded screen finds numeric defaulting behavior with a stated zero-value contract, and the campaign can set up and run the repository's own tests.",
+      "missingEvidence": "An unreadable repository, an unresolvable revision, or a failed environment setup is blocked, not an eligible zero and not a no-finding."
+    },
+    "intendedOutcome": {
+      "statement": "Give a maintainer at most one reviewable record per run that contains a reproduced defect and a separately verified repair, or an explicit, honest no-finding.",
+      "primaryMetric": {
+        "id": "review-ready-findings",
+        "direction": "increase",
+        "unit": "findings"
+      },
+      "actorIndependence": "A maintainer, another agent, or an upstream change may resolve the same defect; the record is still counted by the reviewed outcome, not by authorship."
+    },
+    "outcomeAttainmentEvidence": {
+      "definitionPath": null,
+      "evaluationMode": "not-yet-measurable",
+      "rationale": "Operational value for this campaign is whether a maintainer accepts a surfaced finding. That signal does not exist until reviewed runs produce review decisions, so no deterministic evaluator is declared in this first release rather than scoring an unvalidated proxy.",
+      "priorEvidence": {
+        "path": "bug-bash/fixtures/historical-pilot.json",
+        "label": "historical-pilot-evidence",
+        "authoritative": false,
+        "reviewState": "maintainer-unreviewed",
+        "caution": "One pre-release pilot across three pinned repositories and 998 selected existing tests produced two maintainer-unreviewed candidates. It is not a yield estimate and not a promise that a run finds a bug."
+      },
+      "zeroRule": "A completed investigation that clears setup and finds no contradicted contract records zero review-ready findings.",
+      "missingRule": "A blocked run, including denied admission, missing model access, or failed environment setup, records missing rather than zero."
+    },
+    "targetPopulation": {
+      "scope": "Repositories explicitly authorized by the reviewed CAO control policy, defaulting to one.",
+      "eligibility": "Public repositories readable with the built-in workflow token whose language, dependency, path, or prior-outcome evidence is relevant to numeric configuration defaults and whose screened focus surface has a stated zero-value contract and runnable test command."
+    },
+    "interventionClass": "defect-investigation-and-verification",
+    "triggerAndSchedule": {
+      "schedule": "none",
+      "scheduleOptIn": true,
+      "manualTrigger": "workflow_dispatch",
+      "manualScope": "At most one fully qualified, allowlisted target repository per explicit target_repo input."
+    },
+    "scheduleRationale": "The campaign ships without a schedule so that installing it never starts spending model budget. An operator who wants recurring investigation adds a schedule deliberately, after a first manual run has shown what one investigation costs and produces.",
+    "maxDetectionDelay": {
+      "value": null,
+      "unit": "not-applicable",
+      "appliesTo": "Manual-by-default operation has no detection-delay commitment; a defect is found when an operator chooses to look."
+    },
+    "resourceEnvelope": {
+      "maxConcurrentInvestigations": 1,
+      "maxInvestigationsPerRun": 1,
+      "maxSurfacedFindings": 1,
+      "orchestratorCredits": 200,
+      "workerCredits": 500,
+      "verificationReserveCredits": 200,
+      "timeoutMinutes": 45,
+      "verificationReserveMinutes": 15,
+      "rationale": "Verification budget is reserved before the investigation phase begins so an unbounded search can never consume the budget that checking the result requires."
+    },
+    "overlapIdentity": {
+      "domain": "defect-investigation",
+      "workKey": "repository + immutable revision + hypothesis identity + hypothesis version + harness version",
+      "opportunityKey": "repository + violated contract + symptom signature + entry point",
+      "rationale": "Work identity changes when the code or the method changes, so a new revision is new work. Finding identity excludes revision, harness, and run so the same defect is recognized across repeat investigations instead of surfacing near-duplicates."
+    },
+    "outputApprovalPolicy": {
+      "review": "Publish one artifact-backed review bundle and at most one deduplicated review issue in the control repository.",
+      "live": "Not offered. The campaign is review-only: it opens no upstream issue or pull request and merges nothing.",
+      "humanDecision": "A maintainer decides whether the finding is real and whether the repair is acceptable. The campaign never makes that decision."
+    },
+    "maturationPeriod": {
+      "value": 14,
+      "unit": "day",
+      "appliesTo": "A surfaced review record expires after 14 days if no maintainer acts on it."
+    },
+    "deduplication": {
+      "key": "finding identity",
+      "mechanism": "Stable finding identity plus deduplicate-by-title on the single review issue.",
+      "incrementalSkip": "An already-completed work identity is skipped instead of reinvestigated, and an open finding identity suppresses a second record for the same defect."
+    },
+    "backoff": {
+      "maxAttempts": 3,
+      "delaysSeconds": [15, 60],
+      "retryable": "Transient infrastructure faults only.",
+      "terminal": [
+        "credits-exhausted",
+        "rate-limited",
+        "admission-denied",
+        "model-access-unavailable"
+      ],
+      "rationale": "The worker never waits for budget replenishment and never redispatches itself; a later authorized run is a new attempt."
+    },
+    "stopConditions": [
+      "Admission denied by the campaign kill switch or policy scope.",
+      "One investigation completed, whatever its outcome.",
+      "One finding surfaced.",
+      "Investigation budget consumed down to the verification reserve.",
+      "Model access unavailable or AI credit budget exhausted.",
+      "Environment setup failed after the bounded retry plan."
+    ],
+    "operationalValueDefinition": {
+      "state": "declared-not-measured",
+      "statement": "Value is a maintainer-accepted finding. Until reviewed runs produce accepted or rejected decisions, this campaign reports outcomes honestly and declines to score itself.",
+      "antiMetrics": [
+        "Number of generated failing tests",
+        "Number of candidates surfaced without review",
+        "Passing test runs after a patch"
+      ]
+    }
+  }
+}

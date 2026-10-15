@@ -41,6 +41,7 @@ import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "
 import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
+import { lookupDialogOptions } from "./dialog-selector.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -615,6 +616,7 @@ function readWebsocketFrames(buffer) {
  *   dataBackend?: 'sqlite' | 'indexeddb',
  *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
+ *   lookupSelector?: typeof lookupDialogOptions,
  *   traceFile?: string,
  *   traceOutput?: (message: string) => void,
  *   requestOutput?: (message: string) => void,
@@ -631,9 +633,10 @@ export async function startDashboardServer({
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
   canvas = false,
-  dataBackend = canvas ? "sqlite" : "indexeddb",
+  dataBackend = "sqlite",
   executeCliAction,
   approveCliAction,
+  lookupSelector = lookupDialogOptions,
   generateQuery,
   enhanceQueryIntent,
   allowMissingOrigin = false,
@@ -1104,6 +1107,39 @@ export async function startDashboardServer({
             queryId: error.queryId ?? "",
             boundary: error.boundary ?? "",
           });
+        }
+        return;
+      }
+      if (pathname === "/__dialog_selector") {
+        if (!canvas) { response.writeHead(404).end("Not found\n"); return; }
+        if (request.method !== "POST") { response.writeHead(405, { Allow: "POST" }).end(); return; }
+        if (!isAllowedOrigin(request.headers.origin)
+          || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+          response.writeHead(403).end("Forbidden\n"); return;
+        }
+        let payload;
+        try { payload = await readJsonRequest(request, 4096); }
+        catch { sendJson(response, 400, { error: "Invalid selector request." }); return; }
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)
+          || Object.keys(payload).some((key) => !["id", "text"].includes(key))
+          || typeof payload.id !== "string" || typeof payload.text !== "string"
+          || payload.text.trim().length < 2 || payload.text.length > 200 || /[\u0000-\u001f]/.test(payload.text)) {
+          sendJson(response, 400, { error: "Invalid selector request." }); return;
+        }
+        const action = JSON.parse(dashboardContent).dashboard?.["cli-actions"]?.find((candidate) => candidate.id === payload.id);
+        if (!action?.selector || action["copy-only"] === true) {
+          sendJson(response, 404, { error: "Dialog selector is not declared by this dashboard." }); return;
+        }
+        const lifetime = new AbortController();
+        response.once("close", () => lifetime.abort());
+        try {
+          const options = await lookupSelector(action, payload.text, {
+            workingDirectory: resolvedWorkingDirectory, ghExecutable, signal: lifetime.signal,
+          });
+          if (!response.destroyed) sendJson(response, 200, { options });
+        } catch (error) {
+          output("Dialog selector lookup failed.", errorMetadata(error));
+          if (!response.destroyed) sendJson(response, 502, { error: "Repository search failed. Check GitHub CLI authentication and try again." });
         }
         return;
       }
@@ -1654,7 +1690,7 @@ async function main() {
   const options = parseDashboardServerArguments(process.argv.slice(2));
   if (options.help) {
     console.log("usage: local-server.mjs [--canvas] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
-    console.log("Data backend defaults to SQLite for canvas previews and IndexedDB otherwise.");
+    console.log("Data backend defaults to SQLite; use --data-backend indexeddb for browser IndexedDB.");
     console.log("       local-server.mjs --data-backend postgres [--operational-store redis|memory|postgres] [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("       local-server.mjs --operational-store redis|memory|postgres [--policy PATH] [--site PATH] [--cert PATH --key PATH] [--host HOST] [--port PORT]");
     console.log("Go mode requires a matching reviewed host policy, PostgreSQL, a built site, and hosted OAuth/HTTPS configuration.");

@@ -200,7 +200,7 @@ test("ESLint Factory campaign manifest, policy, and dashboard describe the same 
   for (const name of allWorkflows) {
     assert.match(manifest, new RegExp(`\\.github/workflows/${name.replace(".", "\\.")}`), name);
   }
-  assert.match(manifest, /- \.\.\/aw\.yml/);
+  assert.doesNotMatch(manifest, /- \.\.\/aw\.yml/);
   assert.match(manifest, /experimental: true/);
   assert.doesNotMatch(manifest, /^resources:/m);
   assert.ok(readFileSync(join(root, "eslint-rules", "rules-db.mjs"), "utf8").length > 0);

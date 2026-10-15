@@ -11,17 +11,87 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
-Bootstrap an empty control repository with:
+Reach a first data-bearing dashboard with:
 
 ```bash
 curl --fail --silent --show-error --location \
   https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash
-
-./cao.sh setup
+  bash -s -- --quickstart
 ```
 
-The installer adds gh-aw and the core CAO runtime, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Interactive setup then asks which repositories CAO should read and offers authentication choices that fit that scope. It installs no user-facing campaign. Install the Agent Plugin separately when you want the portable CAO skills.
+At a repository root, the installer uses that clean default-branch checkout,
+including headlessly. Outside a checkout, it creates the private control
+repository `USERNAME/cao`. If that repository or local clone path already exists,
+it chooses a fresh name such as `USERNAME/cao-20261014-111151` using UTC,
+leaving the existing repository and files untouched.
+With no catalog source, quickstart resolves and pins
+the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
+release discovery fails. Pass an explicit source such as
+`githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
+that selection. Unless `--target OWNER/REPO` selects another existing public
+repository, quickstart targets
+[`github/gh-aw`](https://github.com/github/gh-aw) using Repo Assist's normal checkout.
+Repo Assist proposes one small, validated maintenance improvement in review
+mode, or honestly records a no-op if nothing suitable fits.
+It works even when the target has no Agentic Workflows or Actions history.
+Quickstart runs the existing maintenance worker, not a special assessment.
+A control review issue and downloadable patch bundle let you decide whether
+to apply the improvement.
+The review issue is the first useful result; Activity
+collection and the public GitHub Pages dashboard follow. This one run can use
+up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
++ 400 output checking; configured output-check limits may differ), not a
+measured token budget or expected consumption.
+**None of these proposals is a requirement for using CAO.** There are no
+readiness grades, required templates, or practice checklists; keeping the
+repository unchanged is a valid result. Only maintenance is enabled; quickstart
+pauses the orchestrator after dispatch so recurring runs need explicit re-enablement.
+CAO never modifies the target.
+Elapsed progress distinguishes the short local installation phases from the
+longer Repo Assist, Activity, and dashboard jobs running on GitHub Actions.
+Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose another control
+repository explicitly.
+
+Want to see the rest of Repo Assist before running more workers? Browse
+[real triage, issue-fix, maintenance, and PR-upkeep reports](repo-assist/README.md#see-repo-assist-in-action)
+from our own control plane. This separate showcase adds no workflows or AI
+spend to your first run; it distinguishes proposals and blockers from applied
+changes. No demo repository is created.
+
+The installer checks tools, sign-in, and checkout readiness before writing CAO
+files, adds gh-aw and the core runtime, and preserves an existing policy.
+Without `--quickstart`, installation remains non-greedy: bare installation
+stops with `Next: ./cao.sh setup`, and `--setup` opens
+**Repositories → Connections → Review and apply** directly. Guided setup uses
+default-No confirmation and never installs a campaign, dispatches a workflow,
+commits, or pushes. Install the Agent Plugin separately when you want the
+portable CAO skills.
+
+Without an interactive terminal, or when `CI` is set, `--setup` and
+`./cao.sh setup` apply one fail-closed agent profile only: the current control
+repository must be public, existing scope must already be exact to that
+repository, and campaigns must be empty. Setup configures public Actions-backed
+Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
+Activity scope for only that repository. Private/internal repositories or
+broader existing policy require interactive setup. Headless guided-setup
+repository creation still requires `--create-repo OWNER/NAME`; quickstart may
+create only the signed-in user's `cao` control repository or its timestamped
+fallback.
+Missing prerequisites (including an installed gh-aw that is too old) fail
+instead of reporting success. Explicit `--quickstart` is the bounded headless
+first-success path and performs the documented control-repository and workflow
+effects without prompting.
+
+Control repositories receive only the curated production runtime, not dashboard
+tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
+keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
+Normal installation downloads a prebuilt archive for gh-aw's exact resolved
+SHA and verifies signed build provenance before replacing runtime files; it
+does not run npm. Stable versions use release assets, while main/SHA installs
+use successful Actions artifacts retained for 90 days and wait up to five
+minutes for an already active exact-SHA runtime build. Node.js 24+ and an
+authenticated GitHub CLI with artifact and attestation access are still
+required. Dashboard builds retain their existing production npm dependencies.
 
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 
@@ -115,7 +185,7 @@ The default Central Agentic Ops campaign installs the dashboard builder and manu
 
 1. Open **Settings > Pages** in the control repository.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Restrict Pages access to the intended audience before publishing control-plane data.
+3. Optionally, restrict Pages access to the intended audience if your plan supports private Pages; the dashboard can also be published publicly.
 
 The dashboard workflow remains manual and does not enable Pages automatically.
 

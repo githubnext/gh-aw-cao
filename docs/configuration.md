@@ -47,6 +47,7 @@ The schema defaults are:
 | --- | --- | --- |
 | `control-plane.scope.allowed-owners` | Control repository owner | Owner names |
 | `control-plane.scope.allowed-repositories` | All repositories under an allowed owner | Exact `owner/repository` names |
+| `control-plane.activity.repositories` | Global scope | Nonempty exact collection subset admitted by owner and repository scope |
 | `control-plane.inventory.max-scan-repositories` | `1000` | `1` through `100000` |
 | `control-plane.inventory.cell-count` | `1` | `1` through `1000` |
 | `control-plane.inventory.cell-index` | `0` | Less than `cell-count` |
@@ -61,6 +62,14 @@ The schema defaults are:
 | `control-plane.campaigns.<campaign>.targets.<owner/repository>.mode` | Campaign mode | `review` or `live` |
 
 Each entry under `control-plane.campaigns` may override the defaults with `enabled`, `mode`, `max-repositories`, and `rollout-percent`; `monthly-ai-credit-budget` remains accepted as a deprecated compatibility field but has no runtime admission effect. The internal `dashboard` campaign also accepts `deploy: false` to keep building its reusable artifact while another workflow owns Pages deployment; `deploy` defaults to `true`. Its optional `targets` map assigns a different mode to an exact repository while unmatched repositories retain the campaign mode. Every campaign target must remain inside the global allowed owners and, when present, the global repository allowlist. The `workers` map is the campaign's workflow catalog: every worker entry requires its exact `workflow` slug, may set `enabled: false` to disable that worker, and may set `max-mode` to narrow its mode. Campaign and worker names are lowercase kebab-case identifiers loaded directly from this policy.
+
+The optional `control-plane.activity.repositories` field declares an explicit
+evidence-collection subset when campaign rollout scope is broader than the
+repositories whose workflow runs Activity should ingest. Every entry must be
+an exact repository admitted by `allowed-owners` and, when an exact
+`allowed-repositories` list is present, must appear there. The field does not
+grant campaign authority or credential reach. When omitted, Activity uses the
+global scope and preserves its fail-closed authentication checks.
 
 The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Dashboard views declared in experimental navigation sections are omitted by default; set `experimental` to `true` to include them. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard campaign ships `./favicon.svg` as its default.
 
@@ -219,7 +228,8 @@ Configure a GitHub App or fine-grained PAT profile for every cross-repository sc
 | `GH_AW_GITHUB_TOKEN` | Deprecated PAT fallback | Legacy combined token retained for backward compatibility. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
-The root campaign manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create both Apps and install them for the accounts represented in the exact repository allowlist, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Orchestrator safe outputs to the control repository use the permission-scoped workflow token when no App token is active; cross-repository outputs retain their configured credential. Each path uses only its documented credential fallback when that credential's reach is sufficient.
+The installer-managed root package remains free of interactive setup
+so gh-aw installation works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create both Apps and install them for the accounts represented in the exact repository allowlist, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Orchestrator safe outputs to the control repository use the permission-scoped workflow token when no App token is active; cross-repository outputs retain their configured credential. Each path uses only its documented credential fallback when that credential's reach is sufficient.
 
 ## Manual Inputs
 

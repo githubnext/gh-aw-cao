@@ -17,3 +17,14 @@ continues.
 Never place confidential target names, evidence, prompts, payloads, credentials,
 or review output in a public repository. Visibility does not grant target
 consent or expand `.github/workflows/cao.json`.
+
+Non-interactive setup supports only an existing public control repository with
+empty campaigns and absent or exact self-only scope. It selects repository
+`GITHUB_TOKEN`, configures public Actions-backed Pages, and keeps read and
+Activity scope at that repository. Any broader scope requires interactive
+review.
+
+The explicit quickstart is compatible with a public control repository because
+its target, workflow evidence, dashboard, and review outputs are intentionally
+public and its campaign remains bounded to review mode. Do not generalize that
+exception to guided setup, another campaign, or a non-public target.

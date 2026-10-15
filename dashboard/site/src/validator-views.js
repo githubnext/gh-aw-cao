@@ -618,15 +618,23 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       if (typeof view.list.icon === 'string' && !PAGE_ICON_VALUES.includes(view.list.icon)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list icon must use one canonical Octicon name.', `${listPath}.icon`));
       }
-      if (view.list.action !== undefined) {
-        validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
-        const declaredAction = typeof view.list.action === 'string'
-          ? state.declaredCliActions.get(view.list.action)
+      if (view.list.actions !== undefined && (!Array.isArray(view.list.actions)
+        || view.list.actions.length === 0 || new Set(view.list.actions).size !== view.list.actions.length)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.actions must be a non-empty sequence of unique action references.', `${listPath}.actions`));
+      }
+      const actionReferences = [
+        ...(view.list.action !== undefined ? [{ id: view.list.action, path: `${listPath}.action` }] : []),
+        ...(Array.isArray(view.list.actions) ? view.list.actions.map((id, index) => ({ id, path: `${listPath}.actions[${index}]` })) : [])
+      ];
+      for (const reference of actionReferences) {
+        validateRequiredIdentifier(reference.id, reference.path, 'list action reference', errors);
+        const declaredAction = typeof reference.id === 'string'
+          ? state.declaredCliActions.get(reference.id)
           : undefined;
-        if (typeof view.list.action === 'string' && !declaredAction) {
-          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
+        if (typeof reference.id === 'string' && !declaredAction) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', reference.path));
         } else if (declaredAction?.placement !== 'view') {
-          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list actions must reference a view-placed dashboard CLI action.', reference.path));
         }
       }
       if (view.list.card !== undefined) {

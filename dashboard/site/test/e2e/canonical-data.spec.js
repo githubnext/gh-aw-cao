@@ -1238,6 +1238,38 @@ test('deployed JSONL ingestion includes the published campaign inventory', async
   });
 });
 
+test('campaign Reports retains producing-worker attribution after Activity ingestion', async ({ page }) => {
+  await page.route('http://dashboard.test/sources.json', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalWarningSources()) });
+  });
+  const result = await page.evaluate(async () => {
+    const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`, ['campaign-worker-issues'], context
+    );
+    return loadCanonicalDashboardSources(
+      `${location.origin}/payload-hashes.json`,
+      ['campaign-worker-issues', 'campaign-issue-tab-counts'], context
+    );
+  });
+  expect(result['campaign-worker-issues']).toMatchObject({
+    metadata: { availability: 'available' },
+    rows: [{
+      campaign: 'dashboard',
+      workflow: '.github/workflows/dashboard.md',
+      run: '12345',
+      'issue-link': { href: 'https://github.com/githubnext/gh-aw-cao/issues/7' }
+    }]
+  });
+  expect(result['campaign-issue-tab-counts'].rows).toEqual([{ campaign: 'dashboard', items: 1 }]);
+});
+
 test('data worker serves work items and security findings without dedicated canonical stores', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;

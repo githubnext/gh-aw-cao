@@ -45,7 +45,7 @@ The `server/azure/main.bicep` template creates the following resources in one re
 
 - An Azure subscription and resource group where you can create these resources and assign the **Key Vault Secrets User** role.
 - The Azure CLI with Bicep support.
-- Go 1.27.1 and Node.js 24, to build the deployment package.
+- Go 1.27.2 and Node.js 24, to build the deployment package.
 - A GitHub OAuth app. Personal access tokens and GitHub App user tokens aren't supported.
 - At least one GitHub organization, or team in `ORGANIZATION/TEAM-SLUG` format, whose active members can read the dashboard.
 - A PostgreSQL database and connection URL. The current Bicep template does not provision PostgreSQL or its secret; configure `CAO_POSTGRES_URL` separately.
