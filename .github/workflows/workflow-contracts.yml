@@ -109,6 +109,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Install dashboard dependencies
+        run: npm ci --prefix dashboard/site --ignore-scripts
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run integration and load contracts

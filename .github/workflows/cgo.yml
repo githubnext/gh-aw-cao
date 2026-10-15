@@ -255,7 +255,7 @@ jobs:
         env:
           DASHBOARD_SERVER_COMMAND: >-
             ${{ github.workspace }}/.tmp/cao-dashboard serve
-            --source ${{ github.workspace }}/server/testdata/deployed-subset
+            --source "$DASHBOARD_SERVER_SOURCE"
             --access-token ${{ env.DASHBOARD_SERVER_ACCESS_TOKEN }}
             --site ${{ github.workspace }}/dashboard/site/dist
             --dashboard-queries ${{ github.workspace }}/dashboard/site/dashboard.json

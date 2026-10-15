@@ -13,6 +13,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -20,12 +21,43 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
+func TestBackfillTelemetryWithoutOpenObservePreservesTraceContext(t *testing.T) {
+	t.Setenv("CAO_BACKFILL_SKIP_OPENOBSERVE", "1")
+	if flush := backfillTelemetry(t, t.Context(), "backfill-without-openobserve"); flush != nil {
+		t.Fatal("rate-limited OpenObserve must not configure exporters")
+	}
+	ctx, span := otel.Tracer("backfill-test").Start(t.Context(), "local-correlation")
+	defer span.End()
+	if !span.SpanContext().IsValid() {
+		t.Fatal("local backfill tracing must preserve valid trace and span IDs")
+	}
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if carrier.Get("traceparent") == "" {
+		t.Fatal("local backfill tracing must propagate W3C trace context")
+	}
+}
+
 func backfillTelemetry(t *testing.T, ctx context.Context, service string) func(*testing.T) {
 	t.Helper()
 	previousTracer := otel.GetTracerProvider()
 	previousMeter := otel.GetMeterProvider()
 	previousPropagator := otel.GetTextMapPropagator()
 	previousLogs := global.GetLoggerProvider()
+	if os.Getenv("CAO_BACKFILL_SKIP_OPENOBSERVE") == "1" {
+		tracer := sdktrace.NewTracerProvider()
+		otel.SetTracerProvider(tracer)
+		otel.SetTextMapPropagator(propagation.TraceContext{})
+		t.Cleanup(func() {
+			if err := tracer.Shutdown(context.WithoutCancel(ctx)); err != nil {
+				t.Error("shut down local trace provider")
+			}
+			otel.SetTracerProvider(previousTracer)
+			otel.SetTextMapPropagator(previousPropagator)
+		})
+		t.Log("OpenObserve image pull was rate-limited; trace correlation remains enabled without exporters")
+		return nil
+	}
 	t.Setenv("OTEL_SDK_DISABLED", "false")
 	t.Setenv("OTEL_SERVICE_NAME", service)
 	t.Setenv("OTEL_TRACES_SAMPLER", "always_on")

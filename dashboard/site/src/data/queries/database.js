@@ -1061,8 +1061,9 @@ export async function loadDatabaseQuerySources(indexedDB, sources, options = {})
   );
   const nativeNames = new Set(Object.keys(native));
   const remaining = sourceNames.filter((name) => !nativeNames.has(name));
+  const declared = dashboardQueryIndex(queries);
   const required = resolveDashboardQuerySources(queries, remaining, nativeNames)
-    .filter((name) => !nativeNames.has(name));
+    .filter((name) => !nativeNames.has(name) && !declared.has(name));
   const database = await queryDatabaseSources(indexedDB, sources, required);
   return {
     ...namedSources(sources),

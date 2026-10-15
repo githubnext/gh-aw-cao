@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { performanceSnapshotTimestamp } from "../../dashboard/site/test/performance/lighthouse-contract.js";
+import { deployedActivityShardEntries } from "./dashboard-deployed-refresh-helpers.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 import { WorkerHeapProbe, remoteDebuggingPort } from "./dashboard-worker-memory.mjs";
 
@@ -20,6 +23,7 @@ const megabyte = 1024 * 1024;
 const overviewUrl = (preview) => `${preview.url}/?debug-eager-ingest=1#page-overview`;
 
 let preview;
+let retentionAsOf;
 
 function numberSetting(name, fallback) {
   const value = Number(process.env[name] ?? fallback);
@@ -30,7 +34,21 @@ function numberSetting(name, fallback) {
 test.beforeAll(async () => {
   test.setTimeout(900_000);
   preview = await startDashboardServer({
-    downloadData: (destination) => downloadDeployedDashboardData(destination, sourceUrl),
+    downloadData: async (destination) => {
+      const response = await fetch(sourceUrl);
+      if (!response.ok) throw new Error(`Dashboard manifest download failed: HTTP ${response.status}.`);
+      const manifest = await response.json();
+      await downloadDeployedDashboardData(destination, sourceUrl, (input) => (
+        String(input) === String(sourceUrl) ? Promise.resolve(Response.json(manifest)) : fetch(input)
+      ));
+      retentionAsOf = -Infinity;
+      for (const { name } of deployedActivityShardEntries(manifest)) {
+        retentionAsOf = Math.max(retentionAsOf, performanceSnapshotTimestamp(
+          await readFile(join(destination, name), "utf8"),
+        ));
+      }
+      if (!Number.isFinite(retentionAsOf)) throw new Error("Memory dataset contains no timestamped canonical evidence.");
+    },
     dataBackend: "indexeddb",
     host: "127.0.0.1",
     port: 0,
@@ -99,10 +117,19 @@ test("the Overview page renders deployed data within a bounded data-worker heap"
   test.setTimeout(900_000);
   await page.addInitScript(instrumentation);
   await page.setViewportSize({ width: 1440, height: 900 });
+  // Match Lighthouse: measure the complete snapshot at its evidence time.
+  await page.context().route("**/src/data-worker.js*", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, body: `Date.now = () => ${retentionAsOf};\n${await response.text()}` });
+  });
 
   const ingestionProbe = new WorkerHeapProbe({ port: remoteDebuggingPort() });
   await page.goto(overviewUrl(preview), { waitUntil: "domcontentloaded" });
   expect(await ingestionProbe.attach()).toBe(true);
+  await expect.poll(async () => {
+    const clock = await ingestionProbe.send("Runtime.evaluate", { expression: "Date.now()", returnByValue: true });
+    return clock.result.value;
+  }).toBe(retentionAsOf);
   await sampleWhile(ingestionProbe, "ingestion", () =>
     page.waitForFunction(() => window.__dashboardRefreshStatus === "completed", null, { timeout: 600_000 }));
   const ingested = await canonicalDatabaseState(page);
