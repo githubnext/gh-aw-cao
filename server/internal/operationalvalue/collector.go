@@ -93,6 +93,14 @@ type definitionRecord struct {
 }
 
 type valueRecord struct {
+	WindowStart       *string  `json:"windowStart"`
+	WindowEnd         *string  `json:"windowEnd"`
+	MeasurementKind   *string  `json:"measurementKind"`
+	CoverageStatus    *string  `json:"coverageStatus"`
+	MissingReason     *string  `json:"missingReason"`
+	EligibleCount     *float64 `json:"eligibleCount"`
+	PopulationDigest  *string  `json:"populationDigest"`
+	EvidenceDigest    *string  `json:"evidenceDigest"`
 	CadenceDays       *float64 `json:"cadenceDays"`
 	EvaluatorDigest   *string  `json:"evaluatorDigest"`
 	Timestamp         string   `json:"timestamp"`
@@ -124,6 +132,14 @@ type envelope struct {
 }
 
 type operationalValue struct {
+	WindowStart       *string  `json:"window_start,omitempty"`
+	WindowEnd         *string  `json:"window_end,omitempty"`
+	MeasurementKind   *string  `json:"measurement_kind,omitempty"`
+	CoverageStatus    *string  `json:"coverage_status,omitempty"`
+	MissingReason     *string  `json:"missing_reason,omitempty"`
+	EligibleCount     *float64 `json:"eligible_count,omitempty"`
+	PopulationDigest  *string  `json:"population_digest,omitempty"`
+	EvidenceDigest    *string  `json:"evidence_digest,omitempty"`
 	CadenceDays       *float64 `json:"cadence_days,omitempty"`
 	EvaluatorDigest   *string  `json:"evaluator_digest,omitempty"`
 	Timestamp         string   `json:"timestamp"`
@@ -131,7 +147,7 @@ type operationalValue struct {
 	Campaign          string   `json:"campaign"`
 	CampaignID        string   `json:"campaign_id"`
 	ValueID           string   `json:"value_id"`
-	Value             float64  `json:"value"`
+	Value             *float64 `json:"value"`
 	MetricRole        string   `json:"metric_role"`
 	MetricName        string   `json:"metric_name"`
 	MetricUnit        *string  `json:"metric_unit,omitempty"`
@@ -292,6 +308,11 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 				for _, value := range historyEnvelopes {
 					if _, exists := retainedKeys[valueKey(value.OperationalValue)]; exists {
 						continue
+					}
+					if value.OperationalValue.WindowStart != nil {
+						if _, exists := retainedKeys[cadenceKey(value.OperationalValue, item)]; exists {
+							continue
+						}
 					}
 					values = append(values, value)
 					result.HistoryValues++
@@ -661,7 +682,12 @@ func validateValue(
 	if !identifierPattern.MatchString(record.ValueID) {
 		return fmt.Errorf("%s:%d.valueId must be a lowercase metric identifier", source, line)
 	}
-	if record.Value == nil || math.IsNaN(*record.Value) || math.IsInf(*record.Value, 0) {
+	if err := validatePeriod(record, fields, timestamp, source, line); err != nil {
+		return err
+	}
+	unavailable := fieldIsNull(fields, "value") && record.WindowStart != nil &&
+		record.MissingReason != nil && record.MaturityStatus != nil && *record.MaturityStatus == "unavailable"
+	if !unavailable && (record.Value == nil || math.IsNaN(*record.Value) || math.IsInf(*record.Value, 0)) {
 		return fmt.Errorf("%s:%d.value must be a finite number", source, line)
 	}
 	if fieldIsNull(fields, "cadenceDays") || (record.CadenceDays != nil &&
@@ -729,11 +755,49 @@ func validateValue(
 	_, hasNumerator := fields["rollupNumerator"]
 	_, hasDenominator := fields["rollupDenominator"]
 	if hasNumerator != hasDenominator ||
+		(record.Value == nil && hasNumerator) ||
 		(hasNumerator &&
 			(record.RollupNumerator == nil || record.RollupDenominator == nil ||
 				!finiteNonNegative(*record.RollupNumerator) ||
 				!finitePositive(*record.RollupDenominator))) {
 		return fmt.Errorf("%s:%d must emit a valid rollup numerator and denominator together", source, line)
+	}
+	return nil
+}
+
+func validatePeriod(record *valueRecord, fields map[string]json.RawMessage, observed time.Time, source string, line int) error {
+	hasPeriod := false
+	for _, name := range []string{"windowStart", "windowEnd", "measurementKind", "coverageStatus"} {
+		_, present := fields[name]
+		hasPeriod = hasPeriod || present
+	}
+	if hasPeriod {
+		if record.WindowStart == nil || record.WindowEnd == nil || record.MeasurementKind == nil || record.CoverageStatus == nil {
+			return fmt.Errorf("%s:%d must emit a valid measurement period and coverage", source, line)
+		}
+		start, startErr := parseTimestamp(*record.WindowStart)
+		end, endErr := parseTimestamp(*record.WindowEnd)
+		if startErr != nil || endErr != nil || !start.Before(end) || end.After(observed) ||
+			!oneOf(*record.MeasurementKind, "interval", "snapshot") ||
+			!oneOf(*record.CoverageStatus, "complete", "partial", "missing", "unknown") {
+			return fmt.Errorf("%s:%d must emit a valid measurement period and coverage", source, line)
+		}
+		*record.WindowStart, *record.WindowEnd = formatTimestamp(start), formatTimestamp(end)
+	}
+	for name, value := range map[string]*string{"populationDigest": record.PopulationDigest, "evidenceDigest": record.EvidenceDigest} {
+		if fieldIsNull(fields, name) || (value != nil && !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(*value)) {
+			return fmt.Errorf("%s:%d.%s must be a SHA-256 fingerprint", source, line, name)
+		}
+	}
+	if fieldIsNull(fields, "eligibleCount") || (record.EligibleCount != nil &&
+		(!finiteNonNegative(*record.EligibleCount) || math.Trunc(*record.EligibleCount) != *record.EligibleCount || *record.EligibleCount > 9007199254740991)) {
+		return fmt.Errorf("%s:%d.eligibleCount must be a non-negative safe integer", source, line)
+	}
+	if fieldIsNull(fields, "missingReason") || (record.MissingReason != nil && strings.TrimSpace(*record.MissingReason) == "") {
+		return fmt.Errorf("%s:%d.missingReason must be a non-empty string", source, line)
+	}
+	if record.MissingReason != nil {
+		*record.MissingReason = strings.TrimSpace(*record.MissingReason)
 	}
 	return nil
 }
@@ -759,7 +823,11 @@ func envelopes(campaign string, records []valueRecord) []envelope {
 			OperationalValue: operationalValue{
 				Timestamp: record.Timestamp, Repository: record.Repository,
 				Campaign: campaign, CampaignID: "campaign:" + campaign,
-				ValueID: record.ValueID, Value: *record.Value,
+				ValueID: record.ValueID, Value: record.Value,
+				WindowStart: record.WindowStart, WindowEnd: record.WindowEnd,
+				MeasurementKind: record.MeasurementKind, CoverageStatus: record.CoverageStatus,
+				MissingReason: record.MissingReason, EligibleCount: record.EligibleCount,
+				PopulationDigest: record.PopulationDigest, EvidenceDigest: record.EvidenceDigest,
 				MetricRole: role, MetricName: name, MetricUnit: record.MetricUnit,
 				MetricDirection: direction, MaturityStatus: maturity,
 				AdoptionAt: record.AdoptionAt, EvaluationMode: record.EvaluationMode,
@@ -891,6 +959,8 @@ func historicalTimes(
 	origin := item.AdoptedAt
 	if item.EvaluationMode == "baseline-comparable" {
 		origin = origin.Add(-baselineObservations * cadence)
+	} else {
+		origin = origin.Add(cadence)
 	}
 	cutoff := origin
 	if retainedCutoff := observedAt.Add(-retention); retainedCutoff.After(cutoff) {
@@ -934,6 +1004,15 @@ func definitionKey(campaign, valueID string) string {
 }
 
 func cadenceKey(value operationalValue, item definition) string {
+	if value.WindowStart != nil && value.WindowEnd != nil && value.MeasurementKind != nil {
+		digest := "unversioned"
+		if value.EvaluatorDigest != nil {
+			digest = *value.EvaluatorDigest
+		}
+		return strings.ToLower(value.Campaign) + "\x00" + strings.ToLower(value.Repository) +
+			"\x00" + value.ValueID + "\x00" + digest + "\x00" + *value.MeasurementKind +
+			"\x00" + *value.WindowStart + "\x00" + *value.WindowEnd
+	}
 	cadence := time.Duration(item.CadenceDays * float64(day))
 	timestamp, _ := parseTimestamp(value.Timestamp)
 	bucket := math.Ceil(float64(timestamp.Sub(item.AdoptedAt)) / float64(cadence))

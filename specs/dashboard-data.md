@@ -2417,13 +2417,22 @@ treated as durable evidence.
 The Operational Value overview SHALL derive campaign signals from retained,
 repository-scoped primary Operational Value observations, not run conclusions.
 SQL and IndexedDB query execution SHALL use the same Dashboard Language queries.
-This presentation introduces no canonical collection, migration, persistent
-projection, acquisition request, or change to retention.
+This presentation introduces no derived-result store or interactive acquisition.
+Canonical operational-value records and typed storage preserve optional period,
+coverage, missingness, cohort and evidence metadata; legacy records are not
+backfilled with invented proof. Retention remains unchanged.
 
-Movement SHALL compare native numeric observations only within the same campaign,
-subject repository, measure, evaluator fingerprint, unit, direction, adoption
-instant, evaluation mode, and maturity. Unknown versions, missing values, interim
-evidence, and unsupported goal directions SHALL remain insufficient evidence.
+Movement SHALL compare complete, mature native measurements in the latest
+period and the immediately preceding equal-duration period within the same
+campaign, subject repository, measure, evaluator fingerprint, unit, direction,
+measurement kind and cadence. Interval periods SHALL abut without overlap;
+snapshot periods SHALL compare their declared cutoffs, not summed backlogs.
+Adoption and evaluation mode describe historical context, not a requirement
+that recent comparisons cross adoption. Exact period boundaries and coverage
+proof are required; legacy metadata SHALL NOT be inferred. Unknown versions,
+missing or stale periods, partial coverage, interim evidence and unsupported
+goal directions SHALL remain insufficient evidence. New unavailable assessments
+SHALL remain visible and SHALL NOT reveal an older result as the latest value.
 Latest selection SHALL precede campaign aggregation so historical report volume
 cannot inflate repository counts or hide a newer incomplete observation.
 
@@ -2436,10 +2445,18 @@ measurements. Counts SHALL NOT imply complete enrolled-target coverage where an
 authoritative target denominator is absent. Observation dates SHALL stay visible;
 retained evidence SHALL NOT be represented as a fresh all-clear.
 
-Daily direction charts SHALL select the last observation per repository, measure,
-and UTC day before classifying repositories. They SHALL count repositories
-assessed that day, not a carried-forward fleet state, and SHALL NOT fill missing
-days, average native values across measures, infer sustained improvement, or
+The default headline SHALL expose native change and its actual reference
+period, separately from historical adoption association. Eligible cohort and
+denominator changes SHALL be exposed when retained. Zero change SHALL NOT imply
+target attainment or system health. No anomaly, sustained-drift or change-point
+claim is permitted without a separately versioned calibrated assessment.
+Measurement duration, cadence, display horizon and reference period SHALL remain
+distinct. Changing the display horizon SHALL NOT recompute a frozen evaluator
+with different semantics or create a growing lifetime average.
+
+Direction distribution charts SHALL count each latest assessed repository once
+under the same quality-gated period policy. They SHALL NOT fill missing
+evidence, average native values across measures, infer sustained improvement, or
 attribute movement causally to a campaign. Repository drill-downs SHALL preserve
 native measurement history, adoption and actual available baseline evidence.
 Campaign-wide run context SHALL be labeled as such, never as target-attributed

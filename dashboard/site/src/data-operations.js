@@ -11,6 +11,7 @@ import { projectTemporalSeries } from './data/analytics/temporal-series.js';
 import { formatPercent } from './view-formatters.js';
 import { createDebug } from './debug.js';
 import { partitionFacetRows } from './data/queries/facet.js';
+import { timestampMilliseconds } from './data/model/schema.js';
 
 const debugDataOperations = createDebug('data-operations');
 
@@ -51,6 +52,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   'replace-suffix': [3, 3],
   'url-encode': [1, 1],
   'date-day': [1, 1],
+  timestamp: [1, 1],
   'date-bucket': [2, 2],
   'calendar-week-point': [3, 3],
   'dashboard-link': [3, 4],
@@ -77,7 +79,7 @@ export const TEXT_COMPUTE_FUNCTIONS = [
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
-export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'positive-integer', 'sum', 'difference', 'product', 'quotient', 'array-length'];
+export const NUMERIC_COMPUTE_FUNCTIONS = ['timestamp', 'number', 'positive-integer', 'sum', 'difference', 'product', 'quotient', 'array-length'];
 
 /** Vega regression method names supported without an external model registry. */
 export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'];
@@ -413,6 +415,7 @@ export function computeValue(row, definition) {
       : input;
   }
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
+  if (definition.function === 'timestamp') return timestampMilliseconds(values[0]);
   if (definition.function === 'date-day') {
     const timestamp = parseTimestamp(values[0]);
     return timestamp === null ? null : new Date(timestamp).toISOString().slice(0, 10);

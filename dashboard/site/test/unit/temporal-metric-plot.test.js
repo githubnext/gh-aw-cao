@@ -4,6 +4,34 @@ import { renderTemporalMetricPlot } from '../../src/components/temporal-metric-p
 import { chartStyles } from '../../src/styles-charts.js';
 
 describe('Temporal metric plot', () => {
+  it('shows one metric with point details and breaks lines at unknown or changed measurement context', () => {
+    const root = renderTemporalMetricPlot({
+      title: 'AI Credit per successful run', mode: 'baseline-comparable', adoptionAt: '',
+      comparisonNote: 'Recorded measurements, not a combined trend.',
+      metrics: [{ id: 'value', label: 'Repository', points: [
+        { x: '2026-09-01', y: 4, continuityKey: 'known', maxGapDays: 1, description: 'Evaluator: known.' },
+        { x: '2026-09-02', y: 0, continuityKey: 'known', maxGapDays: 1 },
+        { x: '2026-09-03', y: 3, continuityKey: null, maxGapDays: 1, description: 'Evaluator: unknown.' },
+        { x: '2026-09-04', y: 2, continuityKey: 'other', maxGapDays: 1 },
+        { x: '2026-09-05', y: 1, continuityKey: 'other', maxGapDays: 1 },
+        { x: '2026-09-06', y: 5, continuityKey: 'interim', maxGapDays: 1, provisional: true },
+        { x: '2026-09-07', y: 6, continuityKey: 'interim', maxGapDays: 1, provisional: true }
+      ] }]
+    });
+    expect(root.querySelectorAll('h3')).toHaveLength(1);
+    expect(root.querySelectorAll('.temporal-plot-point')).toHaveLength(7);
+    const segments = [...root.querySelectorAll('polyline')];
+    expect(segments).toHaveLength(3);
+    expect(segments.every(segment => segment.getAttribute('points')?.split(' ').length === 2)).toBe(true);
+    expect(root.querySelectorAll('.temporal-plot-point-provisional')).toHaveLength(2);
+    expect(root.querySelectorAll('.temporal-plot-metric-provisional')).toHaveLength(1);
+    expect(root.querySelector('.temporal-plot-trend')).toBeNull();
+    const triggers = root.querySelectorAll('.temporal-plot-point-trigger');
+    expect(triggers).toHaveLength(2);
+    expect(root.querySelectorAll('[role="tooltip"]')[1].textContent).toContain('Evaluator: unknown.');
+    expect(triggers[1].getAttribute('aria-describedby')).toBe(root.querySelectorAll('[role="tooltip"]')[1].id);
+  });
+
   it('distinguishes retained history from verified coverage, freshness and trend assessment', () => {
     const root = renderTemporalMetricPlot({
       title: 'Retained value', mode: 'baseline-comparable',
@@ -24,7 +52,9 @@ describe('Temporal metric plot', () => {
     expect(details?.open).toBe(false);
     expect(details?.querySelector('summary')?.textContent).toBe('Evidence details');
     expect(details?.contains(root.querySelector('.temporal-plot-coverage-note'))).toBe(true);
-    expect(root.querySelector('.temporal-plot-trend')?.textContent).toBe('Trend not assessed');
+    expect(root.querySelector('.temporal-plot-trend')).toBeNull();
+    expect(details?.querySelector('.temporal-plot-comparison-note')?.textContent)
+      .toBe('Comparison unavailable: measurement version was not retained.');
   });
 
   it('connects consecutive observations separately per series and breaks at missing cadence periods', () => {
@@ -79,6 +109,28 @@ describe('Temporal metric plot', () => {
     expect(rendered.querySelector('[data-chart-temporal-marker]')).not.toBeNull();
     expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(1);
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(1);
+  });
+
+  it('honors the selected display domain without extending it to earlier adoption', () => {
+    const root = renderTemporalMetricPlot({
+      title: 'Selected horizon', mode: 'baseline-comparable',
+      adoptionAt: '2026-09-01T00:00:00Z',
+      timeDomain: {
+        start: Date.parse('2026-09-17T11:00:00Z'),
+        end: Date.parse('2026-09-24T11:00:00Z')
+      },
+      metrics: [{ id: 'value', label: 'Repository', points: [
+        { x: '2026-09-23T10:00:00Z', y: 4 },
+        { x: '2026-09-24T10:00:00Z', y: 0 }
+      ] }]
+    });
+    const ticks = [...root.querySelectorAll('text[y="346"]')].map(tick => tick.textContent);
+    expect(ticks).toContain('Sep 17');
+    expect(ticks).toContain('Sep 24');
+    expect(ticks).not.toContain('Sep 1');
+    expect(root.querySelector('[data-chart-temporal-marker]')).toBeNull();
+    expect(root.textContent).toContain('Adopted 2026-09-01 (UTC)');
+    expect(root.querySelectorAll('.temporal-plot-point')).toHaveLength(2);
   });
 
   it('counts distinct observation times without claiming a trend from duplicate points', () => {

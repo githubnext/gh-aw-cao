@@ -60,7 +60,7 @@ export function renderBoundMeasureHistory(context) {
  * @typedef {{
  *   id: string,
  *   label: string,
- *   points: Array<{ x: string, y: number, key: string, link?: Record<string, unknown> }>
+ *   points: Array<{ x: string, y: number, key: string, link?: Record<string, unknown>, metadata?: Record<string, unknown> }>
  * }} OperationalValueSeries
  */
 
@@ -109,10 +109,11 @@ function renderOperationalValueHistory(context, rows) {
     debugMeasureHistory({ event: 'observation-count-unavailable' });
   }
   const panels = rows.map((row) => {
+    const perObservation = row['plot-evidence-mode'] === 'per-observation';
     const label = String(row['plot-title'] || row['operational-value-name'] || row['metric-name'] || row.metric);
     const panelState = typeof row['maturity-status'] === 'string'
       ? row['maturity-status'] === 'matured' ? 'observed-value' : 'interim-evidence'
-      : state;
+      : perObservation ? 'observations' : state;
     const panelOutcomes = Array.isArray(row['run-days'])
       ? /** @type {import('./temporal-metric-plot.js').OutcomeContext[]} */ (row['run-days'])
       : campaignOutcomes;
@@ -121,7 +122,15 @@ function renderOperationalValueHistory(context, rows) {
       ...entry,
       unit: String(row['operational-value-unit'] || 'value'),
       direction: /** @type {'increase'|'decrease'|'maintain'|'target'} */ (row['operational-value-direction']),
-      points: entry.points.map((point) => ({ ...point, link: findLink(point, 'link') }))
+      points: entry.points.map((point) => ({
+        ...point, link: findLink(point, 'link'),
+        ...(point.metadata ? {
+          description: String(point.metadata['plot-point-description'] || ''),
+          continuityKey: typeof point.metadata['plot-context-key'] === 'string' ? point.metadata['plot-context-key'] : null,
+          maxGapDays: typeof point.metadata['plot-max-gap-days'] === 'number' ? point.metadata['plot-max-gap-days'] : 0,
+          provisional: point.metadata['plot-provisional'] !== false
+        } : {})
+      }))
     }));
     return h('div', {
       className: 'insights-plot-panel insights-temporal-plot-panel',
@@ -132,12 +141,18 @@ function renderOperationalValueHistory(context, rows) {
         title: label,
         mode: row['evaluation-mode'] === 'attainment-only' ? 'attainment-only' : 'baseline-comparable',
         adoptionAt: String(row['adoption-at'] || ''),
+        timeDomain: {
+          start: typeof row['plot-window-start-ms'] === 'number' ? row['plot-window-start-ms'] : undefined,
+          end: typeof row['plot-window-end-ms'] === 'number' ? row['plot-window-end-ms'] : undefined
+        },
         metrics,
         outcomes: panelOutcomes,
-        provisional: panelState !== 'observed-value',
-        connectPoints: Number(row['plot-max-gap-days']) > 0,
+        provisional: !perObservation && panelState !== 'observed-value',
+        connectPoints: perObservation || Number(row['plot-max-gap-days']) > 0,
         maxGapDays: Number(row['plot-max-gap-days']),
-        continuityNote: Number(row['plot-cadence-days']) > 0
+        continuityNote: perObservation
+          ? 'Lines stop at changes in measurement context, missing provenance, or gaps longer than the recorded cadence.'
+          : Number(row['plot-cadence-days']) > 0
           ? 'Lines connect observations within the recorded cadence. Longer gaps remain disconnected; lines do not imply continuous measurement or verified impact.'
           : 'Cadence was not retained. Lines only link observations at most 24 hours apart within the same retained context. This display rule does not establish measurement cadence, contract comparability or verified impact.',
         comparisonNote: String(row['plot-comparison-note'] || 'Observed history only: a validated trend assessment is not supplied for this panel.')
@@ -151,20 +166,19 @@ function renderOperationalValueHistory(context, rows) {
   });
 
   return h('section', { className: 'measure-history measure-history-operational-value', 'aria-label': context.title },
-    h('div', { className: 'insights-section-heading' },
-      h('div', null,
-        h('div', { className: 'insights-measure-heading' },
-          h('h2', null, 'Operational value')),
-        h('p', null, !evidenceStateSource
-          ? 'Native repository observations, separated by campaign, repository, evaluator and maturity. Amber panels are provisional. Adoption marks timing, not causation; a pre-adoption baseline exists only where observations are retained. Run context is shown only when supplied; campaign-wide execution is not target-attributed outcome verification.'
-          : state === 'unavailable'
+    ...panels,
+    h('details', { className: 'temporal-plot-evidence-details' },
+      h('summary', null, 'How to read these plots'),
+      h('p', null, 'Points show recorded measurements. Gaps are missing evidence, not zero. Point details retain measurement provenance; lines stop where comparability is unknown.'),
+      h('p', null, !evidenceStateSource
+        ? 'Amber panels are provisional. Open Evidence details for measurement and comparison limits.'
+        : state === 'unavailable'
           ? 'Operational-value maturity evidence is unavailable. Observations are provisional.'
           : state === 'interim-evidence'
             ? `${Number.isFinite(observationCount) ? `${formatNumber(observationCount)} interim` : 'Interim'} observations in each measure’s native units. Amber points are not mature evidence.`
-            : 'Repository-level observations in each measure’s native units; campaign rollups are omitted so anomalies remain visible. Lines connect comparable observations within the declared cadence, not across missing periods.'))),
-    campaignOutcomeSource ? h('p', { className: 'insights-run-context-note' },
-      'Campaign run health: green/red bars show campaign-wide control-plane execution, not runs attributed to this target repository. Run success does not verify outcome improvement. Missing run days are not zero.') : null,
-    ...panels);
+            : 'Repository-level observations in each measure’s native units; campaign rollups are omitted so anomalies remain visible. Lines connect comparable observations within the declared cadence, not across missing periods.'),
+      campaignOutcomeSource ? h('p', { className: 'insights-run-context-note' },
+        'Campaign run health: green/red bars show campaign-wide control-plane execution, not runs attributed to this target repository. Run success does not verify outcome improvement. Missing run days are not zero.') : null));
 }
 
 /**

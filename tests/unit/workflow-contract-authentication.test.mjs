@@ -397,7 +397,7 @@ test("CAO Activity workflow-token API reserves fit its standard 1000-request quo
   const logs = steps.find(({ name }) => name === "Download owner-scoped agentic workflow logs");
   const inventory = steps.find(({ name }) => name === "Collect owner-scoped dashboard inventory");
   const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
-  for (const [step, appPatReserve] of [[inventory, 4000], [logs, 4000], [value, 2000]]) {
+  for (const [step, appPatReserve] of [[inventory, 2000], [logs, 2000], [value, 2000]]) {
     assert.equal(
       step.env.REPORT_MAX_GITHUB_API_RATE_LIMIT,
       "${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-"

@@ -106,7 +106,13 @@ for (const moduleFile of moduleFiles) {
   const windows = (history ?? [observedAt]).flatMap((timestamp) => {
     const interim = definition.evaluation?.mode === "attainment-only"
       && Date.parse(timestamp) < Date.parse(firstMatureAt);
-    const windowEnd = interim ? timestamp : shiftDays(timestamp, -maturationDays);
+    const availableEnd = shiftDays(timestamp, -maturationDays);
+    const cadenceMs = definition.evidence.window.cadenceDays * 86_400_000;
+    const adoptionMs = Date.parse(definition.adoption.adoptedAt);
+    const alignedEnd = new Date(adoptionMs + Math.floor(
+      (Date.parse(availableEnd) - adoptionMs) / cadenceMs,
+    ) * cadenceMs).toISOString();
+    const windowEnd = interim ? timestamp : selectedModule ? availableEnd : alignedEnd;
     return repositories.map((repository) => ({
       repository,
       observedAt: timestamp,
@@ -142,9 +148,14 @@ for (const moduleFile of moduleFiles) {
     if (!Array.isArray(rows)) fail("Invalid retained operational-value measurements");
     const cached = repositories.flatMap((repository) => definition.metrics.map((metric) => rows.find((row) => (
       row.repository === repository && row.valueId === `${definition.slug}.${metric.id}`
-      && typeof row.value === "number" && Number.isFinite(row.value)
     ))));
-    if (cached.length > 0 && cached.every(Boolean)) {
+    if (cached.length > 0 && cached.every((row) => row
+      && typeof row.value === "number" && Number.isFinite(row.value)
+      && row["maturity-status"] !== "unavailable"
+      && (!["interval", "snapshot"].includes(definition.evidence.measurementKind)
+        || windows.some((window) => window.repository === row.repository
+          && window.windowStart === row["window-start"] && window.windowEnd === row["window-end"]
+          && definition.evidence.measurementKind === row["measurement-kind"])))) {
       for (const row of cached) console.log(JSON.stringify({
         timestamp: row.timestamp, repository: row.repository, valueId: row.valueId, value: row.value,
         metricRole: row["operational-value-role"], metricName: row["operational-value-name"],
@@ -153,6 +164,10 @@ for (const moduleFile of moduleFiles) {
         evaluationMode: row["evaluation-mode"], workflowSlug: row["workflow-slug"],
         workflowName: row["workflow-name"], evaluatorDigest,
         cadenceDays: row["cadence-days"],
+        windowStart: row["window-start"], windowEnd: row["window-end"],
+        measurementKind: row["measurement-kind"], coverageStatus: row["coverage-status"],
+        missingReason: row["missing-reason"], eligibleCount: row["eligible-count"],
+        populationDigest: row["population-digest"], evidenceDigest: row["evidence-digest"],
         ...(row["rollup-numerator"] !== undefined ? {
           rollupNumerator: row["rollup-numerator"], rollupDenominator: row["rollup-denominator"],
         } : {}),
@@ -175,19 +190,28 @@ for (const moduleFile of moduleFiles) {
   }
 
   for (let index = 0; index < windows.length; index += 1) {
+    const collection = collections[index];
+    const evidence = collection.evidence;
+    const measurementKind = definition.evidence.measurementKind;
+    const hasPeriod = ["interval", "snapshot"].includes(measurementKind);
+    const coverageStatus = evidence.coverageStatus
+      ?? (measurementKind === "snapshot" && evidence.valid === true ? "complete" : "unknown");
+    const evidenceDigest = hasPeriod ? createHash("sha256")
+      .update(JSON.stringify({ evidence, provenance: collection.provenance }))
+      .digest("hex") : undefined;
     for (const metric of definition.metrics) {
-      const value = scoreMetric(metric.id, collections[index].evidence);
-      if (value === null) continue;
-      if (typeof value !== "number" || !Number.isFinite(value)) {
+      const value = scoreMetric(metric.id, evidence);
+      if (value === null && !hasPeriod) continue;
+      if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) {
         fail(`Operational value metric returned an invalid value: ${definition.slug}.${metric.id}`);
       }
-      const rollupNumerator = metric.rollup
+      const rollupNumerator = metric.rollup && value !== null
         ? Number(collections[index].evidence?.[metric.rollup.numeratorField])
         : undefined;
-      const rollupDenominator = metric.rollup
+      const rollupDenominator = metric.rollup && value !== null
         ? Number(collections[index].evidence?.[metric.rollup.denominatorField])
         : undefined;
-      if (metric.rollup && (
+      if (metric.rollup && value !== null && (
         !Number.isFinite(rollupNumerator)
         || !Number.isFinite(rollupDenominator)
         || rollupNumerator < 0
@@ -205,13 +229,21 @@ for (const moduleFile of moduleFiles) {
         metricUnit: metric.unit,
         cadenceDays: definition.evidence.window.cadenceDays,
         metricDirection: metric.direction,
-        maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
+        maturityStatus: value === null ? "unavailable" : evidence?.maturityStatus ?? "matured",
         adoptionAt: definition.adoption.adoptedAt,
         evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
         workflowSlug: definition.slug,
         workflowName: definition.workflowName,
         evaluatorDigest,
-        ...(metric.rollup ? { rollupNumerator, rollupDenominator } : {}),
+        ...(hasPeriod ? {
+          windowStart: windows[index].windowStart,
+          windowEnd: windows[index].windowEnd,
+          measurementKind, coverageStatus, evidenceDigest,
+          missingReason: evidence.missingReason ?? (value === null ? "outcome-evidence-unavailable" : undefined),
+          eligibleCount: evidence.eligibleCount,
+          populationDigest: evidence.populationDigest,
+        } : {}),
+        ...(metric.rollup && value !== null ? { rollupNumerator, rollupDenominator } : {}),
       }));
     }
   }

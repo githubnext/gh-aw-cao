@@ -370,6 +370,9 @@ function queryStructuralDefect(definition) {
         || typeof series.series !== 'string'
         || (series.shape !== undefined && !['tidy', 'groups', 'panels'].includes(series.shape))
         || (series.link !== undefined && (series.shape !== 'panels' || typeof series.link !== 'string'))
+        || (series['point-carry'] !== undefined && (series.shape !== 'panels'
+          || !Array.isArray(series['point-carry']) || series['point-carry'].length === 0
+          || series['point-carry'].length > 16 || series['point-carry'].some((field) => typeof field !== 'string' || !field)))
         || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
         || (series.trend !== undefined && (series.shape !== 'groups' || !isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
         || (!Array.isArray(measures) || measures.length > 64)

@@ -42,7 +42,7 @@ export const QUERY_FILTER_KEYS = ['predicates'];
 export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte', 'lt', 'optional'];
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context', 'parameter'];
-export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'link', 'carry', 'measures', 'maps', 'trend'];
+export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'link', 'carry', 'point-carry', 'measures', 'maps', 'trend'];
 export const QUERY_TEMPORAL_SERIES_MEASURE_KEYS = ['field', 'key', 'kind'];
 export const QUERY_TEMPORAL_SERIES_MAP_KEYS = ['field', 'definitions', 'group', 'kind'];
 export const QUERY_TEMPORAL_SERIES_TREND_KEYS = ['direction'];
@@ -76,7 +76,7 @@ export const PAGE_FORM_CONTROL_VALUES = ['slider', 'checkbox', 'radio'];
 export const PAGE_FORM_OPTION_KEYS = ['value', 'label'];
 export const PAGE_FORM_MIN_DELAY_MS = 50;
 export const PAGE_FORM_MAX_DELAY_MS = 2000;
-export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page', 'availability-view', 'availability-message', 'partial-message', 'title-format', 'tabs-class-name', 'tab', 'tabs'];
+export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page', 'availability-view', 'availability-message', 'partial-message', 'title-format', 'tabs-class-name', 'tab', 'tabs', 'breadcrumbs'];
 export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
@@ -493,7 +493,7 @@ export const TABLE_FIELDS = {
   outcomes: ['organization', 'repository', 'campaign', 'runtime-repository', 'workflow', 'workflow-name', 'run', 'run-conclusion', 'safe-output', 'safe-output-kind', 'outcome-number', 'outcome-title', 'outcome-summary', 'outcome-category', 'outcome-status', 'outcome-state', 'issue-state', 'issue-closed', 'issue-state-reason', 'issue-status', 'issue-closing-status', 'issue-status-detail', 'issue-closed-at', 'issue-status-observed-at', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'published-at', 'observed-at', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'code', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
-  'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'evaluator-digest', 'cadence-days', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-unit', 'operational-value-direction', 'rollup-numerator', 'rollup-denominator', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link', 'run-link'],
+  'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'evaluator-digest', 'cadence-days', 'window-start', 'window-end', 'measurement-kind', 'coverage-status', 'missing-reason', 'eligible-count', 'population-digest', 'evidence-digest', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-unit', 'operational-value-direction', 'rollup-numerator', 'rollup-denominator', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link', 'run-link'],
   'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],
   'github-api-call-stacks': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'stack-frame-id', 'stack-parent-id', 'stack-depth', 'stack-frame'],
@@ -669,6 +669,8 @@ export const TEMPORAL_FIELD_NAMES = [
   'ended-at',
   'requested-evidence-at',
   'evidence-cutoff',
+  'window-start',
+  'window-end',
   'maturity-at',
   'published-at',
   'reset-at',
@@ -701,6 +703,10 @@ export const ADDITIVE_MEASURE_FIELDS = [
 ];
 
 export const NON_ADDITIVE_MEASURE_FIELDS = [
+  'cadence-days',
+  'eligible-count',
+  'rollup-numerator',
+  'rollup-denominator',
   'value',
   'operational-grader',
   'operational-value',

@@ -32,7 +32,7 @@ import { dashboardFormDefaultValues, dashboardViewAliasName } from './data/queri
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
 import { renderDashboardNavigation, enableDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
-import { renderDashboardHeader } from './components/dashboard-header.js';
+import { renderDashboardHeader, renderRouteBreadcrumbs } from './components/dashboard-header.js';
 import { renderAccountMenu } from './components/account-menu.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
@@ -83,7 +83,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['retain-on-navigation']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['availability-view']?: string, ['availability-message']?: string, ['partial-message']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['retain-on-navigation']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['availability-view']?: string, ['availability-message']?: string, ['partial-message']?: string, ['title-format']?: 'title-case', breadcrumbs?: import('./components/dashboard-header.js').RouteBreadcrumb[] }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -295,7 +295,8 @@ export function renderDashboard(input) {
               pageSources,
               dashboardDefaults,
               horizonRange,
-              evaluatedAt
+              evaluatedAt,
+              effectiveQueryContext?.timeWindow
             ));
           }
         };
@@ -669,9 +670,21 @@ function enableResponsiveReportActions(root, signal) {
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
  * @param {string} fallbackEvaluatedAt
+ * @param {{ start?: string, end?: string }} [timeWindow]
  * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
-function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
+function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt, timeWindow) {
+  const selectedStart = Date.parse(timeWindow?.start ?? '');
+  const selectedEnd = Date.parse(timeWindow?.end ?? '');
+  if (Number.isFinite(selectedStart) && Number.isFinite(selectedEnd) && selectedEnd > selectedStart) {
+    return {
+      available: true,
+      evaluatedAt: new Date(selectedEnd).toISOString(),
+      duration: formatDashboardHorizonHours(Math.ceil((selectedEnd - selectedStart) / 3_600_000)),
+      start: new Date(selectedStart).toISOString(),
+      end: new Date(selectedEnd).toISOString()
+    };
+  }
   const dataHorizon = resolveDataHorizon(sources);
   const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? fallbackEvaluatedAt;
   const duration = dataHorizon
@@ -757,6 +770,7 @@ function renderPagePlaceholder(page) {
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
     'data-route-title-format': payload.route?.['title-format'],
+    'data-route-breadcrumbs': payload.route?.breadcrumbs ? JSON.stringify(payload.route.breadcrumbs) : undefined,
     'data-retain-on-navigation': payload['retain-on-navigation'] === true ? 'true' : undefined,
     'data-page-pending': ''
   });
@@ -1225,7 +1239,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string'
         ? dashboardDefaults.time.range
         : 'all',
-      referenceEnd: latestSourceCoverageEnd(page.id === 'readiness'
+      referenceEnd: queryContext?.timeWindow?.end ?? latestSourceCoverageEnd(page.id === 'readiness'
         ? [sources.runs, sources.findings, sources.outcomes]
         : [...pageSources.values()])
     })
@@ -1265,6 +1279,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
       'data-route-title-format': page.route?.['title-format'],
+      'data-route-breadcrumbs': page.route?.breadcrumbs ? JSON.stringify(page.route.breadcrumbs) : undefined,
       'data-retain-on-navigation': page['retain-on-navigation'] === true ? 'true' : undefined,
       'data-view-mode': selectedViewMode
     },
@@ -1561,7 +1576,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const primePageChrome = (pageId, routeTitle = '', routeDescription = '') => {
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
-    const title = routeTitle.trim() || page?.dataset.pageTitle || '';
+    const title = (page?.dataset.routeBreadcrumbs ? '' : routeTitle.trim()) || page?.dataset.pageTitle || '';
     const description = routeDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1581,13 +1596,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!(page instanceof HTMLElement) || page.hidden) return;
     const title = typeof event.detail?.title === 'string' ? event.detail.title.trim() : '';
     const description = typeof event.detail?.description === 'string' ? event.detail.description.trim() : '';
-    if (title) {
+    if (title && !page.dataset.routeBreadcrumbs) {
       if (breadcrumbPage) breadcrumbPage.textContent = title;
       if (pageTitle) pageTitle.textContent = title;
       updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
     }
     renderPageTitleLink(pageTitleLink, event.detail?.titleLink);
-    const hasAllocatedBreadcrumbs = Array.isArray(event.detail?.breadcrumbs);
+    const hasAllocatedBreadcrumbs = !page.dataset.routeBreadcrumbs && Array.isArray(event.detail?.breadcrumbs);
     const breadcrumbs = hasAllocatedBreadcrumbs ? event.detail.breadcrumbs : [];
     for (const [index, link] of [breadcrumbRoot, breadcrumbDashboard].entries()) {
       const breadcrumb = breadcrumbs[index];
@@ -1831,6 +1846,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         populate();
       }
     }
+    for (const crumb of root.querySelectorAll('[data-route-breadcrumb]')) crumb.remove();
     for (const [index, link] of [breadcrumbRoot, breadcrumbDashboard].entries()) {
       if (!(link instanceof HTMLAnchorElement)) continue;
       link.hidden = defaultBreadcrumbs[index].hidden;
@@ -1871,7 +1887,23 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const formattedRouteTitle = page?.dataset.routeTitleFormat === 'title-case'
       ? titleCase(routeValue)
       : routeValue;
-    const title = queryTitle || provisionalTitle.trim() || formattedRouteTitle || page?.dataset.pageTitle || '';
+    const title = page?.dataset.routeBreadcrumbs
+      ? page.dataset.pageTitle || ''
+      : queryTitle || provisionalTitle.trim() || formattedRouteTitle || page?.dataset.pageTitle || '';
+    if (page?.dataset.routeBreadcrumbs) {
+      const breadcrumbs = /** @type {import('./components/dashboard-header.js').RouteBreadcrumb[]} */ (JSON.parse(page.dataset.routeBreadcrumbs));
+      for (const link of [breadcrumbRoot, breadcrumbDashboard]) {
+        if (link instanceof HTMLElement) link.hidden = true;
+      }
+      breadcrumbRoot?.parentElement?.append(...renderRouteBreadcrumbs({
+        breadcrumbs,
+        pages: pages.map(candidate => ({
+          id: candidate.dataset.pageId ?? '', title: candidate.dataset.pageTitle ?? '',
+          titleFormat: candidate.dataset.routeTitleFormat
+        })),
+        parameters, activePage: pageId
+      }));
+    }
     const description = provisionalDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1932,7 +1964,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       return false;
     }
   };
+  const declaredParentLink = () => {
+    const parent = [...root.querySelectorAll('a[data-route-breadcrumb]')].at(-1);
+    return parent instanceof HTMLAnchorElement ? parent : undefined;
+  };
   const logicalParentPageId = () => {
+    const declaredParent = declaredParentLink()?.dataset.navPageId;
+    if (declaredParent && availableIds.has(declaredParent)) return declaredParent;
     const pageId = routeFromHash()?.pageId ?? activePageId;
     const parentPageId = pages.find((page) => page.dataset.pageId === pageId)
       ?.dataset.routeNavigationPage;
@@ -1944,7 +1982,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       ?? (!previousEntryIsDashboard() ? initialPageId : undefined);
     historyBack.hidden = (routeFromHash()?.pageId ?? activePageId) === initialPageId;
     const parentLink = parentPageId
-      ? links.find((link) => getNavigationPageId(link) === parentPageId)
+      ? declaredParentLink() ?? links.find((link) => getNavigationPageId(link) === parentPageId)
       : undefined;
     const label = parentPageId
       ? `Back to ${parentLink?.textContent?.trim() || parentPageId.replaceAll('-', ' ')}`
@@ -1998,12 +2036,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     commitScrollTop();
     navigationIndex += 1;
+    const parentHref = declaredParentLink()?.getAttribute('href') ?? `#page-${parentPageId}`;
     defaultView?.history.pushState(
       { [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
       '',
-      `#page-${parentPageId}`
+      parentHref
     );
-    activate(parentPageId, new URLSearchParams(), true);
+    activate(parentPageId, new URLSearchParams(parentHref.split('?', 2)[1] ?? ''), true);
     syncHistoryBack();
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
@@ -2026,13 +2065,17 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncHistoryBack();
     defaultView?.dispatchEvent(new CustomEvent('dashboard-history-change'));
     primePageChrome(pageId, provisionalTitle, provisionalDescription);
+    const navigate = () => {
+      activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription);
+      syncHistoryBack();
+    };
     if (pages.find((candidate) => candidate.dataset.pageId === pageId)?.dataset.retainOnNavigation === 'true'
       || pages.find((candidate) => candidate.dataset.pageId === activePageId)?.dataset.retainOnNavigation === 'true') {
-      activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription);
+      navigate();
     } else {
       updateWithViewTransition(
         root.ownerDocument,
-        () => activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription),
+        navigate,
         'forward'
       );
     }
@@ -2103,7 +2146,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     primePageChrome(route?.pageId ?? initialPageId);
     const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
     const targetId = route?.pageId ?? initialPageId;
-    const navigate = () => activate(targetId, route?.parameters, true);
+    const navigate = () => {
+      activate(targetId, route?.parameters, true);
+      syncHistoryBack();
+    };
     if (pages.find((candidate) => candidate.dataset.pageId === targetId)?.dataset.retainOnNavigation === 'true'
       || pages.find((candidate) => candidate.dataset.pageId === activePageId)?.dataset.retainOnNavigation === 'true') navigate();
     else updateWithViewTransition(root.ownerDocument, navigate, navigationDirection);

@@ -217,7 +217,7 @@ jobs:
       - name: Collect owner-scoped dashboard inventory
         env:
           ACTIVITY_CREDENTIAL_OWNER: ${{ matrix.owner }}
-          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-4000' }}
+          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
@@ -258,7 +258,7 @@ jobs:
           REPORT_TARGET_REPOSITORIES_JSON: ${{ toJSON(matrix.repositories) }}
           REPORT_DEFER_ISSUE_STATUS: "1"
           REPORT_LOG_TIMEOUT: "15"
-          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-4000' }}
+          REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"

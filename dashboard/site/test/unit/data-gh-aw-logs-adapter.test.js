@@ -94,6 +94,36 @@ describe('gh-aw logs adapter', () => {
     }
   });
 
+  it('preserves complete period proof and explicit unavailable assessments without coercing invalid metadata', () => {
+    const value = {
+      repository: 'octo/api', timestamp: '2026-09-24T10:00:00Z', campaign: 'custom',
+      value_id: 'worker.remaining', value: null, maturity_status: 'unavailable',
+      window_start: '2026-09-17T10:00:00Z', window_end: '2026-09-24T10:00:00Z',
+      measurement_kind: 'interval', coverage_status: 'missing', missing_reason: 'source-inaccessible',
+      population_digest: 'a'.repeat(64), evidence_digest: 'b'.repeat(64), eligible_count: 0
+    };
+    const adapt = (/** @type {Record<string, unknown>} */ record) => adaptCachedGhAwJsonl(JSON.stringify({
+      schema_version: 2, kind: 'operational_value', operational_value: record
+    }));
+    expect(adapt(value).observations.find(row => row.kind === 'operational-value')?.data).toMatchObject({
+      value: null, 'maturity-status': 'unavailable', 'coverage-status': 'missing',
+      'window-start': '2026-09-17T10:00:00.000Z', 'window-end': '2026-09-24T10:00:00.000Z',
+      'measurement-kind': 'interval', 'missing-reason': 'source-inaccessible', 'eligible-count': 0,
+      'population-digest': 'a'.repeat(64), 'evidence-digest': 'b'.repeat(64)
+    });
+    for (const changes of [
+      { window_start: null }, { window_end: '2026-09-25T10:00:00Z' },
+      { window_start: value.window_end }, { measurement_kind: ['interval'] },
+      { coverage_status: ['complete'] }, { eligible_count: -1 }, { eligible_count: 1.5 },
+      { population_digest: 'A'.repeat(64) }, { evidence_digest: null }, { missing_reason: '' },
+      { maturity_status: 'matured' }, { rollup_numerator: 0, rollup_denominator: 1 }
+    ]) {
+      expect(() => adapt({ ...value, ...changes })).toThrow();
+    }
+    expect(adapt({ ...value, value: 0, maturity_status: 'matured', coverage_status: 'complete' })
+      .observations.find(row => row.kind === 'operational-value')?.data.value).toBe(0);
+  });
+
   it('rejects malformed evaluator fingerprints and preserves valid or absent legacy metadata', () => {
     const value = {
       repository: 'octo/api', timestamp: '2026-10-14T00:00:00Z',

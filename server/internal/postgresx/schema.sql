@@ -699,6 +699,14 @@ CREATE TABLE IF NOT EXISTS operational_values (
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
   cadence_days NUMERIC,
+  window_start TIMESTAMPTZ,
+  window_end TIMESTAMPTZ,
+  measurement_kind TEXT,
+  coverage_status TEXT,
+  missing_reason TEXT,
+  eligible_count BIGINT,
+  population_digest TEXT,
+  evidence_digest TEXT,
   adoption_at TIMESTAMPTZ,
   baseline_value NUMERIC,
   campaign TEXT,
@@ -735,7 +743,7 @@ CREATE TABLE IF NOT EXISTS operational_values (
 
   PRIMARY KEY (namespace, id),
   UNIQUE (namespace, ordinal),
-  CHECK (bit_length(present_fields) = 34),
+  CHECK (bit_length(present_fields) = 42),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (repository_id IS NOT NULL AND repository_id <> ''),
   FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED

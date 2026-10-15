@@ -1,12 +1,34 @@
 {
   "queries": [
     {
+      "name": "operational-value-campaign-run-observations",
+      "subject": "Campaign execution observations inside the selected display horizon.",
+      "objective": "Scope run context in the worker rather than filtering campaign rows in the chart.",
+      "acceptance": "Use the exact inclusive start and exclusive end. An absent bound means unbounded; invalid run timestamps cannot contribute.",
+      "from": "campaign-runs",
+      "filter": { "predicates": [{ "field": "run-status", "equals": "completed" }] },
+      "compute": [
+        { "as": "run-start-ms", "function": "timestamp", "args": [{ "field": "started-at" }] },
+        { "as": "run-start-missing", "function": "equals-any", "args": [{ "field": "run-start-ms" }, { "value": null }] },
+        { "as": "display-start-ms", "function": "timestamp", "args": [{ "context": "time-start" }] },
+        { "as": "display-end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "before-display-start", "function": "greater-than", "args": [{ "field": "display-start-ms" }, { "field": "run-start-ms" }] },
+        { "as": "before-display-end", "function": "greater-than", "args": [{ "field": "display-end-ms" }, { "field": "run-start-ms" }] },
+        { "as": "outside-display-start", "function": "coalesce", "args": [{ "field": "before-display-start" }, { "value": false }] },
+        { "as": "inside-display-end", "function": "coalesce", "args": [{ "field": "before-display-end" }, { "value": true }] }
+      ]
+    },
+    {
       "name": "operational-value-campaign-run-health",
       "subject": "Daily concluded campaign execution counts, not target outcome evidence.",
       "objective": "Place outcome history beside retained campaign execution health without attributing runs to measured targets.",
       "acceptance": "Group completed retained attempts by campaign and start day. Count distinct control-repository run/attempt identities, successes and declared failed conclusions. Do not reconstruct prior retries or claim outcome attainment.",
-      "from": "campaign-runs",
-      "filter": { "predicates": [{ "field": "run-status", "equals": "completed" }] },
+      "from": "operational-value-campaign-run-observations",
+      "filter": { "predicates": [
+        { "field": "run-start-missing", "equals": false },
+        { "field": "outside-display-start", "equals": false },
+        { "field": "inside-display-end", "equals": true }
+      ] },
       "compute": [
         { "as": "run-day", "function": "date-day", "args": [{ "field": "started-at" }] },
         { "as": "attempt-key", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "run" }, { "value": ":" }, { "field": "run-attempt" }] }
@@ -48,56 +70,156 @@
     },
     {
       "name": "operational-value-plot-series",
-      "subject": "Separate primary outcome timelines by campaign, frozen evaluator, native unit and maturity.",
-      "objective": "Inspect repository observations around adoption without averaging unlike measures or joining missing evidence.",
-      "acceptance": "Separate campaign, repository, measure, unit, direction, adoption, mode, evaluator, maturity and cadence. Lines use declared cadence or a 24-hour display limit for legacy observations, not inferred cadence. Never synthesize a baseline.",
+      "subject": "One primary outcome plot per campaign, repository and native measure.",
+      "objective": "Keep every finite value visible and move provenance to individual observations.",
+      "acceptance": "Separate unlike units and directions. Preserve evaluator, maturity and cadence on points. Connect only adjacent points with known matching context and declared cadence; never infer a combined trend or baseline.",
       "from": "operational-values",
       "filter": { "predicates": [{ "field": "operational-value-role", "equals": "primary" }] },
       "compute": [
+        { "as": "plot-window-start-ms", "function": "timestamp", "args": [{ "context": "time-start" }] },
+        { "as": "plot-window-end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
         { "as": "plot-contract", "function": "coalesce", "args": [{ "field": "evaluator-digest" }, { "value": "unknown" }] },
         { "as": "plot-unversioned", "function": "equals-any", "args": [{ "field": "plot-contract" }, { "value": "unknown" }] },
-        { "as": "plot-comparison-note", "function": "if", "args": [{ "field": "plot-unversioned" }, { "value": "Comparison unavailable: measurement version was not retained." }, { "value": "Observed history only: a validated trend assessment is not supplied for this panel." }] },
-        { "as": "plot-cadence-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 0 }] },
-        { "as": "plot-max-gap-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 1 }] },
+        { "as": "plot-comparison-note", "function": "literal", "args": [{ "value": "Recorded measurements, not a combined trend or a verified impact assessment." }] },
+        { "as": "plot-evidence-mode", "function": "literal", "args": [{ "value": "per-observation" }] },
+        { "as": "plot-mature", "function": "equals-any", "args": [{ "field": "maturity-status" }, { "value": "matured" }] },
+        { "as": "plot-provisional", "function": "equals-any", "args": [{ "field": "plot-mature" }, { "value": false }] },
+        { "as": "plot-max-gap-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 0 }] },
+        { "as": "plot-period-start", "function": "timestamp", "args": [{ "field": "window-start" }] },
+        { "as": "plot-period-end", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "plot-period-duration", "function": "difference", "args": [{ "field": "plot-period-end" }, { "field": "plot-period-start" }] },
+        { "as": "plot-contract-context", "function": "concat", "args": [{ "field": "plot-contract" }, { "value": "|" }, { "field": "maturity-status" }, { "value": "|" }, { "field": "cadence-days" }, { "value": "|" }, { "field": "measurement-kind" }] },
+        { "as": "plot-period-context", "function": "concat", "args": [{ "field": "plot-period-duration" }, { "value": "|" }, { "field": "evaluation-mode" }, { "value": "|" }, { "field": "adoption-at" }] },
+        { "as": "plot-known-context", "function": "concat", "args": [{ "field": "plot-contract-context" }, { "value": "|" }, { "field": "plot-period-context" }] },
+        { "as": "plot-context-key", "function": "if", "args": [{ "field": "plot-unversioned" }, { "value": null }, { "field": "plot-known-context" }] },
+        { "as": "plot-provenance-description", "function": "concat", "args": [{ "value": "Evaluator: " }, { "field": "plot-contract" }, { "value": ". Maturity: " }, { "field": "maturity-status" }, { "value": ". Cadence (days): " }, { "field": "plot-max-gap-days" }, { "value": " (0 means unknown). " }] },
+        { "as": "plot-period-description", "function": "concat", "args": [{ "value": "Window: " }, { "field": "window-start" }, { "value": " to " }, { "field": "window-end" }, { "value": ". Adoption: " }, { "field": "adoption-at" }, { "value": ". Mode: " }, { "field": "evaluation-mode" }] },
+        { "as": "plot-point-description", "function": "concat", "args": [{ "field": "plot-provenance-description" }, { "field": "plot-period-description" }] },
         { "as": "series-repository", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
-        { "as": "plot-campaign", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "field": "campaign" }] },
-        { "as": "plot-title", "function": "concat", "args": [{ "field": "plot-campaign" }, { "value": " / " }, { "field": "series-repository" }, { "value": " / " }, { "field": "operational-value-name" }] }
+        { "as": "plot-title", "function": "coalesce", "args": [{ "field": "operational-value-name" }, { "field": "operational-value-definition" }] }
       ],
       "temporal-series": {
         "time": "observed-at", "series": "series-repository", "shape": "panels", "link": "run-link",
         "carry": [
-          "campaign", "series-repository", "plot-title", "operational-value-definition", "operational-value-name",
-          "operational-value-unit", "operational-value-direction", "adoption-at",
-          "evaluation-mode", "evaluator-digest", "maturity-status", "plot-cadence-days", "plot-max-gap-days", "plot-comparison-note"
+          "campaign", "series-repository", "plot-title", "plot-window-start-ms", "plot-window-end-ms", "operational-value-definition", "operational-value-name",
+          "operational-value-unit", "operational-value-direction", "plot-evidence-mode", "plot-comparison-note"
         ],
+        "point-carry": ["plot-context-key", "plot-max-gap-days", "plot-provisional", "plot-point-description", "evaluator-digest", "maturity-status", "cadence-days", "window-start", "window-end", "adoption-at", "evaluation-mode"],
         "measures": [{ "field": "operational-value", "key": "operational-value-definition", "kind": "primary" }]
-      }
+      },
+      "order-by": [{ "field": "plot-title", "direction": "asc" }]
     },
     {
-      "name": "operational-value-comparable-history",
-      "subject": "Native outcome movement within one repository and frozen measurement context.",
-      "objective": "Compare retained observations without mixing campaigns, units, contracts or interim evidence.",
-      "acceptance": "Differences use consecutive observations within the same campaign, repository, measure, unit, direction, adoption, evaluation mode, evaluator and maturity. Missing numeric observations break comparison. No workflow attribution or baseline claim.",
+      "name": "operational-value-period-observations",
+      "subject": "Exact native measurement periods and frozen evaluator identities.",
+      "objective": "Keep measurement duration, cadence, analysis endpoint and adoption context separate.",
+      "acceptance": "Use only declared period boundaries and coverage. Never infer legacy metadata or turn the display horizon into an evidence window.",
       "from": "operational-values",
+      "time": { "range": "all" },
       "compute": [
         { "as": "observation-marker", "function": "literal", "args": [{ "value": 1 }] },
         { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
-        { "as": "adoption-context", "function": "concat", "args": [{ "field": "adoption-at" }, { "value": "|" }, { "field": "evaluation-mode" }] }
+        { "as": "window-start-ms", "function": "timestamp", "args": [{ "field": "window-start" }] },
+        { "as": "window-end-ms", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "assessment-ms", "function": "timestamp", "args": [{ "field": "observed-at" }] },
+        { "as": "period-order-ms", "function": "coalesce", "args": [{ "field": "window-end-ms" }, { "field": "assessment-ms" }] },
+        { "as": "period-duration-ms", "function": "difference", "args": [{ "field": "window-end-ms" }, { "field": "window-start-ms" }] },
+        { "as": "measurement-shape", "function": "concat", "args": [{ "field": "operational-value-unit" }, { "value": "|" }, { "field": "operational-value-direction" }, { "value": "|" }, { "field": "measurement-kind" }, { "value": "|" }, { "field": "cadence-days" }] },
+        { "as": "period-contract", "function": "concat", "args": [{ "field": "evaluator-digest" }, { "value": "|" }, { "field": "measurement-shape" }, { "value": "|" }, { "field": "period-duration-ms" }] }
       ],
       "window": [{
-        "operation": "change", "field": "operational-value", "as": "previous-native-change", "mode": "absolute",
-        "groupby": ["campaign", "repository-coordinate", "operational-value-definition", "operational-value-unit", "operational-value-direction", "adoption-context", "evaluator-digest", "maturity-status"],
-        "order-by": [{ "field": "observed-at", "direction": "asc" }, { "field": "id", "direction": "asc" }]
+        "operation": "change", "field": "observation-marker", "as": "newer-period-assessment", "mode": "absolute",
+        "groupby": ["campaign", "repository-coordinate", "operational-value-definition", "period-contract", "window-start-ms", "window-end-ms"],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }]
       }]
+    },
+    {
+      "name": "operational-value-period-latest",
+      "subject": "Latest assessment of each exact measurement period.",
+      "objective": "Do not resurrect an older accepted value when the same period has a newer unavailable assessment.",
+      "acceptance": "Deduplicate before checking coverage or maturity. Preserve null values and missing metadata.",
+      "from": "operational-value-period-observations",
+      "filter": { "predicates": [{ "field": "newer-period-assessment", "equals": "unknown" }] }
+    },
+    {
+      "name": "operational-value-complete-period-candidates",
+      "subject": "Complete mature reference periods.",
+      "objective": "Require accepted evidence for a recent comparison rather than arbitrary older observations.",
+      "acceptance": "Only explicitly complete mature periods can serve as references. Missing periods remain missing.",
+      "from": "operational-value-period-latest",
+      "filter": { "predicates": [
+        { "field": "coverage-status", "equals": "complete" },
+        { "field": "maturity-status", "equals": "matured" }
+      ] },
+      "compute": [
+        { "as": "reference-endpoint-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "future-reference-assessment", "function": "greater-than", "args": [{ "field": "assessment-ms" }, { "field": "reference-endpoint-ms" }] }
+      ]
+    },
+    {
+      "name": "operational-value-complete-periods",
+      "subject": "Complete reference evidence available by the analysis endpoint.",
+      "objective": "Prevent future reference corrections from changing a historical comparison.",
+      "acceptance": "A future latest assessment withholds the reference; never resurrect an older accepted correction.",
+      "from": "operational-value-complete-period-candidates",
+      "filter": { "predicates": [{ "field": "future-reference-assessment", "equals": false }] }
+    },
+    {
+      "name": "operational-value-comparable-history",
+      "subject": "Native change between adjacent equal-duration measurement periods.",
+      "objective": "Compare non-overlapping intervals or snapshot cutoffs under one evaluator, independently of adoption classification.",
+      "acceptance": "The reference ends exactly at the current start, with the same duration, cadence, native unit, direction and evaluator. No overlapping daily rolling comparison or substitution across a gap.",
+      "from": "operational-value-period-latest",
+      "joins": [{
+        "source": "operational-value-complete-periods", "type": "left",
+        "on": [
+          { "left": "campaign", "right": "campaign" },
+          { "left": "repository-coordinate", "right": "repository-coordinate" },
+          { "left": "operational-value-definition", "right": "operational-value-definition" },
+          { "left": "period-contract", "right": "period-contract" },
+          { "left": "window-start-ms", "right": "window-end-ms" }
+        ],
+        "fields": [
+          { "field": "operational-value", "as": "reference-native-value" },
+          { "field": "window-start", "as": "reference-window-start" },
+          { "field": "window-end", "as": "reference-window-end" },
+          { "field": "population-digest", "as": "reference-population-digest" },
+          { "field": "eligible-count", "as": "reference-eligible-count" },
+          { "field": "rollup-denominator", "as": "reference-denominator" }
+        ]
+      }],
+      "compute": [
+        { "as": "previous-native-change", "function": "difference", "args": [{ "field": "operational-value" }, { "field": "reference-native-value" }] },
+        { "as": "current-period", "function": "concat", "args": [{ "field": "window-start" }, { "value": " to " }, { "field": "window-end" }] },
+        { "as": "reference-period", "function": "concat", "args": [{ "field": "reference-window-start" }, { "value": " to " }, { "field": "reference-window-end" }] },
+        { "as": "interval-comparison", "function": "concat", "args": [{ "field": "current-period" }, { "value": " vs " }, { "field": "reference-period" }] },
+        { "as": "snapshot-comparison", "function": "concat", "args": [{ "value": "Cutoff " }, { "field": "window-end" }, { "value": " vs " }, { "field": "reference-window-end" }] },
+        { "as": "snapshot-measure", "function": "equals-any", "args": [{ "field": "measurement-kind" }, { "value": "snapshot" }] },
+        { "as": "comparison-period", "function": "if", "args": [{ "field": "snapshot-measure" }, { "field": "snapshot-comparison" }, { "field": "interval-comparison" }] }
+      ]
     },
     {
       "name": "operational-value-movements",
       "subject": "Direction-aware movement of retained primary repository measures.",
       "objective": "Classify native changes without averaging unlike measures.",
-      "acceptance": "Movement requires matured evidence, a known evaluator, native unit, increase/decrease direction and comparable numeric observations. Missing evidence stays insufficient; no causality or baseline claim.",
+      "acceptance": "Movement requires current complete mature periods, a known evaluator, native unit, increase/decrease direction and an adjacent equal-duration reference. Expose cohort and exposure changes; no sustained-trend, statistical or causal claim.",
       "from": "operational-value-comparable-history",
       "filter": { "predicates": [{ "field": "operational-value-role", "equals": "primary" }] },
       "compute": [
+        { "as": "analysis-end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "assessment-age-ms", "function": "difference", "args": [{ "field": "analysis-end-ms" }, { "field": "assessment-ms" }] },
+        { "as": "cadence-ms", "function": "product", "args": [{ "field": "cadence-days" }, { "value": 86400000 }] },
+        { "as": "freshness-limit-ms", "function": "difference", "args": [{ "field": "cadence-ms" }, { "value": 1 }] },
+        { "as": "past-cadence", "function": "greater-than", "args": [{ "field": "assessment-age-ms" }, { "field": "freshness-limit-ms" }] },
+        { "as": "future-period", "function": "greater-than", "args": [{ "value": 0 }, { "field": "assessment-age-ms" }] },
+        { "as": "known-analysis-end", "function": "greater-than", "args": [{ "field": "analysis-end-ms" }, { "value": 0 }] },
+        { "as": "positive-period", "function": "greater-than", "args": [{ "field": "period-duration-ms" }, { "value": 0 }] },
+        { "as": "positive-cadence", "function": "greater-than", "args": [{ "field": "cadence-days" }, { "value": 0 }] },
+        { "as": "known-measurement-kind", "function": "equals-any", "args": [{ "field": "measurement-kind" }, { "value": "interval" }, { "value": "snapshot" }] },
+        { "as": "complete-coverage", "function": "equals-any", "args": [{ "field": "coverage-status" }, { "value": "complete" }] },
+        { "as": "same-population", "function": "equals-any", "args": [{ "field": "population-digest" }, { "field": "reference-population-digest" }] },
+        { "as": "population-note", "function": "if", "args": [{ "field": "same-population" }, { "value": "Aggregate movement is not proof of within-cohort improvement." }, { "value": "Eligible cohort changed or its identity was not retained; inspect workload mix." }] },
+        { "as": "exposure-change", "function": "difference", "args": [{ "field": "rollup-denominator" }, { "field": "reference-denominator" }] },
         { "as": "campaign-label", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "field": "campaign" }] },
         { "as": "mature", "function": "equals-any", "args": [{ "field": "maturity-status" }, { "value": "matured" }] },
         { "as": "native-change-state", "function": "coalesce", "args": [{ "field": "previous-native-change" }, { "value": "missing" }] },
@@ -121,7 +243,20 @@
         { "as": "comparable-movement", "function": "if", "args": [{ "field": "missing-change" }, { "value": "Insufficient comparable history" }, { "field": "observed-movement" }] },
         { "as": "versioned-movement", "function": "if", "args": [{ "field": "missing-contract" }, { "value": "Unversioned evidence" }, { "field": "comparable-movement" }] },
         { "as": "unit-movement", "function": "if", "args": [{ "field": "missing-unit" }, { "value": "Native unit unavailable" }, { "field": "versioned-movement" }] },
-        { "as": "movement", "function": "if", "args": [{ "field": "mature" }, { "field": "unit-movement" }, { "value": "Provisional or unavailable" }] }
+        { "as": "fresh-movement", "function": "if", "args": [{ "field": "past-cadence" }, { "value": "Stale or future evidence" }, { "field": "unit-movement" }] },
+        { "as": "bounded-movement", "function": "if", "args": [{ "field": "future-period" }, { "value": "Stale or future evidence" }, { "field": "fresh-movement" }] },
+        { "as": "endpoint-movement", "function": "if", "args": [{ "field": "known-analysis-end" }, { "field": "bounded-movement" }, { "value": "Stale or future evidence" }] },
+        { "as": "coverage-movement", "function": "if", "args": [{ "field": "complete-coverage" }, { "field": "endpoint-movement" }, { "value": "Coverage incomplete or unknown" }] },
+        { "as": "kind-movement", "function": "if", "args": [{ "field": "known-measurement-kind" }, { "field": "coverage-movement" }, { "value": "Measurement period unavailable" }] },
+        { "as": "cadence-movement", "function": "if", "args": [{ "field": "positive-cadence" }, { "field": "kind-movement" }, { "value": "Measurement period unavailable" }] },
+        { "as": "period-movement", "function": "if", "args": [{ "field": "positive-period" }, { "field": "cadence-movement" }, { "value": "Measurement period unavailable" }] },
+        { "as": "mature-movement", "function": "if", "args": [{ "field": "mature" }, { "field": "period-movement" }, { "value": "Provisional or unavailable" }] },
+        { "as": "movement", "function": "if", "args": [{ "field": "missing-contract" }, { "value": "Unversioned evidence" }, { "field": "mature-movement" }] },
+        { "as": "recent-comparable", "function": "equals-any", "args": [{ "field": "movement" }, { "value": "Improving" }, { "value": "Worsening" }, { "value": "Unchanged" }] },
+        { "as": "native-change", "function": "if", "args": [{ "field": "recent-comparable" }, { "field": "previous-native-change" }, { "value": null }] },
+        { "as": "recent-comparison-period", "function": "if", "args": [{ "field": "recent-comparable" }, { "field": "comparison-period" }, { "value": "Unavailable; inspect comparison status." }] },
+        { "as": "measurement-note", "function": "if", "args": [{ "field": "snapshot-measure" }, { "value": "Cutoff-state change, not a count of remediations. " }, { "value": "" }] },
+        { "as": "comparison-context", "function": "concat", "args": [{ "field": "measurement-note" }, { "field": "population-note" }] }
       ],
       "order-by": [{ "field": "campaign", "direction": "asc" }, { "field": "repository-coordinate", "direction": "asc" }, { "field": "operational-value-definition", "direction": "asc" }]
     },
@@ -129,12 +264,12 @@
       "name": "operational-value-ordered-history",
       "subject": "Latest observation of each repository measure, before maturity or value filtering.",
       "objective": "Prevent an older positive or mature result from masking a newer incomplete observation.",
-      "acceptance": "Order every observation by timestamp and stable ID before selecting the latest. Preserve native values including zero and null.",
+      "acceptance": "Order by measurement cutoff, then assessment timestamp and stable ID. Historical corrections cannot replace a newer measurement period. Missing period metadata falls back to assessment time and remains incomparable. Preserve native zero and null.",
       "from": "operational-value-movements",
       "window": [{
         "operation": "change", "field": "observation-marker", "as": "preceding-observation", "mode": "absolute",
         "groupby": ["campaign", "organization", "repository", "operational-value-definition"],
-        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }]
+        "order-by": [{ "field": "period-order-ms", "direction": "desc" }, { "field": "observed-at", "direction": "desc" }, { "field": "id", "direction": "desc" }]
       }]
     },
     {
@@ -169,6 +304,14 @@
           { "field": "observation-marker", "as": "improving", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Improving" }] } },
           { "field": "observation-marker", "as": "worsening", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Worsening" }] } },
           { "field": "observation-marker", "as": "unchanged", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Unchanged" }] } },
+          { "field": "observation-marker", "as": "unversioned-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Unversioned evidence" }] } },
+          { "field": "observation-marker", "as": "unitless-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Native unit unavailable" }] } },
+          { "field": "observation-marker", "as": "provisional-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Provisional or unavailable" }] } },
+          { "field": "observation-marker", "as": "history-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Insufficient comparable history" }] } },
+          { "field": "observation-marker", "as": "target-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Target assessment required" }] } },
+          { "field": "observation-marker", "as": "period-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Measurement period unavailable" }] } },
+          { "field": "observation-marker", "as": "coverage-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Coverage incomplete or unknown" }] } },
+          { "field": "observation-marker", "as": "stale-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Stale or future evidence" }] } },
           { "field": "observed-at", "as": "newest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-newest", "equals": "unknown" }] } },
           { "field": "observed-at", "as": "oldest-evidence-at", "reducer": "unique", "filter": { "predicates": [{ "field": "before-oldest", "equals": "unknown" }] } }
         ]
@@ -188,7 +331,25 @@
         { "as": "positive-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Improving" }, { "value": "Unchanged" }] },
         { "as": "negative-state", "function": "if", "args": [{ "field": "has-improving" }, { "value": "Mixed" }, { "value": "Worsening" }] },
         { "as": "comparable-state", "function": "if", "args": [{ "field": "has-worsening" }, { "field": "negative-state" }, { "field": "positive-state" }] },
-        { "as": "signal", "function": "if", "args": [{ "field": "incomplete" }, { "value": "Insufficient evidence" }, { "field": "comparable-state" }] }
+        { "as": "signal", "function": "if", "args": [{ "field": "incomplete" }, { "value": "Insufficient evidence" }, { "field": "comparable-state" }] },
+        { "as": "version-gap", "function": "greater-than", "args": [{ "field": "unversioned-goals" }, { "value": 0 }] },
+        { "as": "unit-gap", "function": "greater-than", "args": [{ "field": "unitless-goals" }, { "value": 0 }] },
+        { "as": "provisional-gap", "function": "greater-than", "args": [{ "field": "provisional-goals" }, { "value": 0 }] },
+        { "as": "history-gap", "function": "greater-than", "args": [{ "field": "history-gap-goals" }, { "value": 0 }] },
+        { "as": "target-gap", "function": "greater-than", "args": [{ "field": "target-goals" }, { "value": 0 }] },
+        { "as": "version-note", "function": "if", "args": [{ "field": "version-gap" }, { "value": "Measurement version missing. " }, { "value": "" }] },
+        { "as": "unit-note", "function": "if", "args": [{ "field": "unit-gap" }, { "value": "Native unit missing. " }, { "value": "" }] },
+        { "as": "provisional-note", "function": "if", "args": [{ "field": "provisional-gap" }, { "value": "Provisional or unavailable measurements. " }, { "value": "" }] },
+        { "as": "history-note", "function": "if", "args": [{ "field": "history-gap" }, { "value": "Comparable history missing. " }, { "value": "" }] },
+        { "as": "target-note", "function": "if", "args": [{ "field": "target-gap" }, { "value": "Target assessment needed. " }, { "value": "" }] },
+        { "as": "period-gap", "function": "greater-than", "args": [{ "field": "period-gap-goals" }, { "value": 0 }] },
+        { "as": "coverage-gap", "function": "greater-than", "args": [{ "field": "coverage-gap-goals" }, { "value": 0 }] },
+        { "as": "stale-gap", "function": "greater-than", "args": [{ "field": "stale-goals" }, { "value": 0 }] },
+        { "as": "period-note", "function": "if", "args": [{ "field": "period-gap" }, { "value": "Measurement periods missing. " }, { "value": "" }] },
+        { "as": "coverage-note", "function": "if", "args": [{ "field": "coverage-gap" }, { "value": "Period coverage incomplete or unknown. " }, { "value": "" }] },
+        { "as": "stale-note", "function": "if", "args": [{ "field": "stale-gap" }, { "value": "Evidence outside the analysis cadence. " }, { "value": "" }] },
+        { "as": "gap-reasons", "function": "concat", "args": [{ "field": "version-note" }, { "field": "unit-note" }, { "field": "provisional-note" }, { "field": "history-note" }, { "field": "target-note" }, { "field": "period-note" }, { "field": "coverage-note" }, { "field": "stale-note" }] },
+        { "as": "evidence-reason", "function": "if", "args": [{ "field": "incomplete" }, { "field": "gap-reasons" }, { "value": "Comparable measurements available." }] }
       ],
       "order-by": [{ "field": "worsening", "direction": "desc" }, { "field": "improving", "direction": "desc" }, { "field": "repository-coordinate", "direction": "asc" }]
     },
@@ -225,6 +386,29 @@
       }
     },
     {
+      "name": "operational-value-campaign-counts",
+      "subject": "Coverage of latest primary repository outcome measurements.",
+      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
+      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
+      "from": "operational-value-latest",
+      "aggregate": {
+        "by": ["campaign"],
+        "values": [
+          { "field": "observation-marker", "as": "observation-count", "reducer": "count" },
+          { "field": "observation-marker", "as": "comparable-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "in": ["Improving", "Worsening", "Unchanged"] }] } },
+          { "field": "observation-marker", "as": "unversioned-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Unversioned evidence" }] } },
+          { "field": "observation-marker", "as": "unitless-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Native unit unavailable" }] } },
+          { "field": "observation-marker", "as": "provisional-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Provisional or unavailable" }] } },
+          { "field": "observation-marker", "as": "history-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Insufficient comparable history" }] } },
+          { "field": "observation-marker", "as": "target-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Target assessment required" }] } },
+          { "field": "observation-marker", "as": "period-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Measurement period unavailable" }] } },
+          { "field": "observation-marker", "as": "coverage-gap-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Coverage incomplete or unknown" }] } },
+          { "field": "observation-marker", "as": "stale-goals", "reducer": "count", "filter": { "predicates": [{ "field": "movement", "equals": "Stale or future evidence" }] } },
+          { "field": "operational-value", "as": "matured-observation-count", "reducer": "count", "filter": { "predicates": [{ "field": "maturity-status", "equals": "matured" }] } }
+        ]
+      }
+    },
+    {
       "name": "operational-value-campaign-signals",
       "subject": "Ranked campaign signals with measured and comparable repository coverage.",
       "objective": "See worsening, mixed evidence, gains and gaps before drilling down.",
@@ -243,6 +427,21 @@
           { "field": "newest-evidence-at", "as": "newest-evidence-at" },
           { "field": "oldest-evidence-at", "as": "oldest-evidence-at" }
         ]
+      }, {
+        "source": "operational-value-campaign-counts", "type": "left",
+        "on": [{ "left": "campaign", "right": "campaign" }],
+        "fields": [
+          { "field": "observation-count", "as": "measured-goal-count" },
+          { "field": "comparable-goals", "as": "comparable-goal-count" },
+          { "field": "unversioned-goals", "as": "unversioned-goals" },
+          { "field": "unitless-goals", "as": "unitless-goals" },
+          { "field": "provisional-goals", "as": "provisional-goals" },
+          { "field": "history-gap-goals", "as": "history-gap-goals" },
+          { "field": "target-goals", "as": "target-goals" },
+          { "field": "period-gap-goals", "as": "period-gap-goals" },
+          { "field": "coverage-gap-goals", "as": "coverage-gap-goals" },
+          { "field": "stale-goals", "as": "stale-goals" }
+        ]
       }],
       "compute": [
         { "as": "measured-repositories", "function": "coalesce", "args": [{ "field": "measured-count" }, { "value": 0 }] },
@@ -252,6 +451,27 @@
         { "as": "unchanged-repositories", "function": "coalesce", "args": [{ "field": "unchanged-count" }, { "value": 0 }] },
         { "as": "insufficient-repositories", "function": "coalesce", "args": [{ "field": "insufficient-count" }, { "value": 0 }] },
         { "as": "comparable-repositories", "function": "difference", "args": [{ "field": "measured-repositories" }, { "field": "insufficient-repositories" }] },
+        { "as": "measured-goals", "function": "coalesce", "args": [{ "field": "measured-goal-count" }, { "value": 0 }] },
+        { "as": "comparable-goals", "function": "coalesce", "args": [{ "field": "comparable-goal-count" }, { "value": 0 }] },
+        { "as": "incomplete", "function": "greater-than", "args": [{ "field": "measured-goals" }, { "field": "comparable-goals" }] },
+        { "as": "version-gap", "function": "greater-than", "args": [{ "field": "unversioned-goals" }, { "value": 0 }] },
+        { "as": "unit-gap", "function": "greater-than", "args": [{ "field": "unitless-goals" }, { "value": 0 }] },
+        { "as": "provisional-gap", "function": "greater-than", "args": [{ "field": "provisional-goals" }, { "value": 0 }] },
+        { "as": "history-gap", "function": "greater-than", "args": [{ "field": "history-gap-goals" }, { "value": 0 }] },
+        { "as": "target-gap", "function": "greater-than", "args": [{ "field": "target-goals" }, { "value": 0 }] },
+        { "as": "version-note", "function": "if", "args": [{ "field": "version-gap" }, { "value": "Measurement version missing. " }, { "value": "" }] },
+        { "as": "unit-note", "function": "if", "args": [{ "field": "unit-gap" }, { "value": "Native unit missing. " }, { "value": "" }] },
+        { "as": "provisional-note", "function": "if", "args": [{ "field": "provisional-gap" }, { "value": "Provisional or unavailable measurements. " }, { "value": "" }] },
+        { "as": "history-note", "function": "if", "args": [{ "field": "history-gap" }, { "value": "Comparable history missing. " }, { "value": "" }] },
+        { "as": "target-note", "function": "if", "args": [{ "field": "target-gap" }, { "value": "Target assessment needed. " }, { "value": "" }] },
+        { "as": "period-gap", "function": "greater-than", "args": [{ "field": "period-gap-goals" }, { "value": 0 }] },
+        { "as": "coverage-gap", "function": "greater-than", "args": [{ "field": "coverage-gap-goals" }, { "value": 0 }] },
+        { "as": "stale-gap", "function": "greater-than", "args": [{ "field": "stale-goals" }, { "value": 0 }] },
+        { "as": "period-note", "function": "if", "args": [{ "field": "period-gap" }, { "value": "Measurement periods missing. " }, { "value": "" }] },
+        { "as": "coverage-note", "function": "if", "args": [{ "field": "coverage-gap" }, { "value": "Period coverage incomplete or unknown. " }, { "value": "" }] },
+        { "as": "stale-note", "function": "if", "args": [{ "field": "stale-gap" }, { "value": "Evidence outside the analysis cadence. " }, { "value": "" }] },
+        { "as": "gap-reasons", "function": "concat", "args": [{ "field": "version-note" }, { "field": "unit-note" }, { "field": "provisional-note" }, { "field": "history-note" }, { "field": "target-note" }, { "field": "period-note" }, { "field": "coverage-note" }, { "field": "stale-note" }] },
+        { "as": "measured-reason", "function": "if", "args": [{ "field": "incomplete" }, { "field": "gap-reasons" }, { "value": "Comparable measurements available." }] },
         { "as": "has-worsening", "function": "greater-than", "args": [{ "field": "worsening-repositories" }, { "value": 0 }] },
         { "as": "has-mixed", "function": "greater-than", "args": [{ "field": "mixed-repositories" }, { "value": 0 }] },
         { "as": "has-improving", "function": "greater-than", "args": [{ "field": "improving-repositories" }, { "value": 0 }] },
@@ -264,44 +484,75 @@
         { "as": "negative-state", "function": "if", "args": [{ "field": "has-worsening" }, { "field": "opposed-state" }, { "field": "gain-state" }] },
         { "as": "signal", "function": "if", "args": [{ "field": "has-mixed" }, { "value": "Mixed" }, { "field": "negative-state" }] },
         { "as": "direction-summary", "function": "concat", "args": [{ "field": "improving-repositories" }, { "value": " improving / " }, { "field": "worsening-repositories" }, { "value": " worsening / " }, { "field": "mixed-repositories" }, { "value": " mixed / " }, { "field": "unchanged-repositories" }, { "value": " unchanged" }] },
-        { "as": "coverage-summary", "function": "concat", "args": [{ "field": "comparable-repositories" }, { "value": " comparable / " }, { "field": "measured-repositories" }, { "value": " measured; " }, { "field": "insufficient-repositories" }, { "value": " insufficient. Total target scope unknown." }] }
+        { "as": "coverage-summary", "function": "concat", "args": [{ "field": "measured-goals" }, { "value": " measured goals / " }, { "field": "comparable-goals" }, { "value": " comparable" }] },
+        { "as": "evidence-reason", "function": "if", "args": [{ "field": "has-evidence" }, { "field": "measured-reason" }, { "value": "No retained primary measurements." }] }
       ],
       "order-by": [{ "field": "worsening-repositories", "direction": "desc" }, { "field": "mixed-repositories", "direction": "desc" }, { "field": "improving-repositories", "direction": "desc" }, { "field": "campaign-name", "direction": "asc" }]
     },
     {
+      "name": "operational-value-overview-totals",
+      "subject": "Campaign measurement availability and latest comparable goal counts.",
+      "objective": "Explain what the portfolio evidence can support before drilling down.",
+      "acceptance": "Count inventory campaigns once and sum latest primary goal counts, not observations or distinct repositories. No retained measurements does not imply no contract or zero value.",
+      "from": "operational-value-campaign-signals",
+      "aggregate": { "by": [], "values": [
+        { "field": "campaign", "as": "campaigns", "reducer": "count" },
+        { "field": "campaign", "as": "measured-campaigns", "reducer": "count", "filter": { "predicates": [{ "field": "has-evidence", "equals": true }] } },
+        { "field": "measured-goals", "as": "measured-goals", "reducer": "sum" },
+        { "field": "comparable-goals", "as": "comparable-goals", "reducer": "sum" }
+      ] }
+    },
+    {
+      "name": "operational-value-overview-summary",
+      "subject": "Compact portfolio measurement readiness summary.",
+      "objective": "Explain comparison readiness without replacing unavailable movement with zero value.",
+      "acceptance": "Preserve campaign and latest goal totals; distinguish no observations from measurements without comparable movement.",
+      "from": "operational-value-overview-totals",
+      "compute": [
+        { "as": "summary", "function": "concat", "args": [{ "field": "measured-campaigns" }, { "value": " of " }, { "field": "campaigns" }, { "value": " campaigns measured · " }, { "field": "comparable-goals" }, { "value": " comparable goals" }] },
+        { "as": "has-measurements", "function": "greater-than", "args": [{ "field": "measured-goals" }, { "value": 0 }] },
+        { "as": "has-comparisons", "function": "greater-than", "args": [{ "field": "comparable-goals" }, { "value": 0 }] },
+        { "as": "measured-note", "function": "if", "args": [{ "field": "has-comparisons" }, { "value": "Inspect campaign movement and comparison gaps below." }, { "value": "Measurements are available, but none supports a comparable movement yet. Inspect the reasons below." }] },
+        { "as": "summary-note", "function": "if", "args": [{ "field": "has-measurements" }, { "field": "measured-note" }, { "value": "No primary measurements are retained. Inspect collection and measurement coverage in Evidence; absence is not zero value." }] }
+      ]
+    },
+    {
+      "name": "operational-value-measured-campaigns",
+      "subject": "Campaigns with retained primary measurements.",
+      "objective": "Choose a measured campaign to investigate without listing unmeasured campaigns first.",
+      "acceptance": "Preserve the campaign signal ordering, native evidence reasons and dates; include only campaigns with measured repositories.",
+      "from": "operational-value-campaign-signals",
+      "filter": { "predicates": [{ "field": "has-evidence", "equals": true }] }
+    },
+    {
+      "name": "operational-value-unmeasured-campaigns",
+      "subject": "Inventory campaigns without retained primary measurements.",
+      "objective": "Inspect measurement availability gaps without conflating absence with missing contracts.",
+      "acceptance": "Keep every unmeasured inventory campaign. Missing observations establish neither zero value nor absence of a contract.",
+      "from": "operational-value-campaign-signals",
+      "filter": { "predicates": [{ "field": "has-evidence", "equals": false }] }
+    },
+    {
       "name": "operational-value-direction-campaigns",
       "subject": "Fleet direction distribution per campaign in repository counts, never native-value averages.",
-      "objective": "Compare campaign movement distributions without hiding mixed or insufficient evidence.",
-      "acceptance": "Group by campaign and direction signal, count repositories, and retain the campaign identity. Never sum or average native operational-value measures across repositories.",
+      "objective": "Compare available campaign movement distributions; inspect comparison gaps in Overview.",
+      "acceptance": "Include only comparable repository signals, grouped by campaign and direction. Empty is not neutral. Never average native outcomes.",
       "from": "operational-value-repository-signals",
+      "filter": { "predicates": [{ "field": "signal", "in": ["Improving", "Worsening", "Mixed", "Unchanged"] }] },
       "compute": [
         { "as": "campaign-label", "function": "title-case", "args": [{ "field": "campaign" }] },
         { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "campaign" }] },
         { "as": "outcome-drill-href", "function": "concat", "args": [{ "value": "#page-operational-value-campaign?campaign=" }, { "field": "encoded-campaign" }] },
-        { "as": "outcome-drill-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "outcome-drill-href" }, { "field": "campaign-label" }] }
+        { "as": "campaign-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "outcome-drill-href" }, { "field": "campaign-label" }] }
       ],
       "aggregate": {
         "by": ["campaign", "campaign-label", "signal"],
         "values": [
           { "field": "repository-coordinate", "as": "repositories", "reducer": "count" },
-          { "field": "outcome-drill-link", "as": "outcome-drill-link", "reducer": "unique" }
+          { "field": "campaign-dashboard-link", "as": "campaign-dashboard-link", "reducer": "unique" }
         ]
       },
       "order-by": [{ "field": "campaign-label", "direction": "asc" }, { "field": "signal", "direction": "asc" }]
-    },
-    {
-      "name": "operational-value-campaign-counts",
-      "subject": "Coverage of latest primary repository outcome measurements.",
-      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
-      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
-      "from": "operational-value-latest",
-      "aggregate": {
-        "by": ["campaign"],
-        "values": [
-          { "field": "operational-value", "as": "observation-count", "reducer": "count" },
-          { "field": "operational-value", "as": "matured-observation-count", "reducer": "count", "filter": { "predicates": [{ "field": "maturity-status", "equals": "matured" }] } }
-        ]
-      }
     },
     {
       "name": "operational-value-campaign-coverage",
@@ -419,21 +670,24 @@
     {
       "id": "operational-value-campaign",
       "kind": "custom",
-      "title": "Campaign outcome evidence",
-      "description": "Experimental repository outcome signals. Open a repository to inspect native history and evidence.",
+      "title": "Operational Value",
+      "description": "Choose a repository to see its plots.",
       "icon": "graph",
       "experimental": true,
-      "view-mode-control": true,
+      "view-mode-control": false,
       "route": {
         "hash-query-parameter": "campaign",
         "title-format": "title-case",
-        "navigation-page": "operational-value"
+        "navigation-page": "operational-value",
+        "breadcrumbs": [
+          { "page": "operational-value" },
+          { "page": "operational-value-campaign", "parameters": ["campaign"] }
+        ]
       },
       "views": [
         {
           "id": "campaign-outcome-repositories",
-          "title": "Repositories behind the signal",
-          "description": "One signal per measured repository. Any incomparable latest primary measure makes its signal insufficient. Opposing comparable measures are Mixed. Open a repository for native history, adoption and available baseline evidence.",
+          "title": "Repositories",
           "data": {
             "source": "operational-value-repository-signals",
             "arguments": [{ "name": "campaign", "field": "campaign" }]
@@ -441,6 +695,7 @@
           "mark": "list",
           "list": {
             "style": "entity-cards",
+            "appearance": "grouped",
             "card": "repository-outcome-signal",
             "icon": "repo",
             "drill": {
@@ -613,13 +868,23 @@
     {
       "id": "operational-value-repository",
       "kind": "custom",
+      "filter-bar": true,
+      "view-mode-control": false,
       "experimental": true,
-      "title": "Repository outcome evidence",
-      "description": "Native observations for the selected campaign and subject repository. Adoption is timing, not causal attribution; missing baseline evidence stays missing. Central execution is not attributed to this target without evidence.",
-      "route": { "hash-query-parameter": "repository", "navigation-page": "operational-value" },
+      "title": "Operational Value",
+      "description": "Measurements over time. Select a point to inspect its value.",
+      "route": {
+        "hash-query-parameter": "repository", "navigation-page": "operational-value",
+        "breadcrumbs": [
+          { "page": "operational-value" },
+          { "page": "operational-value-campaign", "parameters": ["campaign"] },
+          { "page": "operational-value-repository", "parameters": ["organization", "repository"] }
+        ]
+      },
       "views": [{
         "id": "repository-outcome-history",
         "title": "Native outcome history",
+        "show-title": false,
         "data": {
           "sources": ["operational-value-plot-series", "operational-value-repository-campaign-run-health"],
           "arguments": [
@@ -629,7 +894,34 @@
           ]
         },
         "mark": "element", "element": "measure-history", "layout": "full",
-        "config": { "measure-source": "operational-value", "empty-message": "No primary outcome history is retained for this campaign and repository." }
+        "config": { "measure-source": "operational-value", "empty-message": "No measurements in this horizon. Try a longer time window." }
+      }, {
+        "id": "repository-outcome-comparison",
+        "title": "Recent period comparison",
+        "disclosure": "supplemental",
+        "disclosure-label": "Comparison details",
+        "description": "Native change uses the immediately preceding complete period, not adoption. Exposure and cohort changes can explain aggregate movement. Unchanged is not a health or target-attainment assessment.",
+        "data": {
+          "source": "operational-value-latest",
+          "arguments": [
+            { "name": "campaign", "field": "campaign" },
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" }
+          ]
+        },
+        "mark": "list", "list": { "style": "cards", "icon": "graph" }, "layout": "full",
+        "encoding": { "columns": [
+          { "field": "operational-value-name", "type": "nominal", "title": "Measure" },
+          { "field": "operational-value", "type": "quantitative", "title": "Current value" },
+          { "field": "operational-value-unit", "type": "nominal", "title": "Unit" },
+          { "field": "native-change", "type": "quantitative", "title": "Recent change" },
+          { "field": "movement", "type": "nominal", "title": "Comparison status" },
+          { "field": "recent-comparison-period", "type": "nominal", "title": "Compared periods" },
+          { "field": "rollup-denominator", "type": "quantitative", "title": "Current denominator" },
+          { "field": "reference-denominator", "type": "quantitative", "title": "Previous denominator" },
+          { "field": "comparison-context", "type": "nominal", "title": "Interpretation limit" },
+          { "field": "missing-reason", "type": "nominal", "title": "Evidence limitation" }
+        ] }
       }]
     }
   ]

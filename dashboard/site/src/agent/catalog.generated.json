@@ -524,8 +524,8 @@
     },
     {
       "id": "operational-value-campaign",
-      "title": "Campaign outcome evidence",
-      "description": "Experimental repository outcome signals. Open a repository to inspect native history and evidence.",
+      "title": "Operational Value",
+      "description": "Choose a repository to see its plots.",
       "experimental": true,
       "parameters": [
         {
@@ -570,8 +570,8 @@
     },
     {
       "id": "operational-value-repository",
-      "title": "Repository outcome evidence",
-      "description": "Native observations for the selected campaign and subject repository. Adoption is timing, not causal attribution; missing baseline evidence stays missing. Central execution is not attributed to this target without evidence.",
+      "title": "Operational Value",
+      "description": "Measurements over time. Select a point to inspect its value.",
       "experimental": true,
       "parameters": [
         {
@@ -585,6 +585,7 @@
         }
       ],
       "queries": [
+        "operational-value-latest",
         "operational-value-plot-series",
         "operational-value-repository-campaign-run-health"
       ]
@@ -724,15 +725,14 @@
     {
       "id": "operational-value",
       "title": "Operational Value",
-      "description": "Where outcomes are improving, worsening or uncertain. Signals describe retained evidence, not campaign causality or run success.",
+      "description": "Choose a campaign, then a repository to see its plots.",
       "experimental": true,
       "parameters": [],
       "queries": [
-        "operational-value-campaign-coverage",
-        "operational-value-campaign-signals",
-        "operational-value-direction-campaigns",
-        "operational-value-latest",
-        "operational-value-repository-signals"
+        "operational-value-measured-campaigns",
+        "operational-value-overview-summary",
+        "operational-value-repository-signals",
+        "operational-value-unmeasured-campaigns"
       ]
     },
     {
@@ -3149,6 +3149,27 @@
       }
     },
     {
+      "id": "operational-value-campaign-run-observations",
+      "subject": "Campaign execution observations inside the selected display horizon.",
+      "objective": "Scope run context in the worker rather than filtering campaign rows in the chart.",
+      "acceptance": "Use the exact inclusive start and exclusive end. An absent bound means unbounded; invalid run timestamps cannot contribute.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaign-runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits",
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "operational-value-campaign-run-health",
       "subject": "Daily concluded campaign execution counts, not target outcome evidence.",
       "objective": "Place outcome history beside retained campaign execution health without attributing runs to measured targets.",
@@ -3156,7 +3177,7 @@
       "description": "",
       "parameters": [],
       "sources": [
-        "campaign-runs"
+        "operational-value-campaign-run-observations"
       ],
       "used-by-pages": [],
       "execution": {
@@ -3228,9 +3249,9 @@
     },
     {
       "id": "operational-value-plot-series",
-      "subject": "Separate primary outcome timelines by campaign, frozen evaluator, native unit and maturity.",
-      "objective": "Inspect repository observations around adoption without averaging unlike measures or joining missing evidence.",
-      "acceptance": "Separate campaign, repository, measure, unit, direction, adoption, mode, evaluator, maturity and cadence. Lines use declared cadence or a 24-hour display limit for legacy observations, not inferred cadence. Never synthesize a baseline.",
+      "subject": "One primary outcome plot per campaign, repository and native measure.",
+      "objective": "Keep every finite value visible and move provenance to individual observations.",
+      "acceptance": "Separate unlike units and directions. Preserve evaluator, maturity and cadence on points. Connect only adjacent points with known matching context and declared cadence; never infer a combined trend or baseline.",
       "description": "",
       "parameters": [
         {
@@ -3262,10 +3283,10 @@
       }
     },
     {
-      "id": "operational-value-comparable-history",
-      "subject": "Native outcome movement within one repository and frozen measurement context.",
-      "objective": "Compare retained observations without mixing campaigns, units, contracts or interim evidence.",
-      "acceptance": "Differences use consecutive observations within the same campaign, repository, measure, unit, direction, adoption, evaluation mode, evaluator and maturity. Missing numeric observations break comparison. No workflow attribution or baseline claim.",
+      "id": "operational-value-period-observations",
+      "subject": "Exact native measurement periods and frozen evaluator identities.",
+      "objective": "Keep measurement duration, cadence, analysis endpoint and adoption context separate.",
+      "acceptance": "Use only declared period boundaries and coverage. Never infer legacy metadata or turn the display horizon into an evidence window.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3281,10 +3302,87 @@
       }
     },
     {
+      "id": "operational-value-period-latest",
+      "subject": "Latest assessment of each exact measurement period.",
+      "objective": "Do not resurrect an older accepted value when the same period has a newer unavailable assessment.",
+      "acceptance": "Deduplicate before checking coverage or maturity. Preserve null values and missing metadata.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-period-observations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-complete-period-candidates",
+      "subject": "Complete mature reference periods.",
+      "objective": "Require accepted evidence for a recent comparison rather than arbitrary older observations.",
+      "acceptance": "Only explicitly complete mature periods can serve as references. Missing periods remain missing.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-period-latest"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-complete-periods",
+      "subject": "Complete reference evidence available by the analysis endpoint.",
+      "objective": "Prevent future reference corrections from changing a historical comparison.",
+      "acceptance": "A future latest assessment withholds the reference; never resurrect an older accepted correction.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-complete-period-candidates"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-comparable-history",
+      "subject": "Native change between adjacent equal-duration measurement periods.",
+      "objective": "Compare non-overlapping intervals or snapshot cutoffs under one evaluator, independently of adoption classification.",
+      "acceptance": "The reference ends exactly at the current start, with the same duration, cadence, native unit, direction and evaluator. No overlapping daily rolling comparison or substitution across a gap.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-complete-periods",
+        "operational-value-period-latest"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
       "id": "operational-value-movements",
       "subject": "Direction-aware movement of retained primary repository measures.",
       "objective": "Classify native changes without averaging unlike measures.",
-      "acceptance": "Movement requires matured evidence, a known evaluator, native unit, increase/decrease direction and comparable numeric observations. Missing evidence stays insufficient; no causality or baseline claim.",
+      "acceptance": "Movement requires current complete mature periods, a known evaluator, native unit, increase/decrease direction and an adjacent equal-duration reference. Expose cohort and exposure changes; no sustained-trend, statistical or causal claim.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3303,7 +3401,7 @@
       "id": "operational-value-ordered-history",
       "subject": "Latest observation of each repository measure, before maturity or value filtering.",
       "objective": "Prevent an older positive or mature result from masking a newer incomplete observation.",
-      "acceptance": "Order every observation by timestamp and stable ID before selecting the latest. Preserve native values including zero and null.",
+      "acceptance": "Order by measurement cutoff, then assessment timestamp and stable ID. Historical corrections cannot replace a newer measurement period. Missing period metadata falls back to assessment time and remains incomparable. Preserve native zero and null.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3324,12 +3422,25 @@
       "objective": "Expose the latest retained movement, including incomplete evidence.",
       "acceptance": "Latest selection precedes aggregation. Older mature or positive observations cannot mask newer incomplete evidence.",
       "description": "",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        },
+        {
+          "name": "organization",
+          "field": "organization"
+        },
+        {
+          "name": "repository",
+          "field": "repository"
+        }
+      ],
       "sources": [
         "operational-value-ordered-history"
       ],
       "used-by-pages": [
-        "operational-value"
+        "operational-value-repository"
       ],
       "execution": {
         "local": true,
@@ -3443,6 +3554,25 @@
       }
     },
     {
+      "id": "operational-value-campaign-counts",
+      "subject": "Coverage of latest primary repository outcome measurements.",
+      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
+      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-latest"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-values"
+        ]
+      }
+    },
+    {
       "id": "operational-value-campaign-signals",
       "subject": "Ranked campaign signals with measured and comparable repository coverage.",
       "objective": "See worsening, mixed evidence, gains and gaps before drilling down.",
@@ -3451,7 +3581,92 @@
       "parameters": [],
       "sources": [
         "campaigns",
+        "operational-value-campaign-counts",
         "operational-value-signal-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-overview-totals",
+      "subject": "Campaign measurement availability and latest comparable goal counts.",
+      "objective": "Explain what the portfolio evidence can support before drilling down.",
+      "acceptance": "Count inventory campaigns once and sum latest primary goal counts, not observations or distinct repositories. No retained measurements does not imply no contract or zero value.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-campaign-signals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-overview-summary",
+      "subject": "Compact portfolio measurement readiness summary.",
+      "objective": "Explain comparison readiness without replacing unavailable movement with zero value.",
+      "acceptance": "Preserve campaign and latest goal totals; distinguish no observations from measurements without comparable movement.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-overview-totals"
+      ],
+      "used-by-pages": [
+        "operational-value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-measured-campaigns",
+      "subject": "Campaigns with retained primary measurements.",
+      "objective": "Choose a measured campaign to investigate without listing unmeasured campaigns first.",
+      "acceptance": "Preserve the campaign signal ordering, native evidence reasons and dates; include only campaigns with measured repositories.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-campaign-signals"
+      ],
+      "used-by-pages": [
+        "operational-value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "campaigns",
+          "operational-values"
+        ]
+      }
+    },
+    {
+      "id": "operational-value-unmeasured-campaigns",
+      "subject": "Inventory campaigns without retained primary measurements.",
+      "objective": "Inspect measurement availability gaps without conflating absence with missing contracts.",
+      "acceptance": "Keep every unmeasured inventory campaign. Missing observations establish neither zero value nor absence of a contract.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-campaign-signals"
       ],
       "used-by-pages": [
         "operational-value"
@@ -3468,33 +3683,12 @@
     {
       "id": "operational-value-direction-campaigns",
       "subject": "Fleet direction distribution per campaign in repository counts, never native-value averages.",
-      "objective": "Compare campaign movement distributions without hiding mixed or insufficient evidence.",
-      "acceptance": "Group by campaign and direction signal, count repositories, and retain the campaign identity. Never sum or average native operational-value measures across repositories.",
+      "objective": "Compare available campaign movement distributions; inspect comparison gaps in Overview.",
+      "acceptance": "Include only comparable repository signals, grouped by campaign and direction. Empty is not neutral. Never average native outcomes.",
       "description": "",
       "parameters": [],
       "sources": [
         "operational-value-repository-signals"
-      ],
-      "used-by-pages": [
-        "operational-value"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "operational-values"
-        ]
-      }
-    },
-    {
-      "id": "operational-value-campaign-counts",
-      "subject": "Coverage of latest primary repository outcome measurements.",
-      "objective": "Count measured repository goals, not workflow executions or historical report volume.",
-      "acceptance": "Counts use latest primary measurements only. A newer interim observation cannot be hidden by an older mature observation. Counts are coverage, never a value score.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "operational-value-latest"
       ],
       "used-by-pages": [],
       "execution": {
@@ -3516,9 +3710,7 @@
         "campaigns",
         "operational-value-campaign-counts"
       ],
-      "used-by-pages": [
-        "operational-value"
-      ],
+      "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",

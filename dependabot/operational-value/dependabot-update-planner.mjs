@@ -21,6 +21,7 @@ export const definition = {
   },
   evidence: {
     key: "dependabot-security-risk",
+    measurementKind: "snapshot",
     repositories: ["github/gh-aw"],
     opportunity: "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
     filters: [

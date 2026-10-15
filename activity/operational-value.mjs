@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalTimestamp } from '../dashboard/site/src/data/model/schema.js';
+import { canonicalTimestamp, operationalValuePeriod } from '../dashboard/site/src/data/model/schema.js';
 import { readCollection } from '../dashboard/site/src/data/storage/indexeddb.js';
 
 export const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
@@ -312,7 +312,10 @@ function parseOperationalValueOutput(content, source, repositories) {
     if (!OPERATIONAL_VALUE_ID.test(valueId)) {
       throw new Error(`${source}:${index + 1}.valueId must be a lowercase metric identifier`);
     }
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
+    const period = operationalValuePeriod(record, timestamp, `${source}:${index + 1}`);
+    const unavailable = value === null && period.windowStart && maturityStatus === 'unavailable'
+      && period.missingReason;
+    if (!unavailable && (typeof value !== 'number' || !Number.isFinite(value))) {
       throw new Error(`${source}:${index + 1}.value must be a finite number`);
     }
     if (!['primary', 'diagnostic'].includes(metricRole)) {
@@ -348,6 +351,7 @@ function parseOperationalValueOutput(content, source, repositories) {
     }
     if (
       hasRollupNumerator !== hasRollupDenominator
+      || (value === null && hasRollupNumerator)
       || (hasRollupNumerator && (
         typeof rollupNumerator !== 'number'
         || !Number.isFinite(rollupNumerator)
@@ -375,6 +379,7 @@ function parseOperationalValueOutput(content, source, repositories) {
       ...(Object.hasOwn(record, 'workflowName') ? { workflowName: workflowName.trim() } : {}),
       ...(evaluatorDigest !== undefined ? { evaluatorDigest } : {}),
       ...(cadenceDays !== undefined ? { cadenceDays } : {}),
+      ...period,
       ...(hasRollupNumerator ? { rollupNumerator, rollupDenominator } : {})
     }];
   });
@@ -385,7 +390,7 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
   const cadence = definition.cadenceDays * DAY_MS;
   const adoption = Date.parse(definition.adoptedAt);
   const origin = definition.evaluationMode === 'attainment-only'
-    ? adoption
+    ? adoption + cadence
     : adoption - BASELINE_OBSERVATIONS * cadence;
   const cutoff = Math.max(origin, Date.parse(observedAt) - retentionWindow);
   const times = [];
@@ -409,6 +414,14 @@ function operationalValueDefinitionKey(campaign, valueId) {
 }
 
 function operationalValueCadenceKey(value, definition) {
+  if (value.window_start && value.window_end && value.measurement_kind) {
+    return operationalValueKey(value.campaign, value.repository, value.value_id, [
+      value.evaluator_digest ?? 'unversioned',
+      value.measurement_kind,
+      value.window_start,
+      value.window_end
+    ].join('\0'));
+  }
   const cadence = definition.cadenceDays * DAY_MS;
   const adoption = Date.parse(definition.adoptedAt);
   const timestamp = Date.parse(value.timestamp);
@@ -551,7 +564,10 @@ export async function runOperationalValue({
           if (supportedRepositories.length === 0) continue;
           if (definition.historyBatch) {
             for (const { operational_value: value } of retained) {
-              if (value.campaign === entry.package && definition.valueIds.includes(value.value_id)) {
+              if (
+                value.campaign === entry.package
+                && definition.valueIds.includes(value.value_id)
+              ) {
                 retainedKeys.add(operationalValueCadenceKey(value, definition));
               }
             }
@@ -599,7 +615,15 @@ export async function runOperationalValue({
             }
             const records = historyParsed.values.filter((record) => !retainedKeys.has(
               operationalValueKey(entry.package, record.repository, record.valueId, record.timestamp)
-            )).map((record) => ({
+            ) && !(record.windowStart && retainedKeys.has(operationalValueCadenceKey({
+              campaign: entry.package,
+              repository: record.repository,
+              value_id: record.valueId,
+              evaluator_digest: record.evaluatorDigest,
+              measurement_kind: record.measurementKind,
+              window_start: record.windowStart,
+              window_end: record.windowEnd
+            }, definition)))).map((record) => ({
               ...record,
               campaign: entry.package
             }));
@@ -655,6 +679,14 @@ export async function runOperationalValue({
         workflow_name: record.workflowName,
         evaluator_digest: record.evaluatorDigest,
         cadence_days: record.cadenceDays,
+        window_start: record.windowStart,
+        window_end: record.windowEnd,
+        measurement_kind: record.measurementKind,
+        coverage_status: record.coverageStatus,
+        missing_reason: record.missingReason,
+        eligible_count: record.eligibleCount,
+        population_digest: record.populationDigest,
+        evidence_digest: record.evidenceDigest,
         rollup_numerator: record.rollupNumerator,
         rollup_denominator: record.rollupDenominator
       }

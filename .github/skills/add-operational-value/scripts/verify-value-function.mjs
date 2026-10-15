@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
+import { operationalValuePeriod } from "../../../../dashboard/site/src/data/model/schema.js";
 import {
   fail, importValueModule, isIsoUtc, isRepository, isSlug, run, shiftDays,
 } from "./common.mjs";
@@ -185,6 +186,14 @@ if (caoAdapter) {
     && new Set(recordKeys).size === recordKeys.length
     && records.every((record) => {
       const metric = metrics.find(({ id }) => record.valueId === `${definition.slug}.${id}`);
+      let period;
+      try {
+        period = operationalValuePeriod(record, timestamp, "CAO adapter record");
+      } catch (error) {
+        fail(error.message);
+      }
+      const hasRollup = Object.hasOwn(record, "rollupNumerator")
+        || Object.hasOwn(record, "rollupDenominator");
       const hasValidRollup = Object.hasOwn(record, "rollupNumerator")
         && typeof record.rollupNumerator === "number"
         && Number.isFinite(record.rollupNumerator)
@@ -192,15 +201,19 @@ if (caoAdapter) {
         && typeof record.rollupDenominator === "number"
         && Number.isFinite(record.rollupDenominator)
         && record.rollupDenominator > 0;
+      const unavailable = record.value === null
+        && record.maturityStatus === "unavailable"
+        && isString(period.windowStart)
+        && isString(period.missingReason)
+        && !hasRollup;
       return record.timestamp === timestamp
         && definition.evidence.repositories.some(
           (repository) => repository.toLowerCase() === String(record.repository).toLowerCase(),
         )
         && expectedIds.has(record.valueId)
-        && typeof record.value === "number"
-        && Number.isFinite(record.value)
+        && (unavailable || typeof record.value === "number" && Number.isFinite(record.value))
         && record.metricUnit === metric?.unit
-        && (metric?.rollup ? hasValidRollup : !Object.hasOwn(record, "rollupNumerator") || hasValidRollup);
+        && (unavailable || (metric?.rollup ? hasValidRollup : !hasRollup || hasValidRollup));
     });
   if (!validDefinitions || !validRecords) fail("CAO adapter returned invalid repository metric JSONL");
 }

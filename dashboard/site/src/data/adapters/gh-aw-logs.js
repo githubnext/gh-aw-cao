@@ -7,7 +7,7 @@ import {
   workflowCoordinateId,
   workflowSourcePath
 } from '../model/ids.js';
-import { canonicalTimestamp, requiredString } from '../model/schema.js';
+import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 
@@ -1195,8 +1195,16 @@ function createCachedGhAwJsonlAccumulator(options) {
     const campaignId = typeof value.campaign_id === 'string' && value.campaign_id.trim()
       ? value.campaign_id.trim()
       : campaign ? sourceId('campaign', 'inventory', campaign) : undefined;
+    const period = operationalValuePeriod(Object.fromEntries(
+      Object.entries(OPERATIONAL_VALUE_PERIOD_FIELDS).flatMap(([key, canonical]) => {
+        const transport = canonical.replaceAll('-', '_');
+        return Object.hasOwn(value, transport) ? [[key, value[transport]]] : [];
+      })
+    ), observedAt, `gh-aw JSONL line ${line}.operational_value`);
     const metric = finiteNumber(value.value);
-    if (metric === null) {
+    const unavailable = value.value === null && period.windowStart
+      && period.missingReason && value.maturity_status === 'unavailable';
+    if (metric === null && !unavailable) {
       throw new TypeError(`gh-aw JSONL line ${line}.operational_value.value must be a finite number`);
     }
     const hasRollupNumerator = Object.hasOwn(value, 'rollup_numerator');
@@ -1217,6 +1225,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const rollupDenominator = finiteNumber(value.rollup_denominator);
     if (
       hasRollupNumerator !== hasRollupDenominator
+      || (metric === null && hasRollupNumerator)
       || (hasRollupNumerator && (
         rollupNumerator === null
         || rollupDenominator === null
@@ -1262,6 +1271,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         'workflow-slug': optionalString(value.workflow_slug),
         'workflow-name': optionalString(value.workflow_name),
         'evaluator-digest': evaluatorDigest,
+        ...Object.fromEntries(Object.entries(OPERATIONAL_VALUE_PERIOD_FIELDS)
+          .flatMap(([key, canonical]) => Object.hasOwn(period, key) ? [[canonical, period[key]]] : [])),
         ...(cadenceDays !== undefined ? { 'cadence-days': cadenceDays } : {}),
         ...(hasRollupNumerator ? {
           'rollup-numerator': rollupNumerator,

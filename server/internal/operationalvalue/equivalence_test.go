@@ -41,6 +41,14 @@ console.log(JSON.stringify({
   evaluationMode: "baseline-comparable",
   workflowSlug: "example-worker",
   workflowName: "Example Worker",
+  windowStart: new Date(Date.parse(request.timestamp) - 7 * 86400000).toISOString(),
+  windowEnd: request.timestamp,
+  measurementKind: "interval",
+  coverageStatus: "unknown",
+  missingReason: "source-window-coverage-unverified",
+  eligibleCount: 2,
+  populationDigest: "a".repeat(64),
+  evidenceDigest: "b".repeat(64),
   rollupNumerator: 3,
   rollupDenominator: 1
 }));
@@ -59,6 +67,8 @@ func TestBatchedHistoryMatchesActivityCollector(t *testing.T) {
 	batchAdapter = strings.Replace(batchAdapter,
 		`timestamp: request.timestamp,`,
 		`timestamp,`, 1)
+	batchAdapter = strings.Replace(batchAdapter, "Date.parse(request.timestamp)", "Date.parse(timestamp)", 1)
+	batchAdapter = strings.Replace(batchAdapter, "windowEnd: request.timestamp,", "windowEnd: timestamp,", 1)
 	batchAdapter = strings.Replace(batchAdapter,
 		`console.log(JSON.stringify({
   timestamp,`,
@@ -123,6 +133,19 @@ appendFileSync(new URL("./calls.jsonl", import.meta.url), JSON.stringify(request
 }
 
 func TestGoCollectorMatchesActivityCollector(t *testing.T) {
+	compareActivityCollector(t, adapter)
+}
+
+func TestUnavailablePeriodsMatchActivityCollector(t *testing.T) {
+	script := strings.Replace(adapter, "value: 3,", "value: null,", 1)
+	script = strings.Replace(script, `maturityStatus: "matured",`, `maturityStatus: "unavailable",`, 1)
+	script = strings.Replace(script, "rollupNumerator: 3,", "", 1)
+	script = strings.Replace(script, "rollupDenominator: 1", "", 1)
+	compareActivityCollector(t, script)
+}
+
+func compareActivityCollector(t *testing.T, script string) {
+	t.Helper()
 	root := repositoryRoot(t)
 	temporary := t.TempDir()
 	packages := filepath.Join(temporary, "packages")
@@ -130,7 +153,7 @@ func TestGoCollectorMatchesActivityCollector(t *testing.T) {
 	if err := os.MkdirAll(campaign, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(campaign, "operational-value.mjs"), []byte(adapter), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(campaign, "operational-value.mjs"), []byte(script), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	nodeOutput := filepath.Join(temporary, "node.jsonl")

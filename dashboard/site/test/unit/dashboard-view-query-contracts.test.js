@@ -344,7 +344,7 @@ describe('dashboard view query contracts', () => {
     ]);
   });
 
-  it('renders operational value as coverage, native outcomes and supplemental history without mixed-unit averages', () => {
+  it('renders campaign-first operational value with separate evidence and quiet comparison distribution', () => {
     const page = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
     );
@@ -355,45 +355,54 @@ describe('dashboard view query contracts', () => {
     expect(/** @type {Record<string, unknown> | undefined} */ (experimentalSection)?.pages)
       .toContain('operational-value');
     expect(page).toMatchObject({
-      kind: 'built-in',
-      page: 'operational-value',
-      experimental: true
+      kind: 'custom',
+      experimental: true,
+      'view-mode-control': false,
+      route: { tab: 'overview', tabs: [
+        { id: 'overview', page: 'operational-value' },
+        { id: 'evidence', page: 'operational-value-evidence' }
+      ] }
     });
     expect(viewsOf(page)[0]).toMatchObject({
-      id: 'operational-value-direction-chart',
-      data: { source: 'operational-value-direction-campaigns' },
-      mark: 'chart',
-      chart: 'horizontal-bar'
+      id: 'operational-value-summary',
+      data: { source: 'operational-value-overview-summary' },
+      mark: 'list'
     });
     expect(viewsOf(page)[1]).toMatchObject({
       id: 'operational-value-signals',
-      data: { source: 'operational-value-campaign-signals' },
+      data: { source: 'operational-value-measured-campaigns' },
       mark: 'list',
       list: { card: 'campaign-outcome-signal' }
     });
     expect(viewsOf(page)[2]).toMatchObject({
-      id: 'operational-value-coverage',
-      data: { source: 'operational-value-campaign-coverage' },
-      mark: 'table',
-      'column-summaries': false
-    });
-    expect(viewsOf(page)[3]).toMatchObject({
-      id: 'operational-value-latest',
+      id: 'operational-value-unmeasured',
       disclosure: 'supplemental',
+      data: { source: 'operational-value-unmeasured-campaigns' }
+    });
+    expect(viewsOf(page)).toHaveLength(3);
+    const evidence = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-evidence'
+    );
+    expect(evidence).toMatchObject({ route: { tab: 'evidence', 'navigation-page': 'operational-value' } });
+    expect(viewsOf(evidence)[0]).toMatchObject({
+      id: 'operational-value-coverage', disclosure: 'supplemental',
+      data: { source: 'operational-value-campaign-coverage' }
+    });
+    expect(viewsOf(evidence)[1]).toMatchObject({
+      id: 'operational-value-latest',
       mark: 'table',
       'column-summaries': false,
       layout: 'full',
       controls: 'interactive',
       'lazy-list': true
     });
-    expect(viewsOf(page)[4]).toMatchObject({
-      id: 'operational-value-observations',
+    expect(viewsOf(evidence)[2]).toMatchObject({
+      id: 'operational-value-direction-chart',
       disclosure: 'supplemental',
-      mark: 'table',
-      'column-summaries': false
+      mark: 'chart'
     });
     expect(JSON.stringify(viewsOf(page))).not.toContain('"aggregate":"mean"');
-    expect(/** @type {Record<string, unknown>} */ (page).definition).not.toHaveProperty('sections');
+    expect(viewsOf(evidence).map(view => view.id)).not.toContain('operational-value-observations');
   });
 
   it('renders the failed-runs ledger as a bounded lazy table', () => {

@@ -9,7 +9,7 @@ import { compileDashboardViewPayloadQueries } from '../../../src/data/queries/vi
  * }} document
  * @param {string} pageId
  * @param {Record<string, import('../../../src/presenter.js').LogicalSourceInput>} sources
- * @param {{ routeParameters?: Record<string, string>, queryContext?: import('../../../src/presenter.js').PageSourceLoadOptions['queryContext'] }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: import('../../../src/presenter.js').PageSourceLoadOptions['queryContext'], evaluatedAt?: string }} [options]
  */
 export async function prepareDashboardViewSources(document, pageId, sources, options = {}) {
   const queries = document.dashboard.queries ?? [];

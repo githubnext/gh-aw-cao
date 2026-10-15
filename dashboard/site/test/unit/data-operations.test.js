@@ -9,6 +9,16 @@ describe('dashboard data operations', () => {
     { repository: 'charlie', status: 'open', score: 6 }
   ];
 
+  it('converts timestamp text to epoch milliseconds deterministically, including pre-epoch fractions', () => {
+    const inputs = [
+      '2026-09-24T10:00:00Z', '1969-12-31T23:59:59.999Z',
+      '2026-09-24T11:00:00.123+01:00', 'invalid', null, 123, 'now', '2026-02-30T00:00:00Z'
+    ];
+    expect(tidy(inputs.map(at => ({ at })), [{
+      op: 'compute', values: [{ as: 'milliseconds', function: 'timestamp', args: [{ field: 'at' }] }]
+    }]).map(row => row.milliseconds)).toEqual([1790244000000, -1, 1790244000123, null, null, null, null, null]);
+  });
+
   it('filters and arranges rows using serializable operators', () => {
     expect(tidy(rows, [
       { op: 'filter', predicates: [{ field: 'status', equals: 'open' }] },
@@ -281,6 +291,27 @@ describe('dashboard data operations', () => {
         { x: '2026-09-02T00:00:00Z', y: 0.8, color: 'worker.md', key: 'primary:repository-readiness:3' }
       ]
     });
+  });
+
+  it('retains per-point scalar metadata without splitting panels or inventing missing fields', () => {
+    const result = tidy([
+      { at: '2026-09-01', repo: 'r', value: 0, evaluator: 'known', maturity: 'matured', optional: null },
+      { at: '2026-09-02', repo: 'r', value: 2, maturity: 'interim' }
+    ], [{
+      op: 'temporal-series', time: 'at', series: 'repo', shape: 'panels',
+      'point-carry': ['evaluator', 'maturity', 'optional'],
+      measures: [{ field: 'value', kind: 'primary' }]
+    }]);
+    expect(result).toHaveLength(1);
+    expect(result[0].series).toMatchObject([{ points: [
+      { y: 0, metadata: { evaluator: 'known', maturity: 'matured', optional: null } },
+      { y: 2, metadata: { maturity: 'interim' } }
+    ] }]);
+    expect(JSON.stringify(result)).not.toContain('"evaluator":null');
+    expect(() => tidy([{ at: '2026-09-01', repo: 'r', value: 1, nested: {} }], [{
+      op: 'temporal-series', time: 'at', series: 'repo', shape: 'panels',
+      'point-carry': ['nested'], measures: [{ field: 'value', kind: 'primary' }]
+    }])).toThrow('scalar fields');
   });
 
   it.each(['groups', 'panels'])('orders temporal %s without splitting a renamed metric', (shape) => {

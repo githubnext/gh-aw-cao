@@ -384,7 +384,7 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       'order-by': undefined,
       limit: undefined,
       ...(rootPredicates.length > 0 ? { filter: { predicates: rootPredicates } } : { filter: undefined })
-    }, queryTimeEnd(rootPredicates) ?? evaluatedAt);
+    }, queryTimeEnd(rootPredicates) ?? evaluatedAt, queryTimeStart(rootPredicates));
     const outputPredicates = predicates.filter((predicate) => (
       predicate.field !== '@time' && (hasWindow || postQueryFields.has(predicate.field))
     ));
@@ -447,7 +447,7 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     evaluatedAt
   );
   const executableSourceQuery = sourceQuery
-    ? resolveQueryContext(sourceQuery, queryTimeEnd(combinedPredicates) ?? evaluatedAt)
+    ? resolveQueryContext(sourceQuery, queryTimeEnd(combinedPredicates) ?? evaluatedAt, queryTimeStart(combinedPredicates))
     : undefined;
   const runtimeSearch = search && search.query.trim() && search.fields.length > 0
     ? { fields: search.fields, query: search.query.trim() }
@@ -496,6 +496,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
   const structuralSources = new Set(['campaigns', 'repositories', 'workflows']);
   const rootComputedName = `${alias}:root`;
   const temporalPredicates = predicates.filter((predicate) => predicate.field === '@time');
+  const analysisEnd = queryTimeEnd(temporalPredicates) ?? evaluatedAt;
   /** @type {Array<Record<string, unknown>>} */
   const dependencies = [];
   /** @type {Map<string, string>} */
@@ -516,10 +517,12 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
   /**
    * @param {string} name
    * @param {Array<Record<string, unknown>>} outputPredicates
+   * @param {Array<Record<string, unknown>>} inheritedTime
+   * @param {boolean} retainedHistory
    * @returns {string}
    */
-  const compile = (name, outputPredicates) => {
-    const key = JSON.stringify([name, outputPredicates]);
+  const compile = (name, outputPredicates, inheritedTime = temporalPredicates, retainedHistory = false) => {
+    const key = JSON.stringify([name, outputPredicates, inheritedTime, retainedHistory]);
     const existing = compiled.get(key);
     if (existing) return existing;
     const definition = byName.get(name);
@@ -530,13 +533,18 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const scoped = allocateName(name);
     compiled.set(key, scoped);
     const from = definition.from;
+    const inputTime = isPlainObject(definition.time) && definition.time.range === 'all'
+      ? applyQueryTime(inheritedTime, definition.time, analysisEnd)
+      : inheritedTime;
+    const includeHistory = retainedHistory || (isPlainObject(definition.time) && definition.time.range === 'all');
     // Option queries scope their input rows before projecting distinct values.
     const inputScoped = scopeInput && name === sourceName;
-    const inputPredicates = inputScoped ? outputPredicates : predicatesBeforeQuery(definition, outputPredicates);
+    const inputPredicates = (inputScoped ? outputPredicates : predicatesBeforeQuery(definition, outputPredicates))
+      .filter((predicate) => !includeHistory || predicate.field !== '@time');
     const retainedPredicates = inputScoped ? [] : outputPredicates;
     /** @param {string} source @param {number} inputIndex */
     const compileInput = (source, inputIndex) => {
-      if (byName.has(source)) return compile(source, inputPredicates);
+      if (byName.has(source)) return compile(source, inputPredicates, inputTime, includeHistory);
       if (inputPredicates.length === 0) return source;
       const inputName = `${scoped}:input-${inputIndex + 1}`;
       dependencies.push({
@@ -553,7 +561,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const compiledJoins = Array.isArray(definition.joins)
       ? definition.joins.map((join) => (
           isPlainObject(join) && typeof join.source === 'string'
-            ? { ...join, source: compile(join.source, []) }
+            ? { ...join, source: compile(join.source, [], inputTime, includeHistory) }
             : join
         ))
       : undefined;
@@ -563,12 +571,12 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       ? declaredFilter.predicates.filter(isPlainObject)
       : [];
     const requestPredicates = !byName.has(from) && !structuralSources.has(from)
-      ? temporalPredicates
+      ? inputTime
       : [];
     const combinedPredicates = applyQueryTime(
       [...declaredPredicates, ...requestPredicates],
       definition.time,
-      evaluatedAt
+      queryTimeEnd(inputTime) ?? analysisEnd
     );
     const filter = {
       ...declaredFilter,
@@ -581,7 +589,8 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       ...(compiledUnion ? { union: compiledUnion } : {}),
       ...(compiledJoins ? { joins: compiledJoins } : {}),
       ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined })
-    }, queryTimeEnd(combinedPredicates) ?? evaluatedAt);
+    }, queryTimeEnd(combinedPredicates) ?? queryTimeEnd(inputTime) ?? analysisEnd,
+    queryTimeStart(combinedPredicates) ?? queryTimeStart(inputTime));
     dependencies.push(query);
     if (retainedPredicates.length > 0) {
       dependencies.push({
@@ -644,6 +653,9 @@ function predicatesBeforeQuery(definition, predicates) {
 function applyQueryTime(predicates, time, evaluatedAt) {
   if (!isPlainObject(time) || typeof time.range !== 'string') return predicates;
   const end = queryTimeEnd(predicates) ?? evaluatedAt;
+  if (time.range === 'all') {
+    return predicates.filter((predicate) => predicate.field !== '@time');
+  }
   const match = /^([1-9][0-9]*)(h|d|w)$/.exec(time.range);
   if (!end || !match) return predicates;
   const unitHours = { h: 1, d: 24, w: 168 }[match[2]];
@@ -663,8 +675,14 @@ function queryTimeEnd(predicates) {
   return typeof end === 'string' ? end : undefined;
 }
 
-/** @param {Record<string, unknown>} query @param {string | undefined} timeEnd */
-function resolveQueryContext(query, timeEnd) {
+/** @param {Array<Record<string, unknown>>} predicates */
+function queryTimeStart(predicates) {
+  const start = predicates.findLast((predicate) => predicate.field === '@time' && typeof predicate.gte === 'string')?.gte;
+  return typeof start === 'string' ? start : undefined;
+}
+
+/** @param {Record<string, unknown>} query @param {string | undefined} timeEnd @param {string | undefined} [timeStart] */
+function resolveQueryContext(query, timeEnd, timeStart) {
   if (!Array.isArray(query.compute)) return query;
   return {
     ...query,
@@ -675,6 +693,8 @@ function resolveQueryContext(query, timeEnd) {
           args: computed.args.map((argument) => (
             isPlainObject(argument) && argument.context === 'time-end'
               ? { value: timeEnd ?? '' }
+              : isPlainObject(argument) && argument.context === 'time-start'
+                ? { value: timeStart ?? '' }
               : argument
           ))
         })

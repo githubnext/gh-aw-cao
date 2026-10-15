@@ -12,6 +12,7 @@ import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
 import { DashboardServerError } from '../../src/remote-data-backend.js';
 import { resetSourceStore } from '../../src/source-store.js';
+import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
@@ -3235,6 +3236,49 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.dashboard-horizon .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.dashboard-horizon .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
+  });
+
+  it('keeps a persisted display horizon stable while source-free page queries bind', async () => {
+    const previous = window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY);
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: '30d' }));
+    let clock = Date.parse('2026-10-15T08:00:00Z');
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock += 1000);
+    const loadPageSources = vi.fn(async (_pageId, _options) => {
+      if (loadPageSources.mock.calls.length > 4) window.localStorage.removeItem(HORIZON_FILTER_STORAGE_KEY);
+      return {};
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'stable-horizon', title: 'Stable horizon',
+          defaults: { time: { range: '1w' } },
+          pages: [{
+            id: 'runs', kind: 'custom', title: 'Runs', 'filter-bar': true,
+            views: [{ id: 'runs-table', data: { source: 'runs' }, mark: 'table',
+              encoding: { columns: [{ field: 'run' }] } }]
+          }]
+        }
+      },
+      sources: {}, loadPageSources
+    });
+    document.body.append(rendered);
+    try {
+      await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalledTimes(2));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(loadPageSources).toHaveBeenCalledTimes(2);
+      const window = loadPageSources.mock.calls.at(-1)?.[1].queryContext?.timeWindow;
+      expect(Date.parse(window.end) - Date.parse(window.start)).toBe(30 * 86_400_000);
+      expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('30 days');
+      expect([...rendered.querySelectorAll('.dashboard-horizon time')].map((time) => time.getAttribute('datetime')))
+        .toEqual([window.start, window.end]);
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      now.mockRestore();
+      if (previous === null) globalThis.window.localStorage.removeItem(HORIZON_FILTER_STORAGE_KEY);
+      else globalThis.window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, previous);
+    }
   });
 
   it('renders the configured Horizon immediately and updates it when page sources load', async () => {

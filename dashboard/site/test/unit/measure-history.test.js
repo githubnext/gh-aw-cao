@@ -263,13 +263,17 @@ describe('Measure history', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered.querySelector('h2')?.textContent).toBe('Operational value');
+    expect(rendered.querySelector('h2')).toBeNull();
+    const help = rendered.querySelector(':scope > details');
+    expect(help?.querySelector('summary')?.textContent).toBe('How to read these plots');
+    expect(help?.hasAttribute('open')).toBe(false);
+    expect(help?.textContent).toContain('2 interim observations');
     expect(rendered.querySelector('.insights-section-heading .insights-dubious-flag')).toBeNull();
     expect(rendered.textContent).toContain('2 interim observations');
     expect(rendered.querySelector('.temporal-plot-heading h3')?.textContent)
       .toBe('Verified opportunity share');
     expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent)
-      .toBe('Higher is better');
+      .toBe('Higher is better / Provisional');
     expect(rendered.querySelector('[data-chart-temporal-marker="2026-09-15T23:30:36Z"]')).not.toBeNull();
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome')).toHaveLength(2);
     expect(rendered.querySelectorAll('.temporal-plot-run-outcome .temporal-plot-run-outcome-success')).toHaveLength(2);
@@ -337,7 +341,7 @@ describe('Measure history', () => {
       contextDetails: [],
       headingTag: 'h3'
     });
-    expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent).toBe('Lower is better');
+    expect(rendered.querySelector('.temporal-plot-heading-copy p')?.textContent).toBe('Lower is better / Provisional');
     expect([...rendered.querySelectorAll('.temporal-plot-point')].map((point) => point.getAttribute('aria-label')))
       .toEqual([
         expect.stringContaining('12.5 aic-per-run'),

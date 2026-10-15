@@ -38,6 +38,7 @@ export const definition = {
   evaluation: { mode: "baseline-comparable" },
   evidence: {
     key: "target-repository-agentic-workflow-efficiency",
+    measurementKind: "interval",
     repositories: [
       "github/gh-aw",
       "github/gh-aw-actions",
@@ -253,10 +254,12 @@ export function buildEvidence(rows, request) {
   let concludedRunCount = 0;
   let failedRunCount = 0;
   let cancelledRunCount = 0;
+  const eligibleWorkflows = [];
 
   for (const row of rows.filter(inScope).filter((candidate) => !isOptimizationWorkflow(candidate.declaredWorkflowPath))) {
     if (!eligibleRow(row)) continue;
     eligibleWorkflowCount += 1;
+    eligibleWorkflows.push(`${repositoryCoordinate(row)}/${row.declaredWorkflowPath}`);
     successfulRunCount += row.successfulRuns;
     successfulRunAicTotal += row.aicPerSuccessfulRun * row.successfulRuns;
     concludedRunCount += row.concludedRuns;
@@ -270,6 +273,10 @@ export function buildEvidence(rows, request) {
       ? "interim"
       : "matured",
     dubious: duration < definition.evidence.window.durationDays * DAY_MS,
+    coverageStatus: "unknown",
+    missingReason: eligibleWorkflowCount === 0 ? "no-eligible-opportunities" : "source-window-coverage-unverified",
+    eligibleCount: eligibleWorkflowCount,
+    populationDigest: createHash("sha256").update(JSON.stringify(eligibleWorkflows.sort())).digest("hex"),
     eligibleWorkflowCount,
     successfulRunCount,
     successfulRunAicTotal: round(successfulRunAicTotal),

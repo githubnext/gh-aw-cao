@@ -5412,6 +5412,26 @@ describe('declarative query validation', () => {
     }
   });
 
+  it('validates bounded point metadata only for temporal panels', () => {
+    const definition = {
+      time: 'observed-at', series: 'workflow', shape: 'panels',
+      carry: ['workflow'],
+      'point-carry': ['evaluator-digest', 'maturity-status'],
+      measures: [{ field: 'value', kind: 'primary' }]
+    };
+    const makeDocument = (/** @type {Record<string, unknown>} */ overrides) => queryDocument([{
+      name: 'workflow-costs', from: 'grader-observations',
+      'temporal-series': { ...definition, ...overrides }
+    }]);
+    expect(validateDashboardDocument(makeDocument({})).ok).toBe(true);
+    for (const overrides of [
+      { shape: 'groups' }, { 'point-carry': [] },
+      { 'point-carry': Array(17).fill('value') }, { 'point-carry': ['missing-field'] }
+    ]) {
+      expect(validateDashboardDocument(makeDocument(overrides)).ok).toBe(false);
+    }
+  });
+
   it('validates reusable temporal-series projections', () => {
     const query = {
       name: 'workflow-costs',

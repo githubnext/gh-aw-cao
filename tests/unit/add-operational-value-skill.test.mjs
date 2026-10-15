@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -20,6 +20,91 @@ test("skill uses query-first evidence without limiting history to source retenti
   assert.match(skill, /contemporaneous accepted snapshot was preserved/);
 });
 
+test("skill separates frozen measurements, recent movement and adoption association", () => {
+  const skill = readFileSync(path.join(root, ".github/skills/add-operational-value/SKILL.md"), "utf8");
+  assert.match(skill, /immediately preceding equal-duration period/);
+  assert.match(skill, /not a sustained trend/);
+  assert.match(skill, /make no adoption-relative improvement claim/);
+  assert.match(skill, /successful query or non-null score alone is not proof/);
+  assert.match(skill, /never average ratios or add overlapping rolling totals/);
+});
+
+test("deterministic reports separate recent deterioration from adoption gain and never invent missing references", (t) => {
+  mkdirSync(path.join(root, ".tmp"), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, ".tmp", "value-report-periods-"));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
+  const modulePath = path.join(temporary, "value.mjs");
+  const snapshot = (end, value, changes = {}) => ({
+    observedAt: end,
+    window: { startAt: new Date(Date.parse(end) - 7 * 86_400_000).toISOString(), endAt: end },
+    provenance: [{ source: "fixture", cutoff: end }],
+    evidence: {
+      eligibleWorkflowCount: 1, successfulRunCount: 1, successfulRunAicTotal: value,
+      concludedRunCount: 1, failedRunPercentagePointTotal: 0, cancelledRunPercentagePointTotal: 0,
+      maturityStatus: "matured", coverageStatus: "complete", ...changes
+    }
+  });
+  const base = [
+    snapshot("2026-09-08T10:00:00Z", 20), snapshot("2026-09-17T10:00:00Z", 2),
+    snapshot("2026-09-23T10:00:00Z", 1), snapshot("2026-09-24T10:00:00Z", 8)
+  ];
+  const build = (snapshots, mode = "baseline-comparable", endpoint = "2026-09-24T11:00:00Z") => {
+    writeFileSync(modulePath, `
+import * as original from ${JSON.stringify(pathToFileURL(source).href)};
+export const definition = { ...original.definition, evaluation: { mode: ${JSON.stringify(mode)} } };
+export const collectBatch = original.collectBatch;
+export const scoreMetric = original.scoreMetric;
+`);
+    const input = path.join(temporary, "observations.json");
+    const output = path.join(temporary, "timeline.json");
+    writeFileSync(input, JSON.stringify({
+      repository: "githubnext/gh-aw-cao", evaluationMode: mode,
+      adoptionAt: "2026-09-15T23:30:36Z", workflowName: "Optimization",
+      window: { startAt: "2026-09-01T00:00:00Z", endAt: endpoint },
+      evidenceCoverage: {}, snapshots, runs: []
+    }));
+    execFileSync(process.execPath, [path.join(scripts, "build-timeline.mjs"), modulePath, input, output]);
+    return JSON.parse(readFileSync(output, "utf8"));
+  };
+  const report = build(base);
+  assert.equal(report.schemaVersion, 3);
+  assert.equal(report.metricReview.comparisonPolicy, "adjacent-period-v1");
+  const primary = report.metricReview.metrics[0];
+  assert.equal(primary.currentValue, 8);
+  assert.equal(primary.recentComparison.nativeDelta, 6);
+  assert.equal(primary.recentComparison.directionAwareGain, -6);
+  assert.equal(primary.adoptionComparison.nativeDelta, -12);
+  assert.equal(primary.adoptionComparison.directionAwareGain, 12);
+  assert.equal(build(base.slice(1)).metricReview.metrics[0].adoptionComparison.status, "unavailable");
+  assert.equal(build(base.slice(2)).metricReview.metrics[0].recentComparison.status, "unavailable");
+  assert.equal(build(base.slice(-1)).metricReview.metrics[0].currentValue, 8);
+  assert.equal(build(base.slice(1), "attainment-only").metricReview.metrics[0].recentComparison.nativeDelta, 6);
+  assert.equal(build([...base.slice(0, -1), snapshot("2026-09-24T10:00:00Z", 8, { coverageStatus: "unknown" })])
+    .metricReview.metrics[0].recentComparison.status, "unavailable");
+  const missing = build([...base.slice(0, -1), snapshot("2026-09-24T10:00:00Z", 8, { eligibleWorkflowCount: 0 })])
+    .metricReview.metrics[0];
+  assert.equal(missing.currentValue, null);
+  assert.equal(missing.recentComparison.nativeDelta, null);
+  const withdrawn = [...base.slice(0, 2), {
+    ...snapshot("2026-09-17T10:00:00Z", 2, { eligibleWorkflowCount: 0 }),
+    observedAt: "2026-09-23T09:00:00Z"
+  }, ...base.slice(2)];
+  assert.equal(build(withdrawn).metricReview.metrics[0].recentComparison.status, "unavailable");
+  assert.match(build(base, "baseline-comparable", "2026-09-25T10:00:00Z")
+    .metricReview.metrics[0].recentComparison.reason, /stale/);
+  for (const endpoint of ["2026-09-25T10:00:00Z", "2026-09-24T09:00:00Z"]) {
+    const metric = build(base, "baseline-comparable", endpoint).metricReview.metrics[0];
+    assert.equal(metric.currentValue, 8);
+    assert.equal(metric.adoptionComparison.status, "unavailable");
+    assert.match(metric.adoptionComparison.reason, /stale or future/);
+  }
+  const futureCorrection = [...base.slice(0, 2), {
+    ...snapshot("2026-09-17T10:00:00Z", 20), observedAt: "2026-09-25T10:00:00Z"
+  }, ...base.slice(2)];
+  assert.equal(build(futureCorrection.toSorted((left, right) => Date.parse(left.observedAt) - Date.parse(right.observedAt)))
+    .metricReview.metrics[0].recentComparison.status, "unavailable");
+});
 test("skill tests whether each measured phenomenon existed before adoption", () => {
   const skill = readFileSync(
     path.join(root, ".github/skills/add-operational-value/SKILL.md"),
@@ -195,6 +280,65 @@ for (const repository of request.repositories) {
     { encoding: "utf8" },
   );
   assert.equal(output, `verified ${valueModule}\n`);
+});
+
+test("CAO verification accepts explicit unavailable periods without accepting malformed null assessments", (t) => {
+  mkdirSync(path.join(root, ".tmp"), { recursive: true });
+  const temporary = mkdtempSync(path.join(root, ".tmp", "value-verification-periods-"));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
+  const adapter = path.join(temporary, "operational-value.mjs");
+  const assessment = {
+    value: null,
+    maturityStatus: "unavailable",
+    windowStart: "2026-09-09T23:30:36Z",
+    windowEnd: "2026-09-16T23:30:36Z",
+    measurementKind: "interval",
+    coverageStatus: "missing",
+    missingReason: "no-eligible-opportunities",
+  };
+  const verify = (changes = {}) => {
+    writeFileSync(adapter, `
+import {readFileSync} from "node:fs";
+import {definition} from ${JSON.stringify(pathToFileURL(source).href)};
+const request = JSON.parse(readFileSync(0, "utf8"));
+console.log(JSON.stringify({
+  kind: "operational_value_definition", workflowSlug: definition.slug,
+  adoptedAt: definition.adoption.adoptedAt, evaluationMode: definition.evaluation.mode,
+  cadenceDays: definition.evidence.window.cadenceDays, repositories: definition.evidence.repositories,
+  valueIds: definition.metrics.map(metric => definition.slug + "." + metric.id)
+}));
+for (const repository of request.repositories) {
+  for (const metric of definition.metrics) {
+    console.log(JSON.stringify({
+      timestamp: request.timestamp, repository, valueId: definition.slug + "." + metric.id,
+      metricUnit: metric.unit, ...${JSON.stringify({ ...assessment, ...changes })}
+    }));
+  }
+}
+`);
+    return execFileSync(process.execPath, [
+      path.join(scripts, "verify-value-function.mjs"), "--cao-adapter", adapter, source,
+    ], { encoding: "utf8", stdio: "pipe" });
+  };
+  assert.match(verify(), /^verified /);
+  for (const changes of [
+    { missingReason: "" },
+    { maturityStatus: "matured" },
+    { windowStart: undefined, windowEnd: undefined, measurementKind: undefined, coverageStatus: undefined },
+    { windowStart: "2026-09-17T23:30:36Z" },
+    { windowEnd: "2026-09-17T23:30:36Z" },
+    { coverageStatus: "invented" },
+    { rollupNumerator: 0 },
+    { rollupDenominator: 1 },
+    { rollupNumerator: 0, rollupDenominator: 1 },
+    { value: 0 },
+  ]) {
+    assert.throws(() => verify(changes));
+  }
+  assert.match(verify({
+    value: 0, maturityStatus: "matured", rollupNumerator: 0, rollupDenominator: 1,
+  }), /^verified /);
 });
 
 test("attainment evaluation uses a partial post-adoption window before maturity", () => {

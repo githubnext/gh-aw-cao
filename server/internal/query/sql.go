@@ -606,6 +606,16 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 	case "positive-integer":
 		value := sqlNumeric(args[0])
 		out.Expression, out.Kind = "CASE WHEN "+value+" > 0 AND "+value+" = trunc("+value+") THEN "+value+" ELSE "+sqlNumeric(args[1])+" END", SQLNumber
+	case "timestamp":
+		at := args[0].Expression
+		if args[0].Kind == SQLText {
+			const pattern = `^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$`
+			at = "CASE WHEN " + at + " ~ '" + pattern + "' AND left(" + at + ", 4) <> '0000' AND pg_input_is_valid(" + at + ", 'timestamp with time zone') THEN (" + at + ")::timestamptz ELSE NULL::timestamptz END"
+		} else if args[0].Kind != SQLTimestamp {
+			out.Expression, out.Kind = "NULL::numeric", SQLNumber
+			break
+		}
+		out.Expression, out.Kind = "floor(extract(epoch FROM "+at+") * 1000)", SQLNumber
 	case "date-day":
 		if args[0].Kind != SQLTimestamp {
 			return SQLColumn{}, errors.New("date-day requires a typed timestamp")

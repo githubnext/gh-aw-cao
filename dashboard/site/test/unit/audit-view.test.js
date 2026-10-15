@@ -81,12 +81,12 @@ describe('Audit dashboard view', () => {
     expect(result['operational-value-plot-series'].rows).toEqual([
       expect.objectContaining({
         campaign: 'optimization',
-        'adoption-at': '2026-09-15T23:30:36Z',
         'operational-value-unit': 'aic-per-run',
         series: [expect.objectContaining({
           id: 'githubnext/gh-aw',
           points: [
-            expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, link: operationalValueObservations[0]['run-link'] }),
+            expect.objectContaining({ x: '2026-09-22T20:56:21Z', y: 12.5, link: operationalValueObservations[0]['run-link'],
+              metadata: expect.objectContaining({ 'adoption-at': '2026-09-15T23:30:36Z' }) }),
             expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 8.25, link: operationalValueObservations[1]['run-link'] })
           ]
         })]
@@ -208,19 +208,15 @@ describe('Audit dashboard view', () => {
     }));
 
     expect(result['operational-value-plot-series'].metadata.availability).toBe('available');
-    expect(result['operational-value-plot-series'].rows).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        campaign: 'optimization',
-        'maturity-status': 'interim'
-      }),
-      expect.objectContaining({
-        campaign: 'ambient-context',
-        'maturity-status': 'matured'
-      }),
-      expect.objectContaining({
-        campaign: 'campaign-scout',
-        'maturity-status': 'interim'
-      })
+    const points = result['operational-value-plot-series'].rows.flatMap(row =>
+      /** @type {Array<{points: Array<{metadata: Record<string, unknown>}>}>} */ (row.series)
+        .flatMap(series => series.points.map(point => ({
+          campaign: row.campaign, maturity: point.metadata['maturity-status']
+        }))));
+    expect(points).toEqual(expect.arrayContaining([
+      { campaign: 'optimization', maturity: 'interim' },
+      { campaign: 'ambient-context', maturity: 'matured' },
+      { campaign: 'campaign-scout', maturity: 'interim' }
     ]));
   });
 

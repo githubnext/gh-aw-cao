@@ -185,6 +185,8 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .breadcrumb-context:not(:has(> :not([hidden]))) { visibility: hidden; }
 .breadcrumb-context > a:not([hidden]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .breadcrumb-context > :not([hidden]) ~ :not([hidden])::before { content: "/"; margin-right: 8px; color: var(--muted); }
+.breadcrumb-context:has([data-route-breadcrumb]) { flex-wrap: wrap; }
+.breadcrumb-context > [data-route-breadcrumb] { min-width: 0; overflow-wrap: anywhere; }
 .report-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .cli-actions-menu { position: relative; flex: none; }
 .cli-actions-menu > summary { list-style: none; }

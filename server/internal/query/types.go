@@ -217,14 +217,15 @@ func (d *Definition) UnmarshalJSON(data []byte) error {
 }
 
 type TemporalSeries struct {
-	Time     string            `json:"time"`
-	Series   string            `json:"series"`
-	Shape    string            `json:"shape,omitempty"`
-	Link     string            `json:"link,omitempty"`
-	Carry    []string          `json:"carry,omitempty"`
-	Measures []TemporalMeasure `json:"measures,omitempty"`
-	Maps     []TemporalMap     `json:"maps,omitempty"`
-	Trend    *TemporalTrend    `json:"trend,omitempty"`
+	Time       string            `json:"time"`
+	Series     string            `json:"series"`
+	Shape      string            `json:"shape,omitempty"`
+	Link       string            `json:"link,omitempty"`
+	Carry      []string          `json:"carry,omitempty"`
+	PointCarry []string          `json:"point-carry,omitempty"`
+	Measures   []TemporalMeasure `json:"measures,omitempty"`
+	Maps       []TemporalMap     `json:"maps,omitempty"`
+	Trend      *TemporalTrend    `json:"trend,omitempty"`
 }
 
 type TemporalTrend struct {

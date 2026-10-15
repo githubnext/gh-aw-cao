@@ -233,32 +233,44 @@ Sparse refreshes retain earlier cost and token totals only within the same run
 attempt. A newer explicit credit measurement, including zero, takes precedence
 over a preserved summary.
 
-The experimental **Operational Value** page lists every registered campaign's
-measurement coverage, latest primary repository outcomes, and retained observation
-history. Campaigns without retained primary measurements show **Not measured**,
+The experimental **Operational Value** page opens with **Overview**: a compact
+measurement-readiness summary and measured campaigns to inspect. Campaigns
+without retained primary measurements stay in a closed disclosure and show **Not measured**,
 not zero value. Currently, Dependabot Update Planner and Optimization Token
 Optimizer have outcome contracts; other campaigns need their own reviewed
 repository-native measures. Coverage counts describe measured repository goals,
 not complete target coverage, verified impact, or an overall campaign score.
 
-The overview offers **Chart** and **Cards** modes. The fleet-direction chart
-counts repositories, never averages unlike native measurements. Campaign signal
-cards rank worsening and mixed evidence before gains and show improving,
-worsening, mixed, unchanged, and insufficient-evidence coverage. Each repository
+The **Overview** and **Evidence** tabs describe different tasks, not chart modes.
+Campaign cards prioritize worsening and mixed evidence before gains and explain
+comparison blockers: missing measurement version or unit, provisional evidence,
+missing comparable history, or required target assessment. Measurements remain
+visible even when none can support a movement comparison. The summary counts
+registered and measured campaigns separately from latest primary goals; the same
+repository can contribute a goal in more than one campaign. Each repository
 counts once: any incomparable latest primary measure makes its signal
 insufficient; otherwise opposing measure movements make it mixed. Campaigns with
-no observations remain **Not measured**. Comparable/measured counts are not the
+no observations remain **Not measured**; this does not establish a missing contract.
+Comparable/measured counts are not the
 total enrolled scope; no authoritative target denominator is inferred. Oldest
-and newest latest-evidence dates remain visible instead of claiming freshness.
+and newest latest-evidence dates are retained, with latest observation dates on
+cards instead of a freshness claim. **Evidence** exposes latest native values and
+comparison status, with measurement availability and comparable-direction
+distribution behind disclosures. The distribution omits incomparable summaries;
+an empty chart is not a neutral outcome. Raw histories stay in repository drill-down.
 
 Open a campaign from **Operational Value** for the repositories behind its signal.
+The view title stays **Operational Value** throughout. Linked breadcrumbs show
+**Operational Value / campaign / organization/repository** and return to the
+selected campaign or Overview, including after a direct URL entry.
 The campaign page shows only repository summary cards: direction, primary-measure
-count and evidence dates. Open a repository for native history, adoption and
+count, comparison blockers and observation date. Open a repository for native history, adoption and
 available baseline evidence. These views and their counts are
 kept out of the regular campaign **Insights** tab while operational value remains
 experimental. Native line plots are loaded only after repository drill-down,
 with separate panels for each measure and retained contract context.
-Select a point to inspect its native value; evidence details remain collapsed.
+Select a point to inspect its native value. Comparison limits stay visible beside
+the value; longer evidence details remain collapsed.
 Missing observations are never zero, and lines preserve the recorded cadence
 and conservative legacy gap rules described below. There is no separate
 repository/date matrix or campaign-level daily bars. All data shaping remains
@@ -282,17 +294,44 @@ drill-down shaping in the data worker. Shared cards, charts and temporal plots
 render the supplied payloads; there is no new compute-layer analysis, acquisition,
 API traffic or LLM call on navigation.
 
-Values keep their native unit, direction, and maturity. Movement compares two
-retained mature observations within the same repository, measure, evaluator
-fingerprint, unit, direction, adoption instant, and evaluation mode. It does not
-establish causation, target attainment, or a pre-adoption baseline comparison.
-Interim observations remain provisional. A missing contract version, unit, or
-comparable observation cannot establish improvement. Always inspect the observation
-timestamp: a retained old result is not a fresh all-clear.
+Values keep their native unit, direction, and maturity. Recent movement compares
+the current complete period with the immediately preceding equal-duration period
+under the same repository, measure, evaluator, native unit, direction,
+measurement kind and cadence. Daily seven-day rolling samples compare seven days
+apart, not against yesterday's overlapping window. Snapshot backlog changes compare
+cutoff states, not counts of remediations. The repository comparison table shows
+native delta, exact compared periods, exposure and cohort caveats before raw history.
+
+Both evaluation modes allow recent post-adoption movement. Adoption association
+is separate and requires genuine pre-adoption evidence; the first post-adoption
+point is never a substitute baseline. Two points do not establish a sustained
+trend, statistical anomaly, target attainment or causation. Stable-but-bad is not
+healthy merely because recent change is zero. Calibrated anomaly/drift policies
+are not supplied by these comparisons.
+
+Missing periods, unknown or partial source coverage, interim values and stale
+assessments withhold movement without hiding native values. Freshness uses the
+original assessment time and cadence, not the evidence cutoff before maturation.
+A newer unavailable assessment cannot resurrect an older accepted value.
+Changing the display horizon does not change the frozen measurement duration or
+exclude its required preceding reference. Cohort and denominator changes remain
+visible, never silently normalized away.
+
+New observations retain exact periods, measurement kind, explicit coverage,
+evidence lineage and available eligible-cohort identity/counts. Legacy evidence
+is not assigned proof retrospectively. Optimization currently reports
+**unknown source-window coverage**: a successful canonical query alone does not
+prove complete run history, so its native values remain visible but cannot
+establish trusted recent movement until genuine coverage evidence is retained.
+Deterministic evaluation reports use schema version 3 with separately named
+`recentComparison` and `adoptionComparison`, under `adjacent-period-v1`.
+Version 2 report artifacts remain readable without reinterpreting their fields.
 
 Routine Actions and hosted collection no longer reconstruct historical windows.
 The standard adapter queries existing canonical observations first and reuses a
-complete set of repository/metric measurements within the contract's cadence.
+complete set of repository/metric measurements within the contract's cadence
+and the same exact measurement period. A new aligned cutoff triggers collection
+even when the previous assessment is less than one cadence old.
 Reused measurements retain their original timestamps; unchanged scheduled runs
 do not fabricate additional history. A fingerprint of the adapter and outcome
 module source invalidates reuse when either changes. Outcome modules must version changes to imported evaluator dependencies as part

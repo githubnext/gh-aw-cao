@@ -9,6 +9,7 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
   const consecutive = history.endsWith('consecutive');
   const rows = (singleObservation ? observations.slice(0, 1) : observations).map((row, index) => ({
     ...row,
+    ...(history.startsWith('legacy') ? {} : { 'evaluator-digest': 'a'.repeat(64) }),
     ...(consecutive && index === 1 ? { 'observed-at': '2026-09-23T20:56:21Z' } : {}),
     ...(history.startsWith('legacy') ? { 'cadence-days': undefined } : {})
   }));
@@ -56,20 +57,18 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
     await expect(page.locator('.temporal-plot-observation-count')).toContainText(
       singleObservation ? '1 observation; trend unavailable' : '2 observation times'
     );
-    await expect(page.locator('.temporal-plot-metric')).toHaveCount(consecutive ? 1 : 0);
+    await expect(page.locator('.temporal-plot-metric')).toHaveCount(consecutive && !history.startsWith('legacy') ? 1 : 0);
     await expect(page.locator('.temporal-plot-evidence-dates')).toContainText('Latest observation is not a live measurement');
-    await expect(page.locator('.temporal-plot-trend')).toContainText('Trend not assessed');
+    await expect(page.locator('.temporal-plot-trend')).toHaveCount(0);
+    await expect(page.locator('.temporal-plot-comparison-note')).not.toBeVisible();
     await expect(page.locator('.temporal-plot-coverage-note')).not.toBeVisible();
     await expect(page.locator('.temporal-plot-continuity-note')).not.toBeVisible();
     await expect(page.locator('.temporal-plot-latest-date')).toBeVisible();
     const disclosure = page.getByText('Evidence details', { exact: true });
     await disclosure.focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('.temporal-plot-comparison-note')).toBeVisible();
-    await expect(page.locator('.temporal-plot-continuity-note')).toContainText(
-      history.startsWith('legacy') ? '24 hours apart' : 'recorded cadence'
-    );
-    await expect(page.locator('.temporal-plot-comparison-note')).toContainText('measurement version was not retained');
+    await expect(page.locator('.temporal-plot-comparison-note')).toContainText('not a combined trend');
+    await expect(page.locator('.temporal-plot-continuity-note')).toContainText('missing provenance');
     await expect(page.locator('.temporal-plot-coverage-note')).toContainText('Source-window coverage is not recorded here');
     await disclosure.click();
     await expect(page.locator('.temporal-plot-coverage-note')).not.toBeVisible();

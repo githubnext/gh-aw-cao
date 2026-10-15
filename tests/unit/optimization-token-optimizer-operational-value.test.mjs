@@ -41,10 +41,13 @@ test("Optimization backfill materializes real canonical SQLite history and is id
     assert.deepEqual(first.warnings, []);
     assert.equal(first.historyValues, 18);
     const records = readFileSync(output, "utf8").trim().split("\n").map(JSON.parse);
-    assert.equal(records.length, 21);
+    assert.equal(records.length, 18);
     const primary = records.map((record) => record.operational_value)
       .filter((value) => value.metric_role === "primary");
-    assert.equal(primary.length, 7);
+    assert.equal(primary.length, 6);
+    assert.equal(new Set(primary.map((value) => value.window_end)).size, primary.length);
+    assert.ok(primary.some((value) => value.timestamp === "2026-09-18T12:00:00.000Z"
+      && value.window_end === "2026-09-17T23:30:36.000Z"));
     assert.ok(primary.every((value) => value.value === 10 && value.metric_unit === "aic-per-run"));
     assert.equal(primary[1].timestamp, "2026-09-12T23:30:36.000Z");
     const repeated = JSON.parse(execFileSync(process.execPath, args, {encoding:"utf8"}));
@@ -144,6 +147,10 @@ test("token optimizer measures native repository efficiency and reliability", ()
   assert.deepEqual(evidence, {
     maturityStatus: "matured",
     dubious: false,
+    coverageStatus: "unknown",
+    missingReason: "source-window-coverage-unverified",
+    eligibleCount: 2,
+    populationDigest: "42eef0d1c60c7bd18a2dfd7d30c1537fa7e344b7c5307b77f44985062fe118cf",
     eligibleWorkflowCount: 2,
     successfulRunCount: 10,
     successfulRunAicTotal: 104,

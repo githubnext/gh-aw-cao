@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Operational-Value History Reconstruction Specification
 description: Normative requirements and compliance vectors for reconstructing retained operational-value observations.
-version: 1.0.0
+version: 1.1.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Operational-Value History Reconstruction Specification
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Working Draft  
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md  
 **Editors:** GitHub Next
@@ -245,7 +245,8 @@ A value record MUST contain:
 - `timestamp`: a valid timestamp;
 - `repository`: a valid coordinate included in the request;
 - `valueId`: an identifier matching the value-ID expression in Section 4.3; and
-- `value`: a finite JSON number.
+- `value`: a finite JSON number, or an explicitly unavailable `null` satisfying
+  Section 4.4.1.
 
 It MAY contain:
 
@@ -259,11 +260,13 @@ It MAY contain:
 - `workflowSlug`: a non-empty string;
 - `workflowName`: a non-empty string;
 - `evaluatorDigest`: a lowercase 64-character hexadecimal SHA-256 fingerprint; and
-- both `rollupNumerator` and `rollupDenominator`.
+- both `rollupNumerator` and `rollupDenominator`; and
+- the period, coverage, missingness, cohort and evidence metadata in Section 4.4.1.
 
 When either rollup field is present, both MUST be present.
 `rollupNumerator` MUST be finite and non-negative.
 `rollupDenominator` MUST be finite and greater than zero.
+An unavailable null assessment MUST NOT contain rollup terms.
 
 For `metricRole`, `metricName`, `metricDirection`, and `maturityStatus`, an
 explicit JSON `null` MUST receive the same default as an omitted field. For
@@ -286,6 +289,95 @@ An orchestrator MUST preserve a supplied `evaluatorDigest` as `evaluator_digest`
 in the published schema-v2 envelope. Existing unversioned observations remain
 readable, but MUST NOT establish comparable directional movement across evaluator
 versions.
+
+### 4.4.1 Measurement periods and evidence quality
+
+Measurement and comparison are separate contracts. A frozen evaluator scores
+one native outcome; a comparison policy chooses explicit reference periods.
+Adoption is an intervention marker and historical-evidence capability, not the
+mandatory reference for operational movement. Neither evaluation mode prevents
+comparison of complete post-adoption periods under the same evaluator.
+
+New standard-adapter observations MUST include `measurementKind` (`interval`
+or `snapshot`), `windowStart`, `windowEnd`, and `coverageStatus` (`complete`,
+`partial`, `missing`, or `unknown`). The period MUST have a positive duration and end no
+later than `timestamp`. For an interval measure, it is the half-open evidence
+window. For a snapshot, `windowEnd` is the state cutoff and `windowStart` is the
+preceding comparison cutoff, not a claim of continuous measurement.
+
+Current complete periods MUST end at the last cadence boundary, anchored at
+adoption, whose evidence has matured. Historical requests MUST preserve their
+explicit cutoffs. Interim attainment-only periods retain their bounded partial
+post-adoption window and MUST NOT establish comparable movement.
+
+An adapter MAY emit `value: null` only with `maturityStatus: "unavailable"`,
+a declared coverage status and a non-empty `missingReason`. This is an explicit
+unavailable assessment, not zero and not a reusable successful measurement.
+Numeric values with partial coverage MUST remain distinguishable from complete
+evidence. Collectors MUST preserve these records so a newer unavailable
+assessment cannot be hidden by an older numeric value.
+
+Optional `eligibleCount` MUST be a non-negative safe integer. Optional
+`populationDigest` and `evidenceDigest` MUST be lowercase SHA-256 fingerprints.
+Population identity describes the eligible cohort, not its observed outcome.
+Evidence identity fingerprints the accepted evidence and provenance; it is not
+the evaluator identity. All supplied metadata MUST survive publication,
+canonical storage, cadence reuse and local/hosted execution. Legacy observations
+without period or coverage proof remain readable but MUST NOT acquire it by
+inference from metric names or surrounding observations.
+
+The default recent assessment MUST select the latest period, without falling
+back to an older accepted period. A comparison requires complete evidence for
+that period and the immediately preceding equal-duration period under the same campaign, repository,
+metric, evaluator, native unit, direction, measurement kind and cadence. The
+previous period MUST end exactly where the current period starts. Overlapping
+rolling observations, older substitutes across a missing period, provisional
+observations and unknown coverage MUST NOT establish this comparison.
+Freshness MUST compare the actual assessment timestamp with the declared
+analysis endpoint: its age MUST be non-negative and strictly less than the
+cadence. A matured cutoff may legitimately precede assessment by the frozen
+maturation delay; consumers MUST NOT confuse that delay with stale assessment.
+Reuse MUST preserve the original timestamp, never retimestamp old evidence.
+The latest measurement cutoff wins before assessment time breaks ties, so a
+late correction to a historical period cannot replace a more recent period.
+Changing the display horizon MUST NOT change the frozen evidence window or
+exclude the preceding reference needed to assess a visible current period.
+
+Native deltas MUST remain in native units. Direction-aware gain is current minus
+reference for increase goals and reference minus current for decrease goals.
+Two observations establish observed change, not a sustained trend, statistical
+anomaly, target attainment or causation. A changing eligible cohort or exposure
+MUST be exposed alongside an aggregate change, not interpreted as proof of
+within-cohort improvement. Ratios MUST retain compatible additive numerators
+and denominators; overlapping periods MUST NOT be summed or averaged into a
+new measurement.
+
+An adoption comparison MUST be identified separately and require actual
+complete evidence wholly before and wholly after adoption. Absence of a
+pre-adoption reference prevents an adoption-relative claim, not recent movement.
+A stable reference or approved target MAY identify persistent departure.
+Anomaly, sustained-drift and change-point assessments require a separately
+versioned, calibrated policy and adequate reference evidence; missing
+assessments MUST NOT be presented as normal or healthy.
+
+Retention MUST preserve accepted compact observations independently of the
+display horizon. Arbitrary recomputation requires authoritative underlying
+evidence or non-overlapping, aligned sufficient statistics at the necessary
+grain, before window-level eligibility is applied. A scalar rolling score
+alone is insufficient. Unsupported cutoffs and expired evidence MUST remain
+unavailable; longer history MUST NOT silently become a growing lifetime average.
+
+Native plots MUST retain every finite observation in the selected display
+horizon, including zero and provisional or unverified values. Comparison gates
+MUST NOT remove those points. The chart's time domain and worker-selected
+campaign execution context MUST honor that same horizon. Adoption outside the
+horizon remains evidence context, not a reason to extend the axis.
+
+One native-measure plot MAY include observations with different or unknown
+evaluator identities. Provenance, cadence, period and maturity MUST remain
+available in point details. Lines MUST stop at unknown evaluator identity,
+changed measurement context, or a gap beyond the declared cadence. Sharing
+axes MUST NOT imply a combined trend or verified comparability.
 
 ### 4.5 Routine cadence reuse
 
@@ -325,7 +417,7 @@ Let:
 The schedule origin `S` MUST be:
 
 ```text
-S = A                 when evaluationMode = "attainment-only"
+S = A + C             when evaluationMode = "attainment-only"
 S = A - (B × C)       when evaluationMode = "baseline-comparable"
 ```
 
@@ -339,6 +431,8 @@ Candidate instants MUST be generated as `S + nC` for integers `n ≥ 0`, in
 ascending order. An instant is included exactly when `K ≤ S + nC < O`.
 Consequently, the current observation instant is never reconstructed as
 history, and a value exactly at the retention cutoff is eligible.
+Attainment-only history MUST start strictly after adoption: adoption itself
+cannot supply a positive-duration post-adoption measurement period.
 
 An implementation MUST abort further historical reconstruction for that
 campaign when one definition produces more than 366 included instants. Current
@@ -419,7 +513,18 @@ a retired identifier.
 
 ### 7.3 Cadence compaction
 
-For a value with a current definition, let `T` be its timestamp and use `A` and
+For period-aware values with a current definition, the merge identity MUST be
+the campaign, repository, value ID, evaluator fingerprint (or explicit
+unversioned identity), measurement kind, window start and window end. Keep the
+latest assessment of each exact native period. Adjacent periods and different
+evaluators MUST NOT collapse into one assessment-time cadence bucket.
+
+An assessment-time cadence bucket MUST NOT prove that a period-aware historical
+instant is already retained. Exact requested timestamps may satisfy the history
+cache; otherwise reconstruct the requested period locally rather than skipping
+it on the strength of an unrelated assessment time.
+
+For a legacy value with a current definition, let `T` be its timestamp and use `A` and
 `C` from Section 5. Its cadence bucket end is:
 
 ```text
@@ -467,6 +572,22 @@ Each accepted value MUST be published as:
 The orchestrator MUST map optional adapter metadata to the corresponding
 snake-case envelope fields without changing its meaning. Absent optional fields
 without defaults MUST be omitted from the serialized object.
+
+| Adapter | Published envelope | Canonical record |
+| --- | --- | --- |
+| `windowStart` | `window_start` | `window-start` |
+| `windowEnd` | `window_end` | `window-end` |
+| `measurementKind` | `measurement_kind` | `measurement-kind` |
+| `coverageStatus` | `coverage_status` | `coverage-status` |
+| `missingReason` | `missing_reason` | `missing-reason` |
+| `eligibleCount` | `eligible_count` | `eligible-count` |
+| `populationDigest` | `population_digest` | `population-digest` |
+| `evidenceDigest` | `evidence_digest` | `evidence-digest` |
+
+The four required period fields form one optional tuple for legacy records.
+When any is supplied, all MUST be valid and present. Optional metadata domains
+are strict: arrays and other coercible JSON values are not valid strings.
+An unavailable value MUST remain JSON `null` through every transport and store.
 
 When an output path is configured, the complete retained shard MUST be written
 to a temporary file in the output file's directory and atomically renamed over
@@ -553,6 +674,12 @@ GitHub unless it is specifically exercising the optional reserve behavior.
 | OVH-VAL-001 | Value domains | Mutate each required and optional value field outside its domain. Each response is rejected. |
 | OVH-VAL-002 | Null versus omission | Omit each optional field, then provide it as `null`. The four defaulted fields receive their defaults in both cases; explicit `null` is rejected for every other optional field. |
 | OVH-VAL-003 | Rollup pair | Supply neither rollup field, each field alone, a negative numerator, a zero denominator, and a valid pair. Only neither and the valid pair are accepted. |
+| OVH-VAL-004 | Period proof | Supply valid interval and snapshot metadata, then missing tuple members, nonpositive duration, future cutoff, invalid kinds, coverage, digests and counts. Only valid metadata is accepted and round-trips without inference. |
+| OVH-VAL-005 | Unavailable assessment | A null requires a valid period, unavailable maturity and non-empty reason, and forbids rollup terms. Preserve it rather than an older finite assessment, including cadence-cache lookup. |
+| OVH-COM-001 | Adjacent periods | Daily seven-day rolling samples compare seven days apart, never yesterday. Missing exact references, unequal duration or changed evaluator, kind, cadence or native unit prevent movement. |
+| OVH-COM-002 | Independent adoption | Both modes permit recent comparison. A worsening latest week remains worsening despite a gain since adoption; missing pre-adoption proof never falls back to the first post-adoption value. |
+| OVH-COM-003 | Quality and freshness | Partial, unknown, interim, future or cadence-expired assessments cannot establish current movement. Expose native values and reasons, cohort changes and exposure; do not infer anomaly, health or causation. |
+| OVH-COM-004 | Display horizon | A visible current week can use its preceding week outside the display horizon. Analysis is bounded by the selected endpoint; historical corrections do not replace a newer measurement period. |
 | OVH-SCH-001 | Baseline schedule | Apply Vector A in Section 11.3. Exactly 12 historical requests are made in ascending order. |
 | OVH-SCH-002 | Attainment schedule | Apply Vector B. Exactly 9 historical requests are made in ascending order. |
 | OVH-SCH-003 | Inclusive retention cutoff | Apply Vector C. Exactly 5 historical requests are made; an instant equal to the cutoff is included. |
@@ -582,7 +709,7 @@ unless stated otherwise.
 | Vector | Mode | Adoption `A` | Cadence | Observation `O` | Retention | Expected historical instants |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | A | `baseline-comparable` | `2026-09-15T23:30:36.000Z` | 1 day | `2026-09-24T10:00:00.000Z` | 30 days | `2026-09-12T23:30:36.000Z` through `2026-09-23T23:30:36.000Z`, daily (12) |
-| B | `attainment-only` | `2026-09-15T23:30:36.000Z` | 1 day | `2026-09-24T10:00:00.000Z` | 30 days | `2026-09-15T23:30:36.000Z` through `2026-09-23T23:30:36.000Z`, daily (9) |
+| B | `attainment-only` | `2026-09-15T23:30:36.000Z` | 1 day | `2026-09-24T10:00:00.000Z` | 30 days | `2026-09-16T23:30:36.000Z` through `2026-09-23T23:30:36.000Z`, daily (8) |
 | C | `baseline-comparable` | `2026-09-15T23:30:36.000Z` | 1 day | `2026-09-24T23:30:36.000Z` | 5 days | `2026-09-19T23:30:36.000Z` through `2026-09-23T23:30:36.000Z`, daily (5) |
 | D | `baseline-comparable` | `2026-09-15T23:30:36.000Z` | 1 day | `2026-09-24T23:30:36.000Z` | 30 days | Vector A's origin through `2026-09-23T23:30:36.000Z`; never `O` |
 
@@ -619,8 +746,23 @@ the control plane and authorized dashboard readers.
 
 - [CAO Dashboard Data Specification](./dashboard-data.md)
 - [Operational-value design skill](../.github/skills/add-operational-value/SKILL.md)
+- [NIST EWMA control charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc324.htm)
+- [NIST CUSUM control charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm)
+- [Google SRE: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
+- [OpenTelemetry metrics data model](https://opentelemetry.io/docs/specs/otel/metrics/data-model/)
+- [Prometheus: Recording rules](https://prometheus.io/docs/practices/rules/)
 
 ## 14. Change log
+
+### 1.1.0
+
+- Separated frozen measurement from adjacent-period recent comparison and
+  historical adoption association.
+- Defined period boundaries, coverage, lineage, cohort/exposure metadata and
+  explicit unavailable assessments across local and hosted storage.
+- Required assessment freshness, gap-safe references and display-horizon
+  independence; reserved anomaly/drift claims for calibrated policies.
+- Added period, missingness and comparison compliance requirements.
 
 ### 1.0.0
 

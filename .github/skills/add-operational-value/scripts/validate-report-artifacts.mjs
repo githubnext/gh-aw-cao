@@ -9,7 +9,7 @@ if (!existsSync(args[0])) fail(`timeline not found: ${args[0]}`);
 const timeline = readJson(args[0]);
 const snapshots = timeline.snapshots;
 const metrics = timeline.metricReview?.metrics;
-const valid = timeline.schemaVersion === 2
+const valid = [2, 3].includes(timeline.schemaVersion)
   && [2, 3].includes(timeline.definitionSchemaVersion)
   && typeof timeline.generatedAt === "string"
   && isRepository(timeline.repository)
@@ -22,7 +22,7 @@ const valid = timeline.schemaVersion === 2
   && ["baseline-comparable", "attainment-only"].includes(timeline.evaluationMode ?? "baseline-comparable")
   && Date.parse(timeline.window?.startAt) < Date.parse(timeline.window?.endAt)
   && Array.isArray(snapshots)
-  && snapshots.length >= (timeline.evaluationMode === "attainment-only" ? 1 : 2)
+  && snapshots.length >= (timeline.schemaVersion === 3 || timeline.evaluationMode === "attainment-only" ? 1 : 2)
   && JSON.stringify(snapshots.map(({ observedAt }) => observedAt))
     === JSON.stringify(snapshots.map(({ observedAt }) => observedAt).toSorted())
   && snapshots.every((snapshot) => snapshot.evidence
@@ -33,6 +33,15 @@ const valid = timeline.schemaVersion === 2
       || (typeof value === "number" && Number.isFinite(value))))
   && Array.isArray(metrics) && metrics.filter(({ role }) => role === "primary").length === 1
   && metrics.every(({ status }) => ["evaluated", "unevaluated"].includes(status))
+  && (timeline.schemaVersion !== 3 || (timeline.metricReview.comparisonPolicy === "adjacent-period-v1"
+    && metrics.every((metric) => ["recentComparison", "adoptionComparison"].every((name) => {
+      const comparison = metric[name];
+      return comparison && ["available", "unavailable"].includes(comparison.status)
+        && ["nativeDelta", "directionAwareGain"].every((field) => comparison[field] === null
+          || (typeof comparison[field] === "number" && Number.isFinite(comparison[field])))
+        && (comparison.status !== "unavailable" || (comparison.nativeDelta === null
+          && comparison.directionAwareGain === null && typeof comparison.reason === "string"));
+    }))))
   && (timeline.runs ?? []).every(({ runId, createdAt }) => runId != null && typeof createdAt === "string");
 if (!valid) fail("timeline does not satisfy the artifact contract");
 

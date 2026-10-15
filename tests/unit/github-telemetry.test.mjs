@@ -198,6 +198,19 @@ test("collection capacity preserves the smaller workflow-token reserve", () => {
   }), /capacity insufficient/);
 });
 
+test("collection proceeds at the observed shared-quota headroom while preserving 2000 requests", () => {
+  const core = requireGithubApiCapacity({
+    maxRequests: -2000, execute: () => capacityResponse(3749),
+  });
+  assert.equal(core.remaining, 3749);
+  assert.equal(core.reserve, 2000);
+  for (const remaining of [2000, 1999, 0]) {
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests: -2000, execute: () => capacityResponse(remaining),
+    }), /capacity insufficient:.*reserved 2000 requests/);
+  }
+});
+
 test("positive collection budgets preserve the absolute-used-request limit", () => {
   assert.equal(requireGithubApiCapacity({
     maxRequests: 1000, execute: () => capacityResponse(4001),

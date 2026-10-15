@@ -173,6 +173,9 @@ func Normalize(definition Definition) NormalizedQuery {
 		for _, field := range series.Carry {
 			required[field] = true
 		}
+		for _, field := range series.PointCarry {
+			required[field] = true
+		}
 		for _, measure := range series.Measures {
 			required[measure.Field] = true
 			if measure.Key != "" {
