@@ -74,7 +74,9 @@ describe('refresh error', () => {
     expect(status.querySelector('[role="tooltip"]')?.textContent).toContain('Please try again shortly');
     expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(1);
 
+    const trigger = status.querySelector('button');
     updateRateLimitNotification('/api/v1/query', 200);
+    expect(status.querySelector('button')).toBe(trigger);
     expect(status.hidden).toBe(true);
     expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(0);
     status.remove();

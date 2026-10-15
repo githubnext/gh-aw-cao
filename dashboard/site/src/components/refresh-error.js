@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatMediumUtcDateTime, renderCloseButton, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
-import { effect, render } from '../reactive.js';
+import { derived, effect, render } from '../reactive.js';
 import { dashboardDataStatus } from '../dashboard-data-status.js';
 import { isDashboardRateLimited } from '../rate-limit-notification.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -83,16 +83,15 @@ export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = 
     content: description,
     className: 'dashboard-current-status'
   });
-  let currentIcon = '';
-  effect(() => {
+  const presentation = derived(() => {
     const limited = isDashboardRateLimited();
-    const { icon, label, detail } = dataStatusPresentation(phase, snapshot, limited);
-    if (icon !== currentIcon) {
-      trigger.replaceChildren(octicon(icon));
-      currentIcon = icon;
-    }
+    return { limited, ...dataStatusPresentation(phase, snapshot, limited) };
+  }, { signal: scope.signal });
+  render(trigger, () => octicon(presentation.get().icon), { signal: scope.signal });
+  render(description, () => presentation.get().detail, { signal: scope.signal });
+  effect(() => {
+    const { limited, label } = presentation.get();
     trigger.setAttribute('aria-label', label);
-    description.textContent = detail;
     status.classList.toggle('dashboard-current-status-limited', limited);
     status.classList.toggle('dashboard-current-status-refreshing', !limited && refreshing);
     status.hidden = !snapshot && !limited;
