@@ -46,7 +46,7 @@ permissions:
   security-events: read
 
 concurrency:
-  group: central-agentic-ops-activity
+  group: ${{ inputs.recycle-only == true && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-recycle-{0}', github.ref) || 'central-agentic-ops-activity' }}
   cancel-in-progress: false
 
 env:

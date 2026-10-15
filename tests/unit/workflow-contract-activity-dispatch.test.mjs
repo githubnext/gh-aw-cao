@@ -79,6 +79,8 @@ test('forced recycling runs before new downloads and safely clears only disposab
 });
 
 test('recycle-only bypasses repository collection and API evidence requests but requires coherent publication', () => {
+  assert.equal(workflow.concurrency.group, "${{ inputs.recycle-only == true && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-recycle-{0}', github.ref) || 'central-agentic-ops-activity' }}");
+  assert.equal(workflow.concurrency['cancel-in-progress'], false);
   assert.equal(workflow.jobs.collect.if, '${{ inputs.recycle-only != true }}');
   assert.match(workflow.jobs['notify-failure'].if, /always\(\) && inputs\.recycle-only != true/);
   assert.equal(step('plan', 'Resolve activity collection plan').if, '${{ inputs.recycle-only != true }}');

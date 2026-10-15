@@ -79,6 +79,10 @@ then validates the database, recomputes payload hashes, and verifies the complet
 snapshot before saving a new cache. Invalid or unsupported raw evidence prevents
 publication. An empty retained run set is represented explicitly. Branch
 dispatches save branch-scoped Actions caches; they do not replace main's cache.
+Recycle-only runs on non-default branches therefore use a branch-specific
+concurrency group instead of competing with production's pending run slot.
+Normal/fast collection and maintenance on the default branch retain the shared,
+serialized Activity concurrency group.
 
 Each `gh aw logs` invocation uses `--cached-jsonl` with a repository-specific
 trailing wildcard shard prefix instead of a single growing file. The wildcard shard
