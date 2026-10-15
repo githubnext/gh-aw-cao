@@ -72,6 +72,7 @@ type Registry struct {
 	Repository string `json:"repository"`
 	Path       string `json:"path,omitempty"`
 	Ref        string `json:"ref"`
+	Format     string `json:"format,omitempty"`
 	APIURL     string `json:"api-url,omitempty"`
 	Auth       Auth   `json:"auth,omitempty"`
 }
@@ -262,6 +263,9 @@ func ValidateRegistry(registry Registry, index int) (Registry, error) {
 	}
 	if strings.TrimSpace(registry.Ref) == "" {
 		return Registry{}, fmt.Errorf("registry %s ref is required", registry.ID)
+	}
+	if registry.Format != "" && registry.Format != "packages" && registry.Format != "workflows" {
+		return Registry{}, fmt.Errorf("registry %s format must be packages or workflows", registry.ID)
 	}
 	path := strings.Trim(registry.Path, "/")
 	if strings.HasPrefix(registry.Path, "/") || !isSafePath(path) {

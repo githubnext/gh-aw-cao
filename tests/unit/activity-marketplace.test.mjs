@@ -118,6 +118,94 @@ test("marketplace repository links use the configured GitHub Enterprise host", (
   assert.equal(normalized["repository-link"].href, "https://github.example/example/packages");
 });
 
+test("workflow metadata stays within frontmatter and normalizes individual add commands", () => {
+  const coordinates = {
+    registryId: "agentics", registryName: "Agentics workflows", precedence: 1,
+    repository: "githubnext/agentics", path: "workflows/ci-doctor.md",
+    format: "workflows", ref: "main", resolvedCommit: SHA,
+  };
+  const body = "# CI Failure Doctor\n\nInvestigate failed CI.\n\nname: Not metadata\nprivate: true";
+  const pkg = parsePackageManifest(`---\ndescription: |\n  Investigates failed runs.\n  Reports remediation.\non:\n  workflow_dispatch:\n---\n${body}`, coordinates);
+  assert.equal(pkg.name, "CI Failure Doctor");
+  assert.equal(pkg.description, "Investigates failed runs.\nReports remediation.");
+  assert.equal(pkg.id, "githubnext/agentics/workflows/ci-doctor.md");
+  assert.equal(pkg.source, `githubnext/agentics/workflows/ci-doctor.md@${SHA}`);
+  assert.equal(pkg["add-command"], `gh aw add ${pkg.source}`);
+  assert.deepEqual(pkg.contents, ["workflows/ci-doctor.md"]);
+  assert.equal(pkg.readme, body);
+  assert.equal(pkg["readme-path"], "workflows/ci-doctor.md");
+  for (const [metadata, expectedName, expectedDescription] of [
+    ["name: Explicit name\ndescription: >-\n  Fold this\n  description.\non: push", "Explicit name", "Fold this description."],
+    ["description: Simple description\non: push", "ci-doctor", "Simple description"],
+  ]) {
+    const result = parsePackageManifest(`---\n${metadata}\n---\nPrompt`, coordinates);
+    assert.equal(result.name, expectedName);
+    assert.equal(result.description, expectedDescription);
+  }
+  for (const source of ["# Not a workflow", "---\ntools:\n  bash: true\n---\n# Shared", "---\nprivate: true\non: push\n---\n# Private"]) {
+    assert.equal(parsePackageManifest(source, coordinates), null);
+  }
+});
+
+test("marketplace mixes campaign packages with flat workflow collections and optional documentation", async () => {
+  const campaign = registryFetch();
+  const blobs = {
+    doctor: "---\ndescription: Diagnose CI\non: push\n---\n# CI Doctor\n\nInvestigate failures.",
+    fallback: "---\nname: Repo Assist\non: issues\n---\n# Repo Assist\n\nHelp maintainers.",
+    shared: "---\ntools:\n  bash: true\n---\n# Shared fragment",
+    private: "---\nprivate: true\non: push\n---\n# Private",
+    documentation: "# CI Doctor\n\nPublished documentation.",
+  };
+  for (const documentationUnavailable of [false, true]) {
+    const result = await resolveMarketplace({ registries: [
+      registry("official"),
+      registry("agentics", { repository: "githubnext/agentics", path: "workflows", format: "workflows" }),
+    ] }, {
+      fetchImpl: async (url, init) => {
+        if (url.includes("/repos/example/packages")) return campaign.fetchImpl(url, init);
+        if (url.includes("/commits/")) return response({ sha: SHA });
+        if (url.endsWith("/repos/githubnext/agentics")) return response({ private: false, visibility: "public", stargazers_count: 20, forks_count: 5 });
+        if (url.includes("/git/trees/")) return response({ tree: [
+          { type: "blob", path: "workflows/ci-doctor.md", sha: "doctor" },
+          { type: "blob", path: "workflows/repo-assist.md", sha: "fallback" },
+          { type: "blob", path: "workflows/fragment.md", sha: "shared" },
+          { type: "blob", path: "workflows/private.md", sha: "private" },
+          { type: "blob", path: "workflows/shared/tools.md", sha: "never-fetch" },
+          { type: "blob", path: "workflows/README.md", sha: "never-fetch" },
+          { type: "blob", path: "workflows/unsafe;command.md", sha: "never-fetch" },
+          { type: "blob", path: "docs/ci-doctor.md", sha: "documentation" },
+          { type: "blob", path: "docs/other.md", sha: "never-fetch" },
+        ] });
+        const sha = url.split("/").at(-1);
+        assert.ok(Object.hasOwn(blobs, sha), `unexpected blob: ${sha}`);
+        if (sha === "documentation" && documentationUnavailable) return response({}, 404);
+        return response({ encoding: "base64", content: Buffer.from(blobs[sha]).toString("base64") });
+      },
+    });
+    assert.equal(result.packages.length, 3);
+    assert.deepEqual(result.diagnostics.map(({ status }) => status), ["available", "available"]);
+    assert.equal(result.packages[0]["registry-id"], "official");
+    const doctor = result.packages.find(({ path }) => path === "workflows/ci-doctor.md");
+    assert.equal(doctor.readme, documentationUnavailable ? "# CI Doctor\n\nInvestigate failures." : blobs.documentation);
+    assert.equal(doctor["readme-path"], documentationUnavailable ? "workflows/ci-doctor.md" : "docs/ci-doctor.md");
+    assert.equal(doctor.stars, 20);
+    assert.equal(doctor.forks, 5);
+    assert.equal(doctor["add-command"], `gh aw add githubnext/agentics/workflows/ci-doctor.md@${SHA}`);
+  }
+});
+
+test("unknown registry formats fail closed in policy validation and resolution", async () => {
+  const registries = [registry("unknown", { format: "arbitrary" })];
+  assert.throws(() => parsePolicy(JSON.stringify({
+    version: 1, "gh-aw-version": "v1.0.0", "control-plane": { marketplace: { registries } },
+  })), /format must be packages or workflows/);
+  const result = await resolveMarketplace({ registries }, {
+    fetchImpl: () => assert.fail("invalid registries must not contact GitHub"),
+  });
+  assert.equal(result.packages.length, 0);
+  assert.equal(result.diagnostics[0].status, "unavailable");
+});
+
 test("packages carry the README preview published beside their manifest", async () => {
   const fake = registryFetch();
   const result = await resolveMarketplace({ registries: [registry("official")] }, { fetchImpl: fake.fetchImpl });
