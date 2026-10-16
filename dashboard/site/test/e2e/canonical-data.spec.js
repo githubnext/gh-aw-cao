@@ -1086,21 +1086,23 @@ test('data worker queries firewall summaries on initial and navigated requests',
     return { initial, navigated };
   });
 
-  for (const payload of [result.initial]) {
-    expect(Object.keys(payload)).toEqual([
-      'firewall-domain-totals',
-      'firewall-most-blocked-domains'
-    ]);
-    expect(payload['firewall-domain-totals']).toMatchObject({
-      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
-      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
-    });
-    expect(payload['firewall-most-blocked-domains']).toMatchObject({
-      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
-      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
-    });
-  }
+  expect(Object.keys(result.initial)).toEqual([
+    'firewall-domain-totals',
+    'firewall-most-blocked-domains'
+  ]);
+  expect(result.initial['firewall-domain-totals']).toMatchObject({
+    rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+    metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
+  });
+  expect(result.initial['firewall-most-blocked-domains']).toMatchObject({
+    rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+    metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
+  });
   expect(result.navigated['view:firewall:security-firewall-most-blocked-domains:firewall-most-blocked-domains']).toMatchObject({
+    rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+    metadata: { availability: 'available' }
+  });
+  expect(result.navigated['view:firewall:security-firewall-domains:firewall-domain-totals']).toMatchObject({
     rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
     metadata: { availability: 'available' }
   });

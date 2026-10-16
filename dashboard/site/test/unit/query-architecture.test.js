@@ -157,6 +157,7 @@ describe('dashboard query architecture', () => {
     const workerSideModules = new Set([
       'src/data-worker.js',
       'src/data/queries/declarative.js',
+      'src/data/queries/incremental-aggregate.js',
       'src/data/storage/indexeddb.js'
     ]);
     const importers = globSync('src/**/*.js')

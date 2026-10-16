@@ -1148,6 +1148,53 @@ export async function queryCollection(indexedDB, storeName, operators, options =
 }
 
 /**
+ * Visits bounded batches in primary-key order within one readonly snapshot.
+ * The synchronous visitor keeps projection and reduction inside the transaction.
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {(rows: Record<string, unknown>[]) => void} visit
+ * @param {{ batchSize?: number, checkpoint?: () => void }} [options]
+ */
+export async function scanCanonicalCollection(indexedDB, storeName, visit, options = {}) {
+  const batchSize = options.batchSize ?? 1000;
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1000) {
+    throw new TypeError('Canonical scan batchSize must be between 1 and 1000');
+  }
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(storeName);
+      const store = transaction.objectStore(storeName);
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error ?? new Error('Canonical scan aborted'));
+      transaction.oncomplete = () => resolve(undefined);
+      /** @param {IDBKeyRange | undefined} range */
+      const read = (range) => {
+        const request = store.getAll(range, batchSize);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          try {
+            options.checkpoint?.();
+            const records = request.result;
+            visit(records.map((record) => canonicalRecord(record)));
+            if (records.length === batchSize) {
+              const lastKey = records[records.length - 1][String(store.keyPath)];
+              read(IDBKeyRange.lowerBound(lastKey, true));
+            }
+          } catch (error) {
+            transaction.abort();
+            reject(error);
+          }
+        };
+      };
+      read(undefined);
+    });
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * Counts distinct index keys without reading their event records. A nullable
  * trailing dimension is recovered by subtracting its indexed counts from the
  * prefix counts: IndexedDB omits null and absent keys, whereas query grouping
@@ -1175,6 +1222,7 @@ export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
       await done;
       return null;
     }
+
     /** @type {Record<string, unknown>[]} */
     const groups = [];
     let requestCount = 3;

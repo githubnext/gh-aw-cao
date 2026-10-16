@@ -1138,12 +1138,31 @@ describe('declarative dashboard queries', () => {
       'mcp-calls': { source: 'mcp-calls', rows: [], metadata: metadata('mcp-calls', { availability: 'unavailable' }) }
     }, ['mcp-top-tools'])['mcp-top-tools'];
     expect(unavailable.metadata.availability).toBe('unavailable');
-    expect(unavailable.metadata['query-diagnostic']).toBe(
-      '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable.'
+    expect(unavailable.metadata['query-diagnostic']).toContain(
+      '$.dashboard.queries[mcp-top-tools]: input source "mcp-tool-totals" is unavailable'
     );
+    expect(unavailable.metadata['query-diagnostic']).toContain('input source "mcp-calls" is unavailable');
     expect(unavailable.metadata['query-error']).toEqual({
       code: 'input-unavailable', source: 'mcp-calls'
     });
+  });
+
+  it('bounds upstream diagnostics when an unavailable input supplies an oversized message', () => {
+    const result = executeDashboardQueries([{ name: 'dependent', from: 'input' }], {
+      input: {
+        source: 'input',
+        rows: [],
+        metadata: metadata('input', {
+          availability: 'unavailable',
+          'query-diagnostic': `${'x'.repeat(2048)}must-not-appear`
+        })
+      }
+    }, ['dependent']).dependent;
+
+    expect(result.metadata.availability).toBe('unavailable');
+    expect(result.metadata['query-diagnostic']).toContain('upstream diagnostic: ');
+    expect(result.metadata['query-diagnostic']).not.toContain('must-not-appear');
+    expect(String(result.metadata['query-diagnostic']).length).toBeLessThan(2200);
   });
 
   it('groups MCP activity by tool and excludes the safe outputs server', () => {

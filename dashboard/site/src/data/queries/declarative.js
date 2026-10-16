@@ -1134,7 +1134,7 @@ function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
  * @param {string} [unavailableInput]
  * @returns {LogicalSourceInput}
  */
-function unavailableResult(definition, metadata, reason, unavailableInput) {
+export function unavailableResult(definition, metadata, reason, unavailableInput) {
   return {
     source: definition.name,
     rows: [],
