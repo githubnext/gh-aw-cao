@@ -1275,6 +1275,24 @@ describe('data view renderer', () => {
     ));
   });
 
+  it('uses an explicit table card template at every width without a duplicate table', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'commands', title: 'Commands',
+      view: {
+        mark: 'table', layout: 'full', 'lazy-list': true,
+        encoding: { card: 'command', columns: [{ field: 'id' }, { field: 'status' }], href: { field: 'command-dashboard-link' } }
+      },
+      cardTemplates: { command: { icon: 'terminal', title: { field: 'id' }, labels: [{ field: 'status', display: 'status' }], details: [] } },
+      sourceName: 'command-queue', rows: [{ id: '1', status: 'running', 'command-dashboard-link': '#page-command?command=1' }],
+      metadata, contextDetails: [], headingTag: 'h3',
+      prepareTableRows: (rows) => rows, buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
+    });
+    expect(rendered?.querySelector('.table-card-list')).not.toBeNull();
+    expect(rendered?.querySelector('table')).toBeNull();
+    expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href')).toBe('#page-command?command=1');
+    expect(rendered?.textContent).toContain('running');
+  });
+
   it('renders quantitative mobile table fields as labeled card metrics', () => {
     const rendered = renderDataView('table', {
       pageId: 'campaigns',

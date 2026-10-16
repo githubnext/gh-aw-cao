@@ -21,6 +21,18 @@
     ],
     "card-templates": [
       {
+        "id": "command",
+        "icon": "terminal",
+        "title": { "field": "id", "title": "Command" },
+        "subtitle": { "field": "command-action", "title": "Action" },
+        "status": { "field": "status", "title": "Status" },
+        "labels": [{ "field": "status", "title": "Status", "display": "status" }],
+        "details": [
+          { "field": "command-created-at", "title": "Queued", "format": "human-friendly-timestamp" },
+          { "field": "error", "title": "Reason" }
+        ]
+      },
+      {
         "id": "ingested-shard",
         "icon": "database",
         "title": { "field": "shard", "title": "Shard" },
@@ -867,9 +879,9 @@
         "id": "update-repository",
         "level": "operate",
         "label": "Update all",
-        "description": "Update all installed Agentic Workflow campaigns in this repository.",
+        "description": "Queue an individual update for every listed campaign, then open Commands.",
         "icon": "sync",
-        "command": "./cao.sh update --repo {{repository}}",
+        "command": "./cao.sh update --campaign {{campaign}}",
         "placement": "view",
         "arguments": [
           {
@@ -886,7 +898,7 @@
         "id": "upgrade-repository",
         "level": "operate",
         "label": "Upgrade all",
-        "description": "Upgrade Agentic Workflows in every listed repository. Review the complete command list before approving.",
+        "description": "Queue an individual Agentic Workflows upgrade for every listed repository, then open Commands.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",
         "placement": "view",
@@ -942,7 +954,7 @@
         "label": "Update",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
-        "command": "./cao.sh update {{campaign}}",
+        "command": "./cao.sh update --campaign {{campaign}}",
         "placement": "row"
       },
       {

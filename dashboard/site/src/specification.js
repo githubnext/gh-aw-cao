@@ -154,7 +154,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'commands',
   'command'
 ]);
-export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
+export const VIEW_ENCODING_KEYS = ['value', 'columns', 'card', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action', 'external-link'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];

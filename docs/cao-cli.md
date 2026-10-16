@@ -71,7 +71,15 @@ gh aw run dependabot --ref main \
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `./cao.sh add --repository OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
 | `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
+| `./cao.sh update --campaign SLUG` | Update exactly one installed campaign, retaining runtime materialization and worker-declaration refresh. Use `root` for the CAO root package. |
 | `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
+
+Omit `--campaign` to update all installed CAO packages. Selection also works with
+refs and update options, for example `./cao.sh update main --campaign dependabot`.
+The slug is the last component of the installed package name (`root` for
+`githubnext/gh-aw-cao`). Unknown, ambiguous, empty, unsafe, or repeated selections
+fail before updates or gh-aw upgrades. Campaign selection does not narrow a
+required gh-aw compiler upgrade, which may refresh shared workflow files.
 
 The canvas Updates page exposes **Add repository** beside Repositories. Its
 debounced GitHub search only selects a target; execution still requires fresh

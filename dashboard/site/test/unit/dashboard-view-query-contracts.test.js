@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { configureCliQueue, isCliQueueQuery } from '../../src/data/cli-queue.js';
 import commandQueueFixture from '../fixtures/cli-command-queue.json' with { type: 'json' };
+import commandsContract from '../fixtures/commands-view-contract.json' with { type: 'json' };
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -16,6 +17,42 @@ const tableNames = new Set(Object.keys(TABLE_FIELDS));
 const dataSourceNames = new Set([...tableNames, ...SERVER_SOURCE_VALUES]);
 const queriesByName = new Map(queries.map((/** @type {{ name: string }} */ query) => [query.name, query]));
 const serverSourceNames = new Set(SERVER_SOURCE_VALUES);
+
+describe('Commands view contract', () => {
+  it('resolves durable card rows through the production worker and declares the console route', async () => {
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === commandsContract.page);
+    const view = page.views.find((/** @type {{ id: string }} */ view) => view.id === commandsContract.view);
+    expect(view).toMatchObject({
+      mark: 'table', layout: 'full', 'lazy-list': true,
+      data: { source: commandsContract.query, 'query-context': false },
+      encoding: { card: commandsContract.card }
+    });
+    expect(view.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual(commandsContract.fields);
+    const template = dashboard['card-templates'].find((/** @type {{ id: string }} */ template) => template.id === commandsContract.card);
+    expect(template).toMatchObject({ icon: 'terminal', title: { field: 'id' }, status: { field: 'status' } });
+    const outputPage = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'command');
+    expect(outputPage.route).toMatchObject({ 'hash-query-parameter': 'command', 'navigation-page': commandsContract.page });
+    expect(outputPage.views[0]).toMatchObject({ mark: 'element', element: commandsContract.element, data: { sources: [] } });
+    configureCliQueue(true);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json(commandQueueFixture)));
+    try {
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        sourceNames: [commandsContract.query],
+        context: { queries, pages: dashboard.pages }
+      }));
+      const source = result[commandsContract.query];
+      expect(source.metadata.availability).toBe('available');
+      expect(source.rows.map((row) => row.status)).toEqual(commandsContract.statuses);
+      for (const row of source.rows) {
+        expect(row['command-dashboard-link']).toMatchObject({ 'dashboard-href': `${commandsContract.route}${row.id}` });
+      }
+    } finally {
+      configureCliQueue(false);
+      vi.unstubAllGlobals();
+    }
+  });
+});
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {

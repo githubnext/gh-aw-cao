@@ -69,6 +69,8 @@ for (const width of [1440, 390]) {
       await expect(page.locator('[data-view-id="commands-admission"]')).toHaveCount(0);
       await expect(history).toHaveAttribute('data-view-layout', 'full');
       await expect(history).toHaveAttribute('data-view-lazy-list', '');
+      await expect(history.locator('.table-card-list')).toBeVisible();
+      await expect(history.getByRole('table')).toHaveCount(0);
       await expect(history).toContainText('running');
       const command = history.getByRole('link', { name: /^\d+$/ }).first();
       const commandHref = await command.getAttribute('href');
@@ -81,11 +83,27 @@ for (const width of [1440, 390]) {
       await testInfo.attach(`commands-${width}`, { path: screenshot, contentType: 'image/png' });
 
       await command.click();
+      const consoleDialog = page.getByRole('dialog', { name: 'Command console log', exact: true });
+      await expect(consoleDialog).toBeVisible();
       const terminal = page.getByRole('region', { name: 'Read-only command terminal' });
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
       await page.reload();
+      await expect(consoleDialog).toBeVisible();
       await expect(page.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
+      await consoleDialog.getByRole('button', { name: 'Reconnect output', exact: true }).click();
+      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
+      const terminalScreenshot = testInfo.outputPath(`commands-console-${width}.png`);
+      await page.screenshot({ path: terminalScreenshot, fullPage: true });
+      await testInfo.attach(`commands-console-${width}`, { path: terminalScreenshot, contentType: 'image/png' });
+      await consoleDialog.getByRole('button', { name: 'Close command console', exact: true }).click();
+      await expect(page).toHaveURL(/#page-commands$/);
+      await expect(consoleDialog).not.toBeVisible();
+      await expect(history).toContainText('completed');
+      await history.getByRole('link', { name: /^\d+$/ }).first().click();
+      await expect(consoleDialog).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page).toHaveURL(/#page-commands$/);
       expect(runs).toBe(1);
       expect(cancellations).toBe(0);
     } catch (error) {

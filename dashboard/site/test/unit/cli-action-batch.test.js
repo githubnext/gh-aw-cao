@@ -14,11 +14,10 @@ vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
 import { renderDeclaredCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
 
 const rows = [{ repository: 'octo/first' }, { repository: 'other/second' }];
-const complete = { result: { ok: true, exitCode: 0 }, command: { status: 'completed' } };
 
 beforeEach(() => {
   queue.enqueue.mockReset().mockImplementation(async ({ values }) => ({ id: values.repository }));
-  queue.attach.mockReset().mockResolvedValue(complete);
+  queue.attach.mockReset();
   queue.cancel.mockReset().mockResolvedValue({});
   setDeclaredCliActions([{
     id: 'upgrade', label: 'Upgrade all', icon: 'download', placement: 'view',
@@ -26,28 +25,27 @@ beforeEach(() => {
     arguments: [{ id: 'pr', label: 'Create pull request', flag: '--create-pull-request', type: 'boolean', default: true }]
   }], { templateValues: { repository: 'acme/control' } });
 });
-afterEach(() => { document.body.replaceChildren(); setDeclaredCliActions([]); });
+afterEach(() => { document.body.replaceChildren(); setDeclaredCliActions([]); window.location.hash = ''; });
 
 /** @param {typeof rows} targets @param {boolean} [available] */
 function control(targets, available = true) {
   const root = renderDeclaredCliAction('upgrade', {}, { rows: targets, fields: ['repository'], available });
   if (!root) throw new Error('Missing batch action');
   document.body.append(root);
-  root.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
-  const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
-  return { root, confirm };
+  const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
+  return { root, trigger };
 }
 
-it('previews all explicit targets and queues every invocation only after approval', async () => {
-  const { root, confirm } = control(rows);
-  expect(root.querySelector('.cli-action-command')?.textContent).toBe(
-    'gh aw upgrade --repo octo/first --create-pull-request\ngh aw upgrade --repo other/second --create-pull-request');
+it('queues every explicit target on activation and navigates without previewing or attaching', async () => {
+  const { root, trigger } = control(rows);
   expect(queue.enqueue).not.toHaveBeenCalled();
-  confirm.click();
-  await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(2));
+  trigger.click();
+  await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.values)).toEqual(rows);
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.arguments)).toEqual([{ pr: true }, { pr: true }]);
-  await vi.waitFor(() => expect(root.querySelector('dialog')?.open).toBe(false));
+  expect(new Set(queue.enqueue.mock.calls.map(([payload]) => payload.idempotencyKey)).size).toBe(2);
+  expect(root.querySelector('dialog')?.open).toBe(false);
+  expect(queue.attach).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -55,45 +53,59 @@ it.each([
   { targets: rows, available: false },
   { targets: [{ repository: 'octo/first' }, { repository: 'unsafe/repo;echo' }], available: true }
 ])('rejects empty, incomplete, or unsafe batches without a control-repository fallback', async ({ targets, available }) => {
-  const { root, confirm } = control(targets, available);
-  expect(confirm.disabled).toBe(true);
+  const { root, trigger } = control(targets, available);
+  expect(trigger.disabled).toBe(true);
   expect(root.querySelector('.cli-action-command')?.textContent).not.toContain('acme/control');
-  confirm.click();
+  trigger.click();
   await Promise.resolve();
   expect(queue.enqueue).not.toHaveBeenCalled();
 });
 
-it('queues all targets before waiting for command completion and cancels every admitted command', async () => {
-  /** @type {Array<(value: typeof complete) => void>} */
-  const finish = [];
-  queue.attach.mockImplementation(() => new Promise((resolve) => finish.push(resolve)));
-  const { root, confirm } = control(rows);
-  confirm.click();
-  await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(2));
-  const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel:not(.cli-action-detach)'));
-  cancel.click();
-  await vi.waitFor(() => expect(queue.cancel.mock.calls.map(([id]) => id)).toEqual(['octo/first', 'other/second']));
-  for (const resolve of finish) resolve(complete);
-  await vi.waitFor(() => expect(root.querySelector('dialog')?.open).toBe(false));
-});
-
-it('cancels a target whose enqueue response arrives after batch cancellation', async () => {
+it('waits for every admission and prevents double activation while enqueueing', async () => {
   /** @type {((value: { id: string }) => void) | undefined} */
   let admit;
-  /** @type {Array<(value: typeof complete) => void>} */
-  const finish = [];
   queue.enqueue.mockImplementation(({ values }) => values.repository === 'octo/first'
     ? Promise.resolve({ id: 'octo/first' })
     : new Promise((resolve) => { admit = resolve; }));
-  queue.attach.mockImplementation(() => new Promise((resolve) => finish.push(resolve)));
-  const { root, confirm } = control(rows);
-  confirm.click();
-  await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
-  /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel:not(.cli-action-detach)')).click();
-  await vi.waitFor(() => expect(queue.cancel).toHaveBeenCalledWith('octo/first', expect.anything()));
+  const { trigger } = control(rows);
+  trigger.click();
+  trigger.click();
+  await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
+  expect(trigger.disabled).toBe(true);
+  expect(window.location.hash).toBe('');
   admit?.({ id: 'other/second' });
-  await vi.waitFor(() => expect(queue.cancel).toHaveBeenCalledWith('other/second', expect.anything()));
-  await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(2));
-  for (const resolve of finish) resolve(complete);
-  await vi.waitFor(() => expect(root.querySelector('dialog')?.open).toBe(false));
+  await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
+  expect(queue.cancel).not.toHaveBeenCalled();
+  expect(queue.attach).not.toHaveBeenCalled();
+});
+
+it('shows partial admission failures and still navigates to admitted commands', async () => {
+  queue.enqueue.mockRejectedValueOnce(new Error('Admission denied'));
+  const { trigger } = control(rows);
+  trigger.click();
+  await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
+  expect(document.body.textContent).toContain('1 commands queued; 1 could not be queued.');
+});
+
+it('keeps failed admissions on the current page and allows retry', async () => {
+  queue.enqueue.mockRejectedValue(new Error('Admission denied'));
+  const { trigger } = control(rows);
+  trigger.click();
+  await vi.waitFor(() => expect(document.body.textContent).toContain('0 commands queued; 2 could not be queued.'));
+  expect(window.location.hash).toBe('');
+  expect(trigger.disabled).toBe(false);
+});
+
+it('binds campaign updates to separate scoped CLI commands', async () => {
+  setDeclaredCliActions([{
+    id: 'update', label: 'Update all', icon: 'sync', placement: 'view',
+    command: './cao.sh update --campaign {{campaign}}'
+  }]);
+  const targets = [{ campaign: 'activity' }, { campaign: 'dependabot' }];
+  const root = renderDeclaredCliAction('update', {}, { rows: targets, fields: ['campaign'], available: true });
+  if (!root) throw new Error('Missing campaign action');
+  document.body.append(root);
+  /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger')).click();
+  await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
+  expect(queue.enqueue.mock.calls.map(([payload]) => payload.values)).toEqual(targets);
 });

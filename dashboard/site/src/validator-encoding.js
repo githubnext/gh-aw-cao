@@ -3,6 +3,7 @@ import { sourceFieldNames } from './validator-queries.js';
 import { validateStringField, validateOptionalStringField, validateObjectKeys, createError, isPlainObject, getValueNodeByKey, getSequenceItemNode } from './validator-common.js';
 import { createDebug } from './debug.js';
 import { chartFacet } from './chart-facet.js';
+import { state } from './validator-state.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -48,6 +49,13 @@ export function validateEncoding(encodingNode, encoding, mark, chart, sourceName
   }
 
   validateObjectKeys(encodingNode, VIEW_ENCODING_KEYS, `${viewPath}.encoding`, errors);
+  if (encoding.card !== undefined) {
+    validateStringField(encoding.card, `${viewPath}.encoding.card`, true, errors);
+    if (mark !== 'table' || typeof encoding.card !== 'string' || !state.declaredCardTemplates.has(encoding.card)) {
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'encoding.card requires a table and a declared dashboard card template.', `${viewPath}.encoding.card`));
+    }
+  }
 
   /** @type {Map<string, string>} */
   const aggregateOutputIds = new Map();

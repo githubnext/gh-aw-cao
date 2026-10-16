@@ -309,7 +309,7 @@ describe('Configuration dashboard view', () => {
     expect(views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
     expect(views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
-        { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', action: 'update-repository' },
+        { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', ...maintenanceNavigationContract['campaign-update'] },
         { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', ...maintenanceNavigationContract['repository-upgrade'], actions: ['add-repository'] }
       ]);
     expect(views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
@@ -374,7 +374,10 @@ describe('Configuration dashboard view', () => {
     }]);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
-      .command).toBe('./cao.sh update {{campaign}}');
+      .command).toBe('./cao.sh update --campaign {{campaign}}');
+    expect(dashboard['cli-actions']
+      .find((/** @type {{ id: string }} */ action) => action.id === 'update-repository')
+      .command).toBe('./cao.sh update --campaign {{campaign}}');
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
       .label).toBe('Update');

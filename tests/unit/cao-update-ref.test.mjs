@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { runCli, updateCaoCampaigns } from "../../activity/cao.mjs";
@@ -14,7 +13,7 @@ const catalog = "githubnext/gh-aw-cao";
 const ok = { status: 0, stdout: "", stderr: "" };
 
 async function withInstallation(run, { defaultBranch = "main" } = {}) {
-  const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-ref-"));
+  const root = await mkdtemp(path.resolve("cao-update-ref-"));
   const previousDirectory = process.cwd();
   const records = path.join(root, ".github", "aw", "packages");
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
@@ -138,13 +137,107 @@ for (const args of [
   ["main", "acme/other"], ["main", "--dir"], ["main", "--engine", "--force"],
   ["--force", "main", commit], ["--cool-down", "0", "main"],
   ["--pre-releases", "latest"], ["--unknown", "main"],
+  ["--campaign"], ["--campaign", ""], ["--campaign="],
+  ["--campaign", "../dependabot"], ["--campaign", "--force"],
+  ["--campaign", "dependabot;echo"], ["--campaign", "Dependabot"],
+  ["--campaign", "dependabot", "--campaign", "root"],
+  ["--campaign=dependabot", "--campaign=dependabot"],
 ]) {
   test(`cao update rejects ${args.join(" ")} before any side effects`, async () => {
     await assert.rejects(updateCaoCampaigns(args, {
       execute() { assert.fail("must reject before executing commands"); },
-    }), /cao update requires|Unsupported option|requires a value|only one ref/);
+    }), /cao update requires|Unsupported option|requires a value|only one ref|safe campaign slug|only one --campaign/);
   });
 }
+
+for (const [slug, options] of [
+  ["dependabot", ["--campaign", "dependabot", "main", "--engine", "copilot"]],
+  ["root", ["latest", "--campaign=root", "--force"]],
+]) {
+  test(`cao update selects only ${slug} and retains materialization and policy refresh`, async () => {
+    await withInstallation(async ({ execute, calls, policy, policyPath, recordPaths }) => {
+      const packageName = slug === "root" ? catalog : `${catalog}/${slug}`;
+      const before = new Map(await Promise.all([...recordPaths].map(async ([name, file]) => [name, await readFile(file, "utf8")])));
+      const result = await updateCaoCampaigns(options, { execute });
+      assert.deepEqual(result.campaigns, [packageName]);
+      assert.deepEqual(result.declarations, slug === "root" ? [] : ["dependabot"]);
+      assert.deepEqual(calls.filter(([command]) => command === process.execPath).map(([, args]) => args[2]), [slug]);
+      const additions = calls.filter(([, args]) => args[1] === "add");
+      assert.equal(additions.length, 1);
+      assert.equal(additions[0][1][2], `${packageName}@${commit}`);
+      assert.ok(additions[0][1].every((option) => !option.startsWith("--campaign")));
+      for (const [name, file] of recordPaths) {
+        if (name !== packageName) assert.equal(await readFile(file, "utf8"), before.get(name));
+      }
+      if (slug === "dependabot") policy["control-plane"].campaigns.dependabot.workers.planner.workflow = "new-planner";
+      assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8")), policy);
+    });
+  });
+}
+
+test("selected release update retains release preparation and refreshes only the selected campaign", async () => {
+  await withInstallation(async ({ execute, calls, recordPaths, policy, policyPath }) => {
+    await updateCaoCampaigns(["latest"], { execute });
+    const beforeRoot = await readFile(recordPaths.get(catalog), "utf8");
+    const start = calls.length;
+    let releaseUpdates = 0;
+    const result = await updateCaoCampaigns(["--campaign", "dependabot", "--major", "--cool-down", "0"], {
+      execute(command, args) {
+        if (args.includes(`/repos/${catalog}/tags`)) return { ...ok, stdout: "v0.0.2\n" };
+        if (args.includes(`/repos/${catalog}/releases/tags/v0.0.2`)) return { ...ok, stdout: "v0.0.2\n" };
+        if (args[1] === "update") {
+          assert.deepEqual(args, ["aw", "update", `https://github.com/${catalog}/dependabot`, "--major", "--cool-down", "0"]);
+          const record = JSON.parse(readFileSync(recordPaths.get(`${catalog}/dependabot`), "utf8"));
+          assert.equal(record.source, `${catalog}/dependabot@v0.0.2`);
+          releaseUpdates += 1;
+          return ok;
+        }
+        return execute(command, args);
+      },
+    });
+    assert.equal(releaseUpdates, 1);
+    assert.deepEqual(result.campaigns, [`${catalog}/dependabot`]);
+    assert.deepEqual(result.declarations, ["dependabot"]);
+    assert.deepEqual(calls.slice(start).filter(([command]) => command === process.execPath).map(([, args]) => args[2]), ["dependabot"]);
+    assert.equal(await readFile(recordPaths.get(catalog), "utf8"), beforeRoot);
+    policy["control-plane"].campaigns.dependabot.workers.planner.workflow = "new-planner";
+    assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8")), policy);
+  });
+});
+
+for (const slug of ["missing", "other", "gh-aw-cao"]) {
+  test(`unknown selection ${slug} fails before gh-aw version checks or mutation`, async () => {
+    await withInstallation(async ({ policy, policyPath }) => {
+      await assert.rejects(updateCaoCampaigns(["--campaign", slug], {
+        execute() { assert.fail("must reject before executing commands"); },
+      }), /Unknown installed CAO campaign/);
+      assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8")), policy);
+    });
+  });
+}
+
+test("ambiguous campaign slugs fail before gh-aw version checks or mutation", async () => {
+  await withInstallation(async ({ policyPath, policy }) => {
+    await writeFile(path.resolve(".github/aw/packages/duplicate.json"), JSON.stringify({
+      package: `${catalog}/nested/dependabot`, resolvedCommit: oldCommit, files: [],
+    }));
+    await assert.rejects(updateCaoCampaigns(["--campaign=dependabot"], {
+      execute() { assert.fail("must reject before executing commands"); },
+    }), /Ambiguous installed CAO campaign/);
+    assert.deepEqual(JSON.parse(await readFile(policyPath, "utf8")), policy);
+  });
+});
+
+test("selected records require immutable provenance before gh-aw version checks", async () => {
+  await withInstallation(async ({ recordPaths }) => {
+    await writeFile(recordPaths.get(`${catalog}/dependabot`), JSON.stringify({
+      package: `${catalog}/dependabot`, resolvedCommit: "main", files: [],
+    }));
+    await assert.rejects(updateCaoCampaigns(["--campaign=dependabot"], {
+      execute() { assert.fail("must reject before executing commands"); },
+    }), /full resolvedCommit SHA/);
+  });
+});
 
 for (const [name, ref, result, message] of [
   ["API failure", "main", { status: 1, stderr: "not found" }, /Unable to resolve CAO ref main: not found/],
@@ -184,6 +277,9 @@ for (const [name, result, message] of [
 test("cao CLI forwards the update ref to validation and advertises it in help", async () => {
   await assert.rejects(runCli(["update", "not-a-ref"]), /cao update requires main, master, latest, or a commit SHA/);
   assert.match(USAGE, /cao update \(main\|master\|latest\|COMMIT_SHA\)/);
+  assert.match(USAGE, /cao update \[--campaign SLUG\] \[--pre-releases\]/);
+  assert.match(USAGE, /cao update \(main\|master\|latest\|COMMIT_SHA\) \[--campaign SLUG\]/);
+  assert.match(USAGE, /use root for the CAO root\s+package/);
 });
 
 for (const args of [

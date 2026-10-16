@@ -410,7 +410,33 @@ function renderCliActionControl(action, options = {}) {
         : 'cli-action-trigger',
       title: action.label,
       'aria-label': action.label,
-      onClick: () => {
+      onClick: async () => {
+        if (options.batch && canExecute) {
+          if (busy.get() || options.batch.error) return;
+          busy.set(true);
+          try {
+            const results = await Promise.allSettled(templateTargets.map((values) => enqueueCliCommand({
+              id: action.id,
+              arguments: { ...argumentValues },
+              values,
+              idempotencyKey: crypto.randomUUID()
+            }, scope.signal)));
+            if (scope.signal.aborted) return;
+            const admitted = results.filter((result) => result.status === 'fulfilled').length;
+            const failed = results.length - admitted;
+            publishNotification({
+              message: failed
+                ? `${action.label}: ${admitted} commands queued; ${failed} could not be queued.`
+                : `${action.label}: ${admitted} commands queued.`,
+              href: '#page-commands',
+              tone: failed ? 'error' : 'success'
+            });
+            if (admitted) window.location.hash = 'page-commands';
+          } finally {
+            busy.set(false);
+          }
+          return;
+        }
         copyControl?.reset();
         if (canExecute) {
           commandId = undefined;
@@ -432,6 +458,14 @@ function renderCliActionControl(action, options = {}) {
       !rowPresentation && action.description ? h('small', null, action.description) : null
     )
   ));
+  if (options.batch && canExecute) {
+    effect(() => {
+      trigger.disabled = busy.get() || Boolean(options.batch?.error);
+      if (busy.get()) trigger.setAttribute('aria-busy', 'true');
+      else trigger.removeAttribute('aria-busy');
+      trigger.title = options.batch?.error ?? action.label;
+    }, { signal: scope.signal });
+  }
   command = h('code', { className: 'cli-action-command' }, commandPreviewText.get());
   effect(() => {
     command.textContent = commandPreviewText.get();

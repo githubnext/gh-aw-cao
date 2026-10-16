@@ -912,7 +912,8 @@ function renderTableView(context) {
         }
       }
     : undefined;
-  const tableRegion = renderTableRegion({
+  const cardTemplate = isPlainObject(view.encoding) && typeof view.encoding.card === 'string' ? view.encoding.card : undefined;
+  const tableRegion = cardTemplate ? null : renderTableRegion({
     tableClassName: 'custom-table',
     tableRole: tree ? 'treegrid' : undefined,
     regionClassName: interactive ? undefined : 'table-region-static',
@@ -979,12 +980,12 @@ function renderTableView(context) {
       : undefined,
     sortable: interactive
   });
-  const mobileCardList = view.layout === 'full-view' && view['lazy-list'] === true
+  const mobileCardList = cardTemplate || (view.layout === 'full-view' && view['lazy-list'] === true)
     ? renderMobileTableCardList({ ...context, continuation }, columns, tableRows, renderCellValue, effectiveRowLimit)
     : null;
   return renderPageSection(pageId, title, [
     ...renderViewSectionChrome(metadata, contextDetails).filter((node) => node instanceof HTMLElement),
-    tableRegion,
+    ...(tableRegion ? [tableRegion] : []),
     ...(mobileCardList ? [mobileCardList] : [])
   ], headingTag, view.description);
 }
@@ -1010,7 +1011,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
   /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], drill?: Record<string, unknown> }} */
-  const definition = Object.values(cardTemplates)
+  const definition = (typeof view.encoding?.card === 'string' ? cardTemplates[view.encoding.card] : undefined) ?? Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
       [...right.labels, ...right.details].filter((field) => columnFields.has(field.field)).length
@@ -1071,7 +1072,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition, drill }),
   ...(boundary ? [boundary] : []));
   const region = h('div', {
-    className: 'mobile-table-card-list',
+    className: `mobile-table-card-list${typeof view.encoding?.card === 'string' ? ' table-card-list' : ''}`,
     'data-mobile-card-list': '',
     role: 'region',
     'aria-label': `${title}: card list`

@@ -28,9 +28,10 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .dashboard-page[data-view-mode="table"] [data-view-mode-content="chart"],
 .dashboard-page[data-view-mode="table"] [data-view-mode-content="card"],
 .dashboard-page[data-view-mode="card"] [data-view-mode-content="chart"] { display: none; }
-.dashboard-page[data-view-mode="table"] [data-mobile-card-list],
+.dashboard-page[data-view-mode="table"] [data-mobile-card-list]:not(.table-card-list),
 .dashboard-page[data-view-mode="card"] [data-view-mode-content="table"] > .table-region { display: none; }
 .mobile-table-card-list { display: none; }
+.mobile-table-card-list.table-card-list { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .dashboard-page[data-view-mode="card"] [data-mobile-card-list] { display: flex; flex-direction: column; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }
 .mobile-table-card-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; position: relative; z-index: 6; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .mobile-table-card-toolbar-title { color: var(--muted); font-size: .875rem; font-weight: 600; }

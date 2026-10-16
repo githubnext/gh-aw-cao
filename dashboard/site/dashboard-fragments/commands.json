@@ -7,6 +7,8 @@
       "acceptance": "Preserve persistent command IDs and all six server states; closing output never cancels execution. Unavailable local authority is not an empty queue.",
       "from": "cli-commands",
       "compute": [
+        { "as": "command-action", "function": "coalesce", "args": [{ "field": "actionId" }, { "value": "" }] },
+        { "as": "command-created-at", "function": "coalesce", "args": [{ "field": "createdAt" }, { "value": null }] },
         { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
         { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
       ]
@@ -45,12 +47,13 @@
             ]
           },
           "encoding": {
+            "card": "command",
             "href": { "field": "command-dashboard-link" },
             "columns": [
               { "field": "id", "type": "nominal", "title": "Command" },
-              { "field": "actionId", "type": "nominal", "title": "Action" },
+              { "field": "command-action", "type": "nominal", "title": "Action" },
               { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
-              { "field": "createdAt", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
+              { "field": "command-created-at", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
               { "field": "error", "type": "nominal", "title": "Reason" }
             ]
           }
@@ -62,7 +65,9 @@
       "kind": "custom",
       "title": "Command output",
       "icon": "terminal",
-      "route": { "hash-query-parameter": "command" },
+      "route": { "hash-query-parameter": "command", "navigation-page": "commands" },
+      "filter-bar": false,
+      "view-mode-control": false,
       "views": [
         {
           "id": "command-terminal",

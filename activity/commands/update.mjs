@@ -7,11 +7,20 @@ export function parseUpdateArguments(ghAwOptions, UsageError) {
   const valueFlags = new Set([...addValueFlags, '--cool-down', '--repo', '-r', '--org', '--repos']);
   const arguments_ = [];
   let ref;
+  let campaign;
   let positionalsOnly = false;
   for (let index = 0; index < ghAwOptions.length; index += 1) {
     const argument = ghAwOptions[index];
     if (!positionalsOnly && argument === '--') {
       positionalsOnly = true;
+      continue;
+    }
+    if (!positionalsOnly && (argument === '--campaign' || argument.startsWith('--campaign='))) {
+      if (campaign !== undefined) throw new UsageError('cao update accepts only one --campaign');
+      campaign = argument === '--campaign' ? ghAwOptions[++index] : argument.slice('--campaign='.length);
+      if (typeof campaign !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaign)) {
+        throw new UsageError('--campaign requires a safe campaign slug');
+      }
       continue;
     }
     if (!positionalsOnly && argument.startsWith('-')) {
@@ -45,6 +54,7 @@ export function parseUpdateArguments(ghAwOptions, UsageError) {
   }
   return {
     ref,
+    ...(campaign !== undefined ? { campaign } : {}),
     includePrereleases: arguments_.includes('--pre-releases'),
     updateOptions: arguments_.filter((option) => option !== '--pre-releases')
   };

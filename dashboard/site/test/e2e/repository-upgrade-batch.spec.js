@@ -8,6 +8,7 @@ for (const width of [1440, 390]) {
   test(`Upgrade all lists and queues every repository at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const repositories = ['octo/first', 'other/second', 'octo/third'];
+    const campaigns = ['activity', 'dependabot'];
     /** @type {string[]} */
     const commands = [];
     /** @type {() => void} */
@@ -28,6 +29,11 @@ for (const width of [1440, 390]) {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
         await writeFile(join(destination, 'sources.json'), JSON.stringify({
+          campaigns: { metadata, rows: campaigns.map((campaign) => ({
+            campaign, 'campaign-name': campaign, 'campaign-version': 'v1',
+            'campaign-current-version': 'v2', 'campaign-update-state': 'update-available',
+            'campaign-registration': 'true'
+          })) },
           repositories: { metadata, rows: repositories.map((coordinate) => {
             const [organization, repository] = coordinate.split('/');
             return { organization, repository };
@@ -62,41 +68,34 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-maintenance$/);
       expect(commands).toEqual([]);
       await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true });
-      await expect(dialog.locator('.cli-action-command')).toHaveText([
-        'gh aw upgrade --repo octo/first --create-pull-request',
-        'gh aw upgrade --repo octo/third --create-pull-request',
-        'gh aw upgrade --repo other/second --create-pull-request'
-      ].join('\n'));
-      expect(commands).toEqual([]);
-      const screenshot = testInfo.outputPath(`upgrade-all-${width}.png`);
-      await page.screenshot({ path: screenshot, fullPage: true });
-      await testInfo.attach(`upgrade-all-${width}`, { path: screenshot, contentType: 'image/png' });
-      await dialog.getByRole('button', { name: 'Upgrade all', exact: true }).click();
+      await expect(page).toHaveURL(/#page-commands$/);
+      await expect(page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true })).not.toBeVisible();
+      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('running');
       await expect.poll(async () => page.evaluate(async () => {
         const response = await fetch('./__cli_commands?limit=50');
         if (!response.ok) throw new Error(`Command history failed: HTTP ${response.status}`);
         return (await response.json()).total;
       })).toBe(3);
-      await dialog.getByRole('button', { name: 'Close action approval', exact: true }).click();
-      await expect(dialog).not.toBeVisible();
+      const screenshot = testInfo.outputPath(`upgrade-all-${width}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      await testInfo.attach(`upgrade-all-${width}`, { path: screenshot, contentType: 'image/png' });
       finish();
       await expect.poll(() => commands.length).toBe(3);
       expect(commands.sort()).toEqual(repositories.map((repository) =>
         `gh aw upgrade --repo ${repository} --create-pull-request`).sort());
-      await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
-      await dialog.getByRole('button', { name: 'Upgrade all', exact: true }).click();
-      const completionLink = page.getByRole('link', { name: 'Upgrade all: Completed', exact: true });
-      await expect(completionLink).toBeVisible();
-      await expect(completionLink).toHaveAttribute('href', '#page-commands');
-      await expect(dialog).not.toBeVisible();
-      const completionScreenshot = testInfo.outputPath(`upgrade-complete-link-${width}.png`);
-      await page.screenshot({ path: completionScreenshot, fullPage: true });
-      await testInfo.attach(`upgrade-complete-link-${width}`, { path: completionScreenshot, contentType: 'image/png' });
-      await completionLink.click();
+      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('completed');
+      expect(commands).toHaveLength(3);
+      await page.evaluate(() => { window.location.hash = 'page-maintenance-campaigns'; });
+      await page.getByRole('button', { name: 'Update all', exact: true }).click();
       await expect(page).toHaveURL(/#page-commands$/);
-      await expect(page.locator('[data-view-id="commands-history"]')).toBeVisible();
-      expect(commands).toHaveLength(6);
+      await expect(page.getByRole('dialog', { name: 'Approve Update all', exact: true })).not.toBeVisible();
+      await expect.poll(() => commands.length).toBe(5);
+      expect(commands.slice(3).sort()).toEqual(campaigns.map((campaign) =>
+        `./cao.sh update --campaign ${campaign} --create-pull-request`).sort());
+      const campaignScreenshot = testInfo.outputPath(`campaigns-queued-${width}.png`);
+      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('update-repository');
+      await page.screenshot({ path: campaignScreenshot, fullPage: true });
+      await testInfo.attach(`campaigns-queued-${width}`, { path: campaignScreenshot, contentType: 'image/png' });
     } finally {
       finish();
       await page.goto('about:blank').catch(() => {});

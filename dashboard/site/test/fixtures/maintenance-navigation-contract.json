@@ -9,6 +9,10 @@
     "action-context": ["repository"]
   },
   "repository-drill": { "type": "external", "field": "repository-url" },
+  "campaign-update": {
+    "action": "update-repository",
+    "action-context": ["campaign"]
+  },
   "repository-workflows": [
     { "organization": "octo", "repository": "first", "workflow": "a.md" },
     { "organization": "octo", "repository": "first", "workflow": "b.md" },

@@ -4,6 +4,7 @@ import { attachCliCommand, cancelCliCommand, retryCliCommand, requestCliQueue, c
 import { createFactoryScope } from './factory-elements.js';
 import { createCliTerminal } from './cli-terminal.js';
 import { publishNotification } from '../notification-service.js';
+import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderCommandTerminal(context) {
@@ -18,9 +19,20 @@ export function renderCommandTerminal(context) {
   let attachment;
   /** @type {Awaited<ReturnType<typeof createCliTerminal>> | undefined} */
   let terminal;
+  /** @type {Promise<Awaited<ReturnType<typeof createCliTerminal>>> | undefined} */
+  let terminalPromise;
   let currentId = id;
+  const { dialog, open, close: closeModal } = createModalDialog({
+    className: 'cli-action-dialog cli-action-running',
+    ariaLabel: 'Command console log'
+  });
+  const close = () => {
+    attachment?.abort();
+    closeModal();
+    window.location.hash = 'page-commands';
+  };
   const attach = async () => {
-    if (!currentId) return;
+    if (!currentId || scope.signal.aborted) return;
     attachment?.abort();
     const controller = new AbortController();
     attachment = controller;
@@ -30,12 +42,19 @@ export function renderCommandTerminal(context) {
       const command = await requestCliQueue({ action: 'get', commandId: currentId }, { signal: controller.signal });
       if (controller.signal.aborted) return;
       status.set(command.status);
-      message.set(`${command.id} · ${command.status}. Closing this page only detaches.`);
-      terminal ??= await createCliTerminal(scope.signal);
+      message.set(`${command.id} · ${command.status}. Closing this console only detaches.`);
+      terminalPromise ??= createCliTerminal(scope.signal).catch((error) => {
+        terminalPromise = undefined;
+        throw error;
+      });
+      const mountedTerminal = await terminalPromise;
       if (controller.signal.aborted) return;
+      terminal = mountedTerminal;
       output.append(terminal.root);
       terminal.reset();
-      const complete = await attachCliCommand(currentId, (event) => terminal?.write(event.data), controller.signal);
+      const complete = await attachCliCommand(currentId, (event) => {
+        if (!controller.signal.aborted) terminal?.write(event.data);
+      }, controller.signal);
       if (controller.signal.aborted) return;
       status.set(complete.command.status);
       message.set(`${complete.command.id} · ${complete.command.status}`);
@@ -49,21 +68,22 @@ export function renderCommandTerminal(context) {
   const cancel = h('button', {
     type: 'button', className: 'cli-action-cancel',
     onClick: async () => {
-      if (!currentId) return;
+      if (!currentId || busy.get() || scope.signal.aborted) return;
       busy.set(true);
       try {
         const command = await cancelCliCommand(currentId, scope.signal);
+        if (scope.signal.aborted) return;
         status.set(command.status);
         message.set(`${command.id} · ${command.status}`);
       } catch (error) {
-        publishNotification({ message: error instanceof Error ? error.message : 'Cancellation failed.', tone: 'error' });
+        if (!scope.signal.aborted) publishNotification({ message: error instanceof Error ? error.message : 'Cancellation failed.', tone: 'error' });
       } finally { busy.set(false); }
     }
   }, 'Cancel command');
   const retry = h('button', {
     type: 'button', className: 'cli-action-confirm',
     onClick: async () => {
-      if (!currentId) return;
+      if (!currentId || busy.get() || scope.signal.aborted) return;
       busy.set(true);
       try {
         const command = await retryCliCommand(currentId, scope.signal);
@@ -73,18 +93,39 @@ export function renderCommandTerminal(context) {
         window.location.hash = `page-command?command=${encodeURIComponent(command.id)}`;
         if (previousId === currentId) void attach();
       } catch (error) {
-        publishNotification({ message: error instanceof Error ? error.message : 'Retry failed.', tone: 'error' });
+        if (!scope.signal.aborted) publishNotification({ message: error instanceof Error ? error.message : 'Retry failed.', tone: 'error' });
       } finally { busy.set(false); }
     }
   }, 'Retry command');
   const reconnect = h('button', {
     type: 'button', className: 'cli-action-cancel', onClick: () => { void attach(); }
   }, 'Reconnect output');
-  const root = h('section', { className: 'command-terminal', 'aria-label': 'Persistent command terminal' },
-    statusNode, output,
+  dialog.append(
+    h('header', { className: 'cli-action-dialog-header' },
+      h('h2', null, 'Command console log'),
+      statusNode,
+      renderCloseButton({ className: 'cli-action-dialog-close', label: 'Close command console', onClick: close })),
+    h('div', { className: 'cli-action-dialog-body' }, output),
     h('footer', { className: 'cli-action-dialog-footer' }, cancel, retry, reconnect,
-      h('a', { href: '#page-commands' }, 'Back to Commands'))
+      h('button', { type: 'button', className: 'cli-action-cancel', onClick: close }, 'Back to Commands'))
   );
+  const root = h('section', { className: 'command-terminal', 'aria-label': 'Persistent command terminal' }, dialog);
+  dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }, { signal: scope.signal });
+  dialog.addEventListener('close', () => {
+    if (!scope.signal.aborted) {
+      attachment?.abort();
+      window.location.hash = 'page-commands';
+    }
+  }, { signal: scope.signal });
+  scope.signal.addEventListener('abort', closeModal, { once: true });
+  const mountObserver = new MutationObserver(() => {
+    if (root.isConnected && !scope.signal.aborted) {
+      mountObserver.disconnect();
+      open();
+    }
+  });
+  mountObserver.observe(document, { childList: true, subtree: true });
+  scope.signal.addEventListener('abort', () => mountObserver.disconnect(), { once: true });
   effect(() => {
     statusNode.textContent = message.get();
     cancel.hidden = !['queued', 'running'].includes(status.get());

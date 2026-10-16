@@ -109,10 +109,18 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  const { ref, includePrereleases, updateOptions } = parseUpdateArguments(ghAwOptions, UsageError);
+  const { ref, campaign: selectedCampaign, includePrereleases, updateOptions } = parseUpdateArguments(ghAwOptions, UsageError);
   const policy = await readCaoPolicy(policyPath);
-  const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
-  const campaigns = await installedCampaignRecords();
+  let campaigns = await installedCampaignRecords();
+  const campaignSlug = (record) => record.campaign === 'githubnext/gh-aw-cao'
+    ? 'root'
+    : record.campaign.split('/').at(-1);
+  if (selectedCampaign !== undefined) {
+    campaigns = campaigns.filter((record) => campaignSlug(record) === selectedCampaign);
+    if (campaigns.length !== 1) {
+      throw new UsageError(`${campaigns.length === 0 ? 'Unknown' : 'Ambiguous'} installed CAO campaign: ${selectedCampaign}`);
+    }
+  }
   if (campaigns.length === 0) {
     throw new Error('No installed gh-aw package records found under .github/aw/packages');
   }
@@ -122,6 +130,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     }
   }
 
+  const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
   const resolvedCommit = resolveUpdateCommit(ref, execute, commandFailureMessage, compareGhAwVersions);
   const updatedCampaigns = [];
   const mergedDeclarations = [];
@@ -155,9 +164,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
         throw new Error(`CAO package ${record.campaign} did not record requested commit ${resolvedCommit}; refusing to materialize`);
       }
     }
-    const campaign = record.campaign === 'githubnext/gh-aw-cao'
-      ? 'root'
-      : record.campaign.split('/').at(-1);
+    const campaign = campaignSlug(record);
     materializeInstalledCao(campaign, execute);
     const declaration = await readInstalledCaoDeclaration(record.campaign);
     if (declaration) {
