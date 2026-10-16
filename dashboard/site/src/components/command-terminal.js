@@ -102,8 +102,8 @@ export function renderCommandTerminal(context) {
   }, 'Reconnect output');
   dialog.append(
     h('header', { className: 'cli-action-dialog-header' },
-      h('h2', null, 'Command console log'),
-      statusNode,
+      h('div', { className: 'command-console-heading' },
+        h('h2', null, 'Command console log'), statusNode),
       renderCloseButton({ className: 'cli-action-dialog-close', label: 'Close command console', onClick: close })),
     h('div', { className: 'cli-action-dialog-body' }, output),
     h('footer', { className: 'cli-action-dialog-footer' }, cancel, retry, reconnect,

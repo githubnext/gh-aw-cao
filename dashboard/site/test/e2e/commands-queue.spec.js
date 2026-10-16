@@ -85,6 +85,14 @@ for (const width of [1440, 390]) {
       await command.click();
       const consoleDialog = page.getByRole('dialog', { name: 'Command console log', exact: true });
       await expect(consoleDialog).toBeVisible();
+      const chromeFits = await consoleDialog.locator('.cli-action-dialog-header').evaluate((header) => {
+        const close = header.querySelector('.cli-action-dialog-close');
+        if (!close) return false;
+        const bounds = close.getBoundingClientRect();
+        return bounds.width >= 28 && bounds.left >= 0 && bounds.right <= window.innerWidth
+          && header.scrollWidth <= header.clientWidth;
+      });
+      expect(chromeFits).toBe(true);
       const terminal = page.getByRole('region', { name: 'Read-only command terminal' });
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');

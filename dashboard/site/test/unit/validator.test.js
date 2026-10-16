@@ -36,6 +36,11 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const view = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'commands').views[0];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    view['lazy-list'] = false;
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.encoding.card') })])
+    });
+    view['lazy-list'] = true;
     view.encoding.card = 'missing-template';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.encoding.card') })])

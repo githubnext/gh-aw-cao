@@ -1438,7 +1438,7 @@ The Issues view declares separate Labels and Status dropdowns in the declarative
 
 In full-view card mode, the shared filter row stays above the independently scrolling cards. Desktop uses compact Primer dropdown buttons; mobile uses touch-sized rounded controls and grouped options with explicit apply and clear actions.
 
-A table may declare `encoding.card` as a reusable dashboard card-template identifier to present its rows as cards at every viewport width, rather than only in responsive card mode. The declared columns still define the view payload and available card fields; lazy-list pagination and explicit card drill behavior remain unchanged. The Commands table uses this presentation, with its durable command route opening the interaction-only `command-terminal` element as a modal console log. Closing or escaping the console returns to Commands and detaches output without cancelling execution; cancellation and retry remain separate explicit controls.
+A table with `lazy-list: true` may declare `encoding.card` as a reusable dashboard card-template identifier to present its rows as cards at every viewport width, rather than only in responsive card mode. Other marks, non-lazy tables, and unknown template references fail validation. The declared columns still define the view payload and available card fields; lazy-list pagination and explicit card drill behavior remain unchanged. The Commands table uses this presentation, with its durable command route opening the interaction-only `command-terminal` element as a modal console log. Closing or escaping the console returns to Commands and detaches output without cancelling execution; cancellation and retry remain separate explicit controls.
 
 ```json
 {

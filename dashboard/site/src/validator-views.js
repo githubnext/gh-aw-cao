@@ -231,6 +231,10 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     }
   }
 
+  if (isPlainObject(view.encoding) && view.encoding.card !== undefined && view['lazy-list'] !== true) {
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'encoding.card is allowed only on lazy table views.', `${path}.encoding.card`));
+  }
   if (view['lazy-list'] !== undefined) {
     if (typeof view['lazy-list'] !== 'boolean') {
       errors.push(createError(
