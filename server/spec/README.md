@@ -44,6 +44,11 @@ browser worker only requests the dashboard's `/api/v1/github/` resource routes
 (with an optional deployment prefix), rejects upstream API URLs, and refuses
 redirects. Static Pages without a backend reports unavailable instead of
 falling back to direct GitHub API access.
+The resource service is read-only: both server adapters accept only `GET`
+resource requests and issue only bodyless `GET` reads of allowlisted GitHub
+resources (plus the hosted rate-limit probe). Callers cannot supply an upstream
+method, request body, or arbitrary API path. Cache writes affect only the local
+data stores, never GitHub repositories.
 
 The local SQLite evidence mirrors likewise retain typed query columns and
 observation metadata, but no `record_json` copy. The complete document lives

@@ -109,6 +109,11 @@ func (a *App) gitHubReleaseResource(w http.ResponseWriter, r *http.Request) {
 
 //nolint:contextcheck // Shared bounded revalidation must survive cancellation of its first subscriber.
 func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release bool) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, "GitHub resources are read-only")
+		return
+	}
 	w.Header().Add("Vary", "Authorization")
 	w.Header().Add("Vary", "Cookie")
 	repository, err := collect.NormalizeRepository(r.PathValue("owner") + "/" + r.PathValue("repo"))

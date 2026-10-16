@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,52 @@ import (
 	"testing"
 	"time"
 )
+
+func TestGitHubResourceHandlersRejectNonReadMethods(t *testing.T) {
+	app := resourceTestApp(t, func(*http.Request) (*http.Response, error) {
+		t.Fatal("rejected requests must not reach GitHub")
+		return nil, errors.New("unexpected request")
+	})
+	app.githubResources.localToken = func(context.Context) (string, error) {
+		t.Fatal("rejected requests must not resolve credentials")
+		return "", errors.New("unexpected credential lookup")
+	}
+	for _, release := range []bool{false, true} {
+		for _, method := range []string{
+			http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete,
+			http.MethodOptions, http.MethodHead, http.MethodTrace, http.MethodConnect,
+		} {
+			request := httptest.NewRequestWithContext(t.Context(), method, "/api/v1/github/repos/owner/repo", nil)
+			response := httptest.NewRecorder()
+			app.gitHubResource(response, request, release)
+			if response.Code != http.StatusMethodNotAllowed || response.Header().Get("Allow") != http.MethodGet {
+				t.Fatalf("method %s release=%t: status=%d allow=%q", method, release, response.Code, response.Header().Get("Allow"))
+			}
+		}
+	}
+}
+
+func TestGitHubResourceUpstreamRequestsAreReadOnly(t *testing.T) {
+	var paths []string
+	app := resourceTestApp(t, func(request *http.Request) (*http.Response, error) {
+		if request.Method != http.MethodGet || request.Body != nil {
+			t.Fatalf("resource request must be a bodyless GET: %s %s", request.Method, request.URL.Path)
+		}
+		paths = append(paths, request.URL.Path)
+		if strings.HasSuffix(request.URL.Path, "/releases/latest") {
+			return resourceResponse(http.StatusOK, `{"tag_name":"v1","name":null,"html_url":"https://github.com/owner/repo/releases/tag/v1","published_at":null,"draft":false,"prerelease":false}`), nil
+		}
+		return resourceResponse(http.StatusOK, resourceRepositoryJSON), nil
+	})
+	for _, path := range []string{"/api/v1/github/repos/owner/repo", "/api/v1/github/repos/owner/repo/releases/latest"} {
+		if response := resourceGet(t, app, path, ""); response.Code != http.StatusOK {
+			t.Fatalf("read failed: status=%d", response.Code)
+		}
+	}
+	if strings.Join(paths, ",") != "/rate_limit,/repos/owner/repo,/repos/owner/repo/releases/latest" {
+		t.Fatalf("unexpected upstream resource paths: %v", paths)
+	}
+}
 
 func TestGitHubResourceBrowserCookieIsHttpOnlyAndReadOnly(t *testing.T) {
 	app := resourceTestApp(t, func(*http.Request) (*http.Response, error) {

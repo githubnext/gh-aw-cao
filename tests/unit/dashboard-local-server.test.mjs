@@ -105,7 +105,13 @@ test("local GitHub routes enforce read-only same-origin access and advertise the
     const html = await (await fetch(`${preview.url}/`)).text();
     assert.match(html, /<meta name="dashboard-github-api-base" content="[^"]*\/">/);
     const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-aw-cao`;
-    assert.equal((await fetch(resource, { method: "POST" })).status, 405);
+    for (const endpoint of [resource, `${resource}/releases/latest`]) {
+      for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) {
+        const rejected = await fetch(endpoint, { method });
+        assert.equal(rejected.status, 405, `${method} ${endpoint}`);
+        assert.equal(rejected.headers.get("Allow"), "GET");
+      }
+    }
     assert.equal((await fetch(resource, { headers: { Origin: "https://untrusted.example" } })).status, 403);
     assert.equal((await fetch(resource, { headers: { "Sec-Fetch-Site": "cross-site" } })).status, 403);
     assert.equal((await fetch(`${resource}/issues`)).status, 400);

@@ -100,6 +100,7 @@ export function createLocalGitHubService({
     }
     try {
       const response = await fetchImpl(`https://api.github.com${path}`, {
+        method: "GET",
         headers: {
           Authorization: ["Bearer", credential].join(" "),
           Accept: "application/vnd.github+json",

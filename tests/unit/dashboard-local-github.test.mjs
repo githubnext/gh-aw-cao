@@ -33,6 +33,8 @@ test("local GitHub reads are allowlisted, cached, and conditionally returned", a
     fetchImpl: async (url, options) => {
       requests++;
       assert.equal(url, "https://api.github.com/repos/githubnext/gh-aw-cao");
+      assert.equal(options.method, "GET");
+      assert.equal(options.body, undefined);
       assert.equal(options.redirect, "error");
       assert.equal(options.headers.Authorization, ["Bearer", credential()].join(" "));
       return reply({ ...repository, secret: "not returned", owner: { email: "not returned" } }, { etag: '"upstream"' });
