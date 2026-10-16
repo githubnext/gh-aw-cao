@@ -258,20 +258,38 @@ func (s *Store) AdmitDelivery(ctx context.Context, r operational.DeliveryRequest
 	now := s.config.Clock()
 	s.prune(now)
 	delivery := recordKey{"delivery", r.Delivery, ""}
-	if _, exists := s.markers[delivery]; exists {
-		return operational.DeliveryDuplicate, nil
-	}
-	if _, exists := s.markers[recordKey{"debounce", r.Debounce, ""}]; r.Debounce != "" && exists {
+	_, deliveryKnown := s.markers[delivery]
+	_, debounceMarked := s.markers[recordKey{"debounce", r.Debounce, ""}]
+	outcome := classifyDeliveryAdmission(deliveryKnown, r.Debounce != "" && debounceMarked)
+	deliveryLog.Printf("delivery admission classified outcome=%d", outcome)
+	switch outcome {
+	case operational.DeliveryDuplicate:
+		return outcome, nil
+	case operational.DeliveryCoalesced:
 		if err := s.reserve(map[recordKey]int64{delivery: charge(r.Delivery)}); err != nil {
 			return operational.DeliveryDuplicate, err
 		}
 		s.markers[recordKey{"delivery", strings.Clone(r.Delivery), ""}] = now.Add(r.DeliveryTTL)
-		return operational.DeliveryCoalesced, nil
+		return outcome, nil
 	}
 	if _, err := s.enqueue(r.EnqueueRequest, r.Delivery, r.DeliveryTTL, "", now); err != nil {
 		return operational.DeliveryDuplicate, err
 	}
 	return operational.DeliveryEnqueued, nil
+}
+
+// classifyDeliveryAdmission decides AdmitDelivery's outcome from marker facts:
+// an already-seen delivery is a duplicate and takes priority over an active
+// debounce window, which coalesces the delivery into pending work.
+func classifyDeliveryAdmission(deliveryKnown, debounceActive bool) operational.DeliveryAdmission {
+	switch {
+	case deliveryKnown:
+		return operational.DeliveryDuplicate
+	case debounceActive:
+		return operational.DeliveryCoalesced
+	default:
+		return operational.DeliveryEnqueued
+	}
 }
 
 func (s *Store) readInput(r operational.QueueRead) error {

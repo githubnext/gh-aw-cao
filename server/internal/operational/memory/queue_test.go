@@ -424,3 +424,40 @@ func TestDeliveryReservationLifecycle(t *testing.T) {
 	}
 	invariant(t, s)
 }
+
+func TestClassifyDeliveryAdmission(t *testing.T) {
+	for _, tc := range []struct {
+		name                     string
+		deliveryKnown, debounced bool
+		want                     operational.DeliveryAdmission
+	}{
+		{"new delivery", false, false, operational.DeliveryEnqueued},
+		{"debounce window active", false, true, operational.DeliveryCoalesced},
+		{"known delivery", true, false, operational.DeliveryDuplicate},
+		{"known delivery wins over debounce", true, true, operational.DeliveryDuplicate},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := classifyDeliveryAdmission(tc.deliveryKnown, tc.debounced); got != tc.want {
+				t.Fatalf("classifyDeliveryAdmission = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAdmitDeliveryWithoutDebounceIgnoresEmptyDebounceMarker(t *testing.T) {
+	s, _ := fixture(t, Config{})
+	must(t, s.EnsureQueue(t.Context(), "tasks", "workers"))
+	request := func(delivery string) operational.DeliveryRequest {
+		r := taskRequest("")
+		return operational.DeliveryRequest{EnqueueRequest: r, Delivery: delivery, DeliveryTTL: time.Hour}
+	}
+	for _, delivery := range []string{"one", "two"} {
+		got, err := s.AdmitDelivery(t.Context(), request(delivery))
+		if err != nil || got != operational.DeliveryEnqueued {
+			t.Fatalf("AdmitDelivery(%s) = %d, %v; want enqueued", delivery, got, err)
+		}
+	}
+	if got, err := s.AdmitDelivery(t.Context(), request("one")); err != nil || got != operational.DeliveryDuplicate {
+		t.Fatalf("repeat AdmitDelivery = %d, %v; want duplicate", got, err)
+	}
+}
