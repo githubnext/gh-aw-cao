@@ -20,6 +20,14 @@ The normal documentation build generates:
 - `agent/resources.json` as a deterministic compact index of every resource; and
 - `index.json` beside each Starlight documentation route.
 
+The root npm overrides replace only `starlight-llms-txt`'s `micromatch`
+dependency with Picomatch. The plugin uses only the compatible `isMatch` API;
+this removes the unused, vulnerable `braces` AST walkers (GHSA-vfj7-8cjw-p6xm)
+without changing documentation generation. The focused
+`tests/unit/docs-pattern-matching.test.mjs` suite checks this API boundary,
+route matching, deeply nested patterns, and the absence of `braces`. Review
+the override and these compatibility checks together when upgrading the plugin.
+
 Do not edit or commit these outputs. The Pages workflow publishes them from the
 same `dist/` tree as the human site.
 
