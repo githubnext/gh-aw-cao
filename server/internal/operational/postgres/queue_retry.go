@@ -6,8 +6,49 @@ import (
 	"sort"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var queueLog = logger.New("cao:operational:postgres:queue")
+
+type dueTask struct {
+	record record
+	task   task
+}
+
+// roundUpMillis normalizes a due time to UTC at millisecond precision,
+// rounding up so a task is never promoted before its requested time.
+func roundUpMillis(due time.Time) time.Time {
+	rounded := due.UTC().Truncate(time.Millisecond)
+	if rounded.Before(due) {
+		rounded = rounded.Add(time.Millisecond)
+	}
+	return rounded
+}
+
+// selectDue returns up to count scheduled tasks for the delayed queue that are
+// due at or before at, ordered by due time and then queue position.
+func selectDue(records []record, delayed string, at time.Time, count int) ([]dueTask, error) {
+	cutoff := at.Truncate(time.Millisecond)
+	var due []dueTask
+	for _, r := range records {
+		var data task
+		if err := json.Unmarshal(r.value, &data); err != nil {
+			return nil, err
+		}
+		if data.Delayed == delayed && !data.Due.After(cutoff) {
+			due = append(due, dueTask{r, data})
+		}
+	}
+	sort.Slice(due, func(i, j int) bool {
+		if due[i].task.Due.Equal(due[j].task.Due) {
+			return due[i].record.position < due[j].record.position
+		}
+		return due[i].task.Due.Before(due[j].task.Due)
+	})
+	return due[:min(count, len(due))], nil
+}
 
 func (s *Store) ReplaceTask(ctx context.Context, r operational.Replacement) error {
 	if r.Destination == "" && !r.Due.IsZero() {
@@ -53,10 +94,7 @@ func (s *Store) ReplaceTask(ctx context.Context, r operational.Replacement) erro
 		next := task{Fields: r.Fields, Created: t.now}
 		if !r.Due.IsZero() {
 			next.Delayed = r.Delayed
-			next.Due = r.Due.UTC().Truncate(time.Millisecond)
-			if next.Due.Before(r.Due) {
-				next.Due = next.Due.Add(time.Millisecond)
-			}
+			next.Due = roundUpMillis(r.Due)
 		}
 		return t.addTask(r.Destination, next)
 	})
@@ -75,27 +113,11 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, queue string, at time
 		if err != nil {
 			return err
 		}
-		type candidate struct {
-			record record
-			task   task
+		due, err := selectDue(records, delayed, at, count)
+		if err != nil {
+			return err
 		}
-		var due []candidate
-		for _, r := range records {
-			var data task
-			if err := json.Unmarshal(r.value, &data); err != nil {
-				return err
-			}
-			if data.Delayed == delayed && !data.Due.After(at.Truncate(time.Millisecond)) {
-				due = append(due, candidate{r, data})
-			}
-		}
-		sort.Slice(due, func(i, j int) bool {
-			if due[i].task.Due.Equal(due[j].task.Due) {
-				return due[i].record.position < due[j].record.position
-			}
-			return due[i].task.Due.Before(due[j].task.Due)
-		})
-		for _, c := range due[:min(count, len(due))] {
+		for _, c := range due {
 			if err := t.remove(c.record.key); err != nil {
 				return err
 			}
@@ -109,6 +131,7 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, queue string, at time
 	if err != nil {
 		return 0, err
 	}
+	queueLog.Printf("promoted delayed tasks promoted=%d limit=%d", promoted, count)
 	return promoted, nil
 }
 
