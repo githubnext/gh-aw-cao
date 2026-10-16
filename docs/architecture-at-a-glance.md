@@ -29,16 +29,15 @@ A campaign can start with one repository and retain the same control model as it
 
 ## Run, Observe, Evolve
 
-```mermaid
-flowchart LR
-  outcome["Define an outcome"]
-  run["Run<br/>bounded agents"]
-  observe["Observe<br/>evidence · cost · value"]
-  evolve["Evolve<br/>campaigns and coverage"]
-  approve["Human review<br/>and approval"]
+CAO repeats a five-step operating loop:
 
-  outcome --> run --> observe --> evolve --> approve --> run
-```
+1. **Define an outcome** for the campaign.
+1. **Run bounded agents** within the declared policy and workflow limits.
+1. **Observe evidence, cost, and value** from those runs.
+1. **Evolve campaigns and coverage** based on the observed results.
+1. **Require human review and approval** before the next live iteration.
+
+After approval, the loop returns to the run step with the refined campaign.
 
 ### Run
 
