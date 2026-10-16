@@ -54,6 +54,10 @@ The curated production bundle of canonical Activity and Dashboard code that a co
 
 The read-only `./cao.sh validate` command that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
 
+## CLI command queue
+
+A durable first-in-first-out queue of declared `cao` actions, separate from the collection task queue. Local admin and trusted canvas sessions share one queue per checkout in `.cao/cli-actions.sqlite`, and the PostgreSQL operational store can provide a deployment-scoped queue. Queued commands survive restart, interrupted executions are recorded as failed and never retried automatically, and the online dashboard and read-only previews do not initialize it. See the [dashboard README](https://github.com/githubnext/gh-aw-cao/blob/main/dashboard/README.md#cli-command-queue) and the [operational storage specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
+
 ## Collection health
 
 The `collection-health` registered runtime source: a bounded, read-only snapshot of the server-side webhook and collection profile's queue depth, pending tasks, dead letters, backfill state, and recent webhook and collection outcomes. It is exposed only through the authorized Dashboard Language query boundary, never stored in browser IndexedDB, and returns no raw error messages or credentials. See the Dashboard Language Specification, Section 5.4.
@@ -169,6 +173,10 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 ## Target repository
 
 A repository enrolled for a campaign. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
+
+## Unified session
+
+gh-aw's version-1 `usage/aw_session.jsonl` evidence for a run. CAO collection validates it against the run's execution identity and stores only a safe projection of allowlisted event metadata, never message bodies, prompts, or tool inputs and outputs. An available unified session replaces legacy MCP, firewall, and skill event projections for that run; when none exists, the legacy parsers remain in use. See the [gh-aw JSONL mapping specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md).
 
 ## WebMCP
 
