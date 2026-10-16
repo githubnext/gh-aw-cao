@@ -3,6 +3,9 @@ import { ADDITIVE_MEASURE_FIELDS, ERROR_CODES, FACET_FIELD_KEYS, FIELD_FORMAT_VA
 import { sourceFieldNames } from './validator-queries.js';
 import { createError, getValueNodeByKey, isPlainObject, validateObjectKeys, validateOptionalStringField, validateStringField } from './validator-common.js';
 import { state } from './validator-state.js';
+import { createDebug } from './debug.js';
+
+const debugValidatorFacet = createDebug('validator-facet');
 
 /**
  * @param {Record<string, unknown>} view
@@ -11,9 +14,25 @@ import { state } from './validator-state.js';
  * @param {import('./validator.js').ValidationError[]} errors
  */
 export function validateChartFacet(view, node, path, errors) {
+  const errorCountBefore = errors.length;
+  const checked = validateChartFacetDeclaration(view, node, path, errors);
+  if (checked) {
+    const rejected = errors.length - errorCountBefore;
+    debugValidatorFacet({ event: 'facet-validated', status: rejected > 0 ? 'rejected' : 'valid', errorCount: rejected });
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} view
+ * @param {unknown} node
+ * @param {string} path
+ * @param {import('./validator.js').ValidationError[]} errors
+ * @returns {boolean} Whether the view declared faceting.
+ */
+function validateChartFacetDeclaration(view, node, path, errors) {
   const encoding = isPlainObject(view.encoding) ? view.encoding : {};
   const channels = ['facet', 'row', 'column'].filter((key) => encoding[key] !== undefined);
-  if (view.facet === undefined && view.columns === undefined && channels.length === 0) return;
+  if (view.facet === undefined && view.columns === undefined && channels.length === 0) return false;
   /** @param {string} message @param {string} location */
   const reject = (message, location) => errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, message, location));
   if (view.mark !== 'chart') reject('faceting is supported only by chart views.', path);
@@ -70,4 +89,5 @@ export function validateChartFacet(view, node, path, errors) {
       if (encoding[channel] !== undefined) validateField(encoding[channel], getValueNodeByKey(encodingNode, channel), `${path}.encoding.${channel}`);
     }
   }
+  return true;
 }
