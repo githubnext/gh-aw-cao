@@ -29,10 +29,18 @@ describe('Commands view contract', () => {
     });
     expect(view.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual(commandsContract.fields);
     const template = dashboard['card-templates'].find((/** @type {{ id: string }} */ template) => template.id === commandsContract.card);
-    expect(template).toMatchObject({ icon: 'terminal', title: { field: 'id' }, status: { field: 'status' } });
+    expect(template).toMatchObject({
+      icon: 'terminal', title: { field: 'command-title' }, subtitle: { field: 'command-target' },
+      status: { field: 'status' },
+      labels: [],
+      timing: [{ field: 'command-created-at', type: 'temporal', format: 'human-friendly-timestamp' }]
+    });
     const outputPage = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'command');
     expect(outputPage.route).toMatchObject({ 'hash-query-parameter': 'command', 'navigation-page': commandsContract.page });
-    expect(outputPage.views[0]).toMatchObject({ mark: 'element', element: commandsContract.element, data: { sources: [] } });
+    expect(outputPage.views[0]).toMatchObject({
+      mark: 'element', element: commandsContract.element, data: { sources: [] },
+      layout: commandsContract['terminal-layout'], 'show-title': commandsContract['terminal-show-title']
+    });
     configureCliQueue(true);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json(commandQueueFixture)));
     try {

@@ -116,6 +116,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .mobile-page-header .breadcrumb-context > [data-route-breadcrumb] { display: inline-flex; align-items: center; min-height: 44px; white-space: normal; }
   /* Desktop reserves hidden descriptions as a stable spacer; collapse it in the compact mobile title bar without adding another display override. */
   .mobile-page-header .overview-header .lede { height: 0; min-height: 0; margin: 0; overflow: hidden; line-height: 0; visibility: hidden; }
+  .dashboard-root:has(.command-terminal) .mobile-page-header .overview-header .lede { height: auto; min-height: 1.25rem; margin-top: 3px; line-height: 1.25rem; visibility: visible; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-view-mode-toggle:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }

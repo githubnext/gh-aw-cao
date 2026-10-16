@@ -112,7 +112,10 @@ test("history polling excludes stdin and output bodies from summary rows", async
     list: () => ({
       commands: [{
         id: "command-1", actionId: "compile", status: "completed", input: "approved prompt",
-        stdout: "retained output", stderr: "", arguments: {}, values: {},
+        stdout: "retained output", stderr: "", arguments: {}, values: {
+          repository: "octo/repo", campaign: "maintenance", "package-source": "owner/catalog/pkg",
+          unrelated: "not part of the summary",
+        },
       }],
       total: 300, running: 4, revision: 7,
     }),
@@ -120,7 +123,10 @@ test("history polling excludes stdin and output bodies from summary rows", async
   try {
     const response = await fetch(`${server.url}/__cli_commands`);
     assert.deepEqual(await response.json(), {
-      commands: [{ id: "command-1", actionId: "compile", status: "completed" }],
+      commands: [{
+        id: "command-1", actionId: "compile", status: "completed",
+        repository: "octo/repo", campaign: "maintenance", "package-source": "owner/catalog/pkg",
+      }],
       total: 300, running: 4, revision: 7,
     });
   } finally { await server.close(); }

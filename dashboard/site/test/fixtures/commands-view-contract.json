@@ -3,8 +3,12 @@
   "view": "commands-history",
   "query": "command-queue",
   "card": "command",
-  "fields": ["id", "command-action", "status", "command-created-at", "error"],
+  "prompt": "none",
+  "fields": ["command-title", "command-target", "id", "command-action", "status", "command-created-at", "error"],
   "statuses": ["queued", "running", "completed", "failed", "canceled", "timed-out"],
   "route": "#page-command?command=",
-  "element": "command-terminal"
+  "element": "command-terminal",
+  "terminal-layout": "full-view",
+  "terminal-show-title": false,
+  "navigation-page": "commands"
 }

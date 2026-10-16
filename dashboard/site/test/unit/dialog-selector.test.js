@@ -217,7 +217,9 @@ describe('declarative external dialog selector', () => {
     await vi.dynamicImportSettled();
     await vi.advanceTimersByTimeAsync(0);
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ id: action.id, arguments: {}, values: { repository: 'octo/repo' }, idempotencyKey: expect.any(String) });
-    expect(root.querySelector('.cli-action-status')?.textContent).toBe('Completed');
+    expect(window.location.hash).toBe('#page-command?command=persistent-1');
+    expect(root.querySelector('dialog')?.open).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
     root.remove();
     await vi.advanceTimersByTimeAsync(0);
   });

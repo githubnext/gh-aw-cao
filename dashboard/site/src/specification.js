@@ -663,7 +663,7 @@ export const SERVER_SOURCE_FIELDS = {
 
 export const SYNTHETIC_SOURCE_FIELDS = {
   'simulation-days': ['day', 'date'],
-  'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values'],
+  'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values', 'repository', 'campaign', 'package-source'],
   'cli-command-statuses': ['status'],
   'cli-command-summary': ['running', 'total', 'paused-reason', 'revision'],
   ...GITHUB_QUERY_SOURCE_FIELDS

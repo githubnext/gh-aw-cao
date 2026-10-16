@@ -319,10 +319,7 @@ describe('CLI actions', () => {
     ));
   });
 
-  it('streams inline without a terminal-window option and detaches without cancellation', async () => {
-    queue.attach.mockImplementation((_id, _onOutput, signal) => new Promise((_resolve, reject) => {
-      signal.addEventListener('abort', () => reject(new DOMException('Detached', 'AbortError')), { once: true });
-    }));
+  it('opens the durable command view after approval without attaching or cancelling in the dialog', async () => {
     const root = renderCliActions([{
       id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
     }]);
@@ -330,7 +327,6 @@ describe('CLI actions', () => {
     document.body.append(root);
     const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
     const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
-    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-detach'));
     expect(root.querySelector('input[type="checkbox"]')).toBeNull();
     expect(root.querySelector('.cli-action-terminal-dialog')).toBeNull();
     expect(root.textContent).not.toContain('Open terminal window');
@@ -340,52 +336,30 @@ describe('CLI actions', () => {
     trigger.click();
     expect(queue.enqueue).not.toHaveBeenCalled();
     confirm.click();
-    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
-    expect(confirm.hidden).toBe(true);
+    await vi.waitFor(() => expect(window.location.hash).toBe('#page-command?command=command-1'));
     expect(confirm.disabled).toBe(true);
-    expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(true);
     confirm.click();
     expect(queue.enqueue).toHaveBeenCalledTimes(1);
     expect(queue.enqueue.mock.calls[0][0].arguments).toEqual({});
-    const terminal = root.querySelector('.cli-action-terminal');
-    expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
-    expect(terminal?.textContent).toContain('$ gh aw compile');
-    expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
-    expect(cancel.disabled).toBe(false);
-    expect(cancel.textContent).toBe('Detach');
-    cancel.click();
-    await vi.waitFor(() => expect(root.querySelector('.cli-action-status')?.textContent)
-      .toBe('Detached. The command continues in Maintenance → Commands.'));
-    expect(queue.attach.mock.calls[0][2].aborted).toBe(true);
+    expect(root.querySelector('.cli-action-terminal')).toBeNull();
+    expect(queue.attach).not.toHaveBeenCalled();
     expect(queue.cancel).not.toHaveBeenCalled();
     expect(root.querySelector('.cli-action-dialog')?.classList.contains('cli-action-running')).toBe(false);
     expect(root.querySelector('.cli-action-dialog')?.hasAttribute('open')).toBe(false);
-    expect(terminal?.textContent).toContain('Detached.');
     confirm.click();
     expect(queue.enqueue).toHaveBeenCalledTimes(1);
-    expect(confirm.hidden).toBe(true);
-    cancel.click();
     trigger.click();
-    expect(confirm.hidden).toBe(false);
+    expect(confirm.disabled).toBe(false);
     confirm.click();
-    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(2));
-    expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
-    expect(queue.attach.mock.calls[1][2].aborted).toBe(false);
-    expect(terminal?.textContent).toContain('Detached.');
-    cancel.click();
-    await vi.waitFor(() => expect(cancel.textContent).toBe('Close'));
-    expect(confirm.disabled).toBe(true);
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
     root.remove();
   });
 
-  it.each([
-    { ok: true, status: 'completed', error: undefined },
-    { ok: false, status: 'failed', error: 'Action failed' },
-    { ok: false, status: 'canceled', error: 'The CLI action was canceled.' }
-  ])('closes the terminal dialog after $status and restores trigger focus', async ({ ok, status, error }) => {
+  it('preserves approval and reports admission errors without navigating', async () => {
     /** @type {(value: unknown) => void} */
     let finish = () => {};
-    queue.attach.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    queue.enqueue.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    window.location.hash = 'page-maintenance';
     const root = renderCliActions([{
       id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
     }]);
@@ -395,15 +369,28 @@ describe('CLI actions', () => {
     const approval = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-dialog'));
     trigger.click();
     /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
-    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
     expect(approval.open).toBe(true);
     expect(approval.querySelector('header button')?.getAttribute('aria-label')).toBe('Close action approval');
-    finish({ result: { ok, exitCode: ok ? 0 : 1, error }, command: { id: 'command-1', status } });
-    await vi.waitFor(() => expect(approval.open).toBe(false));
+    finish({ id: 'command-1', status: 'queued' });
+    await vi.waitFor(() => expect(window.location.hash).toBe('#page-command?command=command-1'));
+    expect(approval.open).toBe(false);
     expect(document.activeElement).toBe(trigger);
     expect(queue.cancel).not.toHaveBeenCalled();
-    expect(document.querySelector('.dashboard-notification-message a')?.getAttribute('href')).toBe('#page-commands');
     root.remove();
+
+    queue.enqueue.mockRejectedValueOnce(new Error('Queue admission unavailable.'));
+    window.location.hash = 'page-maintenance';
+    const failedRoot = renderCliActions([{
+      id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
+    }]);
+    document.body.append(/** @type {HTMLElement} */ (failedRoot));
+    failedRoot?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    failedRoot?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(failedRoot?.querySelector('.cli-action-status')?.textContent).toBe('Queue admission unavailable.'));
+    expect(failedRoot?.querySelector('dialog')?.open).toBe(true);
+    expect(window.location.hash).toBe('#page-maintenance');
+    failedRoot?.remove();
   });
 
   it('requires a fresh confirmation before every execution', async () => {
@@ -464,11 +451,9 @@ describe('CLI actions', () => {
       arguments: { 'pre-releases': true },
       idempotencyKey: expect.any(String)
     });
-    await vi.waitFor(() => expect(root.querySelector('.cli-action-dialog .cli-action-terminal')?.textContent)
-      .toContain('compiled\n'));
-    expect(root.querySelector('.cli-action-terminal')?.getAttribute('aria-label'))
-      .toBe('Read-only command terminal');
-    expect(confirm.hidden).toBe(true);
+    await vi.waitFor(() => expect(window.location.hash).toBe('#page-command?command=command-1'));
+    expect(root.querySelector('.cli-action-terminal')).toBeNull();
+    expect(confirm.disabled).toBe(true);
     confirm.click();
     expect(queue.enqueue).toHaveBeenCalledTimes(1);
 
@@ -574,7 +559,7 @@ describe('CLI actions', () => {
   });
 
   it('logs only scalar metadata under its predictable category when enabled', async () => {
-    queue.attach.mockResolvedValueOnce({ result: { ok: true }, command: { id: 'command-1', status: 'completed' } })
+    queue.enqueue.mockResolvedValueOnce({ id: 'command-1', status: 'queued' })
       .mockRejectedValueOnce(new Error('boom'));
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {
@@ -613,7 +598,7 @@ describe('CLI actions', () => {
     rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
     await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
-      event: 'execute-completed', actionId: 'compile-workflows', ok: true
+      event: 'execute-queued', actionId: 'compile-workflows'
     }));
     expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
       event: 'execute-started', actionId: 'compile-workflows'

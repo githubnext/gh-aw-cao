@@ -7,8 +7,7 @@ import { createFactoryScope } from './factory-elements.js';
 import { effect, state } from '../reactive.js';
 import { assertActionLevel, normalizeAction, actionPresentation } from '../action-model.js';
 import { createDialogSelector } from './dialog-selector.js';
-import { createCliTerminal } from './cli-terminal.js';
-import { enqueueCliCommand, attachCliCommand, cancelCliCommand, cliQueueAvailable, subscribeCanonicalDashboardView } from '../data-processor.js';
+import { enqueueCliCommand, attachCliCommand, cliQueueAvailable, subscribeCanonicalDashboardView } from '../data-processor.js';
 import { publishNotification } from '../notification-service.js';
 
 const debugCliActions = createDebug('cli-actions');
@@ -40,15 +39,13 @@ export function declaredAgentTaskActionId() {
  * @param {(event: { stream: 'stdout'|'stderr', data: string }) => void} onOutput
  * @param {string | undefined} [input]
  * @param {AbortSignal} [signal]
- * @param {(command: { id: string }) => void | Promise<void>} [onEnqueued]
  */
-async function executeAction(id, argumentsValue, templateValues, onOutput, input, signal, onEnqueued) {
+async function executeAction(id, argumentsValue, templateValues, onOutput, input, signal) {
   /** @type {Record<string, unknown>} */
   const payload = { id, arguments: argumentsValue, idempotencyKey: crypto.randomUUID() };
   if (Object.keys(templateValues).length > 0) payload.values = templateValues;
   if (input !== undefined) payload.input = input;
   const command = await enqueueCliCommand(payload, signal);
-  await onEnqueued?.(command);
   const complete = await attachCliCommand(command.id, (event) => onOutput(
     /** @type {{ stream: 'stdout'|'stderr', data: string }} */ (event)
   ), signal);
@@ -56,27 +53,6 @@ async function executeAction(id, argumentsValue, templateValues, onOutput, input
     return { ...complete.result, error: 'Cancelled. Completed changes are not undone.' };
   }
   return complete.result;
-}
-
-/**
- * @param {Parameters<typeof executeAction>[0]} id
- * @param {Parameters<typeof executeAction>[1]} argumentsValue
- * @param {Array<Record<string, string>>} targets
- * @param {Parameters<typeof executeAction>[3]} onOutput
- * @param {AbortSignal} signal
- * @param {NonNullable<Parameters<typeof executeAction>[6]>} onEnqueued
- */
-async function executeActionTargets(id, argumentsValue, targets, onOutput, signal, onEnqueued) {
-  const results = await Promise.allSettled(targets.map((values, index) => executeAction(
-    id, argumentsValue, values,
-    (event) => onOutput({ ...event, data: targets.length > 1 ? `[${index + 1}] ${event.data}` : event.data }),
-    undefined, signal, onEnqueued
-  )));
-  signal.throwIfAborted();
-  const rejected = results.find((result) => result.status === 'rejected');
-  if (rejected?.status === 'rejected') throw rejected.reason;
-  const outcomes = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
-  return outcomes.find((result) => !result.ok) ?? outcomes[0];
 }
 
 /** @param {{ stdout?: string, stderr?: string }} result */
@@ -242,7 +218,6 @@ function renderCliActionControl(action, options = {}) {
     onFallbackClose: () => trigger.focus()
   });
   const close = () => {
-    runController?.abort();
     selector?.cancel();
     closeModal();
   };
@@ -256,38 +231,10 @@ function renderCliActionControl(action, options = {}) {
     trackState: true
   });
   const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'cli-action-status'));
-  const output = h('pre', { className: 'cli-action-output', hidden: true });
-  const inlineOutput = h('div', { className: 'cli-action-terminal-output', hidden: true }, output);
-  /** @type {Awaited<ReturnType<typeof createCliTerminal>> | undefined} */
-  let terminal;
-
   const scope = createFactoryScope();
   const busy = state(false);
   const statusText = state('');
-  const outputVisible = state(false);
-  const cancelling = state(false);
-  /** @type {AbortController | undefined} */
-  let runController;
-  /** @type {string | undefined} */
-  let commandId;
-  const commandIds = new Set(/** @type {string[]} */ ([]));
-  let cancellationRequested = false;
-  const cancelRun = async () => {
-    if (!commandId || cancelling.get()) return;
-    cancellationRequested = true;
-    cancelling.set(true);
-    statusText.set('Cancelling command…');
-    try {
-      await Promise.all([...commandIds].map((id) => cancelCliCommand(id, scope.signal)));
-    } catch (error) {
-      statusText.set(error instanceof Error ? error.message : 'Could not cancel command.');
-    } finally {
-      cancelling.set(false);
-    }
-  };
-  const inlineCancel = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button', className: 'cli-action-cancel', hidden: true, onClick: cancelRun
-  }, 'Cancel command'));
+  const enqueued = state(false);
   const selectionReady = state(!action.selector && !options.batch?.error);
   const selector = action.selector ? createDialogSelector(action.id, action.selector, {
     signal: scope.signal,
@@ -295,7 +242,6 @@ function renderCliActionControl(action, options = {}) {
       const target = action.selector?.mapping.target;
       if (!target) return;
       statusText.set('');
-      outputVisible.set(false);
       if (value === null) delete templateValues[target];
       else templateValues[target] = value;
       try {
@@ -319,63 +265,32 @@ function renderCliActionControl(action, options = {}) {
       type: 'button',
       className: 'cli-action-confirm',
       onClick: async () => {
-        if (busy.get() || outputVisible.get() || !selectionReady.get()) return;
-        const controller = new AbortController();
-        runController = controller;
-        const abort = () => controller.abort();
-        scope.signal.addEventListener('abort', abort, { once: true });
-        cancellationRequested = false;
-        commandIds.clear();
-        cancelling.set(false);
+        if (busy.get() || enqueued.get() || !selectionReady.get()) return;
         busy.set(true);
-        statusText.set('Running…');
-        outputVisible.set(true);
-        cancel.focus();
+        statusText.set('Queuing command…');
         debugCliActions({ event: 'execute-started', actionId: action.id });
         try {
-          if (!terminal) {
-            terminal = await createCliTerminal(scope.signal);
-            output.replaceWith(terminal.root);
-          }
-          terminal.root.hidden = false;
-          controller.signal.throwIfAborted();
-          terminal.write(`$ ${commandPreviewText.get()}\r\n`);
-          let hasOutput = false;
-          const result = await executeActionTargets(action.id, argumentValues, templateTargets, ({ data }) => {
-            hasOutput = true;
-            terminal?.write(data);
-          }, controller.signal, async (queued) => {
-            commandId = queued.id;
-            commandIds.add(queued.id);
-            statusText.set(`Queued: ${queued.id}. Closing detaches; the command continues.`);
-            if (cancellationRequested) await cancelCliCommand(queued.id, scope.signal);
-          });
-          statusText.set(result.ok ? 'Completed' : (result.error || 'Action failed'));
-          if (!hasOutput) terminal.write(resultText(result));
-          const exitStatus = Number.isInteger(result.exitCode) ? ` (exit ${result.exitCode})` : '';
-          terminal.write(`\r\n${result.ok ? 'Completed' : result.error || 'Action failed'}${exitStatus}\r\n`);
-          debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
-          publishNotification({
-            message: `${action.label}: ${result.ok ? 'Completed' : result.error || 'Action failed'}`,
-            href: '#page-commands',
-            tone: result.ok ? 'success' : 'error'
-          });
+          const command = await enqueueCliCommand({
+            id: action.id,
+            arguments: { ...argumentValues },
+            ...(Object.keys(templateValues).length ? { values: { ...templateValues } } : {}),
+            idempotencyKey: crypto.randomUUID()
+          }, scope.signal);
+          if (scope.signal.aborted) return;
+          enqueued.set(true);
+          debugCliActions({ event: 'execute-queued', actionId: action.id });
           close();
+          window.location.hash = `page-command?command=${encodeURIComponent(command.id)}`;
         } catch (error) {
-          const message = controller.signal.aborted
-            ? 'Detached. The command continues in Maintenance → Commands.'
-            : error instanceof Error ? error.message : 'Action failed.';
+          if (scope.signal.aborted) return;
+          const message = error instanceof Error ? error.message : 'Could not queue command.';
           statusText.set(message);
-          terminal?.write(`\r\n${message}\r\n`);
           debugCliActions({
             event: 'execute-failed',
             actionId: action.id,
             errorName: error instanceof Error ? error.name : 'UnknownError'
           });
         } finally {
-          scope.signal.removeEventListener('abort', abort);
-          runController = undefined;
-          cancelling.set(false);
           busy.set(false);
         }
       }
@@ -383,20 +298,12 @@ function renderCliActionControl(action, options = {}) {
   if (options.batch?.error) confirm.disabled = true;
   if (canExecute) {
     effect(() => {
-      dialog.classList.toggle('cli-action-running', busy.get());
-      confirm.hidden = outputVisible.get();
-      confirm.disabled = busy.get() || outputVisible.get() || !selectionReady.get();
-      cancel.disabled = false;
-      cancel.textContent = busy.get() ? 'Detach' : outputVisible.get() ? 'Close' : 'Cancel';
-      for (const { input } of inputs) input.disabled = busy.get() || outputVisible.get();
-      selector?.setDisabled(busy.get() || outputVisible.get());
+      confirm.disabled = busy.get() || enqueued.get() || !selectionReady.get();
+      cancel.disabled = busy.get();
+      for (const { input } of inputs) input.disabled = busy.get();
+      selector?.setDisabled(busy.get());
       status.textContent = statusText.get();
-      output.hidden = !outputVisible.get();
-      if (terminal) terminal.root.hidden = !outputVisible.get();
       confirm.textContent = confirmationLabel;
-      inlineCancel.hidden = !busy.get();
-      inlineCancel.disabled = cancelling.get();
-      inlineOutput.hidden = !outputVisible.get();
     }, { signal: scope.signal });
   }
   trigger = /** @type {HTMLButtonElement} */ (h(
@@ -439,10 +346,8 @@ function renderCliActionControl(action, options = {}) {
         }
         copyControl?.reset();
         if (canExecute) {
-          commandId = undefined;
           statusText.set('');
-          outputVisible.set(false);
-          if (terminal) terminal.root.hidden = true;
+          enqueued.set(false);
         }
         resetArguments();
         selector?.reset();
@@ -500,13 +405,11 @@ function renderCliActionControl(action, options = {}) {
           ]
           : 'This command is declared as read-only investigation. Review its exact target and command before running.'
         : 'Copy this command and run it in your terminal.'),
-      command,
-      canExecute ? inlineOutput : null
+      command
     ),
-    h('footer', { className: 'cli-action-dialog-footer' }, status, inlineCancel, cancel, confirm)
+    h('footer', { className: 'cli-action-dialog-footer' }, status, cancel, confirm)
   );
   dialog.addEventListener('close', () => {
-    runController?.abort();
     selector?.cancel();
     trigger.focus();
   });

@@ -192,7 +192,12 @@ export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrig
           sendJson(response, 200, {
             ...result,
             commands: result.commands.map(({ input: _input, stdout: _stdout, stderr: _stderr,
-              arguments: _arguments, values: _values, ...summary }) => summary),
+              arguments: _arguments, values = {}, ...summary }) => ({
+              ...summary,
+              repository: values.repository,
+              campaign: values.campaign,
+              "package-source": values["package-source"],
+            })),
           });
         } else response.writeHead(405, { Allow: legacy ? "POST" : "GET, POST" }).end();
         return true;

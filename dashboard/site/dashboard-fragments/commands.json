@@ -8,9 +8,11 @@
       "from": "cli-commands",
       "compute": [
         { "as": "command-action", "function": "coalesce", "args": [{ "field": "actionId" }, { "value": "" }] },
+        { "as": "command-title", "function": "coalesce", "args": [{ "field": "command" }, { "field": "actionId" }] },
+        { "as": "command-target", "function": "coalesce", "args": [{ "field": "repository" }, { "field": "campaign" }, { "field": "package-source" }, { "value": "Local control repository" }] },
         { "as": "command-created-at", "function": "coalesce", "args": [{ "field": "createdAt" }, { "value": null }] },
         { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
-        { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
+        { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "command-title" }, { "field": "id" }] }
       ]
     }
   ],
@@ -27,9 +29,11 @@
         {
           "id": "commands-history",
           "title": "Command queue",
+          "show-title": false,
           "description": "Lazy-loaded command cards with persistent status and replayable output. Filters and pages execute on the local server through the data worker.",
           "data": { "source": "command-queue", "query-context": false },
           "mark": "table",
+          "prompt": "none",
           "controls": "filter-only",
           "layout": "full",
           "lazy-list": true,
@@ -50,7 +54,9 @@
             "card": "command",
             "href": { "field": "command-dashboard-link" },
             "columns": [
-              { "field": "id", "type": "nominal", "title": "Command" },
+              { "field": "command-title", "type": "nominal", "title": "Command" },
+              { "field": "command-target", "type": "nominal", "title": "Target" },
+              { "field": "id", "type": "nominal", "title": "Command ID" },
               { "field": "command-action", "type": "nominal", "title": "Action" },
               { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
               { "field": "command-created-at", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
@@ -65,6 +71,7 @@
       "kind": "custom",
       "title": "Command output",
       "icon": "terminal",
+      "description": "Approved commands open here as a full-page console. Use Back to Commands to leave; completion never closes the view or cancels the command.",
       "route": { "hash-query-parameter": "command", "navigation-page": "commands" },
       "filter-bar": false,
       "view-mode-control": false,
@@ -72,9 +79,11 @@
         {
           "id": "command-terminal",
           "title": "Command output",
-          "description": "Interaction-only terminal replay, explicit cancellation and retry cannot be expressed by evidence marks. Lifecycle and streamed output use worker transport; closing or navigating away only detaches.",
+          "description": "Edge-to-edge terminal replay with command and status in the view title and subtitle, dashboard Back navigation, and floating cancellation. Interaction-only streaming, explicit cancellation and retry use worker transport; navigating away only detaches.",
+          "show-title": false,
           "data": { "sources": [] },
           "mark": "element",
+          "layout": "full-view",
           "element": "command-terminal"
         }
       ]

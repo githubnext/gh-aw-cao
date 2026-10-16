@@ -90,6 +90,9 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .dashboard-full-view .report-footer,
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > :is(h2, h3, h4) { display: none; }
 .dashboard-full-view main.dashboard-prototype { overflow: hidden; padding: 0 var(--dashboard-page-padding-inline); scrollbar-gutter: auto; }
+.dashboard-full-view main.dashboard-prototype:has(.command-terminal) { padding: 0; }
+.dashboard-full-view .custom-view-grid > .custom-view.command-terminal { padding: 0; }
+.dashboard-root:has(.command-terminal) .overview-header .lede { display: block; visibility: visible; }
 .dashboard-full-view :is(.report-body, .dashboard-pages, .dashboard-page:not([hidden]), .custom-view-grid) { height: 100%; min-height: 0; }
 .dashboard-full-view .dashboard-page[data-view-mode]:not([hidden]) { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .dashboard-full-view .dashboard-page[data-view-mode] > .page-chrome { padding-top: 12px; margin-bottom: 0; }

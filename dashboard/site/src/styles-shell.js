@@ -261,9 +261,13 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .cli-action-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .cli-action-dialog-header h2 { margin: 0; font-size: 1rem; }
-.command-console-heading { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.command-console-heading output { display: block; color: var(--muted); font-size: 0.85rem; }
-.command-terminal .cli-action-dialog-close { flex-shrink: 0; }
+.command-terminal { position: relative; min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.command-terminal > .cli-action-dialog-body { min-height: 0; flex: 1; padding: 0; overflow: hidden; }
+.command-terminal .cli-action-terminal-output { min-height: 0; height: 100%; }
+.command-terminal .cli-action-terminal { min-height: 0; height: 100%; border: 0; border-radius: 0; }
+.command-terminal-actions { position: absolute; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; }
+.command-terminal-actions[hidden] { display: none; }
+.command-terminal-actions > button { min-height: 44px; box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .cli-action-dialog-close { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .cli-action-dialog-close:hover { background: var(--neutral-muted); color: var(--fg); }
 .cli-action-dialog-body { min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; overflow-y: auto; line-height: 1.5; }

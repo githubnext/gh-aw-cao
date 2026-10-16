@@ -15,8 +15,19 @@ describe('worker command queue', () => {
     expect(commands.pages[0].views).toHaveLength(1);
     expect(commands.pages[0].views[0]).toMatchObject({
       id: 'commands-history', mark: 'table', layout: 'full', 'lazy-list': true,
+      'show-title': false,
+      prompt: 'none',
       controls: 'filter-only', 'column-summaries': false,
       'card-drill': { type: 'external', field: 'command-dashboard-link' }
+    });
+  });
+
+  it('declares full-view command output with Commands as its Back navigation parent', () => {
+    expect(commands.pages[1].route).toEqual({
+      'hash-query-parameter': 'command', 'navigation-page': 'commands'
+    });
+    expect(commands.pages[1].views[0]).toMatchObject({
+      id: 'command-terminal', element: 'command-terminal', layout: 'full-view'
     });
   });
 
@@ -106,7 +117,10 @@ describe('worker command queue', () => {
   it('compiles the production history view over numeric command identities and epoch timestamps', async () => {
     configureCliQueue(true);
     const fetch = vi.fn().mockResolvedValue(Response.json({
-      commands: [{ id: 42, actionId: 'compile', status: 'running', createdAt: 1792022400000 }],
+      commands: [{
+        id: 42, actionId: 'compile', command: 'gh aw upgrade --repo octo/repo --force',
+        repository: 'octo/repo', status: 'running', createdAt: 1792022400000
+      }],
       total: 1, running: 1, revision: 20
     }));
     vi.stubGlobal('fetch', fetch);
@@ -120,8 +134,29 @@ describe('worker command queue', () => {
     expect(output.rows).toHaveLength(1);
     expect(output.rows[0]).toMatchObject({
       status: 'running', createdAt: '2026-10-15T00:00:00.000Z',
-      'command-dashboard-link': { 'dashboard-href': '#page-command?command=42' }
+      'command-title': 'gh aw upgrade --repo octo/repo --force',
+      'command-target': 'octo/repo',
+      'command-dashboard-link': {
+        'dashboard-href': '#page-command?command=42',
+        'dashboard-label': 'gh aw upgrade --repo octo/repo --force'
+      }
     });
+  });
+
+  it.each([
+    [{ campaign: 'maintenance' }, 'maintenance'],
+    [{ 'package-source': 'owner/catalog/pkg' }, 'owner/catalog/pkg'],
+    [{}, 'Local control repository']
+  ])('resolves the declared target from %j', async (target, expected) => {
+    configureCliQueue(true);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({
+      commands: [{ id: 1, actionId: 'compile', command: 'gh aw compile', ...target }],
+      total: 1, running: 0, revision: 1
+    })));
+    const result = await queryCliQueue({
+      sourceNames: ['command-queue'], context: { pages: [], queries: commands.queries }
+    });
+    expect(result['command-queue'].rows[0]['command-target']).toBe(expected);
   });
 
   it('enqueues only declared action arguments and returns a durable ID through worker dispatch', async () => {

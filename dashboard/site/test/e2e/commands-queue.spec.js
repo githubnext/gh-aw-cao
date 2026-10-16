@@ -59,20 +59,29 @@ for (const width of [1440, 390]) {
       await approval.getByRole('button', { name: 'octo/example', exact: true }).click();
       await approval.getByRole('button', { name: 'Add repository', exact: true }).click();
       await expect.poll(() => runs).toBe(1);
-      await approval.getByRole('button', { name: 'Detach', exact: true }).click();
+      const back = page.getByRole('button', { name: 'Back to Commands', exact: true });
+      await expect(page.getByRole('region', { name: 'Command console log', exact: true })).toBeVisible();
+      await back.click();
       await expect(approval).not.toBeVisible();
       expect(cancellations).toBe(0);
 
-      if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
-      await page.getByRole('link', { name: 'Commands', exact: true }).last().click();
       const history = page.locator('[data-view-id="commands-history"]');
+      await expect(history.getByRole('heading', { name: 'Command queue', exact: true })).not.toBeVisible();
       await expect(page.locator('[data-view-id="commands-admission"]')).toHaveCount(0);
       await expect(history).toHaveAttribute('data-view-layout', 'full');
       await expect(history).toHaveAttribute('data-view-lazy-list', '');
       await expect(history.locator('.table-card-list')).toBeVisible();
+      await expect(history.locator('.entity-card-list-badge')).toHaveCount(0);
+      await expect(history.locator('.table-intent-button')).toHaveCount(0);
       await expect(history.getByRole('table')).toHaveCount(0);
       await expect(history).toContainText('running');
-      const command = history.getByRole('link', { name: /^\d+$/ }).first();
+      await expect(history).toContainText('octo/example');
+      const command = history.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true }).first();
+      await expect(command).toBeVisible();
+      const queuedTime = history.locator('time').first();
+      await expect(queuedTime).toBeVisible();
+      await expect(queuedTime).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/);
+      expect(await queuedTime.innerText()).not.toMatch(/^\d{4}-\d{2}-\d{2}T/);
       const commandHref = await command.getAttribute('href');
       expect(commandHref).toContain('#page-command?command=');
       finish?.();
@@ -83,36 +92,56 @@ for (const width of [1440, 390]) {
       await testInfo.attach(`commands-${width}`, { path: screenshot, contentType: 'image/png' });
 
       await command.click();
-      const consoleDialog = page.getByRole('dialog', { name: 'Command console log', exact: true });
-      await expect(consoleDialog).toBeVisible();
-      const chromeFits = await consoleDialog.locator('.cli-action-dialog-header').evaluate((header) => {
-        const close = header.querySelector('.cli-action-dialog-close');
-        if (!close) return false;
-        const bounds = close.getBoundingClientRect();
-        return bounds.width >= 28 && bounds.left >= 0 && bounds.right <= window.innerWidth
-          && header.scrollWidth <= header.clientWidth;
+      const consoleView = page.getByRole('region', { name: 'Command console log', exact: true });
+      await expect(consoleView).toBeVisible();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.locator('[data-view-id="command-terminal"]')).toHaveAttribute('data-view-layout', 'full-view');
+      await expect(back).toBeVisible();
+      const chromeFits = await back.evaluate((button) => {
+        const bounds = button.getBoundingClientRect();
+        return bounds.width >= 28 && bounds.left >= 0 && bounds.right <= window.innerWidth;
       });
       expect(chromeFits).toBe(true);
       const terminal = page.getByRole('region', { name: 'Read-only command terminal' });
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
       await page.reload();
-      await expect(consoleDialog).toBeVisible();
+      await expect(consoleView).toBeVisible();
       await expect(page.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
-      await consoleDialog.getByRole('button', { name: 'Reconnect output', exact: true }).click();
+      await expect(consoleView.getByRole('button', { name: 'Reconnect output', exact: true })).toHaveCount(0);
+      await expect(consoleView.getByRole('button', { name: 'Back to Commands', exact: true })).toHaveCount(0);
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
       const terminalScreenshot = testInfo.outputPath(`commands-console-${width}.png`);
       await page.screenshot({ path: terminalScreenshot, fullPage: true });
       await testInfo.attach(`commands-console-${width}`, { path: terminalScreenshot, contentType: 'image/png' });
-      await consoleDialog.getByRole('button', { name: 'Close command console', exact: true }).click();
+      await back.click();
       await expect(page).toHaveURL(/#page-commands$/);
-      await expect(consoleDialog).not.toBeVisible();
+      await expect(consoleView).not.toBeVisible();
       await expect(history).toContainText('completed');
-      await history.getByRole('link', { name: /^\d+$/ }).first().click();
-      await expect(consoleDialog).toBeVisible();
-      await page.keyboard.press('Escape');
+      await history.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true }).first().click();
+      await expect(consoleView).toBeVisible();
+      await back.click();
       await expect(page).toHaveURL(/#page-commands$/);
       expect(runs).toBe(1);
+      expect(cancellations).toBe(0);
+
+      await page.goto(`${preview.url}/#page-maintenance`);
+      await page.getByRole('button', { name: 'Add repository', exact: true }).click();
+      await approval.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
+      await approval.getByRole('button', { name: 'octo/example', exact: true }).click();
+      await approval.getByRole('button', { name: 'Add repository', exact: true }).click();
+      await expect.poll(() => runs).toBe(2);
+      finish?.();
+      await expect(consoleView).toBeVisible();
+      await expect(consoleView.getByRole('status')).toContainText('completed');
+      await expect(page).toHaveURL(/#page-command\?command=\d+$/);
+      await expect(back).toBeVisible();
+      await expect(consoleView.getByRole('button', { name: 'Cancel command', exact: true })).not.toBeVisible();
+      const completedScreenshot = testInfo.outputPath(`commands-completed-${width}.png`);
+      await page.screenshot({ path: completedScreenshot, fullPage: true });
+      await testInfo.attach(`commands-completed-${width}`, { path: completedScreenshot, contentType: 'image/png' });
+      await back.click();
+      await expect(consoleView).not.toBeVisible();
       expect(cancellations).toBe(0);
     } catch (error) {
       await testInfo.attach('commands-failure-content', {

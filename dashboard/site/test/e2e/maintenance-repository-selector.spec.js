@@ -21,6 +21,8 @@ for (const { width, height = 900, empty = false, crowded = false } of [
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', canvas: true, port: 0,
+      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
       lookupSelector: async (/** @type {{ id: string, selector: { query: { limit: number } } }} */ action, /** @type {string} */ text) => {
         calls.push({ id: action.id, text });
@@ -100,6 +102,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
               return {
                 left: box.left, right: box.right, width: box.width, height: box.height,
                 name: button.getAttribute('aria-label'), title: button.getAttribute('title'),
+                disabled: button.hasAttribute('disabled'),
                 labelDisplay: copy ? getComputedStyle(copy).display : null
               };
             })
@@ -115,7 +118,9 @@ for (const { width, height = 900, empty = false, crowded = false } of [
           expect(button.left).toBeGreaterThanOrEqual(geometry.left);
           expect(button.right).toBeLessThanOrEqual(geometry.right);
           expect(button.name).toBeTruthy();
-          expect(button.title).toBe(button.name);
+          expect(button.title).toBe(button.disabled
+            ? 'The complete target list is unavailable. No commands can be approved.'
+            : button.name);
           if (geometry.description) expect(geometry.description.right).toBeLessThanOrEqual(button.left);
           if (width <= 700) {
             expect(button.width).toBe(44);
@@ -221,11 +226,13 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       await page.screenshot({ path: testInfo.outputPath(`repository-selector-${width}.png`), fullPage: true });
       await testInfo.attach(`repository-selector-${width}`, { path: testInfo.outputPath(`repository-selector-${width}.png`), contentType: 'image/png' });
       await confirm.click();
-      await expect(dialog.locator('.cli-action-status')).toHaveText('Completed');
+      const consoleView = page.getByRole('region', { name: 'Command console log', exact: true });
+      await expect(consoleView).toBeVisible();
+      await expect(consoleView.getByRole('status')).toContainText('completed');
       expect(approvals).toEqual(['./cao.sh add --repository octo/example']);
       expect(executions).toEqual(approvals);
-      await dialog.getByRole('button', { name: 'Close action approval' }).click();
-      await expect(add).toBeFocused();
+      await page.getByRole('button', { name: 'Back to Commands', exact: true }).click();
+      await page.goto(`${preview.url}/#page-maintenance`);
       await add.click();
       await expect(confirm).toBeDisabled();
       await expect(input).toHaveValue('');

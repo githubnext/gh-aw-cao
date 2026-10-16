@@ -23,13 +23,16 @@
       {
         "id": "command",
         "icon": "terminal",
-        "title": { "field": "id", "title": "Command" },
-        "subtitle": { "field": "command-action", "title": "Action" },
+        "title": { "field": "command-title", "title": "Command" },
+        "subtitle": { "field": "command-target", "title": "Target" },
         "status": { "field": "status", "title": "Status" },
-        "labels": [{ "field": "status", "title": "Status", "display": "status" }],
+        "labels": [],
         "details": [
-          { "field": "command-created-at", "title": "Queued", "format": "human-friendly-timestamp" },
+          { "field": "id", "title": "Command ID" },
           { "field": "error", "title": "Reason" }
+        ],
+        "timing": [
+          { "field": "command-created-at", "title": "Queued", "type": "temporal", "format": "human-friendly-timestamp", "icon": "clock" }
         ]
       },
       {
