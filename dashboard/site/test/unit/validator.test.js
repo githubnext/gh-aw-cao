@@ -970,7 +970,7 @@ describe('dashboard document validation', () => {
         y: {
           field: 'blocked',
           type: 'quantitative',
-          title: 'Blocked requests'
+          title: 'Blocked'
         }
       }
     });
