@@ -126,6 +126,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .mobile-nav-menu-actions .report-actions > .filter-bar { width: 100%; margin: 0; }
   .mobile-nav-menu-actions .dashboard-horizon { width: 100%; max-width: 100%; padding-right: 0; border-right: 0; }
   .mobile-nav-menu-actions .horizon-summary { width: 100%; position: static; }
+  .mobile-nav-menu-actions .dashboard-horizon.filter-bar-expanded > .filter-tuning-controls { position: static; width: 100%; max-height: none; overflow: visible; padding: 8px; box-shadow: none; }
   .mobile-nav-menu-actions .horizon-tooltip { top: calc(100% + 4px); right: 0; left: auto; }
   .mobile-nav-menu-actions .account-menu { width: 100%; }
   .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 32px; display: flex; flex: none; align-items: center; justify-content: flex-start; place-items: unset; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font-weight: 500; text-align: left; }
@@ -181,10 +182,11 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .horizon-details-values { justify-content: flex-start; flex-wrap: wrap; }
   .filter-bar-expanded .time-window-control { display: grid; flex: 1 1 100%; grid-template-columns: minmax(0, 1fr); min-width: 0; }
   .time-window-control label { min-height: 44px; }
-  .mode-filter-control { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mode-filter-control { display: flex; flex-wrap: wrap; }
   .time-window-control :is(select, input) { width: 100%; }
   .mode-filter-control input { width: auto; }
-  .time-window-control > button { min-height: 44px; }
+  .time-window-custom { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .time-window-custom > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
   .app-main:has(.dashboard-overview-page:not([hidden])) { min-height: 100vh; min-height: 100dvh; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }

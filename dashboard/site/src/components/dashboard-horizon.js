@@ -3,6 +3,7 @@ import { effect, state } from '../reactive.js';
 import { octicon } from '../octicons.js';
 import { renderActionLabel, renderLabeledSpan, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
+import { renderFilterBar } from './filter-bar.js';
 
 const debugDashboardHorizon = createDebug('dashboard-horizon');
 
@@ -20,6 +21,9 @@ const debugDashboardHorizon = createDebug('dashboard-horizon');
  * @param {{
  *   dashboard: import('../presenter.js').PresentableDashboard,
  *   initialValue: HorizonViewModel,
+ *   defaultRange?: string,
+ *   referenceEnd?: string,
+ *   onChange?: (filters: Map<string, string[]>, timeWindow?: import('./filter-bar.js').TimeWindow) => void,
  *   formatDate: (value: string) => string
  * }} options
  * @returns {{
@@ -60,8 +64,9 @@ export function renderDashboardHorizon(options) {
     contentClassName: 'horizon-tooltip'
   });
   const details = h(
-    'div',
+    'details',
     { className: 'horizon-details', role: 'group', 'aria-label': 'Horizon details' },
+    h('summary', null, 'Coverage details'),
     h(
       'span',
       { className: 'horizon-details-description' },
@@ -75,43 +80,36 @@ export function renderDashboardHorizon(options) {
       renderLabeledSpan('Duration', durationValue)
     )
   );
-  const root = h('div', { className: 'dashboard-horizon' }, skeleton);
+  const root = renderFilterBar((filters, timeWindow) => {
+    if (!lifetime.signal.aborted) options.onChange?.(filters, timeWindow);
+  }, {
+    defaultRange: options.defaultRange,
+    referenceEnd: options.referenceEnd,
+    signal: lifetime.signal,
+    showFilters: false,
+    maxDays: 30
+  });
+  root.classList.add('dashboard-horizon');
+  root.prepend(skeleton, content);
+  root.querySelector('.filter-tuning-controls')?.append(details);
   let wasAvailable = false;
-  const expanded = state(false);
   toggle.addEventListener('click', () => {
-    expanded.set((current) => !current);
-  }, { signal: lifetime.signal });
-  root.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !expanded.get()) return;
-    expanded.set(false);
-    toggle.focus();
-    event.stopPropagation();
-  }, { signal: lifetime.signal });
-  effect(() => {
-    const isExpanded = expanded.get();
-    toggle.setAttribute('aria-expanded', String(isExpanded));
-    root.classList.toggle('filter-bar-expanded', isExpanded);
-    const dashboardRoot = root.closest('.dashboard-root');
-    const activeFilterBar = dashboardRoot?.querySelector('.dashboard-page:not([hidden]) > .page-chrome > .filter-bar');
-    if (activeFilterBar instanceof HTMLElement) {
-      activeFilterBar.classList.toggle('filter-bar-expanded', isExpanded);
-    }
-    debugDashboardHorizon({ event: 'toggled', expanded: isExpanded });
+    debugDashboardHorizon({ event: 'toggled', expanded: toggle.getAttribute('aria-expanded') !== 'true' });
   }, { signal: lifetime.signal });
 
   effect(() => {
     const current = value.get();
     root.classList.toggle('dashboard-horizon-skeleton', !current.available);
+    skeleton.hidden = current.available;
+    content.hidden = !current.available;
     if (!current.available) {
       root.setAttribute('aria-label', 'Horizon unavailable');
       root.removeAttribute('data-dashboard-evaluated-at');
-      if (root.firstElementChild !== skeleton) root.replaceChildren(skeleton);
       return;
     }
 
     root.removeAttribute('aria-label');
     root.dataset.dashboardEvaluatedAt = current.evaluatedAt;
-    if (root.firstElementChild !== content) root.replaceChildren(content, details);
     if (!wasAvailable) {
       wasAvailable = true;
       debugDashboardHorizon({ event: 'resolved', duration: current.duration });
@@ -147,7 +145,7 @@ export function renderDashboardHorizon(options) {
       });
     },
     collapse() {
-      expanded.set(false);
+      root.dispatchEvent(new Event('dashboard-horizon-collapse'));
     },
     dispose() {
       lifetime.abort();

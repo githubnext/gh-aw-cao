@@ -218,7 +218,14 @@ export function renderDashboard(input) {
   const dashboardHorizon = renderDashboardHorizon({
     dashboard: document.dashboard,
     initialValue: resolveDashboardHorizonViewModel(rawSources, dashboardDefaults, horizonRange, evaluatedAt),
-    formatDate: formatReportDate
+    formatDate: formatReportDate,
+    defaultRange: horizonRange,
+    referenceEnd: evaluatedAt,
+    onChange: (filters, timeWindow) => {
+      root.dispatchEvent(new CustomEvent('dashboard-horizon-filters-change', {
+        detail: { filters: Object.fromEntries(filters), timeWindow }
+      }));
+    }
   });
 
   const styleEl = h('style', null, getPrimerStyles());
@@ -1261,6 +1268,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       currentTimeWindow = timeWindow;
       dispatchQueryContextChange(currentFilters, currentTimeWindow, selectedViewMode);
     }, {
+      restoreSettings: false,
+      signal: binding?.signal,
+      maxDays: 30,
       defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string'
         ? dashboardDefaults.time.range
         : 'all',
@@ -1525,6 +1535,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   /** @type {Map<string, NonNullable<PageSourceLoadOptions['queryContext']>>} */
   const pageQueryContext = new Map();
+  /** @type {Pick<NonNullable<PageSourceLoadOptions['queryContext']>, 'filters' | 'timeWindow'> | undefined} */
+  let horizonQueryContext;
   let pendingQueryFocusId = '';
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
   const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
@@ -1771,7 +1783,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     activePageId = pageId;
     const routeParameters = Object.fromEntries([...parameters.entries()].map(([key, value]) => [key, value]));
-    const queryContext = pageQueryContext.get(pageId);
+    const queryContext = horizonQueryContext
+      ? {
+          ...pageQueryContext.get(pageId),
+          ...horizonQueryContext,
+          timeWindow: pageId === 'readiness' ? undefined : horizonQueryContext.timeWindow
+        }
+      : pageQueryContext.get(pageId);
     const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId);
     const pendingPage = pages[pageIndex];
     const pendingRouteParameter = pendingPage?.dataset.routeParameter ?? '';
@@ -2126,6 +2144,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!pageId || pageId !== activePageId || !availableIds.has(pageId)) return;
     const nextContext = normalizeDashboardQueryContext(detail.queryContext);
     if (sameDashboardQueryContext(pageQueryContext.get(pageId), nextContext)) return;
+    if (horizonQueryContext) horizonQueryContext.filters = nextContext?.filters;
     const focused = root.ownerDocument.activeElement;
     pendingQueryFocusId = focused instanceof HTMLElement && root.contains(focused) ? focused.id : '';
     if (nextContext) pageQueryContext.set(pageId, nextContext);
@@ -2133,6 +2152,24 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pages.find((page) => page.dataset.pageId === pageId)?.setAttribute('data-page-pending', '');
     const route = routeFromHash();
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
+  }, { signal: navigationOwner.signal });
+  root.addEventListener('dashboard-horizon-filters-change', (event) => {
+    if (!(event instanceof CustomEvent) || !activePageId) return;
+    horizonQueryContext = {
+      filters: event.detail.filters,
+      timeWindow: event.detail.timeWindow
+    };
+    for (const page of pages) page.setAttribute('data-page-pending', '');
+    root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+      detail: {
+        pageId: activePageId,
+        queryContext: {
+          ...pageQueryContext.get(activePageId),
+          timeWindow: activePageId === 'readiness' ? undefined : horizonQueryContext.timeWindow,
+          filters: event.detail.filters
+        }
+      }
+    }));
   }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-retry-page', () => {
     const route = routeFromHash();

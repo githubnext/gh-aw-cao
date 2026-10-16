@@ -39,6 +39,93 @@ describe('time-window filter bar', () => {
     });
   });
 
+  it('cancels pending filter updates and stops interaction when its owner is disposed', async () => {
+    const lifetime = new AbortController();
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { signal: lifetime.signal });
+    document.body.append(filterBar);
+    const search = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
+    search.value = 'repository:api';
+    search.dispatchEvent(new Event('input'));
+    lifetime.abort();
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    select.value = '30d';
+    select.dispatchEvent(new Event('change'));
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').range).toBeUndefined();
+  });
+
+  it.each(['1h', '6h', '24h', '3d', '1w', '2w', '4w', '30d'])(
+    'applies and restores the %s preset without exposing custom date inputs',
+    async (range) => {
+      const onChange = vi.fn();
+      const filterBar = renderFilterBar(onChange, { referenceEnd: '2026-10-16T12:00:00Z' });
+      document.body.append(filterBar);
+      setTimeWindowRange(range, filterBar);
+
+      expect(onChange).toHaveBeenLastCalledWith(
+        new Map([['mode', ['review', 'live', 'unknown']]]),
+        relativeTimeWindow(range, '2026-10-16T12:00:00Z')
+      );
+      expect(filterBar.querySelector('.time-window-custom')?.hasAttribute('hidden')).toBe(true);
+      const restored = renderFilterBar(vi.fn());
+      expect(/** @type {HTMLSelectElement} */ (
+        restored.querySelector('[aria-label="Time window"]')
+      ).value).toBe(range);
+      await Promise.resolve();
+    }
+  );
+
+  it('only exposes custom dates for a custom range', () => {
+    const filterBar = renderFilterBar(vi.fn(), { defaultRange: '1w' });
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    const custom = filterBar.querySelector('.time-window-custom');
+    select.value = 'custom';
+    select.dispatchEvent(new Event('change'));
+    expect(custom?.hasAttribute('hidden')).toBe(false);
+    select.value = 'all';
+    select.dispatchEvent(new Event('change'));
+    expect(custom?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('keeps page search settings when changing the compact horizon picker', () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { showFilters: false });
+    document.body.append(filterBar);
+    expect(filterBar.querySelector('[aria-label="Current filters"]')).toBeNull();
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ filters: 'run:month' }));
+
+    setTimeWindowRange('30d', filterBar);
+    expect(onChange.mock.calls.at(-1)?.[0]).toEqual(
+      new Map([['run', ['month']], ['mode', ['review', 'live', 'unknown']]])
+    );
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').filters).toBe('run:month');
+  });
+
+  it.each(['all', '90d', '180d', '365d'])('caps a persisted %s horizon at 30 days', async (range) => {
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range }));
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { maxDays: 30, defaultRange: '1w' });
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    expect(select.value).toBe('30d');
+    expect([...select.options].map((option) => option.value)).not.toContain('all');
+    await Promise.resolve();
+    const selected = onChange.mock.calls.at(-1)?.[1];
+    expect(Date.parse(selected.end) - Date.parse(selected.start)).toBe(30 * 86_400_000);
+  });
+
+  it('rejects custom horizons over 30 days and accepts exactly 30 days', () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { maxDays: 30, defaultRange: '1w' });
+    setTimeWindowFilter('2026-09-01T00:00:00Z', '2026-10-02T00:00:00Z', filterBar);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(filterBar.querySelector('[role="alert"]')?.textContent).toContain('no more than 30 days');
+    expect(filterBar.querySelector('[aria-invalid="true"]')).not.toBeNull();
+    setTimeWindowFilter('2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z', filterBar);
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
   describe('view-mode control', () => {
     it('keeps mode labels ordered and supports consistent keyboard navigation', () => {
       const onChange = vi.fn();
@@ -195,6 +282,10 @@ describe('time-window filter bar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false);
     expect(collapseDashboardHorizon).toHaveBeenCalledOnce();
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(filterBar.classList.contains('filter-bar-expanded')).toBe(true);
   });
 
   it('reports no active time filter by default', () => {

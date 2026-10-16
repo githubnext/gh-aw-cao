@@ -21,7 +21,7 @@ export const HORIZON_FILTER_STORAGE_KEY = scopedStorageKey('central-agentic-ops.
 
 /**
  * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow) => void} onChange
- * @param {{ defaultRange?: string, referenceEnd?: string }} [options]
+ * @param {{ defaultRange?: string, referenceEnd?: string, signal?: AbortSignal, restoreSettings?: boolean, showFilters?: boolean, maxDays?: number }} [options]
  * @returns {HTMLElement}
  */
 export function renderFilterBar(onChange, options = {}) {
@@ -42,26 +42,32 @@ export function renderFilterBar(onChange, options = {}) {
     const currentCount = filterCount.get();
     count.textContent = String(currentCount);
     count.setAttribute('aria-label', `${currentCount} filters`);
-  });
+  }, { signal: options.signal });
   const applyFilters = debounce(onChange, FILTER_DEBOUNCE_MS);
+  options.signal?.addEventListener('abort', () => applyFilters.cancel(), { once: true });
   /** @type {ReturnType<typeof renderHorizonControl>} */
   let horizonControl;
   const emit = () => {
     applyFilters.cancel();
+    if (!horizonControl.valid()) return;
+    if (options.showFilters === false) {
+      const savedFilters = readHorizonSettings().filters;
+      filters.value = typeof savedFilters === 'string' ? savedFilters : '';
+    }
     stripModeTokens();
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
     onChange(parsed, horizonControl.value());
   };
-  horizonControl = renderHorizonControl(options.defaultRange ?? ALL_RECORDED, options.referenceEnd, emit);
+  horizonControl = renderHorizonControl(options.defaultRange ?? ALL_RECORDED, options.referenceEnd, emit, options.signal, options.maxDays);
   const root = h(
     'div',
     { className: 'toolbar filter-bar', 'aria-label': 'Dashboard filters' },
     h(
       'div',
       { className: 'filter-tuning-controls' },
-      h(
+      options.showFilters === false ? null : h(
         'div',
         { className: 'filter-control' },
         filters,
@@ -79,26 +85,28 @@ export function renderFilterBar(onChange, options = {}) {
     const isExpanded = expanded.get();
     root.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', String(isExpanded));
     root.classList.toggle('filter-bar-expanded', isExpanded);
-  });
+  }, { signal: options.signal });
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element) || !event.target.closest('.horizon-toggle')) return;
     expanded.set((current) => !current);
-  });
+  }, { signal: options.signal });
   root.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !expanded.get()) return;
     const toggle = root.querySelector('.horizon-toggle');
     expanded.set(false);
     if (toggle instanceof HTMLElement) toggle.focus();
     event.stopPropagation();
-  });
+  }, { signal: options.signal });
+  root.addEventListener('dashboard-horizon-collapse', () => expanded.set(false), { signal: options.signal });
   filters.addEventListener('input', () => {
+    if (!horizonControl.valid()) return;
     stripModeTokens();
     persistFilterText(filters.value);
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
     applyFilters(parsed, horizonControl.value());
-  });
+  }, { signal: options.signal });
   /** Strips `mode:` / `rollout-mode:` tokens from the freeform filter input, since applied
    * mode values always come from the horizon control's checkboxes, not this text field. */
   function stripModeTokens() {
@@ -136,7 +144,9 @@ export function renderFilterBar(onChange, options = {}) {
   const hasCustomizedSettings = filters.value.length > 0
     || (typeof persisted.range === 'string' && persisted.range !== (options.defaultRange ?? ALL_RECORDED))
     || hasModeOverride;
-  if (hasCustomizedSettings) queueMicrotask(emit);
+  if (hasCustomizedSettings && options.restoreSettings !== false) queueMicrotask(() => {
+    if (!options.signal?.aborted) emit();
+  });
   return root;
 }
 
@@ -197,6 +207,7 @@ export function enableHorizonOutsideClickDismissal(root, collapseDashboardHorizo
       .filter((element) => element instanceof HTMLElement);
     if (expanded.length === 0 || expanded.some((element) => element.contains(target))) return;
     for (const element of expanded) {
+      element.dispatchEvent(new Event('dashboard-horizon-collapse'));
       element.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
       element.classList.remove('filter-bar-expanded');
     }
@@ -208,19 +219,22 @@ export function enableHorizonOutsideClickDismissal(root, collapseDashboardHorizo
  * @param {string} defaultRange
  * @param {string | undefined} referenceEnd
  * @param {() => void} onChange
+ * @param {AbortSignal} [signal]
+ * @param {number} [maxDays]
  */
-function renderHorizonControl(defaultRange, referenceEnd, onChange) {
+function renderHorizonControl(defaultRange, referenceEnd, onChange, signal, maxDays) {
   const persisted = readHorizonSettings();
   let range = typeof persisted.range === 'string' ? persisted.range : defaultRange;
   if (range === 'All recorded') range = ALL_RECORDED;
   if (!TIME_RANGE_OPTIONS.includes(range) && range !== 'custom' && range !== ALL_RECORDED) range = ALL_RECORDED;
+  if (maxDays && range === ALL_RECORDED) range = '30d';
+  const persistedStart = typeof persisted.start === 'string' ? persisted.start : null;
+  const persistedEnd = typeof persisted.end === 'string' ? persisted.end : null;
+  if (range === 'custom' && !validTimeWindow(persistedStart, persistedEnd, maxDays)) range = maxDays ? '30d' : defaultRange;
   const initialWindow = relativeTimeWindow(
     range === 'custom' || range === ALL_RECORDED ? '1w' : range,
     referenceEnd
   );
-  const persistedStart = typeof persisted.start === 'string' ? persisted.start : null;
-  const persistedEnd = typeof persisted.end === 'string' ? persisted.end : null;
-  if (range === 'custom' && !validTimeWindow(persistedStart, persistedEnd)) range = defaultRange;
   let persistedModes = MODE_OPTIONS;
   if (Array.isArray(persisted.modes)) {
     const validModes = [...new Set(persisted.modes.filter((mode) => MODE_OPTIONS.includes(mode)))];
@@ -233,7 +247,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
     'select',
     { 'aria-label': TIME_WINDOW_SELECT_LABEL },
     ...TIME_RANGE_OPTIONS.map((value) => h('option', { value }, `Last ${formatDashboardHorizon(value)}`)),
-    h('option', { value: ALL_RECORDED }, 'All time'),
+    maxDays ? null : h('option', { value: ALL_RECORDED }, 'All time'),
     h('option', { value: 'custom' }, 'Custom range')
   ));
   select.value = range;
@@ -259,7 +273,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
     if (select.value !== 'custom') return relativeTimeWindow(select.value, referenceEnd);
     const customStart = isoDateTimeValue(start.value);
     const customEnd = isoDateTimeValue(end.value);
-    return validTimeWindow(customStart, customEnd)
+    return validTimeWindow(customStart, customEnd, maxDays)
       ? { range: 'custom', start: customStart, end: customEnd }
       : undefined;
   };
@@ -286,59 +300,75 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
       debug({ event: 'persist-failed', reason: error instanceof Error ? error.name : 'unknown' });
     }
   };
+  const validationMessage = h('span', { role: 'alert', hidden: true });
   const updateValidity = () => {
     const invalid = select.value === 'custom' && !value();
     start.setAttribute('aria-invalid', String(invalid));
     end.setAttribute('aria-invalid', String(invalid));
+    validationMessage.hidden = !invalid;
+    validationMessage.textContent = invalid
+      ? `Choose a start before the stop${maxDays ? `, no more than ${maxDays} days apart` : ''}.`
+      : '';
     return !invalid;
   };
+  const customControls = h(
+    'div',
+    { className: 'time-window-custom', hidden: range !== 'custom' },
+    renderLabeledControl('Start', start),
+    renderLabeledControl('Stop', end),
+    applyCustomRange,
+    validationMessage
+  );
   select.addEventListener('change', () => {
-    if (select.value !== 'custom') {
+    customControls.hidden = select.value !== 'custom';
+    if (select.value !== 'custom' && select.value !== ALL_RECORDED) {
       const selected = relativeTimeWindow(select.value, referenceEnd);
       start.value = localDateTimeValue(selected.start);
       end.value = localDateTimeValue(selected.end);
     }
-    updateValidity();
+    if (!updateValidity()) return;
     persist();
     debug({ event: 'range-applied', range: select.value });
     onChange();
-  });
+  }, { signal });
   for (const input of [start, end]) {
     input.addEventListener('change', () => {
       select.value = 'custom';
+      customControls.hidden = false;
       updateValidity();
-    });
+    }, { signal });
   }
   applyCustomRange.addEventListener('click', () => {
     select.value = 'custom';
+    customControls.hidden = false;
     if (!updateValidity()) return;
     persist();
     onChange();
-  });
+  }, { signal });
   for (const input of modeInputs) {
     input.addEventListener('change', () => {
+      if (!updateValidity()) return;
       persist();
       onChange();
-    });
+    }, { signal });
   }
 
   return {
     element: h(
       'div',
       { className: 'time-window-control', 'aria-label': 'Evidence window' },
-      renderLabeledControl('Window', select, { prefix: octicon('clock') }),
+      renderLabeledControl('Window', select, { className: 'time-window-preset', visuallyHiddenLabel: true }),
       h(
         'fieldset',
         { className: 'mode-filter-control' },
         h('legend', null, 'Modes'),
         ...modeInputs.map((input, index) => h('label', null, input, MODE_OPTIONS[index]))
       ),
-      renderLabeledControl('Start', start),
-      renderLabeledControl('Stop', end),
-      applyCustomRange
+      customControls
     ),
     value,
-    modes
+    modes,
+    valid: updateValidity
   };
 }
 
@@ -394,7 +424,7 @@ export function isTimeWindowFilterActive(defaultRange = ALL_RECORDED) {
 export function clearTimeWindowFilter(root = globalThis.document) {
   const select = root?.querySelector?.(`[aria-label="${TIME_WINDOW_SELECT_LABEL}"]`);
   if (!(select instanceof HTMLSelectElement) || select.value === ALL_RECORDED) return;
-  select.value = ALL_RECORDED;
+  select.value = [...select.options].some((option) => option.value === ALL_RECORDED) ? ALL_RECORDED : '30d';
   select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -403,7 +433,7 @@ export function setTimeWindowRange(range, root = globalThis.document) {
   if (!TIME_RANGE_OPTIONS.includes(range) && range !== ALL_RECORDED) return;
   const select = root?.querySelector?.(`[aria-label="${TIME_WINDOW_SELECT_LABEL}"]`);
   if (!(select instanceof HTMLSelectElement)) return;
-  select.value = range;
+  select.value = range === ALL_RECORDED && ![...select.options].some((option) => option.value === range) ? '30d' : range;
   select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -444,11 +474,12 @@ export function relativeTimeWindow(range, referenceEnd) {
   return { range, start: new Date(start).toISOString(), end: new Date(end).toISOString() };
 }
 
-/** @param {string | null | undefined} start @param {string | null | undefined} end */
-function validTimeWindow(start, end) {
+/** @param {string | null | undefined} start @param {string | null | undefined} end @param {number} [maxDays] */
+function validTimeWindow(start, end, maxDays) {
   const startTime = Date.parse(start ?? '');
   const endTime = Date.parse(end ?? '');
-  return Number.isFinite(startTime) && Number.isFinite(endTime) && startTime < endTime;
+  return Number.isFinite(startTime) && Number.isFinite(endTime) && startTime < endTime
+    && (!maxDays || endTime - startTime <= maxDays * 86_400_000);
 }
 
 /** @param {string | null | undefined} value */

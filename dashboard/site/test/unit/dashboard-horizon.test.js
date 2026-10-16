@@ -31,6 +31,43 @@ describe('dashboard horizon', () => {
     horizon.dispose();
   });
 
+  it('owns an accessible picker independently of the active page filter bar', () => {
+    const onChange = vi.fn();
+    const horizon = renderDashboardHorizon({
+      dashboard: makeDashboard(),
+      initialValue: {
+        available: true, evaluatedAt: '2026-10-16T12:00:00Z', duration: '1 week',
+        start: '2026-10-09T12:00:00Z', end: '2026-10-16T12:00:00Z'
+      },
+      defaultRange: '1w',
+      referenceEnd: '2026-10-16T12:00:00Z',
+      formatDate: (value) => value,
+      onChange
+    });
+    document.body.append(horizon.element);
+    const toggle = /** @type {HTMLButtonElement} */ (horizon.element.querySelector('.horizon-toggle'));
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const select = /** @type {HTMLSelectElement} */ (horizon.element.querySelector('[aria-label="Time window"]'));
+    expect(select.value).toBe('1w');
+    select.value = '30d';
+    select.dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenLastCalledWith(
+      new Map([['mode', ['review', 'live', 'unknown']]]),
+      { range: '30d', start: '2026-09-16T12:00:00.000Z', end: '2026-10-16T12:00:00.000Z' }
+    );
+    expect(horizon.element.querySelector('details')?.open).toBe(false);
+    horizon.collapse();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    horizon.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+    horizon.dispose();
+    window.localStorage.clear();
+  });
+
   it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {
