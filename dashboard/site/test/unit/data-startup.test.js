@@ -184,6 +184,24 @@ describe("dashboard data startup", () => {
     ]);
   });
 
+  it("resolves shell notice sources before the first render, independently of page preparation", async () => {
+    const notices = { freshness: { source: "freshness", rows: [{ "latest-data-at": 1 }] } };
+    dataProcessor.loadCanonicalDashboardPage.mockImplementation(async (names) => names.length ? notices : {});
+    const render = vi.fn();
+    const context = {
+      pages: [], queries: [{ name: "freshness", from: "runs" }],
+      callouts: [{
+        id: "old-data", title: "Old data", description: "Inspect ingestion.",
+        "visible-when": { source: "freshness", field: "latest-data-at", "older-than-hours": 24 }
+      }]
+    };
+    const stop = await startDashboardData(options({ dashboardContext: context, render }));
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenCalledWith(["freshness"], context);
+    expect(render.mock.calls[0][0]).toBe(notices);
+    expect(render.mock.calls[0][1]).toBe("cached");
+    stop();
+  });
+
   it("reports failed background updates once and clears the notice when the subscription recovers", async () => {
     /** @type {((sources: Record<string, import('../../src/presenter.js').LogicalSourceInput>) => void) | undefined} */
     let deliver;

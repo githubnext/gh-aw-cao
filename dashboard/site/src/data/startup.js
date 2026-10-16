@@ -139,6 +139,7 @@ export function waitForDashboardUi(browserWindow) {
  *     dashboardRepository?: string | null,
  *     pages: import('../presenter.js').PresentationDocument['dashboard']['pages'],
  *     queries: unknown[],
+ *     callouts?: import('../components/site-callout.js').SiteCallout[],
  *   },
  *   preparePage?: (pageId: string) => Promise<void>,
  *   pageSourceNames: (pageId: string, viewMode?: 'chart'|'table'|'card') => string[],
@@ -371,9 +372,20 @@ export async function startDashboardData(options) {
   });
   /** @type {{ createdAt: string } | null} */
   let snapshot;
+  /** @type {DashboardSources} */
+  let shellSources = {};
+  const shellSourceNames = [...new Set((dashboardContext.callouts ?? []).flatMap((callout) => (
+    callout['visible-when'] ? [callout['visible-when'].source] : []
+  )))];
+  const readShellSources = async () => {
+    if (shellSourceNames.length) {
+      shellSources = await loadCanonicalDashboardPage(shellSourceNames, dashboardContext);
+    }
+  };
   try {
     await bootstrapStep("open-canonical-database", () => loadCanonicalDashboardPage([], dashboardContext));
     snapshot = await bootstrapStep("read-snapshot-metadata", () => loadDashboardSnapshotMetadata());
+    if (shellSourceNames.length) await bootstrapStep("read-shell-sources", readShellSources);
   } catch (error) {
     if (upgradeStarted) {
       cleanup.abort();
@@ -419,7 +431,7 @@ export async function startDashboardData(options) {
     browserFirstLoad.set({ status: "inactive", dismissed: false });
   }
   dashboardDataStatus.set({ phase: hasCompleteSnapshot ? "cached" : "loading", snapshot });
-  render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
+  render(shellSources, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
@@ -443,7 +455,7 @@ export async function startDashboardData(options) {
     if (firstBrowserLoad && !hasCompleteSnapshot) {
       browserFirstLoad.set((current) => ({ ...current, status: "failed" }));
     }
-    render({}, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot);
+    render(shellSources, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
@@ -458,7 +470,7 @@ export async function startDashboardData(options) {
       status: "started",
     });
     if (showRefreshing) {
-      render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
+      render(shellSources, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot);
     }
     void refreshCanonicalDashboardSources(
       sourceUrl,
@@ -471,6 +483,8 @@ export async function startDashboardData(options) {
         if (cleanup.signal.aborted) return;
         hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
         if (!hasCompleteSnapshot) throw new Error("Dashboard import finished without a complete snapshot.");
+        await readShellSources();
+        if (cleanup.signal.aborted) return;
         refreshPending = false;
         dashboardDataStatus.set({ phase: "ready", snapshot });
         if (firstBrowserLoad) finishFirstLoad();
@@ -485,7 +499,7 @@ export async function startDashboardData(options) {
           dashboard?.classList.remove("dashboard-refreshing");
           dashboard?.removeAttribute("aria-busy");
         } else {
-          render({}, "ready", loadPageSources, undefined, snapshot);
+          render(shellSources, "ready", loadPageSources, undefined, snapshot);
         }
       },
     ).catch(showStaleSources);

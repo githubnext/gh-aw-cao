@@ -942,7 +942,14 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
     ) {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'visible-when field must be declared by visible-when source.', `${path}.field`));
     }
-    if (!Object.hasOwn(visibility, 'equals') || ['object', 'function', 'symbol'].includes(typeof visibility.equals)) {
+    const hasAge = Object.hasOwn(visibility, 'older-than-hours');
+    if (hasAge) {
+      if (Object.hasOwn(visibility, 'equals') || typeof visibility['older-than-hours'] !== 'number'
+          || !Number.isFinite(visibility['older-than-hours']) || visibility['older-than-hours'] <= 0) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+          'visible-when older-than-hours must be positive and finite, and cannot be combined with equals.', `${path}.older-than-hours`));
+      }
+    } else if (!Object.hasOwn(visibility, 'equals') || ['object', 'function', 'symbol'].includes(typeof visibility.equals)) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'visible-when equals must be a scalar.', `${path}.equals`));
     }
   }

@@ -403,7 +403,14 @@ export function splitDashboardDocument(source, options = {}) {
     });
   });
   const dashboard = { ...document.dashboard, pages: corePages };
-  delete dashboard.queries;
+  const calloutSources = (document.dashboard.callouts ?? []).flatMap((callout) => {
+    const visibility = isPlainObject(callout?.['visible-when']) ? callout['visible-when'] : null;
+    return typeof visibility?.source === 'string' ? [visibility.source] : [];
+  });
+  const shellQueries = new Set(resolveDashboardQuerySources(queryDefinitions, calloutSources));
+  const shellDefinitions = queryDefinitions.filter((query) => shellQueries.has(query.name ?? ''));
+  if (shellDefinitions.length) dashboard.queries = shellDefinitions;
+  else delete dashboard.queries;
   debugDashboardChunks({
     event: 'split-complete',
     pageCount: corePages.length,
@@ -430,12 +437,11 @@ export function resolveDashboardDocument(core, chunks) {
       ...core.dashboard,
       pages: [...core.dashboard.pages],
       /** @type {DashboardQuery[]} */
-      queries: [],
+      queries: Array.isArray(core.dashboard.queries) ? [...core.dashboard.queries] : [],
     },
   };
-  /** @type {string[]} */
-  const queryNames = [];
   const queries = /** @type {DashboardQuery[]} */ (document.dashboard.queries);
+  const queryNames = queries.map((query) => query.name ?? '');
   for (const chunk of chunks) {
     const normalized = normalizeDashboardPageChunk(chunk);
     const pageIndex = document.dashboard.pages.findIndex((page) => page.id === normalized.page.id);

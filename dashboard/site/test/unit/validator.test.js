@@ -477,7 +477,7 @@ describe('dashboard document validation', () => {
 
   it('accepts declared queries as callout visibility sources', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    document.dashboard.callouts = [{
+    document.dashboard.callouts.push({
       id: 'failed-run-callout',
       title: 'Failed runs',
       description: 'One or more runs need attention.',
@@ -486,7 +486,7 @@ describe('dashboard document validation', () => {
         field: 'run-conclusion',
         equals: 'failure'
       }
-    }];
+    });
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -2212,6 +2212,15 @@ dashboard:
       ].join('\n')
     );
     expect(validateDashboardDocument(withCallout).ok).toBe(true);
+    const withAge = withCallout.replace('        equals: github-api-rate-limit-403', '        older-than-hours: 24');
+    expect(validateDashboardDocument(withAge).ok).toBe(true);
+    for (const age of ['0', '-1', '.inf', '.nan', '"24"', 'null']) {
+      expect(validateDashboardDocument(withAge.replace('older-than-hours: 24', `older-than-hours: ${age}`)).ok).toBe(false);
+    }
+    expect(validateDashboardDocument(withAge.replace(
+      '        older-than-hours: 24',
+      '        older-than-hours: 24\n        equals: old'
+    )).ok).toBe(false);
 
     const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-summary', '      navigation-page: missing-page'));
     expect(invalidNavigation.ok).toBe(false);

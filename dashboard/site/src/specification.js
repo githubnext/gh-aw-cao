@@ -59,7 +59,7 @@ export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, 
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
-export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
+export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals', 'older-than-hours'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];
 export const DEFAULTS_KEYS = ['scope', 'time', 'filters'];
 export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];

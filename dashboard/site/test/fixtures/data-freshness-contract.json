@@ -1,0 +1,15 @@
+{
+  "callout": "stale-data",
+  "source": "dashboard-data-freshness",
+  "field": "latest-data-at",
+  "hours": 24,
+  "page": "indexing",
+  "shardSource": "indexing-shards",
+  "shardView": "ingested-shards",
+  "cases": [
+    { "ageMs": 86399999, "visible": false },
+    { "ageMs": 86400000, "visible": true },
+    { "ageMs": 172800000, "visible": true },
+    { "ageMs": -3600000, "visible": false }
+  ]
+}

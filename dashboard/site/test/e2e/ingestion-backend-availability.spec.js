@@ -19,13 +19,14 @@ const { core, pageChunks } = splitDashboardDocument({
   ...authoritativeDashboard,
   dashboard: {
     ...authoritativeDashboard.dashboard,
-    pages: [pageDefinition],
-    navigation: [{ pages: [contract.page] }],
-    callouts: undefined
+    pages: [authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs'), pageDefinition],
+    navigation: [{ pages: ['runs', contract.page] }]
   }
 });
 
-test('static Ingestion queries retained canonical evidence but not hosted telemetry', async ({ context, page }) => {
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+test(`stale data links to ingested shards without hosted telemetry at ${viewport.width}px`, async ({ context, page }, testInfo) => {
+  await page.setViewportSize(viewport);
   await page.addInitScript(() => {
     const prototype = Worker.prototype;
     const post = prototype.postMessage;
@@ -52,8 +53,9 @@ test('static Ingestion queries retained canonical evidence but not hosted teleme
       await route.fulfill({ json: core });
       return;
     }
-    if (url.pathname === `/dashboard-pages/${contract.page}.json`) {
-      await route.fulfill({ json: pageChunks.get(contract.page) });
+    const chunk = /^\/dashboard-pages\/([\w-]+)\.json$/.exec(url.pathname);
+    if (chunk) {
+      await route.fulfill({ json: pageChunks.get(chunk[1]) });
       return;
     }
     if (url.pathname === '/payload-hashes.json') {
@@ -96,8 +98,24 @@ test('static Ingestion queries retained canonical evidence but not hosted teleme
     }
     await route.fulfill({ status: 404, body: 'Not found' });
   });
-  await page.goto(`${origin}/#page-indexing`);
+  await page.goto(`${origin}/#page-runs`);
+  const banner = page.locator('[data-site-callout="stale-data"]');
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText('24 hours');
+  await expect(banner.getByRole('link', { name: 'View Ingestion' })).toHaveAttribute('href', '#page-indexing');
+  await banner.getByRole('link', { name: 'View Ingestion' }).click();
+  await expect(page.locator('#page-title')).toHaveText('Ingestion');
   await expect(page.locator('[data-view-id="indexing-database-table-counts"] [data-chart-widget="horizontal-bar"]')).toBeVisible();
+  const shards = page.locator('[data-view-id="ingested-shards"]');
+  await expect(shards).toContainText(shardName);
+  await expect(shards).toContainText('Committed records');
+  await expect(shards).toContainText(hash);
+  await expect(page.locator('.first-load-overlay')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('stale-data-ingestion.png'), fullPage: true });
+  await testInfo.attach('Stale data and ingestion shards', {
+    path: testInfo.outputPath('stale-data-ingestion.png'), contentType: 'image/png'
+  });
   for (const id of contract.hostedViews) {
     await expect(page.locator(`[data-view-id="${id}"]`)).toHaveCount(0);
   }
@@ -107,4 +125,8 @@ test('static Ingestion queries retained canonical evidence but not hosted teleme
   expect(sources).not.toContain('collection-health');
   expect(sources).not.toContain('github-quota-usage');
   expect(sources).toContain('indexing-database-table-counts');
+  expect(sources).toContain('dashboard-data-freshness');
+  await banner.getByRole('button', { name: 'Dismiss Dashboard data may be stale' }).click();
+  await expect(banner).toHaveCount(0);
 });
+}

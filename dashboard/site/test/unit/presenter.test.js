@@ -1921,7 +1921,7 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(7);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(8);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
@@ -2569,7 +2569,7 @@ describe('presenter built-in and custom pages', () => {
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
     );
     expect(navigationLink?.getAttribute('href')).toBe('#page-usage');
-    expect(navigationLink?.textContent).toBe('View usage');
+    expect(navigationLink?.textContent).toBe('View Usage');
     const dismiss = /** @type {HTMLButtonElement | null} */ (
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss')
     );
