@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createDebug } from '../debug.mjs';
 import { adaptCachedGhAwJsonlStream } from '../../dashboard/site/src/data/adapters/gh-aw-logs.js';
-import { NORMALIZED_JSONL_INGESTION_VERSION } from '../../dashboard/site/src/data/ingest/coordinator.js';
+import { GH_AW_JSONL_INGESTION_VERSION, NORMALIZED_JSONL_INGESTION_VERSION } from '../../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION, mergeEvidenceDefinition } from '../../dashboard/site/src/data/model/schema.js';
 import { mergeActivityStructuralRecord } from '../../dashboard/site/src/data/storage/retention.js';
@@ -211,7 +211,7 @@ export async function hashActivityPayloads({
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${AUDIT_CURATION_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${GH_AW_JSONL_INGESTION_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${AUDIT_CURATION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = {

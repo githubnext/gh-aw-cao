@@ -10,7 +10,7 @@ import {
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
-import { parseUnifiedSession } from './unified-session.js';
+import { normalizeSessionMcpEvents, parseUnifiedSession } from './unified-session.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -731,15 +731,19 @@ export function adaptGhAwTimelineFiles(input, runId) {
 /** @param {unknown} input @param {string} path @param {string} runId */
 function sessionObservations(input, path, runId) {
   if (!Array.isArray(input)) throw new TypeError('Unified session evidence must be an array');
-  return input.map((value) => {
+  const events = input.map((value) => {
     const event = objectValue(value, 'unified session evidence');
-    return eventObservation(
-      runId, path, positiveInteger(event.line, 'session line'),
-      canonicalTimestamp(event.timestamp, 'session timestamp'),
-      requiredString(event.source, 'session source'), requiredString(event.type, 'session type'),
-      objectValue(event.fields, 'session fields')
-    );
+    return {
+      line: positiveInteger(event.line, 'session line'),
+      timestamp: canonicalTimestamp(event.timestamp, 'session timestamp'),
+      source: requiredString(event.source, 'session source'),
+      type: requiredString(event.type, 'session type'),
+      fields: objectValue(event.fields, 'session fields')
+    };
   });
+  return normalizeSessionMcpEvents(events).map((event) => eventObservation(
+    runId, path, event.line, event.timestamp, event.source, event.type, event.fields
+  ));
 }
 
 /**

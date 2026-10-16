@@ -59,8 +59,19 @@ inputs and outputs, raw errors, and native provenance SHALL NOT be persisted.
 The projection SHALL survive compaction and flow through ordinary canonical
 ingestion and normalized publication, not a second browser ingestion path.
 
-Agent messages and tool execution events SHALL map to the existing agent
-timeline types; MCP calls, denied calls, firewall access, and skill invocations
+Agent messages and local tool execution events SHALL map to the existing agent
+timeline types. Tool execution starts with an explicit MCP server SHALL map to
+`mcp` / `tool.call`, preserving server, tool, and correlation identity; matching
+completions SHALL inherit that identity and map to `tool.result` or `tool.error`
+without inventing an outcome. Agent-qualified `<server>-` tool-name prefixes
+SHALL be removed from the MCP tool identity. A correlated native `mcp.tool_call`
+SHALL supply the call observation instead of counting its agent start again.
+Native MCP calls SHALL use `tool.call`, not `tool_call`. Retained safe session
+projections SHALL receive the same normalization on ingestion, and ingestion
+and publication cache identities SHALL change when that mapping changes.
+Both `safeoutputs` and `safe_outputs` SHALL identify the internal server excluded
+from the MCP inventory, without excluding its records from the call evidence.
+MCP calls, denied calls, firewall access, and skill invocations
 SHALL map to the existing Tool, Domain, and Skill records. Numeric clocks SHALL
 use gh-aw's normalized `provenance.timestampMs` when present, otherwise
 milliseconds; ISO timestamps SHALL be accepted. Untimed observations SHALL NOT

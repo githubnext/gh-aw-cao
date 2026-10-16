@@ -148,7 +148,7 @@ describe('selected entity query compiler contracts', () => {
     for (const [tool, observations] of [
       [contract.tools[0], []],
       ['safe_outputs/optimization_skills_curator', []],
-      [contract.tools[1], ['observed-safe-output']],
+      [contract.tools[1], []],
       [contract.tools[2], ['ambiguous-one', 'ambiguous-two']]
     ]) {
       const payload = compileDashboardViewPayloadQueries(page, 'arbitrary-page', {
