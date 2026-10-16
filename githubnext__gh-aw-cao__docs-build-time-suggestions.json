@@ -1,7 +1,56 @@
 {
-  "source_sha": "f2972eb8f0d768f0b6e6199b75d43fddc1175e92",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "7250e64746c5214556fb9d6828bce58ca1fa44f1",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T05:26:00Z",
+      "worker_run_id": 38855598816,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38855643262,
+        38855580699,
+        38853640373,
+        38853467552,
+        38852693298,
+        38852497949,
+        38851808994,
+        38851731893,
+        38851322908,
+        38850648029,
+        38850481151,
+        38849633059,
+        38849582132,
+        38848635972,
+        38848513892,
+        38847738922,
+        38847142264,
+        38846954516,
+        38845634030,
+        38845406164
+      ],
+      "docs_window": {
+        "start": "2026-10-16T03:25:04Z",
+        "end": "2026-10-16T05:25:57Z"
+      },
+      "docs_success_count": 17,
+      "docs_comparable_success_count": 7,
+      "docs_deployed_success_count": 7,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 9,
+      "dashboard_success_run_ids": [
+        38855449902,
+        38852328230,
+        38851551055,
+        38850292556,
+        38848474549,
+        38846977223,
+        38845019414,
+        38843959846,
+        38843301254
+      ],
+      "decision": "noop_duplicate_open_issue",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 7250e64746c5214556fb9d6828bce58ca1fa44f1. In the latest 20 completed docs.yml runs from 2026-10-16T03:25:04Z through 2026-10-16T05:25:57Z, 17 runs concluded success and 3 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Seven comparable successful docs runs executed both build and deploy (38847142264, 38848513892, 38850481151, 38851731893, 38852497949, 38853640373, 38855643262). Trusted run and job metadata for those comparable runs showed median queue time 0s, docs workflow execution 73s (p90 87.4s), build 41s (p90 48.6s), deploy 16s (p90 23.4s), Build documentation 12s (p90 14.4s), Restore node_modules 5s (p90 9.2s), Restore cached CAO Dashboard 2s (p90 2.4s), and Upload Pages artifact 4s (p90 5s). Seven successful schedule-only freshness passes (38845634030, 38846954516, 38847738922, 38850648029, 38851808994, 38852693298, 38855580699) completed in 12s median with schedule-freshness at 7s median and the freshness-check step at 3s median. Trusted logs from docs run 38855643262 confirmed cache restores for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache; docs run 38855580699 logged the trusted freshness-skip message. Relevant cao-dashboard.yml evidence used the latest 20 completed runs in the paired window, which contained 9 successful main-branch workflow_run builds (38843301254, 38843959846, 38845019414, 38846977223, 38848474549, 38850292556, 38851551055, 38852328230, 38855449902) with median full execution 116s (p90 129.2s), build 104s (p90 111.8s), cache 9s, and Upgrade fallback activity data 80s median (p90 88.4s). Trusted logs from dashboard run 38855449902 confirmed a cache hit for cao-activity-v5-38853467533-1 while Upgrade fallback activity data still took 90s and Upload dashboard artifact stayed at 5s. The only scheduling improvements above the threshold remain work already represented by open issues: #18158 for the push->schedule rebuild on SHA 7250e64746c5214556fb9d6828bce58ca1fa44f1 (push run 38853467552 in 43s followed 109s later by schedule run 38853640373 in 91s), #16054 for repeated workflow_run rebuilds on SHA f2972eb8f0d768f0b6e6199b75d43fddc1175e92 (docs runs 38851731893 and 38852497949, triggered after dashboard runs 38851551055 and 38852328230, consumed 143s combined), and #17171 for the repeated schedule-only freshness scan cost. No new non-duplicate scheduling recommendation is currently actionable."
+    },
     {
       "evaluated_at": "2026-10-16T05:00:33Z",
       "worker_run_id": 38852991784,
@@ -1095,42 +1144,6 @@
       "docs_deployed_success_count": 1,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T05:24:19Z through 2026-10-15T09:50:07Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs run executed both build and deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. The remaining 14 completed runs stopped after schedule-freshness with build and deploy skipped, and a bounded log read from run 38715824085 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" The latest successful CAO Dashboard run in this window was 38675339180, which completed before the deployed docs run, so later schedule ticks remained no-ops. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper reusable-dashboard timing analysis and emitted no actionable suggestion."
-    },
-    {
-      "evaluated_at": "2026-10-15T09:30:14Z",
-      "worker_run_id": 38712957690,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38713058457,
-        38709934397,
-        38708814657,
-        38706361395,
-        38702848366,
-        38700874870,
-        38699687652,
-        38699100564,
-        38697305043,
-        38695989146,
-        38693618999,
-        38690460137,
-        38690117886,
-        38688921214,
-        38688818783,
-        38687644366,
-        38687091140,
-        38686600515,
-        38684569639,
-        38683517634
-      ],
-      "docs_window": {
-        "start": "2026-10-15T04:49:51Z",
-        "end": "2026-10-15T09:27:39Z"
-      },
-      "docs_success_count": 15,
-      "docs_comparable_success_count": 1,
-      "docs_deployed_success_count": 1,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T04:49:51Z through 2026-10-15T09:27:39Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs runs executed the build job and 1 completed deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466 (deploy succeeded). The remaining successful runs stopped after schedule-freshness with build and deploy skipped, and a bounded log read from run 38706361395 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper reusable-dashboard timing analysis and emitted no actionable suggestion."
     }
   ]
 }
