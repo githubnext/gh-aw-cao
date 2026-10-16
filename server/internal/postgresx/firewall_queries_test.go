@@ -73,7 +73,7 @@ func TestFirewallSQLUsesOnlyDomainsAndRuns(t *testing.T) {
 
 func TestFirewallTotalsExecuteNatively(t *testing.T) {
 	store, _ := nativeTestStore(t)
-	domains := make([]model.Row, 3000)
+	domains := make([]model.Row, 3000, 3003)
 	tools := make([]model.Row, 3000)
 	for index := range domains {
 		decision, eventType := "denied", "net_blocked"

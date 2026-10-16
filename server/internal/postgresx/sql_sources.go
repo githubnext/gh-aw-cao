@@ -65,21 +65,6 @@ func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error
 	}, nil
 }
 
-func wireSQLType(kind query.SQLKind) string {
-	switch kind {
-	case query.SQLNumber:
-		return "numeric"
-	case query.SQLBoolean:
-		return "boolean"
-	case query.SQLTimestamp:
-		return "timestamptz"
-	case query.SQLStructured:
-		return "jsonb"
-	default:
-		return "text"
-	}
-}
-
 func runtimeSQLSource(name string, source model.Source) (query.SQLRelation, error) {
 	table, exists := entityTables[name]
 	if !exists || !table.runtime {
