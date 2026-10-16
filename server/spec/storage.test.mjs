@@ -159,6 +159,19 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|simulation_days|marketplace_packages)\b/);
 });
 
+test('CLI command sources are typed runtime projections, never canonical tables', () => {
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const bindings = readFileSync(new URL('../internal/postgresx/schema.gen.go', import.meta.url), 'utf8');
+  for (const [source, name] of [
+    ['cli-commands', 'cli_commands'],
+    ['cli-command-summary', 'cli_command_summary'],
+    ['cli-command-statuses', 'cli_command_statuses']
+  ]) {
+    assert.ok(bindings.includes(`"${source}": {name: "${name}", runtime: true, canonical: false`));
+    assert.doesNotMatch(sql, new RegExp(`CREATE TABLE IF NOT EXISTS ${name}\\b`));
+  }
+});
+
 test('generated Postgres contract persists Campaign as a namespace-scoped entity table', () => {
   const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
   const campaignTable = sql.match(/CREATE TABLE IF NOT EXISTS campaigns \(\n([\s\S]*?)\n\);/);

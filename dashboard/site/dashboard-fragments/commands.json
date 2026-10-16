@@ -1,0 +1,78 @@
+{
+  "queries": [
+    {
+      "name": "command-queue",
+      "subject": "Show the durable local CLI command queue.",
+      "objective": "Inspect command lifecycle and reconnect to output without rerunning work.",
+      "acceptance": "Preserve persistent command IDs and all six server states; closing output never cancels execution. Unavailable local authority is not an empty queue.",
+      "from": "cli-commands",
+      "compute": [
+        { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
+        { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "commands",
+      "kind": "custom",
+      "title": "Commands",
+      "icon": "terminal",
+      "filter-bar": false,
+      "view-mode-control": false,
+      "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "views": [
+        {
+          "id": "commands-history",
+          "title": "Command queue",
+          "description": "Lazy-loaded command cards with persistent status and replayable output. Filters and pages execute on the local server through the data worker.",
+          "data": { "source": "command-queue", "query-context": false },
+          "mark": "table",
+          "controls": "filter-only",
+          "layout": "full",
+          "lazy-list": true,
+          "column-summaries": false,
+          "card-drill": { "type": "external", "field": "command-dashboard-link" },
+          "filter-bar": {
+            "filters": [
+              {
+                "id": "status",
+                "label": "Status",
+                "groups": [
+                  { "label": "Command status", "field": "status", "source": "cli-command-statuses", "value-field": "status" }
+                ]
+              }
+            ]
+          },
+          "encoding": {
+            "href": { "field": "command-dashboard-link" },
+            "columns": [
+              { "field": "id", "type": "nominal", "title": "Command" },
+              { "field": "actionId", "type": "nominal", "title": "Action" },
+              { "field": "status", "type": "nominal", "title": "Status", "display": "status" },
+              { "field": "createdAt", "type": "temporal", "title": "Queued", "format": "human-friendly-timestamp" },
+              { "field": "error", "type": "nominal", "title": "Reason" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "command",
+      "kind": "custom",
+      "title": "Command output",
+      "icon": "terminal",
+      "route": { "hash-query-parameter": "command" },
+      "views": [
+        {
+          "id": "command-terminal",
+          "title": "Command output",
+          "description": "Interaction-only terminal replay, explicit cancellation and retry cannot be expressed by evidence marks. Lifecycle and streamed output use worker transport; closing or navigating away only detaches.",
+          "data": { "sources": [] },
+          "mark": "element",
+          "element": "command-terminal"
+        }
+      ]
+    }
+  ]
+}

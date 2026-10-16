@@ -1,6 +1,41 @@
 {
   "queries": [
     {
+      "name": "dashboard-data-freshness",
+      "subject": "Find the newest workflow activity timestamp in retained canonical data.",
+      "objective": "Warn globally when the ingested workflow evidence has not advanced for 24 hours.",
+      "acceptance": "Use upstream updated-at, falling back to created-at, never browser import or refresh time. Missing or invalid timestamps remain unknown; inactivity alone does not prove an ingestion failure.",
+      "from": "runs",
+      "compute": [
+        { "as": "data-at", "function": "coalesce", "args": [{ "field": "updated-at" }, { "field": "created-at" }] },
+        { "as": "data-at-ms", "function": "timestamp", "args": [{ "field": "data-at" }] }
+      ],
+      "aggregate": {
+        "values": [{ "field": "data-at-ms", "as": "latest-data-at", "reducer": "max" }]
+      }
+    },
+    {
+      "name": "indexing-shards",
+      "subject": "List retained Activity shard import receipts.",
+      "objective": "Inspect which shards were ingested, when, and how many records they committed.",
+      "acceptance": "Show shard scope, phase, import status, import timestamp, counts and payload identity from retained receipts. Import time is not upstream freshness and missing receipts do not prove complete coverage.",
+      "from": "transactions",
+      "filter": {
+        "predicates": [{ "field": "kind", "in": ["ingest-normalized-jsonl", "ingest-jsonl", "ingest-jsonl-failed", "runs", "records"] }]
+      },
+      "select": [
+        { "field": "id" },
+        { "field": "payloadScope", "as": "shard" },
+        { "field": "kind" },
+        { "field": "activity-status", "as": "status" },
+        { "field": "createdAt", "as": "ingested-at" },
+        { "field": "committedRecords", "as": "committed-records" },
+        { "field": "rawRuns", "as": "workflow-runs" },
+        { "field": "payloadHash", "as": "payload-hash" }
+      ],
+      "order-by": [{ "field": "ingested-at", "direction": "desc" }]
+    },
+    {
       "name": "ingestion-queued",
       "subject": "Label the shared collection task queue depth for the administrator queue chart.",
       "objective": "Identify total ready and scheduled collection work, including backfill tasks.",
@@ -1552,6 +1587,30 @@
           }
         },
         {
+          "id": "ingested-shards",
+          "title": "Ingested shards",
+          "subject": "Inspect retained Activity shard import receipts.",
+          "objective": "Trace imported shards and investigate stale dashboard evidence.",
+          "acceptance": "Display retained shard paths, kind, status, import times, record counts and hashes. Unknown fields remain unknown and successful imports do not establish upstream freshness.",
+          "description": "Retained shard receipts show the source path, import time, committed records and payload hash. Importing an old shard does not make its workflow evidence current.",
+          "data": { "source": "indexing-shards", "query-context": false },
+          "mark": "list",
+          "list": { "style": "entity-cards", "card": "ingested-shard", "icon": "database" },
+          "layout": "full",
+          "empty-message": "No shard import receipts are available. Shard coverage and freshness are unknown.",
+          "encoding": {
+            "columns": [
+              { "field": "shard", "title": "Shard", "type": "nominal" },
+              { "field": "kind", "title": "Import kind", "type": "nominal" },
+              { "field": "status", "title": "Status", "type": "nominal", "display": "status" },
+              { "field": "ingested-at", "title": "Ingested at", "type": "temporal", "format": "human-friendly-timestamp" },
+              { "field": "committed-records", "title": "Committed records", "type": "quantitative" },
+              { "field": "workflow-runs", "title": "Workflow runs", "type": "quantitative" },
+              { "field": "payload-hash", "title": "Payload hash", "type": "nominal" }
+            ]
+          }
+        },
+        {
           "id": "ingestion-queue-sizes",
           "title": "Server collection workload (administrators)",
           "requires": {
@@ -2338,7 +2397,7 @@
         {
           "id": "maintenance-repositories",
           "title": "Repositories",
-          "description": "Installed and current gh-aw compiler versions observed for each repository.",
+          "description": "Installed and current gh-aw compiler versions observed for each repository. Select a repository to open its GitHub home page.",
           "data": {
             "source": "maintenance-repositories"
           },
@@ -2375,6 +2434,7 @@
             "card": "maintenance-repository",
             "icon": "repo",
             "action": "upgrade-repository",
+            "action-context": ["repository"],
             "actions": ["add-repository"]
           }
         }

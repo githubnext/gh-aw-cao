@@ -215,6 +215,9 @@ func (s *Store) DeleteNamespace(ctx context.Context) error {
 	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_state WHERE namespace = $1`, s.namespace); err != nil {
 		return err
 	}
+	if _, err = tx.ExecContext(ctx, `DELETE FROM cao_github_resources WHERE namespace = $1`, s.namespace); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 

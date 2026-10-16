@@ -134,6 +134,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 | `markdown` | Presents retained Markdown from a declared source field with safe repository-relative links. |
 | `query-editor` | Authors ephemeral query-and-view previews through tool-free Copilot SDK sessions; available only in SDK-enabled canvases. |
+| `command-terminal` | Replays and follows durable local CLI output by command ID, with explicit Cancel and Retry actions through the data worker; detachment never cancels execution. |
 
 ## Testing standard
 

@@ -11,6 +11,8 @@ export const notificationStyles = `
 .dashboard-notification-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--muted, GrayText); }
 .dashboard-notification-icon .octicon { width: 16px; height: 16px; }
 .dashboard-notification-message { min-width: 0; flex: 1; overflow-wrap: anywhere; text-align: left; }
+.dashboard-notification-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.dashboard-notification-link:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
 .dashboard-notification-toggle { width: 100%; display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .dashboard-notification-toggle:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
 .dashboard-notification-chevron { width: 7px; height: 7px; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 120ms ease; }

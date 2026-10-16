@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
+import { GITHUB_QUERY_SOURCE_FIELDS } from './data/github-query-sources.js';
 export {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
@@ -59,7 +60,7 @@ export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, 
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
-export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
+export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals', 'older-than-hours'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];
 export const DEFAULTS_KEYS = ['scope', 'time', 'filters'];
 export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];
@@ -113,7 +114,8 @@ export const VIEW_ELEMENT_VALUES = [
   'all-campaign-memory',
   'link-button-list',
   'markdown',
-  'query-editor'
+  'query-editor',
+  'command-terminal'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
 export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];
@@ -123,7 +125,7 @@ export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'an
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
-export const VIEW_LIST_KEYS = ['style', 'layout', 'appearance', 'icon', 'action', 'actions', 'card', 'drill', 'view-all'];
+export const VIEW_LIST_KEYS = ['style', 'layout', 'appearance', 'icon', 'action', 'action-context', 'actions', 'card', 'drill', 'view-all'];
 export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
 export const VIEW_LIST_LAYOUT_VALUES = ['rows', 'grid'];
 export const VIEW_LIST_APPEARANCE_VALUES = ['grouped', 'marketplace'];
@@ -133,7 +135,7 @@ export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
 export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third', 'horizontal'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
-export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
+export const VIEW_CONTROL_VALUES = ['interactive', 'filter-only', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
 export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'overview',
@@ -148,7 +150,9 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'work-roadmap',
   'evidence',
   'insights',
-  'query-editor'
+  'query-editor',
+  'commands',
+  'command'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'level', 'verb', 'icon', 'label', 'context', 'when'];
@@ -184,7 +188,7 @@ export const RELATION_LINK_FIELD_RELATIONS = {
   'external-link': 'external'
 };
 export const LINK_FIELD_NAMES = Object.keys(RELATION_LINK_FIELD_RELATIONS);
-export const DASHBOARD_LINK_FIELD_NAMES = ['campaign-dashboard-link', 'repository-dashboard-link', 'workflow-dashboard-link'];
+export const DASHBOARD_LINK_FIELD_NAMES = ['campaign-dashboard-link', 'repository-dashboard-link', 'workflow-dashboard-link', 'command-dashboard-link'];
 export const DATASET_METADATA_KEYS = [
   'source-id',
   'source-kind',
@@ -656,7 +660,13 @@ export const SERVER_SOURCE_FIELDS = {
   ]
 };
 
-export const SYNTHETIC_SOURCE_FIELDS = { 'simulation-days': ['day', 'date'] };
+export const SYNTHETIC_SOURCE_FIELDS = {
+  'simulation-days': ['day', 'date'],
+  'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values'],
+  'cli-command-statuses': ['status'],
+  'cli-command-summary': ['running', 'total', 'paused-reason', 'revision'],
+  ...GITHUB_QUERY_SOURCE_FIELDS
+};
 
 export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES, ...Object.keys(SYNTHETIC_SOURCE_FIELDS)];
 export const QUERY_SOURCE_FIELDS = { ...TABLE_FIELDS, ...SERVER_SOURCE_FIELDS, ...SYNTHETIC_SOURCE_FIELDS };

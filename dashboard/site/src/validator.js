@@ -24,7 +24,7 @@ const debugValidator = createDebug('validator');
  */
 
 /**
- * @typedef {{ id: string, title: string, description: string, icon?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }} SiteCallout
+ * @typedef {import('./components/site-callout.js').SiteCallout} SiteCallout
  */
 
 /**

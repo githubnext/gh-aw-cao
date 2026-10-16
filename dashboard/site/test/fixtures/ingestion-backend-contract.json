@@ -4,7 +4,8 @@
     "indexing-database-table-counts",
     "indexing-daily-records",
     "indexing-daily-workflow-runs",
-    "indexing-transactions"
+    "indexing-transactions",
+    "indexing-shards"
   ],
   "hostedSources": ["ingestion-queue-sizes", "ingestion-health", "github-api-usage"],
   "hostedViews": ["ingestion-queue-sizes", "ingestion-health-status", "github-api-usage"],

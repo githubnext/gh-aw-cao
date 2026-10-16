@@ -32,6 +32,26 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it.each([
+    { fields: [] }, { fields: ['repository', 'repository'] }, { fields: ['unknown-field'] }, { fields: ['gh-aw-version'] }
+  ])('rejects invalid batch action context $fields', ({ fields }) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'maintenance');
+    page.views[0].list['action-context'] = fields;
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({
+        path: expect.stringContaining('.list.action-context')
+      })])
+    });
+  });
+
+  it('rejects a batch action against an incrementally loaded list', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'maintenance');
+    page.views[0]['lazy-list'] = true;
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({ ok: false });
+  });
+
   it('accepts the authoritative built-in overview view definition', () => {
     const accepted = validateDashboardDocument(authoritativeDashboardSource);
     expect(accepted.ok).toBe(true);
@@ -477,7 +497,7 @@ describe('dashboard document validation', () => {
 
   it('accepts declared queries as callout visibility sources', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    document.dashboard.callouts = [{
+    document.dashboard.callouts.push({
       id: 'failed-run-callout',
       title: 'Failed runs',
       description: 'One or more runs need attention.',
@@ -486,7 +506,7 @@ describe('dashboard document validation', () => {
         field: 'run-conclusion',
         equals: 'failure'
       }
-    }];
+    });
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -2212,6 +2232,15 @@ dashboard:
       ].join('\n')
     );
     expect(validateDashboardDocument(withCallout).ok).toBe(true);
+    const withAge = withCallout.replace('        equals: github-api-rate-limit-403', '        older-than-hours: 24');
+    expect(validateDashboardDocument(withAge).ok).toBe(true);
+    for (const age of ['0', '-1', '.inf', '.nan', '"24"', 'null']) {
+      expect(validateDashboardDocument(withAge.replace('older-than-hours: 24', `older-than-hours: ${age}`)).ok).toBe(false);
+    }
+    expect(validateDashboardDocument(withAge.replace(
+      '        older-than-hours: 24',
+      '        older-than-hours: 24\n        equals: old'
+    )).ok).toBe(false);
 
     const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-summary', '      navigation-page: missing-page'));
     expect(invalidNavigation.ok).toBe(false);

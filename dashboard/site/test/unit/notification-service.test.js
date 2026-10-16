@@ -42,6 +42,36 @@ describe('dashboard notification service', () => {
     expect(notification?.querySelector('button')).toBeNull();
   });
 
+  it('links the message to a dashboard page and preserves the link on updates', () => {
+    const service = createNotificationService(document);
+    const handle = service.publish({ message: 'Upgrade complete.', href: '#page-commands', tone: 'success', duration: 0 });
+    const link = /** @type {HTMLAnchorElement} */ (document.querySelector('.dashboard-notification-message a'));
+    expect(link.textContent).toBe('Upgrade complete.');
+    expect(link.getAttribute('href')).toBe('#page-commands');
+    expect(link.parentElement?.getAttribute('role')).toBe('status');
+    link.focus();
+    handle.update({ message: 'Review commands.', href: '#page-commands', duration: 0 });
+    expect(document.querySelector('.dashboard-notification-message a')).toBe(link);
+    expect(document.activeElement).toBe(link);
+    expect(link.textContent).toBe('Review commands.');
+    handle.update({ message: 'Plain message.', duration: 0 });
+    expect(document.querySelector('.dashboard-notification-message a')).toBeNull();
+    expect(document.querySelector('.dashboard-notification-message')?.textContent).toBe('Plain message.');
+  });
+
+  it.each(['javascript:alert(1)', 'https://example.com', '#page-commands" onclick="alert(1)'])('rejects unsafe notification links %s', (href) => {
+    const service = createNotificationService(document);
+    expect(() => service.publish({ message: 'Upgrade complete.', href })).toThrow('dashboard page');
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
+  });
+
+  it('does not nest message links inside expandable notification buttons', () => {
+    const service = createNotificationService(document);
+    expect(() => service.publish({
+      message: 'Upgrade complete.', href: '#page-commands', details: ['Done.']
+    })).toThrow('cannot contain expandable details');
+  });
+
   it('expands, updates, and collapses a bounded progress history', () => {
     const service = createNotificationService(document);
     const handle = service.publish({

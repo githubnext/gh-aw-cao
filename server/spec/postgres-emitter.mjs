@@ -24,6 +24,8 @@ const inputNames = new Map([
   ['transactions', '$transactions'], ['workItems', 'work-items']
 ]);
 const runtimeNames = new Map([
+  ['cliCommands', 'cli-commands'], ['cliCommandSummary', 'cli-command-summary'],
+  ['cliCommandStatuses', 'cli-command-statuses'],
   ['collectionHealth', 'collection-health'], ['githubQuotaUsage', 'github-quota-usage'],
   ['simulationDays', 'simulation-days']
 ]);
@@ -85,7 +87,11 @@ export async function $onEmit(context) {
     `-- Inventory normalization contract: ${createHash('sha256').update(JSON.stringify(inventoryContract.observations.filter((o) => ['campaign','repository','workflow'].includes(o.kind)))).digest('hex')}`
   ];
   for (const table of systems) {
-    const constraints = table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : table.name === 'cao_repository_lifecycle' ? [
+    const constraints = table.name === 'cao_github_resources' ? [
+      'PRIMARY KEY (namespace, id)',
+      'CHECK (octet_length(id) <= 512)',
+      'CHECK (octet_length(etag) <= 4096 AND octet_length(upstream_etag) <= 4096)'
+    ] : table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : table.name === 'cao_repository_lifecycle' ? [
       'PRIMARY KEY (namespace, id)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
       "CHECK (lifecycle IN ('active','archived','deleted'))"
@@ -99,6 +105,7 @@ export async function $onEmit(context) {
     ];
     statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (\n${table.columns.map((c) => `  ${c.name} ${c.sql}${c.required ? ' NOT NULL' : ''}`).join(',\n')},\n  ${constraints.join(',\n  ')}\n);`);
     if (table.name === 'cao_repository_lifecycle') statements.push('CREATE INDEX IF NOT EXISTS cao_repository_lifecycle_coordinate ON cao_repository_lifecycle (namespace, owner, name);');
+    if (table.name === 'cao_github_resources') statements.push('CREATE INDEX IF NOT EXISTS cao_github_resources_expiry ON cao_github_resources (namespace, validated_at, id);');
   }
   const go = ['// Code generated from server/spec/storage.tsp. DO NOT EDIT.', '', 'package postgresx', '', 'var entityTables = map[string]entityTable{'];
   for (const table of tables) {

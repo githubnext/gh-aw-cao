@@ -340,6 +340,26 @@ export function mergeInventoryDashboardSources(documents) {
   return result;
 }
 
+export function markInventoryCollectionPartial(sources, repositories, reason, names = ["repositories", "workflows"]) {
+  for (const name of names) {
+    const metadata = sources[name].metadata;
+    metadata.completeness = "partial";
+    metadata["collection-state"] = "partial";
+    metadata["collection-reason"] = reason;
+    metadata["failure-class"] = "request";
+    metadata["repository-failures"] = [
+      ...(metadata["repository-failures"] ?? []),
+      ...repositories.map((repository) => ({
+        repository,
+        "failure-class": "request",
+        reason,
+        operation: "activity-collection",
+      })),
+    ];
+  }
+  return sources;
+}
+
 export async function discoverLatestCampaignCommits(inventory = {}, {
   fetchImplementation = fetch,
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",

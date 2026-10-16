@@ -21,7 +21,7 @@ The dashboard campaign publishes an access-controlled static view of Central Age
 - `dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
 - `dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
 
-The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. The dashboard publisher restores these files from the same cache. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
+The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. An Activity-triggered dashboard build restores the exact triggering run and attempt's cache, or downloads that run's `cao-activity-index` artifact on a cache miss. It never substitutes another run's snapshot or an empty bootstrap. Manual builds can reuse the latest cached snapshot, falling back to a successful default-branch Activity run with a successful `index` job. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
 The **GitHub API** view reads the activity snapshot's `cao-gh.jsonl` ledger. It charts rate-limit capacity and lists the before/after credential class and aggregate cache-hydration state for each instrumented collection operation.
 
@@ -109,15 +109,70 @@ The preview composes `dashboard/site/dashboard.json` with every installed `<camp
 
 ### Canvas CLI actions
 
-Dashboard documents may declare canvas-only CLI actions. They are hidden from
-the published site and ordinary local previews. In the dashboard canvas, each
+Dashboard documents may declare local admin and trusted canvas CLI actions.
+They are hidden from the published site and ordinary local previews. In the
+dashboard canvas, each
 action appears in the **Actions** menu for a command preview. Native execution
 also requires independent confirmation in the trusted Copilot host, bound to
 the exact resolved command, working directory, and standard input. A page POST
-alone cannot authorize execution. Approval is never remembered and there is no
-unattended mode; hosts without interactive elicitation fail closed. Only one
-action per preview may await approval or run at a time. Closing a preview
-invalidates pending approvals.
+alone cannot authorize execution. Approval authorizes only the exact queued invocation; hosts without interactive
+elicitation fail closed. Approved commands run in the server-owned queue, not
+the browser request. Closing a terminal or browser detaches its output stream
+without canceling approved work. Pending approvals do not authorize execution.
+
+### CLI command queue
+
+Local admin and trusted canvas sessions share one durable FIFO queue per
+checkout, stored in `.cao/cli-actions.sqlite`. The online dashboard and ordinary
+read-only previews do not initialize a queue or request its APIs. Execution
+continues while the local server is running, even with every browser closed.
+Stopping the server terminates running work; interrupted executions are recorded
+as failed rather than silently repeated, and queued commands survive restart.
+After an unclean crash, termination of detached subprocesses cannot be assumed:
+the queue preserves history but pauses execution across subsequent restarts.
+Verify that every interrupted subprocess has stopped before explicitly starting
+with `--acknowledge-command-recovery` to resume queued work. Interrupted entries
+remain failed and are never automatically retried. This acknowledgement is a
+local operator action, not a browser API.
+
+**Maintenance → Commands** lists queued, running, completed, failed, canceled,
+and timed-out commands. Attach by command ID to replay retained stdout/stderr
+and follow new output. Cancel explicitly to terminate work; Retry creates a new
+entry linked to a failed or timed-out command.
+
+The queue defaults to four concurrent executions (configure with
+`--command-concurrency 1..32`) and a 15-minute execution deadline, beginning when
+a command starts. GitHub-dependent work uses the existing
+Go GitHub quota service through a local helper, refreshing quota with the same
+GitHub CLI authentication context as execution. Missing quota evidence pauses
+starts instead of bypassing protection. Running commands are not terminated
+merely because quota falls. A source checkout can run the helper with Go.
+Installed runtimes require a prebuilt `cao-cli-quota` on `PATH` or selected by
+`CAO_CLI_QUOTA_EXECUTABLE`; without it GitHub-dependent work remains paused.
+
+The capability-protected local API exposes:
+
+- `POST __cli_commands`: enqueue a declared action; an `Idempotency-Key` header
+  or `idempotencyKey` field deduplicates repeated requests.
+- `GET __cli_commands`: list commands with `status`, `limit`, and `offset`.
+- `GET __cli_commands/:id`: retrieve persistent execution details.
+- `GET __cli_commands/:id/output?after=N`: replay and stream ordered output
+  after sequence `N` as newline-delimited JSON.
+- `POST __cli_commands/:id/cancel` and `POST __cli_commands/:id/retry`: explicit
+  lifecycle operations; retries revalidate the current action and approval.
+
+The `status` filter accepts one status or a comma-separated set; filtering and
+the matching total count are applied before pagination.
+Mutations require same-origin JSON requests as well as the preview capability.
+Queue retention defaults to 30 days and removes terminal history only in wholly
+expired UTC Monday-based seven-day windows, including while idle; active commands never expire. Queue
+files contain operational command history and must remain local and uncommitted.
+Storage is bounded to 10,000 retained entries, 1 MiB output per command, 64 MiB
+retained output overall and a 128 MiB main SQLite database (excluding WAL
+overhead). Output is framed by line for cross-chunk credential redaction;
+overlong lines above 16 KiB and output beyond the budgets are discarded with an
+explicit truncation warning. Terminal output can therefore lag until a line
+ends or execution finishes.
 
 ```yaml
 dashboard:

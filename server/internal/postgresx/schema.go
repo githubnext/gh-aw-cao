@@ -82,7 +82,8 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	} else if !probe.stateExists {
 		// Operational storage has separate tables and may have initialized first.
 		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relkind IN ('r','p')
-			AND relname NOT IN ('cao_operational_namespaces', 'cao_operational_records', 'cao_operational_cache')`).Scan(&probe.existingTables); err != nil {
+			AND relname NOT IN ('cao_operational_namespaces', 'cao_operational_records', 'cao_operational_cache',
+				'cao_operational_cli_queues', 'cao_operational_cli_commands', 'cao_operational_cli_output')`).Scan(&probe.existingTables); err != nil {
 			return err
 		}
 	}

@@ -254,7 +254,7 @@ function usesNativeSource(view, sourceName, predicates, queryContext, definition
   const declared = Array.isArray(definitions)
     && definitions.some((definition) => isPlainObject(definition) && definition.name === sourceName);
   const data = isPlainObject(view) && isPlainObject(view.data) ? view.data : null;
-  if (declared && isPlainObject(view) && view.mark !== 'element' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
+  if (declared && isPlainObject(view) && view.mark !== 'element' && view.controls !== 'filter-only' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
       && !(queryContext?.search?.query.trim()) && !(queryContext?.orderBy?.length)
       && !hasRelativeQueryTime(sourceName, definitions)) return true;
   return isPlainObject(view)

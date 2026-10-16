@@ -269,7 +269,11 @@ function renderListView(context) {
   const listActions = isPlainObject(view.list) ? [
     ...(typeof view.list.action === 'string' ? [view.list.action] : []),
     ...(Array.isArray(view.list.actions) ? view.list.actions : [])
-  ].map((id) => renderDeclaredCliAction(id)).filter(Boolean) : [];
+  ].map((id) => renderDeclaredCliAction(id, {}, id === view.list.action && Array.isArray(view.list['action-context']) ? {
+    rows,
+    fields: view.list['action-context'],
+    available: metadata.availability === 'available' && metadata.completeness === 'complete' && !context.continuation
+  } : undefined)).filter(Boolean) : [];
   const listAction = listActions.length ? h('span', { className: 'document-list-actions' }, ...listActions) : null;
   const renderValue = createEntityAwareCellRenderer(
     ENTITY_LINK_FIELDS,
@@ -885,7 +889,7 @@ function renderTableView(context) {
   let renderedRowCount = bodyRows.length;
   const continuation = replayableContinuation(context.continuation);
 
-  const interactive = view.controls !== 'static';
+  const interactive = view.controls !== 'static' && view.controls !== 'filter-only';
   const staticEmptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.';
   // A table can render zero rows either because the source truly has no data, or
   // because the dashboard-wide time-window filter is narrowing an otherwise

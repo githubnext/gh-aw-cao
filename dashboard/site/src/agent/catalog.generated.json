@@ -5,6 +5,34 @@
   },
   "pages": [
     {
+      "id": "commands",
+      "title": "Commands",
+      "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "command-queue"
+      ]
+    },
+    {
+      "id": "command",
+      "title": "Command output",
+      "description": "",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "command",
+          "required": true,
+          "description": "The command this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The command this page reports on."
+          }
+        }
+      ],
+      "queries": []
+    },
+    {
       "id": "steering",
       "title": "Steering",
       "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
@@ -662,6 +690,7 @@
         "indexing-daily-records",
         "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
+        "indexing-shards",
         "indexing-transactions",
         "ingestion-health",
         "ingestion-queue-sizes"
@@ -992,6 +1021,25 @@
     }
   ],
   "queries": [
+    {
+      "id": "command-queue",
+      "subject": "Show the durable local CLI command queue.",
+      "objective": "Inspect command lifecycle and reconnect to output without rerunning work.",
+      "acceptance": "Preserve persistent command IDs and all six server states; closing output never cancels execution. Unavailable local authority is not an empty queue.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "cli-commands"
+      ],
+      "used-by-pages": [
+        "commands"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires cli-commands, which the local SQLite projection does not provide."
+      }
+    },
     {
       "id": "event-base",
       "subject": "Project shared event fields before combining run-owned records.",
@@ -1482,8 +1530,8 @@
     {
       "id": "maintenance-repositories",
       "subject": "List each repository with recorded compiler versions and computed upgrade state.",
-      "objective": "Expose recorded compiler versions and computed upgrade state per repository so an operator can inspect update signals and gaps.",
-      "acceptance": "Return repository, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
+      "objective": "Expose recorded compiler versions and computed upgrade state per repository, with its GitHub home URL for inspection.",
+      "acceptance": "Return repository, repository-url linking to its GitHub home, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
       "description": "",
       "parameters": [
         {
@@ -3823,6 +3871,46 @@
         "requirements": [
           "runs",
           "workflows"
+        ]
+      }
+    },
+    {
+      "id": "dashboard-data-freshness",
+      "subject": "Find the newest workflow activity timestamp in retained canonical data.",
+      "objective": "Warn globally when the ingested workflow evidence has not advanced for 24 hours.",
+      "acceptance": "Use upstream updated-at, falling back to created-at, never browser import or refresh time. Missing or invalid timestamps remain unknown; inactivity alone does not prove an ingestion failure.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "indexing-shards",
+      "subject": "List retained Activity shard import receipts.",
+      "objective": "Inspect which shards were ingested, when, and how many records they committed.",
+      "acceptance": "Show shard scope, phase, import status, import timestamp, counts and payload identity from retained receipts. Import time is not upstream freshness and missing receipts do not prove complete coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
         ]
       }
     },

@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import maintenanceNavigationContract from '../fixtures/maintenance-navigation-contract.json' with { type: 'json' };
+import { processDataRequest } from '../../src/data-worker.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 
 const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedValue({
   schemaVersion: 13,
@@ -27,7 +29,10 @@ const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedV
     issues: []
   }
 }));
-vi.mock('../../src/data-processor.js', () => ({ queryCanonicalDatabaseDiagnostics }));
+vi.mock('../../src/data-processor.js', async () => ({
+  ...await vi.importActual('../../src/data-processor.js'),
+  queryCanonicalDatabaseDiagnostics
+}));
 
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
@@ -65,6 +70,33 @@ function context(row) {
 }
 
 describe('Configuration dashboard view', () => {
+  it('resolves repository home drills through the worker view-payload boundary and fails closed without evidence', () => {
+    const dashboard = authoritativeDashboard.dashboard;
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
+    const payload = compileDashboardViewPayloadQueries(page, page.id, {
+      viewId: 'maintenance-repositories', sourceNames: ['maintenance-repositories'], queries: dashboard.queries
+    });
+    expect(payload.aliases).toHaveLength(1);
+    for (const available of [true, false]) {
+      const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+        operation: 'execute-dashboard-queries',
+        queries: payload.queries,
+        sourceNames: payload.aliases,
+        sources: available ? {
+          workflows: { source: 'workflows', rows: maintenanceNavigationContract['repository-workflows'], metadata }
+        } : {}
+      }));
+      const result = results[payload.aliases[0]];
+      expect(result.metadata.availability).toBe(available ? 'available' : 'unavailable');
+      if (available) {
+        expect(result.rows).toHaveLength(maintenanceNavigationContract['repository-homes'].length);
+        expect(result.rows).toMatchObject(maintenanceNavigationContract['repository-homes']);
+      } else {
+        expect(result.rows).toEqual([]);
+      }
+    }
+  });
+
   it('disables hourly data downloads when Periodic Background Sync is unsupported', () => {
     localStorage.clear();
     const rendered = renderConfigurationView(context({
@@ -278,7 +310,7 @@ describe('Configuration dashboard view', () => {
     expect(views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
         { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', action: 'update-repository' },
-        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', action: 'upgrade-repository', actions: ['add-repository'] }
+        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', ...maintenanceNavigationContract['repository-upgrade'], actions: ['add-repository'] }
       ]);
     expect(views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([
@@ -306,6 +338,7 @@ describe('Configuration dashboard view', () => {
       display: 'status'
     });
     expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
+    expect(templates.get('maintenance-repository').drill).toEqual(maintenanceNavigationContract['repository-drill']);
     expect(templates.get('maintenance-campaign').actions).toEqual([
       {
         action: 'disable-campaign',

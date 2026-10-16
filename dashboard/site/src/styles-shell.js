@@ -275,8 +275,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-output { min-height: 160px; flex: 1 1 auto; margin: 0; }
 .cli-action-terminal { height: min(360px, 45dvh); min-height: 160px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #0d1117; }
 .cli-action-terminal[hidden] { display: none; }
-.cli-action-dialog.cli-action-running { inset: 0; width: 100vw; height: 100dvh; max-width: 100vw; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; grid-template-rows: minmax(0, 1fr) auto; }
-.cli-action-running > .cli-action-dialog-header { display: none; }
+.cli-action-dialog.cli-action-running { inset: 0; width: 100vw; height: 100dvh; max-width: 100vw; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-running > .cli-action-dialog-body { gap: 0; padding: 0; overflow: hidden; }
 .cli-action-running > .cli-action-dialog-body > :not(.cli-action-terminal-output):not(.cli-action-terminal) { display: none; }
 .cli-action-running .cli-action-terminal-output { min-height: 0; height: 100%; }

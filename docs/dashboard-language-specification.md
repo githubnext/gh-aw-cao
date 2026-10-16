@@ -85,6 +85,13 @@ data marks. Generated evidence previews use ordinary Dashboard Language queries
 and data marks, validated and executed by the canonical data worker; the element
 does not derive or query source rows.
 
+The authorized local command surface also registers `command-terminal` with
+`data.sources: []`. It is an interaction-only terminal, not an evidence view:
+execution details, output attachment, cancellation and retry cross the data
+worker's queue transport. Queue history, status filtering, ordering and counts
+remain declarative queries over the registered operational sources. Published
+dashboards neither enable this transport nor request queue data.
+
 ### 1.3 Design Goals
 
 The language is designed to be minimal, deterministic, auditable, and safe to validate. Built-in pages provide useful defaults. Custom pages provide only metric, table, chart, and time-series views.
@@ -227,7 +234,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `cli-actions`, `horizon`, `defaults`, `units`, `queries`, `card-templates`, `views`, `pages`, `navigation` |
 | Card template | `id`, `icon`, `icon-field`, `title`, `labels`, `details`, `drill` |
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
-| Callout `visible-when` | `source`, `field`, `equals` |
+| Callout `visible-when` | `source`, `field`, `equals`, `older-than-hours` |
 | Dashboard `horizon` | `label`, `tooltip` |
 | Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments`, `selector` |
 | Dashboard CLI action argument | `id`, `label`, `description`, `type`, `flag`, `default` |
@@ -272,7 +279,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View `data` | `source` or `sources`, `partial-source`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
-| View `list` | `style`, `layout`, `icon`, `action`, `card`, `drill` |
+| View `list` | `style`, `layout`, `icon`, `action`, `action-context`, `actions`, `card`, `drill` |
 | List `drill` | `type`, `field`, `page`, `query`, `title-field`, `arguments` |
 | Query drill argument | `name`, `field` |
 | Plural text variable | `singular`, `plural` |
@@ -299,7 +306,20 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-013:** `units`, when present, **MUST** be a non-empty mapping keyed by unique canonical identifiers. Each value **MUST** contain the non-empty string `name`, the non-empty string `symbol`, and the finite positive number `significant`, and **MAY** contain `format`.
 - **DLS-DOC-014:** A tooltip **MUST** contain exactly the non-empty human-readable strings `label` and `description` and **MAY** contain one canonical Octicon `icon`. A presenter **MUST** expose a tooltip as a keyboard-focusable help control named by `label`, associate its explanatory content with the control, and make that content available on both pointer hover and keyboard focus. `horizon`, when present, **MUST** contain exactly a non-empty human-readable `label` and one `tooltip`; the presenter **MUST** expose an icon-only clock control whose accessible name includes the horizon label and resolved duration. Pointer hover and keyboard focus **MUST** disclose the resolved duration. Activating the control **MUST** expose the configured description with the precise resolved start, exclusive end, and duration.
 - **DLS-DOC-014a:** A `mark: list` view **MUST** declare `list.style` as `cards` or `issues`, and **MUST** declare a canonical Octicon `list.icon`. `list.action`, when present, **MUST** reference a view-placed CLI action. `encoding.href`, when present on a list view, **MUST** reference one relation-specific link field and binds the primary card title to that link.
-- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and one scalar `equals` value; the callout is visible when at least one source row's field equals that value.
+- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and reevaluate clock-based visibility at least once per minute, without navigation. Queries own source selection and timestamp aggregation; the shared callout renderer owns clock-based visibility because a stored data revision does not change as time passes.
+
+The default dashboard warns after 24 hours without new retained workflow activity,
+using the newest upstream update timestamp (or creation timestamp when absent),
+not the browser refresh or shard import time. The warning links to Ingestion,
+whose shard receipts expose source paths, import status and time, record counts,
+and payload hashes. Inactivity is a reason to inspect ingestion, not proof of a
+collection failure; absent shard receipts leave coverage unknown.
+
+Callout query definitions and their dependencies remain in the core dashboard
+document even when page views are lazy-loaded. Startup resolves their bounded
+results before the first dashboard render so an existing stale-data warning
+does not appear late and shift the active page; subsequent results stay subscribed.
+
 - **DLS-DOC-016:** A navigation section **MUST** contain a non-empty `pages` sequence referencing declared page IDs. An optional `label` **MUST** be a non-empty string. `experimental`, when present, **MUST** be Boolean and defaults to `false`. `placement`, when present, **MUST** be `bottom` and the section **MUST** declare a non-empty `label`; it anchors the section after standard navigation sections. A presenter **MUST** render an unlabeled navigation section's pages directly without section chrome.
 
 ---
@@ -404,6 +424,9 @@ browser IndexedDB. The registered sources are:
 |---|---|---|
 | `collection-health` | the current administrator-only CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `oldest-pending-age`, `dead-letters`, `backfill`, `backfill-failures`, `backfill-queued-run-tasks`, `webhook-load`, `collection-load`, `failure-load`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
 | `github-quota-usage` | the peak GitHub API quota usage of one bucket, or the limit-weighted aggregate of every bucket, during one 15-minute slot of the last 24 hours | `observed-at`, `scope`, `bucket`, `app`, `installation`, `resource`, `buckets`, `limit`, `used`, `reserved`, `usage-percent` |
+| `cli-commands` | one persistent command from the authorized local server's bounded, filtered history page | `id`, `actionId`, `command`, `status`, `createdAt`, `startedAt`, `completedAt`, `exitCode`, `error`, `retryOf`, `outputTruncated` |
+| `cli-command-summary` | the authorized local queue's authoritative counts and admission state, independent of history pagination | `running`, `total`, `paused-reason`, `revision` |
+| `cli-command-statuses` | one supported command lifecycle status, for declarative filter options | `status` |
 
 The `collection-health` provider returns exactly one row for an authorized
 request. The `github-quota-usage` provider returns one `aggregate` row per
@@ -412,6 +435,12 @@ distinguishes them. Other clients receive an unavailable source, and the
 providers store no raw error messages or credentials in the source. Runtime
 sources are consumed only through a declared Dashboard Language query; view
 code and UI elements do not fetch or derive this data independently.
+
+The `cli-*` providers are available only through the data worker in authorized
+local admin or trusted canvas sessions and are never ingested into browser
+IndexedDB. Their statuses are exactly `queued`, `running`, `completed`, `failed`,
+`canceled`, and `timed-out`. Unavailable queue authority is not an empty queue.
+Published dashboards **MUST NOT** request these providers.
 
 - **DLS-SEM-016a:** `simulation-days` is a built-in synthetic query input, not
   a canonical table or provider source. It **MUST** yield exactly 30 rows with
@@ -425,7 +454,7 @@ code and UI elements do not fetch or derive this data independently.
   have no observed operational provenance and **MUST NOT** be represented as
   measured activity.
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor` and `command-terminal` elements **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -1283,7 +1312,7 @@ those states in user-facing terms.
 | Named UI element | `element` | no encoding; one `element` name |
 | Callout | `callout` | no encoding or data; one `callout` mapping |
 
-Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `section`, `reference`, `href`, and the chart-only `facet`, `row`, and `column` facet channels. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, or `workflow-dashboard-link` field; it does not select from multiple links. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series. The nominal or ordinal `section` channel is available to horizontal bar charts for section headings and to treemap charts for nested group rectangles, in first-appearance order.
+Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `section`, `reference`, `href`, and the chart-only `facet`, `row`, and `column` facet channels. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, `workflow-dashboard-link`, or `command-dashboard-link` field; it does not select from multiple links. Command dashboard links navigate to local operational history, not canonical evidence. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series. The nominal or ordinal `section` channel is available to horizontal bar charts for section headings and to treemap charts for nested group rectangles, in first-appearance order.
 
 Chart presenters MUST assign each non-semantic nominal category to a stable palette slot from its identity rather than its row, sort, or visibility position. The shared presenter normalizes the identity with Unicode NFKC, trimming, and lowercase conversion, then applies 32-bit FNV-1a and selects one of the twelve chart palette slots by modulo. This deterministic hash is the fallback for categories not previously observed, including new campaign and repository identities. Semantic status colors override the resulting palette color. The reserved `value` identity represents an ungrouped series and always uses the first palette slot; only an empty identity falls back to its local series position. Marks and legend swatches MUST resolve the same identity through the same mapping.
 
@@ -1299,23 +1328,33 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
+A list may bind its primary `action` to every worker-produced source row with
+`list.action-context`, a non-empty sequence of unique scalar field names.
+The approval dialog lists one fully resolved CLI command per row, and explicit
+approval enqueues each invocation independently. The source query owns target
+selection, distinctness, and ordering; display limits must not narrow the batch.
+Empty, unavailable, incomplete, paginated, or invalid target sets cannot execute
+and must never fall back to the dashboard's control repository. This binding
+requires a non-lazy list. Additional `list.actions` remain independent controls.
+
 For CLI-action presentation and confirmation, canvas CLI-action mode also
 includes explicitly enabled local admin previews (`local-server.mjs --admin`).
 This host capability does not change the document vocabulary, copy-only
 restrictions, action authority, or per-run confirmation requirements. Commands
 start headlessly and stream output into a scrollable, read-only terminal inside
-the approval dialog. The unchecked **Open terminal window** interaction option
-moves the same terminal into a separate, reusable dialog without changing
-the command or starting another execution. Closing that window returns output
-to the approval dialog;
-explicit cancellation stops the command. Command streams use a read-only
+the approval dialog, with no separate terminal-window option.
+Explicit cancellation stops the command. Command streams use a read-only
 terminal emulator; terminal emulation cannot be
 expressed by data marks and does not query or derive dashboard evidence.
 Each approval dialog executes at most once: its action button disappears when
-execution starts, leaving **Cancel command** while running and **Close** after
-completion or cancellation. Another run requires reopening the approval dialog.
+execution starts, leaving **Cancel command** while running. Completion, failure,
+or cancellation closes the dialog and announces the result through a shared
+notification linked to Commands.
+Retained output remains available in Commands. Another run requires reopening
+the approval dialog.
 While running, the terminal dialog fills the viewport and hides the approval
-content, leaving terminal output and cancellation controls. Terminal URLs use
+content, preserving dialog chrome, its accessible close button, terminal output,
+and cancellation controls. Closing the dialog detaches without canceling work. Terminal URLs use
 HTTP/HTTPS link detection and open separately without opener access.
 
 A list may declare `list.actions`, a non-empty sequence of unique view-placed
@@ -1573,7 +1612,7 @@ A view may set the structural `layout` hint to `full`, `full-view`, `half`, `thi
 
 The dashboard web presenter places explicit `full` pie-chart titles above their visualization without an additional padded card, keeping their heading insets consistent with other full-width charts. `horizontal` retains the adjacent title and visualization card.
 
-A table view may set `controls` to `interactive` or `static`; an omitted value defaults to `interactive`. Interactive tables may expose filtering, sorting, summaries, and progressive row disclosure. An interactive table may set `lazy-list` to `true` to reveal rows in bounded batches as its load boundary approaches the viewport, while retaining an accessible manual load control. Static tables expose all rows in source order without those controls and cannot enable `lazy-list`. A table or list may set `empty-message` to a non-empty textual description shown inside its zero-row region.
+A table view may set `controls` to `interactive`, `filter-only`, or `static`; an omitted value defaults to `interactive`. Interactive tables may expose filtering, sorting, summaries, and progressive row disclosure. An interactive table may set `lazy-list` to `true` to reveal rows in bounded batches as its load boundary approaches the viewport, while retaining an accessible manual load control. Static tables expose all rows in source order without those controls and cannot enable `lazy-list`. Filter-only tables retain a declared filter bar and source continuation, but disable local search, sorting and column summaries; this prevents a bounded server history page from masquerading as the complete searchable dataset. A table or list may set `empty-message` to a non-empty textual description shown inside its zero-row region.
 
 A table view may set `tree` to a mapping containing `id-field` and `parent-field`. Both values name distinct fields from the selected database table or query. The presenter orders each parent before its children, indents the first encoded column by hierarchy depth, and exposes the result as an accessible tree grid. The caller frame in a stack is the parent of the callee frame, so outermost frames appear before deeper nested frames. Rows with an empty or unavailable parent are roots. Tree tables must use `controls: static` so filtering, sorting, summaries, and progressive row disclosure cannot separate a child from its ancestors.
 
@@ -1607,7 +1646,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 ### 11.4 Normative Custom-View Requirements
 
 - **DLS-VIEW-001:** A custom page **MUST** contain `id`, `kind: custom`, and a non-empty `views` sequence; an omitted title **MUST** default from its page ID.
-- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`.
+- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor` and `command-terminal` elements **MAY** declare empty `data.sources`.
 - **DLS-VIEW-003:** `metric` **MUST** encode exactly one `value` field and **MAY** encode `href`; it **MUST NOT** encode chart or table channels.
 - **DLS-VIEW-004:** `table` **MUST** encode non-empty `columns` and **MAY** encode `href`; it **MUST NOT** encode `value`, `x`, `y`, or `color`.
 - **DLS-VIEW-004b:** A table **MAY** declare `data.partial-source` as a distinct, previously declared query to render an initial inventory projection on the static data-worker backend. The partial query **MUST** preserve the final query's row identities and link fields without implying that absent computed values are zero or complete. Its metadata **MUST** mark `projection-state: pending` separately from evidence completeness; absent computed cells **MUST** render as pending, not zero. The worker **MUST** publish it before evaluating the complete query, then replace it with the complete view projection at the same data revision; a canceled or superseded subscription **MUST NOT** publish stale rows. Interactive filters, search, or ordering that depend on deferred fields **MUST** wait for the complete query. Hosted backends **MAY** return only the complete result.
@@ -1637,7 +1676,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-026:** A custom page `route`, when present, **MUST** be a mapping containing at least one of `hash-query-parameter`, `navigation-page`, or `tabs`; it **MAY** also contain `tab`. Each present scalar value **MUST** be a canonical identifier. `navigation-page` **MUST** reference a different declared dashboard page. `tabs`, when present, **MUST** be a non-empty sequence of at most eight mappings, each declaring a unique canonical `id`, a non-empty `label`, a canonical icon `icon`, and a `page` naming a declared custom page; the page **MUST** also declare a `tab` matching one declared tab `id`. `tab` **MUST NOT** appear without `tabs`. Built-in pages **MUST NOT** declare `route`.
 - **DLS-VIEW-045:** A presenter rendering a page whose `route` declares `tabs` **MUST** render one tab set from those declarations, in declared order, marking the declared `tab` as current, and **MUST NOT** derive tabs from page IDs, view IDs, or source contents. When `hash-query-parameter` is declared, each tab link **MUST** target `#page-<tab-page>?<hash-query-parameter>=<route value>` with its components percent-encoded, and the tab set **MUST** render no tabs until a non-empty route value is resolved. Without `hash-query-parameter`, each tab link **MUST** target `#page-<tab-page>` with its page ID percent-encoded; no route value is required.
 - **DLS-VIEW-027:** A presenter **MUST** resolve a custom page route from `#page-<page-id>?<parameter>=<value>` and supply its decoded, trimmed route value as an opaque binding to route-aware named elements. Without `breadcrumbs`, a non-empty value **MUST** become the provisional page title and final breadcrumb label; a missing value **MUST** preserve the declared title. A route-aware named element **MAY** replace a provisional title and description with text from its declared source. With `breadcrumbs`, the presenter **MUST** preserve the declared page title and render the explicit, text-only chain specified in §11.1.1; missing parameters **MUST** stop the chain. `navigation-page` **MUST** remain the current navigation item; it is the inferred parent breadcrumb only when no explicit chain is declared. Route and allocated values **MUST NOT** be interpreted as markup, code, a URI, or a general-purpose content template.
-- **DLS-VIEW-028:** Table `controls`, when present, **MUST** be `interactive` or `static`; an omitted value **MUST** default to `interactive`. A static table **MUST** expose every effective row without filter, sort, summary, pagination, or nested-scroll controls. `column-summaries`, when present, **MUST** be Boolean and controls whether an interactive table renders its column-summary row; an omitted value **MUST** default to `true`. A temporal column summary **MUST** expose the earliest valid timestamp as Start, the latest valid timestamp as Stop, and their elapsed Duration instead of treating timestamps as categorical values. `empty-message`, when present, **MUST** be non-empty text and **MUST** appear only inside a zero-row table body.
+- **DLS-VIEW-028:** Table `controls`, when present, **MUST** be `interactive`, `filter-only`, or `static`; an omitted value **MUST** default to `interactive`. A static table **MUST** expose every effective row without filter, sort, summary, pagination, or nested-scroll controls. A filter-only table **MUST** retain its declared filter bar and source continuation while disabling local search, sorting and column summaries. `column-summaries`, when present, **MUST** be Boolean and controls whether an interactive table renders its column-summary row; an omitted value **MUST** default to `true`. A temporal column summary **MUST** expose the earliest valid timestamp as Start, the latest valid timestamp as Stop, and their elapsed Duration instead of treating timestamps as categorical values. `empty-message`, when present, **MUST** be non-empty text and **MUST** appear only inside a zero-row table body.
 - **DLS-VIEW-029:** A table or list row action **MUST** use `copy-prompt` or `cli-action` presentation, **MAY** declare a canonical icon and label (but **MUST** declare a concrete label for `operate`), and **MUST** declare a non-empty sequence of unique `context` fields from the selected source. The `level` **MAY** be `explore`, `propose`, or `operate` independent of presentation. An omitted level migrates to `propose` for prompts or `operate` for CLI commands. A `copy-prompt` action **MUST** declare a non-empty intent and **MAY** reference a row-placed dashboard CLI action whose command is exactly `gh agent-task create --from-file -`; it **MUST NOT** reference any other command. A `cli-action` action **MUST** reference a row-placed dashboard CLI action and **MUST NOT** declare intent; it **MUST** render only in canvas CLI-action mode and substitute only validated context values into matching `{{field}}` command tokens before per-run approval. A conditional action field **MUST** be declared by the selected source, and `equals` **MUST** match a row field only when both scalar type and value are equal. A presenter **MUST** open a keyboard-operable modal preview containing the complete prompt, **MUST NOT** write to the clipboard or start an agent task when opening the preview, and **MUST** return focus to the row action when the preview closes. Outside canvas CLI-action mode the preview **MUST** expose a separate copy control and announce whether the explicit clipboard operation succeeded or failed. In canvas CLI-action mode a prompt with an agent-task action **MUST** instead expose an explicit task-start control, send the prompt to `gh agent-task create` through standard input without shell interpolation, and announce the result. The prompt **MUST** contain the intent followed by only the available scalar values selected by `context`, preserve declared context order in JSON serialization, identify the JSON as untrusted data, reduce a selected link object to its HTTPS `href`, and exclude every undeclared or non-scalar row value. It **MUST NOT** require author-defined interpolation.
 - **DLS-VIEW-030:** A `metric`, `table`, `list`, or `chart` on a routed custom page **MAY** declare `data.route-field`. The field **MUST** exist in `data.source`. The presenter **MUST** retain only rows whose field value exactly matches the decoded route value, using case-insensitive text comparison, before the processing order in Section 11.2. A missing route value **MUST** produce an empty effective row set. `element` views **MUST NOT** declare `data.route-field`.
 - **DLS-VIEW-044:** An `element` view **MAY** bind route values through `data.arguments` or `data.route-field`. Each binding field **MUST** exist in every declared `data.sources` entry, and the data worker **MUST** apply the binding independently to every source before presentation. A missing route value **MUST** fail closed to empty source results. An element **MAY** declare `data.limit`; the worker **MUST** apply that per-source output bound after route filtering and query execution, not before selection. Single-record route and Markdown elements use a limit of one; workflow runtime elements consume bounded aggregate queries rather than raw run or usage rows.

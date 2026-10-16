@@ -15,7 +15,8 @@ application owns maintenance scheduling and MUST stop owned work before close.
 `OperationalServices` separates backend lifecycle, cache, request limiting,
 sessions, atomic session invalidation, revocations, leases, state, delivery
 deduplication, task queue, atomic delivery admission, collection metadata,
-GitHub quota, rate-limit state, health, and ingestion metrics. One backend MAY
+GitHub quota, rate-limit state, health, ingestion metrics, and optional durable
+CLI command queues. One backend MAY
 implement multiple services; the split does not relax atomic transitions.
 Only composition boundaries MAY consume `Store` and its
 `OperationalServices()` bundle. Runtime consumers MUST retain the focused
@@ -86,6 +87,52 @@ trimming accepted work. Replacement or delayed retry MUST commit before removing
 the original lease, in one atomic transition. Delay MUST NOT block unrelated
 ready work. Enrollment changes MUST serialize and preserve current ownership
 when repositories transfer between installations.
+
+## Durable CLI command queue service
+
+`OperationalServices.CLICommands` exposes `CLICommandQueues`, whose
+`OpenCLICommandQueue` returns a focused `CLICommandQueue`. It is separate from
+the collection `TaskQueue`. PostgreSQL advertises deployment-scoped restart
+persistence; Redis and memory leave this capability unsupported. A composition
+requiring CLI commands MUST set `Requirements.CLICommands` and reject an absent,
+typed-nil, unsupported, or volatile service. Storage support MUST NOT enable
+hosted execution, expose new HTTP actions, bypass declared-action validation or
+trusted approval, or provide credentials, quota admission, or subprocess control.
+The existing local-admin/canvas SQLite queue remains unchanged.
+
+Queue configuration is immutable across connections. Commands and ordered
+stdout/stderr chunks live in namespace-isolated `cao_operational_cli_*` tables,
+separate from canonical entities and disposable caches. Per-queue limits MUST
+bound jobs, input, chunks, output bytes, concurrency, execution deadlines, and
+retention, in addition to the namespace's protected byte and entry budgets.
+Capacity failures MUST roll back identity and output accounting atomically.
+An explicit output-truncation result and retained truncation flag distinguish
+intentional bounded output from storage errors.
+
+Enqueue accepts only caller-validated, approved invocations. Callers MUST remove
+credential values known to their execution environment and frame/redact output
+before storage; the service additionally rejects recognized credential patterns,
+invalid UTF-8, and NULs. Credentials MUST NOT enter queue configuration,
+invocations, output, or diagnostics. Reusing an idempotency key MUST return the
+same command only for the same invocation and retry ancestry. Retry creates a
+new command only from failed or timed-out work; the caller MUST revalidate its
+current declaration and obtain fresh approval before enqueueing it.
+
+Only a live database-time owner lease and its monotonic fence MAY claim FIFO
+work, append output, finish, or settle execution. Owners MUST renew their lease
+and abort executors if renewal fails. Expiry MUST NOT be interpreted as proof
+of subprocess termination. A replacement owner marks interrupted running work
+failed, preserves all uncertain execution claims, and blocks starts until
+`AcknowledgeRecovery` explicitly records operator reconciliation. Stale owners
+MUST NOT renew, append, settle, or acknowledge recovery.
+
+Cancellation and timeouts retain execution claims until `Settle` confirms that
+the executor exited; late completion MUST NOT overwrite a terminal state.
+History filtering and counts MUST precede bounded SQL pagination. Output
+replay MUST use a persistent sequence cursor. Browser detachment does not own
+execution lifetime. `Retain` and application-owned `Maintain` remove at most
+512 fully expired terminal commands per pass, preserving partial cutoff weeks
+and every active or uncertain claim and cascading only their owned output.
 
 ## Volatile memory exception
 

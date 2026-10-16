@@ -32,6 +32,7 @@ async function fixture(options) {
   try {
     const preview = await startDashboardServer({
       workingDirectory: root, siteRoot: root, catalogRoot: null, port: 0, canvas: true,
+      cliQueueAdmission: async () => ({ concurrency: 4 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
       downloadData: async (destination) => {
         await mkdir(destination, { recursive: true });

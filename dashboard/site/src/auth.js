@@ -4,6 +4,24 @@ import { updateRateLimitNotification } from './rate-limit-notification.js';
 const CSRF_COOKIE_NAME = 'cao_csrf';
 
 const debugAuth = createDebug('auth');
+let resourcePrincipal = '';
+
+export function githubResourcePrincipal() {
+  return resourcePrincipal;
+}
+
+/** Clears worker-owned private resource results at an authentication boundary. */
+/** @param {boolean} [resume] */
+export function invalidateGitHubResourceAuthentication(resume = false) {
+  globalThis.dispatchEvent?.(new CustomEvent('cao-authentication-change', { detail: { resume } }));
+}
+
+/** @param {string} principal */
+export function setGitHubResourcePrincipal(principal) {
+  if (resourcePrincipal === principal) return;
+  resourcePrincipal = principal;
+  invalidateGitHubResourceAuthentication(true);
+}
 
 export function usesGitHubAuthentication(document = globalThis.document) {
   const oauth = document

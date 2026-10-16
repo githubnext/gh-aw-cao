@@ -5,11 +5,13 @@ import path from "node:path";
 import test from "node:test";
 import {
   GITHUB_TELEMETRY_STACK_TRACE_LIMIT,
+  GithubApiCapacityError,
   collectActivityCacheState,
   normalizeGithubTelemetryStackTrace,
   prepareGithubTelemetryHistory,
   recordGithubTelemetry,
   requireGithubApiCapacity,
+  isGithubRateLimitError,
 } from "../../activity/github-telemetry.mjs";
 
 test("GitHub telemetry records rate-limit and bounded cache metadata without token values", async () => {
@@ -196,6 +198,35 @@ test("collection capacity preserves the smaller workflow-token reserve", () => {
   assert.throws(() => requireGithubApiCapacity({
     maxRequests: -100, execute: () => capacityResponse(100, 1000),
   }), /capacity insufficient/);
+});
+
+test("quota exhaustion is distinguishable from authentication, permission and transport failures", () => {
+  assert.throws(() => requireGithubApiCapacity({
+    maxRequests: -100, execute: () => capacityResponse(100, 1000),
+  }), GithubApiCapacityError);
+  for (const message of [
+    "gh: API rate limit exceeded for user ID 123. (HTTP 403)",
+    "failed to get runs: HTTP 403: API rate limit exceeded for user ID 123",
+    "HTTP 429: You have exceeded a secondary rate limit",
+    "gh: API rate limit exceeded for installation ID 123. (HTTP 403)",
+    "gh: You have exceeded a secondary rate limit. (HTTP 403)",
+  ]) {
+    assert.equal(isGithubRateLimitError(message), true);
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests: -100, execute: () => ({ status: 1, stderr: message }),
+    }), GithubApiCapacityError);
+  }
+  for (const message of [
+    "HTTP 401: Bad credentials",
+    "HTTP 403: Resource not accessible by integration",
+    "HTTP 500: Internal Server Error",
+    "connection timed out",
+  ]) {
+    assert.equal(isGithubRateLimitError(message), false);
+    assert.throws(() => requireGithubApiCapacity({
+      maxRequests: -100, execute: () => ({ status: 1, stderr: message }),
+    }), (error) => !(error instanceof GithubApiCapacityError) && error.message === message);
+  }
 });
 
 test("collection proceeds at the observed shared-quota headroom while preserving 2000 requests", () => {

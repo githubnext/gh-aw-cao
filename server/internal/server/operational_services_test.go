@@ -45,6 +45,7 @@ func focusedTestStore(store operational.Store) focusedOperationalStore {
 			}{s.RateLimits},
 			Health:           struct{ operational.HealthProbe }{s.Health},
 			IngestionMetrics: struct{ operational.IngestionMetrics }{s.IngestionMetrics},
+			CLICommands:      s.CLICommands,
 		},
 	}
 }

@@ -18,6 +18,7 @@ const services = new WeakMap();
 /**
  * @typedef {{
  *   message: string,
+ *   href?: string,
  *   icon?: 'download',
  *   detailsSubtitle?: string,
  *   tone?: 'info' | 'success' | 'warning' | 'error',
@@ -94,7 +95,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse' | 'actions'>> & Pick<Notification, 'detailsSubtitle' | 'icon'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse' | 'actions'>> & Pick<Notification, 'detailsSubtitle' | 'icon' | 'href'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -127,7 +128,14 @@ function normalizeNotification(input) {
     ? candidate.detailsSubtitle.trim()
     : undefined;
   const icon = candidate.icon === 'download' ? candidate.icon : undefined;
-  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, actions, dismissOnCollapse };
+  if (candidate.href !== undefined && (typeof candidate.href !== 'string'
+    || !/^#page-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(candidate.href))) {
+    throw new TypeError('Notification links must reference a dashboard page.');
+  }
+  if (candidate.href && details.length) {
+    throw new TypeError('Linked notifications cannot contain expandable details.');
+  }
+  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, actions, dismissOnCollapse, href: candidate.href };
 }
 
 /** @param {HTMLElement} details @param {string[]} messages */
@@ -191,6 +199,16 @@ function renderNotification(initial, container, onRemove) {
     className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
   }, content);
   let current = initial;
+  const messageLink = h('a', { className: 'dashboard-notification-link' });
+  const setMessage = () => {
+    if (current.href) {
+      messageLink.setAttribute('href', current.href);
+      messageLink.textContent = current.message;
+      if (messageLink.parentElement !== message) message.replaceChildren(messageLink);
+    } else {
+      message.textContent = current.message;
+    }
+  };
   let removed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let dismissTimer;
@@ -217,7 +235,7 @@ function renderNotification(initial, container, onRemove) {
       toggle.remove();
       detailsSubtitle.remove();
       details.remove();
-      content.prepend(summary);
+      if (summary.parentElement !== content) content.prepend(summary);
     }
     const expandedState = toggle.getAttribute('aria-expanded') === 'true';
     toggle.setAttribute(
@@ -286,7 +304,7 @@ function renderNotification(initial, container, onRemove) {
     update(next) {
       if (removed) return;
       current = normalizeNotification(next);
-      message.textContent = current.message;
+      setMessage();
       element.className = `dashboard-notification dashboard-notification-${current.tone}`;
       message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
       setIcon();
@@ -296,6 +314,7 @@ function renderNotification(initial, container, onRemove) {
     }
   };
 
+  setMessage();
   setIcon();
   setDetails();
   setActions();

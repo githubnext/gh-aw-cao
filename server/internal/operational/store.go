@@ -37,6 +37,7 @@ type Capability struct {
 type Capabilities struct {
 	Cache, RequestLimits, Sessions, Revocations        Capability
 	GitHubQuota, Collection, Coordination, Diagnostics Capability
+	CLICommands                                        Capability
 }
 
 type Health struct {
@@ -117,6 +118,7 @@ type OperationalServices struct {
 	RateLimits         RateLimitStateStore
 	Health             HealthProbe
 	IngestionMetrics   IngestionMetrics
+	CLICommands        CLICommandQueues
 }
 
 type Requirements struct {
@@ -124,6 +126,7 @@ type Requirements struct {
 	AllowVolatile bool
 	OAuth         bool
 	Collection    bool
+	CLICommands   bool
 }
 
 type serviceFeature struct {
@@ -160,6 +163,8 @@ func classifyFeatureRejection(f serviceFeature, r Requirements) featureRejection
 		return featureRejectionStageInvalidGuarantees
 	case f.cap.Scope != ScopeUnsupported && !f.present:
 		return featureRejectionStageAdvertisedWithout
+	case f.name == "cli commands" && f.cap.Scope != ScopeUnsupported && f.cap.Persistence != PersistenceRestart:
+		return featureRejectionStageInvalidGuarantees
 	case !f.required:
 		return featureRejectionStageNone
 	case f.cap.Scope == ScopeUnsupported || !f.present:
@@ -222,6 +227,7 @@ func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requir
 		{"rate limits", c.GitHubQuota, !nilService(s.RateLimits), true},
 		{"health", c.Diagnostics, !nilService(s.Health), true},
 		{"ingestion metrics", c.Diagnostics, !nilService(s.IngestionMetrics), true},
+		{"cli commands", c.CLICommands, !nilService(s.CLICommands), r.CLICommands},
 	}, r)
 }
 

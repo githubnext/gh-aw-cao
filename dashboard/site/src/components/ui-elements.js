@@ -12,6 +12,7 @@ import { renderLazyView } from './lazy-view.js';
 import { createFactoryScope } from './factory-elements.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
+import { renderCommandTerminal } from './command-terminal.js';
 
 const debugUiElements = createDebug('ui-elements');
 
@@ -46,7 +47,8 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
-  ['markdown', renderMarkdownElement]
+  ['markdown', renderMarkdownElement],
+  ['command-terminal', renderCommandTerminal]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -82,7 +84,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'all-campaign-memory',
   'link-button-list',
   'markdown',
-  'measure-history'
+  'measure-history',
+  'command-terminal'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route']);
 

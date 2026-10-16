@@ -49,7 +49,7 @@ describe('declarative card filters', () => {
       .toEqual(contract['filter-bar']);
     const documentModel = { languageVersion: authoritativeDashboard['language-version'], dashboard };
     expect(dashboardPageSourceNames(documentModel, page.id, 'card'))
-      .toEqual(['issue-safe-outputs', 'issue-safe-output-label-options', 'issue-status-label-options']);
+      .toEqual(['issue-safe-outputs', 'issue-safe-output-label-options', 'issue-status-label-options', 'dashboard-data-freshness']);
     expect(dashboardPageLazySourceNames(documentModel, page.id)).toEqual(['issue-safe-outputs']);
     expect(Object.keys(dashboardPagePaginatedSourceBindings(documentModel, page.id)))
       .toEqual([dashboardViewAliasName(page.id, view, 2, 'issue-safe-outputs')]);

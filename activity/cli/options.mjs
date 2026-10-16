@@ -13,7 +13,7 @@ export function parseOptions(arguments_) {
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'json' || name === 'keep' || name === 'diagnose'
       || name === 'dry-run' || name === 'no-open' || name === 'keep-existing' || name === 'replace-existing'
-      || name === 'strict-warnings') {
+      || name === 'strict-warnings' || name === 'offline') {
       options[name] = 'true';
       continue;
     }

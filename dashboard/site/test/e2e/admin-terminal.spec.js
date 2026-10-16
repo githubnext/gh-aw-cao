@@ -6,6 +6,7 @@ const { startDashboardServer } = await import(new URL('../../../local-server.mjs
 
 for (const width of [1440, 390]) {
   test(`admin action streams into a read-only terminal at ${width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
     /** @type {(() => void) | undefined} */
     let finish;
     /** @type {((event: { stream: string, data: string }) => void) | undefined} */
@@ -15,6 +16,8 @@ for (const width of [1440, 390]) {
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', admin: true, port: 0,
+      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
       lookupSelector: async () => [{ value: 'octo/example', label: 'octo/example' }],
       executeCliAction: async (/** @type {{ signal?: AbortSignal, onOutput: (event: { stream: string, data: string }) => void }} */ { onOutput, signal }) => {
@@ -26,7 +29,8 @@ for (const width of [1440, 390]) {
           signal?.addEventListener('abort', () => { cancellations += 1; resolve(undefined); }, { once: true });
         });
         if (signal?.aborted) return { ok: false, exitCode: null, error: 'CLI action cancelled.' };
-        onOutput({ stream: 'stderr', data: '\r\u001b[2KProgress: 100%\r\nRepository staged.\r\n' });
+        onOutput({ stream: 'stdout', data: '\r\u001b[2KProgress: 100%\r\n' });
+        onOutput({ stream: 'stderr', data: 'Repository staged.\r\n' });
         return { ok: true, exitCode: 0 };
       },
       downloadData: async (/** @type {string} */ destination) => {
@@ -58,98 +62,93 @@ for (const width of [1440, 390]) {
       await dialog.getByRole('button', { name: 'octo/example', exact: true }).click();
       expect(runs).toBe(0);
       const confirm = dialog.getByRole('button', { name: 'Add repository', exact: true, includeHidden: true });
-      const terminalOption = dialog.getByRole('checkbox', { name: 'Open terminal window' });
-      const terminalDialog = page.getByRole('dialog', { name: 'Terminal: Add repository', exact: true });
-      const status = dialog.locator(':scope > footer .cli-action-status');
-      await expect(terminalOption).not.toBeChecked();
+      await expect(dialog.getByRole('checkbox', { name: 'Open terminal window' })).toHaveCount(0);
+      await expect(dialog.getByText('Output appears here by default.', { exact: false })).toHaveCount(0);
       await confirm.click();
       await expect.poll(() => runs).toBe(1);
       await expect(confirm).toBeHidden();
-      await expect(dialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command']);
-      await expect(terminalDialog).not.toBeVisible();
+      await expect(dialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command', 'Detach']);
+      await expect(page.getByRole('button', { name: 'Close terminal', exact: true })).toHaveCount(0);
       await expect(dialog.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
+      await expect(dialog.locator(':scope > header')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Close action approval' })).toBeVisible();
+      const originalTerminal = await dialog.getByRole('region', { name: 'Read-only command terminal' }).elementHandle();
       finish?.();
-      await expect(status).toHaveText('Completed');
-      await terminalOption.check();
-      const terminal = terminalDialog.getByRole('region', { name: 'Read-only command terminal' });
-      await expect(terminal).toBeVisible();
-      await expect(terminalDialog.getByRole('button', { name: 'Cancel command', includeHidden: true })).toBeHidden();
-      const originalTerminal = await terminal.elementHandle();
-      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
       expect(runs).toBe(1);
+      await trigger.click();
+      await dialog.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
+      await dialog.getByRole('button', { name: 'octo/example', exact: true }).click();
+      await confirm.click();
+      await expect.poll(() => runs).toBe(2);
+      const terminal = dialog.getByRole('region', { name: 'Read-only command terminal' });
+      await expect(terminal).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Cancel command', includeHidden: true })).toBeVisible();
+      await expect(dialog.locator(':scope > header')).toBeVisible();
+      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
+      expect(runs).toBe(2);
       await terminal.click();
       await page.keyboard.type('this must not reach the command');
       await expect(terminal.locator('.xterm-accessibility-tree')).not.toContainText('this must not reach');
-      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Progress: 100%');
-      await expect(terminal.locator('.xterm-accessibility-tree')).not.toContainText('Progress: 10%');
-      const bounds = await terminalDialog.boundingBox();
+      const bounds = await dialog.boundingBox();
       expect(bounds?.x).toBeGreaterThanOrEqual(0);
       expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(width);
       const screenshot = testInfo.outputPath(`admin-terminal-${width}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
       await testInfo.attach(`admin-terminal-${width}`, { path: screenshot, contentType: 'image/png' });
-      await terminalDialog.getByRole('button', { name: 'Close terminal window', exact: true }).click();
-      await expect(dialog.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
       await dialog.getByRole('button', { name: 'Close action approval' }).click();
       await expect(trigger).toBeFocused();
+      finish?.();
       await trigger.click();
-      expect(runs).toBe(1);
-      await expect(terminalOption).not.toBeChecked();
+      expect(runs).toBe(2);
       await expect(terminal).not.toBeVisible();
       await dialog.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
       await dialog.getByRole('button', { name: 'octo/example', exact: true }).click();
-      await terminalOption.check();
-      expect(runs).toBe(1);
-      await expect(terminalDialog).not.toBeVisible();
+      expect(runs).toBe(2);
       await confirm.click();
-      await expect.poll(() => runs).toBe(2);
-      await expect(terminalDialog).toBeVisible();
+      await expect.poll(() => runs).toBe(3);
+      await expect(dialog).toBeVisible();
       await expect(confirm).toBeDisabled();
       expect(await originalTerminal?.evaluate((element) => element === document.querySelector('.cli-action-terminal'))).toBe(true);
-      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Repository staged.');
-      await expect(terminalDialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command']);
-      await page.keyboard.press('Escape');
-      await expect(terminalDialog).not.toBeVisible();
+      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
+      await expect(dialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command', 'Detach']);
       expect(cancellations).toBe(0);
       await expect(dialog.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
       await dialog.getByRole('button', { name: 'Cancel command', exact: true }).click();
-      await expect(status).toHaveText('Cancelled. Completed changes are not undone.');
+      await expect(page.getByText('Add repository: Cancelled. Completed changes are not undone.', { exact: true })).toBeVisible();
       await expect.poll(() => cancellations).toBe(1);
-      await terminalOption.check();
-      await expect(dialog).toBeVisible();
-      await expect(terminal).toBeVisible();
-      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Cancelled.');
-      const cancelledScreenshot = testInfo.outputPath(`admin-terminal-cancelled-${width}.png`);
-      await page.screenshot({ path: cancelledScreenshot, fullPage: true });
-      await testInfo.attach(`admin-terminal-cancelled-${width}`, { path: cancelledScreenshot, contentType: 'image/png' });
-      await terminalDialog.getByRole('button', { name: 'Close terminal window', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
       await expect(confirm).toBeHidden();
-      await dialog.getByRole('button', { name: 'Close action approval' }).click();
       await trigger.click();
       await dialog.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
       await dialog.getByRole('button', { name: 'octo/example', exact: true }).click();
       await confirm.click();
-      await expect.poll(() => runs).toBe(3);
+      await expect.poll(() => runs).toBe(4);
       await page.keyboard.press('Escape');
-      await expect.poll(() => cancellations).toBe(2);
-      await expect(dialog).toBeVisible();
-      await expect(status).toHaveText('Cancelled. Completed changes are not undone.');
-      await dialog.getByRole('button', { name: 'Close action approval' }).click();
+      await expect(dialog).not.toBeVisible();
+      expect(cancellations).toBe(1);
+      finish?.();
 
       await page.getByRole('button', { name: 'Upgrade', exact: true }).first().click();
       const upgradeDialog = page.getByRole('dialog', { name: 'Approve Upgrade', exact: true });
-      expect(runs).toBe(3);
+      expect(runs).toBe(4);
+      await expect(upgradeDialog.locator('.cli-action-dialog-body p code')).toHaveText('gh aw');
+      await expect(upgradeDialog.getByRole('checkbox', { name: 'Open terminal window', includeHidden: true })).toHaveCount(0);
+      const approvalScreenshot = testInfo.outputPath(`admin-approval-${width}.png`);
+      await page.screenshot({ path: approvalScreenshot, fullPage: true });
+      await testInfo.attach(`admin-approval-${width}`, { path: approvalScreenshot, contentType: 'image/png' });
       await upgradeDialog.getByRole('button', { name: 'Upgrade', exact: true }).click();
-      await expect.poll(() => runs).toBe(4);
-      await expect(upgradeDialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command']);
+      await expect.poll(() => runs).toBe(5);
+      await expect(upgradeDialog.locator(':scope > footer button:visible')).toHaveText(['Cancel command', 'Detach']);
       await expect(upgradeDialog.locator('.cli-action-command')).toBeHidden();
       await expect(upgradeDialog.locator('.cli-action-arguments')).toBeHidden();
-      await expect(upgradeDialog.getByRole('checkbox', { name: 'Open terminal window', includeHidden: true })).toBeHidden();
-      await expect(upgradeDialog.locator(':scope > header')).toBeHidden();
+      await expect(upgradeDialog.locator(':scope > header')).toBeVisible();
+      await expect(upgradeDialog.getByRole('button', { name: 'Close action approval' })).toBeVisible();
       expect(await upgradeDialog.boundingBox()).toEqual({ x: 0, y: 0, width, height: 900 });
       const inlineTerminal = upgradeDialog.getByRole('region', { name: 'Read-only command terminal' });
       await expect(inlineTerminal).toBeVisible();
-      expect((await inlineTerminal.boundingBox())?.height).toBeGreaterThan(800);
+      expect((await inlineTerminal.boundingBox())?.height).toBeGreaterThan(700);
       await expect(inlineTerminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
       emitOutput?.({
         stream: 'stdout',
@@ -185,12 +184,11 @@ for (const width of [1440, 390]) {
       await page.screenshot({ path: inlineScreenshot, fullPage: true });
       await testInfo.attach(`admin-inline-terminal-${width}`, { path: inlineScreenshot, contentType: 'image/png' });
       await upgradeDialog.getByRole('button', { name: 'Cancel command', exact: true }).click();
-      await expect.poll(() => cancellations).toBe(3);
-      await expect(inlineTerminal).toBeVisible();
-      await expect(upgradeDialog.locator(':scope > footer button:visible')).toHaveText(['Close']);
+      await expect.poll(() => cancellations).toBe(2);
+      await expect(upgradeDialog).not.toBeVisible();
     } finally {
       finish?.();
-      await page.goto('about:blank');
+      await page.goto('about:blank').catch(() => {});
       await preview.close();
     }
   });

@@ -3,5 +3,19 @@
     { "id": "repositories", "label": "Repositories", "icon": "repo", "page": "maintenance" },
     { "id": "campaigns", "label": "Campaigns", "icon": "workflow", "page": "maintenance-campaigns" }
   ],
-  "sources": ["maintenance-repositories", "campaigns"]
+  "sources": ["maintenance-repositories", "campaigns"],
+  "repository-upgrade": {
+    "action": "upgrade-repository",
+    "action-context": ["repository"]
+  },
+  "repository-drill": { "type": "external", "field": "repository-url" },
+  "repository-workflows": [
+    { "organization": "octo", "repository": "first", "workflow": "a.md" },
+    { "organization": "octo", "repository": "first", "workflow": "b.md" },
+    { "organization": "other", "repository": "second", "workflow": "c.md" }
+  ],
+  "repository-homes": [
+    { "repository": "octo/first", "repository-url": "https://github.com/octo/first" },
+    { "repository": "other/second", "repository-url": "https://github.com/other/second" }
+  ]
 }

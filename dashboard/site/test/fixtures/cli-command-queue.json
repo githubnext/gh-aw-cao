@@ -1,0 +1,14 @@
+{
+  "commands": [
+    { "id": 1, "actionId": "compile", "status": "queued", "createdAt": 1792022400000 },
+    { "id": 2, "actionId": "compile", "status": "running", "createdAt": 1792022400000 },
+    { "id": 3, "actionId": "compile", "status": "completed", "createdAt": 1792022400000 },
+    { "id": 4, "actionId": "compile", "status": "failed", "createdAt": 1792022400000, "error": "Command exited with code 1." },
+    { "id": 5, "actionId": "compile", "status": "canceled", "createdAt": 1792022400000 },
+    { "id": 6, "actionId": "compile", "status": "timed-out", "createdAt": 1792022400000 }
+  ],
+  "total": 6,
+  "running": 1,
+  "pausedReason": "Waiting for quota.",
+  "revision": 3
+}

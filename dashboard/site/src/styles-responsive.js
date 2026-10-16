@@ -26,6 +26,7 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .table-cli-action-button { width: auto; min-height: 44px; padding: 8px; text-align: left; }
   .table-cli-action-control { max-width: 100%; }
   .cli-action-dialog-footer, .table-intent-dialog-footer { flex-wrap: wrap; }
+  .cli-action-running .cli-action-dialog-footer { padding-block: 8px; }
   .cli-action-cancel, .cli-action-confirm, .table-intent-copy-button { min-height: 44px; }
   .cli-action-dialog-body { overflow: auto; }
   .card-filter-bar { padding: 6px 12px; }
