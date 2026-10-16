@@ -80,13 +80,27 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
     return normalizedJsonlCurrentShards(indexedDB,
       identities.map((payloadIdentity) => ({ payloadIdentity, expectedPhase: 'runs' })));
   }, { url: moduleUrl, identities: [firstIdentity, secondIdentity] });
+  const readSnapshot = async () => page.evaluate(async (url) => {
+    const { processDataRequest } = await import(url);
+    return processDataRequest({ operation: 'read-dashboard-snapshot' });
+  }, `${origin}/src/data-worker.js`);
 
+  expect(await readSnapshot()).toBeNull();
   expect(await ingest(firstShard, firstIdentity)).toMatchObject({ updated: true });
+  const createdAt = new Date().toISOString();
+  await page.evaluate(async ({ url, createdAt }) => {
+    const { recordTransaction } = await import(url);
+    await recordTransaction(indexedDB, {
+      id: 'dashboard-snapshot:complete', kind: 'dashboard-snapshot', createdAt
+    });
+  }, { url: storageUrl, createdAt });
+  expect(await readSnapshot()).toEqual({ createdAt });
   const firstState = await stored();
   expect(firstState.runIds).toEqual(['github:run:githubnext/gh-aw-cao:1001']);
   expect(firstState.receiptHashes).toEqual([firstIdentity]);
 
   await page.reload();
+  expect(await readSnapshot()).toEqual({ createdAt });
   expect(await stored()).toEqual(firstState);
   expect(await cachedShards()).toEqual([true, false]);
   expect(await ingest(firstShard, firstIdentity)).toMatchObject({ updated: false, skipped: true });
@@ -101,6 +115,7 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
   });
 
   await page.reload();
+  expect(await readSnapshot()).toEqual({ createdAt });
   expect((await stored()).runIds).toHaveLength(2);
   expect(await cachedShards()).toEqual([true, true]);
 });

@@ -42,6 +42,10 @@ export function startIngestionProgress(target = self, requestId) {
   let totalBytes;
   let started = false;
   let completed = false;
+  /** @type {string[]} */
+  let pendingLog = [];
+  /** @param {string} message */
+  const publishLog = (message) => target.postMessage({ type: 'preparation-log', event: { message } });
   const updateStatus = () => {
     if (workloadStartedAt === 0) {
       status = 'Preparing data...';
@@ -84,6 +88,8 @@ export function startIngestionProgress(target = self, requestId) {
     start() {
       if (started || completed) return;
       started = true;
+      for (const message of pendingLog) publishLog(message);
+      pendingLog = [];
       publishWorkerLoadingProgress({ id, phase: 'start' }, target);
       report();
       interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
@@ -128,7 +134,10 @@ export function startIngestionProgress(target = self, requestId) {
     },
     /** @param {string} nextMessage */
     log(nextMessage) {
+      if (completed) return;
       clock.advance(nextMessage);
+      if (started) publishLog(nextMessage);
+      else pendingLog.push(nextMessage);
     },
     /** @param {number} completed @param {number} total @param {'files' | 'maintenance' | 'inventory' | 'queries'} stage */
     reportImportProgress(completed, total, stage) {
@@ -138,6 +147,7 @@ export function startIngestionProgress(target = self, requestId) {
     complete() {
       if (completed) return;
       completed = true;
+      pendingLog = [];
       if (interval) clearInterval(interval);
       debugIngestionProgress({ event: 'completed', id, started });
       if (!started) return;

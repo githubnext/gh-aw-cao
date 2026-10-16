@@ -6,7 +6,9 @@ const patternCache = new Map();
 const disabledDebug = () => {};
 const SAFE_ERROR_NAMES = new Set([
   'Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError',
-  'NetworkError', 'QuotaExceededError', 'DashboardServerError'
+  'NetworkError', 'QuotaExceededError', 'DashboardServerError',
+  'TransactionInactiveError', 'InvalidStateError', 'UnknownError',
+  'NotAllowedError', 'SecurityError', 'DataCloneError', 'VersionError'
 ]);
 
 /** @param {unknown} error */

@@ -1,7 +1,8 @@
 import { h } from '../dom.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
-import { browserFirstLoad } from '../browser-first-load.js';
+import { browserFirstLoad, preparationDiagnostics, preparationStorage } from '../browser-first-load.js';
+import { TEMPORARY_STORAGE_WARNING } from '../browser-storage.js';
 import { createDebug } from '../debug.js';
 import { createCopyControl, createModalDialog } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
@@ -57,6 +58,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const eyebrow = h('p', { className: 'first-load-eyebrow' });
   const description = h('p', { className: 'first-load-description' });
   const durationNote = h('p', { className: 'first-load-note first-load-duration' });
+  const storageWarning = h('p', { className: 'first-load-note first-load-storage-warning', role: 'status' });
   const reasonCopy = h('span');
   const copyControl = createCopyControl({
     getContent: () => {
@@ -69,7 +71,8 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
         completed: completed ?? null,
         total: total ?? null,
         schemaVersionBefore: oldVersion ?? null,
-        schemaVersionAfter: newVersion ?? null
+        schemaVersionAfter: newVersion ?? null,
+        ...preparationDiagnostics()
       }, null, 2);
     },
     label: 'Copy preparation details',
@@ -113,6 +116,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     message,
     ingestionDetails,
     durationNote,
+    storageWarning,
     dismissButton,
     retryButton,
     continuationNote,
@@ -140,7 +144,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   document.body.append(dialog);
   render(reasonCopy, () => browserFirstLoad.get().reason === 'upgrade'
     ? 'Why is the database being rebuilt? This dashboard version needs a newer browser database format. We rebuild this local copy from published activity so it stays compatible; your campaign data is not changed.'
-    : 'Why is the database being populated? This browser has no completed local copy yet. This can happen on your first visit, after clearing browser data, or if an earlier import did not finish.', { signal });
+    : 'Why is the database being populated? This browser has no completed local copy yet. This can happen on your first visit, after clearing browser data, after a private browsing session ends, or if an earlier import did not finish.', { signal });
   render(eyebrow, () => browserFirstLoad.get().reason === 'upgrade' ? 'Dashboard update' : 'Welcome to CAO', { signal });
   render(description, () => {
     const current = browserFirstLoad.get();
@@ -155,7 +159,12 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
         'Bringing your campaign activity together for a first look.'
       );
   }, { signal });
-  render(durationNote, () => browserFirstLoad.get().reason === 'upgrade'
+  render(storageWarning, () => preparationStorage.get()?.persisted === true || !preparationStorage.get()
+    ? [] : responsiveCopy(TEMPORARY_STORAGE_WARNING,
+      'Private sessions lose downloaded data when closed.'), { signal });
+  render(durationNote, () => preparationStorage.get() && preparationStorage.get()?.persisted !== true
+    ? 'Preparation can take several minutes. This browser may need to download the data again on a future visit.'
+    : browserFirstLoad.get().reason === 'upgrade'
     ? responsiveCopy(
       'This update can take several minutes. Future visits reuse cached data.',
       'Updates can take a few minutes. Future visits use cached data.'
@@ -228,7 +237,9 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     dismissButton.hidden = current.status === 'failed';
     retryButton.hidden = current.status !== 'failed';
     continuationNote.hidden = current.status === 'failed';
-    durationNote.hidden = current.status === 'failed';
+    const temporaryStorage = preparationStorage.get() && preparationStorage.get()?.persisted !== true;
+    storageWarning.hidden = !temporaryStorage;
+    durationNote.hidden = current.status === 'failed' || Boolean(temporaryStorage);
     if (visible && !dialog.open) {
       restoreDashboardTheme(dialog);
       open();

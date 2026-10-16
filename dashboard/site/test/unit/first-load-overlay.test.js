@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { browserFirstLoad, showBrowserFirstLoad } from '../../src/browser-first-load.js';
+import { browserFirstLoad, showBrowserFirstLoad, recordPreparationEvent, recordPreparationStorage, resetPreparationDiagnostics } from '../../src/browser-first-load.js';
 import { mountFirstLoadOverlay } from '../../src/components/first-load-overlay.js';
 import { renderFactoryHeader } from '../../src/components/factory-header.js';
 import { scopedStorageKey } from '../../src/storage-scope.js';
@@ -10,6 +10,7 @@ let owner = new AbortController();
 beforeEach(() => {
   owner = new AbortController();
   document.body.replaceChildren();
+  resetPreparationDiagnostics();
   browserFirstLoad.set({ status: 'loading', dismissed: false });
 });
 
@@ -211,8 +212,12 @@ describe('browser first-load presentation', () => {
     expect(dialog?.querySelector('h2')?.textContent).toContain('dashboard update could not finish');
   });
 
-  it('explains a missing snapshot and copies bounded preparation diagnostics', async () => {
+  it('explains a missing snapshot and copies the full preparation log and storage diagnostics', async () => {
     browserFirstLoad.set({ status: 'loading', dismissed: false, reason: 'missing-snapshot', stage: 'files', completed: 2, total: 5 });
+    recordPreparationStorage({ persisted: false, quota: 1000, usage: 100 });
+    for (let index = 0; index < 216; index += 1) {
+      recordPreparationEvent('ingestion', { message: `Shard ${index + 1} committed.` });
+    }
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
@@ -223,7 +228,8 @@ describe('browser first-load presentation', () => {
     expect(copy?.textContent).toContain('Copy preparation details');
     copy?.click();
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
+    const diagnostics = JSON.parse(writeText.mock.calls[0][0]);
+    expect(diagnostics).toMatchObject({
       event: 'dashboard-browser-database-repopulation',
       reason: 'missing-snapshot',
       status: 'loading',
@@ -231,8 +237,14 @@ describe('browser first-load presentation', () => {
       completed: 2,
       total: 5,
       schemaVersionBefore: null,
-      schemaVersionAfter: null
+      schemaVersionAfter: null,
+      storage: { persisted: false, quota: 1000, usage: 100 },
+      ingestion: null
     });
+    expect(diagnostics.log).toHaveLength(217);
+    expect(diagnostics.log[1]).toMatchObject({ event: 'ingestion', details: { message: 'Shard 1 committed.' } });
+    expect(diagnostics.log.at(-1)).toMatchObject({ event: 'ingestion', details: { message: 'Shard 216 committed.' } });
+    expect(diagnostics.log.every((/** @type {{ timestamp: string }} */ entry) => Number.isFinite(Date.parse(entry.timestamp)))).toBe(true);
     await vi.waitFor(() => expect(dialog?.querySelector('.first-load-copy-status')?.textContent).toBe('Preparation details copied.'));
     browserFirstLoad.set({ status: 'failed', dismissed: false, reason: 'upgrade', oldVersion: 36, newVersion: 37 });
     expect(dialog?.querySelector('.first-load-reason')?.textContent).toContain('newer browser database format');
@@ -248,6 +260,17 @@ describe('browser first-load presentation', () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     /** @type {HTMLButtonElement | null} */ (document.querySelector('.first-load-details-link'))?.click();
     await vi.waitFor(() => expect(document.querySelector('.first-load-copy-status')?.textContent).toBe('Could not copy preparation details.'));
+  });
+
+  it('shows the private-session storage warning inside the modal instead of promising cache reuse', () => {
+    mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
+    recordPreparationStorage({ persisted: false, quota: null, usage: null });
+    const dialog = document.querySelector('dialog');
+    expect(dialog?.textContent).toContain('data will be lost when the private session ends');
+    expect(dialog?.querySelector('.first-load-duration')?.textContent).toContain('download the data again');
+    recordPreparationStorage({ persisted: true, quota: 1000, usage: 100 });
+    expect(dialog?.textContent).not.toContain('data will be lost when the private session ends');
+    expect(dialog?.querySelector('.first-load-duration')?.textContent).toContain('Future visits reuse cached data');
   });
 
   it('supports Escape dismissal, honest failure output and retry', () => {

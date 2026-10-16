@@ -197,6 +197,22 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
+  it('exports every preparation step without truncating it to the notification history', () => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+    progress.log('Checking cached shards.');
+    progress.start();
+    for (let index = 1; index <= 216; index += 1) progress.log(`Shard ${index} committed.`);
+    progress.complete();
+    progress.log('Ignored after completion.');
+    const log = postMessage.mock.calls.map(([message]) => message)
+      .filter((message) => message.type === 'preparation-log');
+    expect(log).toHaveLength(217);
+    expect(log[0].event.message).toBe('Checking cached shards.');
+    expect(log.at(-1).event.message).toBe('Shard 216 committed.');
+  });
+
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {

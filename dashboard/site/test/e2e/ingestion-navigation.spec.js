@@ -202,9 +202,8 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen.locator('header')).toBeInViewport({ ratio: 1 });
   await expect(importScreen.getByRole('button', { name: 'Explore data' })).toHaveCount(1);
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
-  await expect(importScreen).toContainText(upgrade
-    ? 'This update can take several minutes'
-    : 'The first import can take several minutes');
+  await expect(importScreen.locator('.first-load-storage-warning')).toBeVisible();
+  await expect(importScreen.locator('.first-load-storage-warning')).toContainText('private session ends');
   const importHistory = importScreen.locator('.first-load-ingestion-details');
   await expect(importHistory).toBeVisible();
   await importHistory.locator('summary').click();
@@ -263,6 +262,15 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(page.getByRole('button', { name: 'Show import progress' })).toHaveCount(0);
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
+  const preparation = await page.evaluate(async (url) => {
+    const { preparationDiagnostics } = await import(url);
+    return preparationDiagnostics();
+  }, `${origin}/src/browser-first-load.js`);
+  expect(preparation.storage.persisted).not.toBe(true);
+  expect(preparation.log.some((/** @type {{ details: { message?: string } }} */ entry) =>
+    entry.details.message?.startsWith('Shard 1/12 committed'))).toBe(true);
+  expect(preparation.log.some((/** @type {{ details: { message?: string } }} */ entry) =>
+    entry.details.message?.startsWith('Shard 11/12 committed'))).toBe(true);
   await expect(page.locator('#agent-factory-heading')).toHaveText('Your dashboard is taking shape.');
   await expect(page.locator('.factory-intro .factory-rhythm')).not.toBeVisible();
   await page.locator('.dashboard-notification-toggle').click();

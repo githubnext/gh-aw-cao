@@ -3,7 +3,7 @@ import { clusterScatterPoints } from './scatter-clustering.js';
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
-import { browserFirstLoad } from './browser-first-load.js';
+import { browserFirstLoad, recordPreparationEvent } from './browser-first-load.js';
 import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
@@ -1074,6 +1074,12 @@ function getWorker() {
     }
     if (event.data?.type === 'database-upgrade') {
       for (const listener of databaseUpgradeListeners) listener(event.data.versions);
+      return;
+    }
+    if (event.data?.type === 'preparation-log') {
+      if (typeof event.data.event?.message === 'string') {
+        recordPreparationEvent('ingestion', { message: event.data.event.message });
+      }
       return;
     }
     if (event.data?.type === 'loading-progress') {

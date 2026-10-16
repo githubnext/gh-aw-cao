@@ -6,6 +6,7 @@ import {
   subscribeWorkerLoadingProgress
 } from '../../src/data-processor.js';
 import { effect, state } from '../../src/reactive.js';
+import { preparationDiagnostics, resetPreparationDiagnostics, finishPreparationDiagnostics } from '../../src/browser-first-load.js';
 
 class SubscriptionWorker {
   /** @type {SubscriptionWorker | undefined} */
@@ -51,6 +52,24 @@ afterEach(() => {
 });
 
 describe('canonical dashboard view subscriptions', () => {
+  it('retains worker preparation history for copying without rendering a notification per log entry', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    resetPreparationDiagnostics();
+    const unsubscribe = subscribeCanonicalDashboardView('preparation-log', [], { pages: [] }, () => {});
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    worker.emit({ type: 'preparation-log', event: { message: 'Shard 216 committed.' } });
+    worker.emit({ type: 'preparation-log', event: { message: null } });
+    expect(preparationDiagnostics().log).toMatchObject([
+      { event: 'ingestion', details: { message: 'Shard 216 committed.' } }
+    ]);
+    finishPreparationDiagnostics();
+    worker.emit({ type: 'preparation-log', event: { message: 'Background refresh.' } });
+    expect(preparationDiagnostics().log).toHaveLength(1);
+    unsubscribe();
+    worker.emitError('Test worker disposed.');
+  });
+
   it('shares one worker subscription and tears it down after the final listener', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const first = vi.fn();

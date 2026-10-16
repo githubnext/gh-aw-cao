@@ -32,6 +32,10 @@ const cachedSources = {
 function options(overrides = {}) {
   let renderedPage = false;
   const browserWindow = new EventTarget();
+  Object.defineProperty(browserWindow, "navigator", {
+    value: { storage: { persisted: async () => true } },
+    configurable: true
+  });
   return {
     browserWindow: /** @type {Window} */ (/** @type {unknown} */ (browserWindow)),
     document,
@@ -165,6 +169,31 @@ describe("dashboard data startup", () => {
       loader("runs", { queryContext: /** @type {never} */ (circularContext) }),
       loader("outcomes", { queryContext: /** @type {never} */ (circularContext) }),
     ])).rejects.toThrow("circular");
+  });
+
+  it("warns about data loss in private or best-effort storage and cleans up on disposal", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    const config = options();
+    Object.defineProperty(config.browserWindow, "navigator", {
+      value: { storage: { persisted: async () => false } }
+    });
+    const stop = await startDashboardData(config);
+    await vi.waitFor(() => expect(document.querySelector(".dashboard-notification-warning")?.textContent)
+      .toContain("data will be lost when the private session ends"));
+    stop();
+    await vi.waitFor(() => expect(document.querySelector(".dashboard-notification-warning")).toBeNull());
+  });
+
+  it("does not warn when browser storage is persistent", async () => {
+    dataProcessor.loadDashboardSnapshotMetadata.mockResolvedValue(null);
+    const config = options();
+    Object.defineProperty(config.browserWindow, "navigator", {
+      value: { storage: { persisted: async () => true } }
+    });
+    const stop = await startDashboardData(config);
+    await Promise.resolve();
+    expect(document.querySelector(".dashboard-notification-warning")).toBeNull();
+    stop();
   });
 
   it("renders cached data and lets the UI settle before any download starts", async () => {

@@ -17,7 +17,8 @@ import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
 import { createDebug, diagnosticErrorName } from "../debug.js";
 import { publishNotification } from "../notification-service.js";
-import { browserFirstLoad } from "../browser-first-load.js";
+import { browserFirstLoad, recordPreparationEvent, recordPreparationStorage, resetPreparationDiagnostics, finishPreparationDiagnostics } from "../browser-first-load.js";
+import { inspectBrowserStorage, TEMPORARY_STORAGE_WARNING } from "../browser-storage.js";
 import { dashboardDataStatus } from "../dashboard-data-status.js";
 import { mountFirstLoadOverlay } from "../components/first-load-overlay.js";
 
@@ -150,6 +151,8 @@ export function waitForDashboardUi(browserWindow) {
  * @returns {Promise<() => void>}
  */
 export async function startDashboardData(options) {
+  resetPreparationDiagnostics();
+  recordPreparationEvent("startup");
   dashboardDataStatus.set({ phase: "loading", snapshot: null });
   const {
     browserWindow,
@@ -172,6 +175,7 @@ export async function startDashboardData(options) {
     updateNotice = undefined;
   };
   cleanup.signal.addEventListener("abort", () => {
+    finishPreparationDiagnostics();
     failedSubscriptions.clear();
     clearUpdateNotice();
   }, { once: true });
@@ -341,11 +345,14 @@ export async function startDashboardData(options) {
   const bootstrapStep = async (step, run) => {
     const stepStartedAt = performance.now();
     debugStartup({ op: "bootstrap", step, status: "started" });
+    recordPreparationEvent("bootstrap", { step, status: "started" });
     try {
       const result = await run();
+      recordPreparationEvent("bootstrap", { step, status: "completed", durationMs: Math.round(performance.now() - stepStartedAt) });
       debugStartup({ op: "bootstrap", step, status: "completed", durationMs: Math.round(performance.now() - stepStartedAt) });
       return result;
     } catch (error) {
+      recordPreparationEvent("bootstrap", { step, status: "failed", errorName: diagnosticErrorName(error) });
       debugStartup({
         op: "bootstrap",
         step,
@@ -357,6 +364,10 @@ export async function startDashboardData(options) {
     }
   };
   const remoteDataBackend = usesRemoteDataBackend(document);
+  const storageInspection = remoteDataBackend ? null : inspectBrowserStorage(browserWindow.navigator?.storage);
+  void storageInspection?.then((diagnostics) => {
+    if (!cleanup.signal.aborted) recordPreparationStorage(diagnostics);
+  });
   let upgradeStarted = false;
   let overlayMounted = false;
   const showFirstLoadOverlay = () => {
@@ -410,6 +421,15 @@ export async function startDashboardData(options) {
     browserFirstLoad.set({ status: "inactive", dismissed: false });
   };
   if (firstBrowserLoad) {
+    void storageInspection?.then((diagnostics) => {
+      if (cleanup.signal.aborted || diagnostics.persisted === true) return;
+      const notice = publishNotification({
+        message: TEMPORARY_STORAGE_WARNING,
+        tone: "warning",
+        duration: 0
+      }, document);
+      cleanup.signal.addEventListener("abort", () => notice.dismiss(), { once: true });
+    });
     browserFirstLoad.set({
       status: "loading",
       dismissed: upgradeStarted && browserFirstLoad.get().dismissed,
@@ -419,6 +439,9 @@ export async function startDashboardData(options) {
     });
     stopFirstLoadProgress = subscribeWorkerLoadingProgress((progress) => {
       if (browserFirstLoad.get().status !== "loading" || progress.phase !== "update") return;
+      recordPreparationEvent("import-progress", {
+        stage: progress.stage ?? null, completed: progress.completed ?? null, total: progress.total ?? null
+      });
       browserFirstLoad.set((current) => ({
         ...current,
         completed: progress.completed,
@@ -441,6 +464,7 @@ export async function startDashboardData(options) {
     refreshPending = false;
     dashboardDataStatus.set({ phase: "stale", snapshot });
     const message = error instanceof Error ? error.message : String(error);
+    recordPreparationEvent("refresh", { status: "failed", errorName: diagnosticErrorName(error) });
     console.error(`Unable to refresh live dashboard data: ${message}`);
     debugStartup({
       op: "refresh-sources",
@@ -461,6 +485,7 @@ export async function startDashboardData(options) {
     if (refreshPending || cleanup.signal.aborted) return;
     refreshFailed = false;
     refreshPending = true;
+    recordPreparationEvent("refresh", { status: "started" });
     dashboardDataStatus.set({ phase: hasCompleteSnapshot ? "cached" : "loading", snapshot });
     if (firstBrowserLoad && !hasCompleteSnapshot) {
       browserFirstLoad.set((current) => ({ ...current, status: "loading", completed: undefined, total: undefined, stage: undefined, ingestion: undefined }));
@@ -482,11 +507,14 @@ export async function startDashboardData(options) {
         snapshot = await loadDashboardSnapshotMetadata() ?? snapshot;
         if (cleanup.signal.aborted) return;
         hasCompleteSnapshot = remoteDataBackend || snapshot !== null;
+        recordPreparationEvent("snapshot", { present: hasCompleteSnapshot });
         if (!hasCompleteSnapshot) throw new Error("Dashboard import finished without a complete snapshot.");
         await readShellSources();
         if (cleanup.signal.aborted) return;
         refreshPending = false;
         dashboardDataStatus.set({ phase: "ready", snapshot });
+        recordPreparationEvent("refresh", { status: "completed", changed });
+        finishPreparationDiagnostics();
         if (firstBrowserLoad) finishFirstLoad();
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",
