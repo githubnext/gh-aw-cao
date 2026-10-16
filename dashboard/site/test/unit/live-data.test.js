@@ -51,10 +51,10 @@ describe("live Dashboard Language sources", () => {
     expect(startup).toContain("pagePaginatedSourceBindings(pageId)");
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).not.toContain("loadInitialSources");
-    expect(startup).toContain('render({}, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot)');
-    expect(startup).toContain('render({}, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot)');
+    expect(startup).toContain('render(shellSources, hasCompleteSnapshot ? "cached" : "loading", loadPageSources, undefined, snapshot)');
+    expect(startup).toContain('render(shellSources, hasCompleteSnapshot ? "stale" : "loading", loadPageSources, refreshSources, snapshot)');
     expect(startup).not.toContain("initialPageLoaded");
-    expect(startup.indexOf('render({}, hasCompleteSnapshot ? "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
+    expect(startup.indexOf('render(shellSources, hasCompleteSnapshot ? "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
     expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
     expect(preview).toContain("renderRefreshError(retryRefresh, {");
     expect(startup).toContain("refreshSources");

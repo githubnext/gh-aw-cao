@@ -46,7 +46,7 @@ permissions:
   security-events: read
 
 concurrency:
-  group: ${{ inputs.recycle-only == true && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-recycle-{0}', github.ref) || 'central-agentic-ops-activity' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-preview-{0}', github.ref) || 'central-agentic-ops-activity' }}
   cancel-in-progress: false
 
 env:
@@ -258,12 +258,23 @@ jobs:
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
         run: |
-          node activity/github-telemetry.mjs capacity "$REPORT_MAX_GITHUB_API_RATE_LIMIT"
+          discovery_args=()
+          if node activity/github-telemetry.mjs capacity "$REPORT_MAX_GITHUB_API_RATE_LIMIT"; then
+            echo "API capacity is available for remote inventory."
+          else
+            capacity_exit_code=$?
+            if [[ "$capacity_exit_code" -ne 75 ]]; then
+              exit "$capacity_exit_code"
+            fi
+            echo "::warning::API capacity is reserved; using partial local inventory."
+            discovery_args+=(--offline)
+          fi
           node activity/cao.mjs discover-workflows \
             --control-settings "$REPORT_CONTROL_SETTINGS" \
             --inventory "$REPORT_INVENTORY" \
             --output "$REPORT_INVENTORY_SOURCES" \
-            --repo "$GITHUB_REPOSITORY"
+            --repo "$GITHUB_REPOSITORY" \
+            "${discovery_args[@]}"
 
       - name: Validate repository visibility boundary
         if: ${{ matrix.repositories[0] != '' }}
@@ -280,6 +291,7 @@ jobs:
             await visibility.main({ core, github, context, exec, io, getOctokit }, [process.env.REPORT_CONTROL_SETTINGS])
 
       - name: Download owner-scoped agentic workflow logs
+        id: activity-logs
         env:
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
@@ -303,12 +315,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/cao-activity"
           bash activity/collect-logs.sh
           collection_exit_code="$(cat "$REPORT_GH_AW_LOGS_EXIT_CODE")"
-          if [[ "$collection_exit_code" -ne 0 ]]; then
+          if [[ "$collection_exit_code" -eq 75 ]]; then
+            echo "::warning::GitHub API capacity exhausted; indexing retained and downloaded runs as partial evidence."
+          elif [[ "$collection_exit_code" -ne 0 ]]; then
             echo "Owner-scoped repository log collection failed" >&2
             exit "$collection_exit_code"
           fi
 
       - name: Enrich owner-scoped issue statuses
+        if: steps.activity-logs.outputs.rate-limited != 'true'
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
@@ -330,6 +345,7 @@ jobs:
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
           REPORT_VALUE_SEED_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_FAST_MODE: ${{ inputs.fast == true }}
+          REPORT_RATE_LIMITED: ${{ steps.activity-logs.outputs.rate-limited }}
         run: |
           retained_values="$REPORT_VALUE_SEED_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           value_output="$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
@@ -341,8 +357,8 @@ jobs:
               --retention-days 30 \
               --run-retention-days 30
           fi
-          if [[ "$REPORT_FAST_MODE" == "true" ]]; then
-            echo "Fast mode: retained operational-value history; skipping new computation."
+          if [[ "$REPORT_FAST_MODE" == "true" || "$REPORT_RATE_LIMITED" == "true" ]]; then
+            echo "Fast mode or limited API capacity: retained operational-value history; skipping new computation."
             exit 0
           fi
           repository_args=()

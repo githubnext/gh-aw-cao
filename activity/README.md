@@ -322,6 +322,26 @@ cao discover-workflows \
   --repo OWNER/REPOSITORY
 ```
 
+Add `--offline` to use only checked-in workflow metadata and explicitly scoped
+repositories without calling GitHub. Offline sources are marked partial, and
+workflow activation remains unknown rather than inferred from local files.
+Activity uses this mode when its API capacity check reaches the reserved quota.
+Credential selection and the repository visibility boundary still fail closed.
+
+When collection reaches its reserved quota or receives a confirmed primary or
+secondary GitHub API rate-limit error, Activity stops further repository downloads
+but compacts and indexes the retained shards and completed partial downloads.
+The collector records status `75`, emits a warning and a partial-collection job
+summary, and marks affected repositories in the inventory's coverage metadata.
+The workflow accepts only this limited-capacity status for partial publication;
+authentication, permission, malformed-data, and other collection failures remain
+hard failures. It skips issue-status enrichment and new operational-value API work
+while retaining previously collected operational-value evidence. A later run can
+resume from the published cache after API capacity recovers.
+Manual runs on non-default branches use a branch-specific concurrency group,
+so preview collections cannot displace pending production collections. They
+retain the same credential scope and quota reserve.
+
 The split improves time to first useful Run query rather than reducing the
 total transfer required for a complete refresh. Run results exposed between
 phases are partial snapshot state; record-dependent results become current only

@@ -229,8 +229,9 @@ process.exit(99);
   });
   assert.match(result.stderr, /capacity insufficient: 4000\/5000.*reset at/);
   assert.match(result.stderr, /API capacity check failed before githubnext\/gh-aw-cao/);
-  assert.match(result.stdout, /Activity log collection: completed with exit code 1/);
-  assert.equal(await readFile(exitCodePath, "utf8"), "1\n");
+  assert.match(result.stdout, /Activity log collection: completed with exit code 75/);
+  assert.match(result.stdout, /Activity collection is partial/);
+  assert.equal(await readFile(exitCodePath, "utf8"), "75\n");
   await assert.rejects(readFile(item.argumentsPath, "utf8"), { code: "ENOENT" });
 });
 
@@ -330,6 +331,32 @@ test("activity logs preserves cached runs and records collection failure", async
         REPORT_AIC_CACHE: item.outputPath,
         GITHUB_OUTPUT: item.githubOutput,
       },
+    });
+
+    test("activity logs reports rate-limited snapshots as available but incomplete", async (t) => {
+      const item = await fixture();
+      t.after(() => rm(item.root, { recursive: true, force: true }));
+      await mkdir(item.logsPath, { recursive: true });
+      await writeFile(path.join(item.logsPath, "fixture.jsonl"), '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
+      await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
+      const exitCodePath = path.join(item.root, "cache", "gh-aw-logs-exit-code");
+      await writeFile(exitCodePath, "75\n");
+      const result = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+        env: {
+          ...process.env, GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+          REPORT_ROOT: item.root, REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
+          REPORT_GH_AW_LOGS_STATE: item.statePath, REPORT_GH_AW_LOGS_EXIT_CODE: exitCodePath,
+          GITHUB_OUTPUT: item.githubOutput,
+        },
+      });
+      const state = JSON.parse(await readFile(item.statePath, "utf8"));
+      assert.equal(state.available, true);
+      assert.equal(state.complete, false);
+      assert.equal(state.runCount, 1);
+      assert.equal(state.snapshotObservedAt, "2026-09-06T20:00:00Z");
+      assert.match(state.error, /partial evidence/);
+      assert.match(result.stdout, /partial collected snapshot/);
+      assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=partial\n");
     });
 
     assert.equal((await readGhAwLogShards(item.logsPath))[0].database_id, 7);

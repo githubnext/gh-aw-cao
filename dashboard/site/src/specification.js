@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
+import { GITHUB_QUERY_SOURCE_FIELDS } from './data/github-query-sources.js';
 export {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
@@ -59,7 +60,7 @@ export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, 
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
-export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
+export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals', 'older-than-hours'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];
 export const DEFAULTS_KEYS = ['scope', 'time', 'filters'];
 export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];
@@ -663,7 +664,8 @@ export const SYNTHETIC_SOURCE_FIELDS = {
   'simulation-days': ['day', 'date'],
   'cli-commands': ['id', 'actionId', 'status', 'createdAt', 'startedAt', 'completedAt', 'error', 'exitCode', 'command', 'arguments', 'values'],
   'cli-command-statuses': ['status'],
-  'cli-command-summary': ['running', 'total', 'paused-reason', 'revision']
+  'cli-command-summary': ['running', 'total', 'paused-reason', 'revision'],
+  ...GITHUB_QUERY_SOURCE_FIELDS
 };
 
 export const QUERY_SOURCE_VALUES = [...TABLE_VALUES, ...SERVER_SOURCE_VALUES, ...Object.keys(SYNTHETIC_SOURCE_FIELDS)];

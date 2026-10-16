@@ -750,6 +750,29 @@ namespace Inputs {
   }
 
 namespace Storage {
+  /** Credential-partitioned normalized GitHub resources, separate from canonical evidence. */
+  model caoGithubResources {
+    `namespace`: string;
+    id: string;
+    etag: string;
+    upstreamEtag: string;
+    validatedAt: utcDateTime;
+    release: boolean;
+    fullName?: string;
+    description?: string;
+    htmlUrl: string;
+    defaultBranch?: string;
+    stargazersCount?: int64;
+    forksCount?: int64;
+    openIssuesCount?: int64;
+    archived?: boolean;
+    visibility?: string;
+    tagName?: string;
+    name?: string;
+    publishedAt?: string;
+    draft?: boolean;
+    prerelease?: boolean;
+  }
   model caoContract {
     digest: string;
   }

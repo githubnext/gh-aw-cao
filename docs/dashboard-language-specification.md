@@ -234,7 +234,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `cli-actions`, `horizon`, `defaults`, `units`, `queries`, `card-templates`, `views`, `pages`, `navigation` |
 | Card template | `id`, `icon`, `icon-field`, `title`, `labels`, `details`, `drill` |
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
-| Callout `visible-when` | `source`, `field`, `equals` |
+| Callout `visible-when` | `source`, `field`, `equals`, `older-than-hours` |
 | Dashboard `horizon` | `label`, `tooltip` |
 | Dashboard CLI action | `id`, `label`, `description`, `icon`, `command`, `placement`, `arguments`, `selector` |
 | Dashboard CLI action argument | `id`, `label`, `description`, `type`, `flag`, `default` |
@@ -306,7 +306,20 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-013:** `units`, when present, **MUST** be a non-empty mapping keyed by unique canonical identifiers. Each value **MUST** contain the non-empty string `name`, the non-empty string `symbol`, and the finite positive number `significant`, and **MAY** contain `format`.
 - **DLS-DOC-014:** A tooltip **MUST** contain exactly the non-empty human-readable strings `label` and `description` and **MAY** contain one canonical Octicon `icon`. A presenter **MUST** expose a tooltip as a keyboard-focusable help control named by `label`, associate its explanatory content with the control, and make that content available on both pointer hover and keyboard focus. `horizon`, when present, **MUST** contain exactly a non-empty human-readable `label` and one `tooltip`; the presenter **MUST** expose an icon-only clock control whose accessible name includes the horizon label and resolved duration. Pointer hover and keyboard focus **MUST** disclose the resolved duration. Activating the control **MUST** expose the configured description with the precise resolved start, exclusive end, and duration.
 - **DLS-DOC-014a:** A `mark: list` view **MUST** declare `list.style` as `cards` or `issues`, and **MUST** declare a canonical Octicon `list.icon`. `list.action`, when present, **MUST** reference a view-placed CLI action. `encoding.href`, when present on a list view, **MUST** reference one relation-specific link field and binds the primary card title to that link.
-- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and one scalar `equals` value; the callout is visible when at least one source row's field equals that value.
+- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and reevaluate clock-based visibility at least once per minute, without navigation. Queries own source selection and timestamp aggregation; the shared callout renderer owns clock-based visibility because a stored data revision does not change as time passes.
+
+The default dashboard warns after 24 hours without new retained workflow activity,
+using the newest upstream update timestamp (or creation timestamp when absent),
+not the browser refresh or shard import time. The warning links to Ingestion,
+whose shard receipts expose source paths, import status and time, record counts,
+and payload hashes. Inactivity is a reason to inspect ingestion, not proof of a
+collection failure; absent shard receipts leave coverage unknown.
+
+Callout query definitions and their dependencies remain in the core dashboard
+document even when page views are lazy-loaded. Startup resolves their bounded
+results before the first dashboard render so an existing stale-data warning
+does not appear late and shift the active page; subsequent results stay subscribed.
+
 - **DLS-DOC-016:** A navigation section **MUST** contain a non-empty `pages` sequence referencing declared page IDs. An optional `label` **MUST** be a non-empty string. `experimental`, when present, **MUST** be Boolean and defaults to `false`. `placement`, when present, **MUST** be `bottom` and the section **MUST** declare a non-empty `label`; it anchors the section after standard navigation sections. A presenter **MUST** render an unlabeled navigation section's pages directly without section chrome.
 
 ---

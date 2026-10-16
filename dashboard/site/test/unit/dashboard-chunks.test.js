@@ -170,7 +170,7 @@ describe('dashboardPageIsLoaded', () => {
 describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
   it('produces a core document without inline views/definitions or top-level queries', () => {
     const { core, pageChunks } = splitDashboardDocument(sampleDocument());
-    expect(core.dashboard.queries).toBeUndefined();
+    expect(core.dashboard.queries?.map((query) => query.name)).toEqual(['callout-source']);
     for (const page of core.dashboard.pages) {
       expect(page.views).toBeUndefined();
       expect(page.definition).toBeUndefined();

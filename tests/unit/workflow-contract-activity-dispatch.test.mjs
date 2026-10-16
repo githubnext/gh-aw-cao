@@ -36,7 +36,7 @@ test('fast collection preserves the history restore and exits before operational
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const computation = step('collect', 'Compute owner-scoped operational value');
   assert.equal(computation.env.REPORT_FAST_MODE, '${{ inputs.fast == true }}');
-  assert.match(computation.run, /cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?if \[\[ "\$REPORT_FAST_MODE" == "true" \]\]/);
+  assert.match(computation.run, /cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?if \[\[ "\$REPORT_FAST_MODE" == "true" \|\| "\$REPORT_RATE_LIMITED" == "true" \]\]/);
   const output = execFileSync('bash', ['-euc', computation.run], {
     cwd: root, encoding: 'utf8',
     env: {
@@ -79,7 +79,7 @@ test('forced recycling runs before new downloads and safely clears only disposab
 });
 
 test('recycle-only bypasses repository collection and API evidence requests but requires coherent publication', () => {
-  assert.equal(workflow.concurrency.group, "${{ inputs.recycle-only == true && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-recycle-{0}', github.ref) || 'central-agentic-ops-activity' }}");
+  assert.equal(workflow.concurrency.group, "${{ github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch && format('central-agentic-ops-activity-preview-{0}', github.ref) || 'central-agentic-ops-activity' }}");
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
   assert.equal(workflow.jobs.collect.if, '${{ inputs.recycle-only != true }}');
   assert.match(workflow.jobs['notify-failure'].if, /always\(\) && inputs\.recycle-only != true/);

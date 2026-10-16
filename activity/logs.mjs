@@ -57,7 +57,8 @@ export async function collectActivityLogs() {
       .sort();
     const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
     const exitCode = Number((await readFile(exitCodePath, "utf8")).trim());
-    if (!Number.isInteger(exitCode) || exitCode !== 0) {
+    const partial = exitCode === 75;
+    if (!Number.isInteger(exitCode) || exitCode !== 0 && !partial) {
       throw new Error(`gh aw logs exited with ${Number.isInteger(exitCode) ? exitCode : "an unknown status"}`);
     }
     const snapshot = { runs: await readGhAwLogShards(shardDirectory) };
@@ -65,20 +66,25 @@ export async function collectActivityLogs() {
       schemaVersion: 1,
       observedAt,
       available: true,
-      complete: true,
+      complete: !partial,
       targetCount: targets.length,
       runCount: snapshot.runs.length,
       windowDays,
       runLimit,
-      fallback: false,
+      fallback: partial,
+      ...(partial ? {
+        snapshotObservedAt: previousState.snapshotObservedAt || previousState.observedAt || null,
+        error: "GitHub API capacity exhausted; retained and downloaded runs are partial evidence",
+      } : {}),
     }, null, 2)}\n`);
-    await writeOutcome("success");
+    await writeOutcome(partial ? "partial" : "success");
+    if (partial) log.warning`GitHub API capacity exhausted; publishing a partial collected snapshot`;
     const workflowCount = new Set(snapshot.runs.map((run) => run.workflow_path || run.workflow_name || "unknown")).size;
     const runLabel = snapshot.runs.length === 1 ? "run" : "runs";
     const snapshotWorkflowLabel = workflowCount === 1 ? "workflow" : "workflows";
     log.info`Collected snapshot with ${snapshot.runs.length} ${runLabel} across ${workflowCount} ${snapshotWorkflowLabel}`;
     log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} from the resolved repository set`;
-    return "success";
+    return partial ? "partial" : "success";
   } catch (error) {
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,

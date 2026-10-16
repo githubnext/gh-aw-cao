@@ -5,7 +5,34 @@
     "title": "Central Agentic Ops Dashboard",
     "description": "Authoritative declarative dashboard document for built-in and custom pages in the presenter prototype.",
     "repository": "githubnext/gh-aw-cao",
+    "callouts": [
+      {
+        "id": "stale-data",
+        "title": "Dashboard data may be stale",
+        "description": "No new workflow activity is present in the ingested data for at least 24 hours. Check ingestion and shard details before relying on these results.",
+        "icon": "alert",
+        "navigation-page": "indexing",
+        "visible-when": {
+          "source": "dashboard-data-freshness",
+          "field": "latest-data-at",
+          "older-than-hours": 24
+        }
+      }
+    ],
     "card-templates": [
+      {
+        "id": "ingested-shard",
+        "icon": "database",
+        "title": { "field": "shard", "title": "Shard" },
+        "subtitle": { "field": "kind", "title": "Import kind" },
+        "labels": [{ "field": "status", "title": "Import status", "display": "status" }],
+        "details": [
+          { "field": "ingested-at", "title": "Ingested at", "format": "human-friendly-timestamp" },
+          { "field": "committed-records", "title": "Committed records" },
+          { "field": "workflow-runs", "title": "Workflow runs" },
+          { "field": "payload-hash", "title": "Payload hash" }
+        ]
+      },
       {
         "id": "outcome-evidence-summary",
         "icon": "graph",

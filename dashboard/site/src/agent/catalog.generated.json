@@ -690,6 +690,7 @@
         "indexing-daily-records",
         "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
+        "indexing-shards",
         "indexing-transactions",
         "ingestion-health",
         "ingestion-queue-sizes"
@@ -3870,6 +3871,46 @@
         "requirements": [
           "runs",
           "workflows"
+        ]
+      }
+    },
+    {
+      "id": "dashboard-data-freshness",
+      "subject": "Find the newest workflow activity timestamp in retained canonical data.",
+      "objective": "Warn globally when the ingested workflow evidence has not advanced for 24 hours.",
+      "acceptance": "Use upstream updated-at, falling back to created-at, never browser import or refresh time. Missing or invalid timestamps remain unknown; inactivity alone does not prove an ingestion failure.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "indexing-shards",
+      "subject": "List retained Activity shard import receipts.",
+      "objective": "Inspect which shards were ingested, when, and how many records they committed.",
+      "acceptance": "Show shard scope, phase, import status, import timestamp, counts and payload identity from retained receipts. Import time is not upstream freshness and missing receipts do not prove complete coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "transactions"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
         ]
       }
     },

@@ -88,16 +88,42 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
-          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            cao-activity-v5-
+          key: >-
+            ${{ github.event_name == 'workflow_run'
+              && format('cao-activity-v5-{0}-{1}', github.event.workflow_run.id, github.event.workflow_run.run_attempt)
+              || format('cao-activity-v5-lookup-{0}-{1}', github.run_id, github.run_attempt) }}
+          # An automatic build must never substitute an older snapshot.
+          restore-keys: ${{ github.event_name == 'workflow_dispatch' && 'cao-activity-v5-' || '' }}
 
       - name: Resolve fallback activity run
         id: activity-artifact-run
-        if: steps.activity-cache.outputs.cache-matched-key == ''
+        if: github.event_name == 'workflow_run' || steps.activity-cache.outputs.cache-matched-key == ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
         with:
           script: |
+            if (context.eventName === 'workflow_run') {
+              const run = context.payload.workflow_run
+              const matchedKey = process.env.ACTIVITY_CACHE_MATCHED_KEY
+              if (matchedKey) {
+                if (matchedKey !== `cao-activity-v5-${run.id}-${run.run_attempt}`) {
+                  throw new Error('Restored activity cache does not match the triggering run and attempt')
+                }
+                return
+              }
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                ...context.repo,
+                run_id: run.id,
+                per_page: 100,
+              })
+              if (!jobs.some((job) => job.name === 'index' && job.conclusion === 'success')) {
+                throw new Error(`CAO Activity run ${run.id} did not produce a successful index; refusing to publish another snapshot`)
+              }
+              core.info(`Using activity artifact from triggering workflow run ${run.id}`)
+              core.setOutput('run-id', String(run.id))
+              return
+            }
             let run
             for (let page = 1; !run; page += 1) {
               const { data } = await github.rest.actions.listWorkflowRuns({
@@ -114,7 +140,7 @@ jobs:
                   run_id: candidate.id,
                   per_page: 100,
                 })
-                if (jobs.some((job) => job.name === 'index' && job.conclusion === 'skipped')) continue
+                if (!jobs.some((job) => job.name === 'index' && job.conclusion === 'success')) continue
                 run = candidate
                 break
               }

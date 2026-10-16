@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadDashboardSource } from '../../dashboard/report/bundle-dashboards.mjs';
 import { discoverInventory } from '../inventory.mjs';
-import { discoverInventoryDashboardSources } from '../inventory-sources.mjs';
+import { buildInventoryDashboardSources, discoverInventoryDashboardSources, markInventoryCollectionPartial } from '../inventory-sources.mjs';
 import { analyzeDashboardComplexity, formatDashboardComplexityMarkdown, readDashboardTableCounts } from '../dashboard-complexity.mjs';
 import { pruneDashboardDocument } from '../dashboard-prune.mjs';
 import { UsageError } from './options.mjs';
@@ -15,6 +15,7 @@ export async function discoverWorkflows({
   outputPath,
   repository,
   sourceInventoryPath,
+  offline = false,
 } = {}) {
   const inventory = sourceInventoryPath
     ? JSON.parse(await readFile(path.resolve(sourceInventoryPath), "utf8"))
@@ -31,11 +32,22 @@ export async function discoverWorkflows({
   }
   inventory.generatedAt = new Date().toISOString();
   const controlSettings = JSON.parse(await readFile(path.resolve(controlSettingsPath), "utf8"));
-  const sources = await discoverInventoryDashboardSources({
-    inventory,
-    controlSettings,
-    repository,
-  });
+  let sources;
+  if (offline) {
+    sources = buildInventoryDashboardSources({
+      inventory, controlSettings, repository,
+      discoveredRepositories: controlSettings.allowed_repositories ?? [],
+    });
+    for (const workflow of sources.workflows.rows) workflow["workflow-active"] = "unknown";
+    markInventoryCollectionPartial(
+      sources,
+      controlSettings.allowed_repositories ?? [],
+      "GitHub API capacity is reserved; remote inventory was not refreshed.",
+      Object.keys(sources),
+    );
+  } else {
+    sources = await discoverInventoryDashboardSources({ inventory, controlSettings, repository });
+  }
   await Promise.all([
     writeJsonAtomically(inventoryPath, inventory),
     writeJsonAtomically(outputPath, sources),

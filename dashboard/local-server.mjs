@@ -40,6 +40,7 @@ import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "
 import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
 import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
+import { createLocalGitHubService } from "./local-github-service.mjs";
 import { lookupDialogOptions } from "./dialog-selector.mjs";
 import { executeDashboardCommand } from "./cli-actions.mjs";
 import { createCliActionQueue } from "./cli-action-queue.mjs";
@@ -1001,6 +1002,9 @@ export async function startDashboardServer({
     approve: (invocation) => admin ? Promise.resolve(true) : approveCliAction(invocation),
     isAllowedOrigin, readJsonRequest, sendJson,
   });
+  const githubService = createLocalGitHubService({
+    databasePath: join(temporaryDirectory, "dashboard.sqlite"),
+  });
   const server = createServer(async (request, response) => {
     const requestStarted = performance.now();
     let requestPath = "<outside-preview>";
@@ -1140,6 +1144,25 @@ export async function startDashboardServer({
           }
         } finally {
           customViewSavePending = null;
+        }
+        return;
+      }
+      if (pathname.startsWith("/api/v1/github/")) {
+        if (request.method !== "GET") {
+          response.writeHead(405, { Allow: "GET" }).end();
+          return;
+        }
+        if ((request.headers.origin && !isAllowedOrigin(request.headers.origin))
+            || request.headers["sec-fetch-site"] === "cross-site") {
+          sendJson(response, 403, { error: "Forbidden." });
+          return;
+        }
+        const result = await githubService.request(pathname, request.headers["if-none-match"]);
+        for (const [name, value] of Object.entries(result.headers)) response.setHeader(name, value);
+        if (result.status === 304) response.writeHead(304).end();
+        else {
+          response.writeHead(result.status, { "Content-Type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify(result.body));
         }
         return;
       }
@@ -1364,6 +1387,10 @@ export async function startDashboardServer({
           ? String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n${capabilityScript}`)
           : `${capabilityScript}\n${content}`;
       }
+      if (extension === ".html") {
+        content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
+<meta name="dashboard-github-api-base" content="${routePrefix}/">`);
+      }
       if (sqliteBackend && extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
 <meta name="dashboard-data-backend" content="server-http">
@@ -1470,6 +1497,7 @@ export async function startDashboardServer({
     await cliQueue?.close();
     await cliAdmission?.close();
     await sqliteBackend?.close();
+    await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -1494,6 +1522,7 @@ export async function startDashboardServer({
       if (customViewSavePending) await Promise.allSettled([customViewSavePending]);
       await refreshPromise;
       await sqliteBackend?.close();
+      await githubService.close();
       await rm(temporaryDirectory, { recursive: true, force: true });
       trace.record("server", "server.stopped");
       await trace.flush();
