@@ -8,7 +8,7 @@ const { jobs } = parse(workflow("cao-dashboard.yml"));
 const step = (name) => jobs.build.steps.find((candidate) => candidate.name === name);
 const resolver = step("Resolve fallback activity run");
 
-async function resolveActivity({ runs = [], jobSets = {}, error, jobError } = {}) {
+async function resolveActivity({ runs = [], jobSets = {}, eventRun, matchedKey = "", error, jobError } = {}) {
   const outputs = {};
   const notices = [];
   const summaries = [];
@@ -19,14 +19,16 @@ async function resolveActivity({ runs = [], jobSets = {}, error, jobError } = {}
     async write() { return this; },
   };
   await runInNewContext(`(async () => {\n${resolver.with.script}\n})()`, {
+    process: { env: { ACTIVITY_CACHE_MATCHED_KEY: matchedKey } },
     context: {
+      eventName: eventRun ? "workflow_run" : "workflow_dispatch",
       repo: { owner: "acme", repo: "control" },
-      payload: { repository: { default_branch: "production" } },
+      payload: { repository: { default_branch: "production" }, workflow_run: eventRun },
     },
     github: {
       async paginate(_method, { run_id }) {
         if (jobError) throw jobError;
-        return jobSets[run_id] ?? [];
+        return jobSets[run_id] ?? [{ name: "index", conclusion: "success" }];
       },
       rest: {
         actions: {
@@ -97,16 +99,82 @@ test("dashboard finds collected evidence beyond a page of skipped Activity runs"
   assert.deepEqual(requests.map(({ page }) => page), [1, 2]);
 });
 
+test("dashboard requires a successful index, not merely a successful workflow", async () => {
+  const { outputs } = await resolveActivity({
+    runs: [{ id: 10 }, { id: 11 }, { id: 12 }, { id: 13 }],
+    jobSets: {
+      10: [],
+      11: [{ name: "index", conclusion: "failure" }],
+      12: [{ name: "index", conclusion: "cancelled" }],
+    },
+  });
+  assert.equal(outputs["run-id"], "13");
+});
+
+test("automatic dashboard cache misses use the triggering snapshot rather than a different successful run", async () => {
+  const { outputs, notices, summaries, requests } = await resolveActivity({
+    eventRun: { id: 12345, run_attempt: 2 },
+    runs: [{ id: 54321 }],
+  });
+  assert.equal(outputs["run-id"], "12345");
+  assert.deepEqual(requests, []);
+  assert.deepEqual(notices, []);
+  assert.deepEqual(summaries, []);
+});
+
+test("automatic dashboard builds fail closed when the triggering run has no successful index", async () => {
+  for (const jobs of [[], skippedJobs, [{ name: "index", conclusion: "failure" }]]) {
+    await assert.rejects(resolveActivity({
+      eventRun: { id: 12345 },
+      runs: [{ id: 54321 }],
+      jobSets: { 12345: jobs },
+    }), /CAO Activity run 12345 did not produce a successful index/);
+  }
+});
+
+test("automatic dashboard builds verify exact cache identity even when Actions returns a primary-key prefix match", async () => {
+  const eventRun = { id: 12345, run_attempt: 1 };
+  const result = await resolveActivity({ eventRun, matchedKey: "cao-activity-v5-12345-1" });
+  assert.deepEqual(result.outputs, {});
+  assert.deepEqual(result.requests, []);
+  await assert.rejects(resolveActivity({
+    eventRun, matchedKey: "cao-activity-v5-12345-10",
+  }), /Restored activity cache does not match the triggering run and attempt/);
+});
+
+test("automatic dashboard builds cannot restore a stale prefix cache, including on reruns", () => {
+  const restore = step("Restore collected activity data").with;
+  const evaluate = (value, eventName, attempt) => runInNewContext(
+    value.trim().slice(3, -2).trim(),
+    {
+      github: {
+        event_name: eventName,
+        event: { workflow_run: { id: 12345, run_attempt: attempt } },
+        run_id: 67890,
+        run_attempt: 3,
+      },
+      format: (template, ...args) => template.replace(/\{(\d+)\}/g, (_, index) => args[index]),
+    },
+  );
+  for (const attempt of [1, 2]) {
+    assert.equal(evaluate(restore.key, "workflow_run", attempt), `cao-activity-v5-12345-${attempt}`);
+    assert.equal(evaluate(restore["restore-keys"], "workflow_run", attempt), "");
+  }
+  assert.equal(evaluate(restore.key, "workflow_dispatch", 1), "cao-activity-v5-lookup-67890-3");
+  assert.equal(evaluate(restore["restore-keys"], "workflow_dispatch", 1), "cao-activity-v5-");
+});
+
 test("dashboard does not disguise Activity lookup errors as an empty deployment", async () => {
   for (const status of [403, 404, 429, 500]) {
     const error = Object.assign(new Error(`GitHub request failed: ${status}`), { status });
     await assert.rejects(resolveActivity({ error }), (actual) => actual === error);
     await assert.rejects(resolveActivity({ runs: [{ id: 12345 }], jobError: error }), (actual) => actual === error);
+    await assert.rejects(resolveActivity({ eventRun: { id: 12345 }, jobError: error }), (actual) => actual === error);
   }
 });
 
 test("dashboard bootstraps only when neither cache nor run is available and always builds", () => {
-  assert.equal(resolver.if, "steps.activity-cache.outputs.cache-matched-key == ''");
+  assert.equal(resolver.if, "github.event_name == 'workflow_run' || steps.activity-cache.outputs.cache-matched-key == ''");
   const download = step("Download fallback activity data");
   assert.equal(download.if, "steps.activity-cache.outputs.cache-matched-key == '' && steps.activity-artifact-run.outputs.run-id != ''");
   assert.equal(download.with["run-id"], "${{ steps.activity-artifact-run.outputs.run-id }}");
@@ -140,7 +208,7 @@ test("dashboard bootstraps only when neither cache nor run is available and alwa
     const evaluate = (condition) => runInNewContext(condition
       .replaceAll("steps.activity-cache.outputs.cache-matched-key", "cacheKey")
       .replaceAll("steps.activity-artifact-run.outputs.run-id", "runId"), { cacheKey, runId });
-    assert.equal(evaluate(resolver.if), cacheKey === "");
+    assert.equal(evaluate(resolver.if.replace("github.event_name == 'workflow_run' || ", "")), cacheKey === "");
     assert.equal(evaluate(download.if), cacheKey === "" && runId !== "");
     assert.equal(evaluate(bootstrap.if), expected);
   }

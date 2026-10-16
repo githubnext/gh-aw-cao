@@ -13,6 +13,12 @@ export const GITHUB_TELEMETRY_RETENTION_HOURS = 24;
 export const GITHUB_TELEMETRY_STACK_TRACE_LIMIT = 24;
 const EMPTY_RATE_LIMIT_ERROR = "GitHub API returned no valid rate-limit resources.";
 
+export class GithubApiCapacityError extends Error {}
+
+export function isGithubRateLimitError(message) {
+  return /HTTP (?:403|429):[^\n]*(?:API rate limit exceeded|secondary rate limit)|(?:API rate limit exceeded|secondary rate limit)[^\n]*\(HTTP (?:403|429)\)|API rate limit exceeded for (?:user|installation) ID/i.test(message);
+}
+
 // Keep telemetry storage in the original capture order; tree-table rendering flips it to caller-first.
 export function normalizeGithubTelemetryStackTrace(stackTrace, limit = GITHUB_TELEMETRY_STACK_TRACE_LIMIT) {
   const frames = Array.isArray(stackTrace)
@@ -70,7 +76,10 @@ function queryRateLimit(token, execute = spawnSync) {
     maxBuffer: 4 * 1024 * 1024,
   });
   if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(result.stderr?.trim() || `gh api rate_limit exited with status ${result.status}`);
+  if (result.status !== 0) {
+    const message = result.stderr?.trim() || `gh api rate_limit exited with status ${result.status}`;
+    throw isGithubRateLimitError(message) ? new GithubApiCapacityError(message) : new Error(message);
+  }
   const rateLimit = normalizeRateLimit(JSON.parse(result.stdout));
   if (Object.keys(rateLimit).length === 0) throw new Error(EMPTY_RATE_LIMIT_ERROR);
   return rateLimit;
@@ -90,7 +99,7 @@ export function requireGithubApiCapacity({
   }
   const reserve = maxRequests < 0 ? -maxRequests : Math.max(0, core.limit - maxRequests);
   if (core.remaining <= reserve) {
-    throw new Error(
+    throw new GithubApiCapacityError(
       `GitHub API core capacity insufficient: ${core.remaining}/${core.limit} requests remaining; `
       + `collection requires more than the reserved ${reserve} requests; reset at ${core.resetAt}`,
     );
@@ -196,6 +205,10 @@ export async function recordGithubTelemetry({
 export async function main(actions = {}, args = process.argv.slice(2)) {
   setActionsGlobals(actions);
   const [phase, operation, outcome] = args;
+  if (phase === "rate-limited") {
+    process.exitCode = isGithubRateLimitError(await readFile(operation, "utf8")) ? 0 : 1;
+    return;
+  }
   if (phase === "capacity") {
     const core = requireGithubApiCapacity({ maxRequests: Number(operation) });
     log.info`GitHub API core capacity: ${core.remaining}/${core.limit} remaining; reserve=${core.reserve}; reset at ${core.resetAt}`;
@@ -206,7 +219,7 @@ export async function main(actions = {}, args = process.argv.slice(2)) {
     return;
   }
   if (!["before", "after"].includes(phase) || !operation) {
-    throw new Error("usage: github-telemetry.mjs capacity <request-budget> | prepare [prior-ledger] | <before|after> <operation> [outcome]");
+    throw new Error("usage: github-telemetry.mjs capacity <request-budget> | rate-limited <error-log> | prepare [prior-ledger] | <before|after> <operation> [outcome]");
   }
   await recordGithubTelemetry({
     phase,
@@ -218,6 +231,6 @@ export async function main(actions = {}, args = process.argv.slice(2)) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 1;
+    process.exitCode = error instanceof GithubApiCapacityError ? 75 : 1;
   });
 }

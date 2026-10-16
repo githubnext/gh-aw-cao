@@ -120,13 +120,16 @@ for index in "${!repositories[@]}"; do
   cache_name="${target_repository//\//-}"
   shard_prefix="${shard_prefixes[$index]}"
   echo "Activity log collection: checking API capacity before $target_repository ($((index + 1))/${#repositories[@]})"
-  if ! node activity/github-telemetry.mjs capacity "$rate_limit"; then
+  if node activity/github-telemetry.mjs capacity "$rate_limit"; then
+    :
+  else
+    exit_code=$?
     echo "Activity log collection: API capacity check failed before $target_repository" >&2
-    exit_code=1
     break
   fi
   echo "Activity log collection: downloading $target_repository (cached shards retained; no credential details logged)"
   started_at="$SECONDS"
+  collection_log="$(mktemp "$output_directory/collection-errors.XXXXXX")"
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \
@@ -141,9 +144,23 @@ for index in "${!repositories[@]}"; do
     --max-github-api-rate-limit "$rate_limit" \
     --max-storage "$max_storage" \
     --prune-older-runs \
-    "${drain3_args[@]+"${drain3_args[@]}"}"
-  repository_exit_code=$?
+    "${drain3_args[@]+"${drain3_args[@]}"}" 2>&1 | tee "$collection_log" >&2
+  collection_status=("${PIPESTATUS[@]}")
+  repository_exit_code="${collection_status[0]}"
   set -e
+  if [[ "${collection_status[1]}" -ne 0 ]]; then
+    rm -f "$collection_log"
+    exit_code=1
+    break
+  fi
+  if [[ $repository_exit_code -ne 0 ]]; then
+    if node activity/github-telemetry.mjs rate-limited "$collection_log"; then
+      repository_exit_code=75
+    elif [[ $repository_exit_code -eq 75 ]]; then
+      repository_exit_code=1
+    fi
+  fi
+  rm -f "$collection_log"
   echo "Activity log collection: $target_repository download exited $repository_exit_code after $((SECONDS - started_at))s"
   generated_weights="$output_directory/$cache_name/drain3_weights.json"
   if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
@@ -151,7 +168,7 @@ for index in "${!repositories[@]}"; do
     mv "$generated_weights" "$drain3_weights_path"
     drain3_args=(--drain3-weights "$drain3_weights_path")
   fi
-  if [[ $repository_exit_code -ne 0 ]]; then
+  if [[ $repository_exit_code -ne 0 && $repository_exit_code -ne 75 ]]; then
     echo "Activity log collection: $target_repository failed; stopping before the next repository" >&2
     exit_code=$repository_exit_code
     break
@@ -161,6 +178,11 @@ for index in "${!repositories[@]}"; do
     exit_code=1
     break
   fi
+  if [[ $repository_exit_code -eq 75 ]]; then
+    echo "Activity log collection: API rate limit reached for $target_repository; retaining partial downloads" >&2
+    exit_code=75
+    break
+  fi
   node "$cao_script" recycle-cache --input-dir "$shard_directory" \
     --retention-days "$window_days" --max-bytes "$max_cache_bytes" || {
       exit_code=$?
@@ -168,7 +190,9 @@ for index in "${!repositories[@]}"; do
     }
 done
 
-if [[ $exit_code -eq 0 ]]; then
+collection_exit_code=$exit_code
+if [[ $exit_code -eq 0 || $exit_code -eq 75 ]]; then
+  exit_code=0
   echo "Activity log collection: compacting downloaded shards"
   compact_shards || exit_code=$?
   if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
@@ -179,7 +203,7 @@ if [[ $exit_code -eq 0 ]]; then
       --retention-days "$detail_window_days" \
       --run-retention-days "$window_days" || exit_code=$?
   fi
-  if [[ $exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then
+  if [[ $exit_code -eq 0 && $collection_exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then
     echo "Activity log collection: enriching issue statuses"
     node "$cao_script" issue-status \
       --database "$activity_database" \
@@ -187,6 +211,27 @@ if [[ $exit_code -eq 0 ]]; then
       --graphql-cost-budget "$issue_status_cost_budget" \
       --graphql-min-remaining "$issue_status_min_remaining" || exit_code=$?
   fi
+fi
+
+if [[ $exit_code -eq 0 && $collection_exit_code -eq 75 ]]; then
+  if [[ -n "${REPORT_INVENTORY_SOURCES:-}" ]]; then
+    node --input-type=module - "$REPORT_INVENTORY_SOURCES" "${repositories[@]:$index}" <<'EOF'
+import { readFile, writeFile } from "node:fs/promises";
+import { markInventoryCollectionPartial } from "./activity/inventory-sources.mjs";
+const [filename, ...repositories] = process.argv.slice(2);
+const sources = JSON.parse(await readFile(filename, "utf8"));
+markInventoryCollectionPartial(sources, repositories, "GitHub API capacity exhausted; activity collection is partial and retained runs may be stale.");
+await writeFile(filename, `${JSON.stringify(sources, null, 2)}\n`);
+EOF
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    printf 'rate-limited=true\n' >> "$GITHUB_OUTPUT"
+  fi
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    printf '### Partial Activity collection\n\nGitHub API capacity was exhausted. Retained and downloaded runs were indexed; uncollected repositories are not current. Issue-status enrichment and new operational-value computation were skipped.\n' >> "$GITHUB_STEP_SUMMARY"
+  fi
+  echo "::warning::Activity collection is partial because GitHub API capacity was exhausted."
+  exit_code=75
 fi
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
