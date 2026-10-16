@@ -11,7 +11,7 @@ import { validateRequiredIdentifier, validateStringField, validateSemanticMetada
 import { resolveReusablePageViews } from './validator-state.js';
 import { createDebug } from './debug.js';
 import { ChartLayerError, resolveChartLayers } from './chart-layer-specification.js';
-import { MAX_TREEMAP_LEAVES, TREEMAP_KEYS, TREEMAP_METHOD_VALUES } from './specification.js';
+import { MAX_TREEMAP_LEAVES, TREEMAP_KEYS, TREEMAP_METHOD_VALUES, SCATTER_KEYS } from './specification.js';
 
 /** @typedef {import('./validator.js').ValidationError} ValidationError */
 
@@ -85,6 +85,28 @@ export function validateView(view, viewNode, path, viewIds, errors) {
 
   const errorCountBeforeView = errors.length;
   validateChartFacet(view, viewNode, path, errors);
+  if (view.scatter !== undefined) {
+    const scatterPath = `${path}.scatter`;
+    if (view.mark !== 'chart' || view.chart !== 'scatter') {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'scatter options are allowed only on scatter charts.', scatterPath));
+    }
+    if (!isPlainObject(view.scatter)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'scatter must be a mapping.', scatterPath));
+    } else {
+      const scatterNode = getValueNodeByKey(viewNode, 'scatter');
+      validateObjectKeys(scatterNode, SCATTER_KEYS, scatterPath, errors);
+      if (!getMappingItems(scatterNode)) {
+        for (const key of Object.keys(view.scatter)) {
+          if (!SCATTER_KEYS.includes(key)) {
+            errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed.`, `${scatterPath}.${key}`));
+          }
+        }
+      }
+      if (view.scatter.cluster !== undefined && typeof view.scatter.cluster !== 'boolean') {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'scatter cluster must be a Boolean when present.', `${scatterPath}.cluster`));
+      }
+    }
+  }
   if (view.treemap !== undefined) {
     const treemapPath = `${path}.treemap`;
     if (view.mark !== 'chart' || view.chart !== 'treemap') {

@@ -1736,6 +1736,7 @@
           },
           "mark": "chart",
           "chart": "scatter",
+          "scatter": { "cluster": false },
           "layout": "full",
           "empty-message": "No ingestion entries have been retained.",
           "encoding": {

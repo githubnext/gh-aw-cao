@@ -599,9 +599,10 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {{ at: string, label: string } | null} [temporalMarker]
  * @param {import('./treemap-layout.js').TreemapOptions} [treemapOptions]
  * @param {ChartPlotDomain | null} [plotDomain]
+ * @param {{ cluster?: boolean }} [scatterOptions]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}, plotDomain = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}, plotDomain = null, scatterOptions = {}) {
   if (chartType === 'treemap') {
     return renderTreemapChart(points, totalLabel, unit, treemapOptions, chartSeriesClassName);
   }
@@ -1049,7 +1050,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           });
           const validCoordinates = coordinates.filter(({ valid }) => valid);
           const hasGaps = validCoordinates.length !== coordinates.length;
-          const renderedCoordinates = sampleLineCoordinates(validCoordinates, renderedPointLimit);
+          const renderedCoordinates = isScatterChart && scatterOptions.cluster === false
+            ? validCoordinates
+            : sampleLineCoordinates(validCoordinates, renderedPointLimit);
           const gapPrefix = [];
           let gaps = 0;
           for (const coordinate of coordinates) {

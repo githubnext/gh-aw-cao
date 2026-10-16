@@ -32,6 +32,35 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  describe('scatter reduction options', () => {
+    /** @param {unknown} scatter @param {string} [chart] @param {string} [mark] */
+    function validate(scatter, chart = 'scatter', mark = 'chart') {
+      const document = JSON.parse(authoritativeDashboardSource);
+      const page = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'indexing');
+      const view = page.views.find((/** @type {{ id: string }} */ view) => view.id === 'indexing-workflow-runs');
+      Object.assign(view, { scatter, chart, mark });
+      return validateDashboardDocument(JSON.stringify(document));
+    }
+
+    it.each([undefined, {}, { cluster: true }, { cluster: false }])('accepts %j with unchanged defaults', (options) => {
+      expect(validate(options).ok).toBe(true);
+    });
+
+    it.each([null, false, [], 'false', { cluster: 'false' }, { cluster: 0 }, { cluster: null }, { sample: false }])('rejects invalid scatter options %j', (options) => {
+      expect(validate(options)).toMatchObject({
+        ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.scatter') })])
+      });
+    });
+
+    it.each([['line', 'chart'], ['bar', 'chart'], ['scatter', 'table']])('rejects options on %s / %s', (chart, mark) => {
+      expect(validate({ cluster: false }, chart, mark)).toMatchObject({
+        ok: false, errors: expect.arrayContaining([expect.objectContaining({
+          path: expect.stringContaining('.scatter'), message: 'scatter options are allowed only on scatter charts.'
+        })])
+      });
+    });
+  });
+
   it.each([
     { fields: [] }, { fields: ['repository', 'repository'] }, { fields: ['unknown-field'] }, { fields: ['gh-aw-version'] }
   ])('rejects invalid batch action context $fields', ({ fields }) => {

@@ -130,6 +130,7 @@ describe('indexing dashboard', () => {
       for (const property of ['filter', 'aggregate', 'limit']) expect(definition[property]).toBeUndefined();
       expect(view).toMatchObject({
         chart: 'scatter',
+        scatter: { cluster: false },
         data: { source, 'query-context': false },
         encoding: {
           x: { field: 'createdAt', type: 'temporal' },

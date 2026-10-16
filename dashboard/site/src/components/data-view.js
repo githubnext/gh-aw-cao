@@ -1439,7 +1439,9 @@ function renderChartView(context, facetPanel = false) {
       reference?.field ?? null,
       pieCategoryLabelFormatter(x),
       null,
-      chartType === 'treemap' && isPlainObject(view.treemap) ? view.treemap : {}
+      chartType === 'treemap' && isPlainObject(view.treemap) ? view.treemap : {},
+      null,
+      chartType === 'scatter' && isPlainObject(view.scatter) ? view.scatter : {}
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
@@ -1461,7 +1463,7 @@ function renderChartView(context, facetPanel = false) {
     };
   };
 
-  const clustering = chartType === 'scatter' && points.length > MAX_RENDERED_SCATTER_POINTS
+  const clustering = chartType === 'scatter' && view.scatter?.cluster !== false && points.length > MAX_RENDERED_SCATTER_POINTS
     ? processScatterPoints(points.flatMap(({ key, x: pointX, y: pointY, color: pointColor, link }) => pointY == null ? [] : [{
         key,
         x: pointX,
