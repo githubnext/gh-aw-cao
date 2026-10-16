@@ -133,11 +133,12 @@ describe('Ingestion backend contract', () => {
     const createdAt = '2026-09-24T01:02:03.456Z';
     for (const entry of [
       { id: 'known', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
+      { id: 'coincident', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
       { id: 'zero', kind: 'ingest-normalized-jsonl', createdAt, rawRuns: 0 },
       { id: 'missing', kind: 'ingest-dashboard-sources', createdAt }
     ]) await recordTransaction(indexedDB, entry);
     subscription.onUpdate(await read());
-    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(3));
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(4));
     expect(root.textContent).toContain('Run count unavailable (shown at 0)');
     const positions = [...root.querySelectorAll('.scatter-chart-point')].map((point) => point.getAttribute('cx'));
     expect(new Set(positions).size).toBe(1);
@@ -145,7 +146,7 @@ describe('Ingestion backend contract', () => {
       id: 'later', kind: 'ingest-jsonl', createdAt: '2026-09-24T02:03:04.567Z', rawRuns: 4
     });
     subscription.onUpdate(await read());
-    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(4));
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(5));
     disposeDashboard(root);
     expect(subscription.signal.aborted).toBe(true);
   });

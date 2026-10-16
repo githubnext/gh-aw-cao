@@ -132,7 +132,7 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   await expect(page.locator('.first-load-overlay')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('stale-data-ingestion.png'), fullPage: true });
-  await testInfo.attach('Stale data and ingestion shards', {
+  await testInfo.attach(`Fixture-backed Ingestion page (${viewport.width}px)`, {
     path: testInfo.outputPath('stale-data-ingestion.png'), contentType: 'image/png'
   });
   for (const id of contract.hostedViews) {
