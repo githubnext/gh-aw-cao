@@ -212,8 +212,8 @@ describe('canonical normalization', () => {
 
   it('orders run-linked records independently of ingestion order', () => {
     const records = [
-      ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],
-      ['call', '2026-09-09T03:00:01Z', 'tool.call', 10]
+      ['result', '2026-09-09T03:00:03Z', 'tool.execution_complete', 30],
+      ['call', '2026-09-09T03:00:01Z', 'mcp.tool_call', 10]
     ].map(([sourceId, timestamp, type, sourceSequence]) => observation('tool', String(sourceId), String(timestamp), {
       runId: 'github:run:456:attempt:1',
       timestamp: String(timestamp),
@@ -225,8 +225,8 @@ describe('canonical normalization', () => {
     const batch = normalize(records.reverse());
 
     expect(batch.tools.map((event) => [event.sequence, event.type])).toEqual([
-      [0, 'tool.call'],
-      [1, 'tool.result']
+      [0, 'mcp.tool_call'],
+      [1, 'tool.execution_complete']
     ]);
   });
 

@@ -1,5 +1,6 @@
 import { createDebug } from '../../debug.js';
 import { sourceId } from './ids.js';
+import { alignSessionEventRecord } from './session-types.js';
 
 const debugFields = createDebug('fields');
 
@@ -69,6 +70,9 @@ function retainCoordinates(record, copy, owner, repository) {
  * @returns {Record<string, unknown>}
  */
 export function pruneCanonicalRecord(collection, record) {
+  if (['domains', 'tools', 'skills', 'audits', 'issues'].includes(collection)) {
+    record = alignSessionEventRecord(record);
+  }
   const fields = PRUNED_CANONICAL_FIELDS[collection];
   if (!fields?.some((field) => Object.hasOwn(record, field))) return record;
   if (collection === 'audits') record = retainCoordinates(record, 'targetRepo', 'targetOrganization', 'targetRepository');

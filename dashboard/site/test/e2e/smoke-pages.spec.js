@@ -661,7 +661,7 @@ test('Issues switches between its top-repository chart, table, and cards', async
         run: id,
         'run-attempt': 1,
         event: id,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-summary': summary,
         'event-timestamp': observedAt,
         'safe-output-type': 'create_issue',

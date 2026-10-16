@@ -126,7 +126,7 @@ const sources = {  campaigns: {
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
         run: '42', 'run-attempt': 2, event: 'event:tool-call',
-        'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
+        'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'mcp.tool_call',
         'event-summary': 'github.list_issues', 'event-status': 'requested',
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
@@ -142,7 +142,7 @@ const sources = {  campaigns: {
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
         run: '42', 'run-attempt': 2, event: 'event:agent-turn',
-        'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'agent_turn',
+        'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'user.message',
         'event-summary': 'Planned the change', 'source-sequence': 1, 'observed-at': '2026-09-09T04:00:20Z'
       }
     ],
@@ -224,7 +224,7 @@ describe('canonical view sources', () => {
       {
         collection: 'issues',
         record: {
-          id: `github:issue:${issueRepository}:2`, runId, type: 'safe_output.created',
+          id: `github:issue:${issueRepository}:2`, runId, type: 'safe_output.result',
           timestamp: metadata['as-of'], observedAt: metadata['as-of'],
           source: 'safe_outputs', summary: 'Maintenance review proposal',
           correlationId: `https://github.com/${issueRepository}/issues/2`,
@@ -430,7 +430,7 @@ describe('canonical view sources', () => {
       runId: 'github:run:42:attempt:2',
       timestamp: '2026-09-09T04:00:10Z',
       source: 'safe-output',
-      type: 'safe_output.created',
+      type: 'safe_output.result',
       summary: 'Created issue',
       correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/123',
       safeOutputType: 'create_issue',
@@ -442,7 +442,7 @@ describe('canonical view sources', () => {
       runId: 'github:run:42:attempt:2',
       timestamp: '2026-09-09T04:00:20Z',
       source: 'safe-output',
-      type: 'safe_output.created',
+      type: 'safe_output.result',
       summary: 'Created pull request',
       correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/124',
       safeOutputType: 'create_pull_request',
@@ -888,7 +888,7 @@ describe('canonical view sources', () => {
         repository: 'gh-aw-cao',
         run: '42',
         event: 'event:tool-call',
-        'event-type': 'tool.call'
+        'event-type': 'mcp.tool_call'
       }],
       metadata: { 'source-kind': 'database-query' }
     });
@@ -1092,7 +1092,7 @@ describe('canonical view sources', () => {
         run: '42',
         'run-attempt': 2,
         event: 'event:tool-call',
-        'event-type': 'tool.call',
+        'event-type': 'mcp.tool_call',
         'event-source': 'mcp',
         'event-summary': 'github.list_issues',
         'correlation-id': 'call-1',
@@ -1101,7 +1101,7 @@ describe('canonical view sources', () => {
       })
     ]);
     expect(projected.audits.rows).toEqual([
-      expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
+      expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'user.message' })
     ]);
   });
 
@@ -1110,7 +1110,7 @@ describe('canonical view sources', () => {
     const firewallEvent = structuredClone(firewallSources.tools.rows[0]);
     firewallEvent.event = 'event:firewall-blocked';
     firewallEvent['event-source'] = 'firewall';
-    firewallEvent['event-type'] = 'net_blocked';
+    firewallEvent['event-type'] = 'firewall.http_access';
     firewallSources.tools.rows = [];
     firewallSources.domains.rows = [firewallEvent];
     await loadCanonicalViewSources(indexedDB, firewallSources, { ingest: true });
@@ -1121,7 +1121,7 @@ describe('canonical view sources', () => {
       expect.objectContaining({
         event: 'event:firewall-blocked',
         'event-source': 'firewall',
-        'event-type': 'firewall.request.blocked',
+        'event-type': 'firewall.http_access',
         'request-count': 7
       })
     ]);
@@ -1213,7 +1213,7 @@ describe('canonical view sources', () => {
     expect(projected['eval-observations'].rows).toEqual([
       expect.objectContaining({ eval: 'correctness', 'eval-result': 'NO', status: 'fail', run: '85' })
     ]);
-    expect(projected.audits.rows.map((row) => row['event-type'])).toContain('workflow_run_eval');
+    expect(projected.audits.rows.map((row) => row['event-type'])).toContain('eval.result');
     expect(projected.audits.rows.map((row) => row['event-type'])).toContain('workflow_run_eval_unclassified');
   });
 
@@ -1397,7 +1397,7 @@ describe('canonical view sources', () => {
     const rows = /** @type {{ rows: Record<string, unknown>[] }} */ (projected.audits).rows;
 
     expect(rows.map((row) => row.event)).toEqual(['event:agent-turn']);
-    expect(rows.map((row) => row['event-type'])).toEqual(['agent_turn']);
+    expect(rows.map((row) => row['event-type'])).toEqual(['user.message']);
   });
 
   it('queries an empty database before fresh data is ingested', async () => {

@@ -685,16 +685,16 @@ describe('canonical IndexedDB', () => {
 
   it('uses run indexes without changing filtered collection order', async () => {
     const records = [
-      { id: 'event:1', runId: 'run:1', type: 'tool.call' },
-      { id: 'event:2', runId: 'run:2', type: 'tool.call' },
-      { id: 'event:3', runId: 'run:1', type: 'tool.result' },
-      { id: 'event:4', runId: 'run:1', type: 'tool.call' }
+      { id: 'event:1', runId: 'run:1', type: 'mcp.tool_call' },
+      { id: 'event:2', runId: 'run:2', type: 'mcp.tool_call' },
+      { id: 'event:3', runId: 'run:1', type: 'tool.execution_complete' },
+      { id: 'event:4', runId: 'run:1', type: 'mcp.tool_call' }
     ];
     const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
       op: 'filter',
       predicates: [
         { field: 'runId', equals: 'run:1' },
-        { field: 'type', equals: 'tool.call' }
+        { field: 'type', equals: 'mcp.tool_call' }
       ]
     }]);
     await writeRecords('tools', records);
@@ -711,7 +711,7 @@ describe('canonical IndexedDB', () => {
   it('falls back to JavaScript for predicates IndexedDB cannot represent', async () => {
     const records = [
       { id: 'event:1', type: 'github-api.request' },
-      { id: 'event:2', type: 'tool.call' }
+      { id: 'event:2', type: 'mcp.tool_call' }
     ];
     const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
       op: 'filter',

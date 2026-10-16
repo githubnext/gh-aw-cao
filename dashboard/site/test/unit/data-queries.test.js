@@ -908,9 +908,9 @@ describe('declarative dashboard queries', () => {
     const events = {
       source: 'audits',
       rows: [
-        { repository: 'api', event: '1', 'event-type': 'firewall.request.blocked', 'request-count': 2 },
-        { repository: 'api', event: '2', 'event-type': 'firewall.request.allowed', 'request-count': 0 },
-        { repository: 'api', event: null, 'event-type': 'firewall.request.blocked', 'request-count': null },
+        { repository: 'api', event: '1', 'event-type': 'firewall.http_access', decision: 'denied', 'request-count': 2 },
+        { repository: 'api', event: '2', 'event-type': 'firewall.http_access', decision: 'allowed', 'request-count': 0 },
+        { repository: 'api', event: null, 'event-type': 'firewall.http_access', decision: 'denied', 'request-count': null },
         { repository: 'web', event: '3', 'event-type': 'gateway.request', 'request-count': 4 },
         { repository: 'web', event: '4', 'event-type': null, 'request-count': 3 }
       ],
@@ -927,13 +927,13 @@ describe('declarative dashboard queries', () => {
             field: 'event',
             as: 'matched-blocked-records',
             reducer: 'count',
-            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+            filter: { predicates: [{ field: 'decision', equals: 'denied' }] }
           },
           {
             field: 'request-count',
             as: 'blocked-requests',
             reducer: 'sum',
-            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+            filter: { predicates: [{ field: 'decision', equals: 'denied' }] }
           },
           {
             field: 'event',
@@ -942,7 +942,7 @@ describe('declarative dashboard queries', () => {
             filter: {
               predicates: [{
                 field: 'event-type',
-                in: ['firewall.request.allowed', 'firewall.request.blocked']
+                equals: 'firewall.http_access'
               }, {
                 field: 'repository',
                 equals: 'api'
@@ -1033,7 +1033,7 @@ describe('declarative dashboard queries', () => {
         source: 'audits',
         get rows() {
           reads += 1;
-          return [{ event: '1', 'event-type': 'firewall.request.blocked' }];
+          return [{ event: '1', 'event-type': 'firewall.http_access' }];
         },
         metadata: metadata('audits')
       };
@@ -1084,15 +1084,15 @@ describe('declarative dashboard queries', () => {
           field: 'event',
           as: 'blocked-events',
           reducer: 'count',
-          filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+          filter: { predicates: [{ field: 'event-type', equals: 'firewall.http_access' }] }
         }]
       }
     });
     const events = {
       source: 'audits',
       rows: [
-        { event: '1', 'event-type': 'firewall.request.blocked' },
-        { event: '2', 'event-type': 'firewall.request.allowed' }
+        { event: '1', 'event-type': 'firewall.http_access' },
+        { event: '2', 'event-type': 'firewall.http_access' }
       ],
       metadata: metadata('audits')
     };

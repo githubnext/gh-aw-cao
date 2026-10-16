@@ -120,6 +120,7 @@ func directoryRevision(manifest Manifest, inventoryHash string, additionalRevisi
 	}
 	sort.Strings(keys)
 	hasher := sha256.New()
+	_, _ = io.WriteString(hasher, "canonical-session-types:1\x00")
 	for _, key := range keys {
 		_, _ = io.WriteString(hasher, key+"\x00"+strings.ToLower(manifest[key])+"\x00")
 	}

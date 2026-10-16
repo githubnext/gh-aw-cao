@@ -36,6 +36,9 @@ describe('complete unified telemetry ingestion', () => {
     const parsed = document();
     const types = new Set(parsed.events.map((event) => event.type));
     const native = content.trim().split('\n').map((line) => JSON.parse(line));
+    for (const event of parsed.events) {
+      expect(event.type).toBe(native[event.line - 1].type);
+    }
     for (const event of native) {
       if (['session.format', 'mcp.tool_call', 'mcp.guard.blocked', 'mcp.difc.filtered',
         'firewall.http_access', 'skill.invoked'].includes(event.type)) continue;
@@ -45,7 +48,7 @@ describe('complete unified telemetry ingestion', () => {
     expect(parsed.events.find((event) => event.type === 'workflow.info')).not.toHaveProperty('timestamp', expect.anything());
     expect(JSON.stringify(parsed)).not.toMatch(/PRIVATE_/);
     const batch = normalize(adaptCachedGhAwJsonl(cached()).observations);
-    expect(batch.tools.filter((row) => row.type === 'tool.call')).toHaveLength(1);
+    expect(batch.tools.filter((row) => row.type === 'mcp.tool_call')).toHaveLength(1);
     expect(batch.domains).toHaveLength(2);
     expect(batch.domains.find((row) => row.domain === 'api.github.com')).toMatchObject({
       method: 'GET', responseBytes: 1024, latencyMs: 7
@@ -80,8 +83,8 @@ describe('complete unified telemetry ingestion', () => {
       files: [{ path: 'usage/aw_session.jsonl', content: events }]
     }).observations);
     expect(batch.tools).toMatchObject([
-      { mcpServer: 'github', mcpTool: 'get_issue', type: 'tool.call', invocationCount: 1 },
-      { mcpServer: 'github', mcpTool: 'get_issue', type: 'tool.error', invocationCount: 0, responseBytes: 7 }
+      { mcpServer: 'github', mcpTool: 'get_issue', type: 'mcp.rpc.request', invocationCount: 1 },
+      { mcpServer: 'github', mcpTool: 'get_issue', type: 'mcp.rpc.response', invocationCount: 0, responseBytes: 7 }
     ]);
     expect(JSON.stringify(batch)).not.toMatch(/PRIVATE_/);
   });

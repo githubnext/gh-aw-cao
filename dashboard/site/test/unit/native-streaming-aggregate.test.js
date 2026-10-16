@@ -26,7 +26,7 @@ async function seed(count, mixed = false, runCount = 2) {
       for (let index = 0; index < count; index++) transaction.objectStore('domains').put({
         id: `event:${String(index).padStart(7, '0')}`,
         runId: `run:${mixed && index % 3 ? '2' : '1'}`,
-        source: 'firewall', type: mixed && index % 2 ? 'net_allowed' : 'net_blocked',
+        source: 'firewall', type: mixed && index % 2 ? 'firewall.http_access' : 'firewall.http_access',
         domain: mixed && index % 5 ? 'other.example' : 'example.com',
         decision: mixed && index % 2 ? 'allowed' : 'denied',
         requestCount: mixed ? index % 7 : 1, timestamp: '2026-10-15T00:00:00Z'

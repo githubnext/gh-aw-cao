@@ -151,7 +151,7 @@ function evidence(scale = 1) {
         'event-source': 'fixture',
         'safe-output-url': name === 'issues'
           ? `https://github.com/example/${run.repository}/issues/${index * 4 + record + 1}` : '',
-        'event-type': name === 'audits' && index % 2 ? 'safe_output.created' : 'tool.call',
+        'event-type': name === 'audits' && index % 2 ? 'safe_output.result' : 'mcp.tool_call',
         'safe-output-type': name === 'audits' && index % 2 ? 'report_incomplete' : '',
         'event-summary': 'Retained diagnostic evidence',
         'event-timestamp': run['started-at']

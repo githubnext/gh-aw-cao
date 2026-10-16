@@ -1343,6 +1343,76 @@
       }
     },
     {
+      "name": "grader-observed-maxima",
+      "subject": "Find each workflow-scoped grader's maximum retained value in the selected data.",
+      "objective": "Provide an observed normalization denominator without mixing grader identities or claiming a theoretical maximum.",
+      "acceptance": "Group by canonical grader identity, not display name; ignore missing values and preserve zero or negative maxima without substituting a denominator.",
+      "from": "grader-observations",
+      "aggregate": {
+        "by": ["grader-id"],
+        "values": [{ "field": "value", "as": "max-grader-value", "reducer": "max" }]
+      }
+    },
+    {
+      "name": "grader-normalized-observations",
+      "subject": "Normalize each grader observation by that grader's observed maximum.",
+      "objective": "Compare relative grader values over time while preserving native measurements and run provenance.",
+      "acceptance": "Compute value / max-grader-value without clamping or inverting lower-is-better measures; zero or missing denominators produce null, never a fabricated zero or infinity.",
+      "from": "grader-observations",
+      "joins": [
+        {
+          "source": "grader-observed-maxima",
+          "type": "left",
+          "on": [{ "left": "grader-id", "right": "grader-id" }],
+          "fields": [{ "field": "max-grader-value", "as": "max-grader-value" }]
+        }
+      ],
+      "compute": [
+        {
+          "as": "normalized-value",
+          "function": "quotient",
+          "args": [{ "field": "value" }, { "field": "max-grader-value" }]
+        },
+        {
+          "as": "_observation-time",
+          "function": "timestamp",
+          "args": [{ "field": "observed-at" }]
+        },
+        {
+          "as": "_unplottable-value",
+          "function": "equals-any",
+          "args": [{ "field": "normalized-value" }, { "value": null }]
+        },
+        {
+          "as": "_unplottable-time",
+          "function": "equals-any",
+          "args": [{ "field": "_observation-time" }, { "value": null }]
+        },
+        {
+          "as": "grader-series",
+          "function": "concat",
+          "args": [
+            { "field": "organization" }, { "value": "/" }, { "field": "repository" },
+            { "value": " / " }, { "field": "workflow" }, { "value": " / " }, { "field": "grader" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "grader-value-scatter",
+      "subject": "Plot timed grader observations with a defined value-to-observed-maximum ratio.",
+      "objective": "Show relative grader measurements at their recorded observation times.",
+      "acceptance": "Keep each eligible observation and its run link; omit missing ratios or observation times from the plot while retaining those records in the native-value ledger. Ratios are not eval answers or evidence of improvement.",
+      "from": "grader-normalized-observations",
+      "filter": {
+        "predicates": [
+          { "field": "_unplottable-value", "equals": false },
+          { "field": "_unplottable-time", "equals": false }
+        ]
+      },
+      "order-by": [{ "field": "observed-at", "direction": "asc" }]
+    },
+    {
       "name": "grader-status-ledger",
       "subject": "Report grader measurements, units and explicit statuses without confusing them with binary eval answers.",
       "objective": "Preserve numeric grader evidence and distinguish explicit per-observation pass and fail verdicts from unknown statuses.",
@@ -2670,15 +2740,35 @@
     {
       "id": "graders",
       "kind": "custom",
-      "intent": "Inspect retained grader observations and their result provenance.",
+      "intent": "Compare normalized grader values over time and inspect their native evidence.",
       "subject": "Run-linked grader results and native metric evidence grouped by workflow.",
-      "objective": "Identify grading evidence requiring review without conflating graders and evals.",
-      "acceptance": "Preserve grader identity, native values/status, units when present and observation times; unknown is not pass/fail. Without a current-result pointer, historical observations are not current verdicts or verified gains.",
+      "objective": "Show each grader value relative to its observed maximum while keeping the native-value ledger available for evidence review.",
+      "acceptance": "Plot time against value divided by the maximum for that grader in the selected data; missing values and zero maxima do not produce points. Preserve grader identity, native values/status, units and times; unknown is not pass/fail. Historical observations are not current verdicts or verified gains.",
       "title": "Graders",
       "icon": "checklist",
       "experimental": true,
-      "description": "Identify retained grader observations that require evidence review.",
+      "description": "Compare grader values over time relative to each grader's observed maximum, then inspect native measurements in the ledger.",
       "views": [
+        {
+          "id": "graders-value-scatter",
+          "title": "Grader values relative to observed maximum",
+          "subject": "Timed grader observations normalized by each grader's maximum in the selected data.",
+          "objective": "Compare relative measurements and follow a point to its producing run.",
+          "acceptance": "Preserve each point's timestamp and value/max ratio without connecting or clamping values; omit missing ratios and zero maxima. Normalization is not an eval answer or proof of improvement.",
+          "description": "Each point is value / maximum observed value for the same grader and workflow. Zero or missing maxima are not plotted. Ratios are not eval answers or proof of improvement.",
+          "data": { "source": "grader-value-scatter" },
+          "mark": "chart",
+          "chart": "scatter",
+          "scatter": { "cluster": false },
+          "layout": "full",
+          "empty-message": "No timed grader values have a nonzero observed maximum. Native observations remain in the ledger below.",
+          "encoding": {
+            "x": { "field": "observed-at", "type": "temporal", "title": "Observed at", "format": "human-friendly-timestamp" },
+            "y": { "field": "normalized-value", "type": "quantitative", "title": "Value / observed maximum" },
+            "color": { "field": "grader-series", "type": "nominal", "title": "Grader" },
+            "href": { "field": "run-link", "type": "nominal" }
+          }
+        },
         {
           "id": "graders-statuses",
           "title": "Observed grader results by workflow",

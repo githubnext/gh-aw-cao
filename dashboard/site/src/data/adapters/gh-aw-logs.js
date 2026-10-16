@@ -11,6 +11,7 @@ import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePe
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
+import { unifiedSessionEventType } from '../model/session-types.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -493,8 +494,8 @@ function stableDigest(value) {
  * @returns {'domain' | 'tool' | 'skill' | 'friction' | 'audit' | 'issue'}
  */
 function recordKind(type, fields) {
-  if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
-  if (type === 'safe_output.created'
+  if (type === 'firewall.http_access') return 'domain';
+  if (type === 'safe_output.result'
     && ['issue', 'pull_request'].includes(String(fields.githubEntityType))
     && typeof fields.correlationId === 'string') {
     try {
@@ -504,14 +505,15 @@ function recordKind(type, fields) {
       return 'audit';
     }
   }
-  if (type === 'audit.skill_activation') return 'skill';
+  if (type === 'skill.invoked') return 'skill';
   if (type === 'workflow_run_friction') return 'friction';
   if (fields.source === 'mcp'
-    || type === 'tool_call'
-    || type === 'agent_tool_start'
-    || type === 'agent_tool_done'
-    || type === 'guard_blocked'
-    || type === 'difc_filtered') return 'tool';
+    || type === 'mcp.tool_call'
+    || (type === 'mcp.rpc.request' && fields.source === 'gateway')
+    || type === 'tool.execution_start'
+    || type === 'tool.execution_complete'
+    || type === 'mcp.guard.blocked'
+    || type === 'mcp.difc.filtered') return 'tool';
   return 'audit';
 }
 
@@ -633,7 +635,8 @@ function logFiles(input) {
  */
 function eventObservation(runId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
   const recordFields = { source: eventSource, ...fields };
-  const kind = recordKind(type, recordFields);
+  const canonicalType = unifiedSessionEventType(type);
+  const kind = recordKind(canonicalType, recordFields);
   return {
     kind,
     source: OBSERVATION_SOURCE,
@@ -643,11 +646,11 @@ function eventObservation(runId, filePath, line, eventTimestamp, eventSource, ty
       runId,
       timestamp: eventTimestamp,
       source: eventSource,
-      type,
+      type: canonicalType,
       payloadRef: `${filePath}#L${line}`,
       sourceSequence: line,
       ...fields,
-      ...specializedFields(type, recordFields, kind)
+      ...specializedFields(canonicalType, recordFields, kind)
     }
   };
 }
@@ -905,7 +908,7 @@ export function adaptGhAwLogs(input) {
     observations.push(...adapted.observations.filter((record) =>
       ['experiment', 'experiment-assignment', 'grader', 'grader-observation', 'eval', 'eval-observation'].includes(record.kind)
         || record.kind === 'issue'
-        || (record.kind === 'audit' && ['workflow_run_grader', 'workflow_run_eval', 'workflow_run_eval_unclassified', 'safe_output.created'].includes(String(record.data.type)))));
+        || (record.kind === 'audit' && ['grader.result', 'eval.result', 'workflow_run_eval_unclassified', 'safe_output.result'].includes(String(record.data.type)))));
   }
   return { observations };
 }
@@ -1688,7 +1691,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         ...fields
       };
-      const kind = recordKind(type, recordFields);
+      const canonicalType = unifiedSessionEventType(type);
+      const kind = recordKind(canonicalType, recordFields);
       observations.push({
         kind,
         source: OBSERVATION_SOURCE,
@@ -1698,14 +1702,14 @@ function createCachedGhAwJsonlAccumulator(options) {
           runId: id,
           timestamp: eventTimestamp,
           source: fields.source ?? 'gh-aw-logs',
-          type,
+          type: canonicalType,
           summary,
           status,
           correlationId: fields.correlationId,
           payloadRef: `gh-aw-logs-shards#L${enriched.line}`,
           sourceSequence,
           ...fields,
-          ...specializedFields(type, recordFields, kind)
+          ...specializedFields(canonicalType, recordFields, kind)
         })
       });
       sourceSequence += 1;

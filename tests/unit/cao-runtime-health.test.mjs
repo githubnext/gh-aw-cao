@@ -354,7 +354,7 @@ test('runtime-health diagnosis drills from a failure group to bounded canonical 
     audits: [{
       id: 'audit:102',
       runId: failedRunId,
-      type: 'workflow_run_grader',
+      type: 'grader.result',
       status: 'error',
       summary: 'Post-run grader failed',
       prompt: 'must not be exposed'
@@ -362,7 +362,7 @@ test('runtime-health diagnosis drills from a failure group to bounded canonical 
     tools: [{
       id: 'tool:102',
       runId: failedRunId,
-      type: 'tool.error',
+      type: 'tool.execution_complete',
       status: 'error',
       summary: 'Tool call did not complete',
       mcpServer: 'github',
@@ -379,7 +379,7 @@ test('runtime-health diagnosis drills from a failure group to bounded canonical 
     issues: [{
       id: 'issue:102',
       runId: failedRunId,
-      type: 'safe_output.created',
+      type: 'safe_output.result',
       status: 'created',
       summary: 'Created investigation issue',
       correlationId: 'https://github.com/octo/expected/issues/42'

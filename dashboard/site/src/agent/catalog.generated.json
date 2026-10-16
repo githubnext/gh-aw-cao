@@ -955,15 +955,16 @@
     {
       "id": "graders",
       "title": "Graders",
-      "description": "Identify retained grader observations that require evidence review.",
-      "intent": "Inspect retained grader observations and their result provenance.",
+      "description": "Compare grader values over time relative to each grader's observed maximum, then inspect native measurements in the ledger.",
+      "intent": "Compare normalized grader values over time and inspect their native evidence.",
       "subject": "Run-linked grader results and native metric evidence grouped by workflow.",
-      "objective": "Identify grading evidence requiring review without conflating graders and evals.",
-      "acceptance": "Preserve grader identity, native values/status, units when present and observation times; unknown is not pass/fail. Without a current-result pointer, historical observations are not current verdicts or verified gains.",
+      "objective": "Show each grader value relative to its observed maximum while keeping the native-value ledger available for evidence review.",
+      "acceptance": "Plot time against value divided by the maximum for that grader in the selected data; missing values and zero maxima do not produce points. Preserve grader identity, native values/status, units and times; unknown is not pass/fail. Historical observations are not current verdicts or verified gains.",
       "experimental": true,
       "parameters": [],
       "queries": [
-        "grader-status-ledger"
+        "grader-status-ledger",
+        "grader-value-scatter"
       ]
     },
     {
@@ -1524,7 +1525,7 @@
       "id": "issue-safe-outputs",
       "subject": "List retained GitHub issue safe outputs.",
       "objective": "Inspect retained issue safe outputs and their observed closure state before deciding which items need follow-up.",
-      "acceptance": "Include only safe_output.created issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
+      "acceptance": "Include only safe_output.result issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
       "description": "Issue-only projection of retained safe-output items.",
       "parameters": [],
       "sources": [
@@ -4791,6 +4792,66 @@
         "backend": "sqlite",
         "requirements": [
           "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "grader-observed-maxima",
+      "subject": "Find each workflow-scoped grader's maximum retained value in the selected data.",
+      "objective": "Provide an observed normalization denominator without mixing grader identities or claiming a theoretical maximum.",
+      "acceptance": "Group by canonical grader identity, not display name; ignore missing values and preserve zero or negative maxima without substituting a denominator.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "grader-observations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
+      }
+    },
+    {
+      "id": "grader-normalized-observations",
+      "subject": "Normalize each grader observation by that grader's observed maximum.",
+      "objective": "Compare relative grader values over time while preserving native measurements and run provenance.",
+      "acceptance": "Compute value / max-grader-value without clamping or inverting lower-is-better measures; zero or missing denominators produce null, never a fabricated zero or infinity.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "grader-observations",
+        "grader-observed-maxima"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
+        ]
+      }
+    },
+    {
+      "id": "grader-value-scatter",
+      "subject": "Plot timed grader observations with a defined value-to-observed-maximum ratio.",
+      "objective": "Show relative grader measurements at their recorded observation times.",
+      "acceptance": "Keep each eligible observation and its run link; omit missing ratios or observation times from the plot while retaining those records in the native-value ledger. Ratios are not eval answers or evidence of improvement.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "grader-normalized-observations"
+      ],
+      "used-by-pages": [
+        "graders"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "grader-observations"
         ]
       }
     },

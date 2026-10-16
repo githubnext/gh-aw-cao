@@ -36,7 +36,7 @@ function batch() {
   });
   value.tools.push({
     id: 'tool:1', runId: value.runs[0].id, timestamp: observedAt, observedAt,
-    type: 'tool.call', name: 'search', mcpServer: 'github', mcpTool: 'search',
+    type: 'mcp.tool_call', name: 'search', mcpServer: 'github', mcpTool: 'search',
     toolType: 'mcp', isSkill: false, requestBytes: 42, responseBytes: 0,
     correlationId: 'call-1', provenance: { source: 'gh-aw-logs', sourceId: 'call-1', observedAt }
   });

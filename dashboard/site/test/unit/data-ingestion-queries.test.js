@@ -422,11 +422,11 @@ describe('dashboard source ingestion queries', () => {
         rows: [
           {
             run: '302', 'run-attempt': 1, event: 'stale-event',
-            'event-timestamp': '2026-09-08T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
+            'event-timestamp': '2026-09-08T04:00:01Z', 'event-source': 'agent', 'event-type': 'user.message'
           },
           {
             run: '303', 'run-attempt': 1, event: 'current-event',
-            'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
+            'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'agent', 'event-type': 'user.message'
           }
         ],
         metadata
@@ -461,7 +461,7 @@ describe('dashboard source ingestion queries', () => {
           event: `event-${index}`,
           'event-timestamp': '2026-09-09T04:00:01Z',
           'event-source': 'agent',
-          'event-type': 'agent_turn'
+          'event-type': 'user.message'
         })),
         metadata
       }

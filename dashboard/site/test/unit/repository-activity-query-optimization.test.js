@@ -107,11 +107,11 @@ function fixture() {
     { ...run('reported', '400', 'success', 17), 'started-at': '2026-09-01T00:00:00Z' }
   ];
   /** @param {string} run @param {string} event @param {string} [type] */
-  const record = (run, event, type = 'tool.call') => ({
+  const record = (run, event, type = 'mcp.tool_call') => ({
     run, 'run-attempt': 1, event, 'event-source': 'fixture', 'event-type': type,
     'event-timestamp': '2026-09-20T00:00:10Z', 'event-summary': 'Retained evidence',
     'safe-output-type': 'create_issue',
-    'safe-output-url': type === 'safe_output.created' ? `https://github.com/org/evidence/issues/${run}` : undefined
+    'safe-output-url': type === 'safe_output.result' ? `https://github.com/org/evidence/issues/${run}` : undefined
   });
   return {
     repositories: source('repositories', repositories),
@@ -121,9 +121,9 @@ function fixture() {
     domains: source('domains', [record('101', 'domain-one')]),
     tools: source('tools', [record('102', 'tool-one')]),
     issues: source('issues', [
-      record('103', 'issue-one', 'safe_output.created'),
-      record('300', 'issue-two', 'safe_output.created'),
-      record('400', 'issue-three', 'safe_output.created')
+      record('103', 'issue-one', 'safe_output.result'),
+      record('300', 'issue-two', 'safe_output.result'),
+      record('400', 'issue-three', 'safe_output.result')
     ])
   };
 }

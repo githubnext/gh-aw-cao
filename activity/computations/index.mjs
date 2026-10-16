@@ -159,7 +159,7 @@ export function buildRuntimeHealthDiagnostics(result, data) {
           data.tools ?? [],
           evidenceRunId,
           DIAGNOSTIC_RECORD_FIELDS.tools,
-          (record) => record.type === 'tool.error'
+          (record) => record.status === 'error' || record.status === 'rate-limited'
         );
         const firewallBlocks = linkedEvidence(
           data.domains ?? [],

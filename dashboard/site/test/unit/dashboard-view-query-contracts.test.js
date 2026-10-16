@@ -182,18 +182,28 @@ describe('dashboard view query contracts', () => {
       .toMatchObject({ data: { source: 'eval-yes-no-status' } });
     for (const id of /** @type {const} */ (['evals', 'graders'])) {
       const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
-      expect(viewsOf(page)[0]).toMatchObject({
+      const contract = evaluationContract[id];
+      const ledger = viewsOf(page).find((view) => view.id === contract.view);
+      expect(ledger).toMatchObject({
         mark: 'table', 'lazy-list': true, layout: 'full-view',
         data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
       });
       expect(page.description).not.toContain('TODO:');
       expect(page.acceptance).toContain('not current verdicts');
-      const contract = evaluationContract[id];
-      expect(viewsOf(page)[0].id).toBe(contract.view);
-      expect(viewsOf(page)[0]).toMatchObject({ data: { source: contract.query } });
-      const encoding = /** @type {{ columns: { field: string }[] }} */ (viewsOf(page)[0].encoding);
+      expect(ledger).toMatchObject({ data: { source: contract.query } });
+      const encoding = /** @type {{ columns: { field: string }[] }} */ (ledger?.encoding);
       expect(encoding.columns.map((column) => column.field)).toEqual(contract.fields);
     }
+    const scatter = evaluationContract.graders.scatter;
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'graders'))[0])
+      .toMatchObject({
+        id: scatter.view, mark: 'chart', chart: 'scatter', scatter: { cluster: false },
+        data: { source: scatter.query },
+        encoding: {
+          x: { field: scatter.x, type: 'temporal' }, y: { field: scatter.y, type: 'quantitative' },
+          color: { field: scatter.color }, href: { field: scatter.href }
+        }
+      });
   });
 
   it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
@@ -1024,7 +1034,7 @@ describe('dashboard view query contracts', () => {
         workflow: '.github/workflows/worker.md',
         run: '101',
         'run-attempt': 1,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-timestamp': '2026-09-20T12:00:00Z',
         'github-entity-type': 'issue',
         'is-pull-request': false,
@@ -1043,7 +1053,7 @@ describe('dashboard view query contracts', () => {
         workflow: '.github/workflows/worker.md',
         run: '102',
         'run-attempt': 1,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-timestamp': '2026-09-20T13:00:00Z',
         'github-entity-type': 'pull_request',
         'is-pull-request': true,

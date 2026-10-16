@@ -172,7 +172,7 @@ function evidence() {
     event: 'incomplete-report',
     'event-timestamp': runs[30]['started-at'],
     'event-source': 'mcp',
-    'event-type': 'safe_output.created',
+    'event-type': 'safe_output.result',
     'safe-output-type': 'report_incomplete',
     'event-summary': 'Required target evidence is unavailable.',
     'observed-at': runs[30]['started-at']

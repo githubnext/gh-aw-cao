@@ -21,7 +21,11 @@ import (
 // JSONL bytes, rather than comparing separately hand-built query inputs.
 func TestEvidenceShardPipelineParity(t *testing.T) {
 	if _, err := os.Stat("../../../dashboard/site/node_modules/fake-indexeddb"); os.IsNotExist(err) {
-		t.Skip("JS ingestion parity needs dashboard/site's existing npm dependencies (installed by Redis dashboard integration CI)")
+		if _, err := os.Stat("../../../node_modules/fake-indexeddb"); os.IsNotExist(err) {
+			t.Skip("JS ingestion parity needs existing npm dependencies")
+		} else if err != nil {
+			t.Fatal(err)
+		}
 	} else if err != nil {
 		t.Fatal(err)
 	}

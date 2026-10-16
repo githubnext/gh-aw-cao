@@ -57,8 +57,8 @@ describe('unified evaluation evidence', () => {
     expect(batch.evalObservations?.map((row) => row.evalResult)).toEqual(['YES', 'UNKNOWN']);
     expect(batch.graders?.[0].id).not.toBe(batch.evals?.[0].id);
     expect(batch.evalObservations?.every((row) => batch.audits.some((audit) => audit.id === row.auditId))).toBe(true);
-    expect(batch.audits.filter((row) => row.type === 'workflow_run_grader')).toHaveLength(1);
-    expect(batch.audits.find((row) => row.type === 'workflow_run_eval')?.payloadRef).toBe('usage/aw_session.jsonl#L7');
+    expect(batch.audits.filter((row) => row.type === 'grader.result')).toHaveLength(1);
+    expect(batch.audits.find((row) => row.type === 'eval.result')?.payloadRef).toBe('usage/aw_session.jsonl#L7');
     expect(relationshipErrors(batch)).toEqual([]);
   });
 
@@ -122,16 +122,63 @@ describe('unified evaluation evidence', () => {
     const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
       await processDataRequest({
         operation: 'query-canonical-dashboard',
-        sourceNames: [contract.graders.query, contract.evals.query, 'experiment-assignment-coverage', 'eval-observations'],
+        sourceNames: [contract.graders.query, contract.graders.scatter.query, contract.evals.query,
+          'experiment-assignment-coverage', 'eval-observations'],
         context: { queries: dashboard.queries, pages: dashboard.pages }
       })
     );
     expect(sources[contract.graders.query].rows).toMatchObject([
       { grader: 'quality', value: 0.93, unit: 'ratio', status: 'pass', repository: 'api' }
     ]);
+    expect(sources[contract.graders.scatter.query].rows).toMatchObject([
+      { grader: 'quality', value: 0.93, 'max-grader-value': 0.93, 'normalized-value': 1 }
+    ]);
     expect(sources[contract.evals.query].rows).toMatchObject([{ eval: 'quality', 'eval-result': 'YES' }]);
     expect(sources['eval-observations'].rows).toHaveLength(2);
     expect(sources['eval-observations'].rows.every((row) => typeof row['audit-id'] === 'string')).toBe(true);
     expect(sources['experiment-assignment-coverage'].rows).toMatchObject([{ experiment: 'prompt', assignments: 1 }]);
+  });
+
+  it('normalizes scatter values per canonical grader through the worker without losing zero or missing evidence', async () => {
+    const indexedDB = new IDBFactory();
+    vi.stubGlobal('indexedDB', indexedDB);
+    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    const results = [
+      { run: 401, grader: 'quality', value: 2 },
+      { run: 402, grader: 'quality', value: 4 },
+      { run: 403, grader: 'quality', value: null },
+      { run: 404, grader: 'zero', value: 0 },
+      { run: 405, grader: 'zero', value: 0 },
+      { run: 406, grader: 'negative', value: -8 },
+      { run: 407, grader: 'negative', value: -4 },
+      { run: 408, grader: 'quality', value: 100, workflow: 'other' }
+    ];
+    const jsonl = results.map((result, index) => JSON.stringify({
+      schema_version: 5, kind: 'run',
+      run: {
+        run_id: result.run, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+        workflow_name: result.workflow ?? 'worker',
+        workflow_path: `.github/workflows/${result.workflow ?? 'worker'}.lock.yml`,
+        created_at: `2026-10-15T10:0${index}:00Z`, updated_at: `2026-10-15T10:0${index}:30Z`,
+        status: 'completed', conclusion: 'success',
+        graders: { results: [{ id: result.grader, value: result.value, unit: 'score', status: 'observed' }] }
+      }
+    })).join('\n');
+    await ingestCachedGhAwJsonl(indexedDB, jsonl, { now: Date.parse('2026-10-16T00:00:00Z') });
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        sourceNames: [contract.graders.scatter.query, contract.graders.query, 'grader-normalized-observations'],
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    const points = sources[contract.graders.scatter.query].rows;
+    expect(points.map((row) => row['normalized-value'])).toEqual([0.5, 1, 2, 1, 1]);
+    expect(points.map((row) => row['max-grader-value'])).toEqual([4, 4, -4, -4, 100]);
+    expect(points.every((row) => typeof row['observed-at'] === 'string')).toBe(true);
+    expect(sources[contract.graders.query].rows).toHaveLength(8);
+    expect(sources['grader-normalized-observations'].rows.filter((row) => row['normalized-value'] === null))
+      .toHaveLength(3);
   });
 });

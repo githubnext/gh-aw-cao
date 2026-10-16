@@ -86,7 +86,7 @@ test('production worker counts event sources beyond input thresholds using nativ
           store.put(storage.prepareCanonicalRecord(storeName, {
             id: `${storeName}-${position}`, runId: `attempt-${position % 2 + 1}`,
             source: storeName === 'tools' ? 'mcp' : 'audit',
-            type: storeName === 'tools' ? 'tool.call' : 'audit.finding',
+            type: storeName === 'tools' ? 'mcp.tool_call' : 'audit.finding',
             status: storeName === 'tools' ? 'success' : position % 3 === 0 ? 'medium' : 'high',
             ...(storeName === 'tools' ? {
               mcpServer: position === 0 ? 'server/with' : position === 1 ? 'server' : 'other',

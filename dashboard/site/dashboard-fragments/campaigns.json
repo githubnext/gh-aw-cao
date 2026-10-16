@@ -22,7 +22,7 @@
               "audit.missing_data",
               "audit.noop",
               "audit.mcp_failure",
-              "audit.skill_activation"
+              "skill.invoked"
             ]
           },
           {

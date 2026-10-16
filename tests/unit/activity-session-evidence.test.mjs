@@ -102,7 +102,7 @@ test('collection mines all safe unified telemetry before publishing canonical SQ
   assert.doesNotMatch(cached, /PRIVATE_/);
   const batch = normalize(adaptCachedGhAwJsonl(cached).observations);
   assert.equal(batch.runs[0].aicTotal, 1.2);
-  assert.equal(batch.tools.filter((row) => row.type === 'tool.call').length, 1);
+  assert.equal(batch.tools.filter((row) => row.type === 'mcp.tool_call').length, 1);
   assert.equal(batch.domains.length, 2);
   assert.ok(batch.audits.some((row) => row.type === 'github_api.rate_limit' && row.remaining === 4999));
   assert.equal(batch.issues[0].number, 42);

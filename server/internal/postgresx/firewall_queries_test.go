@@ -76,9 +76,9 @@ func TestFirewallTotalsExecuteNatively(t *testing.T) {
 	domains := make([]model.Row, 3000, 3003)
 	tools := make([]model.Row, 3000)
 	for index := range domains {
-		decision, eventType := "denied", "net_blocked"
+		decision, eventType := "denied", "firewall.http_access"
 		if index%3 == 0 {
-			decision, eventType = "allowed", "firewall.request.allowed"
+			decision, eventType = "allowed", "firewall.http_access"
 		}
 		domains[index] = model.Row{
 			"id": fmt.Sprintf("domain-%04d", index), "runId": "run",
@@ -87,15 +87,15 @@ func TestFirewallTotalsExecuteNatively(t *testing.T) {
 		}
 		tools[index] = model.Row{
 			"id": fmt.Sprintf("tool-%04d", index), "runId": "run",
-			"source": "mcp", "type": "tool.call", "mcpServer": "github", "mcpTool": "list_issues",
+			"source": "mcp", "type": "mcp.tool_call", "mcpServer": "github", "mcpTool": "list_issues",
 		}
 	}
 	domains = append(domains,
-		model.Row{"id": "null-count", "runId": "run", "source": "firewall", "type": "net_blocked",
+		model.Row{"id": "null-count", "runId": "run", "source": "firewall", "type": "firewall.http_access",
 			"domain": "example.com", "decision": "denied", "requestCount": nil},
-		model.Row{"id": "missing-count", "runId": "run", "source": "firewall", "type": "net_blocked",
+		model.Row{"id": "missing-count", "runId": "run", "source": "firewall", "type": "firewall.http_access",
 			"domain": "example.com", "decision": "denied"},
-		model.Row{"id": "other-source", "runId": "run", "source": "other", "type": "net_blocked",
+		model.Row{"id": "other-source", "runId": "run", "source": "other", "type": "firewall.http_access",
 			"domain": "other.example", "decision": "denied", "requestCount": 999},
 	)
 	nativeSeed(t.Context(), t, store, map[string][]model.Row{"$domains": domains, "$tools": tools})

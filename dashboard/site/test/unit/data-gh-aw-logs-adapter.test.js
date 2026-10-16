@@ -151,11 +151,11 @@ describe('gh-aw logs adapter', () => {
     expect(relationshipErrors(batch)).toEqual([]);
     expect([...batch.domains, ...batch.tools, ...batch.audits]
       .every((record) => record.runId === 'github:run:githubnext/gh-aw-cao:303')).toBe(true);
-    expect(batch.domains.map((record) => record.type)).toEqual(['net_allowed']);
+    expect(batch.domains.map((record) => record.type)).toEqual(['firewall.http_access']);
     expect(batch.tools.map((record) => record.type)).toEqual([
-      'tool_call', 'agent_tool_start', 'agent_tool_done'
+      'mcp.tool_call', 'tool.execution_start', 'tool.execution_complete'
     ]);
-    expect(batch.audits.map((record) => record.type)).toEqual(['agent_turn', 'assistant_message']);
+    expect(batch.audits.map((record) => record.type)).toEqual(['user.message', 'assistant.message']);
     expect(batch.tools.filter((record) => record.correlationId === 'call-1')).toHaveLength(3);
   });
 
@@ -171,7 +171,7 @@ describe('gh-aw logs adapter', () => {
       files: [{ path: 'run-303/mcp-logs/gateway.jsonl', content }]
     }).observations);
 
-    expect(batch.tools.map((record) => record.type)).toEqual(['difc_filtered', 'guard_blocked']);
+    expect(batch.tools.map((record) => record.type)).toEqual(['mcp.difc.filtered', 'mcp.guard.blocked']);
     expect(batch.audits).toEqual([]);
   });
 
@@ -479,14 +479,14 @@ describe('gh-aw logs adapter', () => {
         summary: 'Slow response'
       }),
       expect.objectContaining({
-        type: 'audit.gateway_steering',
+        type: 'firewall.steering',
         code: 'token_steering',
         status: 'token_steering',
         timestamp: '2026-09-09T04:00:35.000Z',
         summary: '[AWF TOKEN WARNING] 90% of the AI credit budget is used.'
       }),
       expect.objectContaining({
-        type: 'audit.gateway_steering',
+        type: 'firewall.steering',
         code: 'timeout_steering',
         status: 'timeout_steering',
         summary: '[AWF TIME WARNING] 2 minutes remain before the workflow times out.'
@@ -495,7 +495,7 @@ describe('gh-aw logs adapter', () => {
     expect(batch.tools).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'mcp',
-        type: 'tool.call',
+        type: 'mcp.tool_call',
         correlationId: 'call-7',
         summary: 'github/get_file',
         requestBytes: 42,
@@ -503,14 +503,14 @@ describe('gh-aw logs adapter', () => {
       }),
       expect.objectContaining({
         source: 'mcp',
-        type: 'tool.result',
+        type: 'tool.execution_complete',
         correlationId: 'call-7',
         status: 'success'
       }),
     ]));
     expect(batch.skills).toEqual([
       expect.objectContaining({
-        type: 'audit.skill_activation',
+        type: 'skill.invoked',
         name: 'review',
         invocationCount: 3,
         failedCount: 1,
@@ -531,7 +531,7 @@ describe('gh-aw logs adapter', () => {
     expect(batch.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'safe-output',
-        type: 'safe_output.created',
+        type: 'safe_output.result',
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
@@ -543,13 +543,13 @@ describe('gh-aw logs adapter', () => {
     expect(batch.audits).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'safe-output',
-        type: 'safe_output.created',
+        type: 'safe_output.result',
         safeOutputType: 'create_issue',
         correlationId: 'draft-issue'
       }),
       expect.objectContaining({
         source: 'safe-output',
-        type: 'safe_output.created',
+        type: 'safe_output.result',
         safeOutputType: 'report_incomplete',
         summary: 'Required vulnerability-alert evidence was unavailable.'
       })
@@ -557,14 +557,14 @@ describe('gh-aw logs adapter', () => {
     expect(batch.domains).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'firewall',
-        type: 'net_allowed',
+        type: 'firewall.http_access',
         domain: 'api.github.com',
         decision: 'allowed',
         requestCount: 3
       }),
       expect.objectContaining({
         source: 'firewall',
-        type: 'net_blocked',
+        type: 'firewall.http_access',
         domain: 'api.github.com',
         decision: 'denied',
         requestCount: 1
@@ -848,7 +848,7 @@ describe('gh-aw logs adapter', () => {
     expect(batch.evals).toEqual([]);
     expect(batch.evalObservations).toEqual([]);
     expect(batch.audits.map((record) => record.type)).toContain('workflow_run_eval_unclassified');
-    expect(batch.audits.map((record) => record.type)).toContain('workflow_run_grader');
+    expect(batch.audits.map((record) => record.type)).toContain('grader.result');
     expect(relationshipErrors(batch)).toEqual([]);
   });
 
@@ -879,7 +879,7 @@ describe('gh-aw logs adapter', () => {
       ['YES', 'pass'], ['UNKNOWN', 'unavailable']
     ]);
     expect(batch.evalObservations?.every((record) => record.runId === batch.runs[0].id)).toBe(true);
-    expect(batch.audits.filter((record) => record.type === 'workflow_run_eval')).toHaveLength(2);
+    expect(batch.audits.filter((record) => record.type === 'eval.result')).toHaveLength(2);
     expect(batch.evalObservations?.every((record) =>
       batch.audits.some((audit) => audit.id === record.auditId && audit.runId === record.runId)
     )).toBe(true);

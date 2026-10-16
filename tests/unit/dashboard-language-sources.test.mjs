@@ -373,7 +373,7 @@ test("transaction log events preserve correlation ids and request counts", () =>
         sourceId: "event-1",
         timestamp: "2026-09-09T04:02:01Z",
         source: "firewall",
-        type: "net_blocked",
+        type: "firewall.http_access",
         correlationId: "call-305",
         requestCount: 7,
       }],
@@ -381,7 +381,7 @@ test("transaction log events preserve correlation ids and request counts", () =>
   });
 
   assert.equal(rows.domains[0]["correlation-id"], "call-305");
-  assert.equal(rows.domains[0]["event-type"], "firewall.request.blocked");
+  assert.equal(rows.domains[0]["event-type"], "firewall.http_access");
   assert.equal(rows.domains[0]["request-count"], 7);
 });
 
@@ -588,7 +588,7 @@ test("dashboard source bridge publishes normalized gh-aw events", () => {
           runId: "github:run:303:attempt:1",
           timestamp: "2026-09-09T04:00:01Z",
           source: "agent",
-          type: "agent_turn",
+          type: "user.message",
           sourceSequence: 1,
         }],
       }],
@@ -602,7 +602,7 @@ test("dashboard source bridge publishes normalized gh-aw events", () => {
 
   assert.equal("sessions" in sources, false);
   assert.equal("events" in sources, false);
-  assert.equal(sources.audits.rows[0]["event-type"], "agent_turn");
+  assert.equal(sources.audits.rows[0]["event-type"], "user.message");
   assert.equal(sources.audits.rows[0]["event-source"], "agent");
   assert.deepEqual(sources.workflows.rows[0]["workflow-link"], {
     relation: "workflow",
@@ -653,7 +653,7 @@ test("dashboard source bridge excludes transaction logs outside the current run 
             runId: "github:run:302:attempt:1",
             timestamp: "2026-09-08T04:00:01Z",
             source: "agent",
-            type: "agent_turn",
+            type: "user.message",
           }],
         },
         {
@@ -668,7 +668,7 @@ test("dashboard source bridge excludes transaction logs outside the current run 
             runId: "github:run:303:attempt:1",
             timestamp: "2026-09-09T04:00:01Z",
             source: "agent",
-            type: "agent_turn",
+            type: "user.message",
           }],
         },
       ],

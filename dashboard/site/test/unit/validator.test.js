@@ -5584,7 +5584,7 @@ describe('declarative query validation', () => {
           reducer: 'sum',
           filter: {
             predicates: [
-              { field: 'event-type', equals: 'firewall.request.blocked' },
+              { field: 'event-type', equals: 'firewall.http_access' },
               { field: 'event-source', in: ['firewall', 'gateway'] }
             ]
           }

@@ -7,6 +7,7 @@
 
 import { createDebug } from '../../debug.js';
 import { matchesSessionRun, sessionMetadata, sessionRunMetadata } from './unified-session-telemetry.js';
+import { alignSessionEventRecord } from '../model/session-types.js';
 
 const debugUnifiedSession = createDebug('unified-session');
 
@@ -27,6 +28,11 @@ function string(value) {
  * @returns {SessionEvidence[]}
  */
 export function normalizeSessionMcpEvents(events) {
+  events = events.map((event) => {
+    const record = alignSessionEventRecord({ ...event.fields, type: event.type });
+    const { type, ...fields } = record;
+    return { ...event, type: String(type), fields };
+  });
   const identity = (/** @type {SessionEvidence} */ event) => {
     const server = string(event.fields.mcpServer);
     const name = string(event.fields.mcpTool ?? event.fields.toolName);
@@ -36,21 +42,16 @@ export function normalizeSessionMcpEvents(events) {
     return { server, tool, key: correlation ? JSON.stringify([server, tool, correlation]) : null };
   };
   const nativeCalls = new Set(events.filter((event) => (
-    event.source === 'mcp' && ['tool_call', 'tool.call'].includes(event.type)
+    event.source === 'mcp' && ['mcp.tool_call', 'mcp.rpc.request'].includes(event.type)
   )).map((event) => identity(event).key).filter((key) => key !== null));
   return events.map((event) => {
-    if (event.source === 'mcp' && event.type === 'tool_call') {
-      return { ...event, type: 'tool.call' };
-    }
     const { server, tool, key } = identity(event);
     if (event.source !== 'agent' || !server || !tool
-        || !['agent_tool_start', 'agent_tool_done'].includes(event.type)
-        || (event.type === 'agent_tool_start' && key !== null && nativeCalls.has(key))) return event;
+        || !['tool.execution_start', 'tool.execution_complete'].includes(event.type)
+        || (event.type === 'tool.execution_start' && key !== null && nativeCalls.has(key))) return event;
     return {
       ...event,
       source: 'mcp',
-      type: event.type === 'agent_tool_start' ? 'tool.call'
-        : event.fields.status === 'error' ? 'tool.error' : 'tool.result',
       fields: { ...event.fields, summary: `${server}/${tool}`, mcpServer: server, mcpTool: tool }
     };
   });
@@ -124,21 +125,15 @@ function timeline(records, includeUntimed = false, context) {
     /** @type {Record<string, unknown>} */
     const fields = {};
     let source = 'agent';
-    let type;
     switch (record.type) {
       case 'user.message':
-        type = 'agent_turn';
         fields.summary = `turn ${++turn}`;
         break;
       case 'assistant.message':
-        type = 'assistant_message';
-        break;
       case 'assistant.reasoning':
-        type = 'reasoning';
         break;
       case 'tool.execution_start':
       case 'tool.execution_complete':
-        type = record.type === 'tool.execution_start' ? 'agent_tool_start' : 'agent_tool_done';
         Object.assign(fields, { summary, toolName: tool, mcpServer: server, correlationId });
         fields.invocationCount = record.type === 'tool.execution_start' ? 1 : 0;
         if (typeof data.durationMs === 'number' && Number.isFinite(data.durationMs) && data.durationMs >= 0) {
@@ -153,8 +148,6 @@ function timeline(records, includeUntimed = false, context) {
       case 'mcp.difc.filtered':
       case 'mcp.guard.blocked':
         source = 'mcp';
-        type = record.type === 'mcp.tool_call' ? 'tool.call'
-          : record.type === 'mcp.difc.filtered' ? 'difc_filtered' : 'guard_blocked';
         Object.assign(fields, {
           summary, mcpServer: server, mcpTool: tool, correlationId,
           status: data.httpStatus === 429 ? 'rate-limited'
@@ -174,14 +167,13 @@ function timeline(records, includeUntimed = false, context) {
         if (!combinedCalls.has(JSON.stringify([server, tool])) && tool && (data.method === 'tools/call' || previousRpc)
             && (data.direction === undefined || /^(OUT|OUTBOUND|IN|INBOUND)$/i.test(String(data.direction)))) {
           source = 'mcp';
-          type = record.type === 'mcp.rpc.request' ? 'tool.call'
-            : (data.error !== undefined && data.error !== null && data.error !== false)
-              || (typeof data.httpStatus === 'number' && data.httpStatus >= 400) ? 'tool.error' : 'tool.result';
+          const failed = (data.error !== undefined && data.error !== null && data.error !== false)
+            || (typeof data.httpStatus === 'number' && data.httpStatus >= 400);
           Object.assign(fields, { summary, mcpServer: server, mcpTool: tool,
             correlationId: string(data.toolCallId ?? data.requestId) ?? (data.rpcId === undefined ? undefined : String(data.rpcId)),
             invocationCount: record.type === 'mcp.rpc.request' ? 1 : 0,
             status: data.httpStatus === 429 ? 'rate-limited'
-              : string(data.status) ?? (type === 'tool.error' ? 'error' : type === 'tool.result' ? 'success' : 'started') });
+              : string(data.status) ?? (record.type === 'mcp.rpc.request' ? 'started' : failed ? 'error' : 'success') });
           for (const [native, canonical] of [['inputSize', 'requestBytes'], ['outputSize', 'responseBytes'], ['durationMs', 'latencyMs']]) {
             if (typeof data[native] === 'number' && Number.isFinite(data[native]) && Number(data[native]) >= 0
                 && (canonical === 'latencyMs' || Number.isSafeInteger(data[native]))) fields[canonical] = data[native];
@@ -204,7 +196,6 @@ function timeline(records, includeUntimed = false, context) {
         const denied = /denied|blocked|reject/i.test(decision)
           || (!/allow|tcp_miss|tunnel/i.test(decision) && Number(data.status) >= 400 && Number(data.status) < 600);
         source = 'firewall';
-        type = denied ? 'net_blocked' : 'net_allowed';
         Object.assign(fields, {
           summary: domain, domain, decision: denied ? 'denied' : 'allowed', requestCount: 1,
           status: typeof data.status === 'number' ? String(data.status) : string(data.status),
@@ -216,7 +207,6 @@ function timeline(records, includeUntimed = false, context) {
       }
       case 'skill.invoked':
         source = 'audit';
-        type = 'audit.skill_activation';
         Object.assign(fields, {
           name: string(data.name ?? data.skillName), summary: string(data.name ?? data.skillName),
           invocationCount: 1, failedCount: data.success === false ? 1 : 0
@@ -226,7 +216,6 @@ function timeline(records, includeUntimed = false, context) {
       case 'session.error':
       case 'assistant.refusal':
       case 'session.collection_warning':
-        type = record.type;
         fields.status = record.type === 'session.error' ? 'error' : 'warning';
         fields.code = string(data.code ?? data.policyCategory);
         if (record.type === 'session.error') {
@@ -243,7 +232,7 @@ function timeline(records, includeUntimed = false, context) {
             || (typeof value === 'number' && Number.isFinite(value))))
         }));
     }
-    return [{ line, timestamp, source, type, fields }];
+    return [{ line, timestamp, source, type: String(record.type), fields }];
   });
   debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length,
     skipped: records.length - new Set(evidence.map((event) => event.line)).size, turns: turn });

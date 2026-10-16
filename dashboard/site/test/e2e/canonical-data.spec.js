@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -107,7 +108,7 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `event-${run}`,
           'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
-          'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
+          'event-type': 'user.message', 'event-summary': 'Processed the dashboard request',
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
@@ -131,14 +132,14 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `tool-call-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
-          'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
+          'event-type': 'mcp.tool_call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
-          'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
+          'event-type': 'tool.execution_complete', 'event-status': 'success', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
@@ -270,7 +271,7 @@ function canonicalWarningSources() {
       event: 'safe-output-12345',
       'event-timestamp': '2026-09-09T04:03:00Z',
       'event-source': 'safe-output',
-      'event-type': 'safe_output.created',
+      'event-type': 'safe_output.result',
       'event-summary': 'Created issue',
       'event-status': 'created',
       'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
@@ -939,6 +940,76 @@ test('data worker returns the Models & agents run distribution on initial and na
   });
 });
 
+test('grader scatter subscriptions recompute value/max when new canonical observations arrive', async ({ page, context }) => {
+  /** @param {number} count */
+  const cached = (count) => Array.from({ length: count }, (_, index) => JSON.stringify(currentFixtureDates({
+    schema_version: 5, kind: 'run',
+    run: {
+      run_id: 501 + index, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+      workflow_name: 'Worker', workflow_path: '.github/workflows/worker.lock.yml',
+      created_at: '2026-09-09T04:00:00Z', updated_at: `2026-09-09T04:0${index}:30Z`,
+      status: 'completed', conclusion: 'success',
+      graders: { results: [{ id: 'quality', value: 2 + index * 2, unit: 'score', status: 'observed' }] }
+    }
+  }))).join('\n');
+  for (const [name, count] of [['first', 1], ['next', 2]]) {
+    const shards = normalizedActivityShards(cached(Number(count)));
+    await context.route(`http://dashboard.test/${name}/**`, async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith('/payload-hashes.json')) {
+        await route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+          [shardName]: createHash('sha256').update(shards.runs).digest('hex'),
+          [recordShardName]: createHash('sha256').update(shards.records).digest('hex')
+        }) });
+      } else if (path.endsWith(shardName) || path.endsWith(recordShardName)) {
+        await route.fulfill({
+          contentType: 'application/x-ndjson', body: shards[path.endsWith(shardName) ? 'runs' : 'records']
+        });
+      } else {
+        await route.fulfill({ status: 404, body: 'Not found' });
+      }
+    });
+  }
+  await page.goto('http://dashboard.test/?debug-eager-ingest=1');
+  const result = await page.evaluate(async () => {
+    const processor = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboard } = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const sources = ['grader-value-scatter'];
+    const options = { pageId: 'graders', viewId: 'graders-value-scatter' };
+    const initial = await processor.loadCanonicalDashboardSources(
+      `${location.origin}/first/payload-hashes.json`, sources, dashboard, undefined, options
+    );
+    const lifetime = new AbortController();
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput> | undefined} */
+    let subscribed;
+    try {
+      const refreshed = await new Promise((resolve, reject) => {
+        processor.subscribeCanonicalDashboardView('grader-scatter-live', sources, dashboard, (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ payload) => {
+          const rows = Object.values(payload).flatMap((source) => source.rows);
+          if (!subscribed) {
+            subscribed = payload;
+            processor.refreshCanonicalDashboardSources(
+              `${location.origin}/next/payload-hashes.json`, sources, dashboard, undefined, options
+            ).catch(reject);
+          } else if (rows.length === 2) resolve(payload);
+        }, undefined, { ...options, signal: lifetime.signal, onError: reject });
+      });
+      return { initial, subscribed, refreshed };
+    } finally {
+      lifetime.abort();
+    }
+  });
+  for (const payload of [result.initial, result.subscribed]) {
+    expect(Object.values(payload).flatMap((source) => source.rows)).toMatchObject([
+      { value: 2, 'max-grader-value': 2, 'normalized-value': 1 }
+    ]);
+  }
+  expect(Object.values(result.refreshed).flatMap((source) => source.rows)).toMatchObject([
+    { value: 2, 'max-grader-value': 4, 'normalized-value': 0.5 },
+    { value: 4, 'max-grader-value': 4, 'normalized-value': 1 }
+  ]);
+});
+
 test('data worker returns MCP tool totals without safe outputs calls on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
@@ -1320,16 +1391,16 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   expect(result.ingestion).toMatchObject({ updated: true });
   expect(result.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:303');
   expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'firewall', 'net_allowed']
+    [0, 'firewall', 'firewall.http_access']
   ]);
   expect(result.tools.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'gateway', 'tool_call'],
-    [1, 'agent', 'agent_tool_start'],
-    [2, 'agent', 'agent_tool_done']
+    [0, 'gateway', 'mcp.tool_call'],
+    [1, 'agent', 'tool.execution_start'],
+    [2, 'agent', 'tool.execution_complete']
   ]);
   expect(result.audits.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'agent', 'agent_turn'],
-    [1, 'agent', 'assistant_message']
+    [0, 'agent', 'user.message'],
+    [1, 'agent', 'assistant.message']
   ]);
   expect(result.issues).toEqual([]);
 });

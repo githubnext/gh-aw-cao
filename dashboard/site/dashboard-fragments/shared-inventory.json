@@ -4,14 +4,14 @@
       "name": "issue-safe-outputs",
       "subject": "List retained GitHub issue safe outputs.",
       "objective": "Inspect retained issue safe outputs and their observed closure state before deciding which items need follow-up.",
-      "acceptance": "Include only safe_output.created issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
+      "acceptance": "Include only safe_output.result issue records, not pull requests; preserve issue and run links, timestamps, state, and status detail. Unknown or unobserved closure state must not be presented as closed.",
       "description": "Issue-only projection of retained safe-output items.",
       "from": "issues",
       "filter": {
         "predicates": [
           {
             "field": "event-type",
-            "equals": "safe_output.created"
+            "equals": "safe_output.result"
           },
           {
             "field": "is-pull-request",

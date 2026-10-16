@@ -102,7 +102,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       timestamp: "2026-08-30T10:05:00Z",
     }]);
     assert.deepEqual(usage.securityRuns[0].timeline.map((event) => [event.source, event.type]), [
-      ["firewall", "net_allowed"],
+      ["firewall", "firewall.http_access"],
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });

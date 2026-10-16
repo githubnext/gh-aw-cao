@@ -39,7 +39,7 @@ function steeringAudit(id, code, workflow, run) {
     workflow,
     run,
     code,
-    'event-type': 'audit.gateway_steering',
+    'event-type': 'firewall.steering',
     'event-status': code,
     'event-summary': `${code} warning`,
     'observed-at': '2026-09-24T11:00:00Z'

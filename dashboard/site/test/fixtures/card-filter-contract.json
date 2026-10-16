@@ -33,7 +33,7 @@
   "issues": [
     {
       "event": "one",
-      "event-type": "safe_output.created",
+      "event-type": "safe_output.result",
       "event-timestamp": "2026-10-01T12:00:00Z",
       "event-summary": "Open issue",
       "safe-output-type": "create_issue",
@@ -43,7 +43,7 @@
     },
     {
       "event": "two",
-      "event-type": "safe_output.created",
+      "event-type": "safe_output.result",
       "event-timestamp": "2026-10-02T12:00:00Z",
       "event-summary": "Closed issue",
       "safe-output-type": "create_issue",
@@ -54,7 +54,7 @@
     },
     {
       "event": "three",
-      "event-type": "safe_output.created",
+      "event-type": "safe_output.result",
       "event-timestamp": "2026-10-03T12:00:00Z",
       "event-summary": "Unknown issue",
       "safe-output-type": "update_issue",

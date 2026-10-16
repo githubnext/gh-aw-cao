@@ -83,7 +83,7 @@ beforeEach(async () => {
       id: `tool:${String(index).padStart(5, '0')}`,
       runId: `run:${index % 6 === 2 ? '2' : '1'}`,
       source: index % 6 === 4 ? 'shell' : 'mcp',
-      type: index % 6 === 5 ? 'audit.finding' : 'tool.call',
+      type: index % 6 === 5 ? 'audit.finding' : 'mcp.tool_call',
       mcpServer: index % 6 === 3 ? 'safe_outputs' : 'github',
       mcpTool: index % 6 === 3 ? 'create_issue' : 'list_issues',
       status: index % 6 === 1 ? 'failed' : 'completed',
@@ -93,7 +93,7 @@ beforeEach(async () => {
     })),
     audits: Array.from({ length: 2406 }, (_, index) => ({
       id: `audit:${String(index).padStart(5, '0')}`, runId: `run:${index % 2 + 1}`,
-      source: 'audit', type: index % 3 === 2 ? 'tool.call' : 'audit.finding',
+      source: 'audit', type: index % 3 === 2 ? 'mcp.tool_call' : 'audit.finding',
       status: index % 3 === 0 ? 'high' : 'low', summary: 'Retained finding',
       timestamp: metadata['as-of']
     }))
@@ -180,7 +180,7 @@ describe('native aggregate compatibility beyond firewall queries', () => {
     expect(actual.equivalent.metadata['query-name']).toBe('equivalent');
     expect(actual['github-only'].rows).toEqual([{ 'mcp-server': 'github', calls: 1203 }]);
     await put({ tools: [{
-      id: 'tool:new', runId: 'run:1', source: 'mcp', type: 'tool.call',
+      id: 'tool:new', runId: 'run:1', source: 'mcp', type: 'mcp.tool_call',
       mcpServer: 'github', mcpTool: 'list_issues', timestamp: metadata['as-of']
     }] });
     const fresh = await queryIndexedDatabaseSources(indexedDB, sources, definitions, ['github-only']);

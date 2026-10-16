@@ -15,6 +15,29 @@ var targetCoordinate = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0
 
 var projectedFactsLog = logger.New("cao:postgresx:projected_facts")
 
+var legacySessionEventTypes = map[string]string{
+	"agent_turn":               "user.message",
+	"assistant_message":        "assistant.message",
+	"reasoning":                "assistant.reasoning",
+	"agent_tool_start":         "tool.execution_start",
+	"agent_tool_done":          "tool.execution_complete",
+	"tool_call":                "mcp.tool_call",
+	"tool.call":                "mcp.tool_call",
+	"tool.result":              "tool.execution_complete",
+	"tool.error":               "tool.execution_complete",
+	"difc_filtered":            "mcp.difc.filtered",
+	"guard_blocked":            "mcp.guard.blocked",
+	"net_allowed":              "firewall.http_access",
+	"net_blocked":              "firewall.http_access",
+	"firewall.request.allowed": "firewall.http_access",
+	"firewall.request.blocked": "firewall.http_access",
+	"audit.skill_activation":   "skill.invoked",
+	"workflow_run_grader":      "grader.result",
+	"workflow_run_eval":        "eval.result",
+	"safe_output.created":      "safe_output.result",
+	"audit.gateway_steering":   "firewall.steering",
+}
+
 // projectedFactsRejectionStage identifies which normalization step rejected a
 // projected row, so a malformed or conflicting source payload is diagnosable
 // without logging the row's coordinate, timestamp, or other field values.
@@ -102,6 +125,24 @@ func normalizeProjectedFacts(source string, input model.Row) (model.Row, error) 
 			return fmt.Errorf("%s conflicts with recomputable %s", field, copy)
 		}
 		return nil
+	}
+	switch source {
+	case "$domains", "$tools", "$skills", "$audits", "$issues":
+		legacy, _ := row["type"].(string)
+		if native, exists := legacySessionEventTypes[legacy]; exists {
+			set("type", native)
+			if _, present := row["status"]; !present && legacy == "tool.error" {
+				set("status", "error")
+			}
+			if _, present := row["decision"]; !present {
+				switch legacy {
+				case "net_allowed", "firewall.request.allowed":
+					set("decision", "allowed")
+				case "net_blocked", "firewall.request.blocked":
+					set("decision", "denied")
+				}
+			}
+		}
 	}
 	switch source {
 	case "$workflows":

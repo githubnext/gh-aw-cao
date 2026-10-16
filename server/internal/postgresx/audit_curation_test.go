@@ -235,7 +235,7 @@ func TestAuditCurationPublish(t *testing.T) {
 	appendAudit("specific-finding", "audit", "audit.finding", "critical", "Firewall violation", model.Row{"code": "workflow_failed"}, true)
 	appendAudit("grader", "audit", "audit.grader", "critical", "Workflow Failed", nil, true)
 	appendAudit("eval", "audit", "audit.eval", "critical", "Workflow Failed", nil, true)
-	appendAudit("safe-output", "safe-outputs", "safe_output.created", "observed", "2 safe output items", nil, true)
+	appendAudit("safe-output", "safe-outputs", "safe_output.result", "observed", "2 safe output items", nil, true)
 	appendAudit("behavior", "gh-aw-logs", "workflow_run_behavior", "observed", "Workflow behavior measured", nil, true)
 	appendAudit("assessment", "gh-aw-logs", "workflow_run_assessment", "observed", "Workflow assessed", nil, true)
 	appendAudit("security", "security", "audit.finding", "critical", "Workflow Failed", model.Row{"code": "workflow_failed"}, true)
