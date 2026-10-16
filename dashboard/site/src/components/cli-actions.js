@@ -11,6 +11,7 @@ import { createCliTerminal } from './cli-terminal.js';
 import { enqueueCliCommand, attachCliCommand, cancelCliCommand, cliQueueAvailable, subscribeCanonicalDashboardView } from '../data-processor.js';
 import { publishNotification } from '../notification-service.js';
 
+const cliCommandSummaryContext = { pages: [] };
 const debugCliActions = createDebug('cli-actions');
 
 /** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
@@ -678,9 +679,7 @@ export function attachCliActions(dashboard, actions, options = {}) {
     }, 'Commands');
     dashboard.querySelector('.report-actions')?.prepend(navigation);
     scope.bind(navigation);
-    subscribeCanonicalDashboardView('cli-commands-navigation', ['cli-command-summary'], {
-      pages: []
-    }, (sources) => {
+    subscribeCanonicalDashboardView('cli-commands-navigation', ['cli-command-summary'], cliCommandSummaryContext, (sources) => {
       const running = sources['cli-command-summary']?.rows[0]?.running;
       navigation.textContent = typeof running === 'number' ? `Commands (${running} running)` : 'Commands';
     }, undefined, { signal: scope.signal });

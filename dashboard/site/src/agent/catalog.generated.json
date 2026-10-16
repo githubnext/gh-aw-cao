@@ -688,8 +688,8 @@
       "queries": [
         "github-api-usage",
         "indexing-daily-records",
-        "indexing-daily-workflow-runs",
         "indexing-database-table-counts",
+        "indexing-ingestion-runs",
         "indexing-shards",
         "indexing-transactions",
         "ingestion-health",
@@ -4111,10 +4111,10 @@
       }
     },
     {
-      "id": "indexing-daily-workflow-runs",
-      "subject": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
-      "objective": "Expose the observed daily raw-run totals from ingestion transactions.",
-      "acceptance": "Each returned UTC day sums rawRuns from the selected ingestion transaction kinds; transaction volume is not a count of distinct retained runs or proof of source coverage.",
+      "id": "indexing-ingestion-runs",
+      "subject": "Show every retained ingestion transaction at its precise timestamp.",
+      "objective": "Compare reported run counts across individual ingestion operations.",
+      "acceptance": "Preserve every transaction, including coincident timestamps, all kinds, and zero counts, without grouping, limits, or page filters. Missing counts remain unavailable and use explicitly labeled zero-position placeholders, not measured zeroes.",
       "description": "",
       "parameters": [],
       "sources": [

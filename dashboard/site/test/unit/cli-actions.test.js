@@ -23,12 +23,14 @@ import {
   renderRowCliAction,
   setDeclaredCliActions
 } from '../../src/components/cli-actions.js';
+import { subscribeCanonicalDashboardView } from '../../src/data-processor.js';
 
 beforeEach(() => {
   vi.stubGlobal('__CLI_QUEUE__', true);
   queue.enqueue.mockReset().mockResolvedValue({ id: 'command-1', status: 'queued' });
   queue.attach.mockReset().mockResolvedValue({ result: { ok: true, exitCode: 0 }, command: { id: 'command-1', status: 'completed' } });
   queue.cancel.mockReset().mockResolvedValue({ id: 'command-1', status: 'canceled' });
+  vi.mocked(subscribeCanonicalDashboardView).mockClear();
 });
 
 afterEach(() => {
@@ -37,6 +39,39 @@ afterEach(() => {
 });
 
 describe('CLI actions', () => {
+  it('shares the command summary context across shell replacements with independent lifetimes', async () => {
+    const dashboards = Array.from({ length: 2 }, () => {
+      const dashboard = document.createElement('div');
+      const actions = document.createElement('div');
+      actions.className = 'report-actions';
+      dashboard.append(actions);
+      document.body.append(dashboard);
+      attachCliActions(dashboard, []);
+      return dashboard;
+    });
+    const [first, second] = vi.mocked(subscribeCanonicalDashboardView).mock.calls;
+    expect(first[0]).toBe('cli-commands-navigation');
+    expect(second[2]).toBe(first[2]);
+    expect(first[5]?.signal).not.toBe(second[5]?.signal);
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */
+    const sources = { 'cli-command-summary': {
+      source: 'cli-command-summary', rows: [{ running: 2 }],
+      metadata: {
+        'source-id': 'cli-command-summary', 'source-kind': 'runtime-command-queue',
+        'as-of': '2026-10-16T00:00:00Z', 'retrieved-at': '2026-10-16T00:00:00Z',
+        completeness: 'complete', freshness: 'fresh'
+      }
+    } };
+    first[3](sources);
+    second[3](sources);
+    for (const dashboard of dashboards) expect(dashboard.textContent).toBe('Commands (2 running)');
+    dashboards[0].remove();
+    await vi.waitFor(() => expect(first[5]?.signal?.aborted).toBe(true));
+    expect(second[5]?.signal?.aborted).toBe(false);
+    dashboards[1].remove();
+    await vi.waitFor(() => expect(second[5]?.signal?.aborted).toBe(true));
+  });
+
   it('rejects UI-only declarations and prompt execution without sending a request', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);

@@ -24,6 +24,7 @@ import {
 import {
   installSqliteIndexedDB,
 } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+import { CLI_QUEUE_SOURCES } from "../../dashboard/site/src/data/cli-queue.js";
 import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
 import {
   listQueries,
@@ -267,13 +268,13 @@ function dashboardQueries() {
       ([key, item]) => [key, resolveContext(item)],
     ));
   };
-  // Ingestion receipts describe each backend's own writes, so their values are
-  // intentionally backend-local rather than cross-backend query results.
+  // Ingestion receipts and local command queues are backend-local state,
+  // not shared canonical evidence for cross-backend comparisons.
   const candidates = resolveContext(document.dashboard.queries).filter(
     (query) => unparameterized.has(query.name),
   );
   const excluded = new Set(candidates
-    .filter((query) => query.from === "transactions")
+    .filter((query) => query.from === "transactions" || CLI_QUEUE_SOURCES.has(query.from))
     .map((query) => query.name));
   const inputs = (query) => [
     query.from,

@@ -450,7 +450,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
     `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
   );
-  await page.locator('.cli-action-dialog .cli-action-cancel').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
   const about = detail.locator('.link-button-list-view');
   await expect(about.getByRole('heading', { name: 'About' })).toBeVisible();

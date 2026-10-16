@@ -484,4 +484,3 @@ export const fixtureSources = /** @type {Record<string, import('./presenter.js')
     metadata: metadata("grader-observations-fixture"),
   },
 });
-
