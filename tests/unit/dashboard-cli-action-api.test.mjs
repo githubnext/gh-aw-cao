@@ -5,6 +5,7 @@ import test from "node:test";
 import { createCliActionApi, resolveQueuedCliAction } from "../../dashboard/cli-action-api.mjs";
 import { parseDashboardCommand } from "../../dashboard/cli-actions.mjs";
 import { parseUpdateArguments } from "../../activity/commands/update.mjs";
+import { cliActionTemplateContext } from "../../dashboard/site/src/cli-action-template.js";
 
 const dashboard = { dashboard: { "cli-actions": [
   { id: "compile", command: "gh aw compile", arguments: [{ id: "strict", flag: "--strict", default: true }] },
@@ -27,16 +28,17 @@ test("queue admission resolves only declared actions and validated arguments", (
 
 test("built-in update and upgrade actions carry CAO attribution as one PR message argument", () => {
   const document = JSON.parse(readFileSync(new URL("../../dashboard/site/dashboard.json", import.meta.url), "utf8"));
+  const context = cliActionTemplateContext({ repository: "acme/control", caoUrl: "https://ops.example.com/central/" });
   for (const id of ["update-repository", "update-campaign", "upgrade-repository", "upgrade-target-repository"]) {
     const update = id.startsWith("update");
     const values = update ? { campaign: "activity" } : { repository: "octo/example" };
     const message = update
-      ? "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao) to update the activity campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance-campaigns)."
-      : "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao) to upgrade GitHub Agentic Workflows in octo/example, refreshing workflow tooling, action versions, and generated lock files. Return to the [CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance).";
+      ? "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/acme/control) to update the activity campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard](https://ops.example.com/central/#page-maintenance-campaigns)."
+      : "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/acme/control) to upgrade GitHub Agentic Workflows in octo/example, refreshing workflow tooling, action versions, and generated lock files. Return to the [CAO dashboard](https://ops.example.com/central/#page-maintenance).";
     for (const createPr of [true, false]) {
       const invocation = resolveQueuedCliAction(document, {
         id, values, arguments: { "create-pull-request": createPr },
-      });
+      }, context);
       const tokens = parseDashboardCommand(invocation.command);
       assert.deepEqual(tokens, [
         ...(update ? ["./cao.sh", "update", "--campaign", "activity"] : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
@@ -51,9 +53,24 @@ test("built-in update and upgrade actions carry CAO attribution as one PR messag
   }
 });
 
-async function fixture(queue, approve = async () => true) {
+test("queue resolution rejects browser overrides of host identity and missing CAO context", () => {
+  const document = { dashboard: { "cli-actions": [{
+    id: "upgrade", command: "gh aw upgrade --repo {{repository}} --pr-message '{{cao-url}}'",
+  }] } };
+  const context = { "cao-url": "https://ops.example.com/central/" };
+  for (const field of ["cao-url", "cao-repository", "cao-repository-url"]) {
+    assert.throws(() => resolveQueuedCliAction(document, {
+      id: "upgrade", values: { repository: "octo/target", [field]: "https://attacker.example/" },
+    }, context), { status: 400 });
+  }
+  assert.throws(() => resolveQueuedCliAction(document, {
+    id: "upgrade", values: { repository: "octo/target" },
+  }), { status: 400 });
+});
+
+async function fixture(queue, approve = async () => true, { getDashboard = () => dashboard, getTemplateContext = () => ({}) } = {}) {
   const handler = createCliActionApi({
-    queue, getDashboard: () => dashboard, approve,
+    queue, getDashboard, getTemplateContext, approve,
     isAllowedOrigin: (origin) => origin === "http://trusted",
     readJsonRequest: async (request) => {
       let body = "";
@@ -189,6 +206,32 @@ test("retry revalidates the current declaration and approval before creating ano
     });
     assert.equal(response.status, 409);
     assert.equal(retries, 0);
+  } finally { await server.close(); }
+});
+
+test("retry re-resolves host context and requires the same approved command", async () => {
+  const document = { dashboard: { "cli-actions": [{
+    id: "update", command: "gh aw update --pr-message '{{cao-url}}'",
+  }] } };
+  let url = "https://ops.example.com/central/";
+  let retries = 0;
+  const server = await fixture({
+    detail: () => ({
+      status: "failed", actionId: "update",
+      command: "gh aw update --pr-message 'https://ops.example.com/central/'", arguments: {}, values: {},
+    }),
+    retry: (id) => { retries++; return { id: "new-command", status: "queued", retryOf: id }; },
+  }, async () => true, {
+    getDashboard: () => document, getTemplateContext: () => ({ "cao-url": url }),
+  });
+  try {
+    const retry = () => fetch(`${server.url}/__cli_commands/command-1/retry`, {
+      method: "POST", headers, body: "{}",
+    });
+    assert.equal((await retry()).status, 202);
+    url = "https://other.example.com/central/";
+    assert.equal((await retry()).status, 409);
+    assert.equal(retries, 1);
   } finally { await server.close(); }
 });
 

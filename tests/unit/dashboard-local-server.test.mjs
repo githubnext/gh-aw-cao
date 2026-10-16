@@ -65,6 +65,16 @@ test("command queue concurrency is configurable only for executable local modes"
   assert.throws(() => parseDashboardServerArguments(["--operational-store", "postgres", "--acknowledge-command-recovery"]), /cannot be used/);
 });
 
+test("local dashboard URL overrides are safe public URLs and unsupported in Go mode", () => {
+  assert.equal(parseDashboardServerArguments(["--cao-url", "https://ops.example.com/central"]).caoUrl,
+    "https://ops.example.com/central/");
+  for (const value of ["http://localhost/", "https://user:secret@example.com/", "https://example.com/?token=secret", "https://example.com/#page"]) {
+    assert.throws(() => parseDashboardServerArguments(["--cao-url", value]), /CAO URL must be an HTTPS URL/);
+  }
+  assert.throws(() => parseDashboardServerArguments(["--cao-url"]), /requires a value/);
+  assert.throws(() => parseDashboardServerArguments(["--data-backend", "postgres", "--cao-url", "https://ops.example.com/"]), /--cao-url cannot be used/);
+});
+
 async function openDashboardSocket(previewUrl) {
   const url = new URL(previewUrl);
   url.protocol = "ws:";
@@ -998,13 +1008,21 @@ test("local dashboard server downloads dashboard-build data with GitHub CLI", {
 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
   const ghExecutable = path.join(root, "gh");
-  await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
-  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in"));
+  const commands = [];
+  await writeFile(path.join(root, "index.html"), "<!doctype html><head></head><body>preview</body>");
+  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
+    id: "update", command: "gh aw update --repo {{repository}} --pr-message '{{cao-repository}} {{cao-repository-url}} {{cao-url}}#page-maintenance'",
+  }]));
   await writeFile(ghExecutable, `#!/bin/sh
 [ "$(pwd -P)" = ${JSON.stringify(await realpath(root))} ] || exit 4
 if [ "$1" = "api" ]; then
   if [ "$2" = "repos/acme/control" ]; then
-    printf 'main\\n'
+    printf 'main\\tacme/control\\n'
+    exit
+  fi
+  if [ "$2" = "repos/acme/control/pages" ]; then
+    [ ! -f ${JSON.stringify(path.join(root, "pages-unavailable"))} ] || exit 5
+    printf 'https://ops.example.com/central/\\n'
     exit
   fi
   if [ "$2" = "repos/acme/control/actions/artifacts?name=central-agentic-ops-dashboard&per_page=100" ]; then
@@ -1040,12 +1058,27 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
     siteRoot: root,
     catalogRoot: null,
     repository: "acme/control",
+    admin: true,
+    cliQueueAdmission: async () => ({ concurrency: 1 }),
+    executeCliAction: async ({ command }) => { commands.push(command); return { ok: true, exitCode: 0 }; },
     ghExecutable,
     dataBackend: "indexeddb",
     workingDirectory: root,
     port: 0,
   });
   try {
+    const html = await (await fetch(`${preview.url}/`)).text();
+    assert.match(html, /<meta name="cao-url" content="https:\/\/ops\.example\.com\/central\/">/);
+    const response = await fetch(`${preview.url}/__cli_action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: new URL(preview.url).origin },
+      body: JSON.stringify({ id: "update", values: { repository: "octo/target" } }),
+    });
+    assert.equal(response.status, 200);
+    await response.text();
+    assert.deepEqual(commands, [
+      "gh aw update --repo octo/target --pr-message 'acme/control https://github.com/acme/control https://ops.example.com/central/#page-maintenance'",
+    ]);
     const logsResponse = await fetch(`${preview.url}/gh-aw-logs-runs/logs-1.jsonl`);
     assert.equal(logsResponse.status, 200);
     assert.equal(logsResponse.headers.get("content-type"), "application/x-ndjson; charset=utf-8");
@@ -1066,6 +1099,34 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
         "gh-aw-version": "v0.91.5", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "update-available",
       }] },
     });
+    await writeFile(path.join(root, "pages-unavailable"), "");
+    const executionOptions = {
+      siteRoot: root, catalogRoot: null, repository: "acme/control", admin: true,
+      ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      executeCliAction: async () => ({ ok: true, exitCode: 0 }),
+    };
+    const missing = await startDashboardServer({
+      ...executionOptions, cliQueuePath: path.join(root, ".cao", "missing.sqlite"),
+    });
+    try {
+      const missingHtml = await (await fetch(`${missing.url}/`)).text();
+      assert.doesNotMatch(missingHtml, /<meta name="cao-url"/);
+      const rejected = await fetch(`${missing.url}/__cli_commands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: new URL(missing.url).origin },
+        body: JSON.stringify({ id: "update", values: { repository: "octo/target" } }),
+      });
+      assert.equal(rejected.status, 400);
+    } finally { await missing.close(); }
+    const hosted = await startDashboardServer({
+      ...executionOptions, caoUrl: "https://custom.example.com/ops",
+      cliQueuePath: path.join(root, ".cao", "override.sqlite"),
+    });
+    try {
+      const hostedHtml = await (await fetch(`${hosted.url}/`)).text();
+      assert.match(hostedHtml, /<meta name="cao-url" content="https:\/\/custom\.example\.com\/ops\/">/);
+    } finally { await hosted.close(); }
     await writeFile(path.join(root, "release-unavailable"), "");
     await assert.rejects(startDashboardServer({
       siteRoot: root, catalogRoot: null, repository: "acme/control",

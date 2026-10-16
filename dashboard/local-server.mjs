@@ -45,6 +45,7 @@ import { lookupDialogOptions } from "./dialog-selector.mjs";
 import { executeDashboardCommand } from "./cli-actions.mjs";
 import { createCliActionQueue } from "./cli-action-queue.mjs";
 import { createCliActionApi } from "./cli-action-api.mjs";
+import { cliActionTemplateContext, cliActionTemplateFields, validateCliActionUrl } from "./site/src/cli-action-template.js";
 import { createCliActionAdmission } from "./cli-action-quota.mjs";
 import { compilerVersionOverrides, refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease, refreshDashboardCompilerVersions } from "./local-release-metadata.mjs";
 
@@ -230,15 +231,16 @@ async function downloadDashboardData(destination, repository, ghExecutable, work
   const options = { cwd: workingDirectory };
   const repositoryPath = repository || "{owner}/{repo}";
   let defaultBranch;
+  let controlRepository;
   let runId;
   try {
     const repositoryResult = await executeFile(ghExecutable, [
       "api",
       `repos/${repositoryPath}`,
       "--jq",
-      ".default_branch",
+      "[.default_branch, .full_name] | @tsv",
     ], options);
-    defaultBranch = repositoryResult.stdout.trim();
+    [defaultBranch, controlRepository] = repositoryResult.stdout.trim().split("\t");
     const result = await executeFile(ghExecutable, [
       "api",
       `repos/${repositoryPath}/actions/artifacts?name=${dataArtifactName}&per_page=100`,
@@ -288,7 +290,7 @@ async function downloadDashboardData(destination, repository, ghExecutable, work
     ], options);
     const latestGhAwVersion = result.stdout.trim();
     refreshDashboardCompilerRelease({}, latestGhAwVersion);
-    return { latestGhAwVersion };
+    return { latestGhAwVersion, repository: controlRepository };
   } catch {
     throw new Error("Unable to refresh the latest stable gh-aw release. Check GitHub CLI authentication and try again.");
   }
@@ -627,8 +629,9 @@ function readWebsocketFrames(buffer) {
  *   siteRoot?: string,
  *   catalogRoot?: string | null,
  *   repository?: string,
+ *   caoUrl?: string,
  *   ghExecutable?: string,
- *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { latestGhAwVersion: string }>,
+ *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { latestGhAwVersion?: string, repository?: string }>,
  *   canvas?: boolean,
  *   admin?: boolean,
  *   generateQuery?: (intent: import('./query-editor-contract.mjs').QueryEditorIntent, options: { signal: AbortSignal }) => Promise<{ document: string }>,
@@ -655,6 +658,7 @@ export async function startDashboardServer({
   siteRoot = join(scriptDirectory, "site"),
   catalogRoot = defaultCatalogRoot,
   repository,
+  caoUrl = process.env.CAO_DASHBOARD_URL,
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
   canvas = false,
@@ -717,6 +721,7 @@ export async function startDashboardServer({
     queryEditorValidationBundle = result.outputFiles[0].text;
   }
   const resolvedWorkingDirectory = await realpath(workingDirectory);
+  if (caoUrl !== undefined) caoUrl = validateCliActionUrl(caoUrl);
   const resolvedTraceFile = traceFile ? resolve(resolvedWorkingDirectory, traceFile) : null;
   if (resolvedTraceFile && !isWithin(resolvedWorkingDirectory, resolvedTraceFile)) {
     throw new Error("Dashboard trace file must remain within the workspace.");
@@ -756,6 +761,7 @@ export async function startDashboardServer({
   });
   try {
     const downloaded = await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
+    repository ??= downloaded?.repository;
     const prepareSources = async (content) => {
       let sources = JSON.parse(redactJsonSecrets(content));
       if (downloaded?.latestGhAwVersion) sources = refreshDashboardCompilerRelease(sources, downloaded.latestGhAwVersion);
@@ -814,6 +820,7 @@ export async function startDashboardServer({
   const socketPath = `${routePrefix}${socketEndpoint}`;
   const watchers = new Map();
   let dashboardContent = "";
+  let cliTemplateContext = {};
   /** @type {Map<string, string>} */
   let dashboardPageChunkContent = new Map();
   let signature = "";
@@ -867,6 +874,23 @@ export async function startDashboardServer({
       if (addition.dashboard.units) Object.assign(dashboardDocument.dashboard.units ??= {}, addition.dashboard.units);
     }
     if (repository) dashboardDocument.dashboard.repository = repository;
+    const needsCaoUrl = (dashboardDocument.dashboard["cli-actions"] ?? []).some((action) =>
+      cliActionTemplateFields(action.command, { includeContext: true }).includes("cao-url"));
+    if ((canvas || admin) && needsCaoUrl && caoUrl === undefined && downloadData === downloadDashboardData) {
+      try {
+        const result = await executeFile(ghExecutable, [
+          "api", `repos/${repository || "{owner}/{repo}"}/pages`, "--jq", ".html_url",
+        ], { cwd: resolvedWorkingDirectory, timeout: 10_000, maxBuffer: 16 * 1024 });
+        caoUrl = validateCliActionUrl(result.stdout.trim());
+      } catch {
+        output("CAO command backlinks are unavailable. Set --cao-url or CAO_DASHBOARD_URL to the public dashboard URL.");
+      }
+    }
+    cliTemplateContext = cliActionTemplateContext({
+      repository: dashboardDocument.dashboard.repository,
+      githubUrlBase: dashboardDocument.dashboard["github-url-base"],
+      caoUrl,
+    });
     if (canvas && typeof generateQuery === "function") {
       if (dashboardDocument.dashboard.pages.some((page) => page.id === "query-editor")) {
         throw new Error("The query-editor page ID is reserved for canvas authoring.");
@@ -1014,6 +1038,7 @@ export async function startDashboardServer({
   }
   const handleCliAction = createCliActionApi({
     queue: cliQueue, getDashboard: () => JSON.parse(dashboardContent),
+    getTemplateContext: () => cliTemplateContext,
     approve: (invocation) => admin ? Promise.resolve(true) : approveCliAction(invocation),
     isAllowedOrigin, readJsonRequest, sendJson,
   });
@@ -1401,7 +1426,8 @@ export async function startDashboardServer({
       }
       if (extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
-<meta name="dashboard-github-api-base" content="${routePrefix}/">`);
+<meta name="dashboard-github-api-base" content="${routePrefix}/">${caoUrl === undefined ? "" : `
+<meta name="cao-url" content="${caoUrl}">`}`);
       }
       if (sqliteBackend && extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
@@ -1651,6 +1677,11 @@ export function parseDashboardServerArguments(arguments_) {
         throw new Error("--repo must be an OWNER/REPOSITORY name");
       }
     }
+    else if (argument === "--cao-url") {
+      const value = arguments_[index += 1];
+      if (!value) throw new Error("--cao-url requires a value");
+      options.caoUrl = validateCliActionUrl(value);
+    }
     else if (["--operational-store", "--policy", "--site", "--cert", "--key"].includes(argument)) {
       const value = arguments_[index += 1];
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
@@ -1678,6 +1709,7 @@ export function parseDashboardServerArguments(arguments_) {
       ["--replace-existing", options.replaceExisting],
       ["--trace-file", options.traceFile],
       ["--repo", options.repository],
+      ["--cao-url", options.caoUrl],
       ["--data-backend", options.dataBackend !== "postgres" ? options.dataBackend : undefined],
     ]) {
       if (value) throw new Error(`${flag} cannot be used with --operational-store`);
@@ -1714,7 +1746,7 @@ export function parseDashboardServerArguments(arguments_) {
 async function main() {
   const options = parseDashboardServerArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: local-server.mjs [--canvas | --admin] [--command-concurrency N] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--host HOST] [--port PORT]");
+    console.log("usage: local-server.mjs [--canvas | --admin] [--command-concurrency N] [--data-backend sqlite|indexeddb] [--replace-existing] [--trace-file PATH] [--repo OWNER/REPOSITORY] [--cao-url HTTPS_URL] [--host HOST] [--port PORT]");
     console.log("--admin enables explicitly confirmed dashboard CLI actions using local GitHub CLI credentials (loopback only).");
     console.log("--acknowledge-command-recovery resumes queued work after the operator has verified interrupted subprocesses are terminated.");
     console.log("Data backend defaults to SQLite; use --data-backend indexeddb for browser IndexedDB.");

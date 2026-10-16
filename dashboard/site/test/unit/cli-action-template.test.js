@@ -1,10 +1,43 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   cliActionTemplateFields,
+  cliActionTemplateContext,
+  validateCliActionUrl,
   renderCliActionCommand
 } from '../../src/cli-action-template.js';
 
 describe('CLI action command templates', () => {
+  it('separates host-owned identity from row fields and preserves deployment paths', () => {
+    const command = "gh aw upgrade --repo {{repository}} --pr-message 'Requested by {{cao-repository}} ({{cao-repository-url}}). See {{cao-url}}#page-maintenance.'";
+    const context = cliActionTemplateContext({
+      repository: 'acme/control', githubUrlBase: 'https://git.example.com/enterprise',
+      caoUrl: 'https://ops.example.com/central'
+    });
+    expect(cliActionTemplateFields(command)).toEqual(['repository']);
+    expect(cliActionTemplateFields(command, { includeContext: true }))
+      .toEqual(['repository', 'cao-repository', 'cao-repository-url', 'cao-url']);
+    expect(renderCliActionCommand(command, {
+      repository: 'octo/target', 'cao-url': 'https://attacker.example/'
+    }, context)).toBe("gh aw upgrade --repo octo/target --pr-message 'Requested by acme/control (https://git.example.com/enterprise/acme/control). See https://ops.example.com/central/#page-maintenance.'");
+  });
+
+  it('fails closed when host context is missing instead of accepting a row override', () => {
+    expect(() => renderCliActionCommand('gh aw update --pr-message {{cao-url}}', {
+      'cao-url': 'https://attacker.example/'
+    })).toThrow('"cao-url" is missing or invalid');
+  });
+
+  it.each([
+    'http://ops.example.com/', 'https://user:secret@ops.example.com/', 'https://ops.example.com/?token=secret',
+    'https://ops.example.com/#page-maintenance', "https://ops.example.com/'", 'https://ops.example.com/"',
+    'https://ops.example.com/$(whoami)', 'https://ops.example.com/\n', 'https://ops.example.com/)injected',
+    'https://ops.example.com/\\escape', 'https://ops.example.com/' + 'a'.repeat(2048)
+  ])('rejects unsafe CAO URLs without echoing their contents', (value) => {
+    expect(() => validateCliActionUrl(value)).toThrow('CAO URL must be an HTTPS URL');
+    expect(() => renderCliActionCommand('gh aw update --pr-message {{cao-url}}', {}, { 'cao-url': value }))
+      .toThrow();
+  });
+
   it('lists unique template fields and renders a repository slug', () => {
     const command = 'gh aw update --repo {{repository}} --source {{repository}}';
 

@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { renderCliActionCommand } from '../cli-action-template.js';
+import { cliActionTemplateFields, renderCliActionCommand } from '../cli-action-template.js';
 import { createCopyControl, createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -18,13 +18,16 @@ let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
 let declaredCliActionTemplateValues = {};
+/** @type {Record<string, string>} */
+let declaredCliActionContext = {};
 
-/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean, templateValues?: Record<string, string> }} [options] */
+/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean, templateValues?: Record<string, string>, context?: Record<string, string> }} [options] */
 export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActions = Array.isArray(actions)
     ? actions.map((action) => ({ ...normalizeAction(action, { id: action.id, type: 'cli' }), ...action })) : [];
   declaredCliActionsCanExecute = options.canExecute !== false;
   declaredCliActionTemplateValues = options.templateValues ?? {};
+  declaredCliActionContext = options.context ?? {};
 }
 
 /** @returns {string | undefined} */
@@ -132,10 +135,11 @@ export function createPromptCliActionControl(actionId, getPrompt, options = {}) 
  * @param {{ command: string, arguments?: Array<{ id: string, flag: string }> }} action
  * @param {Record<string, boolean>} values
  * @param {Record<string, string>} templateValues
+ * @param {Record<string, string>} context
  */
-function commandPreview(action, values, templateValues) {
+function commandPreview(action, values, templateValues, context) {
   const command = [
-    renderCliActionCommand(action.command, templateValues),
+    renderCliActionCommand(action.command, templateValues, context),
     ...(action.arguments ?? []).filter((argument) => values[argument.id]).map((argument) => argument.flag)
   ].join(' ');
   const userAgentData = typeof navigator === 'undefined'
@@ -154,7 +158,7 @@ function commandPreview(action, values, templateValues) {
 
 /**
  * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
- * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean, batch?: { targets: Array<Record<string, string>>, error?: string } }} [options]
+ * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean, batch?: { targets: Array<Record<string, string>>, error?: string } }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const presentation = actionPresentation(normalizeAction(action, { id: action.id, type: 'cli' }));
@@ -163,10 +167,17 @@ function renderCliActionControl(action, options = {}) {
   const canExecute = options.canExecute !== false && cliQueueAvailable() && action['copy-only'] !== true;
   const confirmationLabel = presentation.label;
   const templateValues = { ...options.templateValues };
+  const context = options.context ?? declaredCliActionContext;
+  const fields = cliActionTemplateFields(action.command);
+  const missingContext = cliActionTemplateFields(action.command, { includeContext: true })
+    .find((field) => !fields.includes(field) && !context[field]);
+  const commandError = options.batch?.error ?? (missingContext
+    ? `CAO command context "${missingContext}" is unavailable. Configure the public CAO URL and control repository.`
+    : undefined);
   const templateTargets = options.batch?.targets ?? [templateValues];
-  const preview = () => options.batch?.error ?? (action.selector && !templateValues[action.selector.mapping.target]
+  const preview = () => commandError ?? (action.selector && !templateValues[action.selector.mapping.target]
     ? 'Select a repository to review the command.'
-    : templateTargets.map((values) => commandPreview(action, argumentValues, values)).join('\n'));
+    : templateTargets.map((values) => commandPreview(action, argumentValues, values, context)).join('\n'));
   const argumentValues = Object.fromEntries(
     (action.arguments ?? []).map((argument) => [argument.id, argument.default === true])
   );
@@ -236,7 +247,7 @@ function renderCliActionControl(action, options = {}) {
   const busy = state(false);
   const statusText = state('');
   const enqueued = state(false);
-  const selectionReady = state(!action.selector && !options.batch?.error);
+  const selectionReady = state(!action.selector && !commandError);
   const selector = action.selector ? createDialogSelector(action.id, action.selector, {
     signal: scope.signal,
     select: (value) => {
@@ -247,7 +258,7 @@ function renderCliActionControl(action, options = {}) {
       else templateValues[target] = value;
       try {
         commandPreviewText.set(preview());
-        selectionReady.set(value !== null);
+        selectionReady.set(value !== null && !commandError);
       } catch (error) {
         delete templateValues[target];
         selectionReady.set(false);
@@ -258,7 +269,7 @@ function renderCliActionControl(action, options = {}) {
   }) : null;
 
   const enqueueBatch = async () => {
-    if (busy.get() || options.batch?.error) return;
+    if (busy.get() || commandError) return;
     busy.set(true);
     try {
       const results = await Promise.allSettled(templateTargets.map((values) => enqueueCliCommand({
@@ -329,7 +340,7 @@ function renderCliActionControl(action, options = {}) {
         }
       }
     }, 'Run action'));
-  if (options.batch?.error) confirm.disabled = true;
+  if (commandError) confirm.disabled = true;
   if (canExecute) {
     effect(() => {
       confirm.disabled = busy.get() || enqueued.get() || !selectionReady.get();
@@ -480,7 +491,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}, binding) 
           if (typeof value !== 'string') throw new Error(`CLI action context "${field}" is missing or invalid.`);
           return [field, value];
         }));
-        renderCliActionCommand(action.command, values);
+        renderCliActionCommand(action.command, values, declaredCliActionContext);
         batch.targets.push(values);
       }
     } catch (error) {
@@ -500,7 +511,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}, binding) 
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
  * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
- * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
+ * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */
 export function renderCliActions(actions, options = {}) {
@@ -572,14 +583,14 @@ export function renderSettingsCliActions() {
  * View and row actions are rendered by their declaring views.
  * @param {HTMLElement} dashboard
  * @param {typeof declaredCliActions} actions
- * @param {{ repository?: string, canExecute?: boolean }} [options]
+ * @param {{ repository?: string, context?: Record<string, string>, canExecute?: boolean }} [options]
  */
 export function attachCliActions(dashboard, actions, options = {}) {
   const canExecute = options.canExecute !== false;
   /** @type {Record<string, string>} */
   const templateValues = {};
   if (typeof options.repository === 'string') templateValues.repository = options.repository;
-  setDeclaredCliActions(actions, { canExecute, templateValues });
+  setDeclaredCliActions(actions, { canExecute, templateValues, context: options.context });
   const toolbarActions = renderCliActions(
     actions.filter((action) => (action.placement ?? 'toolbar') === 'toolbar'),
     { templateValues, canExecute }

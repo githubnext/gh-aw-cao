@@ -7,6 +7,7 @@
       import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from "./components/refresh-error.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
+      import { cliActionTemplateContext } from "./cli-action-template.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
       import { DashboardServerError, usesRemoteDataBackend } from "./remote-data-backend.js";
@@ -282,8 +283,15 @@
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
+        const cliContext = cliActionTemplateContext({
+          repository: dashboardDocument.dashboard.repository,
+          githubUrlBase: dashboardDocument.dashboard["github-url-base"],
+          caoUrl: document.querySelector('meta[name="cao-url"]')?.getAttribute("content")
+            ?? (!previewMode && window.location.protocol === "https:" ? new URL(".", window.location.href).href : undefined),
+        });
         setDeclaredCliActions(dashboardDocument.dashboard["cli-actions"] ?? [], {
           canExecute: canExecuteCliActions,
+          context: cliContext,
           templateValues: dashboardDocument.dashboard.repository
             ? { repository: dashboardDocument.dashboard.repository }
             : {}
@@ -324,6 +332,7 @@
         }
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
           repository: dashboardDocument.dashboard.repository,
+          context: cliContext,
           canExecute: canExecuteCliActions
         });
         const previousDashboard = root.firstElementChild;

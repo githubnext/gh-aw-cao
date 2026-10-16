@@ -127,7 +127,29 @@ The built-in campaign update and repository upgrade actions include a quoted
 were requested through CAO, identify the affected campaign or repository and the
 reason for maintenance, and link back to the CAO project and dashboard. The
 message is part of the declarative command shown for approval; existing
-pull-request creation and auto-merge choices are unchanged.
+pull-request creation and auto-merge choices are unchanged. Backlinks use the
+actual control repository and published dashboard URL, not the CAO catalog's
+deployment.
+
+Command text supports literal `{{field}}` substitutions for validated row
+values. Three reserved placeholders come from the host, never browser-supplied
+row values: `{{cao-url}}` is the public dashboard base URL (with a trailing
+slash), `{{cao-repository}}` is its control repository slug, and
+`{{cao-repository-url}}` is that repository's GitHub URL. For example:
+
+```text
+gh aw upgrade --repo {{repository}} --pr-message 'Requested through {{cao-repository}}. See {{cao-url}}#page-maintenance.'
+```
+
+Local executable previews resolve the published URL from the control
+repository's GitHub Pages API. For a custom-hosted dashboard, pass
+`--cao-url https://ops.example.com/central/` to the local server or set
+`CAO_DASHBOARD_URL` (also available to the canvas extension). URLs must use
+HTTPS and contain no credentials, query, fragment, whitespace, or command
+delimiters. Public dashboards use their own page base URL. Local preview
+capability URLs are never copied into PRs. Missing host context disables the
+action with an explicit message; queue admission rejects missing or overridden
+host context. Substitutions are literal, not expressions, and never run a shell.
 
 Local admin and trusted canvas sessions share one durable FIFO queue per
 checkout, stored in `.cao/cli-actions.sqlite`. The online dashboard and ordinary

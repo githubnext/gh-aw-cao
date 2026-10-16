@@ -54,7 +54,10 @@ describe('CLI actions', () => {
       const root = renderCliActions([{
         id: action.id, label: action.label, icon: action.icon, command: action.command,
         arguments: action.arguments?.map((argument) => ({ ...argument, type: /** @type {const} */ ('boolean') }))
-      }], { templateValues: { repository: 'octo/example', campaign: 'activity' } });
+      }], {
+        templateValues: { repository: 'octo/example', campaign: 'activity' },
+        context: { 'cao-url': 'https://ops.example.com/central/', 'cao-repository-url': 'https://github.com/acme/control' }
+      });
       if (!root) throw new Error(`Missing action control ${id}`);
       document.body.append(root);
       const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
@@ -69,11 +72,12 @@ describe('CLI actions', () => {
         "--pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]"
       );
       expect(root.querySelector('.cli-action-command')?.textContent).toContain(
-        'https://github.com/githubnext/gh-aw-cao'
+        'https://github.com/acme/control'
       );
       expect(root.querySelector('.cli-action-command')?.textContent).toContain(
-        `https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance${id.startsWith('update') ? '-campaigns' : ''}`
+        `https://ops.example.com/central/#page-maintenance${id.startsWith('update') ? '-campaigns' : ''}`
       );
+
       autoMerge.click();
       expect(root.querySelector('.cli-action-command')?.textContent).toContain('--auto-merge');
       /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).click();
@@ -90,6 +94,16 @@ describe('CLI actions', () => {
       root.remove();
     }
   );
+
+  it('shows missing host context and disables execution without using the local capability URL', () => {
+    const root = renderCliActions([{
+      id: 'update', label: 'Update', icon: 'sync',
+      command: "gh aw update --pr-message 'See {{cao-url}}'"
+    }]);
+    expect(root?.querySelector('.cli-action-command')?.textContent).toContain('"cao-url" is unavailable');
+    expect(root?.querySelector('.cli-action-confirm')).toHaveProperty('disabled', true);
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
 
   it('shares the command summary context across shell replacements with independent lifetimes', async () => {
     const styles = document.createElement('style');

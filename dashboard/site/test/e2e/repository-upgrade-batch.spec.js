@@ -18,7 +18,7 @@ for (const width of [1440, 390]) {
     const execution = new Promise((resolve) => { finish = () => resolve(undefined); });
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', admin: true, port: 0,
+      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', admin: true, port: 0,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
@@ -69,9 +69,18 @@ for (const width of [1440, 390]) {
       await repositoryPage.close();
       await expect(page).toHaveURL(/#page-maintenance$/);
       expect(commands).toEqual([]);
+      await page.getByRole('button', { name: 'Upgrade', exact: true }).first().click();
+      const rowDialog = page.getByRole('dialog', { name: 'Approve Upgrade', exact: true });
+      await expect(rowDialog).toBeVisible();
+      await expect(rowDialog.locator('.cli-action-command')).toContainText('https://github.com/acme/control');
+      await expect(rowDialog.locator('.cli-action-command')).toContainText('https://ops.example.com/central/#page-maintenance');
+      await rowDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      expect(commands).toEqual([]);
       await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
       const upgradeDialog = page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true });
       await expect(upgradeDialog).toBeVisible();
+      await expect(upgradeDialog.locator('.cli-action-command')).toContainText('https://ops.example.com/central/#page-maintenance');
+      await expect(upgradeDialog.locator('.cli-action-command')).not.toContainText(new URL(preview.url).pathname);
       const autoMerge = upgradeDialog.getByRole('checkbox', { name: 'Auto merge' });
       await expect(autoMerge).not.toBeChecked();
       expect(commands).toEqual([]);
@@ -100,8 +109,8 @@ for (const width of [1440, 390]) {
         expect(tokens.slice(0, 4)).toEqual(['gh', 'aw', 'upgrade', '--repo']);
         expect(tokens[5]).toBe('--pr-message');
         expect(tokens[6]).toContain(`to upgrade GitHub Agentic Workflows in ${tokens[4]}`);
-        expect(tokens[6]).toContain('[Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao)');
-        expect(tokens[6]).toContain('[CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance)');
+        expect(tokens[6]).toContain('[Central Agentic Ops (CAO)](https://github.com/acme/control)');
+        expect(tokens[6]).toContain('[CAO dashboard](https://ops.example.com/central/#page-maintenance)');
         expect(tokens.slice(7)).toEqual(['--create-pull-request', ...(width === 1440 ? ['--auto-merge'] : [])]);
       }
       await expect(page.locator('[data-view-id="commands-history"]')).toContainText('completed');
@@ -123,8 +132,8 @@ for (const width of [1440, 390]) {
         expect(tokens.slice(0, 3)).toEqual(['./cao.sh', 'update', '--campaign']);
         expect(tokens[4]).toBe('--pr-message');
         expect(tokens[5]).toContain(`to update the ${tokens[3]} campaign from its upstream source`);
-        expect(tokens[5]).toContain('[Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao)');
-        expect(tokens[5]).toContain('[CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance-campaigns)');
+        expect(tokens[5]).toContain('[Central Agentic Ops (CAO)](https://github.com/acme/control)');
+        expect(tokens[5]).toContain('[CAO dashboard](https://ops.example.com/central/#page-maintenance-campaigns)');
         expect(tokens.slice(6)).toEqual(['--create-pull-request', '--auto-merge']);
       }
       const campaignScreenshot = testInfo.outputPath(`campaigns-queued-${width}.png`);
