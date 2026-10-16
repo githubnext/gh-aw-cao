@@ -6,6 +6,7 @@ import {
   countCollections,
   queryCollection,
   queryCollectionCountGroups,
+  scanCollectionBatches,
   readCollectionQueryKeys,
   readCollectionQueryKeyRecords,
   readCollections,
@@ -15,14 +16,17 @@ import { STORAGE_SHARD_STORE } from '../storage/shards.js';
 import {
   createDashboardQueryBudget,
   DASHBOARD_QUERY_LIMITS,
+  DashboardQueryCancelledError,
   dashboardQueryDefects,
   dashboardQueryIndex,
   executeDashboardQueries,
+  executeDashboardQuery,
   resolveDashboardQuerySources
 } from './declarative.js';
 import { SYNTHETIC_SOURCE_FIELDS, TABLE_FIELDS } from '../../specification.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
+import { createStreamingAggregate } from './streaming-aggregate.js';
 
 const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -483,13 +487,115 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     }, logicalSources, 'runs');
     return [name, executeDashboardQueries([definition], { runs }, [name], { budget })[name]];
   }));
+  const nativeAggregates = new Set([
+    ...Object.keys(counted),
+    ...filtered.map((entry) => entry[0]),
+    ...recordAggregates.flatMap((entry) => entry ? [entry[0]] : [])
+  ]);
+  const streamed = [];
+  for (const name of requested) {
+    const definition = index.get(name);
+    if (!definition || defects.has(name) || nativeAggregates.has(name)) continue;
+    const plan = indexedStreamingAggregatePlan(index, definition);
+    if (!plan) continue;
+    if (!DATABASE_TABLE_SOURCES.has(plan.source) && hasUsableRows(logicalSources[plan.source])) continue;
+    const metadata = queryMetadata(logicalSources, plan.store, plan.source, true);
+    const unavailable = [plan.store, 'runs']
+      .map((source) => /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (logicalSources[source]))
+      .find((source) => source?.metadata?.availability === 'unavailable');
+    if (unavailable) {
+      streamed.push([name, executeDashboardQuery(definition, { [definition.from]: unavailable }, undefined, budget)]);
+      continue;
+    }
+    try {
+      const runs = await readRuns();
+      if (runs.length > DASHBOARD_QUERY_LIMITS['max-join-rows']) {
+        throw new Error('Streaming aggregate exceeded max-join-rows');
+      }
+      budget.spend(runs.length);
+      const runIndex = new Map(runs.map((run) => [run.id, run]));
+      const aggregate = createStreamingAggregate(
+        /** @type {NonNullable<typeof definition.aggregate>} */ (definition.aggregate), budget
+      );
+      await scanCollectionBatches(indexedDB, plan.store, (records) => {
+        const batchRuns = [...new Set(records.map((record) => record.runId))]
+          .flatMap((id) => runIndex.has(id) ? [/** @type {Record<string, unknown>} */ (runIndex.get(id))] : []);
+        const canonical = executeDashboardQueries([/** @type {import('./declarative.js').DashboardQuery} */ (RUN_RECORD_PROJECTION)], {
+          $records: { source: '$records', rows: records, metadata },
+          $runs: { source: '$runs', rows: batchRuns, metadata: queryMetadata(logicalSources, 'runs', 'runs', true) }
+        }, ['run-records'], { budget })['run-records'];
+        const input = plan.projection
+          ? executeDashboardQueries([plan.projection], { 'run-records': canonical }, [plan.source], { budget })[plan.source]
+          : canonical;
+        const result = executeDashboardQueries(plan.queries, { [plan.source]: input }, [name], { budget })[name];
+        if (result.metadata.availability === 'unavailable') {
+          throw new Error(`Streaming input "${plan.source}" is unavailable`);
+        }
+        aggregate.append(result.rows);
+      }, { batchSize: 10000, checkpoint: () => budget.checkpoint() });
+      const final = { ...definition, from: '$streamed-aggregate' };
+      delete final.filter;
+      delete final.compute;
+      delete final.aggregate;
+      streamed.push([name, executeDashboardQuery(final, {
+        '$streamed-aggregate': { source: '$streamed-aggregate', rows: aggregate.rows(), metadata }
+      }, undefined, budget)]);
+    } catch (error) {
+      if (error instanceof DashboardQueryCancelledError) throw error;
+      streamed.push([name, executeDashboardQuery(definition, {
+        [definition.from]: { source: definition.from, rows: [], metadata }
+      }, error instanceof Error ? error.message : String(error), budget)]);
+    }
+  }
   budget.checkpoint();
   return {
     ...counted,
     ...Object.fromEntries(filtered),
     ...Object.fromEntries(recordAggregates.filter((entry) => entry !== null)),
     ...Object.fromEntries(recordSelections),
+    ...Object.fromEntries(streamed),
     ...Object.fromEntries(keySelections.filter((entry) => entry !== null))
+  };
+}
+
+/**
+ * Only row-local ancestors can be evaluated independently in storage batches.
+ * Keep the aggregate's post-processing in the ordinary bounded query engine.
+ * @param {Map<string, import('./declarative.js').DashboardQuery>} index
+ * @param {import('./declarative.js').DashboardQuery} definition
+ */
+function indexedStreamingAggregatePlan(index, definition) {
+  if (!definition.aggregate || definition.joins?.length || definition.union?.length
+      || definition['temporal-series']
+      || new Set(definition.aggregate.values.map((value) => value.as)).size !== definition.aggregate.values.length
+      || definition.aggregate.values.some((value) => !['sum', 'count', 'distinct-count'].includes(value.reducer))) return null;
+  const input = { ...definition };
+  for (const field of /** @type {const} */ (['aggregate', 'predict', 'window', 'select', 'order-by', 'limit', 'facet'])) {
+    delete input[field];
+  }
+  const queries = [input];
+  const seen = new Set([definition.name]);
+  let source = definition.from;
+  while (index.has(source)) {
+    const parent = /** @type {import('./declarative.js').DashboardQuery} */ (index.get(source));
+    if (seen.has(source) || parent.aggregate || parent.joins?.length || parent.union?.length
+        || parent['temporal-series'] || parent.predict?.length || parent.window?.length
+        || parent.facet || parent['order-by']?.length || parent.limit !== undefined) return null;
+    seen.add(source);
+    queries.unshift(parent);
+    source = parent.from;
+  }
+  const projection = RUN_RECORD_STORES.has(source) ? undefined : databaseQueryIndex.get(source);
+  const stores = RUN_RECORD_STORES.has(source) ? [source]
+    : (projection?.stores ?? []).filter((store) => RUN_RECORD_STORES.has(store));
+  if (stores.length !== 1 || (projection && (
+    projection.from !== 'run-records' || projection.aggregate || projection.joins?.length || projection.union?.length
+    || projection['temporal-series'] || projection.predict?.length || projection.window?.length
+    || projection.facet || projection['order-by']?.length || projection.limit !== undefined
+  ))) return null;
+  return {
+    source, projection, queries,
+    store: /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (stores[0])
   };
 }
 

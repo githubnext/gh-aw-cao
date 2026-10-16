@@ -175,8 +175,9 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         page.on("response", onResponse);
         try {
           await waitForQueryBudget(page);
+          const pageHash = dashboardAssessmentPageHash(definition, dashboard);
           await page.evaluate((hash) => { window.location.hash = hash; },
-            dashboardAssessmentPageHash(definition, dashboard));
+            pageHash);
           const activePage = page.locator(`[data-page-id="${definition.id}"]`);
           await expect(activePage).toBeVisible({ timeout: 30_000 });
           await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 30_000 });
@@ -195,6 +196,11 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
             view?.data && (typeof view.data.source === "string" || Array.isArray(view.data.sources))
           ));
           const unavailable = activePage.locator('[data-view-state="unavailable"][role="alert"]');
+          const routeParameter = definition.route?.["hash-query-parameter"];
+          if (definition.route?.["availability-view"] && routeParameter
+              && !new URLSearchParams(pageHash.split("?")[1]).has(routeParameter)) {
+            await expect(unavailable).toBeVisible({ timeout: 30_000 });
+          }
           if (definition.route?.["availability-view"] && await unavailable.isVisible()) {
             await expect(views, "Unavailable detail pages replace their views with recovery actions").toHaveCount(0);
             await expect(unavailable).toContainText(definition.route["availability-message"]);

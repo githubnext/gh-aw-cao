@@ -1148,6 +1148,54 @@ export async function queryCollection(indexedDB, storeName, operators, options =
 }
 
 /**
+ * Visits bounded primary-key batches in one readonly snapshot. The visitor must
+ * be synchronous so the next request keeps the transaction alive.
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {(rows: Record<string, unknown>[]) => void} visit
+ * @param {{ batchSize: number, checkpoint: () => void }} options
+ */
+export async function scanCollectionBatches(indexedDB, storeName, visit, options) {
+  if (!Number.isSafeInteger(options.batchSize) || options.batchSize < 1) {
+    throw new TypeError('Scan batch size must be a positive integer');
+  }
+  options.checkpoint();
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(storeName);
+      const store = transaction.objectStore(storeName);
+      /** @type {unknown} */
+      let failure;
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onabort = () => reject(failure ?? transaction.error ?? new Error('IndexedDB scan aborted'));
+      transaction.onerror = () => reject(failure ?? transaction.error);
+      /** @param {IDBKeyRange | undefined} range */
+      const next = (range) => {
+        const request = store.getAll(range, options.batchSize);
+        request.onsuccess = () => {
+          try {
+            options.checkpoint();
+            const records = request.result;
+            if (records.length === 0) return;
+            visit(records.map((record) => canonicalRecord(record)));
+            if (records.length === options.batchSize) {
+              next(IDBKeyRange.lowerBound(records.at(-1)[String(store.keyPath)], true));
+            }
+          } catch (error) {
+            failure = error;
+            transaction.abort();
+          }
+        };
+      };
+      next(undefined);
+    });
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * Counts distinct index keys without reading their event records. A nullable
  * trailing dimension is recovered by subtracting its indexed counts from the
  * prefix counts: IndexedDB omits null and absent keys, whereas query grouping
