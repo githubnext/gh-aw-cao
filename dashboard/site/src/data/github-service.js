@@ -145,7 +145,7 @@ export function createGitHubDataService(dependencies = {}) {
       }
     }
     const identity = JSON.stringify([
-      base?.href ?? '', configuration.credentials ?? 'omit',
+      base?.href ?? '', credentials,
       authenticationGeneration ? `${scope}:epoch:${authenticationGeneration}` : scope
     ]);
     const key = `${identity}:${path}`;

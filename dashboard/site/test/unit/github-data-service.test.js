@@ -110,7 +110,7 @@ describe('worker GitHub resource service', () => {
     }));
     const service = createGitHubDataService({ fetch });
     const first = subscribe(service);
-    const second = subscribe(service);
+    const second = subscribe(service, { ...configuration, credentials: 'same-origin' });
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     first.controller.abort();
     expect(requestSignal?.aborted).toBe(false);
@@ -289,7 +289,7 @@ describe('worker GitHub resource service', () => {
     const active = subscribe(createGitHubDataService({ fetch }));
     await vi.waitFor(() => expect(active.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([
-      configuration.baseUrl, 'omit', configuration.cacheIdentity
+      configuration.baseUrl, 'same-origin', configuration.cacheIdentity
     ])));
     const partition = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
     expect((await readTransactions(indexedDB))[0]?.id).toBe(`github-resource:${partition}:repos/githubnext/gh-aw-cao`);

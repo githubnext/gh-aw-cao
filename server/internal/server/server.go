@@ -841,7 +841,7 @@ func (a *App) authorized(request *http.Request) bool {
 		return false
 	}
 	cookie, err := request.Cookie("cao_github_local")
-	return err == nil && constantTimeTokenEqual(cookie.Value, a.githubLocalResourceSession())
+	return err == nil && a.accessToken != "" && constantTimeTokenEqual(cookie.Value, a.githubLocalResourceSession())
 }
 
 type githubActionsActorContextKey struct{}

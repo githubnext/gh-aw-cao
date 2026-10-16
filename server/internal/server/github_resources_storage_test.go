@@ -56,6 +56,15 @@ func TestGitHubResourceBrowserCookieIsHttpOnlyAndReadOnly(t *testing.T) {
 	if app.authorized(request) {
 		t.Fatal("read-only resource cookie must not be usable as a bearer capability")
 	}
+	app.accessToken = ""
+	request = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/github/repos/owner/repo", nil)
+	request.AddCookie(&http.Cookie{
+		Name: "cao_github_local", Value: "", Path: "/api/v1/github/",
+		HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode,
+	})
+	if app.authorized(request) {
+		t.Fatal("unconfigured local resource session must fail closed")
+	}
 }
 
 func TestGitHubResourceStorageFailuresFailClosed(t *testing.T) {
