@@ -99,7 +99,10 @@ export function createLocalGitHubService({
       return entry ? cachedResponse(entry, true) : unavailable(429, (blockedUntil - now()) / 1000);
     }
     try {
-      const response = await fetchImpl(`https://api.github.com${path}`, {
+      // Caller-controlled resource coordinates may affect the path, never the origin.
+      const url = new URL("https://api.github.com");
+      url.pathname = path;
+      const response = await fetchImpl(url, {
         method: "GET",
         headers: {
           Authorization: ["Bearer", credential].join(" "),

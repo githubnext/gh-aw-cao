@@ -32,7 +32,8 @@ test("local GitHub reads are allowlisted, cached, and conditionally returned", a
     token: credential,
     fetchImpl: async (url, options) => {
       requests++;
-      assert.equal(url, "https://api.github.com/repos/githubnext/gh-aw-cao");
+      assert.ok(url instanceof URL);
+      assert.equal(url.href, "https://api.github.com/repos/githubnext/gh-aw-cao");
       assert.equal(options.method, "GET");
       assert.equal(options.body, undefined);
       assert.equal(options.redirect, "error");
@@ -124,7 +125,7 @@ test("latest releases expose only safe fields and missing releases return 404", 
   const release = { tag_name: "v1", name: null, html_url: "https://github.com/o/r/releases/tag/v1", published_at: null, draft: false, prerelease: false };
   const service = createLocalGitHubService({
     token: credential,
-    fetchImpl: async (url) => url.includes("/other/") ? new Response(null, { status: 404 })
+    fetchImpl: async (url) => url.pathname.includes("/other/") ? new Response(null, { status: 404 })
       : reply({ ...release, assets: [{ body: "omitted" }] }),
   });
   assert.deepEqual((await service.request(`${path}/releases/latest`)).body, release);
@@ -132,10 +133,58 @@ test("latest releases expose only safe fields and missing releases return 404", 
 });
 
 test("unsafe resource paths are rejected without using credentials", async () => {
-  const service = createLocalGitHubService({ token: () => { throw new Error("Must not authenticate"); } });
-  for (const value of ["/api/v1/github/repos/o/..", "/api/v1/github/repos/o/r/issues", "/api/v1/github/repos/o/r%2fsecret", "/api/v1/github/repos/o/r?token=anything"]) {
-    assert.equal((await service.request(value)).status, 400);
+  let authentications = 0;
+  let requests = 0;
+  const service = createLocalGitHubService({
+    token: () => { authentications++; return credential(); },
+    fetchImpl: async () => { requests++; return reply(); },
+  });
+  for (const value of [
+    "/api/v1/github/repos/o/..",
+    "/api/v1/github/repos/o/.",
+    "/api/v1/github/repos/o/r/issues",
+    "/api/v1/github/repos/o/r%2fsecret",
+    "/api/v1/github/repos/o/r?token=anything",
+    "/api/v1/github/repos/o/r#fragment",
+    "/api/v1/github/repos/o/r\\evil",
+    "/api/v1/github/repos/o/r/../../evil",
+    "/api/v1/github/repos/o/r%5cevil",
+    "/api/v1/github/repos/o/r%252fsecret",
+    "/api/v1/github/repos/o/r@evil.example",
+    "/api/v1/github/repos//evil.example/repo",
+    "https://evil.example/api/v1/github/repos/o/r",
+    "//evil.example/api/v1/github/repos/o/r",
+  ]) {
+    assert.equal((await service.request(value)).status, 400, value);
   }
+  assert.equal(authentications, 0);
+  assert.equal(requests, 0);
+});
+
+test("repository coordinates only change the GitHub pathname for each allowlisted endpoint", async () => {
+  const requests = [];
+  const service = createLocalGitHubService({
+    token: credential,
+    fetchImpl: async (url, options) => {
+      requests.push(url.pathname);
+      assert.ok(url instanceof URL);
+      assert.equal(url.origin, "https://api.github.com");
+      assert.equal(url.username, "");
+      assert.equal(url.password, "");
+      assert.equal(url.search, "");
+      assert.equal(url.hash, "");
+      assert.equal(options.method, "GET");
+      assert.equal(options.redirect, "error");
+      return new Response(null, { status: 404 });
+    },
+  });
+  for (const suffix of ["", "/releases/latest"]) {
+    assert.equal((await service.request(`/api/v1/github/repos/Owner-1/Repo_name.git${suffix}`)).status, 404);
+  }
+  assert.deepEqual(requests, [
+    "/repos/owner-1/repo_name.git",
+    "/repos/owner-1/repo_name.git/releases/latest",
+  ]);
 });
 
 test("local cached responses never cross credential boundaries", async () => {
