@@ -1,5 +1,8 @@
 import { tidy } from '../../data-operations.js';
+import { createDebug } from '../../debug.js';
 import { DASHBOARD_QUERY_LIMITS } from './declarative.js';
+
+const debugIncrementalAggregate = createDebug('incremental-aggregate');
 
 /**
  * Storage-native reduction retains scalar state, never partial distinct counts.
@@ -18,6 +21,7 @@ export function incrementalAggregate(aggregate, budget) {
     let group = groups.get(key);
     if (!group) {
       if (groups.size >= DASHBOARD_QUERY_LIMITS['max-input-rows']) {
+        debugIncrementalAggregate({ event: 'budget-exceeded', limit: 'group-count', groups: groups.size });
         throw new Error('Native aggregate exceeded max-input-rows');
       }
       group = {
@@ -45,6 +49,7 @@ export function incrementalAggregate(aggregate, budget) {
             const key = String(input);
             if (!state.has(key)) {
               if (distinctValues[index] >= DASHBOARD_QUERY_LIMITS['max-input-rows']) {
+                debugIncrementalAggregate({ event: 'budget-exceeded', limit: 'distinct-values', valueIndex: index });
                 throw new Error('Native aggregate exceeded distinct-value budget');
               }
               state.add(key);
@@ -61,6 +66,7 @@ export function incrementalAggregate(aggregate, budget) {
     },
     rows() {
       if (groups.size === 0 && fields.length === 0) groupFor({});
+      debugIncrementalAggregate({ event: 'rows-materialized', groups: groups.size, groupFields: fields.length, values: aggregate.values.length });
       return [...groups.values()].map((group) => ({
         ...group.row,
         ...Object.fromEntries(aggregate.values.map((value, index) => {
