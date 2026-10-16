@@ -50,7 +50,7 @@ env:
   REVIEW_OUTPUT_REPO: ${{ inputs.safe_output_repo || github.repository }}
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
-  STARTER_REPO: githubnext/gh-aw-cao-bug-bash
+  STARTER_REPO: github/gh-aw-cao-bug-bash
   STARTER_REVISION: 49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9
   STARTER_FOCUS_PATHS: "docs/policy-contract.md examples/paused-rollout.json config/production-fleet.json src/demo.mjs src/policy.mjs src/rollout.mjs src/notifications.mjs legacy/batch-options.cjs test"
   BUG_BASH_HYPOTHESIS_ID: explicit-zero-default

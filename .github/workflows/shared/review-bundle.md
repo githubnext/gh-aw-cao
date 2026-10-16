@@ -142,7 +142,7 @@ safe-outputs:
 
         - name: Upload review bundle artifact
           if: steps.prepare.outputs.skip_upload != 'true'
-          uses: actions/upload-artifact@v7.0.1
+          uses: actions/upload-artifact@v7.0.2
           with:
             name: ${{ steps.prepare.outputs.artifact_name }}
             path: ${{ steps.prepare.outputs.bundle_path }}

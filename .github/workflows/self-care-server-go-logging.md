@@ -113,18 +113,18 @@ safe-outputs:
       - "server/**/*.go"
 pre-agent-steps:
   - name: Set up Go
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
     with:
       go-version-file: server/go.mod
       cache: false
   - name: Install golangci-lint
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
       go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
       echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
   - name: Lint server baseline
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     working-directory: server
     run: |
       set -o pipefail
@@ -132,7 +132,7 @@ pre-agent-steps:
       test ! -s /tmp/golangci-lint-fmt.diff
       golangci-lint run ./...
   - name: Validate server baseline
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: go -C server test ./...
 ---
 

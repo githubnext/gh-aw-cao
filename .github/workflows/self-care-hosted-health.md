@@ -132,7 +132,7 @@ safe-outputs:
 pre-agent-steps:
   - name: Prepare hosted MCP credentials
     id: hosted_mcp_oidc
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' }}
     env:
       CAO_READ_TOKEN: ${{ steps.cao_target_read_credential.outputs.token }}
     run: |
@@ -150,7 +150,7 @@ pre-agent-steps:
       echo "oidc_token=$oidc" >> "$GITHUB_OUTPUT"
       echo "authorization=${AUTH_SCHEME^} $CAO_READ_TOKEN" >> "$GITHUB_OUTPUT"
   - name: Verify hosted CAO health and MCP access
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' }}
     env:
       CAO_MCP_AUTHORIZATION: ${{ steps.hosted_mcp_oidc.outputs.authorization }}
       CAO_MCP_OIDC_TOKEN: ${{ steps.hosted_mcp_oidc.outputs.oidc_token }}
@@ -359,7 +359,7 @@ pre-agent-steps:
       write_status
       echo "Hosted CAO health and MCP smoke passed"
   - name: Verify OpenObserve MCP read access
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' }}
     env:
       OPENOBSERVE_MCP_URL: ${{ vars.CAO_OTEL_MCP_URL }}
       OPENOBSERVE_MCP_AUTHORIZATION: ${{ secrets.CAO_OTEL_MCP_READ_AUTHORIZATION }}
