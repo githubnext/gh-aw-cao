@@ -281,6 +281,7 @@ flowchart LR
   end
   subgraph Dashboard
     records["records.mjs<br/>issues/comments/artifacts per repo<br/>run attribution from activity index"]
+    localsrv["local-server.mjs + local-github-service.mjs<br/>artifact predownload, releases/latest, on-demand repo/lock reads"]
   end
   subgraph Workers
     reviewpf["self-care-dashboard-review<br/>artifact+run discovery"]
@@ -332,6 +333,7 @@ flowchart LR
   indexmjs -->|writes| runindex
   runindex -->|repository + run ID join| records
   records -->|durable record snapshot| cache
+  localsrv -.->|re-discovers dashboard artifact; no shared cache| reviewpf
   telemetry -->|appends to| cache
   marketplace -.->|independent registry discovery, not run history| cache
   dispatch -->|polls| records
