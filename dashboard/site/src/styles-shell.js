@@ -293,8 +293,8 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-cancel:hover { background: var(--neutral-muted); }
 .cli-action-confirm:hover { filter: brightness(1.08); }
 .cli-action-cancel:disabled, .cli-action-confirm:disabled { cursor: default; opacity: .6; }
-.site-callouts { display: grid; gap: 8px; padding: 16px var(--dashboard-page-padding-inline) 0; }
-.site-callout { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 14px; border: 1px solid var(--attention); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
+.site-callouts { display: grid; margin: 0; padding: 0; }
+.site-callout { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px var(--dashboard-page-padding-inline); border: 0; border-bottom: 1px solid var(--attention); border-radius: 0; background: var(--attention-muted); color: var(--fg); }
 .site-callout-icon { display: grid; place-items: center; padding-top: 2px; color: var(--attention); }
 .site-callout-content { min-width: 0; display: grid; gap: 2px; }
 .site-callout-content > span { color: var(--muted); }

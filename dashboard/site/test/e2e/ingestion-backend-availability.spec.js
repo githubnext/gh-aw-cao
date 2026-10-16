@@ -101,7 +101,21 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   await page.goto(`${origin}/#page-runs`);
   const banner = page.locator('[data-site-callout="stale-data"]');
   await expect(banner).toBeVisible();
+  const bannerBounds = await banner.boundingBox();
+  const mainBounds = await page.locator('.app-main').boundingBox();
+  const noticesBounds = await page.getByRole('region', { name: 'Dashboard notices' }).boundingBox();
+  if (!bannerBounds || !mainBounds || !noticesBounds) {
+    throw new Error('The banner, dashboard content, and notices region must have visible bounds.');
+  }
+  expect(bannerBounds.x).toBeCloseTo(mainBounds.x, 0);
+  expect(bannerBounds.width).toBeCloseTo(mainBounds.width, 0);
+  expect(bannerBounds.y).toBeCloseTo(noticesBounds.y, 0);
+  await expect(banner).toHaveCSS('border-radius', '0px');
   await expect(banner).toContainText('24 hours');
+  await banner.screenshot({ path: testInfo.outputPath('stale-data-banner.png') });
+  await testInfo.attach(`Full-width stale-data banner (${viewport.width}px)`, {
+    path: testInfo.outputPath('stale-data-banner.png'), contentType: 'image/png'
+  });
   await expect(banner.getByRole('link', { name: 'View Ingestion' })).toHaveAttribute('href', '#page-indexing');
   await banner.getByRole('link', { name: 'View Ingestion' }).click();
   await expect(page.locator('#page-title')).toHaveText('Ingestion');
