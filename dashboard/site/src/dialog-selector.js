@@ -1,6 +1,9 @@
+import { createDebug } from './debug.js';
+
 /** @typedef {{ label: string, placeholder?: string, 'debounce-ms': number, query: { command: 'gh search repos', fields: string[], limit: number }, mapping: { value: string, label: string, description?: string, target: string } }} DialogSelector */
 
 const repositoryFields = ['fullName', 'description', 'name', 'owner', 'url', 'visibility', 'isArchived', 'isPrivate'];
+const debugDialogSelector = createDebug('src:dialog-selector');
 const identifier = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 /**
@@ -15,7 +18,7 @@ export function assertDialogSelector(input, templateFields) {
   const object = (/** @type {unknown} */ value) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
   const keys = (/** @type {object} */ value, /** @type {string[]} */ allowed) =>
     Object.keys(value).every((key) => allowed.includes(key));
-  if (!object(selector) || !selector
+  const invalid = !object(selector) || !selector
     || !keys(selector, ['label', 'placeholder', 'debounce-ms', 'query', 'mapping'])
     || typeof selector.label !== 'string' || !selector.label.trim()
     || (selector.placeholder !== undefined && (typeof selector.placeholder !== 'string' || !selector.placeholder.trim()))
@@ -29,7 +32,14 @@ export function assertDialogSelector(input, templateFields) {
     || !object(selector.mapping) || !selector.mapping || !keys(selector.mapping, ['value', 'label', 'description', 'target'])
     || ![selector.mapping.value, selector.mapping.label, selector.mapping.description].every((field, index) =>
       index === 2 && field === undefined || typeof field === 'string' && selector.query?.fields.includes(field))
-    || !identifier.test(selector.mapping.target) || !templateFields.includes(selector.mapping.target)) {
+    || !identifier.test(selector.mapping.target) || !templateFields.includes(selector.mapping.target);
+  if (invalid) {
+    debugDialogSelector({
+      event: 'selector-rejected',
+      status: 'invalid',
+      templateFieldCount: templateFields.length,
+      queryFieldCount: Array.isArray(selector?.query?.fields) ? selector.query.fields.length : 0
+    });
     throw new Error('Dialog selector must declare a bounded gh search repos query, debounce, and field mapping to a command template value.');
   }
 }
