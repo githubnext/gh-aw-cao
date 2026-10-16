@@ -917,7 +917,9 @@ export async function startDashboardServer({
       return false;
     }
   };
-  const githubService = createLocalGitHubService();
+  const githubService = createLocalGitHubService({
+    databasePath: join(temporaryDirectory, "dashboard.sqlite"),
+  });
   const server = createServer(async (request, response) => {
     const requestStarted = performance.now();
     let requestPath = "<outside-preview>";
@@ -1535,6 +1537,7 @@ export async function startDashboardServer({
   } catch (error) {
     for (const watcher of watchers.values()) watcher.close();
     await sqliteBackend?.close();
+    await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -1556,6 +1559,7 @@ export async function startDashboardServer({
       if (customViewSavePending) await Promise.allSettled([customViewSavePending]);
       await refreshPromise;
       await sqliteBackend?.close();
+      await githubService.close();
       await rm(temporaryDirectory, { recursive: true, force: true });
       trace.record("server", "server.stopped");
       await trace.flush();

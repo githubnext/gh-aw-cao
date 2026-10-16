@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { createLocalGitHubService } from "../../dashboard/local-github-service.mjs";
+import test, { afterEach } from "node:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { createLocalGitHubService as createService } from "../../dashboard/local-github-service.mjs";
+
+const services = new Set();
+function createLocalGitHubService(options) {
+  const service = createService(options);
+  services.add(service);
+  return service;
+}
+afterEach(async () => {
+  await Promise.all([...services].map((service) => service.close()));
+  services.clear();
+});
 
 const path = "/api/v1/github/repos/githubnext/gh-aw-cao";
 const repository = {
@@ -159,4 +174,50 @@ test("malformed GitHub fields fail closed instead of exposing unrestricted objec
   const result = await service.request(path);
   assert.equal(result.status, 503);
   assert.doesNotMatch(JSON.stringify(result), /must not be returned/);
+});
+
+test("SQLite cache survives service recreation and persists no credentials or unnormalized fields", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-github-sqlite-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const databasePath = join(directory, "dashboard.sqlite");
+  let calls = 0;
+  const options = {
+    databasePath, token: credential,
+    fetchImpl: async () => { calls++; return reply({ ...repository, access_token: "never-store" }, { etag: '"upstream"' }); },
+  };
+  const first = createLocalGitHubService(options);
+  const result = await first.request(path);
+  await first.close();
+  services.delete(first);
+  const second = createLocalGitHubService(options);
+  assert.deepEqual(await second.request(path), result);
+  assert.equal(calls, 1);
+  const database = new DatabaseSync(databasePath);
+  try {
+    const records = database.prepare("SELECT * FROM github_resources").all();
+    assert.equal(records.length, 1);
+    assert.doesNotMatch(JSON.stringify(records), /test-credential|never-store|access_token/);
+  } finally {
+    database.close();
+  }
+});
+
+test("SQLite resource cache enforces its row bound and expires retained data", async () => {
+  let clock = 0;
+  let calls = 0;
+  const service = createLocalGitHubService({
+    token: credential, now: () => clock,
+    fetchImpl: async () => { calls++; return reply(); },
+  });
+  for (let index = 0; index < 129; index++) {
+    clock++;
+    await service.request(`/api/v1/github/repos/owner/repo-${index}`);
+  }
+  await service.request("/api/v1/github/repos/owner/repo-128");
+  assert.equal(calls, 129);
+  await service.request("/api/v1/github/repos/owner/repo-0");
+  assert.equal(calls, 130);
+  clock += 86_700_001;
+  await service.request("/api/v1/github/repos/owner/repo-0");
+  assert.equal(calls, 131);
 });

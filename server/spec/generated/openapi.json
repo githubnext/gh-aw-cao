@@ -1259,7 +1259,7 @@
     "/api/v1/github/repos/{owner}/{repo}": {
       "get": {
         "operationId": "GitHubResources_repository",
-        "description": "Read-only, repository-scoped GitHub metadata through CAO. Local deployments\nuse the server's gh CLI credential; hosted deployments use a GitHub App.\nMissing credentials or unavailable live access return 503, never a browser\nredirect to GitHub. Static Pages deployments have no live endpoint.\nResponses are private caches with a five-minute freshness window and\nstale-while-revalidate support. Send If-None-Match to reuse cached data.",
+        "description": "Read-only, repository-scoped GitHub metadata through CAO. Local deployments\nuse the server's gh CLI credential; hosted deployments use a GitHub App.\nMissing credentials or unavailable live access return 503, never a browser\nredirect to GitHub. Static Pages deployments have no live endpoint.\nBrowsers use HttpOnly session cookies, never GitHub credentials or bearer\ntokens in the resource configuration. Local bootstrap issues a Secure,\nSameSite=Strict cookie scoped only to these read-only resource routes.\nNormalized resources are retained in the deployment's Postgres data store.\nResponses are private caches with a five-minute freshness window and\nstale-while-revalidate support. Send If-None-Match to reuse cached data.",
         "parameters": [
           {
             "name": "owner",
@@ -1522,6 +1522,9 @@
           },
           {
             "ApiKeyAuth": []
+          },
+          {
+            "LocalGitHubResourceSession": []
           }
         ]
       }
@@ -1792,6 +1795,9 @@
           },
           {
             "ApiKeyAuth": []
+          },
+          {
+            "LocalGitHubResourceSession": []
           }
         ]
       }
@@ -4952,6 +4958,12 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "cao_session"
+      },
+      "LocalGitHubResourceSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "cao_github_local",
+        "description": "Read-only local browser capability; never a GitHub credential."
       }
     }
   }

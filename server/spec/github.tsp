@@ -72,13 +72,17 @@ model GitHubRetry<Code extends int32> extends Failure<Code> {
 }
 
 @tag("GitHub resources")
-@useAuth(DashboardAuth)
+@useAuth(DashboardAuth | LocalGitHubResourceSession)
 namespace GitHubResources {
   /**
    * Read-only, repository-scoped GitHub metadata through CAO. Local deployments
    * use the server's gh CLI credential; hosted deployments use a GitHub App.
    * Missing credentials or unavailable live access return 503, never a browser
    * redirect to GitHub. Static Pages deployments have no live endpoint.
+   * Browsers use HttpOnly session cookies, never GitHub credentials or bearer
+   * tokens in the resource configuration. Local bootstrap issues a Secure,
+   * SameSite=Strict cookie scoped only to these read-only resource routes.
+   * Normalized resources are retained in the deployment's Postgres data store.
    * Responses are private caches with a five-minute freshness window and
    * stale-while-revalidate support. Send If-None-Match to reuse cached data.
    */
@@ -101,3 +105,6 @@ namespace GitHubResources {
     | BadRequest | Unauthorized | Forbidden | NotFound
     | GitHubRetry<429> | GitHubRetry<503>;
 }
+
+/** Read-only local browser capability; never a GitHub credential. */
+model LocalGitHubResourceSession is ApiKeyAuth<ApiKeyLocation.cookie, "cao_github_local">;

@@ -5,7 +5,7 @@ import { createGitHubDataService, githubResourcePath } from '../../src/data/gith
 import { deleteCanonicalDatabase, readTransactions, readCollection } from '../../src/data/storage/indexeddb.js';
 
 const resource = { owner: 'githubnext', repo: 'gh-aw-cao' };
-const configuration = { baseUrl: 'https://dashboard.example/api/v1/github/', token: 'test-dashboard-credential', cacheIdentity: 'test-principal:session-one' };
+const configuration = { baseUrl: 'https://dashboard.example/api/v1/github/', cacheIdentity: 'test-principal:session-one' };
 const repository = { full_name: 'githubnext/gh-aw-cao', description: 'Catalog', stargazers_count: 42 };
 /** @type {AbortController[]} */
 let controllers = [];
@@ -35,17 +35,36 @@ afterEach(() => {
 });
 
 describe('worker GitHub resource service', () => {
+  it('reports IndexedDB read failures without fetching or using a memory-only fallback', async () => {
+    vi.spyOn(indexedDB, 'open').mockImplementation(() => { throw new Error('private database detail'); });
+    const fetch = vi.fn(async () => response());
+    const { listener } = subscribe(createGitHubDataService({ fetch }));
+    await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith({
+      data: null, status: 'unavailable', source: 'none', error: 'storage-unavailable', retryAt: null
+    }));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not publish a successful network result when IndexedDB persistence fails', async () => {
+    vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => { throw new Error('private write detail'); });
+    const fetch = vi.fn(async () => response());
+    const { listener } = subscribe(createGitHubDataService({ fetch }));
+    await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: null, status: 'unavailable', source: 'none', error: 'storage-unavailable'
+    })));
+    expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ source: 'network' }));
+  });
+
   it('only calls the configured backend and persists normalized ancillary receipts, not entities or credentials', async () => {
     const fetch = vi.fn(/** @type {typeof globalThis.fetch} */ (async () => response({ ...repository, secret_field: 'discard' })));
     const { listener } = subscribe(createGitHubDataService({ fetch }));
     await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network', status: 'available' })));
     expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-aw-cao');
-    expect(fetch.mock.calls[0]?.[1]).toMatchObject({
-      credentials: 'omit', headers: { Authorization: ['Bearer', configuration.token].join(' ') }
-    });
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'same-origin' });
+    expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
     const receipts = await readTransactions(indexedDB);
     expect(receipts).toHaveLength(1);
-    expect(JSON.stringify(receipts)).not.toContain(configuration.token);
+    expect(JSON.stringify(receipts)).not.toContain('Authorization');
     expect(JSON.stringify(receipts)).not.toContain('secret_field');
     expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
   });
@@ -164,7 +183,7 @@ describe('worker GitHub resource service', () => {
     const first = subscribe(createGitHubDataService({ fetch, now: () => now }));
     await vi.waitFor(() => expect(first.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
     first.stop();
-    const second = subscribe(createGitHubDataService({ fetch, now: () => now }), { ...configuration, token: 'different-credential', cacheIdentity: 'test-principal:session-two' });
+    const second = subscribe(createGitHubDataService({ fetch, now: () => now }), { ...configuration, cacheIdentity: 'test-principal:session-two' });
     await vi.waitFor(() => expect(second.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, status: 'unavailable', error: 'unavailable' })));
     second.stop();
     now += 86_700_001;
@@ -195,7 +214,7 @@ describe('worker GitHub resource service', () => {
   });
 
   it('refreshes active subscriptions when freshness expires and cancels future refreshes on cleanup', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     const fetch = vi.fn().mockResolvedValueOnce(response()).mockResolvedValue(response({ ...repository, stargazers_count: 100 }));
     const active = subscribe(createGitHubDataService({ fetch }));
     await vi.waitFor(() => expect(active.listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
@@ -208,7 +227,7 @@ describe('worker GitHub resource service', () => {
   });
 
   it('backs off retries and recovers an active subscription after an extended outage', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     const fetch = vi.fn().mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline'))
       .mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(response());
     const active = subscribe(createGitHubDataService({ fetch }));
@@ -228,7 +247,7 @@ describe('worker GitHub resource service', () => {
   });
 
   it('drops stale data at its expiry even while a server cooldown delays revalidation', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     const fetch = vi.fn().mockResolvedValueOnce(Response.json(repository, {
       headers: { ETag: '"v1"', 'Cache-Control': 'private, max-age=0, stale-while-revalidate=1' }
     })).mockResolvedValue(new Response(null, { status: 429, headers: { 'Retry-After': '60' } }));

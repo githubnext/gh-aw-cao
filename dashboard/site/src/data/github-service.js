@@ -1,8 +1,15 @@
 import { readTransaction, recordTransaction } from './storage/indexeddb.js';
+import { createDebug } from '../debug.js';
+
+const debug = createDebug('data:github');
+
+class GitHubStorageError extends Error {
+  constructor() { super('storage-unavailable'); }
+}
 
 /**
  * @typedef {{ owner: string, repo: string, resource?: 'repository' | 'latest-release' }} GitHubResource
- * @typedef {{ baseUrl: string | null, token?: string, credentials?: RequestCredentials, cacheIdentity?: string }} GitHubBackendConfiguration
+ * @typedef {{ baseUrl: string | null, credentials?: RequestCredentials, cacheIdentity?: string }} GitHubBackendConfiguration
  * @typedef {{ data: Record<string, unknown> | null, status: 'available' | 'stale' | 'unavailable', source: 'cache' | 'network' | 'none', error: string | null, retryAt: number | null }} GitHubResourceSnapshot
  * @typedef {{ id: string, kind: string, createdAt: string, data: Record<string, unknown>, etag: string | null, freshUntil: number, staleUntil: number }} CacheRecord
  * @typedef {{ listeners: Set<(snapshot: GitHubResourceSnapshot) => void>, controller: AbortController, cached: CacheRecord | null, snapshot: GitHubResourceSnapshot | null, timer?: ReturnType<typeof setTimeout>, expiryTimer?: ReturnType<typeof setTimeout>, attempts: number }} ResourceEntry
@@ -78,6 +85,16 @@ export function createGitHubDataService(dependencies = {}) {
   let authenticationGeneration = 0;
   let activeRequests = 0;
 
+  /** @param {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} record */
+  async function persist(record) {
+    try {
+      await recordTransaction(database, record);
+    } catch {
+      debug({ event: 'storage-failed', operation: 'write' });
+      throw new GitHubStorageError();
+    }
+  }
+
   /** @param {ResourceEntry} entry @param {GitHubResourceSnapshot} snapshot */
   function emit(entry, snapshot) {
     if (entry.controller.signal.aborted) return;
@@ -117,7 +134,7 @@ export function createGitHubDataService(dependencies = {}) {
         || /(^|\.)github(?:usercontent)?\.com$/i.test(base.hostname) || base.hostname === 'api.github.com')) {
       throw new TypeError('GitHub resources require a dashboard backend URL.');
     }
-    const credentials = JSON.stringify([configuration.credentials ?? 'omit', configuration.token ?? '']);
+    const credentials = configuration.credentials ?? 'same-origin';
     let scope = configuration.cacheIdentity;
     if (!scope) {
       scope = ephemeralScopes.get(credentials);
@@ -168,7 +185,13 @@ export function createGitHubDataService(dependencies = {}) {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(identity));
         const partition = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
         const id = `github-resource:${partition}:${path}`;
-        const receipt = await readTransaction(database, id).catch(() => null);
+        let receipt;
+        try {
+          receipt = await readTransaction(database, id);
+        } catch {
+          debug({ event: 'storage-failed', operation: 'read' });
+          throw new GitHubStorageError();
+        }
         if (receipt?.kind === 'github-resource-cache') current.cached = /** @type {CacheRecord} */ (receipt);
         if (current.controller.signal.aborted) return;
         snapshot(current, 'cache', base ? null : 'backend-unconfigured');
@@ -204,11 +227,10 @@ export function createGitHubDataService(dependencies = {}) {
             limit.nextStart = now() + 100;
             timeout = setTimeout(abort, dependencies.timeoutMs ?? 15_000);
             const response = await fetchResource(new URL(path, base ?? undefined), {
-              method: 'GET', cache: 'no-store', redirect: 'error', credentials: configuration.credentials ?? 'omit',
+              method: 'GET', cache: 'no-store', redirect: 'error', credentials,
               signal: requestController.signal,
               headers: {
                 Accept: 'application/json',
-                ...(configuration.token ? { Authorization: ['Bearer', configuration.token].join(' ') } : {}),
                 ...(current.cached?.etag ? { 'If-None-Match': current.cached.etag } : {})
               }
             });
@@ -220,9 +242,9 @@ export function createGitHubDataService(dependencies = {}) {
             if (!response.ok && response.status !== 304) {
               if ([401, 403, 404].includes(response.status)) {
                 current.cached = null;
-                await recordTransaction(database, {
+                await persist({
                   id, kind: 'github-resource-invalidated', createdAt: new Date(now()).toISOString()
-                }).catch(() => undefined);
+                });
               }
               throw new Error(`http-${response.status}`);
             }
@@ -242,21 +264,24 @@ export function createGitHubDataService(dependencies = {}) {
             const freshMs = staleResponse ? 0 : Math.max(0, lifetimeMs - ageMs);
             const staleUntil = now() + Math.max(0, lifetimeMs + staleMs - ageMs);
             if (signal.aborted) return;
-            current.cached = {
+            const updated = {
               id, kind: 'github-resource-cache', createdAt: new Date(now()).toISOString(), data,
               etag: response.headers.get('ETag') ?? (response.status === 304 ? current.cached?.etag ?? null : null),
               freshUntil: now() + freshMs,
               staleUntil: staleResponse ? Math.min(current.cached?.staleUntil ?? staleUntil, staleUntil) : staleUntil
             };
-            await recordTransaction(database, current.cached).catch(() => undefined);
+            await persist(updated);
+            if (signal.aborted) return;
+            current.cached = updated;
             current.attempts = 0;
             snapshot(current, 'network', staleResponse ? 'stale-response' : null, limit.until > now() ? limit.until : null);
             schedule(Math.max(staleResponse ? 30_000 : 1000, freshMs, limit.until - now()));
           } catch (error) {
             if (signal.aborted) return;
             current.attempts++;
-            const message = error instanceof Error && /^http-\d+$/.test(error.message) ? error.message : 'unavailable';
-            const retryable = message === 'unavailable' || /^http-(429|5\d\d)$/.test(message);
+            const message = error instanceof GitHubStorageError ? error.message
+              : error instanceof Error && /^http-\d+$/.test(error.message) ? error.message : 'unavailable';
+            const retryable = ['unavailable', 'storage-unavailable'].includes(message) || /^http-(429|5\d\d)$/.test(message);
             const backoff = current.attempts <= 3
               ? Math.min(60_000, (dependencies.retryBaseMs ?? 1000) * 2 ** (current.attempts - 1))
               : FRESH_MS;
@@ -271,8 +296,8 @@ export function createGitHubDataService(dependencies = {}) {
         }
         if (current.cached && current.cached.freshUntil > now()) schedule(current.cached.freshUntil - now());
         else void refresh();
-      } catch {
-        snapshot(current, 'cache', base ? 'unavailable' : 'backend-unconfigured');
+      } catch (error) {
+        snapshot(current, 'cache', error instanceof GitHubStorageError ? error.message : base ? 'unavailable' : 'backend-unconfigured');
       }
     }
   }
@@ -281,7 +306,7 @@ export function createGitHubDataService(dependencies = {}) {
     for (const entry of entries.values()) {
       if (entry.cached) void recordTransaction(database, {
         id: entry.cached.id, kind: 'github-resource-invalidated', createdAt: new Date(now()).toISOString()
-      }).catch(() => undefined);
+      }).catch(() => { debug({ event: 'storage-failed', operation: 'invalidate' }); });
       entry.cached = null;
       snapshot(entry, 'cache', 'authentication-changed');
       entry.controller.abort();

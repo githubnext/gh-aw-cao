@@ -18,7 +18,73 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
+
+type resourceTestStore struct {
+	mu       sync.Mutex
+	entries  map[string]postgresx.GitHubResource
+	readErr  error
+	writeErr error
+}
+
+func (s *resourceTestStore) ReadGitHubResource(_ context.Context, key string) (postgresx.GitHubResource, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.readErr != nil {
+		return postgresx.GitHubResource{}, false, s.readErr
+	}
+	entry, found := s.entries[key]
+	if found && time.Since(entry.Validated) > githubResourceKeepFor {
+		delete(s.entries, key)
+		return postgresx.GitHubResource{}, false, nil
+	}
+	return entry, found, nil
+}
+
+func (s *resourceTestStore) WriteGitHubResource(_ context.Context, key string, value postgresx.GitHubResource) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.writeErr != nil {
+		return s.writeErr
+	}
+	if s.entries == nil {
+		s.entries = make(map[string]postgresx.GitHubResource)
+	}
+	s.entries[key] = value
+	for len(s.entries) > githubResourceEntries {
+		var oldestKey string
+		var oldest time.Time
+		for key, entry := range s.entries {
+			if oldestKey == "" || entry.Validated.Before(oldest) {
+				oldestKey, oldest = key, entry.Validated
+			}
+		}
+		delete(s.entries, oldestKey)
+	}
+	return nil
+}
+
+func (s *resourceTestStore) DeleteGitHubResource(_ context.Context, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.entries, key)
+	return nil
+}
+
+func (c *githubResourceCache) get(key string) (githubResourceEntry, bool) {
+	value, found, err := c.load(context.Background(), key)
+	if err != nil {
+		panic(err)
+	}
+	return value, found
+}
+
+func (c *githubResourceCache) put(key string, entry githubResourceEntry) {
+	if err := c.save(context.Background(), key, entry); err != nil {
+		panic(err)
+	}
+}
 
 type resourceRoundTripper func(*http.Request) (*http.Response, error)
 
@@ -51,6 +117,7 @@ func resourceTestApp(t *testing.T, transport resourceRoundTripper) *App {
 		config: Config{HostProfile: localHostProfile(), ActionsRepository: "owner/repo"},
 		quota:  quota,
 		githubResources: githubResourceCache{
+			store:      &resourceTestStore{},
 			localToken: func(context.Context) (string, error) { return "test-credential", nil },
 			transport:  transport,
 		},
@@ -401,12 +468,13 @@ func TestGitHubResourceReleaseRoute(t *testing.T) {
 }
 
 func TestGitHubResourceCacheBoundAndExpiry(t *testing.T) {
-	var cache githubResourceCache
+	store := &resourceTestStore{}
+	cache := githubResourceCache{store: store}
 	for index := range githubResourceEntries + 10 {
 		cache.put(strconv.Itoa(index), githubResourceEntry{body: []byte("{}"), validated: time.Now()})
 	}
-	if len(cache.entries) != githubResourceEntries {
-		t.Fatalf("unbounded cache size=%d", len(cache.entries))
+	if len(store.entries) != githubResourceEntries {
+		t.Fatalf("unbounded cache size=%d", len(store.entries))
 	}
 	cache.put("expired", githubResourceEntry{validated: time.Now().Add(-githubResourceKeepFor - time.Minute)})
 	if _, found := cache.get("expired"); found {
@@ -443,7 +511,7 @@ func TestGitHubResourceCacheIsolatesAuthentication(t *testing.T) {
 	if reads.Load() != 3 {
 		t.Fatalf("authentication cache partitions collapsed: upstream reads=%d", reads.Load())
 	}
-	for key := range app.githubResources.entries {
+	for key := range app.githubResources.store.(*resourceTestStore).entries {
 		if strings.Contains(key, "identity-") || strings.Contains(key, "session=") {
 			t.Fatal("raw authentication persisted in resource cache keys")
 		}
@@ -561,6 +629,7 @@ func TestGitHubResourceDoesNotServeStaleAfterAccessRevoked(t *testing.T) {
 				if request.URL.Path == "/rate_limit" {
 					return resourceResponse(http.StatusOK, `{}`), nil
 				}
+
 				if reads.Add(1) == 1 {
 					return resourceResponse(http.StatusOK, resourceRepositoryJSON), nil
 				}

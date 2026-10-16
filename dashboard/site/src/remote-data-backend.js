@@ -101,22 +101,19 @@ export function githubWorkerBackendConfiguration() {
   const previewBase = globalThis.document?.querySelector?.('meta[name="dashboard-github-api-base"]')?.getAttribute("content");
   if (previewBase) return {
     baseUrl: new URL("api/v1/github/", new URL(previewBase, globalThis.location?.origin ?? "https://localhost")).href,
-    token: "",
     credentials: /** @type {RequestCredentials} */ ("omit"),
     cacheIdentity: `preview:${githubSessionCacheIdentity ??= crypto.randomUUID()}`
   };
   const configured = usesRemoteDataBackend()
     || Boolean(globalThis.document?.querySelector?.('meta[name="dashboard-api-base"]')?.getAttribute("content"));
   const oauth = usesGitHubAuthentication();
-  const token = oauth ? "" : accessToken();
-  const authentication = JSON.stringify([oauth, oauth ? csrfToken() : token]);
+  const authentication = JSON.stringify([oauth, githubResourcePrincipal(), oauth ? csrfToken() : "local-session"]);
   const changed = githubObservedAuthentication !== undefined && githubObservedAuthentication !== authentication;
   githubObservedAuthentication = authentication;
   if (changed) invalidateGitHubResourceAuthentication(true);
   return {
     baseUrl: configured ? apiUrl("/api/v1/github/") : null,
-    token,
-    credentials: /** @type {RequestCredentials} */ (oauth ? "same-origin" : "omit"),
+    credentials: /** @type {RequestCredentials} */ ("same-origin"),
     cacheIdentity: `${oauth ? githubResourcePrincipal() || "unverified" : "capability"}:${githubSessionCacheIdentity ??= crypto.randomUUID()}`
   };
 }

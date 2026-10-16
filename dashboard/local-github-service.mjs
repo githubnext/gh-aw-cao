@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promisify } from "node:util";
+import { DatabaseSync } from "node:sqlite";
 
 const executeFile = promisify(execFile);
 const freshMs = 300_000;
@@ -12,6 +13,8 @@ const fields = {
   repository: ["full_name", "description", "html_url", "default_branch", "stargazers_count", "forks_count", "open_issues_count", "archived", "visibility"],
   release: ["tag_name", "name", "html_url", "published_at", "draft", "prerelease"],
 };
+
+class GitHubStorageError extends Error {}
 
 function unavailable(status = 503, retry = 60) {
   return {
@@ -35,12 +38,47 @@ export function createLocalGitHubService({
     timeout: 10_000, maxBuffer: 16 * 1024, windowsHide: true,
   })).stdout.trim(),
   now = Date.now,
+  databasePath = ":memory:",
 } = {}) {
-  const cache = new Map();
+  const database = new DatabaseSync(databasePath);
+  database.exec("PRAGMA busy_timeout=5000");
+  database.exec(`CREATE TABLE IF NOT EXISTS github_resources (
+    id TEXT PRIMARY KEY, body TEXT NOT NULL, etag TEXT NOT NULL,
+    upstream_etag TEXT, checked_at INTEGER NOT NULL
+  )`);
+  const read = database.prepare("SELECT body, etag, upstream_etag AS upstreamEtag, checked_at AS checkedAt FROM github_resources WHERE id = ?");
+  const remove = database.prepare("DELETE FROM github_resources WHERE id = ?");
+  const write = database.prepare(`INSERT INTO github_resources VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET body=excluded.body, etag=excluded.etag,
+    upstream_etag=excluded.upstream_etag, checked_at=excluded.checked_at`);
+  function save(key, entry) {
+    let started = false;
+    try {
+      database.exec("BEGIN IMMEDIATE");
+      started = true;
+      write.run(key, JSON.stringify(entry.body), entry.etag, entry.upstreamEtag, entry.checkedAt);
+      database.prepare("DELETE FROM github_resources WHERE checked_at < ?").run(now() - freshMs - staleMs);
+      database.prepare(`DELETE FROM github_resources WHERE id IN (
+        SELECT id FROM github_resources ORDER BY checked_at DESC, id LIMIT -1 OFFSET ?
+      )`).run(maxEntries);
+      database.exec("COMMIT");
+    } catch (error) {
+      if (started) database.exec("ROLLBACK");
+      throw new GitHubStorageError("GitHub resource storage failed.", { cause: error });
+    }
+  }
+  function invalidate(key) {
+    try {
+      remove.run(key);
+    } catch (error) {
+      throw new GitHubStorageError("GitHub resource invalidation failed.", { cause: error });
+    }
+  }
   const inFlight = new Map();
   let blockedUntil = 0;
   let credentialsBlockedUntil = 0;
   let tokenPromise;
+  let closed = false;
 
   function cachedResponse(entry, stale = false) {
     return {
@@ -76,8 +114,9 @@ export function createLocalGitHubService({
         blockedUntil = Math.max(blockedUntil, Number.isFinite(reset) && reset > now() ? reset : now() + 60_000);
       }
       if (response.status === 304 && entry) {
-        entry.checkedAt = now();
-        return cachedResponse(entry);
+        const updated = { ...entry, checkedAt: now() };
+        save(key, updated);
+        return cachedResponse(updated);
       }
       if (response.status === 429 || (response.status === 403
           && (response.headers.has("retry-after") || response.headers.get("x-ratelimit-remaining") === "0"))) {
@@ -86,7 +125,7 @@ export function createLocalGitHubService({
         return entry ? cachedResponse(entry, true) : unavailable(429, (blockedUntil - now()) / 1000);
       }
       if (!response.ok) {
-        if (response.status === 404 || response.status === 401 || response.status === 403) cache.delete(key);
+        if (response.status === 404 || response.status === 401 || response.status === 403) invalidate(key);
         if (response.status === 404) return { status: 404, headers: { "Cache-Control": "no-store" }, body: { error: "GitHub resource not found." } };
         if (response.status === 401 || response.status === 403) blockedUntil = Math.max(blockedUntil, now() + 60_000);
         return entry && response.status >= 500 ? cachedResponse(entry, true) : unavailable();
@@ -126,18 +165,24 @@ export function createLocalGitHubService({
         upstreamEtag: response.headers.get("etag"),
         checkedAt: now(),
       };
-      cache.delete(key);
-      while (cache.size >= maxEntries) cache.delete(cache.keys().next().value);
-      cache.set(key, updated);
+      save(key, updated);
       return cachedResponse(updated);
-    } catch {
+    } catch (error) {
+      if (error instanceof GitHubStorageError) throw error;
       blockedUntil = Math.max(blockedUntil, now() + 30_000);
       return entry ? cachedResponse(entry, true) : unavailable();
     }
   }
 
   return {
+    async close() {
+      if (closed) return;
+      closed = true;
+      await Promise.allSettled(inFlight.values());
+      database.close();
+    },
     async request(pathname, ifNoneMatch) {
+      if (closed) throw new Error("GitHub resource service is closed.");
       const match = /^\/api\/v1\/github\/repos\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9_.-]{1,100})(\/releases\/latest)?$/.exec(pathname);
       if (!match || [".", ".."].includes(match?.[2])) {
         return { status: 400, headers: { "Cache-Control": "no-store" }, body: { error: "Invalid GitHub resource." } };
@@ -152,11 +197,13 @@ export function createLocalGitHubService({
         credentialsBlockedUntil = now() + 60_000;
         return unavailable();
       }
+      if (closed) throw new Error("GitHub resource service is closed.");
       const path = `/repos/${match[1].toLowerCase()}/${match[2].toLowerCase()}${match[3] ?? ""}`;
       const key = `${createHash("sha256").update(credential).digest("hex")}:${path}`;
-      let entry = cache.get(key);
+      const stored = read.get(key);
+      let entry = stored ? { ...stored, body: JSON.parse(stored.body) } : undefined;
       if (entry && now() - entry.checkedAt > freshMs + staleMs) {
-        cache.delete(key);
+        invalidate(key);
         entry = undefined;
       }
       let result;

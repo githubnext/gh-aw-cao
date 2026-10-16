@@ -29,6 +29,17 @@ It is not an alternate canonical representation. Startup only initializes this
 schema; there are no old-layout migrations or backward-compatible imports.
 Use a fresh database when changing its physical layout.
 
+`cao_github_resources` retains allowlisted repository metadata and latest-release
+fields in typed columns, with ETags and validation timestamps, outside canonical
+evidence. It is namespace- and credential-partitioned, bounded to 256 rows per
+namespace, and expires after 24 hours plus five minutes. The local preview keeps
+its bounded resource cache in the same SQLite database as its dashboard data;
+the browser worker keeps normalized receipts in the existing IndexedDB
+transaction store. Process memory holds active subscriptions and in-flight
+coordination only, not a separate resource cache. GitHub credentials stay on the
+server. Browser resource requests use HttpOnly cookies; local Go bootstrap issues
+a Secure, SameSite=Strict cookie restricted to read-only GitHub resource routes.
+
 The local SQLite evidence mirrors likewise retain typed query columns and
 observation metadata, but no `record_json` copy. The complete document lives
 once in `__idb_records.value`. Outdated mirrors are rebuilt transactionally

@@ -11,21 +11,21 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/collect"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 )
 
 const (
 	githubResourceFreshFor = 5 * time.Minute
-	githubResourceKeepFor  = 24*time.Hour + githubResourceFreshFor
+	githubResourceKeepFor  = postgresx.GitHubResourceKeepFor
 	githubResourceMaxBytes = 64 << 10
 	githubUpstreamMaxBytes = 1 << 20
-	githubResourceEntries  = 256
+	githubResourceEntries  = postgresx.GitHubResourceEntries
 )
 
 type githubRepositoryResource struct {
@@ -56,45 +56,32 @@ type githubResourceEntry struct {
 	validated    time.Time
 }
 
-// This cache is disposable and process-scoped, not repository authority.
-// Both its cardinality and each normalized payload are bounded.
+type githubResourceStore interface {
+	ReadGitHubResource(context.Context, string) (postgresx.GitHubResource, bool, error)
+	WriteGitHubResource(context.Context, string, postgresx.GitHubResource) error
+	DeleteGitHubResource(context.Context, string) error
+}
+
 type githubResourceCache struct {
-	mu      sync.Mutex
-	entries map[string]githubResourceEntry
-	flight  singleflight.Group
+	store  githubResourceStore
+	flight singleflight.Group
 	// These dependencies are overridden only by focused package tests.
 	localToken func(context.Context) (string, error)
 	transport  http.RoundTripper
 }
 
-func (c *githubResourceCache) get(key string) (githubResourceEntry, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	entry, ok := c.entries[key]
-	if ok && time.Since(entry.validated) > githubResourceKeepFor {
-		delete(c.entries, key)
-		return githubResourceEntry{}, false
+func (c *githubResourceCache) load(ctx context.Context, key string) (githubResourceEntry, bool, error) {
+	if c.store == nil {
+		return githubResourceEntry{}, false, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
 	}
-	return entry, ok
+	value, found, err := c.store.ReadGitHubResource(ctx, key)
+	return githubResourceEntry{body: value.Body, etag: value.ETag, upstreamETag: value.UpstreamETag, validated: value.Validated}, found, err
 }
 
-func (c *githubResourceCache) put(key string, entry githubResourceEntry) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.entries == nil {
-		c.entries = make(map[string]githubResourceEntry)
-	}
-	if _, exists := c.entries[key]; !exists && len(c.entries) >= githubResourceEntries {
-		var oldestKey string
-		var oldest time.Time
-		for candidate, value := range c.entries {
-			if oldestKey == "" || value.validated.Before(oldest) {
-				oldestKey, oldest = candidate, value.validated
-			}
-		}
-		delete(c.entries, oldestKey)
-	}
-	c.entries[key] = entry
+func (c *githubResourceCache) save(ctx context.Context, key string, entry githubResourceEntry) error {
+	return c.store.WriteGitHubResource(ctx, key, postgresx.GitHubResource{
+		Body: entry.body, ETag: entry.etag, UpstreamETag: entry.upstreamETag, Validated: entry.validated,
+	})
 }
 
 type githubResourceError struct {
@@ -146,16 +133,24 @@ func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release boo
 		path += "/releases/latest"
 	}
 	key := githubResourceKey(installation, path, r.Header, credentials.token)
-	entry, ok := a.githubResources.get(key)
+	entry, ok, err := a.githubResources.load(r.Context(), key)
+	if err != nil {
+		writeGitHubResourceError(w, err)
+		return
+	}
 	stale := false
 	var staleError error
 	if !ok || time.Since(entry.validated) >= githubResourceFreshFor {
 		result := a.githubResources.flight.DoChan(key, func() (any, error) {
-			if cached, found := a.githubResources.get(key); found && time.Since(cached.validated) < githubResourceFreshFor {
-				return cached, nil
-			}
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 20*time.Second)
 			defer cancel()
+			cached, found, err := a.githubResources.load(ctx, key)
+			if err != nil {
+				return nil, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+			}
+			if found && time.Since(cached.validated) < githubResourceFreshFor {
+				return cached, nil
+			}
 			return a.fetchGitHubResource(ctx, credentials, installation, path, key, release)
 		})
 		select {
@@ -194,6 +189,14 @@ func (a *App) gitHubResource(w http.ResponseWriter, r *http.Request, release boo
 func githubResourceKey(installation int64, path string, headers http.Header, credential string) string {
 	identity := sha256.Sum256([]byte(headers.Get("Authorization") + "\x00" + headers.Get("Cookie") + "\x00" + credential))
 	return strconv.FormatInt(installation, 10) + ":" + path + ":" + hex.EncodeToString(identity[:])
+}
+
+func (a *App) githubLocalResourceSession() string {
+	if a.accessToken == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte("cao-github-resource-session\x00" + a.accessToken))
+	return hex.EncodeToString(sum[:])
 }
 
 func (a *App) githubResourceScope(ctx context.Context, repository string) (int64, error) {
@@ -326,7 +329,10 @@ func (a *App) fetchGitHubResource(ctx context.Context, credentials githubResourc
 		defer cancel()
 		_ = a.quota.Release(cleanup, reservation)
 	}()
-	cached, exists := a.githubResources.get(key)
+	cached, exists, err := a.githubResources.load(ctx, key)
+	if err != nil {
+		return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+	}
 	response, err := githubResourceRequest(ctx, client, base, token, path, cached.upstreamETag)
 	if err != nil {
 		return githubResourceEntry{}, err
@@ -340,9 +346,15 @@ func (a *App) fetchGitHubResource(ctx context.Context, credentials githubResourc
 		return githubResourceEntry{}, limited
 	}
 	if response.StatusCode == http.StatusNotFound {
+		if err := a.githubResources.store.DeleteGitHubResource(ctx, key); err != nil {
+			return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+		}
 		return githubResourceEntry{}, &githubResourceError{status: http.StatusNotFound}
 	}
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		if err := a.githubResources.store.DeleteGitHubResource(ctx, key); err != nil {
+			return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+		}
 		return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
 	}
 	if response.StatusCode == http.StatusNotModified && exists {
@@ -350,7 +362,9 @@ func (a *App) fetchGitHubResource(ctx context.Context, credentials githubResourc
 		if etag := response.Header.Get("ETag"); etag != "" {
 			cached.upstreamETag = etag
 		}
-		a.githubResources.put(key, cached)
+		if err := a.githubResources.save(ctx, key, cached); err != nil {
+			return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+		}
 		return cached, nil
 	}
 	if response.StatusCode != http.StatusOK {
@@ -370,7 +384,9 @@ func (a *App) fetchGitHubResource(ctx context.Context, credentials githubResourc
 	sum := sha256.Sum256(normalized)
 	entry := githubResourceEntry{body: normalized, etag: `"` + hex.EncodeToString(sum[:]) + `"`,
 		upstreamETag: response.Header.Get("ETag"), validated: time.Now()}
-	a.githubResources.put(key, entry)
+	if err := a.githubResources.save(ctx, key, entry); err != nil {
+		return githubResourceEntry{}, &githubResourceError{status: http.StatusServiceUnavailable, denyStale: true}
+	}
 	return entry, nil
 }
 

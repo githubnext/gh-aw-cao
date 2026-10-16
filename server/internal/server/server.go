@@ -285,6 +285,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
 	}
+	if config.Database != nil {
+		app.githubResources.store = config.Database
+	}
 	if os.Getenv("CAO_SERVER_LOGS_ENABLED") == "true" {
 		app.logs = logger.EnableBuffer()
 	}
@@ -831,7 +834,14 @@ func validLocalRequestHost(value string) bool {
 
 func (a *App) authorized(request *http.Request) bool {
 	token, ok := bearerToken(request)
-	return ok && constantTimeTokenEqual(token, a.accessToken)
+	if ok && constantTimeTokenEqual(token, a.accessToken) {
+		return true
+	}
+	if request.Method != http.MethodGet || !strings.HasPrefix(request.URL.Path, "/api/v1/github/") {
+		return false
+	}
+	cookie, err := request.Cookie("cao_github_local")
+	return err == nil && constantTimeTokenEqual(cookie.Value, a.githubLocalResourceSession())
 }
 
 type githubActionsActorContextKey struct{}
@@ -1652,6 +1662,10 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
 	} else if accessToken != "" {
+		http.SetCookie(response, &http.Cookie{
+			Name: "cao_github_local", Value: a.githubLocalResourceSession(), Path: "/api/v1/github/",
+			HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode,
+		})
 		token, _ := json.Marshal(accessToken)
 		injections += fmt.Sprintf(
 			`<script>localStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,

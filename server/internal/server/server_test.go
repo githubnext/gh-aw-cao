@@ -895,8 +895,11 @@ func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
 	if bootstrap.Code != http.StatusOK {
 		t.Fatalf("bootstrap returned %d: %s", bootstrap.Code, bootstrap.Body.String())
 	}
-	if len(bootstrap.Result().Cookies()) != 0 {
-		t.Fatal("bootstrap must not place the bearer capability in a cookie")
+	cookies := bootstrap.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != "cao_github_local" ||
+		cookies[0].Value == testAccessToken || !cookies[0].HttpOnly ||
+		cookies[0].Path != "/api/v1/github/" {
+		t.Fatal("bootstrap must issue only a distinct, HttpOnly, read-only resource cookie")
 	}
 	if !strings.Contains(bootstrap.Body.String(), `localStorage.setItem("cao-dashboard-access-token"`) {
 		t.Fatalf("bootstrap did not initialize origin-scoped storage: %s", bootstrap.Body.String())

@@ -114,6 +114,7 @@ test('GitHub resource operations describe authenticated conditional reads and gr
     const operation = openapi.paths[path].get
     assert.ok(operation.security.some(entry => 'BearerAuth' in entry))
     assert.ok(operation.security.some(entry => 'ApiKeyAuth' in entry))
+    assert.ok(operation.security.some(entry => 'LocalGitHubResourceSession' in entry))
     assert.ok(operation.parameters.some(parameter => parameter.name === 'If-None-Match'))
     assert.equal(operation.responses['200'].content['application/json'].schema.$ref, `#/components/schemas/${model}`)
     for (const status of ['200', '304']) {
@@ -128,6 +129,7 @@ test('GitHub resource operations describe authenticated conditional reads and gr
       assert.ok(operation.responses[status].headers['Retry-After'])
     }
   }
+  assert.equal(openapi.components.securitySchemes.LocalGitHubResourceSession.name, 'cao_github_local')
 })
 
 test('structured payload fields stay in sync with Go JSON tags', () => {

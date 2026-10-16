@@ -34,8 +34,10 @@ it('uses worker transport even in hosted mode, passes backend auth, and cleans u
   const message = worker?.postMessage.mock.calls[0]?.[0];
   expect(message).toMatchObject({
     operation: 'subscribe-github-resource',
-    configuration: { baseUrl: 'https://dashboard.example/api/v1/github/', token: 'dashboard-test-token', credentials: 'omit' }
+    configuration: { baseUrl: 'https://dashboard.example/api/v1/github/', credentials: 'same-origin' }
   });
+  expect(JSON.stringify(message)).not.toContain('dashboard-test-token');
+  expect(message.configuration).not.toHaveProperty('token');
   const snapshot = { data: { full_name: 'githubnext/gh-aw-cao' }, status: 'available', source: 'cache', error: null, retryAt: null };
   worker?.listeners.get('message')?.({ data: { type: 'github-resource', subscriptionId: message.subscriptionId, snapshot } });
   expect(notify).toHaveBeenCalledWith(snapshot);
@@ -53,7 +55,8 @@ it('leaves static Pages unconfigured and never attaches bearer credentials in OA
   expect(githubWorkerBackendConfiguration().baseUrl).toBeNull();
   document.head.innerHTML = '<meta name="dashboard-data-backend" content="server-http"><meta name="cao-auth-mode" content="github">';
   localStorage.setItem('cao-dashboard-access-token', 'unused-token');
-  expect(githubWorkerBackendConfiguration()).toMatchObject({ credentials: 'same-origin', token: '' });
+  expect(githubWorkerBackendConfiguration()).toMatchObject({ credentials: 'same-origin' });
+  expect(githubWorkerBackendConfiguration()).not.toHaveProperty('token');
   expect(githubWorkerBackendConfiguration().cacheIdentity).toBe(githubWorkerBackendConfiguration().cacheIdentity);
 });
 
@@ -63,11 +66,11 @@ it('honors the local preview GitHub API route prefix without forwarding stored b
   const { githubWorkerBackendConfiguration } = await import('../../src/remote-data-backend.js');
   expect(githubWorkerBackendConfiguration()).toMatchObject({
     baseUrl: new URL('/cao/api/v1/github/', location.origin).href,
-    token: '', credentials: 'omit', cacheIdentity: expect.stringMatching(/^preview:/)
+    credentials: 'omit', cacheIdentity: expect.stringMatching(/^preview:/)
   });
 });
 
-it('rotates opaque cache scopes after credential changes, principal changes, and logout without persisting credentials', async () => {
+it('ignores stored bearer tokens and rotates opaque cache scopes after principal changes and logout', async () => {
   const remote = await import('../../src/remote-data-backend.js');
   const auth = await import('../../src/auth.js');
   localStorage.setItem('cao-dashboard-access-token', 'first-credential');
@@ -75,7 +78,7 @@ it('rotates opaque cache scopes after credential changes, principal changes, and
   expect(first.cacheIdentity).not.toContain('first-credential');
   localStorage.setItem('cao-dashboard-access-token', 'second-credential');
   const second = remote.githubWorkerBackendConfiguration();
-  expect(second.cacheIdentity).not.toBe(first.cacheIdentity);
+  expect(second.cacheIdentity).toBe(first.cacheIdentity);
   auth.setGitHubResourcePrincipal('another-account');
   const another = remote.githubWorkerBackendConfiguration();
   expect(another.cacheIdentity).not.toBe(second.cacheIdentity);

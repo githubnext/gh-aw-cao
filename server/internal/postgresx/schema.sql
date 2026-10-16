@@ -4,6 +4,34 @@
 
 -- Inventory normalization contract: 4bac781c5f40c973c3765bdc44498a95647e58a7b83dd597b7c7db8b5263daa7
 
+CREATE TABLE IF NOT EXISTS cao_github_resources (
+  namespace TEXT NOT NULL,
+  id TEXT NOT NULL,
+  etag TEXT NOT NULL,
+  upstream_etag TEXT NOT NULL,
+  validated_at TIMESTAMPTZ NOT NULL,
+  release BOOLEAN NOT NULL,
+  full_name TEXT,
+  description TEXT,
+  html_url TEXT NOT NULL,
+  default_branch TEXT,
+  stargazers_count BIGINT,
+  forks_count BIGINT,
+  open_issues_count BIGINT,
+  archived BOOLEAN,
+  visibility TEXT,
+  tag_name TEXT,
+  name TEXT,
+  published_at TEXT,
+  draft BOOLEAN,
+  prerelease BOOLEAN,
+  PRIMARY KEY (namespace, id),
+  CHECK (octet_length(id) <= 512),
+  CHECK (octet_length(etag) <= 4096 AND octet_length(upstream_etag) <= 4096)
+);
+
+CREATE INDEX IF NOT EXISTS cao_github_resources_expiry ON cao_github_resources (namespace, validated_at, id);
+
 CREATE TABLE IF NOT EXISTS cao_contract (
   digest TEXT NOT NULL,
   PRIMARY KEY (digest)
