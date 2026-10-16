@@ -16,6 +16,8 @@ import { scrollRenderedViewsIntoView } from "./dashboard-deployed-refresh-helper
 
 const SERVER_LOCAL_ONLY_PAGES = new Map([
   ["configuration", "configuration-policy is provided by the local preview fixture, not the PostgreSQL server"],
+  ["commands", "command history requires the local preview's cli-queue capability"],
+  ["command", "command output requires the local preview's cli-queue capability"],
 ]);
 
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
@@ -192,11 +194,9 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
           const expectsQueries = pageViews.some((view) => (
             view?.data && (typeof view.data.source === "string" || Array.isArray(view.data.sources))
           ));
-          const rendered = await views.evaluateAll((items) =>
-            items.map((item) => item.getAttribute("data-view-id")));
           const unavailable = activePage.locator('[data-view-state="unavailable"][role="alert"]');
           if (definition.route?.["availability-view"] && await unavailable.isVisible()) {
-            expect(rendered, "Unavailable detail pages replace their views with recovery actions").toEqual([]);
+            await expect(views, "Unavailable detail pages replace their views with recovery actions").toHaveCount(0);
             await expect(unavailable).toContainText(definition.route["availability-message"]);
             await expect(unavailable.getByRole("button", { name: "Retry", exact: true })).toBeVisible();
             await expect(unavailable.getByRole("link")).toHaveAttribute(
@@ -204,6 +204,8 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
             );
             result.availability = "unavailable";
           } else {
+            const rendered = await views.evaluateAll((items) =>
+              items.map((item) => item.getAttribute("data-view-id")));
             for (const viewId of declared) {
               if (!rendered.includes(viewId)) result.errors.push(`Missing view: ${viewId}`);
             }
