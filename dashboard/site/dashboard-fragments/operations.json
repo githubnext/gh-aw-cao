@@ -342,48 +342,47 @@
       ]
     },
     {
-      "name": "indexing-daily-workflow-runs",
-      "subject": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
-      "objective": "Expose the observed daily raw-run totals from ingestion transactions.",
-      "acceptance": "Each returned UTC day sums rawRuns from the selected ingestion transaction kinds; transaction volume is not a count of distinct retained runs or proof of source coverage.",
+      "name": "indexing-ingestion-runs",
+      "subject": "Show every retained ingestion transaction at its precise timestamp.",
+      "objective": "Compare reported run counts across individual ingestion operations.",
+      "acceptance": "Preserve every transaction, including coincident timestamps, all kinds, and zero counts, without grouping, limits, or page filters. Missing counts remain unavailable and use explicitly labeled zero-position placeholders, not measured zeroes.",
       "from": "transactions",
-      "filter": {
-        "predicates": [
-          {
-            "field": "kind",
-            "in": [
-              "ingest-jsonl",
-              "ingest-normalized-jsonl"
-            ]
-          }
-        ]
-      },
       "compute": [
         {
-          "as": "day",
-          "function": "date-day",
+          "as": "workflow-runs",
+          "function": "coalesce",
+          "args": [{ "field": "rawRuns" }, { "value": 0 }]
+        },
+        {
+          "as": "missing-run-count",
+          "function": "equals-any",
+          "args": [{ "field": "rawRuns" }, { "value": null }]
+        },
+        {
+          "as": "run-count-status",
+          "function": "if",
           "args": [
-            {
-              "field": "createdAt"
-            }
+            { "field": "missing-run-count" },
+            { "value": "Run count unavailable (shown at 0)" },
+            { "value": "Reported run count" }
           ]
         }
       ],
-      "aggregate": {
-        "by": [
-          "day"
-        ],
-        "values": [
-          {
-            "field": "rawRuns",
-            "as": "workflow-runs",
-            "reducer": "sum"
-          }
-        ]
-      },
+      "select": [
+        { "field": "id" },
+        { "field": "kind" },
+        { "field": "createdAt" },
+        { "field": "rawRuns" },
+        { "field": "workflow-runs" },
+        { "field": "run-count-status" }
+      ],
       "order-by": [
         {
-          "field": "day",
+          "field": "createdAt",
+          "direction": "asc"
+        },
+        {
+          "field": "id",
           "direction": "asc"
         }
       ]
@@ -1726,28 +1725,35 @@
         },
         {
           "id": "indexing-workflow-runs",
-          "title": "Workflow runs indexed",
-          "subject": "Track new workflow runs retained from Activity each day.",
-          "objective": "Identify days with unexpected changes in indexed run volume.",
-          "acceptance": "Changes are compared with ingestion and source evidence, not interpreted as workflow health alone.",
-          "description": "New workflow runs retained from CAO Activity each day.",
+          "title": "Runs per ingestion",
+          "subject": "Track the reported run count of every retained ingestion entry.",
+          "objective": "Identify changes in run volume at the time of each ingestion operation.",
+          "acceptance": "Every transaction is represented at its precise timestamp; unavailable counts are labeled, not inferred as measured zeroes.",
+          "description": "Every retained ingestion entry, across all kinds. Missing run counts are labeled and shown at 0 as placeholders, not measured zeroes. Reported counts are input runs, not distinct retained runs.",
           "data": {
-            "source": "indexing-daily-workflow-runs"
+            "source": "indexing-ingestion-runs",
+            "query-context": false
           },
           "mark": "chart",
-          "chart": "bar",
+          "chart": "scatter",
           "layout": "full",
-          "empty-message": "No CAO Activity workflow-run history has been retained.",
+          "empty-message": "No ingestion entries have been retained.",
           "encoding": {
             "x": {
-              "field": "day",
-              "type": "nominal",
-              "title": "Indexed"
+              "field": "createdAt",
+              "type": "temporal",
+              "format": "human-friendly-timestamp",
+              "title": "Ingested at"
             },
             "y": {
               "field": "workflow-runs",
               "type": "quantitative",
-              "title": "New workflow runs"
+              "title": "Ingested runs"
+            },
+            "color": {
+              "field": "run-count-status",
+              "type": "nominal",
+              "title": "Run count"
             }
           }
         },

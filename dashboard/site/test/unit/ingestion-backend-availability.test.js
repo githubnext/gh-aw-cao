@@ -7,7 +7,7 @@ import {
 } from '../../src/dashboard-chunks.js';
 import { disposeDashboard, renderDashboard } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { DashboardServerError, queryRemoteDashboard } from '../../src/remote-data-backend.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { compileDashboardViewPayloadQueries, dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
@@ -99,6 +99,55 @@ describe('Ingestion backend contract', () => {
     const signal = subscribe.mock.calls[0][3].signal;
     disposeDashboard(root);
     expect(signal.aborted).toBe(true);
+  });
+
+  it('updates the ingestion scatter from abort-scoped worker query snapshots, including coincident entries', async () => {
+    const view = page.views.find((/** @type {{ id: string }} */ entry) => entry.id === 'indexing-workflow-runs');
+    const documentInput = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        ...authoritativeDashboard.dashboard,
+        pages: [{ id: 'indexing', kind: /** @type {const} */ ('custom'), views: [view] }],
+        callouts: undefined
+      }
+    };
+    /** @type {any} */
+    let subscription;
+    const read = async () => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'query-canonical-dashboard',
+      pageId: 'indexing', viewId: view.id, sourceNames: [view.data.source],
+      context: documentInput.dashboard
+    }, subscription?.signal));
+    const subscribe = vi.fn(async (_pageId, _viewId, _names, options) => {
+      subscription = options;
+      return read();
+    });
+    const root = renderDashboard({
+      document: documentInput, sources: {},
+      loadPageSources: Object.assign(vi.fn(), { subscribeViewSources: subscribe })
+    });
+    roots.push(root);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.textContent).toContain('No ingestion entries have been retained.'));
+    expect(subscription.signal).toBeInstanceOf(AbortSignal);
+    const createdAt = '2026-09-24T01:02:03.456Z';
+    for (const entry of [
+      { id: 'known', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
+      { id: 'zero', kind: 'ingest-normalized-jsonl', createdAt, rawRuns: 0 },
+      { id: 'missing', kind: 'ingest-dashboard-sources', createdAt }
+    ]) await recordTransaction(indexedDB, entry);
+    subscription.onUpdate(await read());
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(3));
+    expect(root.textContent).toContain('Run count unavailable (shown at 0)');
+    const positions = [...root.querySelectorAll('.scatter-chart-point')].map((point) => point.getAttribute('cx'));
+    expect(new Set(positions).size).toBe(1);
+    await recordTransaction(indexedDB, {
+      id: 'later', kind: 'ingest-jsonl', createdAt: '2026-09-24T02:03:04.567Z', rawRuns: 4
+    });
+    subscription.onUpdate(await read());
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(4));
+    disposeDashboard(root);
+    expect(subscription.signal.aborted).toBe(true);
   });
 
   it('keeps authorized hosted query values through the production query and view boundary', async () => {

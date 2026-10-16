@@ -1904,11 +1904,11 @@ describe('presenter built-in and custom pages', () => {
           ],
           metadata
         },
-        'indexing-daily-workflow-runs': {
-          source: 'indexing-daily-workflow-runs',
+        'indexing-ingestion-runs': {
+          source: 'indexing-ingestion-runs',
           rows: [
-            { day: '2026-09-01', 'workflow-runs': 6 },
-            { day: '2026-09-02', 'workflow-runs': 8 }
+            { createdAt: '2026-09-01T01:00:00Z', 'workflow-runs': 6, 'run-count-status': 'Reported run count' },
+            { createdAt: '2026-09-02T02:00:00Z', 'workflow-runs': 8, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },
@@ -1964,7 +1964,8 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
       expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(8);
-      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('[data-chart-widget="scatter"] .scatter-chart-point')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
       expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(2);

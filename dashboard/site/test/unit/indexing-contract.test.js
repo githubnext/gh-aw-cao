@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { processDataRequest } from '../../src/data-worker.js';
+import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
@@ -17,10 +19,11 @@ const metadata = {
 };
 
 describe('indexing dashboard', () => {
-  it('projects retained records and workflow runs into daily insights', () => {
-    const results = executeDashboardQueries(
-      dashboard.queries,
-      {
+  it('projects daily records, individual ingestion run counts, and table counts through the worker', () => {
+    const results = /** @type {Record<string, any>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sources: {
         transactions: {
           source: 'transactions',
           rows: [
@@ -61,21 +64,24 @@ describe('indexing dashboard', () => {
         issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
-      [
+      sourceNames: [
         'indexing-daily-records',
-        'indexing-daily-workflow-runs',
+        'indexing-ingestion-runs',
         'indexing-database-table-counts'
       ]
-    );
+    }));
 
     expect(results['indexing-daily-records'].rows).toEqual([
       { day: '2026-09-23', records: 10 },
       { day: '2026-09-24', records: 7 }
     ]);
-    expect(results['indexing-daily-workflow-runs'].rows).toEqual([
-      { day: '2026-09-23', 'workflow-runs': 3 },
-      { day: '2026-09-24', 'workflow-runs': 2 }
-    ]);
+    expect(results['indexing-ingestion-runs'].rows).toHaveLength(3);
+    expect(results['indexing-ingestion-runs'].rows.map((/** @type {any} */ row) => [row.createdAt, row.rawRuns]))
+      .toEqual([
+        ['2026-09-23T00:00:00Z', 3],
+        ['2026-09-24T01:00:00Z', 2],
+        ['2026-09-24T02:00:00Z', 99]
+      ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
       { table: 'ingestion transactions', records: 3 },
       { table: 'workflow runs', records: 3 },
@@ -86,9 +92,103 @@ describe('indexing dashboard', () => {
       { table: 'repositories', records: 1 },
       { table: 'tool events', records: 1 }
     ]);
-    const tableLabels = results['indexing-database-table-counts'].rows.map((row) => row.table);
+    const tableLabels = results['indexing-database-table-counts'].rows.map((/** @type {any} */ row) => row.table);
     expect(tableLabels).not.toContain('network domains');
     expect(tableLabels).not.toContain('operational values');
+  });
+
+  describe('ingestion scatter worker contract', () => {
+    const source = 'indexing-ingestion-runs';
+    const page = dashboard.pages.find(/** @param {any} candidate */ (candidate) => candidate.id === 'indexing');
+    const view = page.views.find(/** @param {any} candidate */ (candidate) => candidate.id === 'indexing-workflow-runs');
+    const queryContext = {
+      filters: { repository: ['unrelated-repository'], organization: ['unrelated-organization'] },
+      timeWindow: { start: '2099-01-01T00:00:00Z', end: '2099-01-02T00:00:00Z' }
+    };
+
+    beforeEach(async () => {
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase(DATABASE_NAME);
+        request.onsuccess = () => resolve(undefined);
+        request.onerror = () => reject(request.error);
+      });
+    });
+
+    async function query() {
+      const result = /** @type {Record<string, any>} */ (await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        pageId: 'indexing', viewId: view.id, sourceNames: [source],
+        context: dashboard, queryContext
+      }));
+      expect(['available', 'empty']).toContain(result[source]?.metadata.availability);
+      return result;
+    }
+
+    it('declares an unbucketed, unaggregated, unbounded scatter independent of page context', () => {
+      const definition = dashboard.queries.find(/** @param {any} candidate */ (candidate) => candidate.name === source);
+      expect(definition.from).toBe('transactions');
+      for (const property of ['filter', 'aggregate', 'limit']) expect(definition[property]).toBeUndefined();
+      expect(view).toMatchObject({
+        chart: 'scatter',
+        data: { source, 'query-context': false },
+        encoding: {
+          x: { field: 'createdAt', type: 'temporal' },
+          y: { field: 'workflow-runs', type: 'quantitative' },
+          color: { field: 'run-count-status' }
+        }
+      });
+      expect(view.encoding.x['time-unit']).toBeUndefined();
+      expect(view.encoding.y.aggregate).toBeUndefined();
+      expect(view.data.limit).toBeUndefined();
+    });
+
+    it('retains every kind, exact same-day and coincident timestamps, zeroes, and unavailable counts', async () => {
+      const entries = [
+        { id: 'a', kind: 'ingest-jsonl', createdAt: '2020-01-01T01:00:00.123Z', rawRuns: 4 },
+        { id: 'b', kind: 'ingest-normalized-jsonl', createdAt: '2020-01-01T02:00:00.456Z', rawRuns: 0 },
+        { id: 'c', kind: 'ingest-dashboard-sources', createdAt: '2020-01-01T02:00:00.456Z' },
+        { id: 'd', kind: 'ingest-jsonl-failed', createdAt: '2020-01-01T02:00:00.456Z' },
+        { id: 'e', kind: 'retention', createdAt: '2020-01-01T03:00:00.789Z', rawRuns: null },
+        { id: 'f', kind: 'future-ingestion-kind', createdAt: '2020-01-01T04:00:00.999Z', rawRuns: 7 }
+      ];
+      for (const entry of entries) await recordTransaction(indexedDB, entry);
+      const results = await query();
+      expect(results[source].rows).toEqual(entries.map((entry) => ({
+        ...entry,
+        'workflow-runs': entry.rawRuns ?? 0,
+        'run-count-status': entry.rawRuns == null
+          ? 'Run count unavailable (shown at 0)' : 'Reported run count'
+      })));
+      const aliases = compileDashboardViewPayloadQueries(page, 'indexing', {
+        queries: dashboard.queries, viewId: view.id, sourceNames: [source], queryContext
+      });
+      expect(aliases).toEqual({ aliases: [], queries: [], replacedSources: [] });
+    });
+
+    it('returns an honest empty result and picks up subsequent database entries without a row cap', async () => {
+      expect((await query())[source].rows).toEqual([]);
+      for (let index = 0; index < 125; index++) {
+        await recordTransaction(indexedDB, {
+          id: `entry-${index.toString().padStart(3, '0')}`, kind: 'ingest-normalized-jsonl',
+          createdAt: '2026-09-24T00:00:00.123Z', rawRuns: index
+        });
+      }
+      expect((await query())[source].rows).toHaveLength(125);
+      await recordTransaction(indexedDB, {
+        id: 'new-entry', kind: 'ingest-jsonl', createdAt: '2026-09-24T12:00:00.999Z', rawRuns: 8
+      });
+      const updated = await query();
+      expect(updated[source].rows).toHaveLength(126);
+      expect(updated[source].rows.at(-1)).toMatchObject({ id: 'new-entry', 'workflow-runs': 8 });
+    });
+
+    it('fails closed when the transaction source cannot be produced', () => {
+      const result = /** @type {Record<string, any>} */ (processDataRequest({
+        operation: 'execute-dashboard-queries', queries: dashboard.queries,
+        sourceNames: [source], sources: {}
+      }));
+      expect(result[source]).toMatchObject({ rows: [], metadata: { availability: 'unavailable' } });
+    });
   });
 
   it('uses a sorted horizontal count chart and focused transaction cards without a table facet', () => {
