@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -345,13 +348,23 @@ func envValue(process Process, name string) string {
 	return ""
 }
 
+const testControlRevision = "0123456789abcdef0123456789abcdef01234567"
+
 func startExecutor(t *testing.T, queue *fakeQueue, minter *fakeMinter, github GitHub, runner Runner) {
 	t.Helper()
-	executor, err := NewExecutor(queue, NewBroker(minter, BrokerOptions{MaxPooled: 2}), github, runner, Options{
-		Owner: "test", ControlRepository: "octo/cao", Path: "/usr/bin", DataHome: "/data",
+	startExecutorWith(t, queue, minter, github, runner, func(*Options) {})
+}
+
+func startExecutorWith(t *testing.T, queue *fakeQueue, minter *fakeMinter, github GitHub, runner Runner, configure func(*Options)) {
+	t.Helper()
+	options := Options{
+		Owner: "test", ControlRepository: "octo/cao", ControlRevision: testControlRevision,
+		Path: "/usr/bin", DataHome: filepath.Join(t.TempDir(), "missing"),
 		LeaseTTL: 300 * time.Millisecond, PollInterval: 20 * time.Millisecond, CancelPollInterval: 20 * time.Millisecond,
 		CommandTimeout: time.Minute, Prefetch: 2, WorkRoot: t.TempDir(),
-	})
+	}
+	configure(&options)
+	executor, err := NewExecutor(queue, NewBroker(minter, BrokerOptions{MaxPooled: 2}), github, runner, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +416,8 @@ func TestExecutorRunsWithScopedTokenAndRevokesIt(t *testing.T) {
 	if !strings.HasPrefix(token, "ghs_fake") || strings.Contains(strings.Join(process.Args, " "), token) {
 		t.Fatalf("token must be passed only through the environment: %v", process.Args)
 	}
-	if envValue(process, "XDG_DATA_HOME") != "/data" || envValue(process, "GH_PROMPT_DISABLED") != "1" ||
+	workspace := process.Dir[:len(process.Dir)-len("/work")]
+	if envValue(process, "XDG_DATA_HOME") != filepath.Join(workspace, "data") || envValue(process, "GH_PROMPT_DISABLED") != "1" ||
 		envValue(process, "GIT_AUTHOR_NAME") != "cao[bot]" || !strings.HasPrefix(envValue(process, "HOME"), process.Dir[:len(process.Dir)-len("/work")]) {
 		t.Fatalf("unexpected environment %v", process.Env)
 	}
@@ -430,12 +444,15 @@ func TestExecutorClonesControlRepositoryForCAOUpdate(t *testing.T) {
 	if command.Status != operational.CLICommandCompleted {
 		t.Fatalf("unexpected result %+v", command)
 	}
-	if len(runner.processes) != 2 {
-		t.Fatalf("want clone + update, got %d processes", len(runner.processes))
+	if len(runner.processes) != 3 {
+		t.Fatalf("want clone + checkout + update, got %d processes", len(runner.processes))
 	}
-	clone, update := runner.processes[0], runner.processes[1]
-	if strings.Join(clone.Args[:3], " ") != "repo clone octo/cao" {
+	clone, checkout, update := runner.processes[0], runner.processes[1], runner.processes[2]
+	if strings.Join(clone.Args[:3], " ") != "repo clone octo/cao" || !slices.Contains(clone.Args, "--no-checkout") {
 		t.Fatalf("unexpected clone %v", clone.Args)
+	}
+	if checkout.Program != "git" || checkout.Args[len(checkout.Args)-1] != testControlRevision || checkout.Dir != update.Dir {
+		t.Fatalf("control repository must run at the reviewed revision: %+v", checkout)
 	}
 	if update.Program != "sh" || update.Args[0] != "./cao.sh" || !strings.HasSuffix(update.Dir, "/control") {
 		t.Fatalf("unexpected update process %+v", update)
@@ -505,5 +522,68 @@ func TestOutputSinkSplitsLongLinesWithinChunkLimit(t *testing.T) {
 	}
 	if got := queue.text(id); got != strings.Repeat("é", 10000) {
 		t.Fatalf("output was corrupted: %d bytes", len(got))
+	}
+}
+
+func TestExecutorRefusesControlCommandsWithoutReviewedRevision(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	runner := &fakeRunner{}
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "admin"}, runner, func(options *Options) {
+		options.ControlRevision = ""
+	})
+	id := enqueue(t, queue, "./cao.sh update --campaign security --create-pull-request", "octo/cao", "mona")
+	command := queue.waitSettled(t, id)
+	if command.Status != operational.CLICommandFailed || !strings.Contains(command.Error, "CAO_HOSTED_CLI_CONTROL_REVISION") {
+		t.Fatalf("control command must fail closed without a reviewed revision: %+v", command)
+	}
+	if len(runner.processes) != 0 {
+		t.Fatal("no subprocess may run without a reviewed revision")
+	}
+}
+
+func TestExecutorRejectsMalformedControlRevision(t *testing.T) {
+	_, err := NewExecutor(newFakeQueue(), NewBroker(newFakeMinter(), BrokerOptions{}), fakeGitHub{}, &fakeRunner{}, Options{
+		Owner: "test", ControlRepository: "octo/cao", ControlRevision: "main",
+	})
+	if err == nil {
+		t.Fatal("a branch name must not be accepted as the control revision")
+	}
+}
+
+func TestExecutorGivesEachCommandPrivateExtensions(t *testing.T) {
+	dataHome := t.TempDir()
+	extension := filepath.Join(dataHome, "gh", "extensions", "gh-aw")
+	if err := os.MkdirAll(extension, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extension, "gh-aw"), []byte("trusted"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	queue, minter := newFakeQueue(), newFakeMinter()
+	runner := &fakeRunner{}
+	var seen []string
+	runner.run = func(_ context.Context, process Process, _ OutputFunc) (int, error) {
+		binary := filepath.Join(envValue(process, "XDG_DATA_HOME"), "gh", "extensions", "gh-aw", "gh-aw")
+		content, err := os.ReadFile(binary)
+		if err != nil {
+			return 1, err
+		}
+		seen = append(seen, string(content))
+		return 0, os.WriteFile(binary, []byte("tampered"), 0o700)
+	}
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
+		options.DataHome = dataHome
+	})
+	for range 2 {
+		id := enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona")
+		if command := queue.waitSettled(t, id); command.Status != operational.CLICommandCompleted {
+			t.Fatalf("unexpected result %+v", command)
+		}
+	}
+	if strings.Join(seen, ",") != "trusted,trusted" {
+		t.Fatalf("a command must not alter extensions seen by later commands: %v", seen)
+	}
+	if content, _ := os.ReadFile(filepath.Join(extension, "gh-aw")); string(content) != "trusted" {
+		t.Fatal("the operator's extensions must not be modified")
 	}
 }

@@ -126,6 +126,7 @@ func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *
 	return hostedcli.NewExecutor(queue, broker, client, hostedcli.ExecRunner{}, hostedcli.Options{
 		Owner:               options.Owner,
 		ControlRepository:   control,
+		ControlRevision:     strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTROL_REVISION")),
 		GitHubHost:          host,
 		GitHubBinary:        strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_GH")),
 		Path:                os.Getenv("PATH"),
@@ -154,8 +155,8 @@ func gitHubHost(apiURL string) (string, error) {
 	return strings.TrimPrefix(host, "api."), nil
 }
 
-// dataHome keeps installed gh extensions (gh-aw) resolvable while each command
-// gets an ephemeral HOME and config directory.
+// dataHome locates the operator's installed gh extensions (gh-aw); each
+// command receives a private copy alongside its ephemeral HOME.
 func dataHome() string {
 	if value := strings.TrimSpace(os.Getenv("XDG_DATA_HOME")); value != "" {
 		return value

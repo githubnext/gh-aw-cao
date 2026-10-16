@@ -250,6 +250,9 @@ separate `execute-cli` process drains the queue under one lease. It rechecks
 the actor's live write permission and runs each command in an isolated
 workspace with a single-use, repository-scoped GitHub App installation token
 that is revoked on completion. A bounded broker pre-mints tokens for backlog.
+Control-repository `./cao.sh` actions run only at an operator-reviewed commit
+(`CAO_HOSTED_CLI_CONTROL_REVISION`), and each command gets a private copy of
+the gh extensions.
 Every hosted administrator operation requires a fresh, assured interactive
 OAuth authentication (2FA or attested SSO) within a bounded maximum age.
 `specs/server-hosted-cli.md` and `specs/tla/HostedCLIActions.tla` specify and

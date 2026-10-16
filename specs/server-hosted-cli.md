@@ -141,9 +141,20 @@ step-up. Retry MUST create a new admission subject to the same checks.
    afterwards. The subprocess environment MUST be minimal: `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
    identity. It MUST NOT inherit server secrets.
-5. The subprocess MUST run in its own process group and MUST be killed on
+5. Control-checkout commands (`./cao.sh`) MUST run only at the
+   operator-reviewed commit SHA configured by
+   `CAO_HOSTED_CLI_CONTROL_REVISION`. The executor MUST clone without
+   checking out and MUST then check out that detached revision. The live
+   default branch MUST NOT be executed. Without a configured revision, these
+   commands MUST fail before a token is acquired. A value that is not a full
+   commit SHA MUST fail startup.
+6. Each command MUST receive a private copy of the operator's gh extensions
+   inside its workspace (`XDG_DATA_HOME`). Symbolic links are resolved and
+   copied as content. A command MUST NOT be able to modify the extensions
+   that later commands run.
+7. The subprocess MUST run in its own process group and MUST be killed on
    cancellation, deadline, or loss of the lease.
-6. Command output MUST redact the token. Logs MUST NOT contain tokens,
+8. Command output MUST redact the token. Logs MUST NOT contain tokens,
    private keys, or OAuth credentials.
 
 ## 7. Formal model
@@ -173,6 +184,13 @@ repository. Operators MUST store it as a secret available only to the
 repository and the explicitly enrolled targets. A compromised administrator
 session is limited to the step-up window and to catalog-declared actions on
 repositories the administrator can already write.
+
+Subprocesses run as the executor's OS user. The App private key and the
+operational database credentials are readable by that user, so operators
+SHOULD run `execute-cli` under a dedicated, unprivileged user or container
+and SHOULD advance `CAO_HOSTED_CLI_CONTROL_REVISION` only after reviewing the
+control repository at that commit. Code at the reviewed revision is trusted
+to the same degree as the executor itself.
 
 ## 10. References
 

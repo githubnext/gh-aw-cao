@@ -612,6 +612,7 @@ cao-dashboard execute-cli --max-pooled-tokens 8
 | Variable | Purpose |
 | --- | --- |
 | `CAO_HOSTED_CLI_CONTROL_REPOSITORY` | Control repository, given as `OWNER/REPOSITORY`. It falls back to `CAO_COLLECT_CONTROL_REPOSITORY`. |
+| `CAO_HOSTED_CLI_CONTROL_REVISION` | Full commit SHA of the reviewed control repository at which `./cao.sh` actions run (`execute-cli` only). Without it, control-repository actions fail closed. |
 | `CAO_HOSTED_CLI_APP_ID` | Hosted CLI GitHub App ID (`execute-cli` only). |
 | `CAO_HOSTED_CLI_PRIVATE_KEY` (`_FILE`, `_BASE64`) | App private key (`execute-cli` only). |
 | `CAO_HOSTED_CLI_GITHUB_API_URL`, `CAO_HOSTED_CLI_GITHUB_URL` | GitHub API and web URLs for GHES. |

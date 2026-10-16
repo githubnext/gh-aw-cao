@@ -647,6 +647,16 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   configuration, the `gh` credential helper, and the App bot identity. The
   subprocess runs in its own process group and is killed on cancellation,
   deadline, or loss of the lease. The token is redacted from captured output.
+  Each command also gets a private copy of the operator's gh extensions, so it
+  cannot tamper with the extensions that later commands run.
+- **Reviewed control code**: `./cao.sh` commands run only at the commit SHA
+  in `CAO_HOSTED_CLI_CONTROL_REVISION`, never at the control repository's
+  live default branch. Without that setting, those commands fail closed. A
+  push to the control repository therefore cannot get code onto the executor
+  until an operator reviews the commit and advances the revision.
+  Subprocesses share the executor's OS user, which can read the App key and
+  database credentials. Run `execute-cli` under a dedicated user or container
+  and treat the reviewed revision as fully trusted.
 - **App setup**: `./cao.sh setup-auth hosted-cli` creates a least-privilege
   App (actions, contents, pull requests, and workflows write; metadata read).
   It refuses sensitive or organization permissions, writes the private key

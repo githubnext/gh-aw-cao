@@ -20,6 +20,7 @@ const (
 var ErrNotHosted = errors.New("CLI action is not supported by hosted execution")
 
 var (
+	commitRevision   = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 	targetRepository = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
 	workflowInput    = regexp.MustCompile(`(?s)^[A-Za-z_][A-Za-z0-9_-]*=.*$`)
 	campaignSlug     = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
