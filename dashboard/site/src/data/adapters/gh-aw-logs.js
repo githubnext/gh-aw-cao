@@ -194,8 +194,9 @@ function runMetadata(run) {
     .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
   const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
   /** @type {number|null} */
-  let reasoningTokens = null;
+  let reasoningTokens = finiteNumber(summary.total_reasoning_tokens);
   for (const usage of Object.values(byModel)) {
+    if (summary.total_reasoning_tokens !== undefined) break;
     const record = usage && typeof usage === 'object' && !Array.isArray(usage)
       ? /** @type {Record<string, unknown>} */ (usage)
       : {};
@@ -427,6 +428,24 @@ function sessionRunEvidence(run) {
   for (const field of ['experiments', 'graders', 'evals']) {
     if (evidence[field] !== undefined) projected[field] = evidence[field];
   }
+  if (evidence.run !== undefined) {
+    const metadata = objectValue(evidence.run, 'unified session run metadata');
+    for (const field of ['engine_id', 'agent_version', 'cli_version', 'firewall_version', 'gateway_version',
+      'model', 'requested_model', 'resolved_model', 'safe_outputs', 'safe_items_count']) {
+      if (metadata[field] !== undefined) projected[field] = metadata[field];
+    }
+    if (metadata.engine_id !== undefined) projected.agent_id = metadata.engine_id;
+    if (metadata.resolved_model !== undefined || metadata.model !== undefined) {
+      projected.model_id = metadata.resolved_model ?? metadata.model;
+    }
+    if (metadata.token_usage_summary !== undefined) {
+      const existing = projected.token_usage_summary ?? projected.token_usage;
+      projected.token_usage_summary = {
+        ...(existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {}),
+        ...objectValue(metadata.token_usage_summary, 'session token usage')
+      };
+    }
+  }
   return projected;
 }
 
@@ -610,6 +629,7 @@ function logFiles(input) {
  * @param {string} eventSource
  * @param {string} type
  * @param {Record<string, unknown>} [fields]
+ * @returns {import('../model/schema.js').CanonicalObservation}
  */
 function eventObservation(runId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
   const recordFields = { source: eventSource, ...fields };
@@ -758,17 +778,20 @@ export function adaptGhAwTimelineFiles(input, runId) {
   ];
 }
 
-/** @param {unknown} input @param {string} path @param {string} runId */
-function sessionObservations(input, path, runId) {
+/** @param {unknown} input @param {string} path @param {string} runId @param {string} [observedAt] */
+function sessionObservations(input, path, runId, observedAt) {
   if (!Array.isArray(input)) throw new TypeError('Unified session evidence must be an array');
   return input.map((value) => {
     const event = objectValue(value, 'unified session evidence');
-    return eventObservation(
+    const observation = eventObservation(
       runId, path, positiveInteger(event.line, 'session line'),
-      canonicalTimestamp(event.timestamp, 'session timestamp'),
+      canonicalTimestamp(event.timestamp ?? observedAt, 'session observation timestamp'),
       requiredString(event.source, 'session source'), requiredString(event.type, 'session type'),
       objectValue(event.fields, 'session fields')
     );
+    if (event.timestamp === undefined) delete observation.data.timestamp;
+    if (event.key !== undefined) observation.sourceId += `:${requiredString(event.key, 'session event key')}`;
+    return observation;
   });
 }
 
@@ -797,7 +820,14 @@ export function adaptGhAwLogs(input) {
   const githubRunId = identifier(run.githubRunId, 'run.githubRunId');
   const attempt = positiveInteger(run.attempt, 'run.attempt');
   const canonicalRunId = runId(repositoryOwner, repositoryName, githubRunId);
-  const events = adaptGhAwTimelineFiles(document.files, canonicalRunId);
+  const sessions = logFiles(document.files).filter((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
+  if (sessions.length > 1) throw new TypeError('Multiple unified sessions found for one run');
+  const unified = sessions[0];
+  const sessionEvidence = unified
+    ? parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt }) : undefined;
+  const events = unified && sessionEvidence
+    ? sessionObservations(sessionEvidence.events, unified.path, canonicalRunId, observedAt)
+    : adaptGhAwTimelineFiles(document.files, canonicalRunId);
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [
@@ -844,19 +874,29 @@ export function adaptGhAwLogs(input) {
     }
   ];
   observations.push(...events);
-  const unified = logFiles(document.files).find((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
   if (unified) {
-    const evidence = parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt });
     const adapted = adaptCachedGhAwJsonl(`${JSON.stringify({
       schema_version: 5, kind: 'run', run: {
         run_id: githubRunId, run_attempt: attempt, organization: repositoryOwner, repository: repositoryName,
         workflow_name: workflow.name, workflow_path: workflowPath, created_at: run.createdAt,
-        updated_at: observedAt, cao_unified_session: { version: 1, path: unified.path, ...evidence }
+        updated_at: observedAt, cao_unified_session: { version: 1, path: unified.path, ...sessionEvidence }
       }
     })}\n`);
+    const nativeRun = adapted.observations.find((record) => record.kind === 'run');
+    if (nativeRun) {
+      const target = observations.find((record) => record.kind === 'run');
+      if (target) {
+        for (const field of ['agentId', 'agentVersion', 'modelId', 'ghAwVersion', 'engineId', 'engineVersion',
+          'requestedModel', 'resolvedModel', 'firewallVersion', 'gatewayVersion', 'aicTotal',
+          'inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens', 'safeItemsCount']) {
+          if (nativeRun.data[field] != null) target.data[field] = nativeRun.data[field];
+        }
+      }
+    }
     observations.push(...adapted.observations.filter((record) =>
       ['experiment', 'experiment-assignment', 'grader', 'grader-observation', 'eval', 'eval-observation'].includes(record.kind)
-        || (record.kind === 'audit' && ['workflow_run_grader', 'workflow_run_eval', 'workflow_run_eval_unclassified'].includes(String(record.data.type)))));
+        || record.kind === 'issue'
+        || (record.kind === 'audit' && ['workflow_run_grader', 'workflow_run_eval', 'workflow_run_eval_unclassified', 'safe_output.created'].includes(String(record.data.type)))));
   }
   return { observations };
 }
@@ -1613,7 +1653,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     if (session) {
       const sessionPath = requiredString(session.path, 'run.cao_unified_session.path');
       if (session.version !== 1) throw new TypeError('Unsupported unified session evidence version');
-      observations.push(...sessionObservations(session.events, sessionPath, id));
+      observations.push(...sessionObservations(session.events, sessionPath, id, enriched.observedAt));
     }
     const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
       ? /** @type {Record<string, unknown>} */ (run.aw_info)
@@ -1858,7 +1898,15 @@ function createCachedGhAwJsonlAccumulator(options) {
     const nestedSafeOutputs = Array.isArray(run.safe_outputs)
       ? run.safe_outputs
       : Array.isArray(audit.created_items) ? audit.created_items : [];
-    const safeOutputs = explicitSafeOutputs.length > 0
+    const sessionSafeOutputs = session?.run && typeof session.run === 'object' && !Array.isArray(session.run)
+      ? /** @type {Record<string, unknown>} */ (session.run).safe_outputs : undefined;
+    const safeOutputs = Array.isArray(sessionSafeOutputs)
+      ? sessionSafeOutputs.map((value) => {
+          const existing = explicitSafeOutputs.find((entry) => entry.value.url === value.url);
+          return { value: { ...value, ...(existing?.value.github_issue_status
+            ? { github_issue_status: existing.value.github_issue_status } : {}) }, line: enriched.line };
+        })
+      : explicitSafeOutputs.length > 0
       ? explicitSafeOutputs
       : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
     const githubRunKey = String(run.run_id);
@@ -2280,7 +2328,7 @@ function createCachedGhAwJsonlAccumulator(options) {
             : optionalString(issueStatus.state_reason),
           issueClosedAt: issueStatus.closed_at === null ? null : optionalString(issueStatus.closed_at),
           issueStatusObservedAt: optionalString(issueStatus.observed_at),
-          payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
+          payloadRef: optionalString(record.sessionPayloadRef) ?? `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );
     });

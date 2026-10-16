@@ -1592,6 +1592,34 @@ projection and be exposed as `audit-id` by the eval-observations query.
 Grader values and units MUST remain distinct from YES/NO eval answers in
 dashboard views; a grader score or pass/fail status does not create an Eval.
 
+The unified session is also the preferred source for every supported telemetry
+family: agent lifecycle and diagnostics, MCP calls/RPC/configuration, firewall
+access and steering, model routing/inventory, skill activity/inventory/conflicts,
+usage, execution and detection results, daily guardrails, workflow metadata and
+job results, safe-output requests/results/errors, plugin installations, GitHub
+rate limits, dynamic workflow progress, and collection diagnostics.
+Only bounded, explicitly projected metadata is admitted. Prompts, message
+bodies, tool inputs/outputs, raw errors, objectives, private paths and unknown
+extension payloads remain upstream.
+
+Untimed telemetry MUST retain ingestion `observedAt` and source line provenance
+without inventing a native `timestamp`. Inventory entries MUST remain distinct
+without being counted as invocations. MCP invocation records MUST use
+`tool.call`, matching the canonical MCP query contract; RPC request/response
+pairs MAY supply calls and outcomes when combined tool-call observations are
+absent, but MUST NOT double-count the two representations. Firewall method,
+response-byte and latency measurements MUST survive browser and hosted storage.
+Explicit firewall allow decisions MUST NOT become policy blocks merely because
+the upstream endpoint returned an HTTP error.
+
+Run accounting MUST prefer measured usage reports, then proxy usage, then root
+engine-result snapshots, independently per phase and measured dimension.
+Repeated request IDs are revisions, not additional usage. Cumulative AIC MUST
+NOT be added to per-request AIC, and engine usage snapshots or native estimated
+tokens MUST NOT be added to measured reports. Runtime metadata and actual
+safe-output results take precedence over cached copies; safe-output requests
+and errors MUST NOT establish created outcomes or issue status.
+
 Records MUST remain independently addressable and MUST NOT be stored as one
 ever-growing array inside the Run record. Issues and pull requests share the
 Issue table; pull requests set `isPullRequest=true`.

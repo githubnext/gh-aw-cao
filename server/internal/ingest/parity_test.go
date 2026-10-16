@@ -55,8 +55,8 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 			recordEvidence = append(recordEvidence, line)
 		}
 	}
-	if len(runEvidence) != 2 || len(recordEvidence) != 5 {
-		t.Fatalf("expected two run-phase and five record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
+	if len(runEvidence) != 2 || len(recordEvidence) != 8 {
+		t.Fatalf("expected two run-phase and eight record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
 	}
 
 	runFixture, err := snapshot.ReadFile("gh-aw-logs-runs/subset.jsonl")
@@ -118,7 +118,7 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hosted, _, err := store.ExecuteSQLPlan(ctx, definitions, []string{"experiments", "experiment-assignments", "graders", "grader-observations", "evals", "eval-observations"})
+	hosted, _, err := store.ExecuteSQLPlan(ctx, definitions, []string{"experiments", "experiment-assignments", "graders", "grader-observations", "evals", "eval-observations", "domains", "mcp-calls", "audits"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,6 +164,41 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 			for field, expected := range expectedFields[source] {
 				if !reflect.DeepEqual(got[0][field], expected) {
 					t.Errorf("%s: JS %s = %v, want %v", source, field, got[0][field], expected)
+				}
+			}
+			for source, evidence := range map[string]struct {
+				field string
+				id    string
+				facts model.Row
+			}{
+				"domains":   {"id", "domain:424242:access", model.Row{"method": "GET", "response-bytes": float64(1024), "latency-ms": float64(7)}},
+				"mcp-calls": {"mcp-observation", "tool:424242:call", model.Row{"mcp-server": "github", "mcp-tool": "get_issue", "response-bytes": float64(42)}},
+				"audits":    {"id", "audit:424242:usage", model.Row{"component": "usage", "phase": "evals", "telemetry-model": "gpt-model", "telemetry-engine": "copilot", "input-tokens": float64(5), "duration-ms": float64(5)}},
+			} {
+				selectEvidence := func(rows []model.Row) model.Row {
+					for _, row := range rows {
+						if row[evidence.field] == evidence.id {
+							return row
+						}
+					}
+					return nil
+				}
+				got := selectEvidence(browser.Rows[source])
+				wire, err := json.Marshal(selectEvidence(hosted[source].Rows))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var want model.Row
+				if err := json.Unmarshal(wire, &want); err != nil {
+					t.Fatal(err)
+				}
+				if got == nil || !reflect.DeepEqual(got, want) {
+					t.Fatalf("%s telemetry differs: JS=%v Postgres=%v", source, got, want)
+				}
+				for field, expected := range evidence.facts {
+					if !reflect.DeepEqual(got[field], expected) {
+						t.Errorf("%s %s=%v, want %v", source, field, got[field], expected)
+					}
 				}
 			}
 		}

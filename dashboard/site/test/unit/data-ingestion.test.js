@@ -853,9 +853,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v10$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v11$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 10,
+        ingestionVersion: 11,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),

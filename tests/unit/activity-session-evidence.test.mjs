@@ -93,6 +93,27 @@ test('missing sessions preserve legacy ingestion and unrelated repository shards
   assert.equal(await readFile(f.shard, 'utf8'), original);
 });
 
+test('collection mines all safe unified telemetry before publishing canonical SQLite records', async (t) => {
+  const f = await fixture(t);
+  const content = await readFile(new URL('../../dashboard/site/test/fixtures/unified-telemetry-session.jsonl', import.meta.url), 'utf8');
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), content);
+  await enrichSessionEvidence(f.logs, f.prefix, 'octo/api');
+  const cached = await readFile(f.shard, 'utf8');
+  assert.doesNotMatch(cached, /PRIVATE_/);
+  const batch = normalize(adaptCachedGhAwJsonl(cached).observations);
+  assert.equal(batch.runs[0].aicTotal, 1.2);
+  assert.equal(batch.tools.filter((row) => row.type === 'tool.call').length, 1);
+  assert.equal(batch.domains.length, 2);
+  assert.ok(batch.audits.some((row) => row.type === 'github_api.rate_limit' && row.remaining === 4999));
+  assert.equal(batch.issues[0].number, 42);
+  const result = JSON.parse((await execute(process.execPath, ['activity/cao.mjs', 'ingest-jsonl',
+    '--input-dir', path.dirname(f.shard), '--database', path.join(f.root, 'activity.sqlite'),
+    '--retention-days', 'all'])).stdout);
+  assert.equal(result.counts.domains, 2);
+  assert.equal(result.counts.issues, 1);
+  assert.ok(result.counts.audits >= 40);
+});
+
 test('sessions from another attempt are not associated with the cached attempt', async (t) => {
   const f = await fixture(t);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);

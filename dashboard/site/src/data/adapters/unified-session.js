@@ -1,11 +1,12 @@
 /**
  * @typedef {{
- *   line: number, timestamp: string, source: string, type: string,
- *   fields: Record<string, unknown>
+ *   line: number, timestamp?: string, source: string, type: string,
+ *   fields: Record<string, unknown>, key?: string
  * }} SessionEvidence
  */
 
 import { createDebug } from '../../debug.js';
+import { matchesSessionRun, sessionMetadata, sessionRunMetadata } from './unified-session-telemetry.js';
 
 const debugUnifiedSession = createDebug('unified-session');
 
@@ -48,26 +49,40 @@ function sessionRecords(content, path) {
   return records;
 }
 
-/** @param {ReturnType<typeof sessionRecords>} records */
-function timeline(records) {
+/** @param {ReturnType<typeof sessionRecords>} records @param {boolean} [includeUntimed] @param {{ runId: string, attempt: number }} [context] */
+function timeline(records, includeUntimed = false, context) {
   let turn = 0;
   /** @type {Map<string, { server?: string, tool?: string }>} */
   const tools = new Map();
+  /** @type {Map<string, { server?: string, tool?: string }>} */
+  const rpcCalls = new Map();
+  const combinedCalls = new Set(records.flatMap(({ record }) => {
+    const data = object(record.data) ?? {};
+    return record.type === 'mcp.tool_call' && matchesSessionRun(data, context)
+      ? [JSON.stringify([data.serverName ?? data.mcpServerName, data.toolName])] : [];
+  }));
   const evidence = records.flatMap(({ record, line }) => {
     const data = /** @type {Record<string, unknown>} */ (record.data);
+    if (!matchesSessionRun(data, context)) return [];
     const provenance = object(record.provenance);
     // Native numeric clocks vary by source; gh-aw supplies normalized milliseconds.
     const clock = provenance?.timestampMs ?? record.timestamp;
     const milliseconds = typeof clock === 'number' ? clock
       : typeof clock === 'string' ? Date.parse(clock) : NaN;
-    if (!Number.isFinite(milliseconds) || Math.abs(milliseconds) > 8640000000000000) return [];
-    const timestamp = new Date(milliseconds).toISOString();
+    const timestamp = Number.isFinite(milliseconds) && Math.abs(milliseconds) <= 8640000000000000
+      ? new Date(milliseconds).toISOString() : undefined;
+    if (!timestamp && !includeUntimed) return [];
     const toolKey = JSON.stringify([data.sessionId, data.agentId, data.parentToolCallId, data.toolCallId]);
     const previous = record.type === 'tool.execution_complete' ? tools.get(toolKey) : undefined;
-    const server = string(data.mcpServerName ?? data.serverName) ?? previous?.server;
-    const tool = string(data.toolName) ?? previous?.tool;
+    const rpcKey = JSON.stringify([data.serverName, data.rpcId ?? data.requestId]);
+    const previousRpc = record.type === 'mcp.rpc.response' ? rpcCalls.get(rpcKey) : undefined;
+    const server = string(data.mcpServerName ?? data.serverName) ?? previous?.server ?? previousRpc?.server;
+    const tool = string(data.toolName) ?? previous?.tool ?? previousRpc?.tool;
     if (record.type === 'tool.execution_start' && string(data.toolCallId)) {
       tools.set(toolKey, { server, tool });
+    }
+    if (record.type === 'mcp.rpc.request' && data.method === 'tools/call') {
+      rpcCalls.set(rpcKey, { server, tool });
     }
     const summary = [server, tool].filter(Boolean).join('/');
     const correlationId = string(data.toolCallId);
@@ -90,6 +105,10 @@ function timeline(records) {
       case 'tool.execution_complete':
         type = record.type === 'tool.execution_start' ? 'agent_tool_start' : 'agent_tool_done';
         Object.assign(fields, { summary, toolName: tool, mcpServer: server, correlationId });
+        fields.invocationCount = record.type === 'tool.execution_start' ? 1 : 0;
+        if (typeof data.durationMs === 'number' && Number.isFinite(data.durationMs) && data.durationMs >= 0) {
+          fields.latencyMs = data.durationMs;
+        }
         if (record.type === 'tool.execution_complete') {
           fields.status = data.success === true ? 'success'
             : data.success === false || data.isError === true ? 'error' : string(data.status);
@@ -99,15 +118,44 @@ function timeline(records) {
       case 'mcp.difc.filtered':
       case 'mcp.guard.blocked':
         source = 'mcp';
-        type = record.type === 'mcp.tool_call' ? 'tool_call'
+        type = record.type === 'mcp.tool_call' ? 'tool.call'
           : record.type === 'mcp.difc.filtered' ? 'difc_filtered' : 'guard_blocked';
         Object.assign(fields, {
           summary, mcpServer: server, mcpTool: tool, correlationId,
-          status: string(data.status),
-          requestBytes: typeof data.inputSize === 'number' ? data.inputSize : undefined,
-          responseBytes: typeof data.outputSize === 'number' ? data.outputSize : undefined
+          status: data.httpStatus === 429 ? 'rate-limited'
+            : (data.error !== undefined && data.error !== null && data.error !== false)
+              || (typeof data.httpStatus === 'number' && data.httpStatus >= 400) ? 'error' : string(data.status),
+          invocationCount: record.type === 'mcp.tool_call' ? 1 : 0
         });
+        for (const [native, canonical] of [['inputSize', 'requestBytes'], ['outputSize', 'responseBytes'], ['durationMs', 'latencyMs']]) {
+          if (typeof data[native] === 'number' && Number.isFinite(data[native]) && Number(data[native]) >= 0
+              && (canonical === 'latencyMs' || Number.isSafeInteger(data[native]))) {
+            fields[canonical] = data[native];
+          }
+        }
         break;
+      case 'mcp.rpc.request':
+      case 'mcp.rpc.response':
+        if (!combinedCalls.has(JSON.stringify([server, tool])) && tool && (data.method === 'tools/call' || previousRpc)
+            && (data.direction === undefined || /^(OUT|OUTBOUND|IN|INBOUND)$/i.test(String(data.direction)))) {
+          source = 'mcp';
+          type = record.type === 'mcp.rpc.request' ? 'tool.call'
+            : (data.error !== undefined && data.error !== null && data.error !== false)
+              || (typeof data.httpStatus === 'number' && data.httpStatus >= 400) ? 'tool.error' : 'tool.result';
+          Object.assign(fields, { summary, mcpServer: server, mcpTool: tool,
+            correlationId: string(data.toolCallId ?? data.requestId) ?? (data.rpcId === undefined ? undefined : String(data.rpcId)),
+            invocationCount: record.type === 'mcp.rpc.request' ? 1 : 0,
+            status: data.httpStatus === 429 ? 'rate-limited'
+              : string(data.status) ?? (type === 'tool.error' ? 'error' : type === 'tool.result' ? 'success' : 'started') });
+          for (const [native, canonical] of [['inputSize', 'requestBytes'], ['outputSize', 'responseBytes'], ['durationMs', 'latencyMs']]) {
+            if (typeof data[native] === 'number' && Number.isFinite(data[native]) && Number(data[native]) >= 0
+                && (canonical === 'latencyMs' || Number.isSafeInteger(data[native]))) fields[canonical] = data[native];
+          }
+          break;
+        }
+        return sessionMetadata(String(record.type), { ...data, serverName: server, toolName: tool }).map((entry) => ({
+          line, timestamp, source: 'session', type: String(record.type), ...entry
+        }));
       case 'firewall.http_access': {
         const host = string(data.host);
         if (!host) return [];
@@ -117,13 +165,17 @@ function timeline(records) {
         } catch {
           return [];
         }
-        const denied = /denied|blocked|reject/i.test(String(data.decision ?? ''))
-          || (Number(data.status) >= 400 && Number(data.status) < 600);
+        const decision = String(data.decision ?? '');
+        const denied = /denied|blocked|reject/i.test(decision)
+          || (!/allow|tcp_miss|tunnel/i.test(decision) && Number(data.status) >= 400 && Number(data.status) < 600);
         source = 'firewall';
         type = denied ? 'net_blocked' : 'net_allowed';
         Object.assign(fields, {
           summary: domain, domain, decision: denied ? 'denied' : 'allowed', requestCount: 1,
-          status: typeof data.status === 'number' ? String(data.status) : undefined
+          status: typeof data.status === 'number' ? String(data.status) : string(data.status),
+          method: string(data.method),
+          ...(typeof data.bytes === 'number' && Number.isSafeInteger(data.bytes) && data.bytes >= 0 ? { responseBytes: data.bytes } : {}),
+          ...(typeof data.durationMs === 'number' && Number.isFinite(data.durationMs) && data.durationMs >= 0 ? { latencyMs: data.durationMs } : {})
         });
         break;
       }
@@ -141,13 +193,25 @@ function timeline(records) {
       case 'session.collection_warning':
         type = record.type;
         fields.status = record.type === 'session.error' ? 'error' : 'warning';
+        fields.code = string(data.code ?? data.policyCategory);
+        if (record.type === 'session.error') {
+          fields.model = string(data.model);
+          if (typeof data.statusCode === 'number' && Number.isSafeInteger(data.statusCode)) fields.httpStatus = data.statusCode;
+        }
         break;
       default:
-        return [];
+        return sessionMetadata(String(record.type), data).map((entry) => ({
+          line, timestamp, source: 'session', type: String(record.type), ...entry,
+          fields: Object.fromEntries(Object.entries({
+            ...entry.fields, component: provenance?.component, phase: provenance?.phase
+          }).filter(([, value]) => typeof value === 'string' || typeof value === 'boolean'
+            || (typeof value === 'number' && Number.isFinite(value))))
+        }));
     }
     return [{ line, timestamp, source, type, fields }];
   });
-  debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length, skipped: records.length - evidence.length, turns: turn });
+  debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length,
+    skipped: records.length - new Set(evidence.map((event) => event.line)).size, turns: turn });
   return evidence;
 }
 
@@ -181,11 +245,6 @@ export function parseUnifiedSessionDocument(content, path, context) {
     .map((field) => [field, value[field]]));
   const graderFields = ['id', 'name', 'status', 'value', 'score', 'unit', 'passed', 'direction',
     'threshold', 'source', 'digest', 'experimentId', 'experiment_id', 'variant'];
-  /** @param {Record<string, unknown>} value */
-  const matchesRun = (value) => ['runId', 'run_id', 'runid'].every((field) =>
-    value[field] === undefined || String(value[field]) === context.runId)
-    && ['runAttempt', 'run_attempt'].every((field) => value[field] === undefined
-      || (Number.isInteger(Number(value[field])) && Number(value[field]) === context.attempt));
   for (const { record, line } of records) {
     const data = /** @type {Record<string, unknown>} */ (record.data);
     const clock = object(record.provenance)?.timestampMs ?? record.timestamp;
@@ -199,7 +258,7 @@ export function parseUnifiedSessionDocument(content, path, context) {
         if (String(data.runId) !== context.runId) break;
         // falls through
       case 'experiment.assignment': {
-        if (!matchesRun(data)) break;
+        if (!matchesSessionRun(data, context)) break;
         const assignments = object(data.assignments);
         if (!assignments) throw new TypeError(`${path}:${line} must contain experiment assignments`);
         evidence.experiments = { assignments: Object.fromEntries(Object.entries(assignments)
@@ -214,14 +273,14 @@ export function parseUnifiedSessionDocument(content, path, context) {
         break;
       case 'grader.result': {
         const run = object(data.run);
-        if (!matchesRun(data) || (run && (String(run.id) !== context.runId
+        if (!matchesSessionRun(data, context) || (run && (String(run.id) !== context.runId
             || (run.attempt !== undefined && Number(run.attempt) !== context.attempt)))) break;
         for (const candidate of Array.isArray(data.results) ? data.results : [data]) {
           const grader = object(candidate);
           if (!grader || typeof grader.id !== 'string' || !grader.id.trim()) {
             throw new TypeError(`${path}:${line} must contain a grader identity`);
           }
-          if (!matchesRun(grader)) continue;
+          if (!matchesSessionRun(grader, context)) continue;
           const implementation = object(grader.implementation);
           results.push({
             ...select(grader, graderFields), ...observation,
@@ -239,7 +298,7 @@ export function parseUnifiedSessionDocument(content, path, context) {
         break;
       }
       case 'eval.result':
-        if (!matchesRun(data)) break;
+        if (!matchesSessionRun(data, context)) break;
         evals.push({ ...select(data, ['id', 'answer', 'runId', 'experimentId', 'experiment_id', 'variant']), ...observation });
         evidence.evals = evals;
         break;
@@ -255,5 +314,12 @@ export function parseUnifiedSessionDocument(content, path, context) {
       }
     }
   }
-  return { events: timeline(records), ...evidence };
+  const run = sessionRunMetadata(records, context);
+  if (Array.isArray(run.safe_outputs)) {
+    run.safe_outputs = run.safe_outputs.map((output) => {
+      const { sessionLine, ...fields } = output;
+      return { ...fields, sessionPayloadRef: `${path}#L${sessionLine}` };
+    });
+  }
+  return { events: timeline(records, true, context), run, ...evidence };
 }

@@ -148,9 +148,12 @@ model domains {
   decision?: string;
   domain?: string;
   id: string;
+  latencyMs?: decimal;
+  method?: string;
   observedAt?: utcDateTime;
   payloadRef?: string;
   requestCount?: int64;
+  responseBytes?: int64;
   @parent("runs")
   runId: string;
   source?: string;
@@ -269,6 +272,37 @@ model friction {
  */
 @runPartition
 model audits {
+  component?: string;
+  phase?: string;
+  `model`?: string;
+  provider?: string;
+  effort?: string;
+  durationMs?: decimal;
+  sourceEngine?: string;
+  exitCode?: int64;
+  httpStatus?: int64;
+  method?: string;
+  direction?: string;
+  requestBytes?: int64;
+  responseBytes?: int64;
+  premiumRequests?: decimal;
+  totalCostUsd?: decimal;
+  totalAic?: decimal;
+  errorsCount?: int64;
+  permissionDenialsCount?: int64;
+  resource?: string;
+  resetAt?: utcDateTime;
+  rateLimit?: int64;
+  remaining?: int64;
+  used?: int64;
+  requestAttempt?: int64;
+  delayMs?: decimal;
+  threshold?: decimal;
+  value?: decimal;
+  transport?: string;
+  required?: boolean;
+  scope?: string;
+  digest?: string;
   acceptedAt?: utcDateTime;
   activationSource?: string;
   actor?: string;
