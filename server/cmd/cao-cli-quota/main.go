@@ -172,27 +172,8 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 			return b.unknown(req.ID)
 		}
 	}
-	// Never infer command cost. Only a fresh GitHub observation reconciles
-	// completed work; a failed refresh leaves its reservation held.
-	for id, held := range b.reservations {
-		done := true
-		for _, r := range held.buckets {
-			if held.finished && r.Bucket.App == current.identity {
-				observation, ok := current.observations[r.Bucket.Resource]
-				if !ok {
-					done = false
-					continue
-				}
-				if err := b.service.Commit(ctx, r, observation); err != nil {
-					return b.unknown(req.ID)
-				}
-			} else if r.ExpiresAt.After(b.now()) {
-				done = false
-			}
-		}
-		if done {
-			delete(b.reservations, id)
-		}
+	if err := b.reconcile(ctx, current); err != nil {
+		return b.unknown(req.ID)
 	}
 	concurrency, cost, floor := req.limits()
 	active := 0
@@ -241,6 +222,38 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	result.ReservationID = held[0].ID
 	b.reservations[result.ReservationID] = &reservation{buckets: held}
 	return result
+}
+
+// reconcile settles finished reservations against a fresh observation. Never
+// infer command cost: only a fresh GitHub observation reconciles completed
+// work, and a failed refresh leaves its reservation held.
+func (b *bridge) reconcile(ctx context.Context, current snapshot) error {
+	settled := 0
+	for id, held := range b.reservations {
+		done := true
+		for _, r := range held.buckets {
+			if held.finished && r.Bucket.App == current.identity {
+				observation, ok := current.observations[r.Bucket.Resource]
+				if !ok {
+					done = false
+					continue
+				}
+				if err := b.service.Commit(ctx, r, observation); err != nil {
+					return err
+				}
+			} else if r.ExpiresAt.After(b.now()) {
+				done = false
+			}
+		}
+		if done {
+			delete(b.reservations, id)
+			settled++
+		}
+	}
+	if settled > 0 {
+		quotaLog.Printf("reconciled reservations: settled=%d remaining=%d", settled, len(b.reservations))
+	}
+	return nil
 }
 
 func maxTime(a, b time.Time) time.Time {

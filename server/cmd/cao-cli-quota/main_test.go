@@ -359,3 +359,46 @@ func TestReleaseFreesReservationAndIgnoresUnknownID(t *testing.T) {
 		t.Fatalf("quota still reserved: %+v, %v", state, err)
 	}
 }
+
+func TestReconcileSettlesOnlyFinishedReservations(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	first := b.handle(ctx, request{ID: 1, Operation: "admit"})
+	second := b.handle(ctx, request{ID: 2, Operation: "admit"})
+	if first.ReservationID == "" || second.ReservationID == "" {
+		t.Fatalf("admissions: %+v %+v", first, second)
+	}
+	b.reservations[first.ReservationID].finished = true
+
+	if err := b.reconcile(ctx, *current); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := b.reservations[first.ReservationID]; ok {
+		t.Fatal("finished reservation was not settled")
+	}
+	if _, ok := b.reservations[second.ReservationID]; !ok {
+		t.Fatal("active reservation was settled")
+	}
+}
+
+func TestReconcileKeepsFinishedReservationWithoutObservation(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	admitted := b.handle(ctx, request{ID: 1, Operation: "admit"})
+	b.reservations[admitted.ReservationID].finished = true
+	delete(current.observations, "graphql")
+
+	if err := b.reconcile(ctx, *current); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := b.reservations[admitted.ReservationID]; !ok {
+		t.Fatal("reservation settled without a fresh observation")
+	}
+}
+
+func TestReconcileWithNoReservationsIsNoop(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	if err := b.reconcile(context.Background(), *current); err != nil || len(b.reservations) != 0 {
+		t.Fatalf("unexpected result: %v, %d", err, len(b.reservations))
+	}
+}
