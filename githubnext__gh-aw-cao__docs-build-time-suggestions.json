@@ -1,7 +1,47 @@
 {
   "source_sha": "573475888dc015a33e0f19cd4ef09130a8f53c3c",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T14:46:37Z",
+      "worker_run_id": 38917594919,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        38917293463,
+        38917056131,
+        38915690483,
+        38915284787,
+        38912474568,
+        38911364559,
+        38910745334,
+        38909539751,
+        38909157000,
+        38907731912,
+        38907322173,
+        38906258108,
+        38905086017,
+        38903978657,
+        38903409668,
+        38901438123,
+        38901384256,
+        38900237370,
+        38898347616,
+        38898215207
+      ],
+      "docs_window": {
+        "start": "2026-10-16T12:06:17Z",
+        "end": "2026-10-16T14:37:50Z"
+      },
+      "docs_success_count": 17,
+      "docs_comparable_success_count": 9,
+      "docs_workflow_run_comparable_count": 7,
+      "docs_schedule_build_count": 2,
+      "docs_schedule_skip_count": 7,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 16,
+      "decision": "noop_duplicate_open_issue",
+      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 573475888dc015a33e0f19cd4ef09130a8f53c3c. In the latest 20 completed docs.yml runs from 2026-10-16T12:06:17Z through 2026-10-16T14:37:50Z, 17 runs concluded success and 3 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Nine comparable successful docs runs executed both build and deploy (7 workflow_run, 2 schedule), with trusted metadata showing median queue time 0.0s, docs workflow execution 81.0s (p90 113.0s), build 45.0s (p90 54.0s), deploy 17.0s (p90 46.4s), Build documentation 14.0s (p90 15.0s), Restore cached CAO Dashboard 2.0s (p90 3.2s), Upload Pages artifact 6.0s (p90 7.2s), and Deploy Pages 13.0s (p90 43.4s). Seven successful schedule runs skipped build and deploy with a median 11.0s full workflow and an 8.0s freshness job. The latest 20 completed cao-dashboard.yml runs in the paired window contained 16 successful builds and 4 skipped callbacks; trusted metadata showed median full execution 134.5s (p90 162.5s), build 117.5s (p90 142.5s), Restore collected activity data 3.0s, Install dashboard build dependencies 3.0s, Upgrade fallback activity data 92.0s (p90 107.0s), Assemble Dashboard Language site 3.0s, Upload dashboard artifact 5.0s, cache Download dashboard artifact 3.0s, and Save dashboard cache 2.0s. Bounded logs from docs run 38917056131 confirmed cache hits for setup-node npm, node_modules, and central-agentic-ops-dashboard; Astro built 75 pages in 12.41s; Pages artifact upload finished at 39.0 MB in about 7s; and deploy succeeded after a single artifact metadata lookup. Bounded logs from dashboard run 38916669749 confirmed a cache hit for cao-activity-v5-38912554986-1 (~66 MB), dashboard npm ci adding 6 packages in 2s, validation of a 375.3 MiB SQLite database, copying 272 activity shards totaling 250.1 MiB, uploading a 35.2 MB dashboard artifact, and cache re-download plus save of that artifact in about 5s total. Only one push-triggered docs run in this window still built without deploy and was followed by a same-SHA workflow_run deploy (38898215207 \u2192 38898347616), which matches open issue #18158. Repeated 8s freshness-scan skips also match open issue #17171. No new recommendation is actionable because current scheduling evidence maps to existing open issues rather than a distinct underlying change."
+    },
     {
       "evaluated_at": "2026-10-16T14:32:25Z",
       "worker_run_id": 38915576705,
@@ -1301,48 +1341,6 @@
       ],
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA fb26e0c448a2ade3523b2b6455cb7cca27bb2a51. In the latest 20 completed docs.yml runs from 2026-10-15T17:33:26Z through 2026-10-15T19:22:14Z, 12 runs concluded success, 7 concluded skipped, and 1 concluded cancelled; there were no failed, action_required, or timed_out runs in the inspected window. Only 4 comparable successful docs runs executed both build and deploy: 38793028625, 38788381413, 38785904080, 38782330033. 5 additional successful push runs built documentation with warm caches but skipped deploy: 38792951504, 38792031923, 38786748085, 38784409262, 38782111010. Trusted build metadata and bounded log reads from deployed run 38793028625 showed a setup-node npm cache hit and a Linux-node-24 node_modules cache hit, with Install dependencies and Save node_modules skipped; the same skip pattern held in the other comparable deployed runs. Because the worker requires at least 5 comparable successful runs before making a timing-backed recommendation, this evaluation stopped without an actionable dependency-installation or caching suggestion."
-    },
-    {
-      "evaluated_at": "2026-10-15T19:09:00Z",
-      "worker_run_id": 38789890486,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38788381413,
-        38786829281,
-        38786748085,
-        38785904080,
-        38785478491,
-        38785466418,
-        38784429999,
-        38784409262,
-        38782330033,
-        38782111010,
-        38780077203,
-        38778325946,
-        38776717949,
-        38776306821,
-        38773870030,
-        38773545147,
-        38773526677,
-        38772338727,
-        38770732207,
-        38769244436
-      ],
-      "docs_window": {
-        "start": "2026-10-15T16:28:09Z",
-        "end": "2026-10-15T18:46:20Z"
-      },
-      "docs_success_count": 14,
-      "docs_comparable_success_count": 6,
-      "docs_deployed_success_count": 6,
-      "dashboard_completed_count": 20,
-      "dashboard_success_count": 1,
-      "dashboard_success_run_ids": [
-        38765614002
-      ],
-      "decision": "create_issue",
-      "suggestion_fingerprint": "docs-push-builds-must-deploy-to-avoid-schedule-rebuilds",
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA bea157450538b0ca6bcfcea78d45147b80324dd9. In the latest 20 completed docs.yml runs from 2026-10-15T16:28:09Z through 2026-10-15T18:46:20Z, 14 runs concluded success and 6 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Six comparable successful docs runs executed both build and deploy: 38769244436, 38773870030, 38776717949, 38782330033, 38785904080, and 38788381413. Trusted run and job metadata for those runs showed median queue time 0s, docs workflow execution 112.5s (p90 182s), build 56s (p90 72s), and deploy 32.5s (p90 108s). Trusted build logs from runs 38769244436 and 38788381413 confirmed cache restores for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache; the fallback Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact steps were skipped. Four push-triggered docs runs, 38773526677, 38782111010, 38784409262, and 38786748085, rebuilt documentation with warm caches but had deploy skipped. Three same-SHA push-to-schedule pairs then rebuilt and deployed the same commit on schedule: 38773526677\u219238773870030, 38782111010\u219238782330033, and 38786748085\u219238788381413. Those duplicated pairs consumed 382s total, including 169s of push-only build time that never deployed and 317s of later scheduled build-and-deploy time to publish the same SHAs. The workflow source shows build explicitly overrides the skipped schedule-freshness dependency for push events, while deploy has no equivalent guard, so push runs can build but not deploy. This supports one actionable scheduling improvement: add an explicit deploy job condition that allows deploy after a successful push build so the next schedule pass can freshness-skip the already-published SHA."
     }
   ]
 }
