@@ -138,6 +138,13 @@ button[data-open-modal]:focus-visible {
   height: auto;
 }
 
+.sl-markdown-content pre,
+.sl-markdown-content pre code,
+.sl-markdown-content pre .ec-line,
+.sl-markdown-content pre .code {
+  white-space: pre-wrap !important;
+}
+
 .docs-theme-diagram-light {
   display: none !important;
 }
