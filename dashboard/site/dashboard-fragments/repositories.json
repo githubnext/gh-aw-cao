@@ -80,7 +80,8 @@
           {
             "field": "aic-total",
             "as": "aic",
-            "reducer": "sum"
+            "reducer": "sum",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           }
         ]
       }

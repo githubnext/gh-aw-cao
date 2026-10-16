@@ -813,7 +813,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           tabIndex: 0,
           role: 'img',
           'aria-label': label
-        }, formatNumber(value, unit))
+        }, point.y == null ? 'Unavailable' : formatNumber(value, unit))
       );
     };
     const hasSections = points.some((point) => point.section);

@@ -145,6 +145,11 @@
       "from": "friction",
       "compute": [
         {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic" }, { "value": 0 }]
+        },
+        {
           "as": "repository-coordinate",
           "function": "concat",
           "args": [
@@ -191,7 +196,8 @@
           {
             "field": "aic",
             "as": "friction-aic",
-            "reducer": "sum"
+            "reducer": "sum",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
           },
           {
             "field": "run",

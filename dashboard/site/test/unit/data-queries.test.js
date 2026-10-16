@@ -1345,7 +1345,7 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived['workflow-aic-per-run'].rows).toEqual(
       derived['workflow-inventory'].rows
-        .filter((row) => row['has-observed-runs'])
+        .filter((row) => typeof row['aic-per-run'] === 'number' && row['aic-per-run'] > 0)
         .map((row) => ({
           'workflow-label': row['workflow-label'],
           'workflow-link': row['workflow-link'],
@@ -1406,8 +1406,7 @@ describe('declarative dashboard queries', () => {
     }, ['workflow-aic-per-run']);
 
     expect(derived['workflow-aic-per-run'].rows).toEqual([
-      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'aic-per-run': 5 }),
-      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:b.md', 'aic-per-run': null })
+      expect.objectContaining({ 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'aic-per-run': 5 })
     ]);
   });
 

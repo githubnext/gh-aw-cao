@@ -335,6 +335,21 @@ describe('chart element helpers', () => {
       .toContain('Alpha repository: 40');
   });
 
+  it('distinguishes unavailable horizontal-bar observations from recorded zero costs', () => {
+    const points = [
+      { x: 'Missing telemetry', y: null, color: null },
+      { x: 'Recorded zero', y: 0, color: null },
+      { x: 'Recorded cost', y: 125, color: null }
+    ];
+    const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points), null, 'AIC', {
+      name: 'aic', symbol: 'AIC', significant: 0.01, format: 'aicc'
+    });
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))
+      .toEqual(['Unavailable', '$0.00', '$1.25']);
+    expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
+      .toBe('Missing telemetry: Unavailable');
+  });
+
   it('groups horizontal bars under section headings in first-appearance order', () => {
     const points = [
       { x: 'deploy.md', y: 40, color: null, section: 'octo/app' },

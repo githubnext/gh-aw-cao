@@ -336,13 +336,18 @@
           "as": "run-attempt-identity",
           "function": "concat",
           "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+        },
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
         }
       ],
       "aggregate": {
         "by": ["organization", "repository", "workflow"],
         "values": [
           { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
-          { "field": "aic-total", "as": "aic", "reducer": "sum" }
+          { "field": "aic-total", "as": "aic", "reducer": "sum", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } }
         ]
       }
     },
@@ -982,9 +987,9 @@
       "name": "repository-aic-totals",
       "subject": "Summarize observed AI Credit usage by repository.",
       "objective": "Provide repository-level retained AI Credit totals for comparing observed usage with run activity.",
-      "acceptance": "Sum recorded aic-total by organization and repository; an absent or partial run history does not support a claim of zero actual consumption.",
+      "acceptance": "Sum only positive recorded aic-total by organization and repository; exclude zero and missing costs rather than treating them as free execution.",
       "description": "Observed AI Credit totals for each repository.",
-      "from": "runs",
+      "from": "workflow-aic-totals",
       "aggregate": {
         "by": [
           "organization",
@@ -992,7 +997,7 @@
         ],
         "values": [
           {
-            "field": "aic-total",
+            "field": "aic",
             "as": "aic",
             "reducer": "sum"
           }

@@ -364,38 +364,11 @@
       ]
     },
     {
-      "name": "workflow-aic-run-totals",
-      "subject": "Summarize observed run attempts and AI Credits for workflow cost comparison.",
-      "objective": "Count retained run attempts and recorded AI Credits without loading imported-event coverage.",
-      "acceptance": "Group observed run attempts by organization, repository, and workflow; count distinct run and attempt identities and sum recorded AI Credits, without inferring complete telemetry.",
-      "from": "runs",
-      "compute": [
-        {
-          "as": "run-attempt-identity",
-          "function": "concat",
-          "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
-        },
-        {
-          "as": "positive-aic",
-          "function": "greater-than",
-          "args": [{ "field": "aic-total" }, { "value": 0 }]
-        }
-      ],
-      "aggregate": {
-        "by": ["organization", "repository", "workflow"],
-        "values": [
-          { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
-          { "field": "run-attempt-identity", "as": "aic-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } },
-          { "field": "aic-total", "as": "aic", "reducer": "sum" }
-        ]
-      }
-    },
-    {
       "name": "workflow-aic-per-run",
-      "subject": "List declared workflows with observed runs and their average AI Credit cost per run.",
+      "subject": "List declared workflows with recorded positive AI Credit costs and their average cost per run.",
       "objective": "Identify workflows with observed run AIC averages worth investigating alongside run evidence.",
-      "acceptance": "Include only declared workflows with observed run attempts, retaining their reported averages and missing telemetry; inspect underlying runs and separate outcome evidence before inferring waste or benefit.",
-      "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
+      "acceptance": "Include only declared workflows with at least one run attempt reporting positive AIC; exclude zero and missing telemetry from the average and ranking, without interpreting missing telemetry as free execution.",
+      "description": "Workflow AI Credit averages limited to run attempts with recorded positive AIC.",
       "from": "workflows",
       "joins": [
         {
@@ -455,24 +428,21 @@
           ]
         },
         {
-          "as": "total-aic",
-          "function": "coalesce",
-          "args": [{ "field": "observed-aic" }, { "value": 0 }]
-        },
-        {
           "as": "aic-per-run",
           "function": "quotient",
-          "args": [{ "field": "total-aic" }, { "field": "observed-aic-runs" }]
+          "args": [{ "field": "observed-aic" }, { "field": "observed-aic-runs" }]
         }
       ],
       "filter": {
-        "predicates": [{ "field": "observed-runs", "gte": 1 }]
+        "predicates": [{ "field": "observed-aic-runs", "gte": 1 }]
       },
       "select": [
         { "field": "workflow-identity", "as": "workflow-label" },
         { "field": "workflow-dashboard-link", "as": "workflow-link" },
         { "field": "aic-per-run" }
-      ]
+      ],
+      "order-by": [{ "field": "aic-per-run", "direction": "desc" }],
+      "limit": 10
     }
   ],
   "views": [
@@ -577,8 +547,8 @@
             "title": "Average AIC per run by workflow",
             "subject": "Compare observed average AI Credit cost per run across workflows.",
             "objective": "Identify costly workflows for a closer review of their run evidence.",
-            "acceptance": "Comparisons use observed run averages, without inferring waste or outcome value from cost alone.",
-            "description": "Declared workflows ranked by average AI Credit cost per observed run.",
+            "acceptance": "Rank only workflows with positive recorded AIC, averaging only attempts with positive recorded costs; missing or zero telemetry is not evidence of free execution, waste, or outcome value.",
+            "description": "Declared workflows ranked by average AI Credit cost across runs with positive recorded AIC. Zero and missing telemetry are excluded.",
             "data": {
               "source": "workflow-aic-per-run",
               "order-by": [

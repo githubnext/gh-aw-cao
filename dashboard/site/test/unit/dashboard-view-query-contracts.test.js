@@ -313,18 +313,11 @@ describe('dashboard view query contracts', () => {
             'dashboard-label': 'View Beta campaign dashboard'
           },
           aic: 2
-        },
-        {
-          'campaign-name': 'Empty',
-          'campaign-dashboard-link': {
-            'dashboard-href': '#page-campaign-insights?campaign=empty',
-            'dashboard-label': 'View Empty campaign dashboard'
-          },
-          aic: 0
         }
       ]);
       expect(results['cost-by-campaign'].rows.map((row) => row.aic))
         .toEqual(results['campaign-inventory'].rows
+          .filter((row) => Number(row.aic) > 0)
           .sort((a, b) => Number(b.aic) - Number(a.aic))
           .map((row) => row.aic));
   });

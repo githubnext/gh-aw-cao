@@ -1,0 +1,10 @@
+{
+  "page": "workflows",
+  "view": "workflows-by-aic-per-run",
+  "source": "workflow-aic-per-run",
+  "limit": 10,
+  "order": [{ "field": "aic-per-run", "direction": "desc" }],
+  "recordedCosts": [120, 25, 75, 5, 200, 10, 50, 80, 30, 15, 100, 60],
+  "rankedCosts": [200, 120, 100, 80, 75, 60, 50, 30, 25, 15],
+  "unpricedWorkflows": 12
+}

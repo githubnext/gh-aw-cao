@@ -244,35 +244,46 @@
       }
     },
     {
+      "name": "workflow-aic-run-totals",
+      "subject": "Summarize observed run attempts and AI Credits for workflow cost comparison.",
+      "objective": "Count retained run attempts and recorded AI Credits without loading imported-event coverage.",
+      "acceptance": "Count all distinct retained run attempts, but include only positive recorded AIC in cost totals and cost denominators; zero and missing telemetry cannot skew cost averages.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "run-attempt-identity",
+          "function": "concat",
+          "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+        },
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [
+          { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
+          { "field": "run-attempt-identity", "as": "aic-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } },
+          { "field": "aic-total", "as": "aic", "reducer": "sum", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } }
+        ]
+      }
+    },
+    {
       "name": "workflow-aic-totals",
       "subject": "Summarize observed AI Credit usage by declared workflow.",
       "objective": "Expose retained AI Credit consumption per workflow for bounded cost review alongside observed execution.",
-      "acceptance": "Return the sum of recorded aic-total by organization, repository, and workflow; missing usage or runs is not evidence of zero actual cost.",
+      "acceptance": "Sum only positive recorded aic-total by organization, repository, and workflow; exclude zero and missing costs rather than treating them as free execution.",
       "description": "Observed AI Credit totals for each declared workflow.",
-      "from": "runs",
-      "compute": [
-        { "as": "positive-aic", "function": "greater-than", "args": [{ "field": "aic-total" }, { "value": 0 }] }
-      ],
-      "aggregate": {
-        "by": [
-          "organization",
-          "repository",
-          "workflow"
-        ],
-        "values": [
-          {
-            "field": "aic-total",
-            "as": "aic",
-            "reducer": "sum"
-          },
-          {
-            "field": "run",
-            "as": "aic-runs",
-            "reducer": "count",
-            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
-          }
-        ]
-      }
+      "from": "workflow-aic-run-totals",
+      "filter": {
+        "predicates": [{ "field": "aic-runs", "gte": 1 }]
+      },
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "workflow" },
+        { "field": "aic" }, { "field": "aic-runs" }
+      ]
     },
     {
       "name": "mcp-tool-workflow-totals",

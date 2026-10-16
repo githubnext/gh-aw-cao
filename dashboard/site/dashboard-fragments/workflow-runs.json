@@ -45,10 +45,13 @@
       "objective": "Inspect a workflow's observed AI Credit consumption together with the amount of retained usage telemetry.",
       "acceptance": "AI Credits sum the retained aic values within each organization, repository, and workflow, and telemetry-count counts its usage records; absent telemetry does not establish zero cost or complete run coverage.",
       "from": "usage",
+      "compute": [
+        { "as": "positive-aic", "function": "greater-than", "args": [{ "field": "aic" }, { "value": 0 }] }
+      ],
       "aggregate": {
         "by": ["organization", "repository", "workflow"],
         "values": [
-          { "field": "aic", "as": "aic", "reducer": "sum" },
+          { "field": "aic", "as": "aic", "reducer": "sum", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } },
           { "field": "run", "as": "telemetry-count", "reducer": "count" }
         ]
       }

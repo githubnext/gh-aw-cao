@@ -1304,7 +1304,7 @@ describe('dashboard document validation', () => {
       from: 'workflows',
       joins: [{ source: 'workflow-aic-run-totals', type: 'left' }],
       filter: {
-        predicates: [{ field: 'observed-runs', gte: 1 }]
+        predicates: [{ field: 'observed-aic-runs', gte: 1 }]
       }
     });
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
