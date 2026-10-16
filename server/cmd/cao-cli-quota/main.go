@@ -18,8 +18,11 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
 )
+
+var quotaLog = logger.New("cao:cli-quota")
 
 type request struct {
 	ID                int      `json:"id"`
@@ -80,15 +83,46 @@ func (b *bridge) unknown(id int) decision {
 	return decision{ID: id, Reason: "unknown", RetryAt: b.now().Add(15 * time.Second).UTC().Format(time.RFC3339)}
 }
 
+// release returns every bucket held by a reservation; unknown IDs are a no-op.
+func (b *bridge) release(ctx context.Context, id string) error {
+	held := b.reservations[id]
+	if held == nil {
+		return nil
+	}
+	for _, r := range held.buckets {
+		if err := b.service.Release(ctx, r); err != nil {
+			return err
+		}
+	}
+	delete(b.reservations, id)
+	quotaLog.Printf("released reservation: buckets=%d", len(held.buckets))
+	return nil
+}
+
+// limits applies the documented defaults to unset admission parameters.
+func (r request) limits() (concurrency, cost, floor int) {
+	concurrency, cost, floor = r.MaxConcurrency, r.EstimatedCost, r.MinimumRemaining
+	if concurrency <= 0 {
+		concurrency = 4
+	}
+	if cost <= 0 {
+		cost = 50
+	}
+	if floor <= 0 {
+		floor = 100
+	}
+	return concurrency, cost, floor
+}
+
+// parkDuration clamps a retry-after hint to between one minute and one day.
+func parkDuration(retryAfterSeconds int) time.Duration {
+	return time.Duration(min(max(retryAfterSeconds, 60), 86400)) * time.Second
+}
+
 func (b *bridge) handle(ctx context.Context, req request) decision {
 	if req.Operation == "release" {
-		if held := b.reservations[req.ReservationID]; held != nil {
-			for _, r := range held.buckets {
-				if err := b.service.Release(ctx, r); err != nil {
-					return b.unknown(req.ID)
-				}
-			}
-			delete(b.reservations, req.ReservationID)
+		if err := b.release(ctx, req.ReservationID); err != nil {
+			return b.unknown(req.ID)
 		}
 		return decision{ID: req.ID, Reason: "available"}
 	}
@@ -108,9 +142,9 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 			}
 		}
 		if req.RateLimited {
-			wait := max(req.RetryAfterSeconds, 60)
-			wait = min(wait, 86400)
-			b.parkedUntil = maxTime(b.parkedUntil, b.now().Add(time.Duration(wait)*time.Second))
+			wait := parkDuration(req.RetryAfterSeconds)
+			b.parkedUntil = maxTime(b.parkedUntil, b.now().Add(wait))
+			quotaLog.Printf("parking quota after rate limit: wait_seconds=%d reservations=%d", int(wait.Seconds()), len(b.reservations))
 			// Park every known meter: command output does not identify which
 			// resource incurred a secondary limit.
 			for _, held := range b.reservations {
@@ -160,16 +194,7 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 			delete(b.reservations, id)
 		}
 	}
-	concurrency, cost, floor := req.MaxConcurrency, req.EstimatedCost, req.MinimumRemaining
-	if concurrency <= 0 {
-		concurrency = 4
-	}
-	if cost <= 0 {
-		cost = 50
-	}
-	if floor <= 0 {
-		floor = 100
-	}
+	concurrency, cost, floor := req.limits()
 	active := 0
 	for _, held := range b.reservations {
 		if !held.finished {
