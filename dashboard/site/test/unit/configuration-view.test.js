@@ -608,6 +608,29 @@ describe('Configuration dashboard view', () => {
     expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('#configuration-control-plane-defaults-max-repositories'))?.value).toBe('7');
   });
 
+  it('keeps the edited control node and focus while the draft changes', () => {
+    const rendered = renderConfigurationView(context({
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+
+    const selector = '#configuration-control-plane-defaults-max-repositories';
+    const input = /** @type {HTMLInputElement | null} */ (rendered.querySelector(selector));
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.focus();
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
+    expect(rendered.querySelector(selector)).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('12');
+    rendered.remove();
+  });
+
   it('stops reacting to draft edits once the editor is detached from the document', () => {
     const rendered = renderConfigurationView(context({
       document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },

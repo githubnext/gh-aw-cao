@@ -10,7 +10,7 @@ import { renderSettingsCliActions } from './cli-actions.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderServerLogsSetting, renderServerLogsView } from './server-logs.js';
-import { effect, state } from '../reactive.js';
+import { batch, effect, render, state, untracked } from '../reactive.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -265,6 +265,7 @@ function policyDocumentFromRow(row) {
 function renderSettingsEditor(policyDocument) {
   const original = cloneDocument(policyDocument);
   const draft = state(cloneDocument(policyDocument));
+  const resetRevision = state(0);
   const status = /** @type {HTMLOutputElement} */ (h('output', {
     className: 'configuration-edit-status',
     'aria-live': 'polite'
@@ -288,7 +289,10 @@ function renderSettingsEditor(policyDocument) {
   const resetButton = h('button', {
     type: 'button',
     className: 'configuration-reset-button',
-    onClick: () => draft.set(cloneDocument(original))
+    onClick: () => batch(() => {
+      draft.set(cloneDocument(original));
+      resetRevision.set((revision) => revision + 1);
+    })
   }, 'Discard changes');
   const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
   // `diagnosticsBusy`/`diagnosticsStatusText` are the diagnostics button's
@@ -329,6 +333,12 @@ function renderSettingsEditor(policyDocument) {
     diagnosticsButton.disabled = diagnosticsBusy.get();
     diagnosticsStatus.textContent = diagnosticsStatusText.get();
   }, { signal: scope.signal });
+  // Controls already hold the user's edits, so they are rebuilt only when the draft is reset;
+  // this keeps the focused control, caret, and disclosure state across edits.
+  render(settings, () => {
+    resetRevision.get();
+    return Object.entries(untracked(() => draft.get())).map(([name, value]) => renderEntry(name, value, name, [name], updateValue));
+  }, { signal: scope.signal });
   let lastModified = false;
   effect(() => {
     const currentDraft = draft.get();
@@ -336,9 +346,6 @@ function renderSettingsEditor(policyDocument) {
     copyControl.reset();
     status.textContent = modified ? 'Modified locally' : 'No changes';
     status.setAttribute('data-state', modified ? 'modified' : 'clean');
-    settings.replaceChildren(
-      ...Object.entries(currentDraft).map(([name, value]) => renderEntry(name, value, name, [name], updateValue))
-    );
     if (modified !== lastModified) {
       debugConfigurationView('settings draft state changed', { modified });
       lastModified = modified;
