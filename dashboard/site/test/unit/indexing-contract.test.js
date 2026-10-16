@@ -19,7 +19,7 @@ const metadata = {
 };
 
 describe('indexing dashboard', () => {
-  it('projects daily records, individual ingestion run counts, and table counts through the worker', () => {
+  it('projects individual ingestion run counts and actual canonical table names through the worker', () => {
     const results = /** @type {Record<string, any>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -65,16 +65,11 @@ describe('indexing dashboard', () => {
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       sourceNames: [
-        'indexing-daily-records',
         'indexing-ingestion-runs',
         'indexing-database-table-counts'
       ]
     }));
 
-    expect(results['indexing-daily-records'].rows).toEqual([
-      { day: '2026-09-23', records: 10 },
-      { day: '2026-09-24', records: 7 }
-    ]);
     expect(results['indexing-ingestion-runs'].rows).toHaveLength(3);
     expect(results['indexing-ingestion-runs'].rows.map((/** @type {any} */ row) => [row.createdAt, row.rawRuns]))
       .toEqual([
@@ -83,18 +78,27 @@ describe('indexing dashboard', () => {
         ['2026-09-24T02:00:00Z', 99]
       ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
-      { table: 'ingestion transactions', records: 3 },
-      { table: 'workflow runs', records: 3 },
-      { table: 'audit events', records: 2 },
+      { table: 'runs', records: 3 },
+      { table: 'transactions', records: 3 },
+      { table: 'audits', records: 2 },
       { table: 'workflows', records: 2 },
       { table: 'campaigns', records: 1 },
-      { table: 'issue events', records: 1 },
+      { table: 'issues', records: 1 },
       { table: 'repositories', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'tools', records: 1 }
     ]);
     const tableLabels = results['indexing-database-table-counts'].rows.map((/** @type {any} */ row) => row.table);
-    expect(tableLabels).not.toContain('network domains');
-    expect(tableLabels).not.toContain('operational values');
+    expect(tableLabels).not.toContain('domains');
+    expect(tableLabels).not.toContain('operationalValues');
+  });
+
+  it('declares storage information without activity queries and removes the daily ingestion chart and its query', () => {
+    const page = dashboard.pages.find(/** @param {any} candidate */ (candidate) => candidate.id === 'indexing');
+    expect(page.views[0]).toMatchObject({
+      id: 'ingestion-storage', mark: 'element', element: 'storage-info', data: { sources: [] }
+    });
+    expect(page.views.some(/** @param {any} view */ (view) => view.id === 'indexing-size')).toBe(false);
+    expect(dashboard.queries.some(/** @param {any} query */ (query) => query.name === 'indexing-daily-records')).toBe(false);
   });
 
   describe('ingestion scatter worker contract', () => {
@@ -205,7 +209,7 @@ describe('indexing dashboard', () => {
     });
     expect(dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'indexing-database-table-counts')['order-by'])
       .toEqual([{ field: 'records', direction: 'desc' }, { field: 'table', direction: 'asc' }]);
-    expect(page.views[0].id).toBe('indexing-database-table-counts');
+    expect(page.views[1].id).toBe('indexing-database-table-counts');
     expect(transactions).toMatchObject({
       mark: 'list',
       list: { style: 'entity-cards', card: 'ingestion-transaction' }
@@ -225,7 +229,7 @@ describe('indexing dashboard', () => {
       queryContext: { filters: { repository: ['example'] } }
     });
 
-    expect(page.views[0].data['query-context']).toBe(false);
+    expect(page.views.find(/** @param {any} view */ (view) => view.id === 'indexing-database-table-counts').data['query-context']).toBe(false);
     expect(payload).toEqual({ aliases: [], queries: [], replacedSources: [] });
   });
 

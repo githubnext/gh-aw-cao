@@ -13,6 +13,7 @@ import { createFactoryScope } from './factory-elements.js';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 import { renderCommandTerminal } from './command-terminal.js';
+import { renderStorageInfo } from './storage-info.js';
 
 const debugUiElements = createDebug('ui-elements');
 
@@ -48,7 +49,8 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
   ['markdown', renderMarkdownElement],
-  ['command-terminal', renderCommandTerminal]
+  ['command-terminal', renderCommandTerminal],
+  ['storage-info', renderStorageInfo]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -84,7 +86,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'link-button-list',
   'markdown',
   'measure-history',
-  'command-terminal'
+  'command-terminal',
+  'storage-info'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route']);
 

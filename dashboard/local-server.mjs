@@ -1432,6 +1432,7 @@ export async function startDashboardServer({
       if (sqliteBackend && extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
 <meta name="dashboard-data-backend" content="server-http">
+<meta name="dashboard-storage-backend" content="sqlite">
 <meta name="dashboard-api-base" content="${routePrefix}/">`);
       }
       sendContent(request, response, contentTypes.get(extension), content);

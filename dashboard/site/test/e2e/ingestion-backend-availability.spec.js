@@ -119,6 +119,8 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   await expect(banner.getByRole('link', { name: 'View Ingestion' })).toHaveAttribute('href', '#page-indexing');
   await banner.getByRole('link', { name: 'View Ingestion' }).click();
   await expect(page.locator('#page-title')).toHaveText('Ingestion');
+  await expect(page.locator('[data-view-id="ingestion-storage"]')).toContainText('Browser-local storage (IndexedDB)');
+  await expect(page.getByRole('heading', { name: 'Indexed data over time' })).toHaveCount(0);
   await expect(page.locator('[data-view-id="indexing-database-table-counts"] [data-chart-widget="horizontal-bar"]')).toBeVisible();
   const shards = page.locator('[data-view-id="ingested-shards"]');
   await expect(shards).toContainText(shardName);

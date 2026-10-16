@@ -80,6 +80,7 @@ for (const { canvas, dataBackend, expected, compilerVersion } of [
       });
       const html = await (await fetch(`${preview.url}/`)).text();
       assert.equal(html.includes('name="dashboard-data-backend" content="server-http"'), expected === "sqlite");
+      assert.equal(html.includes('name="dashboard-storage-backend" content="sqlite"'), expected === "sqlite");
       assert.equal((await fetch(`${preview.url}/api/v1/diagnostics`)).status, expected === "sqlite" ? 200 : 404);
       if (expected === "sqlite") {
         const response = await fetch(`${preview.url}/api/v1/query`, {

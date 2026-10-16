@@ -162,14 +162,6 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
       }));
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
-        'indexing-daily-records': {
-          source: 'indexing-daily-records',
-          rows: [
-            { day: '2026-09-11', records: 7050 },
-            { day: '2026-09-12', records: 7950 }
-          ],
-          metadata
-        },
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [

@@ -1652,7 +1652,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 		return
 	}
 	html := string(content)
-	injections := `<meta name="dashboard-data-backend" content="server-http">`
+	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="postgres">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`

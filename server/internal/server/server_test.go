@@ -850,6 +850,9 @@ func TestStaticIndexInjectsBackendMeta(t *testing.T) {
 	if !strings.Contains(response.Body.String(), `<meta name="dashboard-data-backend" content="server-http">`) {
 		t.Fatalf("backend meta was not injected: %s", response.Body.String())
 	}
+	if !strings.Contains(response.Body.String(), `<meta name="dashboard-storage-backend" content="postgres">`) {
+		t.Fatal("PostgreSQL storage meta was not injected")
+	}
 }
 
 func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {

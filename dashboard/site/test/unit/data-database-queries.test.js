@@ -577,7 +577,7 @@ describe('canonical view sources', () => {
     );
 
     expect(result['indexing-tools-table-count'].rows).toEqual([
-      { table: 'tool events', records: 1 }
+      { table: 'tools', records: 1 }
     ]);
     expect(result['indexing-domains-table-count'].rows).toEqual([]);
     expect(Object.keys(result)).toEqual(required.filter((name) => (
@@ -602,8 +602,8 @@ describe('canonical view sources', () => {
     expect(collectionReads.mock.contexts.map((store) => /** @type {IDBObjectStore} */ (store).name))
       .toEqual(['repositories', 'campaigns', 'operationalValues']);
     expect(results['indexing-database-table-counts'].rows).toEqual(expect.arrayContaining([
-      { table: 'workflow runs', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'runs', records: 1 },
+      { table: 'tools', records: 1 }
     ]));
   });
 

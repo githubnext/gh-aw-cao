@@ -35,6 +35,8 @@ The built-in dashboard keeps its shared query foundations and its controls, repo
 
 `payload-hashes.json` is the deployed activity input. Local SQLite and hosted PostgreSQL backends execute the same declarative definitions. Add `?fixtures` locally to use the illustrative fixture data.
 
+The Ingestion page identifies browser-local IndexedDB, local-server SQLite, or server PostgreSQL storage from deployment configuration, not activity evidence. Server deployments declare `dashboard-storage-backend` metadata (`sqlite` or `postgres`); undeclared server storage is shown as unknown. Table counts use canonical table/object-store names.
+
 Work-item queries rank runs by canonical `startedAt`, falling back to `createdAt`, then break ties by run identity and attempt. Inventory observation times are not Run timestamps.
 
 Add `?online=1` to the dashboard URL to require fresh network responses for the page, its assets, and dashboard data instead of falling back to the service worker's offline cache. The worker bypasses the browser HTTP cache for these requests and redownloads unchanged activity shards during automatic data updates; if the network is unavailable, requests fail rather than showing cached files. Removing the parameter restores offline fallback.

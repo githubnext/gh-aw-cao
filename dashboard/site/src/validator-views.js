@@ -840,7 +840,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     if (view.mark === 'element') {
-      if (!((view.element === 'query-editor' || view.element === 'command-terminal') && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
+      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
         validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
       }
       if (view.data.source !== undefined) {
