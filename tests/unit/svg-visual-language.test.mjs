@@ -57,6 +57,8 @@ test("rejects incomplete metadata, gradients, and undersized labels", () => {
 });
 
 for (const [markup, text] of [
+  ["<script<script>>alert(1)", "alert(1)"],
+  ["<SCRIPT<SCRIPT>>alert(1)", "alert(1)"],
   ["<<script>script>alert(1)", "scriptalert(1)"],
   ["<<SCRIPT>SCRIPT>alert(1)", "SCRIPTalert(1)"],
   ["<script", "script"],
