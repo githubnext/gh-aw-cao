@@ -99,6 +99,15 @@ describe("agent catalog", () => {
     expect(query?.["used-by-pages"]).toEqual(["insights"]);
   });
 
+  it("exposes authored page contracts through the shared CLI and MCP catalog", () => {
+    for (const page of listPages(authoritativeDashboard)) {
+      const source = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === page.id);
+      expect(page).toMatchObject({
+        intent: source.intent, subject: source.subject, objective: source.objective, acceptance: source.acceptance
+      });
+    }
+  });
+
   it("derives query parameters from the views that bind them", () => {
     expect(queryParameters(document, "usage-by-workflow")).toEqual([
       { name: "repository", field: "repository" },

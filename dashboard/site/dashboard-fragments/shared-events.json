@@ -295,7 +295,7 @@
         {
           "as": "safe-output-server",
           "function": "equals-any",
-          "args": [{ "field": "mcp-server" }, { "value": "safe_outputs" }]
+          "args": [{ "field": "mcp-server" }, { "value": "safe_outputs" }, { "value": "safeoutputs" }]
         },
         {
           "as": "mcp-tool-label",
@@ -337,6 +337,9 @@
             },
             {
               "value": "safe_outputs"
+            },
+            {
+              "value": "safeoutputs"
             }
           ]
         },

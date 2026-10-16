@@ -1182,9 +1182,13 @@
     {
       "id": "repositories",
       "kind": "built-in",
+      "intent": "Determine which repository most needs CAO operational investigation.",
+      "subject": "Configured repositories and retained run/issue evidence for the selected horizon.",
+      "objective": "Prioritize repository-level health and usage review.",
+      "acceptance": "Preserve repository identity, run counts, issue states and observed AIC units; link repository detail. Inventory membership is not execution, authorized coverage or verified value.",
       "page": "repositories",
       "title": "Repositories",
-      "description": "Repository-owned workflow health and AI Credit usage across the configured repository scope.",
+      "description": "Identify the repository with the strongest need for CAO operational investigation.",
       "icon": "repo",
       "class-name": "repositories-page",
       "definition": {
@@ -1310,8 +1314,12 @@
     {
       "id": "repository-workflows",
       "kind": "custom",
+      "intent": "Find the declared workflows belonging to the selected repository.",
+      "subject": "Workflow inventory matching the repository route parameter.",
+      "objective": "Locate authored workflows before inspecting their execution evidence.",
+      "acceptance": "Retain repository, workflow file and role identities and detail links. Distinguish declared inventory from observed runs and unavailable inventory from an empty result.",
       "title": "Repository workflows",
-      "description": "Declared workflows for the selected repository.",
+      "description": "Locate the selected repository's declared workflows for execution review.",
       "icon": "workflow",
       "route": {
         "hash-query-parameter": "repository",
@@ -1324,8 +1332,12 @@
     {
       "id": "repository-detail",
       "kind": "custom",
+      "intent": "Determine the selected repository's next operational investigation.",
+      "subject": "One routed repository, its authored workflows and retained runs in the selected horizon.",
+      "objective": "Choose one repository-specific workflow or run investigation.",
+      "acceptance": "Show workflow/run counts and AIC with scope and native health distinctions. Preserve missing cost and unavailable evidence; successful runs do not establish accepted outcomes.",
       "title": "Repository",
-      "description": "Observed workflow health and AI Credit usage for this repository.",
+      "description": "Choose the next operational investigation for the selected repository.",
       "icon": "repo",
       "class-name": "repository-detail-page",
       "route": {
@@ -1469,8 +1481,12 @@
     {
       "id": "repository-insights",
       "kind": "custom",
+      "intent": "Compare native run conclusions for the selected repository.",
+      "subject": "Retained runs for the routed repository in the selected horizon.",
+      "objective": "Identify execution-health patterns that warrant workflow-level investigation.",
+      "acceptance": "Group by native run conclusion and show counts with the selected time bounds. Do not substitute success for effectiveness or interpret missing runs as verified health.",
       "title": "Repository",
-      "description": "Execution health observed for the workflows in this repository.",
+      "description": "Identify execution-health patterns in the selected repository that require workflow review.",
       "icon": "graph",
       "class-name": "repository-insights-page",
       "route": {
@@ -1549,8 +1565,12 @@
     {
       "id": "repository-workflow-inventory",
       "kind": "custom",
+      "intent": "Inspect which authored agentic workflows are registered for the selected repository.",
+      "subject": "Authored workflow inventory for the routed repository.",
+      "objective": "Navigate to workflow definitions and their retained execution evidence.",
+      "acceptance": "Show stable workflow file identity, repository ownership and detail links; distinguish inventory availability from execution activity. Registration alone does not establish a dispatch.",
       "title": "Repository",
-      "description": "Authored GitHub Agentic Workflows owned by this repository.",
+      "description": "Inspect the selected repository's authored agentic workflow inventory.",
       "icon": "workflow",
       "class-name": "repository-workflow-inventory-page",
       "route": {
@@ -1658,8 +1678,12 @@
     {
       "id": "repository-runs",
       "kind": "custom",
+      "intent": "Find recent or problematic workflow runs in the selected repository.",
+      "subject": "Retained GitHub Actions runs for the routed repository and selected horizon.",
+      "objective": "Select concrete runs for execution investigation.",
+      "acceptance": "Preserve run/workflow identity, native status versus conclusion, timestamps and run links; honor repository and horizon filters and disclose partial/unavailable evidence.",
       "title": "Repository",
-      "description": "Observed GitHub Actions runs for the workflows in this repository.",
+      "description": "Select a retained run from the selected repository for execution investigation.",
       "icon": "play",
       "class-name": "repository-runs-page",
       "route": {
@@ -1775,8 +1799,12 @@
     {
       "id": "repository-settings",
       "kind": "custom",
+      "intent": "Review compiler provenance before considering maintenance for the selected repository.",
+      "subject": "Authored workflow compiler versions and maintenance controls for the routed repository.",
+      "objective": "Identify evidence-backed maintenance needs without silently performing updates.",
+      "acceptance": "Show observed version provenance and unknown states. Registration is not update confidence; refresh inventory when needed, and require explicit approval for operational commands.",
       "title": "Repository",
-      "description": "Agentic workflow maintenance actions for this repository.",
+      "description": "Decide whether the selected repository's compiler provenance justifies maintenance.",
       "icon": "gear",
       "class-name": "repository-settings-page",
       "route": {

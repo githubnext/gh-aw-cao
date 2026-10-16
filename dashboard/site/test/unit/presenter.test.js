@@ -2094,7 +2094,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = rendered.querySelector('[data-page-name="workflows"]');
     expect(globalThis.document.title).toBe('Workflows · Workflow Topology');
-    expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
+    expect(page?.getAttribute('data-page-description')).toBe('Select a declared workflow for CAO operational review.');
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();

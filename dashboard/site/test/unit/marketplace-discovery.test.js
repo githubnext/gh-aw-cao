@@ -41,13 +41,13 @@ function resolve() {
 }
 
 describe('marketplace discovery', () => {
-  it('explains that add commands do not use AI on list and detail pages', () => {
+  it('explains that add commands do not use AI in list and detail contracts', () => {
     const detail = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace-package');
-    for (const description of [page.views[0].description, detail.description]) {
-      expect(description).toContain('cao add');
-      expect(description).toContain('gh aw add');
-      expect(description).toContain('does not use AI');
-    }
+    expect(page.views[0].description).toContain('cao add');
+    expect(page.views[0].description).toContain('gh aw add');
+    expect(page.views[0].description).toContain('does not use AI');
+    expect(page.acceptance).toContain('use no AI');
+    expect(detail.acceptance).toContain('use no AI');
   });
 
   it('requires a recovery route for the declared package availability view', () => {

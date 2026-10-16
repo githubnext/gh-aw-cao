@@ -831,12 +831,16 @@
     {
       "id": "steering",
       "kind": "custom",
+      "intent": "Determine which recurring steering warning needs a CAO limit investigation.",
+      "subject": "Retained gateway steering observations in the selected scope and horizon.",
+      "objective": "Prioritize investigation of repeated warnings without assuming their cause.",
+      "acceptance": "Group by native warning type and workflow; expose counts and drill-down evidence. Warnings are observations, not proof of overspend or failed outcomes; retain missing-data states.",
       "title": "Steering",
       "navigation-label": "Steering",
       "icon": "stopwatch",
       "experimental": true,
       "class-name": "steering-page",
-      "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
+      "description": "Identify workflows whose retained steering warnings require a CAO limit investigation.",
       "views": [
         {
           "id": "steering-type-breakdown",
@@ -951,11 +955,15 @@
     {
       "id": "firewall",
       "kind": "custom",
+      "intent": "Determine which blocked egress domain needs workflow-level investigation.",
+      "subject": "Observed domain request counts in the selected scope and horizon.",
+      "objective": "Investigate necessary versus unexpected egress without weakening controls by default.",
+      "acceptance": "Keep accepted and blocked counts distinct; rank blocked domains and retain domain-to-workflow drill-downs. Missing telemetry is not zero blocks or permission to allow a domain.",
       "title": "Firewall",
       "navigation-label": "Firewall",
       "icon": "globe",
       "class-name": "firewall-page",
-      "description": "Observed firewall domains and accepted and blocked request totals for agent egress.",
+      "description": "Identify blocked egress domains that require a workflow-level CAO investigation.",
       "views": [
         {
           "id": "security-firewall-most-blocked-domains",
@@ -1042,8 +1050,12 @@
     {
       "id": "firewall-domain-workflows",
       "kind": "custom",
+      "intent": "Determine which workflows account for requests to the selected firewall domain.",
+      "subject": "Retained domain observations matching the domain route parameter.",
+      "objective": "Locate source workflows and runs for a bounded egress investigation.",
+      "acceptance": "Preserve the exact domain, repository/workflow identity and accepted/blocked counts; link evidence and disclose partial or unavailable coverage. Do not infer authorization from requests.",
       "title": "Workflows",
-      "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+      "description": "Trace the selected firewall domain's decisions to their source workflows.",
       "icon": "workflow",
       "route": {
         "hash-query-parameter": "domain",
@@ -1056,11 +1068,15 @@
     {
       "id": "mcps",
       "kind": "custom",
+      "intent": "Determine which MCP tool failure needs workflow-level investigation.",
+      "subject": "Retained MCP tool invocations in the selected scope and horizon.",
+      "objective": "Prioritize tool-reliability investigation using observed execution evidence.",
+      "acceptance": "Show tool identity, invocation and failure counts, workflow context and available provenance. Keep absent telemetry distinct from no failures; do not infer root cause from counts.",
       "title": "MCP activity",
       "navigation-label": "MCPs",
       "icon": "mcp",
       "class-name": "mcps-page",
-      "description": "Diagnose MCP tool reliability across agentic workflow runs.",
+      "description": "Identify MCP tools whose observed failures require a workflow-level reliability investigation.",
       "views": [
         {
           "id": "mcp-top-tools",

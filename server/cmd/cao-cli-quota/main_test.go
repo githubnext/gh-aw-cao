@@ -567,3 +567,32 @@ func TestSnapshotFromRateLimitRejectsBadPayloads(t *testing.T) {
 		}
 	}
 }
+
+func TestParseUserID(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		output string
+		want   int64
+		fails  bool
+	}{
+		{name: "numeric with newline", output: "12345\n", want: 12345},
+		{name: "zero", output: "0", fails: true},
+		{name: "negative", output: "-7", fails: true},
+		{name: "string", output: `"abc"`, fails: true},
+		{name: "empty", output: "", fails: true},
+		{name: "fractional", output: "1.5", fails: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseUserID([]byte(tc.output))
+			if tc.fails {
+				if err == nil || err.Error() != "GitHub credential identity is invalid" {
+					t.Fatalf("expected invalid identity error, got %v", err)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("got %d, %v; want %d", got, err, tc.want)
+			}
+		})
+	}
+}

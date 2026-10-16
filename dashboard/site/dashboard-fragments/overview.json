@@ -1703,7 +1703,12 @@
     {
       "id": "overview",
       "kind": "custom",
+      "intent": "Determine the highest-priority CAO operational area in the selected horizon.",
+      "subject": "Retained campaign/runtime health, review needs, cost and outcome-evidence summaries.",
+      "objective": "Prioritize a concrete drill-down without conflating execution success and value.",
+      "acceptance": "Keep run states, blocked work, awaiting-review outputs and measured evidence distinct; preserve scope, time bounds, units and freshness. Missing/partial data is not zero activity or healthy operation.",
       "title": "Overview",
+      "description": "Identify the single highest-priority CAO operational area for deeper investigation.",
       "navigation-label": "Overview",
       "icon": "home",
       "class-name": "dashboard-overview-page",
@@ -1761,10 +1766,14 @@
     {
       "id": "cost",
       "kind": "custom",
+      "intent": "Determine where observed AI Credit usage is most concentrated.",
+      "subject": "Retained AIC observations and per-run usage in the selected scope and horizon.",
+      "objective": "Find spend concentrations requiring evidence-backed efficiency investigation.",
+      "acceptance": "Label AIC units and per-run denominators; preserve campaign/repository/workflow identity, time bounds and unknown cost. Raw tokens are not AIC; spend alone does not prove waste, ROI or operational value.",
       "title": "Cost",
       "navigation-label": "Cost",
       "icon": "credit-card",
-      "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
+      "description": "Identify the strongest concentration of observed AI Credit usage for investigation.",
       "views": [
         {
           "id": "cost-by-campaign",
@@ -1967,11 +1976,15 @@
     {
       "id": "notifications",
       "kind": "custom",
+      "intent": "Find repeated failures and unresolved outputs explicitly awaiting human review.",
+      "subject": "Grouped workflow failures and review-pending outputs in the selected snapshot horizon.",
+      "objective": "Prioritize actionable review and investigation without inventing notifications.",
+      "acceptance": "Preserve grouping identity, counts, recorded state and evidence links; distinguish failure investigation from reviewer decisions. Missing evidence is not a cleared notification or resolved output.",
       "class-name": "notifications-page",
       "title": "Notifications",
       "navigation-label": "Notifications",
       "icon": "bell",
-      "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
+      "description": "Select the highest-priority retained item requiring human attention.",
       "route": {
         "navigation-page": "overview"
       },

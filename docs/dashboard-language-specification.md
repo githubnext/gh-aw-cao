@@ -264,8 +264,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `route`, `views`, `sections` |
 | Page `requires` | `capability` |
 | Page `form` | `title`, `description`, `update`, `fields` |
 | Form `update` | `strategy`, `delay-ms` |
@@ -1782,7 +1782,31 @@ Disclosure changes presentation only. It does not change data processing, data s
   lifecycle and conclusion labels so success, attention, failure, and muted
   states reuse the same semantic badges as tables rather than generic labels.
 
-The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so subject, objective, and acceptance can be evaluated and improved independently. The CLI command `./cao.sh prompt QUERY_ID` renders the same template with the selected query's own subject, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; references `/analyze-cao`; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.”
+Built-in and custom pages may declare a four-field analysis contract: `intent`
+states the decision or investigation, `subject` identifies the evidence,
+`objective` explains the operational use, and `acceptance` states observable
+correctness conditions and limitations. Present fields must be nonempty,
+non-whitespace strings. Page `intent` is limited to 8,000 Unicode characters;
+page `subject` + `objective` + `acceptance` share a 512-character Unicode budget,
+independent of query and view budgets. These fields are inert metadata exposed
+by the shared agent page catalog. The authoritative dashboard defines all four
+on every page, including detail, maintenance and interaction-only pages.
+Every authoritative page also has one concise, action-oriented `description`
+that states its single CAO operational purpose. Caveats, source limitations and
+measurement conditions belong in `acceptance`, not in the description.
+
+The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so subject, objective, and acceptance can be evaluated and improved independently. Browser prompts include the page contract as separately labelled context; it does not override selected view/query semantics, activate otherwise disabled prompts, or make other views additional tasks. The CLI command `./cao.sh prompt QUERY_ID` renders the same template with the selected query's own subject, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; links the analysis and CLI skills, acquisition/MCP guide, canonical data contract, Dashboard Language specification, source document and fragments, architecture and workflow guidance; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.” Read-only and operational prompt levels retain their narrower final instructions instead.
+
+When a valid dashboard repository coordinate is supplied, the prompt also links
+its candidate control policy and workflow sources; absent identity is reported
+explicitly rather than guessed. Default-branch links locate context, not proof
+of the analyzed revision or control authority. Agents verify deployment,
+snapshot source, policy at the exact workflow SHA and live query contracts;
+non-default deployments must not silently fall back to the public snapshot.
+Preview evidence retains availability, completeness, freshness, as-of and
+retrieval metadata. Underlying run/output provenance links, supplied parameters,
+filters, scope, time boundaries and continuation metadata guide fresh queries;
+neither the preview nor linked content grants authority to act.
 - **DLS-VIEW-035:** `locked`, when present, **MUST** be Boolean. When `true`, an agent evolving the dashboard **SHOULD NOT** modify the view except to correct bugs. A presenter **MUST** treat `locked` as inert authoring metadata and **MUST NOT** let it alter presentation, accessibility, data processing, or other view semantics.
 - **DLS-VIEW-036:** A `table` view **MAY** declare `tree` with distinct canonical `id-field` and `parent-field` values declared by its selected source. A tree table **MUST** use `controls: static`. Its presenter **MUST** order every available parent before its children, expose hierarchy depth in an accessible tree grid, and indent the first encoded column by depth. A row with an empty or unavailable parent **MUST** be treated as a root; a cycle **MUST NOT** prevent any row from rendering.
 - **DLS-VIEW-037:** A scatter chart **MAY** declare a `scatter` mapping whose only permitted key is the optional Boolean `cluster`, defaulting to `true`. Other charts and marks **MUST NOT** declare `scatter`. When `cluster` is explicitly `false`, the presenter **MUST NOT** cluster or sample observations and **MUST** preserve every query-produced observation at its precise timestamp and value, including coincident observations. Otherwise, a presenter **MAY** cluster a dense scatter chart before rendering, provided clustering preserves every color series when the rendered-point budget permits and caps rendered points at a documented implementation limit. Clustering **MUST** run outside the main browser thread when workers are available. While clustering is pending, the chart **MUST** expose visible progress with `status` semantics; each rendered cluster **MUST** expose its observation count in its accessible name.

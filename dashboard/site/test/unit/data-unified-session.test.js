@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import 'fake-indexeddb/auto';
+import { afterEach, describe, expect, it } from 'vitest';
 import { adaptGhAwTimelineFiles } from '../../src/data/adapters/gh-aw-logs.js';
-import { parseUnifiedSession } from '../../src/data/adapters/unified-session.js';
+import { normalizeSessionMcpEvents, parseUnifiedSession } from '../../src/data/adapters/unified-session.js';
+import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
+import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { processDataRequest } from '../../src/data-worker.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 /** @param {Record<string, unknown>[]} events */
 function session(events) {
@@ -75,6 +81,40 @@ describe('unified session ingestion', () => {
     expect(events[1].fields.status).toBe('error');
   });
 
+  it('normalizes MCP executions, inherits completion identity, and leaves local tools alone', () => {
+    const events = parseUnifiedSession(session([
+      { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'github-actions_list', toolCallId: 'call-1' } },
+      { type: 'tool.execution_complete', data: { toolCallId: 'call-1', success: true } },
+      { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'issue_read', toolCallId: 'call-2' } },
+      { type: 'tool.execution_complete', data: { toolCallId: 'call-2', isError: true } },
+      { type: 'tool.execution_start', data: { toolName: 'view', toolCallId: 'local' } },
+      { type: 'mcp.difc.filtered', data: { serverName: 'github', toolName: 'issue_read' } },
+      { type: 'mcp.guard.blocked', data: { serverName: 'github', toolName: 'issue_read' } }
+    ]), 'aw_session.jsonl');
+    expect(events.map((event) => [event.source, event.type])).toEqual([
+      ['mcp', 'tool.call'], ['mcp', 'tool.result'],
+      ['mcp', 'tool.call'], ['mcp', 'tool.error'],
+      ['agent', 'agent_tool_start'], ['mcp', 'difc_filtered'], ['mcp', 'guard_blocked']
+    ]);
+    expect(events[0].fields).toMatchObject({ mcpServer: 'github', mcpTool: 'actions_list', summary: 'github/actions_list' });
+    expect(events[1].fields).toMatchObject({ mcpServer: 'github', mcpTool: 'actions_list', status: 'success' });
+    expect(events[3].fields).toMatchObject({ mcpTool: 'issue_read', status: 'error' });
+    expect(normalizeSessionMcpEvents(events)).toEqual(events);
+  });
+
+  it('counts correlated native and agent MCP evidence once, regardless of ordering', () => {
+    const start = { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'github-issue_read', toolCallId: 'same-call' } };
+    const native = { type: 'mcp.tool_call', data: { serverName: 'github', toolName: 'issue_read', toolCallId: 'same-call', inputSize: 4, outputSize: 8 } };
+    for (const records of [[start, native], [native, start]]) {
+      const events = parseUnifiedSession(session(records), 'aw_session.jsonl');
+      expect(events.filter((event) => event.type === 'tool.call')).toMatchObject([{
+        source: 'mcp', fields: { mcpTool: 'issue_read', requestBytes: 4, responseBytes: 8 }
+      }]);
+      expect(events.filter((event) => event.type === 'agent_tool_start')).toHaveLength(1);
+      expect(normalizeSessionMcpEvents(events)).toEqual(events);
+    }
+  });
+
   it('fails explicitly for empty, malformed, unsupported or ambiguous published sessions', () => {
     for (const content of ['', '{', JSON.stringify({ type: 'session.format', data: { version: 2 } }),
       session([{ type: 'assistant.message', data: null }])]) {
@@ -98,4 +138,69 @@ describe('unified session ingestion', () => {
       kind: 'tool', data: { type: 'agent_tool_start', correlationId: 'legacy-call' }
     }]);
   });
+});
+
+describe('unified session MCP view boundary', () => {
+  afterEach(async () => {
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(DATABASE_NAME);
+      request.onsuccess = () => resolve(undefined);
+      request.onerror = () => reject(request.error);
+    });
+  });
+
+  for (const retained of [false, true]) {
+    it(`populates MCP views from ${retained ? 'retained pre-fix' : 'newly collected'} session evidence`, async () => {
+      const content = session([
+        { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'github-actions_list', toolCallId: 'call-1', input: 'PRIVATE_INPUT' } },
+        { type: 'tool.execution_complete', data: { toolCallId: 'call-1', success: true, output: 'PRIVATE_OUTPUT' } },
+        { type: 'tool.execution_start', data: { mcpServerName: 'safeoutputs', toolName: 'safeoutputs-noop', toolCallId: 'safe-1' } },
+        { type: 'tool.execution_start', data: { mcpServerName: 'safe_outputs', toolName: 'noop', toolCallId: 'safe-2' } },
+        { type: 'tool.execution_start', data: { toolName: 'bash', toolCallId: 'local' } },
+        { type: 'mcp.tool_call', data: { serverName: 'github', toolName: 'issue_read', toolCallId: 'native', inputSize: 4, outputSize: 8 } },
+        { type: 'mcp.difc.filtered', data: { serverName: 'github', toolName: 'issue_read' } }
+      ]);
+      const events = parseUnifiedSession(content, 'usage/aw_session.jsonl').map((event) => {
+        if (!retained) return event;
+        const fields = { ...event.fields };
+        if (fields.toolName && event.source === 'mcp') {
+          delete fields.mcpTool;
+          return { ...event, source: 'agent', type: event.type === 'tool.call' ? 'agent_tool_start' : 'agent_tool_done', fields };
+        }
+        return event.type === 'tool.call' ? { ...event, type: 'tool_call' } : event;
+      });
+      const now = Date.parse('2026-10-15T10:05:00Z');
+      await ingestCachedGhAwJsonl(indexedDB, JSON.stringify({
+        schema_version: 5, kind: 'run',
+        run: {
+          run_id: 303, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+          workflow_name: 'Worker', workflow_path: '.github/workflows/worker.lock.yml',
+          created_at: '2026-10-15T10:00:00Z', updated_at: '2026-10-15T10:01:00Z',
+          status: 'completed', conclusion: 'success',
+          cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', events }
+        }
+      }), { now });
+      const dashboard = authoritativeDashboard.dashboard;
+      const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'mcps');
+      const payload = compileDashboardViewPayloadQueries(page, 'mcps', {
+        queries: dashboard.queries, views: dashboard.views,
+        viewId: 'mcp-top-tools', sourceNames: ['mcp-top-tools']
+      });
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+        await processDataRequest({
+          operation: 'load-dashboard-query-sources', sources: {},
+          queries: [...dashboard.queries, ...payload.queries],
+          sourceNames: ['mcp-calls', 'mcp-tool-totals', ...payload.aliases]
+        })
+      );
+      expect(result['mcp-calls'].rows).toHaveLength(4);
+      expect(result['mcp-tool-totals'].rows).toEqual([
+        { 'mcp-tool-label': 'github/actions_list', 'mcp-server': 'github', 'mcp-tool': 'actions_list', calls: 1, workflows: 1, 'request-bytes': 0, 'response-bytes': 0 },
+        { 'mcp-tool-label': 'github/issue_read', 'mcp-server': 'github', 'mcp-tool': 'issue_read', calls: 1, workflows: 1, 'request-bytes': 4, 'response-bytes': 8 }
+      ]);
+      expect(result[payload.aliases[0]].metadata.availability).toBe('available');
+      expect(result[payload.aliases[0]].rows).toEqual(result['mcp-tool-totals'].rows);
+      expect(JSON.stringify(result)).not.toContain('PRIVATE_');
+    });
+  }
 });

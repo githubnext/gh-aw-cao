@@ -121,9 +121,13 @@
     {
       "id": "domain-insights",
       "kind": "custom",
+      "intent": "Inspect observed activity for the selected domain entity.",
+      "subject": "Domain observations matching the route and selected horizon.",
+      "objective": "Identify domain activity requiring run-level investigation.",
+      "acceptance": "Preserve exact domain identity, declared counts and time bounds with run drill-downs; distinguish unknown or unavailable telemetry. Domain occurrence alone does not prove maliciousness or authorize egress.",
       "title": "Domain",
       "icon": "graph",
-      "description": "Insights for the selected domain entity.",
+      "description": "Determine whether the selected domain's observed activity requires run-level investigation.",
       "route": {
         "hash-query-parameter": "domain",
         "navigation-page": "firewall",
@@ -203,9 +207,13 @@
     {
       "id": "domain-runs",
       "kind": "custom",
+      "intent": "Find runs with retained observations of the selected domain.",
+      "subject": "Run-linked domain evidence matching the route and selected horizon.",
+      "objective": "Trace domain activity to concrete workflow execution evidence.",
+      "acceptance": "Preserve domain, repository/workflow and run identity, native status/conclusion and evidence links; honor route filters and disclose partial coverage. Association is not proof of causality.",
       "title": "Domain",
       "icon": "play",
-      "description": "Runs related to the selected domain entity.",
+      "description": "Select a workflow run associated with the selected domain for investigation.",
       "route": {
         "hash-query-parameter": "domain",
         "navigation-page": "firewall",
@@ -312,9 +320,13 @@
     {
       "id": "tool-insights",
       "kind": "custom",
+      "intent": "Inspect invocation activity for the selected tool entity.",
+      "subject": "Retained tool observations matching the route and selected horizon.",
+      "objective": "Choose tool-usage patterns for run-level investigation.",
+      "acceptance": "Keep tool identity, declared invocation measures and time bounds explicit; expose related runs and unavailable evidence. Invocation volume does not prove tool quality, reliability or value.",
       "title": "Tool",
       "icon": "graph",
-      "description": "Insights for the selected tool entity.",
+      "description": "Determine whether the selected tool's observed activity requires run-level investigation.",
       "route": {
         "hash-query-parameter": "tool",
         "navigation-page": "mcps",
@@ -394,9 +406,13 @@
     {
       "id": "tool-runs",
       "kind": "custom",
+      "intent": "Find workflow runs with recorded invocations of the selected tool.",
+      "subject": "Run-linked tool evidence matching the route and selected horizon.",
+      "objective": "Inspect execution context behind observed tool activity.",
+      "acceptance": "Preserve tool/run/workflow identity, native run status/conclusion, timestamps and evidence links; distinguish no matches from unavailable telemetry. Tool use alone does not explain a run outcome.",
       "title": "Tool",
       "icon": "play",
-      "description": "Runs related to the selected tool entity.",
+      "description": "Select a workflow run associated with the selected tool for investigation.",
       "route": {
         "hash-query-parameter": "tool",
         "navigation-page": "mcps",
@@ -503,9 +519,13 @@
     {
       "id": "audit-insights",
       "kind": "custom",
+      "intent": "Inspect the distribution of the selected audit event and locate supporting evidence.",
+      "subject": "Retained audit observations matching the routed event and selected horizon.",
+      "objective": "Prioritize investigation without elevating audit attribution into proven cause.",
+      "acceptance": "Preserve native audit event identity, declared measures, time bounds and related-run links. Keep audit findings distinct from confirmed security incidents and disclose missing or partial audits.",
       "title": "Audit event",
       "icon": "graph",
-      "description": "Insights for the selected audit event entity.",
+      "description": "Determine whether the selected audit event requires run-level investigation.",
       "route": {
         "hash-query-parameter": "audit",
         "navigation-page": "runs",
@@ -585,9 +605,13 @@
     {
       "id": "audit-runs",
       "kind": "custom",
+      "intent": "Find runs carrying the selected audit event observation.",
+      "subject": "Run-linked audit evidence matching the route and selected horizon.",
+      "objective": "Trace an audit signal to concrete workflow-run provenance.",
+      "acceptance": "Preserve audit/run/workflow identity, native status/conclusion, timestamps and evidence links; honor exact route filters. Association does not establish cause, exploitation or verified operational impact.",
       "title": "Audit event",
       "icon": "play",
-      "description": "Runs related to the selected audit event entity.",
+      "description": "Select a workflow run associated with the selected audit event for investigation.",
       "route": {
         "hash-query-parameter": "audit",
         "navigation-page": "runs",

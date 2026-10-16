@@ -96,8 +96,12 @@
     {
       "id": "simulators",
       "kind": "custom",
+      "intent": "Explore modeled database growth under the declared retention and workload assumptions.",
+      "subject": "Synthetic growth estimates from the selected simulator inputs and 30-day detail retention.",
+      "objective": "Compare capacity scenarios, not predict observed production performance.",
+      "acceptance": "Show input assumptions, modeled horizon and size/count units; recompute on parameter changes. Clearly distinguish estimates from measurements and do not infer actual storage use or capacity guarantees.",
       "title": "Simulators",
-      "description": "Explore modeled database growth under a 30-day detailed-record retention policy.",
+      "description": "Compare modeled storage capacity under the selected CAO workload assumptions.",
       "icon": "graph",
       "experimental": true,
       "route": {

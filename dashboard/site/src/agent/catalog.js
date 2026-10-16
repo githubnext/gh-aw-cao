@@ -37,7 +37,7 @@ const LOCAL_SOURCES = new Set([
 ]);
 
 /**
- * @typedef {{ id: string, title: string, description: string, experimental: boolean,
+ * @typedef {{ id: string, title: string, description: string, intent?: string, subject?: string, objective?: string, acceptance?: string, experimental: boolean,
  *   parameters: Array<{ name: string, required: boolean, description: string, schema: Record<string, unknown> }>,
  *   queries: string[] }} AgentPageEntry
  */
@@ -536,6 +536,9 @@ export function listPages(document) {
     id: text(page.id),
     title: text(page.title) || text(page['navigation-label']) || text(page.id),
     description: text(page.description) || text(page.intent),
+    ...Object.fromEntries(['intent', 'subject', 'objective', 'acceptance']
+      .filter((field) => text(page[field]))
+      .map((field) => [field, text(page[field])])),
     experimental: page.experimental === true,
     parameters: pageParameters(page),
     queries: queriesForPage(document, text(page.id))

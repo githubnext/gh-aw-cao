@@ -324,8 +324,9 @@ describe('Configuration dashboard view', () => {
       .toEqual(maintenanceNavigationContract.sources);
     expect(manageNavigation.pages).toContain('maintenance');
     expect(manageNavigation.pages).not.toContain('maintenance-campaigns');
-    expect(page.description).toContain('Active describes registration only');
-    expect(page.description).toContain('run CAO Activity to refresh inventory');
+    expect(page.description).toBe('Identify repositories whose compiler provenance justifies a CAO maintenance proposal.');
+    expect(page.acceptance).toContain('registration');
+    expect(page.acceptance).toContain('refresh guidance');
     expect(page['filter-bar']).toBeUndefined();
     expect(views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);

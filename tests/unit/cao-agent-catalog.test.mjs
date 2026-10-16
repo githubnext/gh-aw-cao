@@ -102,6 +102,9 @@ test("cao.sh prompt renders a named query using the dashboard prompt template wi
     assert.doesNotMatch(stdout, /Subject:\nReuse shared query stages/);
     assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
     assert.match(stdout, /\/analyze-cao/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/main\/skills\/analyze-cao\/SKILL.md/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/main\/specs\/dashboard-data.md/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/HEAD\/.github\/workflows\/cao.json/);
     assert.match(stdout, /No data preview was supplied/);
     assert.match(stdout, /"evidence": \{\}/);
     assert.doesNotMatch(stdout, /Page: undefined|View: undefined/);
@@ -131,6 +134,10 @@ test("cao pages relates pages to the queries they read", async () => {
   assert.ok(page, "at least one page declares queries");
   const detail = JSON.parse(await runCao(["pages", page.id, "--json"]));
   assert.deepEqual(detail.page, page);
+  for (const field of ["intent", "subject", "objective", "acceptance"]) {
+    assert.equal(typeof detail.page[field], "string");
+    assert.ok(detail.page[field].length > 0);
+  }
 });
 
 test("cao query-info reports an unknown query without a stack trace", async () => {

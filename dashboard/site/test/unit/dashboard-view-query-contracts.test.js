@@ -173,6 +173,7 @@ describe('dashboard view query contracts', () => {
         .toMatchObject({ kind: 'custom', experimental: true });
     }
     const experiments = dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'experiments');
+    expect(experiments.acceptance).toContain('counts are not completion percentages');
     expect(viewsOf(experiments)).toMatchObject([
       { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
       { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
@@ -185,7 +186,8 @@ describe('dashboard view query contracts', () => {
         mark: 'table', 'lazy-list': true, layout: 'full-view',
         data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
       });
-      expect(page.description).toContain('TODO:');
+      expect(page.description).not.toContain('TODO:');
+      expect(page.acceptance).toContain('not current verdicts');
     }
   });
 

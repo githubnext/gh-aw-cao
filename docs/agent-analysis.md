@@ -78,6 +78,24 @@ Every discovery command supports `--json`, which prints only JSON on standard
 output and keeps diagnostics on standard error, so an agent never has to scrape
 a formatted table.
 
+Page discovery includes the authored `intent`, `subject`, `objective`, and
+`acceptance`: the decision, evidence, operational purpose, and observable
+correctness conditions. All authoritative dashboard pages define this contract.
+It provides context, not permission to execute work or broaden a selected query.
+Each page description is a single action-oriented sentence naming the CAO
+operational decision the page supports; limitations remain in `acceptance`.
+
+`cao prompt QUERY_ID` produces the same analysis prompt used by dashboard view
+actions. It links the analysis skill, CLI/MCP guide, canonical data and Dashboard
+Language contracts, dashboard source/fragment manifest, architecture, and
+workflow guidance. Browser prompts additionally include their page contract.
+When the dashboard declares a repository, the prompt links its candidate policy
+and editable workflow sources. Verify that repository's control role, the
+analyzed deployment revision and the exact workflow-SHA policy; documentation
+links to `main` or `HEAD` are navigation aids, not revision evidence. For another
+deployment, establish its verified `payload-hashes.json` URL and use
+`cao download --url URL` rather than silently querying the public default.
+
 The existing generic escape hatches remain available for advanced shell agents:
 `cao query --collection runs --limit 20` reads a canonical collection, and
 `cao query --stdin` executes an arbitrary Dashboard Language query object.

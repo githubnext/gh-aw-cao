@@ -27,6 +27,8 @@ export async function runPrompt({ options, positional, indexedDB, rejectUnknownO
     : null;
   return semanticViewPrompt({
     queryId: positional,
+    repository: document.dashboard.repository,
+    githubUrlBase: document.dashboard["github-url-base"],
     semantics,
     queryParameters,
     filters: {},
