@@ -1,7 +1,53 @@
 {
-  "source_sha": "5e42348cd14b946b44eabae44f758e8aea515904",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "f2972eb8f0d768f0b6e6199b75d43fddc1175e92",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T05:00:33Z",
+      "worker_run_id": 38852991784,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38852693298,
+        38852497949,
+        38851731893,
+        38851323529,
+        38850481151,
+        38849633059,
+        38848513892,
+        38847738922,
+        38847142264,
+        38846954516,
+        38845634030,
+        38845406164,
+        38845188515,
+        38845184627,
+        38844386559,
+        38844341308,
+        38844331458,
+        38844302005,
+        38844119361,
+        38843473237
+      ],
+      "docs_window": {
+        "start": "2026-10-16T03:12:21Z",
+        "end": "2026-10-16T04:50:49Z"
+      },
+      "docs_success_count": 15,
+      "docs_comparable_success_count": 6,
+      "docs_deployed_success_count": 6,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 9,
+      "dashboard_success_run_ids": [
+        38852328230,
+        38851551055,
+        38850292556,
+        38848474549,
+        38846977223,
+        38845019414
+      ],
+      "decision": "noop_not_actionable",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA f2972eb8f0d768f0b6e6199b75d43fddc1175e92. In the latest 20 completed docs.yml runs from 2026-10-16T03:12:21Z through 2026-10-16T04:50:49Z, 15 runs concluded success and 5 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Six comparable successful docs runs executed both build and deploy (38845184627, 38847142264, 38848513892, 38850481151, 38851731893, 38852497949). Trusted run and job metadata for those runs showed median queue time 0s, docs workflow execution 74s (p90 85s), build 42s (p90 46s), and deploy 16.5s (p90 26s). Within those docs builds, Upload Pages artifact took 4s median (p90 4.5s), Build documentation 13s (p90 15s), Restore node_modules 5s, and Restore cached CAO Dashboard 1.5s (p90 2s). Bounded logs from docs run 38852497949 confirmed cache hits for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache before Upload Pages artifact started. Relevant cao-dashboard.yml evidence used six main-branch workflow_run successes aligned with the same source window (38845019414, 38846977223, 38848474549, 38850292556, 38851551055, 38852328230). Those dashboard runs took 118.5s median end-to-end (p90 127.5s) with build 104.5s median (p90 109.5s); inside the build, Upload dashboard artifact took 4s median while Upgrade fallback activity data dominated at 80.5s median (p90 86.5s). Bounded logs from dashboard run 38852328230 confirmed a cache hit for cao-activity-v5-38851312513-1 and showed the assembled dashboard payload already includes a 178.0 MiB SQLite file plus 137.9 MiB of activity shards, yet the artifact upload step still stayed at 4-5s. Three older successful dashboard outliers (workflow_run 37766230957 at 1148s and workflow_dispatch runs 38765614002 at 1531s and 38675339180 at 1427s) were disclosed but excluded from the comparable current-source cohort. No artifact-transfer or Pages-packaging workflow change is currently evidenced to save at least 60s or 15 percent of the 74s median docs execution time without weakening correctness, freshness, or deployment safety, because the repeated overhead in this category remains single-digit seconds while the only consistently large cost is dashboard activity-data upgrade outside this category."
+    },
     {
       "evaluated_at": "2026-10-16T04:31:45Z",
       "worker_run_id": 38850571640,
@@ -1085,42 +1131,6 @@
       "docs_deployed_success_count": 1,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T04:49:51Z through 2026-10-15T09:27:39Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs runs executed the build job and 1 completed deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466 (deploy succeeded). The remaining successful runs stopped after schedule-freshness with build and deploy skipped, and a bounded log read from run 38706361395 confirmed the skip reason was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper reusable-dashboard timing analysis and emitted no actionable suggestion."
-    },
-    {
-      "evaluated_at": "2026-10-15T09:01:53Z",
-      "worker_run_id": 38709507600,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38708814657,
-        38706361395,
-        38702848366,
-        38700874870,
-        38699687652,
-        38699100564,
-        38697305043,
-        38695989146,
-        38693618999,
-        38690460137,
-        38690117886,
-        38688921214,
-        38688818783,
-        38687644366,
-        38687091140,
-        38686600515,
-        38684569639,
-        38683517634,
-        38682665940,
-        38681755362
-      ],
-      "docs_window": {
-        "start": "2026-10-15T04:29:49Z",
-        "end": "2026-10-15T08:52:58Z"
-      },
-      "docs_success_count": 15,
-      "docs_comparable_success_count": 1,
-      "docs_deployed_success_count": 1,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. In the latest 20 completed docs.yml runs from 2026-10-15T04:29:49Z through 2026-10-15T08:52:58Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, or action_required runs in the inspected window. Only 1 comparable successful docs run executed both build and deploy: 38686600515 on schedule at source SHA b8061ef6adc6be1ba20d293b303199d0dc5a4466. The remaining 14 completed runs stopped after schedule-freshness, with build and deploy skipped; a bounded log read from run 38706361395 confirmed the skip message was \"Documentation build skipped because the deployed docs and dashboard are current.\" Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper Astro documentation generation analysis and emitted no actionable suggestion."
     }
   ]
 }
