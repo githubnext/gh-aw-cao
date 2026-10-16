@@ -5,6 +5,10 @@
  * }} SessionEvidence
  */
 
+import { createDebug } from '../../debug.js';
+
+const debugUnifiedSession = createDebug('unified-session');
+
 /** @param {unknown} value */
 function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -39,12 +43,13 @@ export function parseUnifiedSession(content, path) {
   });
   if (records[0]?.record.type !== 'session.format'
       || object(records[0].record.data)?.version !== 1) {
+    debugUnifiedSession({ event: 'format-rejected', records: records.length });
     throw new TypeError(`${path} must declare unified session format version 1`);
   }
   let turn = 0;
   /** @type {Map<string, { server?: string, tool?: string }>} */
   const tools = new Map();
-  return records.flatMap(({ record, line }) => {
+  const evidence = records.flatMap(({ record, line }) => {
     const data = /** @type {Record<string, unknown>} */ (record.data);
     const provenance = object(record.provenance);
     // Native numeric clocks vary by source; gh-aw supplies normalized milliseconds.
@@ -138,4 +143,6 @@ export function parseUnifiedSession(content, path) {
     }
     return [{ line, timestamp, source, type, fields }];
   });
+  debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length, skipped: records.length - evidence.length, turns: turn });
+  return evidence;
 }
