@@ -3,8 +3,7 @@
  */
 
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
-import { renderDisclosureSummaryLabel, renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
+import { renderDisclosureSummaryLabel, renderDlRow, renderListWithFallback, renderSectionHeading } from './ui-primitives.js';
 import { formatCount, slugify, titleCase } from './count-formatters.js';
 import { createDebug } from '../debug.js';
 
@@ -20,24 +19,15 @@ const debugViewChrome = createDebug('view-chrome');
  */
 export function renderPageSection(pageId, title, content, headingTag = 'h3', description) {
   const headingId = `${pageId}-${slugify(title, 'section')}-heading`;
-  const tooltip = description
-    ? renderTooltip({
-        id: `${headingId}-description`,
-        label: `${title} explanation`,
-        description,
-        icon: octicon('question')
-      })
-    : null;
-  tooltip?.classList.add('view-description-tooltip');
   return h(
     'section',
     {
-      className: `page-section${tooltip ? ' view-description-section' : ''}`,
+      className: 'page-section',
       tabIndex: 0,
-      'aria-labelledby': headingId
+      'aria-labelledby': headingId,
+      'aria-description': description
     },
     h(headingTag, { id: headingId }, title),
-    ...(tooltip ? [tooltip] : []),
     ...content
   );
 }

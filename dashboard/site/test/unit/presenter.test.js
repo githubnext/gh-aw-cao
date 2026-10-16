@@ -1739,7 +1739,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
-    expect(page?.textContent).toContain('Telemetry is partial');
+    expect(page?.querySelector('[data-view-id="engines-models-token-insights"]')?.getAttribute('aria-description')).toContain('Telemetry is partial');
     expect(page?.textContent).not.toContain('Requested model');
     expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');

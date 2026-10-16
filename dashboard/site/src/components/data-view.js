@@ -1521,7 +1521,7 @@ function renderChartView(context, facetPanel = false) {
   } else if (view.layout === 'horizontal') {
     const children = Array.from(section.children);
     /** @param {Element} element */
-    const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context, .view-description-tooltip');
+    const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context');
     const firstVisualization = children.findIndex((element) => !isCopy(element));
     const copy = firstVisualization === -1 ? children : children.slice(0, firstVisualization);
     const visualization = firstVisualization === -1 ? [] : children.slice(firstVisualization);
