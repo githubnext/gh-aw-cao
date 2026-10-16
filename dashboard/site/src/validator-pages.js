@@ -162,6 +162,18 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
   }
 
   validateOptionalStringField(page.title, `${path}.title`, errors);
+  if (page.requires !== undefined) {
+    const requiresPath = `${path}.requires`;
+    if (!isPlainObject(page.requires)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page requires must be a mapping.', requiresPath));
+    } else {
+      validateObjectKeys(getValueNodeByKey(pageNode, 'requires'), ['capability'], requiresPath, errors);
+      if (page.requires.capability !== 'cli-queue') {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          'page requires capability must be cli-queue.', `${requiresPath}.capability`));
+      }
+    }
+  }
   validateOptionalStringField(page['navigation-label'], `${path}.navigation-label`, errors);
   validateNavigationIndicator(
     page['navigation-indicator'],

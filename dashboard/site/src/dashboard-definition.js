@@ -1,4 +1,5 @@
 import { createDebug, diagnosticErrorName } from './debug.js';
+import { pageCapabilityAvailable } from './view-availability.js';
 
 const debugDefinition = createDebug('dashboard-definition');
 /** @type {Promise<{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }> | undefined} */
@@ -39,7 +40,7 @@ export function preloadDashboardDefinition() {
     } catch {
       pageId = 'overview';
     }
-    const pages = schema.dashboard?.pages;
+    const pages = schema.dashboard?.pages?.filter(pageCapabilityAvailable);
     const page = Array.isArray(pages)
       ? pages.find((page) => page.id === pageId) ?? pages.find((page) => page.id === 'overview')
       : undefined;

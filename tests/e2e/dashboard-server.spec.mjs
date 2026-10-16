@@ -21,6 +21,25 @@ const SERVER_LOCAL_ONLY_PAGES = new Map([
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
 
+let remainingQueryTokens = 30;
+let queryBudgetResetAt = 0;
+
+test.beforeEach(async ({ context, page }) => {
+  context.on("response", (response) => {
+    if (new URL(response.url()).pathname !== "/api/v1/query") return;
+    const headers = response.headers();
+    remainingQueryTokens = Number(headers["ratelimit-remaining"] ?? 30);
+    queryBudgetResetAt = Date.now() + Number(headers["ratelimit-reset"] ?? 0) * 1000;
+  });
+  await waitForQueryBudget(page);
+});
+
+async function waitForQueryBudget(page) {
+  if (remainingQueryTokens >= 20) return;
+  await page.waitForTimeout(Math.max(0, queryBudgetResetAt - Date.now()) + 1000);
+  remainingQueryTokens = 30;
+}
+
 const populatedViews = [
   {
     page: "runs",
@@ -46,6 +65,7 @@ const populatedViews = [
 ];
 
 test("deployed shards populate server-backed dashboard views", async ({ context, page }) => {
+  test.setTimeout(240_000);
   await page.goto(`/?access_token=${accessToken}`);
   await expect(page).toHaveURL("http://127.0.0.1:8443/");
   await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "server-http");
@@ -82,6 +102,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   ]);
 
   for (const expected of populatedViews) {
+    await waitForQueryBudget(page);
     await page.goto(`/#page-${expected.page}`);
     await expect(page.getByRole("heading", { name: expected.heading, exact: true, level: 1 })).toBeVisible();
     const tableMode = page.getByRole("button", { name: "Table", exact: true });
@@ -143,18 +164,15 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         results.push(result);
         const queryResponses = definition.id === "overview" ? [...initialQueryResponses] : [];
         const browserErrors = [];
-        let remainingTokens = 30;
-        let resetSeconds = 0;
         const onPageError = (error) => browserErrors.push(error.message);
         const onResponse = (response) => {
           if (new URL(response.url()).pathname !== "/api/v1/query") return;
           queryResponses.push(captureDashboardQueryResponse(response));
-          remainingTokens = Math.min(remainingTokens, Number(response.headers()["ratelimit-remaining"] ?? 30));
-          resetSeconds = Math.max(resetSeconds, Number(response.headers()["ratelimit-reset"] ?? 0));
         };
         page.on("pageerror", onPageError);
         page.on("response", onResponse);
         try {
+          await waitForQueryBudget(page);
           await page.evaluate((hash) => { window.location.hash = hash; },
             dashboardAssessmentPageHash(definition, dashboard));
           const activePage = page.locator(`[data-page-id="${definition.id}"]`);
@@ -190,10 +208,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
               if (!rendered.includes(viewId)) result.errors.push(`Missing view: ${viewId}`);
             }
           }
-          for (let index = 0; index < await views.count(); index += 1) {
-            const view = views.nth(index);
-            if (await view.isVisible()) await view.scrollIntoViewIfNeeded().catch(() => {});
-          }
+          await scrollRenderedViewsIntoView(activePage);
           await expect(activePage.locator(visibleBusyViewSelector)).toHaveCount(0, { timeout: 30_000 });
           const failures = await activePage.locator('[aria-label^="Unable to load "]')
             .evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
@@ -230,9 +245,6 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         } finally {
           page.off("pageerror", onPageError);
           page.off("response", onResponse);
-          if (remainingTokens < 12 && resetSeconds > 0) {
-            await page.waitForTimeout((resetSeconds + 1) * 1000);
-          }
         }
       }
     } catch (error) {

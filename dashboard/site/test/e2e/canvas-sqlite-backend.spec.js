@@ -11,6 +11,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       repository: "acme/control",
       canvas: true,
       port: 0,
+      cliQueuePath: testInfo.outputPath(".cao", "cli-actions.sqlite"),
       approveCliAction: async () => false,
       executeCliAction: async () => { throw new Error("CLI actions are not expected."); },
       output: () => {},

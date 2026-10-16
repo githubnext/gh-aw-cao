@@ -134,10 +134,11 @@ test('mobile prompt actions are accessible icon buttons with usable approval', a
     }
     await triggers.first().click();
     const dialog = page.locator('.cli-action-dialog[open]');
-    await expect(dialog.getByText(/Confirm the exact effect/)).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/Confirm the exact effect/)).toHaveCount(0);
     await expect(dialog.locator('.cli-action-command')).toHaveText('gh aw compile');
     await expect(dialog.locator('.cli-action-confirm')).toBeVisible();
-    await dialog.locator('.cli-action-cancel').click();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await triggers.last().click();
     await expect(page.locator('.table-intent-dialog[open]')).toContainText('Proposal request preview');
     await page.locator('.table-intent-dialog-close').click();

@@ -17,6 +17,9 @@ import {
 import { githubResourcePath } from './data/github-service.js';
 import { isGitHubQuerySource } from './data/github-query-sources.js';
 import { invalidateGitHubResourceAuthentication } from './auth.js';
+import { cliQueueAvailable } from './backend-mode.js';
+
+export { cliQueueAvailable } from './backend-mode.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -110,10 +113,6 @@ const workerLoadingProgressOperations = new Set();
 const databaseUpgradeListeners = new Set();
 /** @type {Map<number, (event: Record<string, any>) => void>} */
 const cliQueueOutputListeners = new Map();
-
-export function cliQueueAvailable() {
-  return Reflect.get(globalThis, '__CLI_QUEUE__') === true;
-}
 
 /** @param {string[]} names @param {{ pages: unknown[], queries?: unknown[] }} context */
 function usesCliQueueSources(names, context) {

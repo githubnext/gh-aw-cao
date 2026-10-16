@@ -450,7 +450,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
     `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
   );
-  await page.locator('.cli-action-dialog .cli-action-cancel').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
   const about = detail.locator('.link-button-list-view');
   await expect(about.getByRole('heading', { name: 'About' })).toBeVisible();
@@ -460,6 +460,17 @@ test('marketplace page renders canonical package cards after ingestion', async (
   const readmeBox = await detail.locator('.dashboard-markdown').boundingBox();
   const aboutBox = await about.boundingBox();
   expect(aboutBox?.x ?? 0).toBeGreaterThan((readmeBox?.x ?? 0) + (readmeBox?.width ?? 0));
+});
+
+test('outcome sections settle into empty states when no outcome is selected', async ({ page }) => {
+  await page.goto(`${origin}/#page-outcome-detail`);
+  const outcome = page.locator('[data-page-id="outcome-detail"]');
+  await expect(outcome).toBeVisible();
+  for (const id of ['outcome-discussion', 'outcome-metadata']) {
+    const section = outcome.locator(`[data-view-id="${id}"]`);
+    await expect(section.locator('[data-view-state="empty"]')).toBeVisible();
+    await expect(section.locator('[aria-busy="true"]')).toHaveCount(0);
+  }
 });
 
 test('package detail failure offers recovery without rendering unrelated sections', async ({ page }) => {

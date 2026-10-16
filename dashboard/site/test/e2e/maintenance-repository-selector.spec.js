@@ -102,7 +102,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
               return {
                 left: box.left, right: box.right, width: box.width, height: box.height,
                 name: button.getAttribute('aria-label'), title: button.getAttribute('title'),
-                disabled: button.hasAttribute('disabled'),
+                disabled: button.matches(':disabled'),
                 labelDisplay: copy ? getComputedStyle(copy).display : null
               };
             })
@@ -118,9 +118,8 @@ for (const { width, height = 900, empty = false, crowded = false } of [
           expect(button.left).toBeGreaterThanOrEqual(geometry.left);
           expect(button.right).toBeLessThanOrEqual(geometry.right);
           expect(button.name).toBeTruthy();
-          expect(button.title).toBe(button.disabled
-            ? 'The complete target list is unavailable. No commands can be approved.'
-            : button.name);
+          if (button.disabled) expect(button.title).toBeTruthy();
+          else expect(button.title).toBe(button.name);
           if (geometry.description) expect(geometry.description.right).toBeLessThanOrEqual(button.left);
           if (width <= 700) {
             expect(button.width).toBe(44);

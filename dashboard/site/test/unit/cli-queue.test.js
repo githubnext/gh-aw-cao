@@ -31,7 +31,7 @@ describe('worker command queue', () => {
     });
   });
 
-  it('renders the declared interaction-only route without an evidence-source compatibility path', () => {
+  it('omits the declared interaction-only route without local queue support', () => {
     const previousUrl = window.location.href;
     window.history.replaceState({}, '', '#page-command?command=42');
     const fetch = vi.fn();
@@ -47,7 +47,8 @@ describe('worker command queue', () => {
     });
     document.body.append(root);
     try {
-      expect(root.querySelector('.command-terminal')?.textContent).toContain('authorized local admin or canvas');
+      expect(root.querySelector('.command-terminal')).toBeNull();
+      expect(root.querySelector('[data-page-id="command"]')).toBeNull();
       expect(fetch).not.toHaveBeenCalled();
     } finally {
       disposeDashboard(root);
