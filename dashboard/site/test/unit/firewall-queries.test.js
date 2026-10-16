@@ -80,7 +80,7 @@ describe('Firewall query contract', () => {
         { field: 'event-type', in: ['firewall.request.allowed', 'firewall.request.blocked'] }
       ] },
       compute: [{ as: 'request-count-value', function: 'coalesce', args: [{ field: 'request-count' }, { value: 1 }] }],
-      select: observation?.select.map((field) => ({
+      select: observation?.select?.map((field) => ({
         ...field,
         field: field.field === 'id' ? 'event' : field.field === 'timestamp' ? 'event-timestamp' : field.field
       }))

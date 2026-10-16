@@ -127,17 +127,17 @@ function queryScenarioSources() {
       ],
       metadata
     },
-    'security-findings': {
+    audits: {
       rows: [
         {
           organization: 'githubnext',
           repository: 'gh-aw-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1002',
-          'smell-observation-id': 'threat-detection:1002',
-          'smell-id': 'threat-detection-secret-leak',
-          'smell-name': 'Secret leak detected',
-          'smell-severity': 'high',
+          'run-attempt': 1, event: 'threat-detection:1002', 'event-source': 'audit',
+          'event-type': 'audit.finding', code: 'secret_leak_detected',
+          'event-summary': 'Secret leak detected', 'event-status': 'high',
+          'event-timestamp': '2026-09-09T02:05:00Z',
           'observed-at': '2026-09-09T02:05:00Z'
         },
         {
@@ -145,39 +145,11 @@ function queryScenarioSources() {
           repository: 'gh-aw-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1003',
-          'smell-observation-id': 'threat-detection:1003',
-          'smell-id': 'threat-detection-network-egress',
-          'smell-name': 'Unexpected egress',
-          'smell-severity': 'medium',
+          'run-attempt': 1, event: 'threat-detection:1003', 'event-source': 'audit',
+          'event-type': 'audit.finding', code: 'unexpected_egress',
+          'event-summary': 'Unexpected egress', 'event-status': 'medium',
+          'event-timestamp': '2026-09-09T03:05:00Z',
           'observed-at': '2026-09-09T03:05:00Z'
-        }
-      ],
-      metadata
-    },
-    usage: { rows: [], metadata },
-    'operational-values': { rows: [], metadata },
-    outcomes: {
-      rows: [
-        {
-          'safe-output': 'issue-1', 'safe-output-kind': 'create-issue', 'outcome-title': 'Older issue',
-          'outcome-status': 'open', 'outcome-state': 'accepted', workflow: 'daily.md', repository: 'gh-aw-cao',
-          'rollout-mode': 'review', run: '1001', 'published-at': '2026-09-08T01:00:00Z',
-          'observed-at': '2026-09-08T02:00:00Z', 'external-link': { href: 'https://example.com/issues/1' },
-          'run-link': { href: 'https://example.com/runs/1001' }
-        },
-        {
-          'safe-output': 'issue-2', 'safe-output-kind': 'create-issue', 'outcome-title': 'Newest issue',
-          'outcome-status': 'closed', 'outcome-state': 'completed', workflow: 'daily.md', repository: 'gh-aw-cao',
-          'rollout-mode': 'live', run: '1002', 'published-at': '2026-09-09T01:00:00Z',
-          'observed-at': '2026-09-09T02:00:00Z', 'external-link': { href: 'https://example.com/issues/2' },
-          'run-link': { href: 'https://example.com/runs/1002' }
-        },
-        {
-          'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request', 'outcome-title': 'Pull request',
-          'outcome-status': 'open', 'outcome-state': 'pending', workflow: 'release.md', repository: 'gh-aw-cao',
-          'rollout-mode': 'review', run: '1003', 'published-at': '2026-09-08T03:00:00Z',
-          'observed-at': '2026-09-08T04:00:00Z', 'external-link': { href: 'https://example.com/pulls/1' },
-          'run-link': { href: 'https://example.com/runs/1003' }
         }
       ],
       metadata
@@ -595,15 +567,15 @@ test('scenario 7: a derived source composes another derived source', async ({ pa
 test('scenario 8: dependency resolution returns only the requested derived projection', async ({ page }) => {
   const payload = await loadThroughWorker(page, [runTotals, failureTotals, {
     name: 'finding-inventory',
-    from: 'security-findings',
-    select: [{ field: 'smell-id' }, { field: 'smell-severity', as: 'severity' }],
-    'order-by': [{ field: 'smell-id', direction: 'asc' }]
+    from: 'findings',
+    select: [{ field: 'code' }, { field: 'finding-severity', as: 'severity' }],
+    'order-by': [{ field: 'code', direction: 'asc' }]
   }], ['finding-inventory']);
 
   expect(Object.keys(payload)).toEqual(['finding-inventory']);
   expect(payload['finding-inventory'].rows).toEqual([
-    { 'smell-id': 'threat-detection-network-egress', severity: 'medium' },
-    { 'smell-id': 'threat-detection-secret-leak', severity: 'high' }
+    { code: 'secret_leak_detected', severity: 'high' },
+    { code: 'unexpected_egress', severity: 'medium' }
   ]);
 });
 

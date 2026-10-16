@@ -2,7 +2,7 @@
 
 Production Dashboard Language validator and presenter for the Central Agentic Ops dashboard campaign.
 
-The dashboard build workflow copies this directory to its configured `site-path`, bundles installed `<campaign>/dashboard.json` documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and generates `sources.json`. The browser loads the core shell first, fetches page chunks on demand, derives presentation-only data, and renders the `/cao` experience without page-specific HTML generation.
+The dashboard build workflow copies this directory to its configured `site-path` and bundles installed `<campaign>/dashboard.json` documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks. The browser loads the core shell first, fetches page chunks on demand, and renders query payloads from the canonical data layer without page-specific HTML generation or report-source builds.
 
 The esbuild pipeline coalesces the application's static startup dependencies while preserving shared module instances, original source maps, and lazy route boundaries. Startup module preloads use low fetch priority so they do not compete with the render-blocking stylesheet on mobile connections. The declared initial page definition loads alongside the application; diagnostics, illustrative fixtures, optional UI elements, and the WebMCP adapter load only when needed. Pie chart loading skeletons retain their authored heading and description to reserve space before query results arrive.
 
@@ -27,13 +27,13 @@ The built-in dashboard keeps its shared query foundations and its controls, repo
 
 ## Data pipeline
 
-1. The activity action writes inventory, deployed-workflow, AI Credit, and operational-value JSON into one bounded cache snapshot.
-2. `dashboard/report/records.mjs`, executed by the activity action, normalizes durable issues, pull requests, comments, review artifacts, and run attribution.
-3. `dashboard/report/dashboard-language-sources.mjs` adapts collector and record data into `sources.json`.
-4. Quality gates validate canonical campaign dashboard sources; the builder bundles those sources into the split dashboard shell and page chunks.
-5. The renderer displays the dashboard shell and loading skeleton from `dashboard.json`, fetches the active page chunk on demand, preloads cached sources from IndexedDB when available, then refreshes the interface and cache from validated `sources.json`.
+1. The activity action collects bounded raw inventory and run evidence. The collectors under `dashboard/report/` retain evidence acquisition and normalization, not dashboard query projections.
+2. Activity publication writes `inventory-sources.json`, normalized run and record JSONL shards, and their `payload-hashes.json` manifest.
+3. The data Web Worker incrementally ingests those inputs into the canonical database. IndexedDB is disposable browser state, not operational authority.
+4. Dashboard Language queries in `src/data/queries/database.json` and the composed dashboard document perform selection, joins, aggregation, and projection at the production data-layer boundary. Supplied report rows cannot override canonical producers; undeclared sources are unavailable.
+5. The renderer loads the active page declaration and subscribes to its query payload with an abort-scoped lifetime. Database updates refresh the active view; only requested sources cross the worker boundary.
 
-`sources.json` is the default deployed input. Add `?fixtures` locally to use the illustrative fixture data.
+`payload-hashes.json` is the deployed activity input. Local SQLite and hosted PostgreSQL backends execute the same declarative definitions. Add `?fixtures` locally to use the illustrative fixture data.
 
 Add `?online=1` to the dashboard URL to require fresh network responses for the page, its assets, and dashboard data instead of falling back to the service worker's offline cache. The worker bypasses the browser HTTP cache for these requests and redownloads unchanged activity shards during automatic data updates; if the network is unavailable, requests fail rather than showing cached files. Removing the parameter restores offline fallback.
 

@@ -20,10 +20,12 @@ import {
   dashboardQueryDefects,
   dashboardQueryIndex,
   executeDashboardQueries,
+  queryInputNames,
   resolveDashboardQuerySources,
   unavailableResult
 } from './declarative.js';
-import { SYNTHETIC_SOURCE_FIELDS, TABLE_FIELDS } from '../../specification.js';
+import { SERVER_SOURCE_VALUES, SYNTHETIC_SOURCE_FIELDS } from '../../specification.js';
+import { isGitHubQuerySource } from '../github-query-sources.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
 import { incrementalAggregate } from './incremental-aggregate.js';
@@ -36,21 +38,8 @@ const DIRECT_EVIDENCE_SOURCES = new Set([
   'experiments', 'experiment-assignments', 'graders',
   'grader-observations', 'evals', 'eval-observations'
 ]);
-const DATABASE_TABLE_SOURCES = new Set([
-  'campaigns',
-  'repositories',
-  'workflows',
-  'runs',
-  ...RUN_RECORD_STORES,
-  'operational-values',
-  'marketplace-packages',
-  'experiments',
-  'experiment-assignments',
-  'graders',
-  'grader-observations',
-  'evals',
-  'eval-observations',
-  'transactions'
+const EXTERNAL_SOURCES = new Set([
+  ...SERVER_SOURCE_VALUES, 'configuration-policy', 'marketplace-registries'
 ]);
 /** @type {Record<string, Set<string>>} */
 const NATIVE_COUNT_FIELDS = {
@@ -92,23 +81,6 @@ function namedSources(sources) {
       ? { source: name, ...source }
       : source
   ]));
-}
-
-/** @param {unknown} source */
-function hasRows(source) {
-  return Boolean(
-    source
-    && typeof source === 'object'
-    && !Array.isArray(source)
-    && Array.isArray(/** @type {{ rows?: unknown }} */ (source).rows)
-    && /** @type {{ rows: unknown[] }} */ (source).rows.length > 0
-  );
-}
-
-/** @param {unknown} source */
-function hasUsableRows(source) {
-  if (!hasRows(source)) return false;
-  return /** @type {{ metadata?: { availability?: unknown } }} */ (source).metadata?.availability !== 'unavailable';
 }
 
 /**
@@ -232,7 +204,6 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const definition = index.get(name);
     const plan = definition && !defects.has(name) ? streamingAggregatePlan(index, definition) : null;
     if (!definition?.aggregate || !plan) continue;
-    if (hasUsableRows(logicalSources[plan.source])) continue;
     const stageNames = new Map(plan.queries.map((query, position) => [query.name, position]));
     const cacheKey = JSON.stringify([
       plan.source,
@@ -1047,10 +1018,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     throw new TypeError('Dashboard source names must be an array of strings.');
   }
   const requested = new Set(sourceNames);
-  const databaseRequested = [...requested].filter((name) => (
-    !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name)
-    && (DATABASE_TABLE_SOURCES.has(name) || !hasUsableRows(logicalSources[name]))
-  ));
+  const databaseRequested = resolveDashboardQuerySources(databaseQueries, requested)
+    .filter((name) => databaseQueryIndex.has(name) && !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
   const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
@@ -1067,99 +1036,48 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const result = {};
   /** @type {Map<string, import('../../presenter.js').LogicalSourceInput>} */
-  const recordProjections = new Map();
-  /** @param {string} store */
-  const projectRecords = (store) => {
-    let projection = recordProjections.get(store);
-    if (!projection) {
-      projection = executeRecordQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
-      if (requested.has(store)) recordProjections.set(store, projection);
-    }
-    return projection;
-  };
-  for (const name of requested) {
+  const resolved = new Map();
+  const visiting = new Set();
+  /** @param {string} name @returns {import('../../presenter.js').LogicalSourceInput} */
+  const resolveSource = (name) => {
+    const cached = resolved.get(name);
+    if (cached) return cached;
     if (name === SIMULATION_DAYS) {
-      result[name] = simulationDaysSource();
-      continue;
+      return simulationDaysSource();
     }
     const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
-    if (logical
-        && !DATABASE_TABLE_SOURCES.has(name)
-        && (!databaseQueryIndex.has(name) || hasUsableRows(logical))) {
-      result[name] = logical;
-      continue;
-    }
-    if (!databaseQueryIndex.has(name) && !RUN_RECORD_STORES.has(name)) {
-      result[name] = logical ?? {
+    const definition = databaseQueryIndex.get(name);
+    if (!definition) {
+      if (logical && (EXTERNAL_SOURCES.has(name) || isGitHubQuerySource(name))) return logical;
+      return {
         source: name,
         rows: [],
         metadata: {
-          ...queryMetadata(sources, name, name, Object.hasOwn(TABLE_FIELDS, name)),
-          availability: Object.hasOwn(TABLE_FIELDS, name) ? 'empty' : 'unavailable'
+          ...queryMetadata(sources, name, name, false),
+          error: `No canonical database query or runtime source is registered for "${name}".`
         }
       };
-      continue;
     }
-    if (RUN_RECORD_STORES.has(name)) {
-      result[name] = projectRecords(name);
-      continue;
-    }
-    if (name === 'mcp-calls' || name === 'findings') {
-      const store = name === 'mcp-calls' ? 'tools' : 'audits';
-      const records = projectRecords(store);
-      result[name] = executeDatabaseQuery(name, {
-        [store]: records
-      }, sources, store);
-      continue;
-    }
-    if (name === 'outcomes') {
-      const records = projectRecords('issues');
-      const workflowRows = executeDatabaseQuery('workflows', {
-        $workflows: {
-          source: '$workflows',
-          rows: collections.workflows ?? [],
-          metadata: queryMetadata(sources, 'workflows', 'workflows', true)
-        },
-        $repositories: {
-          source: '$repositories',
-          rows: collections.repositories ?? [],
-          metadata: queryMetadata(sources, 'repositories', 'repositories', true)
-        },
-        $campaigns: {
-          source: '$campaigns',
-          rows: collections.campaigns ?? [],
-          metadata: queryMetadata(sources, 'campaigns', 'campaigns', true)
-        }
-      }, sources, 'workflows');
-      result[name] = executeDatabaseQuery(name, {
-        issues: records,
-        workflows: workflowRows
-      }, sources, 'issues');
-      continue;
-    }
-    if (name === 'detection-observations' || name === 'safe-output-performance') {
-      const inputName = name === 'detection-observations' ? '$security-findings' : '$outcomes';
-      const logicalName = inputName.slice(1);
-      const input = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[logicalName]);
-      result[name] = input
-        ? executeDatabaseQuery(name, { [inputName]: input }, sources, logicalName)
-        : {
-            source: name,
-            rows: [],
-            metadata: { ...queryMetadata(sources, name, name, true), availability: 'empty' }
-          };
-      continue;
-    }
-    const inputs = Object.fromEntries(queryStores(name).map((store) => [
-      `$${store}`,
-      {
-        source: `$${store}`,
-        rows: store === 'transactions' ? transactions : collections[store] ?? [],
-        metadata: queryMetadata(sources, store, store, true)
+    if (visiting.has(name)) throw new Error(`Cyclic canonical database query: ${name}`);
+    visiting.add(name);
+    const inputs = Object.fromEntries(queryInputNames(definition).map((input) => {
+      if (!input.startsWith('$')) return [input, resolveSource(input)];
+      const store = input.slice(1);
+      if (!Object.hasOwn(collections, store) && store !== 'transactions') {
+        throw new Error(`Canonical query "${name}" requires an undeclared store: ${store}`);
       }
-    ]));
-    result[name] = executeDatabaseQuery(name, inputs, sources, name);
-  }
+      return [input, {
+        source: input,
+        rows: store === 'transactions' ? transactions : collections[store],
+        metadata: queryMetadata(sources, store, store, true)
+      }];
+    }));
+    const projection = executeDatabaseQuery(name, inputs, sources, definition.from.replace(/^\$/, ''));
+    resolved.set(name, projection);
+    visiting.delete(name);
+    return projection;
+  };
+  for (const name of requested) result[name] = resolveSource(name);
   const totalMs = monotonicNow() - startedAt;
   const recordsRead = Object.values(collections).reduce((total, records) => total + records.length, 0)
     + transactions.length;
@@ -1202,9 +1120,9 @@ export async function loadDatabaseQuerySources(indexedDB, sources, options = {})
     .filter((name) => !nativeNames.has(name) && !declared.has(name));
   const database = await queryDatabaseSources(indexedDB, sources, required);
   return {
-    ...namedSources(sources),
-    ...database,
-    ...native,
+    ...Object.fromEntries(sourceNames.filter((name) => nativeNames.has(name) || !declared.has(name)).map((name) => [
+      name, native[name] ?? database[name]
+    ])),
     ...executeDashboardQueries(queries, { ...database, ...native }, remaining, { budget })
   };
 }

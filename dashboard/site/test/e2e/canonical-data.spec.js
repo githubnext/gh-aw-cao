@@ -122,7 +122,20 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     domains: {
-      rows: [],
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, event: `firewall-allowed-${run}`, 'event-source': 'firewall',
+          'event-type': 'firewall.request.allowed', domain: 'api.github.com', decision: 'allowed', 'request-count': 4,
+          'event-timestamp': '2026-09-09T04:02:00Z', 'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, event: `firewall-blocked-${run}`, 'event-source': 'firewall',
+          'event-type': 'firewall.request.blocked', domain: 'api.github.com', decision: 'denied', 'request-count': 2,
+          'event-timestamp': '2026-09-09T04:02:01Z', 'observed-at': '2026-09-09T05:00:00Z'
+        }
+      ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     tools: {
@@ -145,98 +158,14 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     issues: {
-      rows: [],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'job-performance': {
-      rows: [{
-        organization: 'githubnext',
-        repository: 'gh-aw-cao',
-        workflow: '.github/workflows/dashboard.md',
-        run,
-        'run-attempt': 2,
-        'job-id': `${run}9`,
-        job: 'build',
-        'started-at': '2026-09-09T04:01:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'work-items': {
-      rows: [{
-        'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-        'lifecycle-state': 'blocked', reason: 'Build failed', 'observed-at': '2026-09-09T04:00:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'security-findings': {
       rows: [{
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        'smell-observation-id': `threat-detection:${run}`, 'smell-id': 'threat-detection-secret-leak',
-        'smell-name': 'Secret leak detected', 'smell-severity': 'high',
-        'observed-at': '2026-09-09T04:01:00Z'
+        'run-attempt': 2, event: `report-${run}`, 'event-source': 'safe-output',
+        'event-type': 'safe_output.created', 'event-status': 'created',
+        'safe-output-type': 'create_issue', 'is-pull-request': false,
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
+        'event-timestamp': '2026-09-09T04:03:00Z', 'observed-at': '2026-09-09T05:00:00Z'
       }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'firewall-observations': {
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'api.github.com', decision: 'allowed', 'decision-label': 'Allowed by policy',
-          'request-count': 4, engine: 'copilot', 'resolved-model': 'gpt-5.1',
-          'policy-domain-pattern': 'api.github.com', 'policy-rule-description': 'GitHub API access'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'api.github.com', decision: 'denied', 'decision-label': 'Denied by policy',
-          'request-count': 2, engine: 'copilot', 'resolved-model': 'gpt-5.1',
-          'policy-domain-pattern': 'api.github.com', 'policy-rule-description': 'Unapproved request'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'removed.example', decision: 'unknown', 'request-count': null
-        }
-      ],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'firewall-policy-rules': {
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          action: 'allow', protocol: 'https', 'domain-pattern': 'api.github.com',
-          description: 'GitHub API access', 'hit-count': 4,
-          engine: 'copilot', 'resolved-model': 'gpt-5.1'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          action: 'deny', protocol: 'both', 'domain-pattern': 'all',
-          description: 'Default deny', 'hit-count': 2,
-          engine: 'copilot', 'resolved-model': 'gpt-5.1'
-        }
-      ],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    usage: {
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        engine: 'copilot', 'engine-version': '1.2.3', 'requested-model': 'model-a',
-        'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 17,
-        'observed-at': '2026-09-09T04:00:00Z',
-        'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    outcomes: {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'safe-output': 'report-1' }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'operational-values': {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'operational-value': 1 }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
   });
@@ -244,21 +173,8 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
 
 function canonicalWarningSources() {
   const sources = databaseTables();
-  for (const sourceName of [
-    'usage',
-    'outcomes',
-    'work-items',
-    'security-findings',
-    'graders',
-    'experiments',
-    'evals',
-    'eval-observations',
-    'admissions',
-    'safe-output-performance'
-  ]) {
-    Reflect.deleteProperty(sources, sourceName);
-  }
   const issueRows = /** @type {Array<Record<string, unknown>>} */ (sources.issues.rows);
+  issueRows.length = 0;
   issueRows.push(
     {
       organization: 'githubnext',
@@ -292,6 +208,7 @@ function canonicalWarningSources() {
       'event-timestamp': '2026-09-09T04:04:00Z',
       'event-source': 'audit',
       'event-type': 'audit.finding',
+      code: 'prompt_injection_detected',
       'event-summary': 'Prompt injection detected',
       'event-status': 'high',
       'observed-at': '2026-09-09T05:00:00Z'
@@ -509,17 +426,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
       availability: 'available'
     }
   });
-  expect(viewSources.repositories.rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao'
-  }]);
-  expect(viewSources.workflows.rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao',
-    workflow: '.github/workflows/dashboard.md'
-  }]);
-  expect(viewSources['job-performance'].rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao', run: '12345',
-    'run-attempt': 2, 'job-id': '123459', job: 'build'
-  }]);
+  expect(Object.keys(viewSources).sort()).toEqual(['failed-runs', 'runs']);
 });
 
 test('data worker returns only the canonical payload requested by a view', async ({ page }) => {
@@ -593,11 +500,9 @@ test('workflow route queries return bounded records and subscribed aggregates th
   const input = databaseTables();
   input.workflows.rows.push({ ...input.workflows.rows[0], repository: 'unrelated' });
   input.runs.rows.push({ ...input.runs.rows[0], repository: 'unrelated', run: '999', 'aic-total': 999 });
-  input.usage.rows = [];
   const updated = databaseTables('updated-browser-generation', '12346');
   updated.runs.rows[0]['run-conclusion'] = 'success';
   updated.runs.rows[0]['aic-total'] = 23;
-  updated.usage.rows = [];
   await context.route('http://dashboard.test/element-sources.json', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify(input)
   }));
@@ -705,7 +610,7 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
 
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload).sort()).toEqual([...result.sourceNames].sort());
-    for (const name of result.sourceNames.filter((name) => !name.startsWith('data-health-'))) {
+    for (const name of result.sourceNames.filter((name) => !name.startsWith('data-health-') && !['security-findings', 'admissions'].includes(name))) {
       expect(payload[name].metadata.availability).not.toBe('unavailable');
     }
     // `outcomes` is derived from the `issues` database table, so deleting the
@@ -718,7 +623,14 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
       'outcome-category': 'issue'
     });
     expect(payload['security-findings'].rows).toEqual([]);
-    expect(payload['work-items'].rows).toEqual([]);
+    expect(payload['work-items'].rows).toEqual([
+      expect.objectContaining({ 'lifecycle-state': 'blocked' })
+    ]);
+    expect(payload['security-findings'].metadata.availability).toBe('unavailable');
+    expect(payload.admissions.metadata.availability).toBe('unavailable');
+    expect(payload['detection-observations'].rows).toEqual([
+      expect.objectContaining({ 'detection-signal': 'Prompt injection detected', 'detection-state': 'threat' })
+    ]);
     expect(payload['data-health-collections'].metadata.availability).toBe('unavailable');
     expect(payload['data-health-coverage'].metadata.availability).toBe('unavailable');
   }
@@ -822,7 +734,7 @@ test('data worker queries retained canonical data before downloading sources', a
   });
   expect(result.retained['overview-attention-domains']).toMatchObject({
     rows: [],
-    metadata: { availability: 'empty', 'source-kind': 'derived' }
+    metadata: { availability: 'unavailable', 'source-kind': 'derived' }
   });
   expect(result.refreshed.changed).toBe(false);
   expect(result.refreshed.sources['overview-attention-domains']).toBeDefined();
@@ -1086,7 +998,7 @@ test('data worker queries firewall summaries on initial and navigated requests',
     return { initial, navigated };
   });
 
-  expect(Object.keys(result.initial)).toEqual([
+  expect(Object.keys(result.initial).sort()).toEqual([
     'firewall-domain-totals',
     'firewall-most-blocked-domains'
   ]);
@@ -1186,7 +1098,7 @@ test('data worker computes repository and campaign pages with request-scoped das
     rows: [{
       repository: 'githubnext/gh-aw-cao',
       workflows: 1,
-      reports: 1,
+      reports: null,
       runs: 0,
       aic: 0
     }],
@@ -1278,7 +1190,7 @@ test('campaign Reports retains producing-worker attribution after Activity inges
   expect(result['campaign-issue-tab-counts'].rows).toEqual([{ campaign: 'dashboard', items: 1 }]);
 });
 
-test('data worker serves work items and security findings without dedicated canonical stores', async ({ page }) => {
+test('data worker derives work items and refuses retired report sources', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -1292,7 +1204,8 @@ test('data worker serves work items and security findings without dedicated cano
     rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
   });
   expect(result['security-findings']).toMatchObject({
-    rows: [{ 'smell-observation-id': 'threat-detection:12345', 'smell-severity': 'high' }]
+    rows: [],
+    metadata: { availability: 'unavailable', error: expect.stringContaining('No canonical database query') }
   });
 });
 

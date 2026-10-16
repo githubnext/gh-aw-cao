@@ -1549,6 +1549,7 @@
       { "field": "workflow-name" },
       { "field": "workflow-role" },
       { "field": "run" },
+      { "field": "run-attempt" },
       { "field": "run-conclusion" },
       { "field": "safe-output-kind" },
       { "field": "number", "as": "outcome-number" },
@@ -1579,6 +1580,209 @@
       { "field": "_outcome-organization-link", "as": "organization-link" },
       { "field": "_outcome-repository-link", "as": "repository-link" },
       { "field": "_outcome-workflow-link", "as": "workflow-link" }
+    ]
+  },
+  {
+    "name": "work-item-run-observations",
+    "stores": ["runs"],
+    "from": "$runs",
+    "compute": [
+      { "as": "_started-at", "function": "coalesce", "args": [{ "field": "startedAt" }, { "field": "createdAt" }, { "field": "observedAt" }] },
+      { "as": "_started", "function": "timestamp", "args": [{ "field": "_started-at" }] },
+      { "as": "_run-number", "function": "number", "args": [{ "field": "githubRunId" }] }
+    ]
+  },
+  {
+    "name": "work-item-run-times",
+    "stores": [],
+    "from": "work-item-run-observations",
+    "aggregate": {
+      "by": ["workflowId"],
+      "values": [{ "field": "_started", "as": "_latest-started", "reducer": "max" }]
+    }
+  },
+  {
+    "name": "work-item-run-identities",
+    "stores": [],
+    "from": "work-item-run-observations",
+    "joins": [{
+      "source": "work-item-run-times",
+      "type": "inner",
+      "on": [{ "left": "workflowId", "right": "workflowId" }, { "left": "_started", "right": "_latest-started" }],
+      "fields": [{ "field": "_latest-started", "as": "_latest-started" }]
+    }],
+    "aggregate": {
+      "by": ["workflowId", "_started"],
+      "values": [{ "field": "_run-number", "as": "_latest-run-number", "reducer": "max" }]
+    }
+  },
+  {
+    "name": "work-item-run-attempts",
+    "stores": [],
+    "from": "work-item-run-observations",
+    "joins": [{
+      "source": "work-item-run-identities",
+      "type": "inner",
+      "on": [
+        { "left": "workflowId", "right": "workflowId" },
+        { "left": "_started", "right": "_started" },
+        { "left": "_run-number", "right": "_latest-run-number" }
+      ],
+      "fields": [{ "field": "_latest-run-number", "as": "_latest-run-number" }]
+    }],
+    "aggregate": {
+      "by": ["workflowId", "_started", "_run-number"],
+      "values": [{ "field": "attempt", "as": "_latest-attempt", "reducer": "max" }]
+    }
+  },
+  {
+    "name": "work-item-latest-runs",
+    "stores": [],
+    "from": "work-item-run-observations",
+    "joins": [{
+      "source": "work-item-run-attempts",
+      "type": "inner",
+      "on": [
+        { "left": "workflowId", "right": "workflowId" },
+        { "left": "_started", "right": "_started" },
+        { "left": "_run-number", "right": "_run-number" },
+        { "left": "attempt", "right": "_latest-attempt" }
+      ],
+      "fields": [{ "field": "_latest-attempt", "as": "_latest-attempt" }]
+    }]
+  },
+  {
+    "name": "work-item-run-outcomes",
+    "stores": [],
+    "from": "outcomes",
+    "compute": [
+      { "as": "_output-href", "function": "link-href", "args": [{ "field": "external-link" }] }
+    ],
+    "aggregate": {
+      "by": ["organization", "repository", "workflow", "run", "run-attempt"],
+      "values": [
+        {
+          "field": "safe-output", "as": "_pending-outputs", "reducer": "count",
+          "filter": { "predicates": [{ "field": "issue-state", "equals": "OPEN" }] }
+        },
+        {
+          "field": "_output-href", "as": "_pending-output-href", "reducer": "unique",
+          "filter": { "predicates": [{ "field": "issue-state", "equals": "OPEN" }] }
+        },
+        { "field": "outcome-category", "as": "_output-kind", "reducer": "unique" }
+      ]
+    }
+  },
+  {
+    "name": "work-items",
+    "stores": [],
+    "from": "workflows",
+    "joins": [
+      {
+        "source": "work-item-latest-runs", "type": "left",
+        "on": [{ "left": "id", "right": "workflowId" }],
+        "fields": [
+          { "field": "githubRunId", "as": "run" },
+          { "field": "attempt", "as": "_run-attempt" },
+          { "field": "title", "as": "_run-title" },
+          { "field": "status", "as": "_run-status" },
+          { "field": "conclusion", "as": "_run-conclusion" },
+          { "field": "admissionStatus", "as": "_run-admission" },
+          { "field": "admissionReason", "as": "_admission-reason" },
+          { "field": "failureMessage", "as": "_failure-message" },
+          { "field": "_started-at", "as": "_run-started-at" },
+          { "field": "completedAt", "as": "ended-at" },
+          { "field": "resource", "as": "_resource" },
+          { "field": "resourceResetAt", "as": "_resource-reset-at" },
+          { "field": "runLink", "as": "run-link" }
+        ]
+      },
+      {
+        "source": "work-item-run-outcomes", "type": "left",
+        "on": [
+          { "left": "organization", "right": "organization" },
+          { "left": "repository", "right": "repository" },
+          { "left": "workflow", "right": "workflow" },
+          { "left": "run", "right": "run" },
+          { "left": "_run-attempt", "right": "run-attempt" }
+        ],
+        "fields": [
+          { "field": "_pending-outputs", "as": "_pending-outputs" },
+          { "field": "_pending-output-href", "as": "_pending-output-href" },
+          { "field": "_output-kind", "as": "_output-kind" }
+        ]
+      }
+    ],
+    "compute": [
+      { "as": "scope", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+      { "as": "_work-item-key", "function": "concat", "args": [{ "field": "scope" }, { "value": ":" }, { "field": "workflow" }] },
+      { "as": "work-item-id", "function": "lower", "args": [{ "field": "_work-item-key" }] },
+      { "as": "_has-run", "function": "greater-than", "args": [{ "field": "run" }, { "value": 0 }] },
+      { "as": "_blocked-run", "function": "equals-any", "args": [{ "field": "_run-conclusion" }, { "value": "failure" }, { "value": "timed-out" }, { "value": "startup-failure" }, { "value": "action-required" }] },
+      { "as": "_denied", "function": "equals-any", "args": [{ "field": "_run-admission" }, { "value": "denied" }, { "value": "blocked" }] },
+      { "as": "_queued", "function": "equals-any", "args": [{ "field": "_run-status" }, { "value": "queued" }] },
+      { "as": "_active", "function": "equals-any", "args": [{ "field": "_run-status" }, { "value": "in-progress" }] },
+      { "as": "_review", "function": "greater-than", "args": [{ "field": "_pending-outputs" }, { "value": 0 }] },
+      { "as": "_completed", "function": "equals-any", "args": [{ "field": "_run-conclusion" }, { "value": "success" }, { "value": "cancelled" }, { "value": "skipped" }, { "value": "neutral" }, { "value": "stale" }] },
+      { "as": "_completed-state", "function": "if", "args": [{ "field": "_completed" }, { "value": "completed" }, { "value": "unknown" }] },
+      { "as": "_review-state", "function": "if", "args": [{ "field": "_review" }, { "value": "review" }, { "field": "_completed-state" }] },
+      { "as": "_active-state", "function": "if", "args": [{ "field": "_active" }, { "value": "active" }, { "field": "_review-state" }] },
+      { "as": "_queued-state", "function": "if", "args": [{ "field": "_queued" }, { "value": "waiting" }, { "field": "_active-state" }] },
+      { "as": "_blocked-state", "function": "if", "args": [{ "field": "_blocked-run" }, { "value": "blocked" }, { "field": "_queued-state" }] },
+      { "as": "lifecycle-state", "function": "if", "args": [{ "field": "_denied" }, { "value": "blocked" }, { "field": "_blocked-state" }] },
+      { "as": "_blocked", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "blocked" }] },
+      { "as": "_in-review", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "review" }] },
+      { "as": "_review-reason", "function": "if", "args": [{ "field": "_in-review" }, { "value": "Produced outcome awaits review or user consent" }, { "value": "No blocking condition observed" }] },
+      { "as": "reason", "function": "coalesce", "args": [{ "field": "_admission-reason" }, { "field": "_failure-message" }, { "field": "_review-reason" }] },
+      { "as": "_idle-action", "function": "if", "args": [{ "field": "_completed" }, { "value": "Review the produced outcome" }, { "value": "Investigate missing run telemetry" }] },
+      { "as": "_review-action", "function": "if", "args": [{ "field": "_review" }, { "value": "Review the produced outcome" }, { "field": "_idle-action" }] },
+      { "as": "_active-action", "function": "if", "args": [{ "field": "_active" }, { "value": "Monitor the in-progress run" }, { "field": "_review-action" }] },
+      { "as": "_waiting-action", "function": "if", "args": [{ "field": "_queued" }, { "value": "Await the next scheduled run" }, { "field": "_active-action" }] },
+      { "as": "next-action", "function": "if", "args": [{ "field": "_blocked" }, { "value": "Resolve the admission or run failure blocking this work" }, { "field": "_waiting-action" }] },
+      { "as": "_idle-actor", "function": "if", "args": [{ "field": "_completed" }, { "value": "reviewer" }, { "value": "unknown" }] },
+      { "as": "_review-actor", "function": "if", "args": [{ "field": "_review" }, { "value": "reviewer" }, { "field": "_idle-actor" }] },
+      { "as": "_active-actor", "function": "if", "args": [{ "field": "_active" }, { "value": "agent" }, { "field": "_review-actor" }] },
+      { "as": "_waiting-actor", "function": "if", "args": [{ "field": "_queued" }, { "value": "scheduler" }, { "field": "_active-actor" }] },
+      { "as": "next-actor", "function": "if", "args": [{ "field": "_blocked" }, { "value": "maintainer" }, { "field": "_waiting-actor" }] },
+      { "as": "_worker", "function": "equals-any", "args": [{ "field": "workflow-role" }, { "value": "worker" }] },
+      { "as": "_orchestrator", "function": "equals-any", "args": [{ "field": "workflow-role" }, { "value": "orchestrator" }] },
+      { "as": "_worker-tier", "function": "if", "args": [{ "field": "_worker" }, { "value": "medium" }, { "value": "low" }] },
+      { "as": "consequence-tier", "function": "if", "args": [{ "field": "_orchestrator" }, { "value": "high" }, { "field": "_worker-tier" }] },
+      { "as": "name", "function": "coalesce", "args": [{ "field": "workflow-name" }, { "field": "workflow" }] },
+      { "as": "_run-name", "function": "concat", "args": [{ "field": "name" }, { "value": " · " }, { "field": "_run-title" }] },
+      { "as": "_display-name", "function": "if", "args": [{ "field": "_has-run" }, { "field": "_run-name" }, { "field": "name" }] },
+      { "as": "workflow-icon", "function": "coalesce", "args": [{ "field": "campaign-icon" }, { "value": "workflow" }] },
+      { "as": "domain", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "value": "standalone" }] },
+      { "as": "phase", "function": "coalesce", "args": [{ "field": "_run-status" }, { "value": "unknown" }] },
+      { "as": "reason-evidence-class", "function": "if", "args": [{ "field": "_has-run" }, { "value": "observed" }, { "value": "inferred" }] },
+      { "as": "_waiting-on", "function": "if", "args": [{ "field": "_queued" }, { "value": "scheduled run" }, { "value": "" }] },
+      { "as": "_blocked-waiting-on", "function": "if", "args": [{ "field": "_blocked" }, { "value": "scheduled run" }, { "field": "_waiting-on" }] },
+      { "as": "waiting-on", "function": "if", "args": [{ "field": "_in-review" }, { "value": "reviewer decision" }, { "field": "_blocked-waiting-on" }] },
+      { "as": "waiting-since", "function": "coalesce", "args": [{ "field": "_resource-reset-at" }, { "field": "_run-started-at" }] },
+      { "as": "owner", "function": "coalesce", "args": [{ "field": "campaign-name" }, { "field": "organization" }] },
+      { "as": "verification-state", "function": "literal", "args": [{ "value": "pending" }] },
+      { "as": "safe-output-kind", "function": "coalesce", "args": [{ "field": "_output-kind" }, { "value": "workflow-output" }] },
+      { "as": "outcome-state", "function": "if", "args": [{ "field": "_review" }, { "value": "pending" }, { "value": "unknown" }] },
+      { "as": "_run-href", "function": "link-href", "args": [{ "field": "run-link" }] },
+      { "as": "_evidence-href", "function": "coalesce", "args": [{ "field": "_pending-output-href" }, { "field": "_run-href" }] },
+      { "as": "evidence-link", "function": "link", "args": [{ "field": "_evidence-href" }, { "value": "View evidence" }] },
+      { "as": "_missing-repository-link", "function": "equals-any", "args": [{ "field": "repository-link" }, { "value": null }] },
+      { "as": "repository-link", "function": "if", "args": [{ "field": "_missing-repository-link" }, { "value": null }, { "field": "repository-link" }] },
+      { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "_run-started-at" }, { "field": "observed-at" }] }
+    ],
+    "select": [
+      { "field": "work-item-id" }, { "field": "_display-name", "as": "name" }, { "field": "name", "as": "objective" },
+      { "field": "organization" }, { "field": "repository" }, { "field": "workflow" }, { "field": "run" },
+      { "field": "workflow-name" }, { "field": "workflow-icon" }, { "field": "workflow-role" },
+      { "field": "scope" }, { "field": "domain" }, { "field": "campaign" }, { "field": "campaign-name" },
+      { "field": "campaign-icon" }, { "field": "workflow-role", "as": "work-type" },
+      { "field": "lifecycle-state" }, { "field": "phase" }, { "field": "reason" }, { "field": "reason-evidence-class" },
+      { "field": "next-action" }, { "field": "next-actor" }, { "field": "safe-output-kind" },
+      { "field": "waiting-on" }, { "field": "waiting-since" }, { "field": "owner" }, { "field": "consequence-tier" },
+      { "field": "verification-state" }, { "field": "outcome-state" },
+      { "field": "_run-started-at", "as": "started-at" }, { "field": "ended-at" },
+      { "field": "_observed-at", "as": "observed-at" },
+      { "field": "evidence-link" }, { "field": "repository-link" }, { "field": "run-link" }
     ]
   },
   {
@@ -1674,8 +1878,14 @@
   },
   {
     "name": "detection-observations",
-    "stores": [],
-    "from": "$security-findings",
+    "stores": ["runs", "audits"],
+    "from": "findings",
+    "filter": {
+      "predicates": [{
+        "field": "code",
+        "in": ["prompt_injection_detected", "secret_leak_detected", "malicious_patch_detected"]
+      }]
+    },
     "compute": [
       {
         "as": "detection-expected",
@@ -1739,7 +1949,7 @@
       { "field": "malicious-patch-detected" },
       { "field": "inspection-warning-count" },
       { "field": "inspection-warning" },
-      { "field": "smell-summary", "as": "detection-signal" },
+      { "field": "finding-summary", "as": "detection-signal" },
       { "field": "attention-priority" },
       { "field": "job-status" },
       { "field": "job-conclusion" },
@@ -1752,8 +1962,8 @@
   },
   {
     "name": "safe-output-performance",
-    "stores": [],
-    "from": "$outcomes",
+    "stores": ["runs", "issues", "workflows", "repositories", "campaigns"],
+    "from": "outcomes",
     "compute": [
       {
         "as": "safe-output-count",

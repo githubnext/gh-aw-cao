@@ -340,6 +340,7 @@
   "runLinkedData": {
     "id": { "field": "event" }, "runId": { "field": "_run-id" }, "timestamp": { "field": "event-timestamp" },
     "source": { "field": "event-source" }, "type": { "field": "event-type" }, "summary": { "field": "event-summary" },
+    "code": { "field": "code" },
     "status": { "field": "event-status" }, "requestCount": { "field": "request-count" }, "correlationId": { "field": "correlation-id" },
     "payloadRef": { "field": "payload-ref" }, "mcpServer": { "field": "mcp-server" }, "mcpServerVersion": { "field": "mcp-server-version" },
     "mcpProtocolVersion": { "field": "mcp-protocol-version" }, "mcpTool": { "field": "mcp-tool" },

@@ -252,7 +252,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
   const repositoryMemory = readFileSync(join(root, "activity", "repository-memory.mjs"), "utf8");
-  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "records.mjs", "text-utils.mjs"];
+  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
   assert.ok(controlPlaneCampaign.includes.includes("dashboard/aw.yml"));

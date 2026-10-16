@@ -11,7 +11,6 @@ const lineCountExclusions = new Set([
   "dashboard/site/test/unit/data-view.test.js",
   "dashboard/site/test/unit/presenter.test.js",
   "dashboard/site/test/unit/validator.test.js",
-  "tests/unit/dashboard-language-sources.test.mjs",
 ]);
 const root = path.resolve(import.meta.dirname, "..");
 let trackedFiles;
