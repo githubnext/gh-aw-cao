@@ -268,7 +268,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .command-terminal .cli-action-terminal { min-height: 0; height: 100%; border: 0; border-radius: 0; }
 .command-terminal-actions { position: absolute; right: 24px; bottom: 24px; z-index: 2; display: flex; gap: 8px; }
 .command-terminal-actions[hidden] { display: none; }
-.command-terminal-actions > button { min-height: 44px; box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.command-terminal-actions > :is(button, a) { min-height: 44px; box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .cli-action-dialog-close { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .cli-action-dialog-close:hover { background: var(--neutral-muted); color: var(--fg); }
 .cli-action-dialog-body { min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; overflow-y: auto; line-height: 1.5; }

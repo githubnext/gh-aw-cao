@@ -66,7 +66,7 @@ describe('command-terminal debug logging', () => {
     expect(serialized).not.toContain('SECRET');
   });
 
-  it('logs sanitized error names and cancellation status', async () => {
+  it('logs sanitized error names without command output', async () => {
     queue.available.mockReturnValue(true);
     queue.get.mockResolvedValue({ id: 'secret-command-id', status: 'running' });
     queue.attach.mockRejectedValue(new TypeError('SECRET message'));
@@ -75,10 +75,8 @@ describe('command-terminal debug logging', () => {
     document.body.append(root);
     await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:command-terminal]',
       { event: 'attach', outcome: 'error', error: 'TypeError' }));
-    queue.cancel.mockResolvedValue({ id: 'secret-command-id', status: 'canceled' });
-    /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).hidden = false;
-    /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).click();
-    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:command-terminal]', { event: 'cancel', status: 'canceled' }));
+    expect(root.querySelector('.cli-action-cancel')).toBeNull();
+    expect(queue.cancel).not.toHaveBeenCalled();
     expect(JSON.stringify(output.debug.mock.calls)).not.toContain('SECRET');
   });
 

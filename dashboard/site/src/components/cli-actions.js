@@ -257,6 +257,35 @@ function renderCliActionControl(action, options = {}) {
     }
   }) : null;
 
+  const enqueueBatch = async () => {
+    if (busy.get() || options.batch?.error) return;
+    busy.set(true);
+    try {
+      const results = await Promise.allSettled(templateTargets.map((values) => enqueueCliCommand({
+        id: action.id,
+        arguments: { ...argumentValues },
+        values,
+        idempotencyKey: crypto.randomUUID()
+      }, scope.signal)));
+      if (scope.signal.aborted) return;
+      const admitted = results.filter((result) => result.status === 'fulfilled').length;
+      const failed = results.length - admitted;
+      publishNotification({
+        message: failed
+          ? `${action.label}: ${admitted} commands queued; ${failed} could not be queued.`
+          : `${action.label}: ${admitted} commands queued.`,
+        href: '#page-commands',
+        tone: failed ? 'error' : 'success'
+      });
+      if (admitted) {
+        enqueued.set(true);
+        close();
+        window.location.hash = 'page-commands';
+      }
+    } finally {
+      busy.set(false);
+    }
+  };
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'cli-action-cancel cli-action-detach',
@@ -267,6 +296,10 @@ function renderCliActionControl(action, options = {}) {
       className: 'cli-action-confirm',
       onClick: async () => {
         if (busy.get() || enqueued.get() || !selectionReady.get()) return;
+        if (options.batch) {
+          await enqueueBatch();
+          return;
+        }
         busy.set(true);
         statusText.set('Queuing command…');
         debugCliActions({ event: 'execute-started', actionId: action.id });
@@ -319,30 +352,8 @@ function renderCliActionControl(action, options = {}) {
       title: action.label,
       'aria-label': action.label,
       onClick: async () => {
-        if (options.batch && canExecute) {
-          if (busy.get() || options.batch.error) return;
-          busy.set(true);
-          try {
-            const results = await Promise.allSettled(templateTargets.map((values) => enqueueCliCommand({
-              id: action.id,
-              arguments: { ...argumentValues },
-              values,
-              idempotencyKey: crypto.randomUUID()
-            }, scope.signal)));
-            if (scope.signal.aborted) return;
-            const admitted = results.filter((result) => result.status === 'fulfilled').length;
-            const failed = results.length - admitted;
-            publishNotification({
-              message: failed
-                ? `${action.label}: ${admitted} commands queued; ${failed} could not be queued.`
-                : `${action.label}: ${admitted} commands queued.`,
-              href: '#page-commands',
-              tone: failed ? 'error' : 'success'
-            });
-            if (admitted) window.location.hash = 'page-commands';
-          } finally {
-            busy.set(false);
-          }
+        if (options.batch && canExecute && inputs.length === 0) {
+          await enqueueBatch();
           return;
         }
         copyControl?.reset();

@@ -68,6 +68,17 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-maintenance$/);
       expect(commands).toEqual([]);
       await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
+      const upgradeDialog = page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true });
+      await expect(upgradeDialog).toBeVisible();
+      const autoMerge = upgradeDialog.getByRole('checkbox', { name: 'Auto merge' });
+      await expect(autoMerge).not.toBeChecked();
+      expect(commands).toEqual([]);
+      if (width === 1440) {
+        await autoMerge.check();
+        await expect(upgradeDialog.locator('.cli-action-command')).toContainText('--auto-merge');
+      }
+      await page.screenshot({ path: testInfo.outputPath(`upgrade-options-${width}.png`), fullPage: true });
+      await upgradeDialog.getByRole('button', { name: 'Upgrade all', exact: true }).click();
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true })).not.toBeVisible();
       await expect(page.locator('[data-view-id="commands-history"]')).toContainText('running');
@@ -82,18 +93,24 @@ for (const width of [1440, 390]) {
       finish();
       await expect.poll(() => commands.length).toBe(3);
       expect(commands.sort()).toEqual(repositories.map((repository) =>
-        `gh aw upgrade --repo ${repository} --create-pull-request`).sort());
+        `gh aw upgrade --repo ${repository} --create-pull-request${width === 1440 ? ' --auto-merge' : ''}`).sort());
       await expect(page.locator('[data-view-id="commands-history"]')).toContainText('completed');
       expect(commands).toHaveLength(3);
       await page.evaluate(() => { window.location.hash = 'page-maintenance-campaigns'; });
       await page.getByRole('button', { name: 'Update all', exact: true }).click();
+      const updateDialog = page.getByRole('dialog', { name: 'Approve Update all', exact: true });
+      await expect(updateDialog).toBeVisible();
+      await expect(updateDialog.getByRole('checkbox', { name: 'Auto merge' })).not.toBeChecked();
+      await updateDialog.getByRole('checkbox', { name: 'Auto merge' }).check();
+      await expect(updateDialog.locator('.cli-action-command')).toContainText('--auto-merge');
+      await updateDialog.getByRole('button', { name: 'Update all', exact: true }).click();
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(page.getByRole('dialog', { name: 'Approve Update all', exact: true })).not.toBeVisible();
       await expect.poll(() => commands.length).toBe(5);
       expect(commands.slice(3).sort()).toEqual(campaigns.map((campaign) =>
-        `./cao.sh update --campaign ${campaign} --create-pull-request`).sort());
+        `./cao.sh update --campaign ${campaign} --create-pull-request --auto-merge`).sort());
       const campaignScreenshot = testInfo.outputPath(`campaigns-queued-${width}.png`);
-      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('update-repository');
+      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('./cao.sh update --campaign activity');
       await page.screenshot({ path: campaignScreenshot, fullPage: true });
       await testInfo.attach(`campaigns-queued-${width}`, { path: campaignScreenshot, contentType: 'image/png' });
     } finally {

@@ -10,6 +10,7 @@ import {
   readDashboardDataSpecification,
 } from "./dashboard-agent-tools.mjs";
 import { executeDashboardCommand } from "./cli-actions.mjs";
+import { approveDashboardCommand } from "./approval.mjs";
 import { startLocalDashboardPreview } from "./local-preview.mjs";
 import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-designer.mjs";
 
@@ -25,9 +26,7 @@ export function createDashboardExtension({
   workingDirectory = process.cwd(),
   startPreview = startLocalDashboardPreview,
   executeCommand = executeDashboardCommand,
-  approveCommand = async () => {
-    throw new Error("Trusted host approval is required before executing a CAO CLI action.");
-  },
+  approveCommand = approveDashboardCommand,
 } = {}) {
   /** @type {Map<string, ReturnType<typeof startLocalDashboardPreview>>} */
   const previews = new Map();

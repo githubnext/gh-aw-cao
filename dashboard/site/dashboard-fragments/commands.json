@@ -25,12 +25,12 @@
       "icon": "terminal",
       "filter-bar": false,
       "view-mode-control": false,
-      "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "description": "Durable local commands with retained results. Closing a terminal detaches without stopping work.",
       "route": { "navigation-page": "overview" },
       "views": [
         {
           "id": "commands-history",
-          "title": "Command queue",
+          "title": "Commands",
           "show-title": false,
           "description": "Lazy-loaded command cards with persistent status and replayable output. Filters and pages execute on the local server through the data worker.",
           "data": { "source": "command-queue", "query-context": false },
@@ -82,7 +82,7 @@
         {
           "id": "command-terminal",
           "title": "Command output",
-          "description": "Edge-to-edge terminal replay with command and status in the view title and subtitle, dashboard Back navigation, and floating cancellation. Interaction-only streaming, explicit cancellation and retry use worker transport; navigating away only detaches.",
+          "description": "Edge-to-edge terminal replay starting with the executed command, error-colored stderr, persistent pull-request results, and floating copy and retry actions. Interaction-only streaming and retry use worker transport; navigating away only detaches.",
           "show-title": false,
           "data": { "sources": [] },
           "mark": "element",

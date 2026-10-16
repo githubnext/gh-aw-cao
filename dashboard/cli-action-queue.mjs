@@ -3,6 +3,7 @@ import { chmodSync, lstatSync, mkdirSync, realpathSync, statSync } from "node:fs
 import { dirname, resolve, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { parseDashboardCommand } from "./cli-actions.mjs";
+import { lastPullRequestUrl } from "./cli-command-result.mjs";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
 
 export const dashboardQueueLimits = Object.freeze({
@@ -173,6 +174,18 @@ export function createCliActionQueue({
     if (!db.prepare("PRAGMA table_info(jobs)").all().some(({ name }) => name === "retry_of")) {
       db.exec("ALTER TABLE jobs ADD COLUMN retry_of INTEGER");
     }
+    if (!db.prepare("PRAGMA table_info(jobs)").all().some(({ name }) => name === "pull_request_url")) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.exec("ALTER TABLE jobs ADD COLUMN pull_request_url TEXT");
+        const update = db.prepare("UPDATE jobs SET pull_request_url=? WHERE id=?");
+        for (const chunk of db.prepare("SELECT job_id,data FROM output ORDER BY job_id,seq").iterate()) {
+          const url = lastPullRequestUrl(chunk.data);
+          if (url) update.run(url, chunk.job_id);
+        }
+        db.exec("COMMIT");
+      } catch (error) { db.exec("ROLLBACK"); throw error; }
+    }
     if (db.prepare("SELECT count(*) AS count FROM jobs WHERE status='running'").get().count
       || db.prepare("SELECT count(*) AS count FROM execution_claims").get().count) {
       db.exec("BEGIN IMMEDIATE");
@@ -250,7 +263,11 @@ export function createCliActionQueue({
       ...preview, ok: row.ok === null ? null : Boolean(row.ok),
       exitCode: row.exit_code, error: row.error, retryOf: row.retry_of,
       outputChunks: row.output_chunks, outputTruncated: Boolean(row.output_truncated),
-      result: row.ok === null ? null : { ok: Boolean(row.ok), exitCode: row.exit_code, ...(row.error ? { error: row.error } : {}) },
+      result: row.ok === null ? null : {
+        ok: Boolean(row.ok), exitCode: row.exit_code,
+        ...(row.error ? { error: row.error } : {}),
+        ...(row.pull_request_url ? { pullRequestUrl: row.pull_request_url } : {}),
+      },
       ...(row.status === "queued" && admissionReason ? { reason: admissionReason } : {}),
     };
   }
@@ -281,6 +298,8 @@ export function createCliActionQueue({
     try {
       db.prepare("INSERT INTO output VALUES(?,?,?,?)").run(id, seq, stream, data);
       db.prepare("UPDATE jobs SET output_bytes=output_bytes+?,output_chunks=? WHERE id=?").run(bytes, seq, id);
+      const url = lastPullRequestUrl(data);
+      if (url) db.prepare("UPDATE jobs SET pull_request_url=? WHERE id=?").run(url, id);
       db.exec("COMMIT");
     } catch (error) { db.exec("ROLLBACK"); throw error; }
     emit({ type: "output", status: "running", id, chunk: { sequence: seq, stream, data } });

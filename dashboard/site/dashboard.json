@@ -898,6 +898,14 @@
             "type": "boolean",
             "flag": "--create-pull-request",
             "default": true
+          },
+          {
+            "id": "auto-merge",
+            "label": "Auto merge",
+            "description": "Enable auto-merge on the created pull request. Requires Create pull request.",
+            "type": "boolean",
+            "flag": "--auto-merge",
+            "default": false
           }
         ]
       },
@@ -924,6 +932,14 @@
             "description": "Allow upgrades to pre-release versions of GitHub Agentic Workflows.",
             "type": "boolean",
             "flag": "--pre-releases",
+            "default": false
+          },
+          {
+            "id": "auto-merge",
+            "label": "Auto merge",
+            "description": "Enable auto-merge on the created pull request. Requires Create pull request.",
+            "type": "boolean",
+            "flag": "--auto-merge",
             "default": false
           }
         ]
@@ -952,6 +968,14 @@
             "type": "boolean",
             "flag": "--pre-releases",
             "default": false
+          },
+          {
+            "id": "auto-merge",
+            "label": "Auto merge",
+            "description": "Enable auto-merge on the created pull request. Requires Create pull request.",
+            "type": "boolean",
+            "flag": "--auto-merge",
+            "default": false
           }
         ]
       },
@@ -962,7 +986,25 @@
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
         "command": "./cao.sh update --campaign {{campaign}}",
-        "placement": "row"
+        "placement": "row",
+        "arguments": [
+          {
+            "id": "create-pull-request",
+            "label": "Create pull request",
+            "description": "Create a pull request with the workflow campaign updates.",
+            "type": "boolean",
+            "flag": "--create-pull-request",
+            "default": false
+          },
+          {
+            "id": "auto-merge",
+            "label": "Auto merge",
+            "description": "Enable auto-merge on the created pull request. Requires Create pull request.",
+            "type": "boolean",
+            "flag": "--auto-merge",
+            "default": false
+          }
+        ]
       },
       {
         "id": "set-campaign-live",

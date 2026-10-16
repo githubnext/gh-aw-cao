@@ -30,7 +30,7 @@ export function mountTerminal(root, signal) {
     fontSize: 13,
     screenReaderMode: true,
     // A terminal palette is deliberately independent of dashboard light mode.
-    theme: { background: '#0d1117', foreground: '#e6edf3' }
+    theme: { background: '#0d1117', foreground: '#e6edf3', red: '#ff7b72' }
   });
   const fit = new FitAddon();
   terminal.loadAddon(fit);
@@ -54,8 +54,10 @@ export function mountTerminal(root, signal) {
   signal.addEventListener('abort', dispose, { once: true });
   if (signal.aborted) dispose();
   return {
-    /** @param {string} data */
-    write(data) { if (!signal.aborted) terminal.write(data); },
+    /** @param {string} data @param {'stdout'|'stderr'} [stream] */
+    write(data, stream = 'stdout') {
+      if (!signal.aborted) terminal.write(stream === 'stderr' ? `\x1b[31m${data}\x1b[39m` : data);
+    },
     reset() { if (!signal.aborted) terminal.reset(); }
   };
 }

@@ -1352,25 +1352,32 @@ Empty, unavailable, incomplete, paginated, or invalid target sets cannot execute
 and must never fall back to the dashboard's control repository. This binding
 requires a non-lazy list. Additional `list.actions` remain independent controls.
 
+Batch actions with boolean arguments open the shared approval dialog before
+queuing any commands. Each checkbox choice applies to every target in the
+displayed batch. The built-in update and upgrade actions declare an **Auto merge**
+checkbox, unchecked by default, which adds `--auto-merge` only when selected.
+This gh-aw option requires **Create pull request**.
+
 For CLI-action presentation and confirmation, canvas CLI-action mode also
 includes explicitly enabled local admin previews (`local-server.mjs --admin`).
 This host capability does not change the document vocabulary, copy-only
 restrictions, action authority, or per-run confirmation requirements. Commands
-start headlessly and stream output into a scrollable, read-only terminal inside
-the approval dialog, with no separate terminal-window option.
-Explicit cancellation stops the command. Command streams use a read-only
-terminal emulator; terminal emulation cannot be
-expressed by data marks and does not query or derive dashboard evidence.
-Each approval dialog executes at most once: its action button disappears when
-execution starts, leaving **Cancel command** while running. Completion, failure,
-or cancellation closes the dialog and announces the result through a shared
-notification linked to Commands.
-Retained output remains available in Commands. Another run requires reopening
-the approval dialog.
-While running, the terminal dialog fills the viewport and hides the approval
-content, preserving dialog chrome, its accessible close button, terminal output,
-and cancellation controls. Closing the dialog detaches without canceling work. Terminal URLs use
-HTTP/HTTPS link detection and open separately without opener access.
+start headlessly after confirmation in the web interface, without a second
+confirmation in the Copilot app. The approval dialog executes at most once and
+opens the command's full-page, read-only console, with no separate
+terminal-window option. Its first output line shows the executed command.
+Terminal emulation cannot be expressed by data marks and does not query or
+derive dashboard evidence.
+Completion, failure, timeout, or cancellation leaves the console open.
+Back navigation detaches without canceling work, and retained output remains
+available in Commands. Another run requires reopening the approval dialog.
+The console offers **Copy** instead of a cancellation button. It copies the last
+HTTPS pull-request URL found in retained output, or the transcript when no PR
+URL is available. Result URLs support GitHub Enterprise hosts, ports, and path
+prefixes, exclude credentials, query strings, and fragments, and persist with
+the command. **Open pull request** opens the result separately without opener
+access. Other terminal URLs use HTTP/HTTPS link detection with the same
+separate-tab behavior.
 
 A list may declare `list.actions`, a non-empty sequence of unique view-placed
 CLI action IDs, alongside its existing `list.action`. Actions render in declared

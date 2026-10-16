@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const writes = vi.hoisted(() => vi.fn());
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     textarea = null;
     loadAddon() {}
     open() {}
     dispose() {}
-    write() {}
+    write = writes;
     reset() {}
   }
 }));
@@ -28,6 +29,7 @@ async function loadRuntime(search) {
     };
   });
   vi.resetModules();
+  writes.mockClear();
   const module = await import('../../src/components/cli-terminal-runtime.js');
   return { ...module, output };
 }
@@ -48,6 +50,22 @@ afterEach(() => {
 });
 
 describe('cli-terminal-runtime debug logging', () => {
+  it('uses error color for stderr and restores the default color for subsequent output', async () => {
+    stubResizeObserver();
+    const { mountTerminal } = await loadRuntime('');
+    const controller = new AbortController();
+    const terminal = mountTerminal(document.createElement('div'), controller.signal);
+    terminal.write('An error occurred.\r\n', 'stderr');
+    terminal.write('Normal output.\r\n');
+    expect(writes.mock.calls).toEqual([
+      ['\x1b[31mAn error occurred.\r\n\x1b[39m'],
+      ['Normal output.\r\n']
+    ]);
+    controller.abort();
+    terminal.write('Late error', 'stderr');
+    expect(writes).toHaveBeenCalledTimes(2);
+  });
+
   it('is disabled by default', async () => {
     stubResizeObserver();
     const { mountTerminal, output } = await loadRuntime('');

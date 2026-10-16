@@ -74,8 +74,16 @@ Each action opens a command-review dialog and requires explicit confirmation
 for every run. Once the server durably queues the approved command, the dashboard
 opens its full-page console with a **Back to Commands** navigation button.
 The console shows live stdout and stderr in a scrollable, read-only terminal
-with ANSI colors, progress updates, selection, and scrollback. HTTP and HTTPS
+with the executed command on its first line, ANSI colors, progress updates,
+selection, and scrollback. HTTP and HTTPS
 URLs in terminal output open in a separate tab without opener access.
+Stderr and command failure messages use the terminal's error color.
+The last HTTPS pull-request URL in retained command output becomes the durable
+command result. GitHub Enterprise hosts, custom ports, and path prefixes are
+supported; embedded credentials are rejected and query strings and fragments
+are excluded. **Open pull request** opens that result in a separate tab.
+**Copy** copies the pull-request URL when available, otherwise the command
+transcript. Copying never cancels or reruns the command.
 The console stays visible after completion, failure, timeout, or cancellation
 until the user navigates away. Back navigation and output disconnection only
 detach the browser; they do not cancel execution. Reopening a command from
@@ -88,11 +96,10 @@ Commands run in the server's working directory with the local GitHub CLI
 credentials and the existing supported-command allowlist, without shell
 interpolation. Actions using `gh aw` may install the pinned extension first.
 The server admits queued commands within its concurrency and quota limits.
-**Cancel** dismisses the approval dialog without
-starting anything; **Cancel command** stops a running command and its subprocesses.
-Cancellation does not undo changes already completed. The console offers
-**Cancel command** for queued or running work and **Retry command** for failed or
-timed-out work. Starting another action requires fresh confirmation.
+**Cancel** dismisses the approval dialog without starting anything. The console
+offers **Copy** instead of a cancellation button and **Retry command** for failed
+or timed-out work. Starting another action requires fresh confirmation in the
+web interface, not an additional confirmation in the Copilot app.
 Keep the capability URL private and
 do not expose or forward the admin server to other users. This switch does not
 change CAO rollout policy or grant remote workflow authority.

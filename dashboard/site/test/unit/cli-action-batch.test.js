@@ -22,7 +22,10 @@ beforeEach(() => {
   setDeclaredCliActions([{
     id: 'upgrade', label: 'Upgrade all', icon: 'download', placement: 'view',
     command: 'gh aw upgrade --repo {{repository}}',
-    arguments: [{ id: 'pr', label: 'Create pull request', flag: '--create-pull-request', type: 'boolean', default: true }]
+    arguments: [
+      { id: 'pr', label: 'Create pull request', flag: '--create-pull-request', type: 'boolean', default: true },
+      { id: 'auto-merge', label: 'Auto merge', flag: '--auto-merge', type: 'boolean', default: false }
+    ]
   }], { templateValues: { repository: 'acme/control' } });
 });
 afterEach(() => { document.body.replaceChildren(); setDeclaredCliActions([]); window.location.hash = ''; });
@@ -33,19 +36,47 @@ function control(targets, available = true) {
   if (!root) throw new Error('Missing batch action');
   document.body.append(root);
   const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
-  return { root, trigger };
+  const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
+  return { root, trigger, confirm };
 }
 
-it('queues every explicit target on activation and navigates without previewing or attaching', async () => {
-  const { root, trigger } = control(rows);
+it('reviews batch options before queuing every explicit target without attaching', async () => {
+  const { root, trigger, confirm } = control(rows);
   expect(queue.enqueue).not.toHaveBeenCalled();
   trigger.click();
+  expect(queue.enqueue).not.toHaveBeenCalled();
+  expect(root.querySelector('dialog')?.open).toBe(true);
+  expect(root.querySelector('.cli-action-command')?.textContent).toBe(rows.map(({ repository }) =>
+    `gh aw upgrade --repo ${repository} --create-pull-request`).join('\n'));
+  confirm.click();
   await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.values)).toEqual(rows);
-  expect(queue.enqueue.mock.calls.map(([payload]) => payload.arguments)).toEqual([{ pr: true }, { pr: true }]);
+  expect(queue.enqueue.mock.calls.map(([payload]) => payload.arguments))
+    .toEqual(rows.map(() => ({ pr: true, 'auto-merge': false })));
   expect(new Set(queue.enqueue.mock.calls.map(([payload]) => payload.idempotencyKey)).size).toBe(2);
   expect(root.querySelector('dialog')?.open).toBe(false);
   expect(queue.attach).not.toHaveBeenCalled();
+});
+
+it('applies the opted-in auto merge flag to every preview and queued target', async () => {
+  const { root, trigger, confirm } = control(rows);
+  trigger.click();
+  /** @type {HTMLInputElement} */ (root.querySelectorAll('.cli-action-argument input')[1]).click();
+  expect(root.querySelector('.cli-action-command')?.textContent).toBe(rows.map(({ repository }) =>
+    `gh aw upgrade --repo ${repository} --create-pull-request --auto-merge`).join('\n'));
+  expect(queue.enqueue).not.toHaveBeenCalled();
+  confirm.click();
+  await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
+  expect(queue.enqueue.mock.calls.map(([payload]) => payload.arguments))
+    .toEqual(rows.map(() => ({ pr: true, 'auto-merge': true })));
+});
+
+it('dismisses batch options without queuing any commands', () => {
+  const { root, trigger } = control(rows);
+  trigger.click();
+  /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).click();
+  expect(root.querySelector('dialog')?.open).toBe(false);
+  expect(queue.enqueue).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -67,9 +98,10 @@ it('waits for every admission and prevents double activation while enqueueing', 
   queue.enqueue.mockImplementation(({ values }) => values.repository === 'octo/first'
     ? Promise.resolve({ id: 'octo/first' })
     : new Promise((resolve) => { admit = resolve; }));
-  const { trigger } = control(rows);
+  const { trigger, confirm } = control(rows);
   trigger.click();
-  trigger.click();
+  confirm.click();
+  confirm.click();
   await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
   expect(trigger.disabled).toBe(true);
   expect(window.location.hash).toBe('');
@@ -81,16 +113,18 @@ it('waits for every admission and prevents double activation while enqueueing', 
 
 it('shows partial admission failures and still navigates to admitted commands', async () => {
   queue.enqueue.mockRejectedValueOnce(new Error('Admission denied'));
-  const { trigger } = control(rows);
+  const { trigger, confirm } = control(rows);
   trigger.click();
+  confirm.click();
   await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
   expect(document.body.textContent).toContain('1 commands queued; 1 could not be queued.');
 });
 
 it('keeps failed admissions on the current page and allows retry', async () => {
   queue.enqueue.mockRejectedValue(new Error('Admission denied'));
-  const { trigger } = control(rows);
+  const { trigger, confirm } = control(rows);
   trigger.click();
+  confirm.click();
   await vi.waitFor(() => expect(document.body.textContent).toContain('0 commands queued; 2 could not be queued.'));
   expect(window.location.hash).toBe('');
   expect(trigger.disabled).toBe(false);

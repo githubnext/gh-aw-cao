@@ -76,6 +76,8 @@ for (const width of [1440, 390]) {
       executeCliAction: async (/** @type {{ onOutput: (event: {stream: string, data: string}) => void, signal?: AbortSignal }} */ { onOutput, signal }) => {
         runs += 1;
         onOutput({ stream: 'stdout', data: 'Persistent command output\r\n' });
+        onOutput({ stream: 'stdout', data: 'https://github.com/octo/example/pull/1\r\n' });
+        onOutput({ stream: 'stdout', data: 'https://ghe.example.test:8443/github/octo/example/pull/42\r\n' });
         await new Promise((resolve) => {
           finish = () => resolve(undefined);
           signal?.addEventListener('abort', () => { cancellations += 1; resolve(undefined); }, { once: true });
@@ -114,9 +116,10 @@ for (const width of [1440, 390]) {
       await expect(activity).not.toHaveAttribute('hidden', '');
       await expect(activity).toHaveText('');
       await expect(activity.locator('.octicon-terminal')).toHaveCount(1);
-      const cancel = page.getByRole('button', { name: 'Cancel command', exact: true });
-      await expect(cancel).toBeVisible();
-      expect(await cancel.evaluate((button) => {
+      const copy = page.getByRole('button', { name: 'Copy command output', exact: true });
+      await expect(copy).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel command', exact: true })).toHaveCount(0);
+      expect(await copy.evaluate((button) => {
         const actions = button.parentElement;
         if (!actions) return false;
         const style = getComputedStyle(actions);
@@ -175,12 +178,21 @@ for (const width of [1440, 390]) {
       const terminal = page.getByRole('region', { name: 'Read-only command terminal' });
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
+      await expect(terminal.locator('.xterm-accessibility-tree [role="listitem"]').first())
+        .toHaveText('$ ./cao.sh add --repository octo/example');
+      const resultLink = consoleView.getByRole('link', { name: 'Open pull request', exact: true });
+      await expect(resultLink).toHaveAttribute('href', 'https://ghe.example.test:8443/github/octo/example/pull/42');
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(preview.url).origin });
+      await consoleView.getByRole('button', { name: 'Copy pull request URL', exact: true }).click();
+      expect(await page.evaluate(() => navigator.clipboard.readText()))
+        .toBe('https://ghe.example.test:8443/github/octo/example/pull/42');
       await page.reload();
       await expect(consoleView).toBeVisible();
       await expect(page.getByRole('region', { name: 'Read-only command terminal' })).toBeVisible();
       await expect(consoleView.getByRole('button', { name: 'Reconnect output', exact: true })).toHaveCount(0);
       await expect(consoleView.getByRole('button', { name: 'Back to Commands', exact: true })).toHaveCount(0);
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
+      await expect(resultLink).toHaveAttribute('href', 'https://ghe.example.test:8443/github/octo/example/pull/42');
       const terminalScreenshot = testInfo.outputPath(`commands-console-${width}.png`);
       await page.screenshot({ path: terminalScreenshot, fullPage: true });
       await testInfo.attach(`commands-console-${width}`, { path: terminalScreenshot, contentType: 'image/png' });

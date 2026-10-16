@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { DatabaseSync } from "node:sqlite";
 import { chmod, link, mkdir, mkdtemp, rm, readFile, symlink, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -31,6 +32,63 @@ async function until(predicate, message = "condition") {
   assert.fail(`Timed out waiting for ${message}`);
 }
 const success = { ok: true, exitCode: 0 };
+
+test("the last sanitized PR URL survives split chunks, preview limits, and queue restart", async (t) => {
+  const filename = await fixture(t);
+  let queue = createCliActionQueue({
+    filename, limits: { maxPreviewBytes: 32 },
+    execute: async ({ onOutput }) => {
+      await onOutput({ stream: "stdout", data: "https://github.com/octo/repo/pull/1\n" });
+      await onOutput({ stream: "stderr", data: "\x1b[32mhttps://ghe.example.test:8443/github/team/" });
+      await onOutput({ stream: "stderr", data: "project/pull/42\x1b[0m\n" });
+      await onOutput({ stream: "stdout", data: "https://user:password@ghe.example.test/team/project/pull/99\n" });
+      await onOutput({ stream: "stdout", data: "https://ghe.example.test/team/project/issues/100" });
+      return success;
+    },
+  });
+  t.after(() => queue.close());
+  const job = queue.enqueue(invocation());
+  await until(() => queue.detail(job.id).status === "completed");
+  const expected = { ...success, pullRequestUrl: "https://ghe.example.test:8443/github/team/project/pull/42" };
+  assert.deepEqual(queue.detail(job.id).result, expected);
+  assert.deepEqual(queue.list().commands[0].result, expected);
+  await queue.close();
+  queue = createCliActionQueue({ filename, execute: async () => success });
+  assert.deepEqual(queue.detail(job.id).result, expected);
+});
+
+test("commands without a PR URL retain their original result shape", async (t) => {
+  const filename = await fixture(t);
+  const queue = createCliActionQueue({
+    filename, execute: async () => ({ ...success, stdout: "No changes needed.\n" }),
+  });
+  t.after(() => queue.close());
+  const job = queue.enqueue(invocation());
+  await until(() => queue.detail(job.id).status === "completed");
+  assert.deepEqual(queue.detail(job.id).result, success);
+});
+
+test("existing queues backfill PR results from retained output in order", async (t) => {
+  const filename = await fixture(t);
+  let queue = createCliActionQueue({
+    filename, execute: async () => ({
+      ...success,
+      stdout: "https://github.com/octo/repo/pull/1\nhttps://ghe.example.test/team/project/pull/42\n",
+    }),
+  });
+  t.after(() => queue.close());
+  const job = queue.enqueue(invocation());
+  await until(() => queue.detail(job.id).status === "completed");
+  await queue.close();
+  const database = new DatabaseSync(filename);
+  try {
+    database.exec("ALTER TABLE jobs DROP COLUMN pull_request_url");
+  } finally {
+    database.close();
+  }
+  queue = createCliActionQueue({ filename, execute: async () => success });
+  assert.equal(queue.detail(job.id).result.pullRequestUrl, "https://ghe.example.test/team/project/pull/42");
+});
 
 test("300 commands start FIFO at bounded concurrency and survive persistent IDs/idempotency", async (t) => {
   const filename = await fixture(t);

@@ -92,12 +92,12 @@ for (const width of [1440, 390]) {
       expect(bounds?.x).toBe(mainBounds?.x);
       expect(bounds?.width).toBe(mainBounds?.width);
       expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBe(900);
-      const cancel = consoleView.getByRole('button', { name: 'Cancel command', exact: true });
-      await expect(cancel).toHaveText('Cancel');
-      const cancelBounds = await cancel.boundingBox();
-      expect(cancelBounds?.height).toBeGreaterThanOrEqual(44);
-      expect((bounds?.x ?? 0) + (bounds?.width ?? 0) - ((cancelBounds?.x ?? 0) + (cancelBounds?.width ?? 0))).toBe(16);
-      expect(900 - ((cancelBounds?.y ?? 0) + (cancelBounds?.height ?? 0))).toBe(16);
+      const copy = consoleView.getByRole('button', { name: 'Copy command output', exact: true });
+      await expect(copy).toHaveText('Copy');
+      const copyBounds = await copy.boundingBox();
+      expect(copyBounds?.height).toBeGreaterThanOrEqual(44);
+      expect((bounds?.x ?? 0) + (bounds?.width ?? 0) - ((copyBounds?.x ?? 0) + (copyBounds?.width ?? 0))).toBe(24);
+      expect(900 - ((copyBounds?.y ?? 0) + (copyBounds?.height ?? 0))).toBe(24);
 
       emitOutput?.({
         stream: 'stdout',
@@ -147,17 +147,20 @@ for (const width of [1440, 390]) {
       await back.click();
 
       await page.goto(`${preview.url}/#page-maintenance`);
-      await page.getByRole('button', { name: 'Upgrade', exact: true }).first().click();
-      const upgradeApproval = page.getByRole('dialog', { name: 'Approve Upgrade', exact: true });
+      await trigger.click();
       expect(runs).toBe(1);
-      await expect(upgradeApproval.locator('.cli-action-dialog-body p code')).toHaveText('gh aw');
-      await upgradeApproval.getByRole('button', { name: 'Upgrade', exact: true }).click();
+      await approval.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
+      await approval.getByRole('button', { name: 'octo/example', exact: true }).click();
+      await approval.getByRole('button', { name: 'Add repository', exact: true }).click();
       await expect.poll(() => runs).toBe(2);
       await expect(consoleView).toBeVisible();
       await expect(back).toBeVisible();
-      await consoleView.getByRole('button', { name: 'Cancel command', exact: true }).click();
-      await expect.poll(() => cancellations).toBe(1);
-      await expect(consoleView.getByRole('status')).toContainText('canceled');
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(preview.url).origin });
+      await consoleView.getByRole('button', { name: 'Copy command output', exact: true }).click();
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('$ ./cao.sh add --repository octo/example');
+      expect(cancellations).toBe(0);
+      finish?.();
+      await expect(consoleView.getByRole('status')).toContainText('completed');
       await expect(consoleView).toBeVisible();
       await expect(page).toHaveURL(/#page-command\?command=\d+$/);
       await back.click();

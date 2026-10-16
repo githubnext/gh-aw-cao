@@ -2,13 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const queue = vi.hoisted(() => ({
   available: vi.fn(), get: vi.fn(), attach: vi.fn(), cancel: vi.fn(), retry: vi.fn()
 }));
+const terminalWrites = vi.hoisted(() => vi.fn());
 vi.mock('../../src/data-processor.js', () => ({
   cliQueueAvailable: queue.available, requestCliQueue: queue.get,
   attachCliCommand: queue.attach, cancelCliCommand: queue.cancel, retryCliCommand: queue.retry
 }));
 vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
   mountTerminal: (/** @type {HTMLElement} */ root) => ({
-    write: (/** @type {string} */ text) => { root.textContent += text; },
+    write: (/** @type {string} */ text, /** @type {string} */ stream) => {
+      terminalWrites(text, stream);
+      root.textContent += text;
+    },
     reset: () => { root.textContent = ''; }
   })
 }));
@@ -22,6 +26,9 @@ const context = /** @type {import('../../src/components/ui-elements.js').Element
 
 beforeEach(() => {
   vi.resetAllMocks();
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) }
+  });
   window.location.hash = 'page-command?command=persistent-1';
 });
 
@@ -56,11 +63,8 @@ describe('persistent command terminal', () => {
       const actions = root.querySelector('.command-terminal-actions');
       expect(actions && getComputedStyle(actions).right).toBe('24px');
       expect(actions && getComputedStyle(actions).bottom).toBe('24px');
-      const cancelStyle = [...(styles.sheet?.cssRules ?? [])].find((rule) =>
-        rule instanceof CSSStyleRule && rule.selectorText === '.command-terminal-actions > .cli-action-cancel');
-      expect(cancelStyle).toBeDefined();
-      expect(/** @type {CSSStyleRule} */ (cancelStyle).style.background).toBe('var(--accent)');
-      expect(/** @type {CSSStyleRule} */ (cancelStyle).style.color).toBe('var(--canvas)');
+      expect(root.querySelector('.command-terminal-copy .octicon-copy')).not.toBeNull();
+      expect(root.querySelector('.cli-action-cancel')).toBeNull();
     } finally {
       styles.remove();
     }
@@ -80,6 +84,59 @@ describe('persistent command terminal', () => {
     document.body.append(root);
     expect(root.textContent).toContain('Select a command');
     expect(queue.get).not.toHaveBeenCalled();
+  });
+
+  it('starts live output with the exact executed command', async () => {
+    queue.available.mockReturnValue(true);
+    queue.get.mockResolvedValue({
+      id: 'persistent-1', status: 'running',
+      command: 'gh aw compile --strict --repo "octo/repo"'
+    });
+    queue.attach.mockImplementation((_id, output) => {
+      expect(document.querySelector('.cli-action-terminal')?.textContent)
+        .toBe('$ gh aw compile --strict --repo "octo/repo"\r\n');
+      output({ data: 'Compiling workflows...\r\n' });
+      return new Promise(() => {});
+    });
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.querySelector('.cli-action-terminal')?.textContent)
+      .toBe('$ gh aw compile --strict --repo "octo/repo"\r\nCompiling workflows...\r\n'));
+  });
+
+  it('shows the PR result after live completion without navigating away', async () => {
+    const pullRequestUrl = 'https://ghe.example.test:8443/github/team/project/pull/42';
+    queue.available.mockReturnValue(true);
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running', command: 'gh aw compile --strict' });
+    queue.attach.mockResolvedValue({
+      command: { id: 'persistent-1', status: 'completed' },
+      result: { ok: true, pullRequestUrl }
+    });
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    const link = /** @type {HTMLAnchorElement} */ (root.querySelector('a'));
+    expect(link.hidden).toBe(true);
+    await vi.waitFor(() => expect(link.hidden).toBe(false));
+    expect(link.textContent).toBe('Open pull request');
+    expect(link.href).toBe(pullRequestUrl);
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toBe('noopener noreferrer');
+    expect(link.parentElement?.hidden).toBe(false);
+    /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-copy')).click();
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(pullRequestUrl));
+    expect(window.location.hash).toBe('#page-command?command=persistent-1');
+  });
+
+  it('restores a persisted PR result when reopening a completed command', async () => {
+    const pullRequestUrl = 'https://github.internal/team/project/pull/7';
+    queue.available.mockReturnValue(true);
+    const command = { id: 'persistent-1', status: 'completed', result: { ok: true, pullRequestUrl } };
+    queue.get.mockResolvedValue(command);
+    queue.attach.mockResolvedValue({ command, result: { ok: true } });
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.querySelector('a')?.getAttribute('href')).toBe(pullRequestUrl));
+    expect(/** @type {HTMLAnchorElement} */ (root.querySelector('a')).hidden).toBe(false);
   });
 
   it('reattaches on reopening and ignores output from the closed console', async () => {
@@ -110,7 +167,7 @@ describe('persistent command terminal', () => {
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledOnce());
-    const retry = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
+    const retry = /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-retry'));
     expect(retry.hidden).toBe(false);
     retry.click();
     retry.click();
@@ -127,7 +184,7 @@ describe('persistent command terminal', () => {
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledOnce());
-    const retry = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
+    const retry = /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-retry'));
     retry.click();
     await vi.waitFor(() => expect(retry.disabled).toBe(false));
     expect(window.location.hash).toBe('#page-command?command=persistent-1');
@@ -144,7 +201,7 @@ describe('persistent command terminal', () => {
 
   it('replays persistent output and reveals retry only for a failed command', async () => {
     queue.available.mockReturnValue(true);
-    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'failed' });
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'failed', command: 'gh aw compile --strict' });
     queue.attach.mockImplementation(async (_id, output) => {
       output({ data: 'Retained output' });
       return { command: { id: 'persistent-1', status: 'failed' }, result: { ok: false, error: 'Exit 1' } };
@@ -152,9 +209,12 @@ describe('persistent command terminal', () => {
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(root.querySelector('.cli-action-terminal')?.textContent).toContain('Retained output'));
+    expect(root.querySelector('.cli-action-terminal')?.textContent)
+      .toBe('$ gh aw compile --strict\r\nRetained output\r\nExit 1\r\n');
+    expect(terminalWrites).toHaveBeenLastCalledWith('\r\nExit 1\r\n', 'stderr');
     expect(root.querySelector('output')?.textContent).toBe('persistent-1 · failed');
-    expect(/** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).hidden).toBe(false);
-    expect(/** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).hidden).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-retry')).hidden).toBe(false);
+    expect(root.querySelector('.cli-action-cancel')).toBeNull();
   });
 
   it.each(['completed', 'failed', 'canceled', 'timed-out'])('keeps the console view after %s until the user navigates away', async (status) => {
@@ -164,6 +224,7 @@ describe('persistent command terminal', () => {
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(root.querySelector('output')?.textContent).toBe(`persistent-1 · ${status}`));
+    expect(/** @type {HTMLAnchorElement} */ (root.querySelector('a')).hidden).toBe(true);
     expect(root.isConnected).toBe(true);
     expect(window.location.hash).toBe('#page-command?command=persistent-1');
     expect(queue.cancel).not.toHaveBeenCalled();
@@ -185,20 +246,40 @@ describe('persistent command terminal', () => {
     expect(queue.cancel).not.toHaveBeenCalled();
   });
 
-  it('cancels only on the explicit cancellation control', async () => {
+  it('copies the command transcript instead of canceling running work', async () => {
     queue.available.mockReturnValue(true);
-    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running' });
-    queue.cancel.mockResolvedValue({ id: 'persistent-1', status: 'canceled' });
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running', command: 'gh aw compile --strict' });
+    queue.attach.mockImplementation((_id, output) => {
+      output({ data: 'Compiling workflows...\r\n' });
+      return new Promise(() => {});
+    });
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(queue.attach).toHaveBeenCalled());
-    const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel'));
-    expect(cancel.getAttribute('aria-label')).toBe('Cancel command');
-    expect(cancel.textContent).toBe('Cancel');
-    expect(cancel.querySelector('.octicon-x')).not.toBeNull();
-    expect(cancel.closest('.command-terminal-actions')).not.toBeNull();
-    cancel.click();
-    await vi.waitFor(() => expect(queue.cancel).toHaveBeenCalledWith('persistent-1', expect.any(AbortSignal)));
-    expect(root.querySelector('output')?.textContent).toContain('canceled');
+    const copy = /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-copy'));
+    expect(copy.getAttribute('aria-label')).toBe('Copy command output');
+    expect(copy.textContent).toBe('Copy');
+    expect(copy.querySelector('.octicon-copy')).not.toBeNull();
+    copy.click();
+    await vi.waitFor(() => expect(navigator.clipboard.writeText)
+      .toHaveBeenCalledExactlyOnceWith('$ gh aw compile --strict\r\nCompiling workflows...\r\n'));
+    expect(queue.cancel).not.toHaveBeenCalled();
+    expect(root.querySelector('output')?.textContent).toContain('running');
+  });
+
+  it('reports clipboard errors without changing command state', async () => {
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Clipboard blocked.'));
+    queue.available.mockReturnValue(true);
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running', command: 'gh aw compile' });
+    queue.attach.mockImplementation(() => new Promise(() => {}));
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalled());
+    const copy = /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-copy'));
+    copy.click();
+    await vi.waitFor(() => expect(copy.disabled).toBe(false));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledOnce();
+    expect(queue.cancel).not.toHaveBeenCalled();
+    expect(root.querySelector('output')?.textContent).toContain('running');
   });
 });

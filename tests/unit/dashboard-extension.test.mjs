@@ -260,7 +260,7 @@ test("preview approval is bound to its working directory, command, and exact inp
   await assert.rejects(previewOptions.approveCliAction({ command: "gh aw compile" }), /shutting down/);
 });
 
-test("preview execution fails closed when no trusted approval adapter is supplied", async () => {
+test("default preview approval validates canvas-confirmed commands without a host prompt", async () => {
   let previewOptions;
   const { config, closePreviews } = createDashboardExtension({
     startPreview: async (options) => {
@@ -269,6 +269,32 @@ test("preview execution fails closed when no trusted approval adapter is supplie
     },
   });
   await config.canvases[0].open(context("preview"));
-  await assert.rejects(previewOptions.approveCliAction({ command: "gh aw compile" }), /Trusted host approval is required/);
-  await closePreviews();
+  try {
+    assert.equal(await previewOptions.approveCliAction({ command: "gh aw compile" }), true);
+    for (const command of ["node attacker.mjs", "gh aw compile\necho unexpected", 'gh aw compile "']) {
+      await assert.rejects(previewOptions.approveCliAction({ command }));
+    }
+  } finally {
+    await closePreviews();
+  }
+});
+
+test("custom preview approval must explicitly approve canvas commands", async () => {
+  let previewOptions;
+  let decision = false;
+  const { config, closePreviews } = createDashboardExtension({
+    startPreview: async (options) => {
+      previewOptions = options;
+      return { url: "http://127.0.0.1:1234/preview", close: async () => {} };
+    },
+    approveCommand: async () => decision,
+  });
+  await config.canvases[0].open(context("preview"));
+  try {
+    for (decision of [false, undefined, "approved", true]) {
+      assert.equal(await previewOptions.approveCliAction({ command: "gh aw compile" }), decision === true);
+    }
+  } finally {
+    await closePreviews();
+  }
 });

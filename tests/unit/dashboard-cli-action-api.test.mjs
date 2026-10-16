@@ -107,6 +107,22 @@ test("output replay follows a persistent cursor and emits terminal state", async
   } finally { await server.close(); }
 });
 
+test("output completion includes the durable enterprise pull request result", async () => {
+  const pullRequestUrl = "https://ghe.example.test:8443/github/team/project/pull/42";
+  const server = await fixture({
+    detail: () => ({
+      id: "command-1", status: "completed", exitCode: 0,
+      result: { ok: true, exitCode: 0, pullRequestUrl },
+    }),
+    output: () => [],
+    subscribe: () => () => {},
+  });
+  try {
+    const response = await fetch(`${server.url}/__cli_commands/command-1/output`);
+    assert.deepEqual(JSON.parse(await response.text()).result, { ok: true, exitCode: 0, pullRequestUrl });
+  } finally { await server.close(); }
+});
+
 test("history polling excludes stdin and output bodies from summary rows", async () => {
   const server = await fixture({
     list: () => ({

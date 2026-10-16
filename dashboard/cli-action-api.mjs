@@ -108,6 +108,7 @@ async function streamCommand(queue, id, after, response) {
           result: {
             ok: command.status === "completed", exitCode: command.exitCode,
             ...(command.error ? { error: command.error } : {}),
+            ...(command.result?.pullRequestUrl ? { pullRequestUrl: command.result.pullRequestUrl } : {}),
           },
         });
         response.end();

@@ -25,6 +25,7 @@ import {
 } from '../../src/components/cli-actions.js';
 import { subscribeCanonicalDashboardView } from '../../src/data-processor.js';
 import { shellStyles } from '../../src/styles-shell.js';
+import dashboardDocument from '../../dashboard.json' with { type: 'json' };
 
 beforeEach(() => {
   vi.stubGlobal('__CLI_QUEUE__', true);
@@ -40,6 +41,47 @@ afterEach(() => {
 });
 
 describe('CLI actions', () => {
+  it.each(['update-repository', 'update-campaign', 'upgrade-repository', 'upgrade-target-repository'])(
+    'keeps auto merge opt-in and previews and submits its supported flag for %s',
+    async (id) => {
+      const action = dashboardDocument.dashboard['cli-actions'].find((candidate) => candidate.id === id);
+      if (!action) throw new Error(`Missing action ${id}`);
+      expect(action.arguments?.find((argument) => argument.id === 'auto-merge')).toEqual({
+        id: 'auto-merge', label: 'Auto merge',
+        description: 'Enable auto-merge on the created pull request. Requires Create pull request.',
+        type: 'boolean', flag: '--auto-merge', default: false
+      });
+      const root = renderCliActions([{
+        id: action.id, label: action.label, icon: action.icon, command: action.command,
+        arguments: action.arguments?.map((argument) => ({ ...argument, type: /** @type {const} */ ('boolean') }))
+      }], { templateValues: { repository: 'octo/example', campaign: 'activity' } });
+      if (!root) throw new Error(`Missing action control ${id}`);
+      document.body.append(root);
+      const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
+      const autoMerge = /** @type {HTMLInputElement} */ (
+        [...root.querySelectorAll('.cli-action-argument')].find((label) =>
+          label.textContent?.startsWith('Auto merge'))?.querySelector('input')
+      );
+      trigger.click();
+      expect(autoMerge.checked).toBe(false);
+      expect(root.querySelector('.cli-action-command')?.textContent).not.toContain('--auto-merge');
+      autoMerge.click();
+      expect(root.querySelector('.cli-action-command')?.textContent).toContain('--auto-merge');
+      /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).click();
+      trigger.click();
+      expect(autoMerge.checked).toBe(false);
+      const createPr = /** @type {HTMLInputElement} */ (root.querySelector('.cli-action-argument input'));
+      if (!createPr.checked) createPr.click();
+      autoMerge.click();
+      /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
+      await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
+      expect(queue.enqueue.mock.calls[0][0].arguments).toMatchObject({
+        'create-pull-request': true, 'auto-merge': true
+      });
+      root.remove();
+    }
+  );
+
   it('shares the command summary context across shell replacements with independent lifetimes', async () => {
     const styles = document.createElement('style');
     styles.textContent = shellStyles;
