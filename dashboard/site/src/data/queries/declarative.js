@@ -750,6 +750,10 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     if (unavailable) {
       status = 'unavailable';
       failure = `input source "${unavailable.name}" is unavailable`;
+      const diagnostic = unavailable.source?.metadata?.['query-diagnostic'];
+      if (typeof diagnostic === 'string' && diagnostic.length > 0) {
+        failure += `; upstream diagnostic: ${diagnostic.slice(0, 2048)}`;
+      }
       const upstream = unavailable.source?.metadata?.['query-error'];
       const rootSource = isPlainObject(upstream)
         && upstream.code === 'input-unavailable'

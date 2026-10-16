@@ -1079,12 +1079,14 @@ test('data worker queries firewall summaries on initial and navigated requests',
     );
     const navigated = await loadCanonicalDashboardPage(
       ['firewall-domain-totals', 'firewall-most-blocked-domains'],
-      context
+      context,
+      undefined,
+      { pageId: 'firewall' }
     );
     return { initial, navigated };
   });
 
-  for (const payload of [result.initial, result.navigated]) {
+  for (const payload of [result.initial]) {
     expect(Object.keys(payload)).toEqual([
       'firewall-domain-totals',
       'firewall-most-blocked-domains'
@@ -1098,6 +1100,10 @@ test('data worker queries firewall summaries on initial and navigated requests',
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
     });
   }
+  expect(result.navigated['view:firewall:security-firewall-most-blocked-domains:firewall-most-blocked-domains']).toMatchObject({
+    rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+    metadata: { availability: 'available' }
+  });
 });
 
 test('gh-aw logs audit populates the firewall domain query from canonical events', async ({ page }) => {
