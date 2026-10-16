@@ -139,14 +139,77 @@ test('compact usage metadata, called-workflow usage and flattened sessions are s
   }
 });
 
-test('bad session format or missing identity fails collection without altering the shard', async (t) => {
+test('invalid optional sessions are skipped without altering the shard or logging artifact contents', async (t) => {
+  const cases = {
+    'malformed JSON': { session: `${session}\nSECRET_INVALID_JSON` },
+    'invalid event': { session: `${session}\nnull` },
+    'unsupported format': { session: session.replace('"version":1', '"version":2') },
+    'empty session': { session: '' },
+    'missing identity': { info: undefined },
+    'malformed identity': { info: 'SECRET_INVALID_JSON' },
+    'null identity': { info: 'null' },
+    'mismatched run': { info: JSON.stringify({ run_id: 304, run_attempt: 1, repository: 'octo/api' }) },
+    'mismatched repository': { info: JSON.stringify({ run_id: 303, run_attempt: 1, repository: 'other/repo' }) },
+    'missing attempt': { info: JSON.stringify({ run_id: 303, repository: 'octo/api' }) },
+    'invalid attempt': { info: JSON.stringify({ run_id: 303, run_attempt: 'SECRET_ATTEMPT', repository: 'octo/api' }) },
+    'ambiguous sessions': { duplicate: true }
+  };
+  for (const [name, options] of Object.entries(cases)) {
+    await t.test(name, async (t) => {
+      const f = await fixture(t);
+      const original = await readFile(f.shard, 'utf8');
+      const warnings = t.mock.method(console, 'warn', () => {});
+      await writeFile(path.join(f.usage, 'aw_session.jsonl'), options.session ?? session);
+      if (Object.hasOwn(options, 'info')) {
+        await rm(f.info);
+        if (options.info !== undefined) await writeFile(f.info, options.info);
+      }
+      if (options.duplicate) {
+        await writeFile(path.join(f.logs, 'run-303', 'aw_session.jsonl'), session);
+      }
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.equal(await readFile(f.shard, 'utf8'), original);
+      assert.equal(warnings.mock.callCount(), 1);
+      assert.match(warnings.mock.calls[0].arguments[0], /Skipping invalid unified session evidence for run 303/);
+      assert.doesNotMatch(warnings.mock.calls[0].arguments[0], /SECRET_|other\/repo/);
+    });
+  }
+});
+
+test('bad optional evidence does not block valid runs and warnings are deduplicated per attempt', async (t) => {
   const f = await fixture(t);
-  const original = await readFile(f.shard, 'utf8');
-  await writeFile(path.join(f.usage, 'aw_session.jsonl'), '{invalid');
-  await assert.rejects(enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), /valid JSON/);
-  assert.equal(await readFile(f.shard, 'utf8'), original);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
   await rm(f.info);
-  await assert.rejects(enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), /identity unavailable/);
+  const validDirectory = path.join(f.logs, 'run-304', 'usage');
+  await mkdir(validDirectory, { recursive: true });
+  await writeFile(path.join(validDirectory, 'aw_session.jsonl'), session);
+  await writeFile(path.join(validDirectory, 'aw_info.json'),
+    JSON.stringify({ run_id: 304, run_attempt: 1, repository: 'octo/api' }));
+  const valid = structuredClone(f.envelope);
+  valid.run.run_id = 304;
+  await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n${JSON.stringify(valid)}\n`);
+  const secondShard = `${f.prefix}2.jsonl`;
+  await writeFile(secondShard, `${JSON.stringify(f.envelope)}\n`);
+  const original = await readFile(secondShard, 'utf8');
+
+  const result = await execute(process.execPath, [
+    'activity/session-evidence.mjs', f.logs, f.prefix, 'octo/api'
+  ]);
+  assert.deepEqual(JSON.parse(result.stdout), { enriched: 1 });
+  assert.equal(result.stderr.trim(), 'Skipping invalid unified session evidence for run 303');
+  const rows = (await readFile(f.shard, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(rows[0].run.cao_unified_session, undefined);
+  assert.equal(rows[1].run.cao_unified_session.events.length, 3);
+  assert.equal(await readFile(secondShard, 'utf8'), original);
+  assert.doesNotMatch(await readFile(f.shard, 'utf8'), /SECRET_/);
+});
+
+test('unexpected filesystem failures still fail collection without altering the shard', async (t) => {
+  const f = await fixture(t);
+  const original = await readFile(f.shard, 'utf8');
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
+  await rm(f.info);
+  await mkdir(f.info);
+  await assert.rejects(enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { code: 'EISDIR' });
   assert.equal(await readFile(f.shard, 'utf8'), original);
 });
