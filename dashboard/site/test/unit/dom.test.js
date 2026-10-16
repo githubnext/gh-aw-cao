@@ -3,6 +3,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { button, h, injectStyleOnce, span } from '../../src/dom.js';
 
 describe('h', () => {
+  it.each([
+    '<img src=x onerror=alert(1)>',
+    '<script>alert(1)</script>',
+    '</div><svg onload=alert(1)>',
+    '&lt;img src=x onerror=alert(1)&gt;'
+  ])('renders exception messages as text rather than markup: %s', (message) => {
+    const error = new Error(message);
+    const element = h('div', null, error.message);
+
+    expect(element.textContent).toBe(message);
+    expect(element.childNodes).toHaveLength(1);
+    expect(element.firstChild).toBeInstanceOf(Text);
+    expect(element.querySelector('img, script, svg')).toBeNull();
+  });
+
   it('gives otherwise unidentified form controls unique ids', () => {
     const input = h('input', { type: 'search' });
     const select = h('select');

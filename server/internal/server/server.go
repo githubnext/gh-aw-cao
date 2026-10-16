@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -43,6 +43,10 @@ import (
 )
 
 var serverLog = logger.New("cao:server")
+
+var localAccessBootstrap = template.Must(template.New("local-access-bootstrap").Parse(
+	`<script>localStorage.setItem("cao-dashboard-access-token",{{.}});const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,
+))
 
 type Config struct {
 	Listen                 string
@@ -1599,36 +1603,50 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	clean := filepath.Clean(strings.TrimPrefix(request.URL.Path, "/"))
-	if clean == "." {
+	clean := strings.TrimPrefix(request.URL.Path, "/")
+	if clean == "" {
 		clean = "index.html"
 	}
-	path := filepath.Join(a.config.SiteDirectory, clean)
-	relative, err := filepath.Rel(a.config.SiteDirectory, path)
-	if err != nil || strings.HasPrefix(relative, "..") {
+	if !filepath.IsLocal(clean) {
 		http.NotFound(response, request)
 		return
 	}
-	// #nosec G703 -- path is constrained to the configured site directory above.
-	info, err := os.Stat(path)
-	if err != nil || info.IsDir() {
-		path = filepath.Join(a.config.SiteDirectory, "index.html")
+	root, err := os.OpenRoot(a.config.SiteDirectory)
+	if err != nil {
+		http.NotFound(response, request)
+		return
 	}
-	if filepath.Base(path) == "index.html" {
+	defer func() { _ = root.Close() }()
+	file, err := root.Open(clean)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			a.serveIndex(response, "")
+		} else {
+			http.NotFound(response, request)
+		}
+		return
+	}
+	defer func() { _ = file.Close() }()
+	info, err := file.Stat()
+	if err != nil {
+		http.NotFound(response, request)
+		return
+	}
+	if info.IsDir() || filepath.Base(clean) == "index.html" {
 		a.serveIndex(response, "")
 		return
 	}
-	if contentType := mime.TypeByExtension(filepath.Ext(path)); contentType != "" {
-		response.Header().Set("Content-Type", contentType)
-	}
-	// #nosec G703 -- path is constrained to the configured site directory above.
-	http.ServeFile(response, request, path)
+	http.ServeContent(response, request, info.Name(), info.ModTime(), file)
 }
 
 func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
-	path := filepath.Join(a.config.SiteDirectory, "index.html")
-	// #nosec G304,G703 -- path is constrained to the configured site directory.
-	content, err := os.ReadFile(path)
+	root, err := os.OpenRoot(a.config.SiteDirectory)
+	if err != nil {
+		http.Error(response, "not found", http.StatusNotFound)
+		return
+	}
+	defer func() { _ = root.Close() }()
+	content, err := root.ReadFile("index.html")
 	if err != nil {
 		http.Error(response, "not found", http.StatusNotFound)
 		return
@@ -1643,11 +1661,12 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 			Name: "cao_github_local", Value: a.githubLocalResourceSession(), Path: "/api/v1/github/",
 			HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode,
 		})
-		token, _ := json.Marshal(accessToken)
-		injections += fmt.Sprintf(
-			`<script>localStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,
-			token,
-		)
+		var bootstrap strings.Builder
+		if err := localAccessBootstrap.Execute(&bootstrap, accessToken); err != nil {
+			writeError(response, http.StatusInternalServerError, "dashboard bootstrap is unavailable")
+			return
+		}
+		injections += bootstrap.String()
 	}
 	if index := strings.Index(strings.ToLower(html), "</head>"); index >= 0 {
 		html = html[:index] + injections + html[index:]

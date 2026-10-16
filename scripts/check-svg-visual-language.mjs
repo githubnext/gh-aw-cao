@@ -67,7 +67,7 @@ function attribute(source, name) {
 }
 
 function stripTags(source) {
-  return source.replace(/<[^>]*>/g, "").trim();
+  return source.replace(/<[^>]*>|[<>]/g, "").trim();
 }
 
 function referencedText(svg, id) {
