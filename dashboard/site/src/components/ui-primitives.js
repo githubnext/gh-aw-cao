@@ -759,12 +759,17 @@ export function syncToggleButtonState(toggle, expanded, { expandedLabel, collaps
  * `open` attribute on runtimes without `HTMLDialogElement.showModal`/`close`
  * support. Shared by the table intent-action prompt preview and the
  * work-item mobile detail sheet, which both otherwise duplicated the same
- * feature-detection branches.
+ * feature-detection branches. Contains clicks so dialogs nested in clickable
+ * cards cannot activate their owning row.
  * @param {{ className: string, ariaLabel: string, onFallbackClose?: () => void }} options
  * @returns {{ dialog: HTMLDialogElement, open: () => void, close: () => void }}
  */
 export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
-  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', { className, 'aria-label': ariaLabel }));
+  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', {
+    className,
+    'aria-label': ariaLabel,
+    onClick: (/** @type {MouseEvent} */ event) => event.stopPropagation()
+  }));
   const open = () => {
     if (typeof dialog.showModal === 'function') {
       dialog.showModal();

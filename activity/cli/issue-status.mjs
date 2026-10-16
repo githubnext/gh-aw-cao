@@ -3,7 +3,7 @@ import { readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { option, boundedPositiveInteger, nonNegativeInteger } from './options.mjs';
-import { jsonlLines } from './files.mjs';
+import { jsonlRecords } from './files.mjs';
 import { githubEntityUrl } from './queries.mjs';
 
 const DEFAULT_ISSUE_STATUS_BATCH_SIZE = 50;
@@ -105,8 +105,8 @@ async function applyIssueStatuses(directory, statuses) {
     const filePath = path.join(directory, name);
     const lines = [];
     let changed = false;
-    for await (const line of jsonlLines([filePath])) {
-      const envelope = JSON.parse(line);
+    for (const { value: envelope, rawLine } of jsonlRecords([filePath])) {
+      const line = rawLine.replace(/\r?\n$/, '');
       const entity = envelope?.kind === 'safe_output_item'
         ? githubEntityUrl(envelope.safe_output?.url)
         : undefined;

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseUnifiedSession } from '../dashboard/site/src/data/adapters/unified-session.js';
 import { isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { readJsonlRecords } from './jsonl.mjs';
 
 async function sessionFile(directory) {
   let entries;
@@ -54,12 +55,9 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
   let enriched = 0;
   for (const name of names) {
     const filename = path.join(directory, name);
-    const content = await readFile(filename, 'utf8');
     let changed = false;
     const output = [];
-    for (const line of content.split(/\r?\n/)) {
-      if (!line.trim()) continue;
-      const envelope = JSON.parse(line);
+    for (const { value: envelope } of readJsonlRecords(filename)) {
       const run = envelope.run;
       const runId = run?.run_id ?? run?.database_id;
       const runRepository = run && String(run.repository).includes('/')

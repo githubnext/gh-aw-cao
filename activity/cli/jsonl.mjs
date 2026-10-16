@@ -6,7 +6,7 @@ import { adaptCachedGhAwJsonlStream } from '../../dashboard/site/src/data/adapte
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { ENTITY_COLLECTIONS } from '../cli-usage.mjs';
 import { UsageError } from './options.mjs';
-import { jsonlLines, totalFileBytes } from './files.mjs';
+import { jsonlRecords, totalFileBytes } from './files.mjs';
 
 export const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 
@@ -71,8 +71,7 @@ function isAgenticWorkflowRun(record) {
 
 function createJsonlCompactionState() { return { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 }; }
 
-function compactedJsonlLine(line, agenticRunIds, state) {
-  const record = JSON.parse(line);
+function compactedJsonlLine(record, line, agenticRunIds, state) {
   if (record?.kind === 'run' || record?.kind === 'token_efficiency_run_context') {
     if (!isAgenticWorkflowRun(record)) return null;
     if (record.kind === 'run') {
@@ -99,8 +98,7 @@ function compactedJsonlLine(line, agenticRunIds, state) {
 
 async function inspectJsonlCompaction(sourcePaths) {
   const agenticRunIds = new Set();
-  for await (const line of jsonlLines(sourcePaths)) {
-    const record = JSON.parse(line);
+  for (const { value: record } of jsonlRecords(sourcePaths)) {
     if (isAgenticWorkflowRun(record)) {
       const runId = workflowRunId(record.run.run_id);
       if (runId !== null) agenticRunIds.add(runId);
@@ -110,9 +108,10 @@ async function inspectJsonlCompaction(sourcePaths) {
   let retainedRecords = 0;
   let filtered = false;
   const state = createJsonlCompactionState();
-  for await (const line of jsonlLines(sourcePaths)) {
+  for (const { value, rawLine } of jsonlRecords(sourcePaths)) {
+    const line = rawLine.replace(/\r?\n$/, '');
     sourceRecords += 1;
-    const retained = compactedJsonlLine(line, agenticRunIds, state);
+    const retained = compactedJsonlLine(value, line, agenticRunIds, state);
     if (retained === null) {
       filtered = true;
       continue;
@@ -168,8 +167,9 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     bufferedBytes = 0;
   };
   try {
-    for await (const line of jsonlLines(sourcePaths)) {
-      const retained = compactedJsonlLine(line, inspection.agenticRunIds, state);
+    for (const { value, rawLine } of jsonlRecords(sourcePaths)) {
+      const line = rawLine.replace(/\r?\n$/, '');
+      const retained = compactedJsonlLine(value, line, inspection.agenticRunIds, state);
       if (retained === null) continue;
       const outputLine = `${retained}\n`;
       const lineBytes = Buffer.byteLength(outputLine);
@@ -199,8 +199,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
 }
 
 async function shardRepository(filePath) {
-  for await (const line of jsonlLines([filePath])) {
-    const record = JSON.parse(line);
+  for (const { value: record } of jsonlRecords([filePath])) {
     const requested = record?.request?.repository;
     if (typeof requested === 'string' && requested.includes('/')) return requested.toLowerCase();
     const run = record?.run;

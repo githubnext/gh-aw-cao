@@ -5,18 +5,12 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { mergeInventoryDashboardSources } from '../inventory-sources.mjs';
 import { DAY_MS } from './options.mjs';
-import { jsonlLines, totalFileBytes } from './files.mjs';
+import { jsonlRecords, totalFileBytes } from './files.mjs';
 
 export const DEFAULT_RAW_CACHE_BYTES = 1024 * 1024 * 1024;
 export const DEFAULT_NORMALIZATION_CACHE_BYTES = 256 * 1024 * 1024;
 
-function parseRecord(line) {
-  let record;
-  try {
-    record = JSON.parse(line);
-  } catch {
-    throw new SyntaxError('Invalid activity cache JSONL; record contents omitted');
-  }
+function cacheRecord(record) {
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     throw new TypeError('Activity cache records must be JSON objects');
   }
@@ -76,8 +70,8 @@ export async function recycleActivityCache(inputDirectory, {
   const paths = await shardPaths(directory);
   const sourceBytes = await totalFileBytes(paths);
   const runs = new Map();
-  for await (const line of jsonlLines(paths)) {
-    const record = parseRecord(line);
+  for (const { value } of jsonlRecords(paths)) {
+    const record = cacheRecord(value);
     const observations = record.kind === 'workflow_runs' && Array.isArray(record.payload)
       ? record.payload
       : ['run', 'token_efficiency_run_context'].includes(record.kind) && record.run ? [record.run] : [];
@@ -109,8 +103,9 @@ export async function recycleActivityCache(inputDirectory, {
     return keepRun(parentRun(record)) ? line : null;
   };
   let protectedBytes = 0;
-  for await (const line of jsonlLines(paths)) {
-    const record = parseRecord(line);
+  for (const { value, rawLine } of jsonlRecords(paths)) {
+    const line = rawLine.replace(/\r?\n$/, '');
+    const record = cacheRecord(value);
     if (filterRecord(record, line) === null) continue;
     if (record.kind === 'workflow_runs' && Array.isArray(record.payload)) {
       // Charge the envelope once; per-run payload costs conservatively include a comma.
@@ -148,8 +143,9 @@ export async function recycleActivityCache(inputDirectory, {
     let changed = false;
     let records = 0;
     async function* lines() {
-      for await (const line of jsonlLines([file])) {
-        const filtered = filterRecord(parseRecord(line), line);
+      for (const { value, rawLine } of jsonlRecords([file])) {
+        const line = rawLine.replace(/\r?\n$/, '');
+        const filtered = filterRecord(cacheRecord(value), line);
         if (filtered !== line) changed = true;
         if (filtered !== null) {
           records += 1;

@@ -110,6 +110,19 @@ fully expired shards are deleted. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
 
+CAO's Node.js shard readers use the MIT-licensed streaming JSONL helpers from
+`github/gh-aw`, vendored without changes under `activity/vendor/gh-aw/` so installed
+runtimes need no network access or additional packages. `source.json` records the
+immutable upstream revision and file hashes; `node scripts/vendor-gh-aw-jsonl.mjs`
+refreshes these files from the revision pinned in that script. The shared
+`activity/jsonl.mjs` reader lazily parses bounded file chunks, skips blank lines,
+and fails on malformed or truncated records with a file/line diagnostic that
+omits record contents. Compaction, recycling, normalized-payload consolidation,
+issue-status enrichment, session enrichment, and run-log reads share this reader.
+Raw-line callers retain whitespace and record text without allocating a full
+file's line array. Browser ingestion remains independent of Node.js filesystem
+helpers.
+
 Activity and hosted collection prefer gh-aw's version-1 unified
 `usage/aw_session.jsonl` timeline (published by gh-aw v0.92.0). After download,
 `activity/session-evidence.mjs` associates each session with the execution

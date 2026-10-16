@@ -1,0 +1,12 @@
+{
+  "repository": "github/gh-aw",
+  "revision": "69065d46a566dc498776be6e948e15d5a52729c7",
+  "sourceDirectory": "actions/setup/js",
+  "files": {
+    "jsonl_helpers.cjs": "22b15b6b37f85b31463f8a0843467368b6bf156ccec30e9ae80273b57d449aab",
+    "json_schema_validation.cjs": "6f468d2715d23546c0ce32465ede65738ba8dcebd8673b119a74c00125f4e2a6",
+    "mcp_scripts_validation.cjs": "d3d825a5443b3806a6c4d27b9a1d972dedb0fbe0e0357040d0a7cd8f8dbfb3fe",
+    "memory_schema_contract.cjs": "82512ebedf3b8477b99a34a5d4265dbda4faf1fb7e382fc8802eae03e24b6eda",
+    "LICENSE": "2510b446bc1f0cf9702453075d20cd88631e20e5642658edb7325d9c1eb534f7"
+  }
+}

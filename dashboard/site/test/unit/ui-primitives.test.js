@@ -3,8 +3,43 @@ import { describe, expect, it, vi } from 'vitest';
 import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderActionLabel, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingMessage, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 import { effect, state } from '../../src/reactive.js';
+import { createModalDialog } from '../../src/components/ui-primitives.js';
 
 describe('ui primitives', () => {
+  it('contains dialog clicks without preventing controls or their default actions', () => {
+    const parentClick = vi.fn();
+    const onChange = vi.fn();
+    const onConfirm = vi.fn();
+    const { dialog, open, close } = createModalDialog({ className: 'test-dialog', ariaLabel: 'Upgrade' });
+    const checkbox = h('input', { type: 'checkbox', onChange });
+    const labelText = h('strong', null, 'Create pull request');
+    const label = h('label', null, checkbox, labelText);
+    const command = h('code', null, 'gh aw upgrade');
+    const confirm = h('button', { type: 'button', onClick: onConfirm }, 'Copy command');
+    dialog.append(label, command, confirm);
+    const parent = h('div', { onClick: parentClick }, dialog);
+    document.body.append(parent);
+
+    try {
+      open();
+      labelText.click();
+      expect(checkbox).toHaveProperty('checked', true);
+      expect(onChange).toHaveBeenCalledOnce();
+      confirm.click();
+      expect(onConfirm).toHaveBeenCalledOnce();
+      for (const target of [label, command, dialog]) {
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        target.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+      }
+      expect(parentClick).not.toHaveBeenCalled();
+      close();
+      expect(dialog.open).toBe(false);
+    } finally {
+      parent.remove();
+    }
+  });
+
   it('positions viewport-anchored tooltips and stops tracking when their owner aborts', () => {
     const scope = new AbortController();
     const tooltip = renderTooltip({
