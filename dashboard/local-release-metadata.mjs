@@ -1,10 +1,14 @@
 import { parseVersion, updateState } from "../activity/version.mjs";
 import { repositoryCoordinateId, workflowSourcePath } from "./site/src/data/model/ids.js";
 
+function compilerVersionKey(repositoryId, path) {
+  return `${repositoryId}:${workflowSourcePath(path).replace(/^\.github\/workflows\//, "")}`;
+}
+
 export function refreshCanonicalCompilerRelease(value, latestVersion, compilerVersions = new Map()) {
   if (value?.kind !== "record" || value.collection !== "workflows") return value;
   const override = value.record.path
-    ? compilerVersions.get(`${value.record.repositoryId}:${workflowSourcePath(value.record.path)}`)
+    ? compilerVersions.get(compilerVersionKey(value.record.repositoryId, value.record.path))
     : undefined;
   return {
     ...value,
@@ -23,8 +27,7 @@ export function compilerVersionOverrides(sources) {
   return new Map((sources.workflows?.rows ?? []).flatMap((row) => {
     if (typeof row.organization !== "string" || typeof row.repository !== "string"
         || typeof row.workflow !== "string" || !row.workflow.trim()) return [];
-    const path = row.workflow.startsWith(".github/workflows/") ? row.workflow : `.github/workflows/${row.workflow}`;
-    const key = `${repositoryCoordinateId(row.organization, row.repository)}:${workflowSourcePath(path)}`;
+    const key = compilerVersionKey(repositoryCoordinateId(row.organization, row.repository), row.workflow);
     return [[key, {
       ghAwVersion: row["gh-aw-version"],
       ghAwCurrentVersion: row["gh-aw-current-version"],

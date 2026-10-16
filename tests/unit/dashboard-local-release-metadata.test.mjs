@@ -31,6 +31,31 @@ test("canonical shards cannot overwrite live inventory compiler evidence", () =>
   assert.equal(Object.hasOwn(placeholder.record, "ghAwUpdateState"), false);
 });
 
+test("compiler overrides match short and full source and lock paths without crossing repositories", () => {
+  const paths = ["first.md", "first.lock.yml", ".github/workflows/first.md", ".github/workflows/first.lock.yml"];
+  for (const inventoryPath of paths) {
+    for (const path of paths) {
+      for (const state of ["up-to-date", "unknown"]) {
+        const versions = compilerVersionOverrides({ workflows: { rows: [{
+          ...workflow(inventoryPath, "v0.92.0"), "gh-aw-update-state": state,
+        }] } });
+        const shard = {
+          kind: "record", collection: "workflows",
+          record: { repositoryId: "repository:octo%2Frepo", path, ghAwVersion: "v0.91.5" },
+        };
+        const refreshed = refreshCanonicalCompilerRelease(shard, "v0.92.0", versions);
+        assert.equal(refreshed.record.ghAwVersion, "v0.92.0", `${inventoryPath} matches ${path}`);
+        assert.equal(refreshed.record.ghAwUpdateState, state);
+        const otherRepository = refreshCanonicalCompilerRelease({
+          ...shard, record: { ...shard.record, repositoryId: "repository:octo%2Fother" },
+        }, "v0.92.0", versions);
+        assert.equal(otherRepository.record.ghAwVersion, "v0.91.5");
+        assert.equal(otherRepository.record.ghAwUpdateState, "update-available");
+      }
+    }
+  }
+});
+
 test("live compiler metadata replaces snapshot versions only for retained workflow coordinates", async () => {
   const sources = { workflows: {
     metadata: { "as-of": "2026-10-01T00:00:00Z" },
