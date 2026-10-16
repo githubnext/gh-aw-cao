@@ -1,7 +1,7 @@
 export const baseStyles = `:root {
   color-scheme: dark;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  --font-sans: "Mona Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: "Mona Sans Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   --canvas: #0d1117;
   --canvas-subtle: #151b23;
   --canvas-inset: #010409;
