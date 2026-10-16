@@ -1341,7 +1341,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution.',
+        description: 'Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution. Weekly rhythm compares all workflow runs regardless of status or conclusion.',
         data: { sources: ['overview-header-presentation', 'overview-rhythm'] },
         mark: 'element',
         element: 'factory-header',

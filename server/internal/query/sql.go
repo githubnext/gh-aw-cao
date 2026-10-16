@@ -662,6 +662,9 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 				reference = "(" + args[1].Expression + ")::timestamptz"
 			}
 			success := sqlText(args[2]) + " = 'success'"
+			if args[2].Kind == SQLBoolean {
+				success = "COALESCE(" + args[2].Expression + ", FALSE)"
+			}
 			out.Expression, out.Kind, out.Point = "CASE WHEN "+args[0].Expression+" IS NOT NULL AND "+reference+" IS NOT NULL THEN "+
 				"jsonb_build_array("+at+", floor(extract(epoch FROM "+reference+")*1000), "+success+")::text ELSE NULL::text END", SQLText, "calendar"
 		} else {

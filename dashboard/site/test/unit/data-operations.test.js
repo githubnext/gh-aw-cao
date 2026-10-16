@@ -155,6 +155,30 @@ describe('dashboard data operations', () => {
     });
   });
 
+  it.each([
+    [true, true],
+    [false, false],
+    ['success', true],
+    ['failure', false],
+    [null, false]
+  ])('uses %s as a calendar point inclusion selector', (selector, included) => {
+    const result = tidy([{}], [{
+      op: 'compute',
+      values: [{
+        as: 'point',
+        function: 'calendar-week-point',
+        args: [
+          { value: '2026-09-07T08:00:00Z' },
+          { value: '2026-09-09T12:00:00Z' },
+          { value: selector }
+        ]
+      }]
+    }]);
+    expect(JSON.parse(String(result[0]?.point))).toEqual([
+      Date.parse('2026-09-07T08:00:00Z'), Date.parse('2026-09-09T12:00:00Z'), included
+    ]);
+  });
+
   it('supports text search, alternatives, limits, and the worker request shape', () => {
     expect(processDataRequest({
       data: rows,

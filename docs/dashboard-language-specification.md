@@ -571,7 +571,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |
 | `date-bucket` | 2 | UTC bucket-start timestamp text for a timestamp and literal `hour`, `day`, `week` (Monday), or `month` |
-| `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and run conclusion |
+| `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and an inclusion boolean or run conclusion; `true` includes the run regardless of conclusion, `false` excludes it, and conclusion strings include only `success` |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |
 | `greater-than` | 2 | whether the first numeric argument is greater than the second |
 | `if` | 3 | second argument when the first is true; otherwise the third |

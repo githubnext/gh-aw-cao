@@ -516,9 +516,9 @@
     },
     {
       "name": "overview-rhythm",
-      "subject": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
-      "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
-      "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
+      "subject": "Compare all workflow runs by weekday, layering this week over last week.",
+      "objective": "Show the observed weekday pattern across both calendar weeks, regardless of status or conclusion.",
+      "acceptance": "Verify weekday order, counts including unsuccessful and in-flight runs, and reached-day flags. Missing rhythm is unavailable, not zero activity; do not attribute changes to workflow improvements.",
       "from": "overview-runs",
       "time": {
         "range": "15d"
@@ -535,7 +535,7 @@
               "context": "time-end"
             },
             {
-              "field": "run-conclusion"
+              "value": true
             }
           ]
         }
@@ -1713,7 +1713,7 @@
           "title": "How are we doing?",
           "show-title": false,
           "prompt": "none",
-          "description": "Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution.",
+          "description": "Factory health measures all workflows across CAO and targeted repositories without current runtime failures; repository coverage measures registered repositories reached by successful worker execution. Weekly rhythm compares all workflow runs regardless of status or conclusion.",
           "data": {
             "sources": [
               "overview-header-presentation",

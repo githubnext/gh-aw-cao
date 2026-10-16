@@ -5413,9 +5413,9 @@
     },
     {
       "id": "overview-rhythm",
-      "subject": "Compare successful runs for this week and last week on every weekday, layering the current week over the previous week.",
-      "objective": "Show the observed weekday pattern of successful runs across the current and previous calendar weeks.",
-      "acceptance": "When rhythm is present, verify weekday order, successful-run counts, and reached-day flags; if rhythm is absent, report the comparison as unavailable rather than zero activity, and do not attribute changes to workflow improvements.",
+      "subject": "Compare all workflow runs by weekday, layering this week over last week.",
+      "objective": "Show the observed weekday pattern across both calendar weeks, regardless of status or conclusion.",
+      "acceptance": "Verify weekday order, counts including unsuccessful and in-flight runs, and reached-day flags. Missing rhythm is unavailable, not zero activity; do not attribute changes to workflow improvements.",
       "description": "",
       "parameters": [],
       "sources": [
