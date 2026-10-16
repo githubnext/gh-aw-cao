@@ -1,3 +1,7 @@
+import { createDebug } from '../debug.js';
+
+const debugSource = createDebug('github-query-sources');
+
 export const GITHUB_QUERY_SOURCE_FIELDS = {
   'github-repository': ['full_name', 'description', 'html_url', 'default_branch', 'stargazers_count', 'forks_count', 'open_issues_count', 'archived', 'visibility'],
   'github-latest-release': ['tag_name', 'name', 'html_url', 'published_at', 'draft', 'prerelease']
@@ -16,6 +20,14 @@ export function isGitHubQuerySource(name) {
  */
 export function githubSnapshotSource(source, snapshot) {
   const instant = new Date().toISOString();
+  debugSource({
+    event: 'snapshot',
+    source,
+    status: snapshot.status,
+    origin: snapshot.source,
+    hasData: Boolean(snapshot.data),
+    hasError: snapshot.error !== null
+  });
   return {
     source,
     rows: snapshot.data ? [snapshot.data] : [],
