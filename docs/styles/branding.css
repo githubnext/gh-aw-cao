@@ -155,6 +155,11 @@ button[data-open-modal]:focus-visible {
   margin-inline: auto;
 }
 
+.sl-markdown-content pre.mermaid {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 :root[data-theme="dark"] .mermaid .edgeLabel > p {
   background-color: #30363d !important;
   color: #f0f6fc !important;
