@@ -24,8 +24,8 @@ export function renderFactoryRhythm(source, scope) {
     legendClassName: 'factory-rhythm-legend',
     plotClassName: 'factory-rhythm-bars',
     title: 'Weekly rhythm',
-    subtitle: 'All workflow runs',
-    ariaLabel: 'All workflow runs this week and last week from Monday through Sunday',
+    subtitle: 'Agentic workflow runs',
+    ariaLabel: 'Agentic workflow runs this week and last week from Monday through Sunday',
     legendLabel: 'Weekly rhythm legend',
     legend: [
       { label: 'This week', className: 'factory-rhythm-legend-current' },
