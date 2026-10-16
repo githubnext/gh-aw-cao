@@ -855,7 +855,7 @@
         "id": "upgrade-repository",
         "level": "operate",
         "label": "Upgrade all",
-        "description": "Upgrade the gh-aw compiler version across this repository's Agentic Workflows files.",
+        "description": "Upgrade Agentic Workflows in every listed repository. Review the complete command list before approving.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",
         "placement": "view",

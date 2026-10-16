@@ -626,6 +626,27 @@ export function validateView(view, viewNode, path, viewIds, errors) {
         ...(view.list.action !== undefined ? [{ id: view.list.action, path: `${listPath}.action` }] : []),
         ...(Array.isArray(view.list.actions) ? view.list.actions.map((id, index) => ({ id, path: `${listPath}.actions[${index}]` })) : [])
       ];
+      if (view.list['action-context'] !== undefined) {
+        const fields = view.list['action-context'];
+        if (typeof view.list.action !== 'string' || !Array.isArray(fields) || fields.length === 0
+          || fields.some((field) => typeof field !== 'string' || field.length === 0)
+          || new Set(fields).size !== fields.length || view['lazy-list'] === true
+          || state.declaredCliActions.get(view.list.action)?.selector) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+            'list.action-context requires one primary action, unique context fields, and a complete non-paginated list.',
+            `${listPath}.action-context`));
+        } else {
+          const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string' ? view.data.source : '';
+          const available = sourceFieldNames(sourceName);
+          const action = state.declaredCliActions.get(view.list.action);
+          if (fields.some((field) => !available?.includes(field))
+            || (typeof action?.command === 'string' && cliActionTemplateFields(action.command).some((field) => !fields.includes(field)))) {
+            errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'list.action-context must reference source fields and supply every command template field.',
+              `${listPath}.action-context`));
+          }
+        }
+      }
       for (const reference of actionReferences) {
         validateRequiredIdentifier(reference.id, reference.path, 'list action reference', errors);
         const declaredAction = typeof reference.id === 'string'

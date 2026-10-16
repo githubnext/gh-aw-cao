@@ -281,7 +281,7 @@ describe('Configuration dashboard view', () => {
     expect(views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
         { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', action: 'update-repository' },
-        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', action: 'upgrade-repository', actions: ['add-repository'] }
+        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', ...maintenanceNavigationContract['repository-upgrade'], actions: ['add-repository'] }
       ]);
     expect(views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([

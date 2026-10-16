@@ -1013,6 +1013,32 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('No repositories were discovered.');
   });
 
+  it('binds a batch list action to every query row, not the control repository or displayed cards', () => {
+    setDeclaredCliActions([{
+      id: 'upgrade-repository', label: 'Upgrade all', icon: 'download',
+      command: 'gh aw upgrade --repo {{repository}}', placement: 'view'
+    }], { canExecute: false, templateValues: { repository: 'acme/control' } });
+    const rows = Array.from({ length: 61 }, (_, index) => ({ repository: `octo/repository-${index}` }));
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance', title: 'Repositories', sourceName: 'maintenance-repositories',
+      view: {
+        mark: 'list',
+        list: { style: 'cards', icon: 'repo', action: 'upgrade-repository', 'action-context': ['repository'] },
+        encoding: { columns: [{ field: 'repository' }] }
+      },
+      rows, metadata: { ...metadata, availability: 'available' },
+      contextDetails: [], headingTag: 'h3',
+      prepareTableRows: (rows) => rows.slice(0, 1),
+      buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
+    });
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe(rows.map((row) => `gh aw upgrade --repo ${row.repository}`).join('\n'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent).not.toContain('acme/control');
+    expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    setDeclaredCliActions([]);
+  });
+
   it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

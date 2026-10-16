@@ -3,5 +3,9 @@
     { "id": "repositories", "label": "Repositories", "icon": "repo", "page": "maintenance" },
     { "id": "campaigns", "label": "Campaigns", "icon": "workflow", "page": "maintenance-campaigns" }
   ],
-  "sources": ["maintenance-repositories", "campaigns"]
+  "sources": ["maintenance-repositories", "campaigns"],
+  "repository-upgrade": {
+    "action": "upgrade-repository",
+    "action-context": ["repository"]
+  }
 }

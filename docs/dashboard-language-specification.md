@@ -279,7 +279,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View `data` | `source` or `sources`, `partial-source`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
 | View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
-| View `list` | `style`, `layout`, `icon`, `action`, `card`, `drill` |
+| View `list` | `style`, `layout`, `icon`, `action`, `action-context`, `actions`, `card`, `drill` |
 | List `drill` | `type`, `field`, `page`, `query`, `title-field`, `arguments` |
 | Query drill argument | `name`, `field` |
 | Plural text variable | `singular`, `plural` |
@@ -1314,6 +1314,15 @@ A smell row identifies one detected condition with a stable `smell-id` and uniqu
 The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `ref`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link` and defaults to `text`. It selects presentation independently from the field name. The optional table-column field `filter` is boolean and defaults to `true`; `false` excludes the column from interactive facet filters without changing its display or sorting. Named UI element values are `campaign-route`, `workflow-route-page`, `outcome-detail`, `outcome-detail-section`, `problem-detail`, `entity-route`, `configuration-policy`, `measure-history`, `factory-header`, `factory-floor`, `link-button-list`, and `markdown`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents.
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
+
+A list may bind its primary `action` to every worker-produced source row with
+`list.action-context`, a non-empty sequence of unique scalar field names.
+The approval dialog lists one fully resolved CLI command per row, and explicit
+approval enqueues each invocation independently. The source query owns target
+selection, distinctness, and ordering; display limits must not narrow the batch.
+Empty, unavailable, incomplete, paginated, or invalid target sets cannot execute
+and must never fall back to the dashboard's control repository. This binding
+requires a non-lazy list. Additional `list.actions` remain independent controls.
 
 For CLI-action presentation and confirmation, canvas CLI-action mode also
 includes explicitly enabled local admin previews (`local-server.mjs --admin`).

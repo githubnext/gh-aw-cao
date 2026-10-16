@@ -32,6 +32,26 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it.each([
+    { fields: [] }, { fields: ['repository', 'repository'] }, { fields: ['unknown-field'] }, { fields: ['gh-aw-version'] }
+  ])('rejects invalid batch action context $fields', ({ fields }) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'maintenance');
+    page.views[0].list['action-context'] = fields;
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({
+        path: expect.stringContaining('.list.action-context')
+      })])
+    });
+  });
+
+  it('rejects a batch action against an incrementally loaded list', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'maintenance');
+    page.views[0]['lazy-list'] = true;
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({ ok: false });
+  });
+
   it('accepts the authoritative built-in overview view definition', () => {
     const accepted = validateDashboardDocument(authoritativeDashboardSource);
     expect(accepted.ok).toBe(true);
