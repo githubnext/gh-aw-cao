@@ -1,7 +1,35 @@
 {
   "source_sha": "e778295efcd516f81ab747abee43e3435c8f600b",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T23:26:46.581649Z",
+      "worker_run_id": 38980886909,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38980874123,
+        38979123142,
+        38978870225,
+        38977666501,
+        38976932227,
+        38976391460,
+        38975961572,
+        38975289446,
+        38975003287,
+        38973205744,
+        38972697196,
+        38972697719,
+        38972497780,
+        38971535518,
+        38970487988,
+        38970420273,
+        38969934933,
+        38969597516,
+        38968637048,
+        38968350508
+      ],
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA e778295efcd516f81ab747abee43e3435c8f600b. In the latest 20 completed docs.yml runs from 2026-10-16T21:17:37Z through 2026-10-16T23:20:12Z, 15 runs concluded success and 5 concluded skipped; there were no failed, cancelled, action_required, or timed_out docs runs in the inspected window. Five comparable successful current-source docs runs (38980874123, 38979123142, 38978870225, 38977666501, 38976932227) provided the required sample on the same workflow revision, mixing two schedule freshness skips, two publish runs, and one push build. Trusted metadata showed median queue time 0.0s (p90 0.0s), docs workflow execution 48.0s (p90 75.4s), schedule-freshness 7.0s (p90 7.7s), build 44.0s (p90 48.0s), deploy 12.5s (p90 15.3s), Set up Node.js 3.0s, Restore node_modules 6.0s, Build documentation 14.0s, Restore cached CAO Dashboard 2.0s, and Upload Pages artifact 9.0s. Across all 11 successful docs build jobs in the latest-20 window, Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were all skipped, confirming warm node_modules and dashboard cache reuse on every successful build. Bounded logs from push run 38976932227 and workflow_run publish 38978870225 verified setup-node npm cache restores, node_modules cache restores, central-agentic-ops-dashboard cache restores, Astro building 76 pages in 11.97s, and github-pages artifacts of 48.4-48.6 MB; schedule run 38980874123 logged that the deployed docs and dashboard were current and skipped build. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-16T18:05:39Z through 2026-10-16T22:56:16Z contained 10 successful builds and 10 skipped callbacks. The latest five successful dashboard builds showed median queue time 0.0s (p90 0.0s), dashboard workflow execution 168.0s (p90 240.0s), build 147.0s (p90 221.4s), cache 11.0s (p90 13.2s), Install dashboard build dependencies 3.0s (p90 5.2s), Upgrade fallback activity data 110.0s (p90 153.2s), Assemble Dashboard Language site 3.0s (p90 6.6s), Upload dashboard artifact 8.0s (p90 9.0s), Download dashboard artifact 3.0s (p90 4.0s), and Save dashboard cache 3.0s (p90 3.6s). Across all 10 successful dashboard builds in the latest-20 window, Download fallback activity data was skipped, and bounded logs from run 38978650627 verified a restored activity cache, dashboard npm ci adding 10 packages in 2s, a 490.9 MiB validated SQLite payload, 337 copied shards totaling 315.4 MiB, and a 44.8 MB uploaded dashboard artifact before cache re-download/save. No new recommendation in this category is actionable because dependency and cache reuse are already consistently warm on both workflows, any residual dependency setup cost is only single-digit seconds, and the dominant repeated cost remains dashboard activity-data upgrade outside this category; no dependency/caching-only change is evidenced to save at least 60 seconds or 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety."
+    },
     {
       "evaluated_at": "2026-10-16T22:54:04Z",
       "worker_run_id": 38978004107,
@@ -799,34 +827,6 @@
         38845634030
       ],
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 7250e64746c5214556fb9d6828bce58ca1fa44f1. In the latest 20 completed docs.yml runs from 2026-10-16T03:27:47Z through 2026-10-16T05:35:51Z, 18 runs concluded success and 2 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Seven comparable successful docs runs executed both build and deploy (38847142264, 38848513892, 38850481151, 38851731893, 38852497949, 38853640373, 38855643262). Trusted run and job metadata for those comparable runs showed median queue time 3s, docs workflow execution 70s (p90 83s), build 41s (p90 48.6s), deploy 16s (p90 23.4s), Restore node_modules 5s (p90 9.2s), Build documentation 12s (p90 14.4s), Restore cached CAO Dashboard 2s (p90 2.4s), and Upload Pages artifact 4s (p90 5s). Trusted build metadata on all seven comparable docs runs showed Install dependencies and Save node_modules skipped after successful cache restore. Bounded logs from docs run 38855643262 confirmed actions/setup-node restored the npm cache (~293 MB), actions/cache restored the Linux-node-24 node_modules cache (~283 MB), and the fixed-key central-agentic-ops-dashboard cache restored successfully. Relevant cao-dashboard.yml evidence from the latest 20 completed runs contained 9 successful default-branch workflow_run builds (38843301254, 38843959846, 38845019414, 38846977223, 38848474549, 38850292556, 38851551055, 38852328230, 38855449902) and 11 skipped callbacks. Those comparable dashboard runs showed median queue time 3s, full execution 113s (p90 125.2s), build 104s (p90 111.8s), cache 9s (p90 10s), Restore collected activity data 3s, Install dashboard build dependencies 3s (p90 5s), and Upgrade fallback activity data 80s (p90 88.4s). Bounded logs from dashboard run 38855449902 confirmed the activity cache restored successfully (~46 MB) and the dashboard still ran npm ci --prefix dashboard/site --ignore-scripts --omit=dev, completing dependency installation in 5s while Upgrade fallback activity data consumed 90s. Open self-care docs build-time issues already cover the distinct higher-cost bottlenecks (#16825, #17171, #18158, #16054). No new dependency-installation or caching change is actionable because docs dependency caches are already hitting, dashboard dependency installation remains a 3-5 second cost, and no change in this category is evidenced to save at least 60 seconds or 15 percent of the 70-second median docs execution time without shifting to a different bottleneck."
-    },
-    {
-      "evaluated_at": "2026-10-16T05:26:00Z",
-      "worker_run_id": 38855598816,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38855643262,
-        38855580699,
-        38853640373,
-        38853467552,
-        38852693298,
-        38852497949,
-        38851808994,
-        38851731893,
-        38851322908,
-        38850648029,
-        38850481151,
-        38849633059,
-        38849582132,
-        38848635972,
-        38848513892,
-        38847738922,
-        38847142264,
-        38846954516,
-        38845634030,
-        38845406164
-      ],
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 7250e64746c5214556fb9d6828bce58ca1fa44f1. In the latest 20 completed docs.yml runs from 2026-10-16T03:25:04Z through 2026-10-16T05:25:57Z, 17 runs concluded success and 3 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Seven comparable successful docs runs executed both build and deploy (38847142264, 38848513892, 38850481151, 38851731893, 38852497949, 38853640373, 38855643262). Trusted run and job metadata for those comparable runs showed median queue time 0s, docs workflow execution 73s (p90 87.4s), build 41s (p90 48.6s), deploy 16s (p90 23.4s), Build documentation 12s (p90 14.4s), Restore node_modules 5s (p90 9.2s), Restore cached CAO Dashboard 2s (p90 2.4s), and Upload Pages artifact 4s (p90 5s). Seven successful schedule-only freshness passes (38845634030, 38846954516, 38847738922, 38850648029, 38851808994, 38852693298, 38855580699) completed in 12s median with schedule-freshness at 7s median and the freshness-check step at 3s median. Trusted logs from docs run 38855643262 confirmed cache restores for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache; docs run 38855580699 logged the trusted freshness-skip message. Relevant cao-dashboard.yml evidence used the latest 20 completed runs in the paired window, which contained 9 successful main-branch workflow_run builds (38843301254, 38843959846, 38845019414, 38846977223, 38848474549, 38850292556, 38851551055, 38852328230, 38855449902) with median full execution 116s (p90 129.2s), build 104s (p90 111.8s), cache 9s, and Upgrade fallback activity data 80s median (p90 88.4s). Trusted logs from dashboard run 38855449902 confirmed a cache hit for cao-activity-v5-38853467533-1 while Upgrade fallback activity data still took 90s and Upload dashboard artifact stayed at 5s. The only scheduling improvements above the threshold remain work already represented by open issues: #18158 for the push->schedule rebuild on SHA 7250e64746c5214556fb9d6828bce58ca1fa44f1 (push run 38853467552 in 43s followed 109s later by schedule run 38853640373 in 91s), #16054 for repeated workflow_run rebuilds on SHA f2972eb8f0d768f0b6e6199b75d43fddc1175e92 (docs runs 38851731893 and 38852497949, triggered after dashboard runs 38851551055 and 38852328230, consumed 143s combined), and #17171 for the repeated schedule-only freshness scan cost. No new non-duplicate scheduling recommendation is currently actionable."
     }
   ]
 }
