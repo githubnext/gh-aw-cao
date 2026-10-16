@@ -107,3 +107,38 @@ func TestCLICommandInvocationEncodeEnforcesSizeBoundary(t *testing.T) {
 		t.Fatalf("oversized encoding accepted: %v", err)
 	}
 }
+
+func TestRedactCLICommandTextProducesStorableOutput(t *testing.T) {
+	for _, text := range []string{
+		"pushed with ghs_abcdefABCDEF0123456789 ok",
+		"Authorization: Bearer abc.def",
+		"password=hunter2 and token: xyz",
+		"tok[REDACTED]en=leak",
+		"bad\x00utf8 \xff",
+		"plain output",
+	} {
+		redacted := RedactCLICommandText(text)
+		if err := ValidateCLICommandText(redacted); err != nil {
+			t.Fatalf("RedactCLICommandText(%q) = %q is not storable", text, redacted)
+		}
+	}
+	if got := RedactCLICommandText("plain output"); got != "plain output" {
+		t.Fatalf("plain output changed: %q", got)
+	}
+}
+
+func TestCLICommandInvocationValidatesAttribution(t *testing.T) {
+	valid := CLICommandInvocation{ActionID: "a", Command: "c", Actor: "mona", Repository: "octo/api"}
+	if _, err := valid.Encode(4096); err != nil {
+		t.Fatal(err)
+	}
+	for _, invocation := range []CLICommandInvocation{
+		{ActionID: "a", Command: "c", Actor: "bad login"},
+		{ActionID: "a", Command: "c", Repository: "octo"},
+		{ActionID: "a", Command: "c", Repository: "octo/api/extra"},
+	} {
+		if _, err := invocation.Encode(4096); !errors.Is(err, ErrCLICommandInput) {
+			t.Fatalf("Encode(%+v) error = %v", invocation, err)
+		}
+	}
+}

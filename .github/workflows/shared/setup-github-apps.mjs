@@ -223,7 +223,7 @@ export function setRepositoryAuthenticationMode(repo, runner = runGh) {
   runner(["variable", "set", AUTH_MODE_VARIABLE, "--repo", repo, "--body", "app"]);
 }
 
-function splitRepo(repo) {
+export function splitRepo(repo) {
   const match = /^([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)\/([A-Za-z0-9_.-]+)$/.exec(repo);
   if (!match) {
     throw new Error(`invalid repository slug: ${repo}`);
@@ -231,7 +231,7 @@ function splitRepo(repo) {
   return [match[1], match[2]];
 }
 
-function runGh(args, options = {}) {
+export function runGh(args, options = {}) {
   const result = spawnSync("gh", args, {
     encoding: "utf8",
     input: options.input,
@@ -274,7 +274,7 @@ export function repositoryVariableValue(repo, name, runner = runGh) {
   ]);
 }
 
-function verifyTarget(repo) {
+export function verifyTarget(repo) {
   const [owner] = splitRepo(repo);
   const canonicalRepo = runGh(["repo", "view", repo, "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
   if (canonicalRepo.toLowerCase() !== repo.toLowerCase()) {
@@ -358,7 +358,7 @@ export function appRegistrationUrl(owner, state, serverUrl = githubServerUrl()) 
   return `${serverUrl}/organizations/${owner}/settings/apps/new?state=${state}`;
 }
 
-async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
+export async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
   const state = randomBytes(16).toString("hex");
   let page = "";
   let complete;
@@ -660,7 +660,7 @@ async function waitForInstallation(app, target) {
   throw new Error(`timed out waiting for GitHub App installation on ${target.owner}${suffix}`);
 }
 
-async function ensureInstallations(app, targets, openBrowser, firstInstallationAlreadyOpen = false) {
+export async function ensureInstallations(app, targets, openBrowser, firstInstallationAlreadyOpen = false) {
   const installations = [];
   for (const [index, target] of targets.entries()) {
     const existing = await selectedInstallationForSetup(app, target);

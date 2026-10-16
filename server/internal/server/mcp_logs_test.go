@@ -250,7 +250,7 @@ func TestMCPLogsSharesHTTPAuthorizationAndSafeSnapshot(t *testing.T) {
 	}{
 		{"no session", t.Context(), http.StatusForbidden},
 		{"viewer", context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "viewer"}), http.StatusForbidden},
-		{"admin", context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}), http.StatusOK},
+		{"admin", context.WithValue(t.Context(), oauthSessionContextKey{}, assuredSession("operator")), http.StatusOK},
 		{"actions", context.WithValue(t.Context(), githubActionsActorContextKey{}, "workflow"), http.StatusOK},
 		{"empty actor", context.WithValue(t.Context(), githubActionsActorContextKey{}, ""), http.StatusForbidden},
 	} {

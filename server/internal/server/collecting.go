@@ -551,7 +551,7 @@ func (a *App) Collector() *Collector {
 // reports that collection is not configured rather than failing.
 func (a *App) collectionStatus(response http.ResponseWriter, request *http.Request) {
 	if !a.adminAuthorized(request) {
-		writeError(response, http.StatusForbidden, "administrative authorization is required")
+		a.writeAdminDenied(response, request, "administrative authorization is required")
 		return
 	}
 	collector, ok := a.reconciler.(*Collector)

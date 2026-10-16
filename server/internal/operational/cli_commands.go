@@ -97,11 +97,30 @@ type CLICommandInvocation struct {
 	Arguments map[string]bool   `json:"arguments,omitempty"`
 	Values    map[string]string `json:"values,omitempty"`
 	Input     *string           `json:"input,omitempty"`
+	// Actor and Repository attribute hosted executions. Actor is the GitHub
+	// login authenticated by OAuth at enqueue time; Repository is the single
+	// owner/name target the execution credential is scoped to.
+	Actor      string `json:"actor,omitempty"`
+	Repository string `json:"repository,omitempty"`
 }
 
 var cliSecret = regexp.MustCompile(`(?i)\b(?:gh[pousr]_[a-z0-9_]+|github_pat_[a-z0-9_]+|AKIA[A-Z0-9]{16})|-----BEGIN .*PRIVATE KEY-----|\bBearer\s+\S+|(?:token|secret|password|credential|authorization|private[-_]?key)\s*["']?\s*[:=]\s*["']?\S+|--[\w-]*(?:token|password|secret|credential)\b`)
 var cliSecretKey = regexp.MustCompile(`(?i)token|secret|password|credential|authorization|private[-_]?key`)
 var cliIdempotency = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
+var cliActor = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?$`)
+var cliRepository = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$`)
+
+// RedactCLICommandText replaces credential-shaped substrings so subprocess
+// output can cross the storage boundary that ValidateCLICommandText guards.
+func RedactCLICommandText(text string) string {
+	text = strings.ToValidUTF8(strings.ReplaceAll(text, "\x00", ""), "\uFFFD")
+	text = cliSecret.ReplaceAllString(text, "[REDACTED]")
+	if ValidateCLICommandText(text) != nil {
+		// Redaction markers can splice fragments into a new match; fail closed.
+		return "[REDACTED]"
+	}
+	return text
+}
 
 // Callers must also reject credential values known only to their execution
 // environment and frame/redact output before crossing this storage boundary.
@@ -142,7 +161,9 @@ const (
 // the rejected text.
 func (i CLICommandInvocation) validate() (string, error) {
 	if i.ActionID == "" || len(i.ActionID) > 256 || strings.TrimSpace(i.Command) == "" ||
-		(i.Input != nil && utf8.RuneCountInString(*i.Input) > 100000) {
+		(i.Input != nil && utf8.RuneCountInString(*i.Input) > 100000) ||
+		(i.Actor != "" && !cliActor.MatchString(i.Actor)) ||
+		(i.Repository != "" && !cliRepository.MatchString(i.Repository)) {
 		return cliRejectShape, ErrCLICommandInput
 	}
 	for key, value := range i.Values {

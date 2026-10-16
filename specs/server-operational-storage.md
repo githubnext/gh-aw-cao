@@ -98,7 +98,9 @@ requiring CLI commands MUST set `Requirements.CLICommands` and reject an absent,
 typed-nil, unsupported, or volatile service. Storage support MUST NOT enable
 hosted execution, expose new HTTP actions, bypass declared-action validation or
 trusted approval, or provide credentials, quota admission, or subprocess control.
-The existing local-admin/canvas SQLite queue remains unchanged.
+The existing local-admin/canvas SQLite queue remains unchanged. Hosted
+execution is a separate opt-in contract defined by
+[`server-hosted-cli.md`](server-hosted-cli.md).
 
 Queue configuration is immutable across connections. Commands and ordered
 stdout/stderr chunks live in namespace-isolated `cao_operational_cli_*` tables,

@@ -79,3 +79,45 @@ java -Xmx512m -cp "$TLA2TOOLS_JAR" tlc2.TLC -workers 1 \
 A successful run must report no invariant or temporal-property violations.
 Both configurations are required: memory intentionally weakens restart
 durability, not admission atomicity, authorization, capacity, or ownership.
+
+# Hosted CLI actions model
+
+[`HostedCLIActions.tla`](HostedCLIActions.tla) models the optional
+`serve-hosted --hosted-cli-actions` mode specified in
+[`../server-hosted-cli.md`](../server-hosted-cli.md): admin step-up admission,
+the queued executor, and the bounded single-use installation-token broker.
+`HostedCLIActions.enabled.cfg` checks the enabled mode with two users (one
+listed admin), one repository, two commands, two tokens, pool size one, a
+step-up maximum age of two ticks, and three clock values.
+`HostedCLIActions.disabled.cfg` checks that the mode without the flag admits
+nothing.
+
+| Property | Implementation boundary |
+| --- | --- |
+| `DisabledAdmitsNothing` | `--hosted-cli-actions` gate; `/__cli_commands` routes are not registered without the flag |
+| `AdmissionAuthorized` | `adminAuthorizedContext` step-up (`oauth.adminAssured`) and the requester's live repository permission in `hosted_cli.go` |
+| `ExecutionRechecked` | Executor collaborator-permission recheck before running in `hostedcli/executor.go` |
+| `TokenSingleUse`; `ReleasedNeverReused` | `hostedcli/broker.go` `Acquire`/`Release`: a token leaves the pool once and is revoked on release |
+| `TokenScopedToRepository` | Repository-scoped installation token minting in `githubapp/scoped_token.go` |
+| `HeldOnlyByActiveCommand`; `PoolBoundedAndUnused` | Broker pool bounds (`MaxPooled`, `MaxPooledPerScope`) and prefetch |
+| `TerminalTokenInvalidated` (liveness) | `Release` revocation, `Maintain` retry until expiry, `Close` |
+
+Time is abstract: step-up freshness and token expiry use bounded ticks rather
+than wall-clock TTLs. The model abstracts away GitHub's 2FA/SSO disclosure,
+OAuth token refresh, subprocess isolation, output redaction, queue leases,
+and network failures other than failed revocation. Mutations that skip the
+execution recheck, return a released token to the pool, or skip admission
+step-up each violate `Safety`.
+
+```bash
+java -Xmx3g -cp "$TLA2TOOLS_JAR" tlc2.TLC -workers 2 \
+  -metadir test-results/tla/hosted-cli-enabled \
+  -config specs/tla/HostedCLIActions.enabled.cfg \
+  specs/tla/HostedCLIActions.tla
+java -Xmx512m -cp "$TLA2TOOLS_JAR" tlc2.TLC -workers 1 \
+  -metadir test-results/tla/hosted-cli-disabled \
+  -config specs/tla/HostedCLIActions.disabled.cfg \
+  specs/tla/HostedCLIActions.tla
+```
+
+The enabled configuration explores about 600,000 distinct states.

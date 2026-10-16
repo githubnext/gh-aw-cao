@@ -59,7 +59,7 @@ func TestServerLogsAuthorization(t *testing.T) {
 	}{
 		{"no session", context.Background(), http.StatusForbidden},
 		{"non admin", context.WithValue(context.Background(), oauthSessionContextKey{}, oauthSession{Login: "viewer"}), http.StatusForbidden},
-		{"admin", context.WithValue(context.Background(), oauthSessionContextKey{}, oauthSession{Login: "operator"}), http.StatusOK},
+		{"admin", context.WithValue(context.Background(), oauthSessionContextKey{}, assuredSession("operator")), http.StatusOK},
 		{"actions", context.WithValue(context.Background(), githubActionsActorContextKey{}, "workflow"), http.StatusOK},
 	} {
 		t.Run(test.name, func(t *testing.T) {

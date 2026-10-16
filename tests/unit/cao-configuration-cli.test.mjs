@@ -727,6 +727,26 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
   assert.deepEqual(result, { command: "setup-auth", profile: "github-app" });
 });
 
+test("cao setup-auth delegates hosted CLI App setup options", () => {
+  const calls = [];
+  const result = setupCaoAuthentication("hosted-cli", ["--repo", "acme/control", "--dry-run"], {
+    execute(command, arguments_, options) {
+      calls.push([command, arguments_, options]);
+      return { status: 0 };
+    },
+  });
+  assert.deepEqual(calls, [[
+    process.execPath,
+    [path.join(".github", "workflows", "shared", "setup-hosted-cli-app.mjs"), "--repo", "acme/control", "--dry-run"],
+    { stdio: "inherit" },
+  ]]);
+  assert.deepEqual(result, { command: "setup-auth", profile: "hosted-cli" });
+  assert.throws(
+    () => setupCaoAuthentication("hosted-cli", [], { execute: () => ({ status: 1 }) }),
+    /Hosted CLI App setup failed/,
+  );
+});
+
 test("cao setup-auth configures separate read and write fine-grained tokens through stdin", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "cao-token-"));
   const policyPath = path.join(root, "cao.json");
@@ -1150,7 +1170,7 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
 test("cao setup-auth rejects the workflow token as a setup profile", () => {
   assert.throws(
     () => setupCaoAuthentication("workflow-token"),
-    /requires github-app, enterprise-app, or token/,
+    /requires github-app, enterprise-app, hosted-cli, or token/,
   );
 });
 

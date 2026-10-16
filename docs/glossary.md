@@ -18,6 +18,10 @@ human operator
 
 The shared `explore`, `propose`, or `operate` classification applied to every dashboard-declared action (CLI action, row action, or generated view prompt) independent of its presentation or executor. `explore` is a read-only investigation, `propose` previews a request such as a prompt that can produce a pull request, and `operate` shows the underlying command and requires explicit per-run confirmation. A separate `ui` level covers native dashboard-local and account-session controls (such as resetting local storage or logging out) that carry no operational or repository authority and never generate an agent prompt or CLI command. See the [Dashboard Language specification](dashboard-language-specification.md#111-syntax-and-view-classes).
 
+## Administrator step-up
+
+A hosted-server requirement that every administrator operation comes from a fresh, assured interactive GitHub OAuth authentication. Fresh means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to 15 minutes. Assured means GitHub explicitly reported two-factor authentication, or the user's membership was confirmed in an operator-attested SAML SSO organization. Token refresh never extends step-up. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
+
 ## Agent catalog
 
 The protocol-independent listing of agent-facing dashboard pages and named Dashboard Language queries, derived once from the dashboard page definitions and shared by every agent transport (the `cao` CLI, the read-only CAO MCP server, and WebMCP) so none of them maintains a second catalog. See [Agent analysis](agent-analysis.md).
@@ -109,6 +113,10 @@ The CAO-side authority in `server/internal/githubquota` that coordinates GitHub 
 ## History campaign
 
 The single campaign selected for historical operational-value reconstruction in one collector invocation, as defined by the operational-value history protocol. Its adapter supplies historical evaluations at earlier scheduled cadence instants in addition to the current observation every campaign adapter provides; the reconstruction orchestrator schedules, validates, retains, deduplicates, retires, and publishes these observations without reinterpreting or recomputing a supplied metric value. See [Operational-Value History Reconstruction Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md).
+
+## Hosted CLI actions
+
+An optional hosted-server mode, enabled with `serve-hosted --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Create the App with `./cao.sh setup-auth hosted-cli`. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
 
 ## Live authority
 

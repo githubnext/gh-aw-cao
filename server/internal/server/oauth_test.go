@@ -864,11 +864,21 @@ type fakeGitHubServer struct {
 	rejectRevocation bool
 	membershipState  string
 	onUserRequest    func()
+	// twoFactor controls the /user two_factor_authentication field: nil
+	// omits it, matching tokens GitHub does not disclose it to.
+	twoFactor *bool
+}
+
+// assuredSession returns a session that completed an interactive 2FA
+// authorization just now, satisfying administrator step-up.
+func assuredSession(login string) oauthSession {
+	return oauthSession{Login: login, AuthenticatedAt: time.Now().UTC(), Assurance: []string{assuranceTwoFactor}}
 }
 
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	t.Helper()
-	server := &fakeGitHubServer{}
+	twoFactor := true
+	server := &fakeGitHubServer{twoFactor: &twoFactor}
 	server.rejectRevocation = options.rejectRevocation
 	server.membershipState = options.membershipState
 	mux := http.NewServeMux()
@@ -894,10 +904,14 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		if server.onUserRequest != nil {
 			server.onUserRequest()
 		}
-		_ = json.NewEncoder(response).Encode(map[string]string{
+		payload := map[string]any{
 			"login":      "octocat",
 			"avatar_url": server.URL + "/avatars/octocat.png",
-		})
+		}
+		if server.twoFactor != nil {
+			payload["two_factor_authentication"] = *server.twoFactor
+		}
+		_ = json.NewEncoder(response).Encode(payload)
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
 		state := server.membershipState

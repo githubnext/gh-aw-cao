@@ -580,6 +580,52 @@ Key Vault references, Kubernetes Secrets mounted into the process environment,
 or an equivalent managed facility), never command-line arguments or checked-in
 configuration.
 
+### Administrator step-up
+
+Every hosted administrator operation requires a fresh, assured interactive
+OAuth authentication. This covers `/mcp`, collection, quota, operations, and
+hosted CLI routes. Administrators re-authenticate through `/auth/login`.
+
+| Variable | Purpose |
+| --- | --- |
+| `CAO_ADMIN_REAUTH_MAX_AGE` | Maximum age of the interactive authentication. The default is `15m`, and the value must be between `1m` and `1h`. |
+| `CAO_GITHUB_SSO_ORGANIZATIONS` | Comma-separated organizations that the operator attests enforce SAML SSO. A successful membership read with the fresh token counts as assurance. |
+
+Without SSO attestation, GitHub must explicitly report two-factor
+authentication for the user. A stale or unassured administrator receives `401`
+with a `CAO-Step-Up` challenge. Everyone else receives `403`. See
+[`SECURITY.md`](SECURITY.md#administrator-step-up).
+
+### Hosted CLI actions
+
+Hosted CLI actions are off by default. To enable them, run the web server
+with `--hosted-cli-actions` (and optionally `--cli-actions-catalog`), plus the
+PostgreSQL operational store and OAuth. Then run a separate executor:
+
+```bash
+./cao.sh setup-auth hosted-cli --repo OWNER/CONTROL \
+  --target-repository OWNER/TARGET --private-key-out ./hosted-cli.pem
+cao-dashboard serve-hosted --hosted-cli-actions ...
+cao-dashboard execute-cli --max-pooled-tokens 8
+```
+
+| Variable | Purpose |
+| --- | --- |
+| `CAO_HOSTED_CLI_CONTROL_REPOSITORY` | Control repository, given as `OWNER/REPOSITORY`. It falls back to `CAO_COLLECT_CONTROL_REPOSITORY`. |
+| `CAO_HOSTED_CLI_APP_ID` | Hosted CLI GitHub App ID (`execute-cli` only). |
+| `CAO_HOSTED_CLI_PRIVATE_KEY` (`_FILE`, `_BASE64`) | App private key (`execute-cli` only). |
+| `CAO_HOSTED_CLI_GITHUB_API_URL`, `CAO_HOSTED_CLI_GITHUB_URL` | GitHub API and web URLs for GHES. |
+| `CAO_HOSTED_CLI_DASHBOARD_URL` | Dashboard URL used in command backlinks. |
+| `CAO_HOSTED_CLI_WORK_ROOT`, `CAO_HOSTED_CLI_GH` | Executor workspace root and `gh` binary. |
+
+Each command runs with a single-use installation token scoped to its target
+repository, and the token is revoked when the command finishes. The broker
+pool is bounded: `--max-pooled-tokens` sets the total, `0` disables pooling,
+and pooled tokens are capped at two per scope with a two-minute idle lifetime.
+`--prefetch` (default 2) sets how many queued commands get tokens minted
+ahead of execution.
+The normative contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
+
 ### Upstash Redis provider
 
 The `upstash` Redis module composes with the `container` target for Upstash

@@ -65,7 +65,7 @@ type rebuildStatus struct {
 
 func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 	if !a.adminAuthorized(request) {
-		writeError(response, http.StatusForbidden, "administrative authorization is required")
+		a.writeAdminDenied(response, request, "administrative authorization is required")
 		return
 	}
 	if a.reconciler == nil {

@@ -20,7 +20,7 @@ const gitHubQuotaAggregateBucket = "all buckets"
 // aggregate. It exposes bucket identity and counts only, never credentials.
 func (a *App) gitHubQuotaUsage(response http.ResponseWriter, request *http.Request) {
 	if !a.adminAuthorized(request) {
-		writeError(response, http.StatusForbidden, "administrative authorization is required")
+		a.writeAdminDenied(response, request, "administrative authorization is required")
 		return
 	}
 	if a.quota == nil {

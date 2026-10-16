@@ -20,6 +20,14 @@ GitHub scope reconstruction gates collection admission after restart. Memory
 limits fail closed and do not evict active limiter buckets or protected work.
 The normative exception is [server operational storage](../specs/server-operational-storage.md).
 
+Every administrator operation in the hosted profiles requires a fresh, assured
+interactive GitHub OAuth authentication (administrator step-up). The optional
+`serve-hosted --hosted-cli-actions` mode, which is off by default, lets
+step-up administrators queue dashboard-declared CLI actions. A separate
+`execute-cli` process runs them with single-use, repository-scoped GitHub App
+installation tokens. See [Hosted CLI actions](#hosted-cli-actions) and the
+normative [hosted CLI actions specification](../specs/server-hosted-cli.md).
+
 ## Supported security boundary
 
 The supported deployment is:
@@ -352,6 +360,35 @@ the deployment namespace. Browser cookies contain only an opaque session ID and
 a CSRF token; GitHub tokens are never placed in browser-readable storage,
 URLs, API responses, logs, telemetry, or Bicep outputs.
 
+#### Administrator step-up
+
+Administrator authority requires a listed administrator login *and* a fresh,
+assured interactive authentication. This applies to `/mcp`, collection, quota,
+operations, and hosted CLI routes. The session records `AuthenticatedAt` and an
+assurance only when a full authorization-code flow completes. Token refresh
+and revalidation never extend either value.
+
+- **Fresh** means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to `15m`
+  and must be between `1m` and `1h`. Malformed or out-of-range values fail
+  startup. Timestamps in the future are rejected.
+- **Assured** means GitHub's `/user` response explicitly reported
+  `two_factor_authentication: true` (`2fa`), or that a membership read with the
+  fresh token succeeded for an organization listed in
+  `CAO_GITHUB_SSO_ORGANIZATIONS` (`sso:<org>`). A missing or false 2FA field
+  fails closed. The SSO list is an operator attestation that those
+  organizations enforce SAML SSO for OAuth access.
+- A listed administrator without step-up receives `401` with
+  `WWW-Authenticate: CAO-Step-Up realm="admin", max_age=<seconds>` and
+  `{"code":"admin_step_up_required","reauthenticate":"/auth/login"}`. All
+  other principals receive `403`, so step-up state is never disclosed to them.
+  `GET /api/auth/session` exposes `adminAssuranceExpiresAt`.
+
+GitHub OAuth cannot force password or 2FA re-entry. Step-up therefore proves
+a recent completed authorization, not a new second-factor challenge. Operators
+who need a guaranteed second-factor or SSO challenge must enforce it in GitHub
+through organization 2FA requirements, SAML SSO, or an identity-provider
+session lifetime. The local loopback profile has no OAuth and is unaffected.
+
 Session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Mutating
 endpoints require the session-bound `X-CSRF-Token` header. The injected
 dashboard bootstrap adds this header for same-origin browser requests.
@@ -436,6 +473,14 @@ Primary threats and mitigations:
 - **Over-broad observability**: mitigated by logging only structured
   operational metadata and excluding tokens, cookies, Redis URLs, source
   records, and prompt contents from Application Insights and diagnostics.
+- **Stale or stolen administrator session**: mitigated by administrator
+  step-up. Administrator authority expires within `CAO_ADMIN_REAUTH_MAX_AGE`
+  of the last interactive authentication and is never extended by refresh.
+- **Hosted CLI execution abuse**: mitigated by an opt-in flag, catalog-only
+  actions, requester repository permission at admission, a live permission
+  recheck before execution, single-use repository-scoped App tokens revoked
+  after each command, and isolated, deadline-bound subprocesses. See
+  [Hosted CLI actions](#hosted-cli-actions).
 - **Deployment drift**: mitigated by using checked-in Bicep as the reviewed
   contract, focused Bicep contract tests for Key Vault and platform security
   controls, and compliance review of Azure activity logs and Function App
@@ -571,12 +616,56 @@ capability check.
 The access capability authorizes the holder to query all data in the current
 local dashboard dataset. There is no per-source or per-row authorization.
 
+## Hosted CLI actions
+
+`serve-hosted --hosted-cli-actions` is disabled by default. Without the flag,
+the `/__cli_commands` routes are not registered. Enabling it requires GitHub
+OAuth, the PostgreSQL operational store, `CAO_HOSTED_CLI_CONTROL_REPOSITORY`,
+and the action catalog named by `--cli-actions-catalog`. The normative
+contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
+
+- **Admission** happens in the web process. It requires administrator step-up,
+  resolves the request only against a catalog-declared action, plans the
+  command for exactly one target repository, and confirms the requester's own
+  `admin`, `maintain`, or `push` permission with their OAuth token. The web
+  process never holds the App private key.
+- **Execution** happens in the `execute-cli` process, which holds the single
+  queue lease. Other replicas stand by. Before running, it re-plans the
+  command and rechecks the actor's live `admin` or `write` collaborator
+  permission. Step-up is not rechecked at run time: admission is the
+  authorization point, and the recheck and command deadline (default 15
+  minutes) bound execution.
+- **Tokens** are installation tokens minted for exactly one repository with
+  the plan's narrowest permissions. A token serves one command and is revoked
+  when that command reaches a terminal state. It never returns to the pool.
+  Failed revocations are retried until the token expires. Pre-minted backlog
+  tokens are bounded by `--max-pooled-tokens` (default 8), two per scope, and
+  a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
+  shutdown.
+- **Isolation**: each command runs in a fresh `0700` workspace that is removed
+  afterwards. Its environment contains only `GH_TOKEN`, an empty system git
+  configuration, the `gh` credential helper, and the App bot identity. The
+  subprocess runs in its own process group and is killed on cancellation,
+  deadline, or loss of the lease. The token is redacted from captured output.
+- **App setup**: `./cao.sh setup-auth hosted-cli` creates a least-privilege
+  App (actions, contents, pull requests, and workflows write; metadata read).
+  It refuses sensitive or organization permissions, writes the private key
+  with mode `0600` without overwriting, and installs the App only on the
+  control repository and named same-owner targets. Configure the key with
+  `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its `_FILE` or
+  `_BASE64` variant, available only to `execute-cli`.
+
+The executor's authorization and token lifecycle are model-checked in
+[`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).
+
 ## Secrets and logging
 
 - Never place Redis credentials, GitHub OAuth secrets, GitHub access/refresh
   tokens, session secrets, or the local dashboard access token in committed
   files, dashboard documents, test fixtures intended for production, query
   payloads, or browser-readable metadata.
+- Never log or persist hosted CLI installation tokens or the hosted CLI App
+  private key. Tokens are redacted from command output and revoked after use.
 - Prefer environment variables or local command arguments supplied by a secret
   manager for Redis credentials.
 - In Azure, prefer Key Vault references in app settings. Bicep outputs must not
@@ -594,6 +683,10 @@ Security-relevant validation is included in:
 - Go unit tests for listen and Host restrictions, capability bootstrap and
   authorization headers, unauthenticated API rejection, TLS certificates, Redis URL policy,
   namespace isolation, request bounds, ingestion integrity, and query budgets;
+- Go tests for administrator step-up (`admin_step_up_test.go`) and hosted CLI
+  admission, broker, and executor (`hosted_cli_test.go`, `internal/hostedcli`);
+- TLC model checking of `specs/tla/HostedCLIActions.tla` in both enabled and
+  disabled configurations;
 - golangci-lint with `gosec`, `bodyclose`, `contextcheck`, `errorlint`,
   `noctx`, and the standard correctness analyzers;
 - the Redis-backed Playwright test in `.github/workflows/cgo.yml`.

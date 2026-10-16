@@ -110,8 +110,23 @@ type GitHubOAuthConfig struct {
 	RevokeURL             string
 	HTTPClient            *http.Client
 	RevocationKeyPrefix   string
-	loginStateSecret      string
+	// AdminReauthenticationMaxAge bounds how long after an interactive OAuth
+	// authorization an administrator may act. Token refresh and periodic
+	// revalidation never extend it.
+	AdminReauthenticationMaxAge time.Duration
+	// SSOOrganizations are organizations the operator attests enforce SAML or
+	// OIDC single sign-on. An active membership read with a fresh token proves
+	// GitHub accepted that token's SSO authorization.
+	SSOOrganizations []string
+	loginStateSecret string
 }
+
+const (
+	defaultAdminReauthenticationMaxAge = 15 * time.Minute
+	maxAdminReauthenticationMaxAge     = time.Hour
+	assuranceTwoFactor                 = "2fa"
+	assuranceSSOPrefix                 = "sso:"
+)
 
 type githubOAuth struct {
 	config      GitHubOAuthConfig
@@ -134,11 +149,20 @@ type oauthSession struct {
 	RefreshExpires time.Time `json:"refreshExpires"`
 	AuthorizedAt   time.Time `json:"authorizedAt"`
 	CSRFToken      string    `json:"csrfToken"`
+	// AuthenticatedAt is set only by an interactive authorization-code
+	// callback and is the step-up time for administrator operations.
+	AuthenticatedAt time.Time `json:"authenticatedAt,omitempty"`
+	// Assurance records the factors verified at AuthenticatedAt: "2fa" and/or
+	// "sso:ORG".
+	Assurance []string `json:"assurance,omitempty"`
 }
 
 type githubAccount struct {
 	Login     string `json:"login"`
 	AvatarURL string `json:"avatar_url"`
+	// TwoFactorAuthentication is present only when GitHub discloses it to the
+	// token; absence is treated as unverified.
+	TwoFactorAuthentication *bool `json:"two_factor_authentication"`
 }
 
 type tokenResponse struct {
@@ -169,6 +193,17 @@ func (config *GitHubOAuthConfig) validate() error {
 	}
 	if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
 		return errors.New("GitHub OAuth authorization requires at least one allowed organization or team")
+	}
+	if config.AdminReauthenticationMaxAge == 0 {
+		config.AdminReauthenticationMaxAge = defaultAdminReauthenticationMaxAge
+	}
+	if config.AdminReauthenticationMaxAge < time.Minute || config.AdminReauthenticationMaxAge > maxAdminReauthenticationMaxAge {
+		return errors.New("CAO_ADMIN_REAUTH_MAX_AGE must be a duration from 1m to 1h")
+	}
+	for _, org := range config.SSOOrganizations {
+		if strings.TrimSpace(org) == "" || strings.ContainsAny(org, "/ ") {
+			return errors.New("CAO_GITHUB_SSO_ORGANIZATIONS must list organization logins")
+		}
 	}
 	if config.AuthURL == "" {
 		config.AuthURL = "https://github.com/login/oauth/authorize"
@@ -420,6 +455,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	session.Login = account.Login
 	session.AvatarURL = account.AvatarURL
 	session.CSRFToken = csrfToken
+	session.AuthenticatedAt = now
+	session.Assurance = oauth.verifiedAssurance(ctx, tokens.AccessToken, account)
 	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
@@ -462,10 +499,55 @@ func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *
 		return
 	}
 	oauth.logBranch("current_account.succeeded")
-	writeJSON(response, http.StatusOK, map[string]string{
+	payload := map[string]string{
 		"login":     session.Login,
 		"avatarUrl": session.AvatarURL,
-	})
+	}
+	if until, ok := oauth.adminAssuranceExpires(session); ok && time.Now().UTC().Before(until) {
+		payload["adminAssuranceExpiresAt"] = until.Format(time.RFC3339)
+	}
+	writeJSON(response, http.StatusOK, payload)
+}
+
+// verifiedAssurance records the authentication factors GitHub proves for a
+// freshly authorized token. It never infers a factor from absent data.
+func (oauth *githubOAuth) verifiedAssurance(ctx context.Context, accessToken string, account githubAccount) []string {
+	var assurance []string
+	if account.TwoFactorAuthentication != nil && *account.TwoFactorAuthentication {
+		assurance = append(assurance, assuranceTwoFactor)
+		oauth.logBranch("assurance.two_factor_verified")
+	}
+	for _, org := range oauth.config.SSOOrganizations {
+		if oauth.orgAuthorized(ctx, accessToken, org) {
+			assurance = append(assurance, assuranceSSOPrefix+strings.ToLower(org))
+			oauth.logBranch("assurance.sso_verified")
+		}
+	}
+	if len(assurance) == 0 {
+		oauth.logBranch("assurance.unverified")
+	}
+	return assurance
+}
+
+// adminAssuranceExpires reports when the session's administrator step-up
+// lapses. Sessions without a verified factor never qualify.
+func (oauth *githubOAuth) adminAssuranceExpires(session oauthSession) (time.Time, bool) {
+	if session.AuthenticatedAt.IsZero() || len(session.Assurance) == 0 {
+		return time.Time{}, false
+	}
+	return session.AuthenticatedAt.Add(oauth.adminReauthenticationMaxAge()), true
+}
+
+func (oauth *githubOAuth) adminReauthenticationMaxAge() time.Duration {
+	if oauth.config.AdminReauthenticationMaxAge <= 0 {
+		return defaultAdminReauthenticationMaxAge
+	}
+	return oauth.config.AdminReauthenticationMaxAge
+}
+
+func (oauth *githubOAuth) adminAssured(session oauthSession, now time.Time) bool {
+	until, ok := oauth.adminAssuranceExpires(session)
+	return ok && !now.Before(session.AuthenticatedAt) && now.Before(until)
 }
 
 func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) error {

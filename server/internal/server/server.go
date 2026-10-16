@@ -123,6 +123,7 @@ type App struct {
 	cacheMetrics     *queryCacheTelemetry
 	cacheError       error
 	githubResources  githubResourceCache
+	hostedCLI        *hostedCLI
 }
 
 func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
@@ -654,6 +655,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	register("GET /api/v1/github/repos/{owner}/{repo}", a.gitHubRepositoryResource)
 	register("GET /api/v1/github/repos/{owner}/{repo}/releases/latest", a.gitHubReleaseResource)
+	a.registerHostedCLIRoutes(register)
 	mux.HandleFunc("/", a.static)
 	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(mux))))
 	switch a.config.HostProfile.Listener {
@@ -951,7 +953,7 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		a.logAuthBranch("access.authorized")
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		if request.URL.Path == "/mcp" && a.mcp != nil && !a.adminAuthorized(request) {
-			writeError(response, http.StatusForbidden, "administrator access is required")
+			a.writeAdminDenied(response, request, "administrator access is required")
 			return
 		}
 		next.ServeHTTP(response, request)
@@ -988,14 +990,43 @@ func (a *App) adminAuthorizedContext(ctx context.Context) bool {
 		a.logAuthBranch("admin.session_missing")
 		return false
 	}
+	if !a.adminListed(session) {
+		a.logAuthBranch("admin.denied")
+		return false
+	}
+	if !a.oauth.adminAssured(session, time.Now().UTC()) {
+		a.logAuthBranch("admin.step_up_required")
+		return false
+	}
+	a.logAuthBranch("admin.allowed")
+	return true
+}
+
+func (a *App) adminListed(session oauthSession) bool {
 	for _, login := range a.config.AdminUsers {
 		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
-			a.logAuthBranch("admin.allowed")
 			return true
 		}
 	}
-	a.logAuthBranch("admin.denied")
 	return false
+}
+
+// writeAdminDenied distinguishes a configured administrator whose step-up
+// lapsed (401, re-authenticate) from a non-administrator (403).
+func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Request, message string) {
+	if a.oauth != nil {
+		if session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession); ok && a.adminListed(session) {
+			maxAge := int(a.oauth.adminReauthenticationMaxAge() / time.Second)
+			response.Header().Set("WWW-Authenticate", fmt.Sprintf(`CAO-Step-Up realm="admin", max_age=%d`, maxAge))
+			writeErrorPayload(response, http.StatusUnauthorized, map[string]string{
+				"error":          "Sign in again with two-factor authentication or single sign-on to perform administrator actions.",
+				"code":           "admin_step_up_required",
+				"reauthenticate": "/auth/login",
+			})
+			return
+		}
+	}
+	writeError(response, http.StatusForbidden, message)
 }
 
 func constantTimeTokenEqual(candidate, expected string) bool {
@@ -1655,6 +1686,9 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	injections := `<meta name="dashboard-data-backend" content="server-http">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
+		if a.hostedCLI != nil {
+			injections += `<script>globalThis.__CLI_QUEUE__ = true;</script>`
+		}
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
 	} else if accessToken != "" {
 		http.SetCookie(response, &http.Cookie{

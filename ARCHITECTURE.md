@@ -243,6 +243,18 @@ state and available history, not every missed event or expired artifact. There
 is no memory disk journal, automatic failover, or dual-write path.
 `specs/server-operational-storage.md` specifies these guarantees.
 
+Hosted CLI actions are an opt-in `serve-hosted --hosted-cli-actions` mode.
+Step-up administrators enqueue catalog-declared actions into the PostgreSQL
+CLI command queue after the server checks their own repository permission. A
+separate `execute-cli` process drains the queue under one lease. It rechecks
+the actor's live write permission and runs each command in an isolated
+workspace with a single-use, repository-scoped GitHub App installation token
+that is revoked on completion. A bounded broker pre-mints tokens for backlog.
+Every hosted administrator operation requires a fresh, assured interactive
+OAuth authentication (2FA or attested SSO) within a bounded maximum age.
+`specs/server-hosted-cli.md` and `specs/tla/HostedCLIActions.tla` specify and
+model these guarantees.
+
 The PostgreSQL operational adapter is independent of `postgresx` canonical
 storage and the TypeSpec-generated entity schema. It implements narrow cache,
 OAuth, request-limit, quota, collection, coordination, and diagnostic contracts.
