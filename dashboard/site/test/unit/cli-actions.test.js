@@ -65,6 +65,15 @@ describe('CLI actions', () => {
       trigger.click();
       expect(autoMerge.checked).toBe(false);
       expect(root.querySelector('.cli-action-command')?.textContent).not.toContain('--auto-merge');
+      expect(root.querySelector('.cli-action-command')?.textContent).toContain(
+        "--pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]"
+      );
+      expect(root.querySelector('.cli-action-command')?.textContent).toContain(
+        'https://github.com/githubnext/gh-aw-cao'
+      );
+      expect(root.querySelector('.cli-action-command')?.textContent).toContain(
+        `https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance${id.startsWith('update') ? '-campaigns' : ''}`
+      );
       autoMerge.click();
       expect(root.querySelector('.cli-action-command')?.textContent).toContain('--auto-merge');
       /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-cancel')).click();

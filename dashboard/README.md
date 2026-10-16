@@ -122,6 +122,13 @@ without canceling approved work. Pending approvals do not authorize execution.
 
 ### CLI command queue
 
+The built-in campaign update and repository upgrade actions include a quoted
+`--pr-message` (gh-aw v0.92.4 or later). Generated pull requests explain that they
+were requested through CAO, identify the affected campaign or repository and the
+reason for maintenance, and link back to the CAO project and dashboard. The
+message is part of the declarative command shown for approval; existing
+pull-request creation and auto-merge choices are unchanged.
+
 Local admin and trusted canvas sessions share one durable FIFO queue per
 checkout, stored in `.cao/cli-actions.sqlite`. The online dashboard and ordinary
 read-only previews do not initialize a queue or request its APIs. Execution

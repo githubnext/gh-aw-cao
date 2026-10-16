@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import test from "node:test";
 import { createCliActionApi, resolveQueuedCliAction } from "../../dashboard/cli-action-api.mjs";
+import { parseDashboardCommand } from "../../dashboard/cli-actions.mjs";
+import { parseUpdateArguments } from "../../activity/commands/update.mjs";
 
 const dashboard = { dashboard: { "cli-actions": [
   { id: "compile", command: "gh aw compile", arguments: [{ id: "strict", flag: "--strict", default: true }] },
@@ -20,6 +23,32 @@ test("queue admission resolves only declared actions and validated arguments", (
   ]) assert.throws(() => resolveQueuedCliAction(dashboard, payload), { status: 400 });
   assert.throws(() => resolveQueuedCliAction(dashboard, { id: "missing" }), { status: 404 });
   assert.throws(() => resolveQueuedCliAction(dashboard, { id: "copy" }), { status: 403 });
+});
+
+test("built-in update and upgrade actions carry CAO attribution as one PR message argument", () => {
+  const document = JSON.parse(readFileSync(new URL("../../dashboard/site/dashboard.json", import.meta.url), "utf8"));
+  for (const id of ["update-repository", "update-campaign", "upgrade-repository", "upgrade-target-repository"]) {
+    const update = id.startsWith("update");
+    const values = update ? { campaign: "activity" } : { repository: "octo/example" };
+    const message = update
+      ? "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao) to update the activity campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance-campaigns)."
+      : "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao) to upgrade GitHub Agentic Workflows in octo/example, refreshing workflow tooling, action versions, and generated lock files. Return to the [CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance).";
+    for (const createPr of [true, false]) {
+      const invocation = resolveQueuedCliAction(document, {
+        id, values, arguments: { "create-pull-request": createPr },
+      });
+      const tokens = parseDashboardCommand(invocation.command);
+      assert.deepEqual(tokens, [
+        ...(update ? ["./cao.sh", "update", "--campaign", "activity"] : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
+        "--pr-message", message, ...(createPr ? ["--create-pull-request"] : []),
+      ]);
+      if (update) {
+        const parsed = parseUpdateArguments(tokens.slice(2), Error);
+        assert.equal(parsed.ref, undefined);
+        assert.deepEqual(parsed.updateOptions, ["--pr-message", message, ...(createPr ? ["--create-pull-request"] : [])]);
+      }
+    }
+  }
 });
 
 async function fixture(queue, approve = async () => true) {

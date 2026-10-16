@@ -400,10 +400,10 @@ describe('Configuration dashboard view', () => {
       .toEqual(maintenanceNavigationContract['repository-upgrade-action'].when);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
-      .command).toBe('./cao.sh update --campaign {{campaign}}');
+      .command).toMatch(/^\.\/cao\.sh update --campaign \{\{campaign\}\} --pr-message '/);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-repository')
-      .command).toBe('./cao.sh update --campaign {{campaign}}');
+      .command).toMatch(/^\.\/cao\.sh update --campaign \{\{campaign\}\} --pr-message '/);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
       .label).toBe('Update');

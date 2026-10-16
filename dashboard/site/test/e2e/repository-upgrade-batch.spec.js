@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+/** @type {(command: string) => string[]} */
+const parseDashboardCommand = (await import(new URL('../../../cli-actions.mjs', import.meta.url).href)).parseDashboardCommand;
 
 for (const width of [1440, 390]) {
   test(`Upgrade all lists and queues every repository at ${width}px`, async ({ page }, testInfo) => {
@@ -92,8 +94,16 @@ for (const width of [1440, 390]) {
       await testInfo.attach(`upgrade-all-${width}`, { path: screenshot, contentType: 'image/png' });
       finish();
       await expect.poll(() => commands.length).toBe(3);
-      expect(commands.sort()).toEqual(repositories.map((repository) =>
-        `gh aw upgrade --repo ${repository} --create-pull-request${width === 1440 ? ' --auto-merge' : ''}`).sort());
+      const upgrades = commands.map(parseDashboardCommand);
+      expect(upgrades.map((tokens) => tokens[4]).sort()).toEqual([...repositories].sort());
+      for (const tokens of upgrades) {
+        expect(tokens.slice(0, 4)).toEqual(['gh', 'aw', 'upgrade', '--repo']);
+        expect(tokens[5]).toBe('--pr-message');
+        expect(tokens[6]).toContain(`to upgrade GitHub Agentic Workflows in ${tokens[4]}`);
+        expect(tokens[6]).toContain('[Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao)');
+        expect(tokens[6]).toContain('[CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance)');
+        expect(tokens.slice(7)).toEqual(['--create-pull-request', ...(width === 1440 ? ['--auto-merge'] : [])]);
+      }
       await expect(page.locator('[data-view-id="commands-history"]')).toContainText('completed');
       expect(commands).toHaveLength(3);
       await page.evaluate(() => { window.location.hash = 'page-maintenance-campaigns'; });
@@ -107,8 +117,16 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(page.getByRole('dialog', { name: 'Approve Update all', exact: true })).not.toBeVisible();
       await expect.poll(() => commands.length).toBe(5);
-      expect(commands.slice(3).sort()).toEqual(campaigns.map((campaign) =>
-        `./cao.sh update --campaign ${campaign} --create-pull-request --auto-merge`).sort());
+      const updates = commands.slice(3).map(parseDashboardCommand);
+      expect(updates.map((tokens) => tokens[3]).sort()).toEqual([...campaigns].sort());
+      for (const tokens of updates) {
+        expect(tokens.slice(0, 3)).toEqual(['./cao.sh', 'update', '--campaign']);
+        expect(tokens[4]).toBe('--pr-message');
+        expect(tokens[5]).toContain(`to update the ${tokens[3]} campaign from its upstream source`);
+        expect(tokens[5]).toContain('[Central Agentic Ops (CAO)](https://github.com/githubnext/gh-aw-cao)');
+        expect(tokens[5]).toContain('[CAO dashboard](https://githubnext.github.io/gh-aw-cao/cao/#page-maintenance-campaigns)');
+        expect(tokens.slice(6)).toEqual(['--create-pull-request', '--auto-merge']);
+      }
       const campaignScreenshot = testInfo.outputPath(`campaigns-queued-${width}.png`);
       await expect(page.locator('[data-view-id="commands-history"]')).toContainText('./cao.sh update --campaign activity');
       await page.screenshot({ path: campaignScreenshot, fullPage: true });
