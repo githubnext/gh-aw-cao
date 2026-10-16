@@ -128,7 +128,7 @@ safe-outputs:
 
 pre-agent-steps:
   - name: Start read-only CAO MCP server
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
       database="$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite"
       if [[ ! -s "$database" ]]; then

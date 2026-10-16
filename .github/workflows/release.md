@@ -59,7 +59,7 @@ jobs:
     steps:
       - name: Authorize request and compute version
         id: version
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         env:
           RELEASE_BUMP: ${{ inputs.bump }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
@@ -159,7 +159,7 @@ jobs:
     steps:
       - name: Generate draft release notes
         id: release
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         env:
           RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         with:
@@ -211,7 +211,7 @@ jobs:
             '{id: $id, tag: $tag, sha: $sha}' \
             > "$RUNNER_TEMP/release-context/release.json"
       - name: Upload prepared release context
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-context-${{ github.run_id }}
           path: ${{ runner.temp }}/release-context/
@@ -332,7 +332,7 @@ jobs:
     steps:
       - name: Publish verified draft as prerelease
         id: publish
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         env:
           RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
@@ -454,7 +454,7 @@ jobs:
 
 steps:
   - name: Download prepared release context
-    uses: actions/download-artifact@v8.0.1
+    uses: actions/download-artifact@v8.0.2
     with:
       name: release-context-${{ github.run_id }}
       path: /tmp/gh-aw/agent/release-data

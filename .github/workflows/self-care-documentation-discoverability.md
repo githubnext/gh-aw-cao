@@ -127,7 +127,7 @@ safe-outputs:
 
 pre-agent-steps:
   - name: Fetch public agent documentation entry points
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       AUDIT_DIR: /tmp/gh-aw/agent/documentation-discoverability
     run: |

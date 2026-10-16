@@ -27,11 +27,11 @@ safe-outputs:
   submit-pull-request-review:
     max: 1
 skills:
-- mattpocock/skills/diagnosing-bugs@3cca18b368ae95cdbdebbff572ccafa662551015
-- mattpocock/skills/tdd@3cca18b368ae95cdbdebbff572ccafa662551015
-- mattpocock/skills/improve-codebase-architecture@3cca18b368ae95cdbdebbff572ccafa662551015
-- mattpocock/skills/grill-with-docs@3cca18b368ae95cdbdebbff572ccafa662551015
-- mattpocock/skills/codebase-design@3cca18b368ae95cdbdebbff572ccafa662551015
+- mattpocock/skills/diagnosing-bugs@49dd158d1076134a641b33efb035946536778336
+- mattpocock/skills/tdd@49dd158d1076134a641b33efb035946536778336
+- mattpocock/skills/improve-codebase-architecture@49dd158d1076134a641b33efb035946536778336
+- mattpocock/skills/grill-with-docs@49dd158d1076134a641b33efb035946536778336
+- mattpocock/skills/codebase-design@49dd158d1076134a641b33efb035946536778336
 steps:
 - env:
     GH_TOKEN: ${{ github.token }}

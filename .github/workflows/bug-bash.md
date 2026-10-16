@@ -48,7 +48,7 @@ env:
   REVIEW_OUTPUT_REPO: ${{ inputs.safe_output_repo || github.repository }}
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || '' }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
-  STARTER_REPO: githubnext/gh-aw-cao-bug-bash
+  STARTER_REPO: github/gh-aw-cao-bug-bash
   STARTER_REVISION: 49cfd2afb66bd6a07b8e6d18a21ccacc4871a4e9
   BUG_BASH_HYPOTHESIS_ID: explicit-zero-default
   BUG_BASH_HYPOTHESIS_VERSION: 1.0.0
