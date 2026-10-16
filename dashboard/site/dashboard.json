@@ -894,6 +894,7 @@
         "description": "Queue an individual update for every listed campaign, then open Commands.",
         "icon": "sync",
         "command": "./cao.sh update --campaign {{campaign}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to update the {{campaign}} campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard]({{cao-url}}#page-maintenance-campaigns).'",
+        "preview-command": "./cao.sh update --campaign {{campaign}}",
         "placement": "view",
         "arguments": [
           {
@@ -921,6 +922,7 @@
         "description": "Queue an individual Agentic Workflows upgrade for every listed repository, then open Commands.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to upgrade GitHub Agentic Workflows in {{repository}}, refreshing workflow tooling, action versions, and generated lock files. Return to the [CAO dashboard]({{cao-url}}#page-maintenance).'",
+        "preview-command": "gh aw upgrade --repo {{repository}}",
         "placement": "view",
         "arguments": [
           {

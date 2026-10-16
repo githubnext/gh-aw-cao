@@ -13,7 +13,7 @@ import { publishNotification } from '../notification-service.js';
 const cliCommandSummaryContext = { pages: [] };
 const debugCliActions = createDebug('cli-actions');
 
-/** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, level?: import('../action-model.js').ActionLevel, verb?: string, label: string, description?: string, icon: string, command: string, 'preview-command'?: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -157,7 +157,7 @@ function commandPreview(action, values, templateValues, context) {
 }
 
 /**
- * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
+ * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'preview-command'?: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
  * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean, batch?: { targets: Array<Record<string, string>>, error?: string, warning?: string } }} [options]
  */
 function renderCliActionControl(action, options = {}) {
@@ -185,11 +185,6 @@ function renderCliActionControl(action, options = {}) {
   let trigger;
   /** @type {HTMLElement} */
   let command;
-  // `commandPreviewText` is the command node's entire visible state; the
-  // effect below is the only place that writes it onto the owned `command`
-  // node, replacing the three scattered `command.textContent` writes
-  // previously made from the checkbox listener, `resetArguments`, and the
-  // dialog-open handler.
   const commandPreviewText = state(preview());
   const inputs = (action.arguments ?? []).map((argument) => {
     const input = /** @type {HTMLInputElement} */ (h('input', {
@@ -395,8 +390,21 @@ function renderCliActionControl(action, options = {}) {
     }, { signal: scope.signal });
   }
   command = h('code', { className: 'cli-action-command' }, commandPreviewText.get());
+  const compactCommand = options.batch && action['preview-command'] && !commandError
+    ? h('code', { className: 'cli-action-preview-command' })
+    : null;
+  const commandDetails = compactCommand ? h('details', { className: 'cli-action-command-details' },
+    h('summary', null, `Show all ${templateTargets.length} full commands`),
+    command
+  ) : null;
   effect(() => {
     command.textContent = commandPreviewText.get();
+    if (compactCommand) {
+      compactCommand.textContent = commandPreview(
+        { ...action, command: action['preview-command'] ?? action.command },
+        argumentValues, templateTargets[0], context
+      );
+    }
   }, { signal: scope.signal });
   dialog.append(
     h(
@@ -428,13 +436,16 @@ function renderCliActionControl(action, options = {}) {
             ' may install the pinned extension first.'
           ]
           : 'This command is declared as read-only investigation. Review its exact target and command before running.'
-        : 'Copy this command and run it in your terminal.'),
-      command
+        : compactCommand ? 'Copy all commands and run them in your terminal.' : 'Copy this command and run it in your terminal.'),
+      compactCommand ? h('p', null, `Preview for the first of ${templateTargets.length} targets:`) : null,
+      compactCommand,
+      commandDetails ?? command
     ),
     h('footer', { className: 'cli-action-dialog-footer' }, status, cancel, confirm)
   );
   dialog.addEventListener('close', () => {
     selector?.cancel();
+    commandDetails?.removeAttribute('open');
     trigger.focus();
   });
   dialog.addEventListener('cancel', (event) => {
@@ -511,7 +522,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}, binding) 
 /**
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
- * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
+ * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'preview-command'?: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
  * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */

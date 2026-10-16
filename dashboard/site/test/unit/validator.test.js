@@ -690,6 +690,28 @@ describe('dashboard document validation', () => {
     ]));
   });
 
+  it.each([
+    { preview: 'gh aw upgrade --repo {{repository}}', valid: true },
+    { preview: 'gh aw upgrade', valid: true },
+    { preview: 'gh aw upgrade --repo {{other}}', valid: false },
+    { preview: 'gh aw upgrade --repo other/repository', valid: false },
+    { preview: 'gh aw compile', valid: false },
+    { preview: '', valid: false },
+    { preview: 'gh aw\nupgrade', valid: false },
+    { preview: `${' '.repeat(1000)}gh aw upgrade`, valid: false },
+    { preview: 'gh aw upgrade --repo "{{repository}}', valid: false },
+    { preview: false, valid: false }
+  ])('validates compact CLI previews as command prefixes: $preview', ({ preview, valid }) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const action = document.dashboard['cli-actions'].find((/** @type {{ id: string }} */ item) => item.id === 'upgrade-repository');
+    action['preview-command'] = preview;
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(valid);
+    if (!valid) expect(result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringContaining('.preview-command') })
+    ]));
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({

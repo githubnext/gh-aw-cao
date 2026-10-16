@@ -22,6 +22,7 @@ beforeEach(() => {
   setDeclaredCliActions([{
     id: 'upgrade', label: 'Upgrade all', icon: 'download', placement: 'view',
     command: 'gh aw upgrade --repo {{repository}}',
+    'preview-command': 'gh aw upgrade --repo {{repository}}',
     arguments: [
       { id: 'pr', label: 'Create pull request', flag: '--create-pull-request', type: 'boolean', default: true },
       { id: 'auto-merge', label: 'Auto merge', flag: '--auto-merge', type: 'boolean', default: false }
@@ -69,6 +70,32 @@ it('applies the opted-in auto merge flag to every preview and queued target', as
   await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.arguments))
     .toEqual(rows.map(() => ({ pr: true, 'auto-merge': true })));
+});
+
+it('shows one basic command and target count while retaining complete commands for review', () => {
+  setDeclaredCliActions([{
+    id: 'upgrade', label: 'Upgrade all', icon: 'download', placement: 'view',
+    command: "gh aw upgrade --repo {{repository}} --pr-message 'Full attribution for {{repository}}'",
+    'preview-command': 'gh aw upgrade --repo {{repository}}',
+    arguments: [
+      { id: 'pr', label: 'Create pull request', flag: '--create-pull-request', type: 'boolean', default: true },
+      { id: 'auto-merge', label: 'Auto merge', flag: '--auto-merge', type: 'boolean', default: false }
+    ]
+  }]);
+  const { root, trigger } = control(rows);
+  trigger.click();
+  const preview = root.querySelector('.cli-action-preview-command');
+  const details = /** @type {HTMLDetailsElement} */ (root.querySelector('.cli-action-command-details'));
+  expect(preview?.textContent).toBe('gh aw upgrade --repo octo/first --create-pull-request');
+  expect(root.textContent).toContain('Preview for the first of 2 targets:');
+  expect(details.open).toBe(false);
+  expect(details.querySelector('summary')?.textContent).toBe('Show all 2 full commands');
+  expect(details.querySelector('.cli-action-command')?.textContent).toBe(rows.map(({ repository }) =>
+    `gh aw upgrade --repo ${repository} --pr-message 'Full attribution for ${repository}' --create-pull-request`).join('\n'));
+  /** @type {HTMLInputElement} */ (root.querySelectorAll('.cli-action-argument input')[1]).click();
+  expect(preview?.textContent).toBe('gh aw upgrade --repo octo/first --create-pull-request --auto-merge');
+  expect(details.querySelector('.cli-action-command')?.textContent?.match(/--auto-merge/g)).toHaveLength(2);
+  expect(queue.enqueue).not.toHaveBeenCalled();
 });
 
 it('dismisses batch options without queuing any commands', () => {

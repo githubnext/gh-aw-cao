@@ -1394,6 +1394,12 @@ the dialog MUST warn that only the explicitly listed targets are included,
 and MUST NOT imply that unobserved repositories or campaigns will be targeted.
 Unknown completeness remains unavailable for batch approval.
 
+An action MAY declare `preview-command`, a non-empty, single-line token prefix of its
+`command`, for a compact batch preview. The dialog shows that basic command for
+the first target with the selected argument flags and the total target count.
+All fully resolved commands MUST remain available in an expandable disclosure;
+copying and approval MUST use the full commands, never the abbreviated preview.
+
 Batch actions with boolean arguments open the shared approval dialog before
 queuing any commands. Each checkbox choice applies to every target in the
 displayed batch. The built-in update and upgrade actions declare an **Auto merge**
