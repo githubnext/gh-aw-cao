@@ -116,7 +116,8 @@ export const VIEW_ELEMENT_VALUES = [
   'link-button-list',
   'markdown',
   'query-editor',
-  'command-terminal'
+  'command-terminal',
+  'storage-info'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
 export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];

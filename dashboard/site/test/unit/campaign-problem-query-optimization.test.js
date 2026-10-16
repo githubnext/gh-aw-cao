@@ -200,14 +200,11 @@ beforeEach(async () => {
       operation: 'load-dashboard-query-sources',
       sources: evidence(),
       queries,
-      sourceNames: selected,
+      sourceNames: ['workflows', 'overview-runs', 'runs', 'audits', 'tools'],
       ingest: true
     })
   );
-  const queryNames = new Set(queries.map((/** @type {{ name: string }} */ query) => query.name));
-  canonical = Object.fromEntries(Object.keys(loaded)
-    .filter((name) => !queryNames.has(name))
-    .map((name) => [name, loaded[name]]));
+  canonical = loaded;
 });
 
 afterEach(() => {

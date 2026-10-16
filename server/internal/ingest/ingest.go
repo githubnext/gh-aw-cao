@@ -180,11 +180,6 @@ func Run(ctx context.Context, store *postgresx.Store, directory string, options 
 		}
 		return stateResult(active), nil
 	}
-	for _, source := range []string{"$security-findings", "$outcomes", "work-items"} {
-		if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
-			return Result{}, err
-		}
-	}
 	if len(records) == 0 {
 		for _, source := range []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues", "$graders", "$graderObservations", "$evals", "$evalObservations", "$operationalValues"} {
 			if err := writer.Quality(ctx, source, model.Metadata{"availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}); err != nil {
@@ -387,7 +382,7 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 			return errors.New("inventory source name must be text")
 		}
 		switch name {
-		case "campaigns", "repositories", "workflows", "security-findings", "outcomes", "work-items":
+		case "campaigns", "repositories", "workflows":
 		default:
 			// Unconsumed report projections and run/experiment substitutes are
 			// not admitted as canonical database authority.
@@ -400,10 +395,7 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 		if err != nil {
 			return err
 		}
-		qualitySource := name
-		if name != "work-items" {
-			qualitySource = "$" + name
-		}
+		qualitySource := "$" + name
 		if err := writer.Quality(ctx, qualitySource, model.Metadata{}); err != nil {
 			return err
 		}
@@ -456,10 +448,7 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 					if err := decoder.Decode(&metadata); err != nil {
 						return err
 					}
-					source := name
-					if name != "work-items" {
-						source = "$" + name
-					}
+					source := "$" + name
 					if err := writer.Quality(ctx, source, metadata); err != nil {
 						return err
 					}
@@ -489,11 +478,8 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 // inventoryRow is mechanical field normalization, not a query evaluator.
 // Canonical IDs use the same stable coordinate rules as ingestion.json.
 func inventoryRow(name string, input model.Row) (string, model.Row, error) {
-	source := name
-	if name != "work-items" {
-		source = "$" + name
-	}
-	row := model.Row{}
+	source := "$" + name
+	var row model.Row
 	switch name {
 	case "campaigns", "repositories", "workflows":
 		var err error
@@ -552,21 +538,7 @@ func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 			}
 		}
 	default:
-		for key, value := range input {
-			row[key] = value
-		}
-		if id, valid := row["id"].(string); !valid || id == "" {
-			if id, valid := row["work-item-id"].(string); valid && id != "" {
-				row["id"] = id
-			} else {
-				payload, err := json.Marshal(input)
-				if err != nil {
-					return "", nil, err
-				}
-				sum := sha256.Sum256(payload)
-				row["id"] = "inventory:" + name + ":" + hex.EncodeToString(sum[:])
-			}
-		}
+		return "", nil, fmt.Errorf("no canonical inventory adapter for %q", name)
 	}
 	return source, row, nil
 }

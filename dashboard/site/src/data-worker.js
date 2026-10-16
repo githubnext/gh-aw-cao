@@ -1372,6 +1372,7 @@ export function processDataRequest(request, signal) {
         ? Object.keys(sources)
         : [...requestedSourceNames(request.sourceNames)];
       const queries = Array.isArray(request.queries) ? request.queries : [];
+      const required = new Set(resolveDashboardQuerySources(queries, sourceNames));
       const database = /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (
         await loadDatabaseQuerySources(indexedDB, sources, {
           ingest: request.ingest === true, sourceNames, queries, signal
@@ -1382,9 +1383,14 @@ export function processDataRequest(request, signal) {
         ...paginateDashboardSources(
           pageScopedSources(database, new Set(sourceNames)),
           /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
-          continuationRevision(queries, Object.fromEntries(
-            Object.entries(database).map(([name, source]) => [name, source.metadata])
-          ))
+          continuationRevision(queries, {
+            inputs: Object.fromEntries(Object.entries(sources)
+              .filter(([name]) => required.has(name))
+              .map(([name, source]) => [
+                name, source && typeof source === 'object' && 'metadata' in source ? source.metadata : null
+              ])),
+            outputs: Object.fromEntries(Object.entries(database).map(([name, source]) => [name, source.metadata]))
+          })
         )
       };
     });

@@ -3,8 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { parseRolloutMode } from "./dashboard-language-sources.mjs";
-import { firstText } from "./text-utils.mjs";
+import { firstText, parseRolloutMode } from "./text-utils.mjs";
 
 const apiRoot = "https://api.github.com";
 const githubServerUrl = process.env.GITHUB_SERVER_URL || ["https:", "", "github.com"].join("/");

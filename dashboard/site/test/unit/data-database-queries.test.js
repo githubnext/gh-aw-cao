@@ -577,7 +577,7 @@ describe('canonical view sources', () => {
     );
 
     expect(result['indexing-tools-table-count'].rows).toEqual([
-      { table: 'tool events', records: 1 }
+      { table: 'tools', records: 1 }
     ]);
     expect(result['indexing-domains-table-count'].rows).toEqual([]);
     expect(Object.keys(result)).toEqual(required.filter((name) => (
@@ -602,8 +602,8 @@ describe('canonical view sources', () => {
     expect(collectionReads.mock.contexts.map((store) => /** @type {IDBObjectStore} */ (store).name))
       .toEqual(['repositories', 'campaigns', 'operationalValues']);
     expect(results['indexing-database-table-counts'].rows).toEqual(expect.arrayContaining([
-      { table: 'workflow runs', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'runs', records: 1 },
+      { table: 'tools', records: 1 }
     ]));
   });
 
@@ -909,8 +909,8 @@ describe('canonical view sources', () => {
     });
   });
 
-  it('does not read database stores for a populated published source', async () => {
-    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+  it('ignores populated report projections and reads canonical evidence instead', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const published = { rows: [{ 'mcp-observation': 'published-call' }], metadata };
 
     const projected = await queryDatabaseSources(
@@ -919,8 +919,9 @@ describe('canonical view sources', () => {
       ['mcp-calls']
     );
 
-    expect(projected['mcp-calls'].rows).toEqual(published.rows);
-    expect(collectionReads).not.toHaveBeenCalled();
+    expect(projected['mcp-calls'].rows).toHaveLength(1);
+    expect(projected['mcp-calls'].rows[0]['mcp-observation']).toBe('event:tool-call');
+    expect(projected['mcp-calls'].metadata['source-kind']).toBe('database-query');
   });
 
   it('reprojects populated unavailable MCP sources before deriving top tools', async () => {
@@ -960,7 +961,7 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
-  it('returns requested authoritative sources through the canonical query boundary', async () => {
+  it('queries work items canonically and rejects undeclared report sources', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, {
       ingest: true,
       sourceNames: ['work-items', 'security-findings']
@@ -978,7 +979,8 @@ describe('canonical view sources', () => {
     });
     expect(projected['security-findings']).toMatchObject({
       source: 'security-findings',
-      rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }]
+      rows: [],
+      metadata: { availability: 'unavailable', error: expect.stringContaining('No canonical database query') }
     });
     expect(projected).not.toHaveProperty('usage');
     expect(loaded['work-items']).toMatchObject({
@@ -987,8 +989,10 @@ describe('canonical view sources', () => {
     });
     expect(loaded['security-findings']).toMatchObject({
       source: 'security-findings',
-      rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }]
+      rows: [],
+      metadata: { availability: 'unavailable' }
     });
+    expect(Object.keys(loaded)).toEqual(['work-items', 'security-findings']);
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {
@@ -1039,20 +1043,8 @@ describe('canonical view sources', () => {
       }],
       metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
-    expect(projected['job-performance']).toMatchObject({
-      source: 'job-performance',
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', run: '42',
-        'run-attempt': 2, 'job-id': '99', job: 'build',
-        'job-duration-seconds': 120, runner: 'ubuntu-latest', engine: 'copilot', model: 'model-b'
-      }],
-      metadata
-    });
-    expect(Reflect.get(projected, 'usage')).toEqual({
-      source: 'usage',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
-      metadata
-    });
+    expect(projected).not.toHaveProperty('job-performance');
+    expect(projected).not.toHaveProperty('usage');
   });
 
   it('projects workflow configuration onto runs when run metadata is absent', async () => {

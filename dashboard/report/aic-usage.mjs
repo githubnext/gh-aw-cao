@@ -6,8 +6,7 @@ import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
 import { runId as canonicalRunId } from "../site/src/data/model/ids.js";
-import { parseRolloutMode } from "./dashboard-language-sources.mjs";
-import { firstText } from "./text-utils.mjs";
+import { firstText, parseRolloutMode } from "./text-utils.mjs";
 
 const FIREWALL_HORIZON_DAYS = 30;
 

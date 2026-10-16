@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
 import { configureCliQueue, isCliQueueQuery } from '../../src/data/cli-queue.js';
 import commandQueueFixture from '../fixtures/cli-command-queue.json' with { type: 'json' };
 import commandsContract from '../fixtures/commands-view-contract.json' with { type: 'json' };
@@ -1183,17 +1184,28 @@ describe('dashboard view query contracts', () => {
 
   it('materializes worker-resolvable view queries through the production worker handler', async () => {
     expect([...dashboardQueryDefects(queries).entries()]).toEqual([]);
-    const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
-      .filter((name) => queryNames.has(name));
+    const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))];
     const runtimeRequested = requested.filter((name) => isCliQueueQuery(queries, [name]));
     const workerRequested = requested.filter((name) => !requiresServerSource(name) && !runtimeRequested.includes(name));
     expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes']);
-    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-      operation: 'execute-dashboard-queries',
-      queries,
-      sources: databaseTables,
-      sourceNames: workerRequested
-    }));
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    let results;
+    try {
+      results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'load-dashboard-query-sources',
+        queries,
+        sources: {
+          'configuration-policy': {
+            source: 'configuration-policy',
+            rows: [],
+            metadata: { availability: 'empty', completeness: 'complete', freshness: 'fresh' }
+          }
+        },
+        sourceNames: workerRequested
+      }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     expect(Object.keys(results).sort()).toEqual([...workerRequested].sort());
     for (const name of workerRequested) {

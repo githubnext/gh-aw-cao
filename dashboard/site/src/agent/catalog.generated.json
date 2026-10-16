@@ -839,7 +839,6 @@
       "parameters": [],
       "queries": [
         "github-api-usage",
-        "indexing-daily-records",
         "indexing-database-table-counts",
         "indexing-ingestion-runs",
         "indexing-shards",
@@ -4316,27 +4315,6 @@
         "backend": "sqlite",
         "requirements": [
           "friction"
-        ]
-      }
-    },
-    {
-      "id": "indexing-daily-records",
-      "subject": "Aggregate records committed from CAO Activity by ingestion UTC day.",
-      "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
-      "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "transactions"
-      ],
-      "used-by-pages": [
-        "indexing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "transactions"
         ]
       }
     },

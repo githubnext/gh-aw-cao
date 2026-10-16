@@ -27,6 +27,11 @@ describe('dashboard query architecture', () => {
     expect(definitions.find(({ name }) => name === 'mcp-calls')?.from).toBe('tools');
     expect(definitions.find(({ name }) => name === 'findings')?.from).toBe('audits');
     expect(definitions.find(({ name }) => name === 'outcomes')?.from).toBe('issues');
+    expect(definitions.find(({ name }) => name === 'work-items')?.from).toBe('workflows');
+    expect(definitions.find(({ name }) => name === 'detection-observations')?.from).toBe('findings');
+    expect(definitions.find(({ name }) => name === 'safe-output-performance')?.from).toBe('outcomes');
+    expect(JSON.stringify(definitions)).not.toMatch(/\$(?:security-findings|outcomes)/);
+    expect(existsSync(resolve('../report/dashboard-language-sources.mjs'))).toBe(false);
   });
 
   it('gives agents an explicit database-authoritative query and effect contract', () => {

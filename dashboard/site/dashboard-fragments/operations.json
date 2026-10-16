@@ -313,53 +313,6 @@
       ]
     },
     {
-      "name": "indexing-daily-records",
-      "subject": "Aggregate records committed from CAO Activity by ingestion UTC day.",
-      "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
-      "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
-      "from": "transactions",
-      "filter": {
-        "predicates": [
-          {
-            "field": "kind",
-            "in": [
-              "ingest-jsonl",
-              "ingest-normalized-jsonl"
-            ]
-          }
-        ]
-      },
-      "compute": [
-        {
-          "as": "day",
-          "function": "date-day",
-          "args": [
-            {
-              "field": "createdAt"
-            }
-          ]
-        }
-      ],
-      "aggregate": {
-        "by": [
-          "day"
-        ],
-        "values": [
-          {
-            "field": "committedRecords",
-            "as": "records",
-            "reducer": "sum"
-          }
-        ]
-      },
-      "order-by": [
-        {
-          "field": "day",
-          "direction": "asc"
-        }
-      ]
-    },
-    {
       "name": "indexing-ingestion-runs",
       "subject": "Show every retained ingestion transaction at its precise timestamp.",
       "objective": "Compare reported run counts across individual ingestion operations.",
@@ -507,7 +460,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "workflow runs"
+              "value": "runs"
             }
           ]
         }
@@ -537,7 +490,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "network domains"
+              "value": "domains"
             }
           ]
         }
@@ -567,7 +520,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "tool events"
+              "value": "tools"
             }
           ]
         }
@@ -597,7 +550,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "audit events"
+              "value": "audits"
             }
           ]
         }
@@ -627,7 +580,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "issue events"
+              "value": "issues"
             }
           ]
         }
@@ -657,7 +610,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "operational values"
+              "value": "operationalValues"
             }
           ]
         }
@@ -687,7 +640,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "ingestion transactions"
+              "value": "transactions"
             }
           ]
         }
@@ -1657,12 +1610,21 @@
       "description": "Determine whether the evidence pipeline supports reliable CAO analysis.",
       "views": [
         {
+          "id": "ingestion-storage",
+          "title": "Data storage",
+          "objective": "Identify the configured storage engine and location. This source-free element reads deployment configuration, not activity evidence; a database query cannot identify the browser's storage configuration.",
+          "data": { "sources": [] },
+          "mark": "element",
+          "element": "storage-info",
+          "layout": "full"
+        },
+        {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
           "subject": "Compare retained row counts across dashboard database tables.",
           "objective": "Identify missing or unexpectedly sized data tables for ingestion review.",
           "acceptance": "Counts are used as ingestion diagnostics, not as proof of source completeness.",
-          "description": "Rows retained by dashboard database table, including ingestion transactions.",
+          "description": "Rows retained by canonical database table or object-store name, including transactions.",
           "data": {
             "source": "indexing-database-table-counts",
             "query-context": false,
@@ -1794,33 +1756,6 @@
             "x": { "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "time-unit": "hour", "title": "Hour" },
             "y": { "field": "usage-percent", "type": "quantitative", "aggregate": "max", "title": "Quota used (%)" },
             "color": { "field": "bucket", "type": "nominal", "title": "Bucket" }
-          }
-        },
-        {
-          "id": "indexing-size",
-          "title": "Indexed data over time",
-          "subject": "Track new Activity records retained by the dashboard each day.",
-          "objective": "Spot changes in ingestion volume that may need investigation.",
-          "acceptance": "An apparent gap is checked against ingestion evidence before attributing it to missing source activity.",
-          "description": "New workflow runs and records retained from CAO Activity each day.",
-          "data": {
-            "source": "indexing-daily-records"
-          },
-          "mark": "chart",
-          "chart": "bar",
-          "layout": "full",
-          "empty-message": "No CAO Activity ingestion history has been retained.",
-          "encoding": {
-            "x": {
-              "field": "day",
-              "type": "nominal",
-              "title": "Indexed"
-            },
-            "y": {
-              "field": "records",
-              "type": "quantitative",
-              "title": "New records"
-            }
           }
         },
         {

@@ -1893,15 +1893,7 @@ describe('presenter built-in and custom pages', () => {
         },
         'indexing-database-table-counts': {
           source: 'indexing-database-table-counts',
-          rows: [{ table: 'ingestion transactions', records: 1 }],
-          metadata
-        },
-        'indexing-daily-records': {
-          source: 'indexing-daily-records',
-          rows: [
-            { day: '2026-09-01', records: 8 },
-            { day: '2026-09-02', records: 10 }
-          ],
+          rows: [{ table: 'transactions', records: 1 }],
           metadata
         },
         'indexing-ingestion-runs': {
@@ -1964,7 +1956,9 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
       expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(8);
-      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(0);
+      expect(page?.querySelector('[data-view-id="ingestion-storage"]')?.textContent).toContain('Storage engine unknown');
+      expect(page?.querySelector('[data-view-id="indexing-size"]')).toBeNull();
       expect(page?.querySelectorAll('[data-chart-widget="scatter"] .scatter-chart-point')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');

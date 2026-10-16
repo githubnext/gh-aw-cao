@@ -277,14 +277,18 @@ describe('native aggregate compatibility beyond firewall queries', () => {
     ]);
   });
 
-  it('does not replace usable supplied logical observations with canonical-store data', async () => {
+  it('does not let supplied report observations override canonical-store aggregates', async () => {
     const logical = { 'mcp-calls': {
       source: 'mcp-calls', rows: [{ 'mcp-observation': 'supplied', 'mcp-server': 'external' }], metadata
     } };
-    expect(await queryIndexedDatabaseSources(indexedDB, logical, [mcpCount], [mcpCount.name])).toEqual({});
+    const native = await queryIndexedDatabaseSources(indexedDB, logical, [mcpCount], [mcpCount.name]);
     const actual = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
       await loadDatabaseQuerySources(indexedDB, logical, { queries: [mcpCount], sourceNames: [mcpCount.name] })
     );
-    expect(actual[mcpCount.name].rows).toEqual([{ 'mcp-server': 'external', calls: 1 }]);
+    expect(actual[mcpCount.name].rows).toEqual([
+      { 'mcp-server': 'github', calls: 1203 },
+      { 'mcp-server': 'safe_outputs', calls: 401 }
+    ]);
+    expect(actual[mcpCount.name]).toEqual(native[mcpCount.name]);
   });
 });
