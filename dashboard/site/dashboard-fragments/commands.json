@@ -10,13 +10,6 @@
         { "as": "command-href", "function": "concat", "args": [{ "value": "#page-command?command=" }, { "field": "id" }] },
         { "as": "command-dashboard-link", "function": "dashboard-link", "args": [{ "value": "" }, { "field": "command-href" }, { "field": "id" }, { "field": "id" }] }
       ]
-    },
-    {
-      "name": "command-queue-summary",
-      "subject": "Report the command queue's server-owned running count and pause reason.",
-      "objective": "Expose active work and admission pauses without counting a paginated browser result.",
-      "acceptance": "Use the authoritative running and total counts, not a row count; missing authority remains unavailable.",
-      "from": "cli-command-summary"
     }
   ],
   "pages": [
@@ -30,27 +23,16 @@
       "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
       "views": [
         {
-          "id": "commands-admission",
-          "title": "Queue admission",
-          "description": "Server-owned admission pauses and total count remain visible even when history is filtered.",
-          "data": { "source": "command-queue-summary", "query-context": false },
-          "mark": "table",
-          "controls": "static",
-          "encoding": {
-            "columns": [
-              { "field": "running", "type": "quantitative", "title": "Running commands" },
-              { "field": "total", "type": "quantitative", "title": "Total commands" },
-              { "field": "paused-reason", "type": "nominal", "title": "Admission pause" }
-            ]
-          }
-        },
-        {
           "id": "commands-history",
           "title": "Command queue",
-          "description": "Inspect persistent command status and open replayable output; list filters and pages execute on the local server through the data worker.",
+          "description": "Lazy-loaded command cards with persistent status and replayable output. Filters and pages execute on the local server through the data worker.",
           "data": { "source": "command-queue", "query-context": false },
           "mark": "table",
           "controls": "filter-only",
+          "layout": "full",
+          "lazy-list": true,
+          "column-summaries": false,
+          "card-drill": { "type": "external", "field": "command-dashboard-link" },
           "filter-bar": {
             "filters": [
               {

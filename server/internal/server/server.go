@@ -1460,6 +1460,9 @@ func (loader *databaseLoader) ExecuteSQLPlan(definitions []query.Definition, req
 }
 
 func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, definitions []query.Definition) (model.Source, error) {
+	if name == "cli-commands" || name == "cli-command-summary" || name == "cli-command-statuses" {
+		return unavailableSource(name), nil
+	}
 	if name == simulationDaysSourceName {
 		return simulationDaysSource(), nil
 	}
@@ -1504,7 +1507,8 @@ func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, de
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
 // stored as Postgres dashboard entities.
 func RuntimeQuerySourceNames() []string {
-	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName}
+	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName,
+		"cli-commands", "cli-command-summary", "cli-command-statuses"}
 }
 
 func unavailableSource(name string) model.Source {

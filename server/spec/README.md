@@ -74,8 +74,11 @@ Observed identities are not configured tool definitions; the latter require
 independent workflow-declaration evidence. This split is an assessed follow-on,
 not part of the current schema.
 
-Jobs, sessions, and events are not stored as canonical entity tables or
-exposed as HTTP or query sources.
+Jobs, sessions, and events are not stored as canonical entity tables.
+The `Runtime` namespace declares typed CLI command history, summary, and
+status projections for query planning, without canonical DDL or execution
+endpoints. Hosted providers report these sources as unavailable: durable
+operational queue storage alone does not grant local execution authority.
 
 Run `npm run generate:storage` for storage only, or `npm run generate` for both
 storage and HTTP contracts. `storage.test.mjs` checks one-to-one table coverage,

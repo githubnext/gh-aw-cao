@@ -248,6 +248,12 @@ components:
   local_cli_queue:
     path: dashboard/cli-action-queue.mjs
     responsibility: own durable single-owner FIFO operational SQLite commands independently of browser lifetimes, with bounded concurrency, deadlines, cancellation, ordered output, retry ancestry and terminal-only UTC weekly retention
+  cli_command_storage:
+    path: server/internal/operational/cli_commands.go
+    responsibility: define focused CLICommandQueues and CLICommandQueue services separate from collection tasks and execution authority, with restart durability, fenced ownership, explicit uncertainty recovery, settlement-protected slots, bounded output cursors and UTC weekly retention
+  postgres_cli_commands:
+    path: server/internal/operational/postgres/
+    responsibility: expose CLICommands through operational composition using namespace-isolated cao_operational_cli tables, database-time leases, monotonic fences, protected byte and entry budgets and bounded terminal-only maintenance; never enable hosted execution or replace the local SQLite executor
   cli_executor:
     path: dashboard/cli-actions.mjs
     responsibility: execute the existing validated CLI mechanism with bounded output and process-tree termination

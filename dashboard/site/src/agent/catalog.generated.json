@@ -11,8 +11,7 @@
       "experimental": false,
       "parameters": [],
       "queries": [
-        "command-queue",
-        "command-queue-summary"
+        "command-queue"
       ]
     },
     {
@@ -1038,25 +1037,6 @@
         "local": false,
         "requirements": [],
         "reason": "Requires cli-commands, which the local SQLite projection does not provide."
-      }
-    },
-    {
-      "id": "command-queue-summary",
-      "subject": "Report the command queue's server-owned running count and pause reason.",
-      "objective": "Expose active work and admission pauses without counting a paginated browser result.",
-      "acceptance": "Use the authoritative running and total counts, not a row count; missing authority remains unavailable.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "cli-command-summary"
-      ],
-      "used-by-pages": [
-        "commands"
-      ],
-      "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires cli-command-summary, which the local SQLite projection does not provide."
       }
     },
     {

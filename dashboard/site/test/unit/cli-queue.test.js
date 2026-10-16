@@ -11,6 +11,15 @@ afterEach(() => {
 });
 
 describe('worker command queue', () => {
+  it('declares a single full-width lazy card table with server-backed filtering', () => {
+    expect(commands.pages[0].views).toHaveLength(1);
+    expect(commands.pages[0].views[0]).toMatchObject({
+      id: 'commands-history', mark: 'table', layout: 'full', 'lazy-list': true,
+      controls: 'filter-only', 'column-summaries': false,
+      'card-drill': { type: 'external', field: 'command-dashboard-link' }
+    });
+  });
+
   it('renders the declared interaction-only route without an evidence-source compatibility path', () => {
     const previousUrl = window.location.href;
     window.history.replaceState({}, '', '#page-command?command=42');
@@ -59,7 +68,7 @@ describe('worker command queue', () => {
     vi.stubGlobal('fetch', fetch);
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
       operation: 'query-canonical-dashboard',
-      sourceNames: ['command-queue', 'command-queue-summary'],
+      sourceNames: ['command-queue', 'cli-command-summary'],
       context: { pages: [], queries: commands.queries },
       pagination: { 'command-queue': { limit: 6 } },
       queryContext: { filters: { status: ['queued', 'running'] } }
@@ -68,7 +77,7 @@ describe('worker command queue', () => {
     expect(String(fetch.mock.calls[0][0])).toContain('status=queued%2Crunning&limit=6&offset=0');
     expect(result['command-queue'].rows.map((row) => row.status)).toEqual(states);
     expect(result['command-queue'].rows[0]['command-dashboard-link']).toEqual(expect.objectContaining({ 'dashboard-href': '#page-command?command=cmd-0' }));
-    expect(result['command-queue-summary'].rows[0]).toMatchObject({ running: 8, total: 106, 'paused-reason': 'quota' });
+    expect(result['cli-command-summary'].rows[0]).toMatchObject({ running: 8, total: 106, 'paused-reason': 'quota' });
     expect(result['command-queue'].metadata['total-row-count']).toBe(106);
     expect(JSON.parse(atob(result['command-queue'].continuationToken ?? ''))).toEqual({ offset: 6 });
   });

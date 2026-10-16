@@ -388,6 +388,35 @@ describe('CLI actions', () => {
     root.remove();
   });
 
+  it.each([
+    { ok: true, status: 'completed', error: undefined },
+    { ok: false, status: 'failed', error: 'Action failed' },
+    { ok: false, status: 'canceled', error: 'The CLI action was canceled.' }
+  ])('closes both dialogs after $status and restores trigger focus', async ({ ok, status, error }) => {
+    /** @type {(value: unknown) => void} */
+    let finish = () => {};
+    queue.attach.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const root = renderCliActions([{
+      id: 'compile-workflows', label: 'Compile workflows', icon: 'play', command: 'gh aw compile'
+    }]);
+    if (!root) throw new Error('Expected a CLI action control.');
+    document.body.append(root);
+    const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
+    const approval = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-dialog'));
+    const terminal = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-terminal-dialog'));
+    trigger.click();
+    /** @type {HTMLInputElement} */ (root.querySelector('input[type="checkbox"]')).click();
+    /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
+    await vi.waitFor(() => expect(terminal.open).toBe(true));
+    expect(terminal.querySelector('header button')?.getAttribute('aria-label')).toBe('Close terminal window');
+    finish({ result: { ok, exitCode: ok ? 0 : 1, error }, command: { id: 'command-1', status } });
+    await vi.waitFor(() => expect(approval.open).toBe(false));
+    expect(terminal.open).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    expect(queue.cancel).not.toHaveBeenCalled();
+    root.remove();
+  });
+
   it('requires a fresh confirmation before every execution', async () => {
     queue.attach.mockImplementation(async (_id, onOutput) => {
       onOutput({ stream: 'stdout', data: 'compiled\n' });

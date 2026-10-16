@@ -65,7 +65,10 @@ for (const width of [1440, 390]) {
 
       if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
       await page.getByRole('link', { name: 'Commands', exact: true }).last().click();
-      const history = page.getByRole('table').filter({ hasText: 'Queued' });
+      const history = page.locator('[data-view-id="commands-history"]');
+      await expect(page.locator('[data-view-id="commands-admission"]')).toHaveCount(0);
+      await expect(history).toHaveAttribute('data-view-layout', 'full');
+      await expect(history).toHaveAttribute('data-view-lazy-list', '');
       await expect(history).toContainText('running');
       const command = history.getByRole('link', { name: /^\d+$/ }).first();
       const commandHref = await command.getAttribute('href');

@@ -673,6 +673,34 @@ namespace Inputs {
   }
 
   namespace Runtime {
+    /** Local authorized queue projections, unavailable without an execution host. */
+    model cliCommands {
+      id: int64;
+      actionId: string;
+      command: string;
+      status: string;
+      createdAt: int64;
+      startedAt?: int64;
+      completedAt?: int64;
+      deadline?: int64;
+      completionWeek?: string;
+      retryOf?: int64;
+      exitCode?: int64;
+      error?: string;
+      reason?: string;
+      outputBytes?: int64;
+      outputChunks?: int64;
+      outputTruncated?: boolean;
+    }
+    model cliCommandSummary {
+      total: int64;
+      running: int64;
+      revision: int64;
+      `paused-reason`?: string;
+    }
+    model cliCommandStatuses {
+      status: string;
+    }
     model simulationDays {
       day: int64;
       date: utcDateTime;

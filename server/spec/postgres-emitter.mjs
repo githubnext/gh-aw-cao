@@ -24,6 +24,8 @@ const inputNames = new Map([
   ['transactions', '$transactions'], ['workItems', 'work-items']
 ]);
 const runtimeNames = new Map([
+  ['cliCommands', 'cli-commands'], ['cliCommandSummary', 'cli-command-summary'],
+  ['cliCommandStatuses', 'cli-command-statuses'],
   ['collectionHealth', 'collection-health'], ['githubQuotaUsage', 'github-quota-usage'],
   ['simulationDays', 'simulation-days']
 ]);

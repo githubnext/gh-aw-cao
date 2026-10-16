@@ -1328,10 +1328,15 @@ explicit cancellation stops the command. Command streams use a read-only
 terminal emulator; terminal emulation cannot be
 expressed by data marks and does not query or derive dashboard evidence.
 Each approval dialog executes at most once: its action button disappears when
-execution starts, leaving **Cancel command** while running and **Close** after
-completion or cancellation. Another run requires reopening the approval dialog.
+execution starts, leaving **Cancel command** while running. Completion, failure,
+or cancellation closes both the terminal window and its originating approval
+dialog and announces the result through the shared notification service.
+Retained output remains available in Commands. Another run requires reopening
+the approval dialog.
 While running, the terminal dialog fills the viewport and hides the approval
-content, leaving terminal output and cancellation controls. Terminal URLs use
+content, preserving dialog chrome, its accessible close button, terminal output,
+and cancellation controls. Closing the terminal window only dismisses the
+window; closing the approval dialog detaches without canceling work. Terminal URLs use
 HTTP/HTTPS link detection and open separately without opener access.
 
 A list may declare `list.actions`, a non-empty sequence of unique view-placed

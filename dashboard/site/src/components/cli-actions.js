@@ -9,6 +9,7 @@ import { assertActionLevel, normalizeAction, actionPresentation } from '../actio
 import { createDialogSelector } from './dialog-selector.js';
 import { createCliTerminal } from './cli-terminal.js';
 import { enqueueCliCommand, attachCliCommand, cancelCliCommand, cliQueueAvailable, subscribeCanonicalDashboardView } from '../data-processor.js';
+import { publishNotification } from '../notification-service.js';
 
 const debugCliActions = createDebug('cli-actions');
 
@@ -374,6 +375,11 @@ function renderCliActionControl(action, options = {}) {
           const exitStatus = Number.isInteger(result.exitCode) ? ` (exit ${result.exitCode})` : '';
           terminal.write(`\r\n${result.ok ? 'Completed' : result.error || 'Action failed'}${exitStatus}\r\n`);
           debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
+          publishNotification({
+            message: `${action.label}: ${result.ok ? 'Completed' : result.error || 'Action failed'}`,
+            tone: result.ok ? 'success' : 'error'
+          });
+          close();
         } catch (error) {
           const message = controller.signal.aborted
             ? 'Detached. The command continues in Maintenance → Commands.'

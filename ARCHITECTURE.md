@@ -153,6 +153,18 @@ reactive runtime-source queries cross the browser data worker. Dashboard
 Language owns command selection, filtering and view composition, while terminal
 components only present output and interactions. Published dashboards initialize
 no queue, perform no queue requests and gain no execution authority.
+The focused `CLICommandQueues` / `CLICommandQueue` operational service contracts
+also provide PostgreSQL-backed command storage through `OperationalServices.CLICommands`.
+This is separate from the collection task queue and does not enable hosted
+command execution or replace the local SQLite executor. PostgreSQL stores
+queue policy, command history and ordered output in namespace-isolated
+`cao_operational_cli_*` tables under protected-state budgets. Database-time leases
+and monotonic ownership fences reject stale writers; lease loss retains
+uncertain execution claims and blocks new starts until explicit operator
+reconciliation. Cancellation and deadlines do not release an execution slot
+before subprocess settlement. Bounded maintenance removes only fully expired
+terminal UTC weeks and their output. Memory and Redis do not advertise this
+restart-durable capability.
 The HTTP and MCP query boundary uses a disposable cache-aside layer for
 expensive queries with compact output. SHA-256 query identities include the
 definitions, parameters, pagination, schema, and current authorization class,
