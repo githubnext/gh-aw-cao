@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "../../dashboard/cli-action-contract.mjs";
+import { approveDashboardCommand } from "../../com.github.copilot/extensions/cao-dashboard/approval.mjs";
 
 async function fixture(options) {
   const root = await mkdtemp(join(tmpdir(), "cao-cli-approval-"));
@@ -62,6 +63,22 @@ async function fixture(options) {
 
 test("canvas mode cannot start without a trusted approval adapter", async () => {
   await assert.rejects(fixture({ executeCliAction: async () => {} }), /requires trusted CLI action approval/);
+});
+
+test("canvas-reviewed actions execute through command validation without host elicitation", async () => {
+  const executions = [];
+  const testCase = await fixture({
+    approveCliAction: approveDashboardCommand,
+    executeCliAction: async ({ command }) => { executions.push(command); return { ok: true }; },
+  });
+  try {
+    const response = await testCase.post({ id: "compile" });
+    assert.equal(response.status, 200);
+    await response.text();
+    assert.deepEqual(executions, ["gh aw compile"]);
+    assert.equal((await testCase.post({ id: "undeclared-action" })).status, 404);
+    assert.equal(executions.length, 1);
+  } finally { await testCase.close(); }
 });
 
 test("selector lookup accepts only declared action identity and bounded text in canvas mode", async () => {

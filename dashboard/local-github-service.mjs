@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 import { DatabaseSync } from "node:sqlite";
+import { compilerVersionFromLock } from "../activity/version.mjs";
 
 const executeFile = promisify(execFile);
 const freshMs = 300_000;
@@ -12,6 +13,7 @@ const cacheControl = "private, max-age=300, stale-while-revalidate=86400";
 const fields = {
   repository: ["full_name", "description", "html_url", "default_branch", "stargazers_count", "forks_count", "open_issues_count", "archived", "visibility"],
   release: ["tag_name", "name", "html_url", "published_at", "draft", "prerelease"],
+  compiler: ["path", "sha", "gh_aw_version"],
 };
 
 class GitHubStorageError extends Error {}
@@ -152,7 +154,18 @@ export function createLocalGitHubService({
       }
       const raw = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid GitHub resource.");
-      const body = Object.fromEntries(fields[kind].map((field) => [field, raw[field] ?? null]));
+      let resource = raw;
+      if (kind === "compiler") {
+        const workflowPath = path.slice(path.indexOf("/contents/") + "/contents/".length);
+        if (raw.type !== "file" || raw.path !== workflowPath || raw.encoding !== "base64"
+            || typeof raw.content !== "string" || !/^[0-9a-f]{40,64}$/i.test(raw.sha)) {
+          throw new Error("Invalid GitHub workflow content.");
+        }
+        const version = compilerVersionFromLock(Buffer.from(raw.content, "base64").toString("utf8"));
+        if (!version) throw new Error("GitHub workflow has no valid compiler metadata.");
+        resource = { path: raw.path, sha: raw.sha, gh_aw_version: version };
+      }
+      const body = Object.fromEntries(fields[kind].map((field) => [field, resource[field] ?? null]));
       for (const [field, value] of Object.entries(body)) {
         if (value === null && ["description", "name", "published_at"].includes(field)) continue;
         const type = ["archived", "draft", "prerelease"].includes(field) ? "boolean"
@@ -187,7 +200,7 @@ export function createLocalGitHubService({
     },
     async request(pathname, ifNoneMatch) {
       if (closed) throw new Error("GitHub resource service is closed.");
-      const match = /^\/api\/v1\/github\/repos\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9_.-]{1,100})(\/releases\/latest)?$/.exec(pathname);
+      const match = /^\/api\/v1\/github\/repos\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9_.-]{1,100})(\/releases\/latest|\/contents\/\.github\/workflows\/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,199}\.lock\.yml)?$/.exec(pathname);
       if (!match || [".", ".."].includes(match?.[2])) {
         return { status: 400, headers: { "Cache-Control": "no-store" }, body: { error: "Invalid GitHub resource." } };
       }
@@ -216,7 +229,8 @@ export function createLocalGitHubService({
       } else {
         if (!inFlight.has(key)) {
           if (inFlight.size >= 16) return entry ? cachedResponse(entry, true) : unavailable(429);
-          const pending = refresh(path, match[3] ? "release" : "repository", credential, key, entry)
+          const kind = match[3]?.startsWith("/contents/") ? "compiler" : match[3] ? "release" : "repository";
+          const pending = refresh(path, kind, credential, key, entry)
             .finally(() => inFlight.delete(key));
           inFlight.set(key, pending);
         }

@@ -13,6 +13,7 @@ vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
   })
 }));
 import { renderCommandTerminal } from '../../src/components/command-terminal.js';
+import { shellStyles } from '../../src/styles-shell.js';
 
 const context = /** @type {import('../../src/components/ui-elements.js').ElementRenderContext} */ ({
   pageId: 'command', title: 'Output', sourceNames: [], sources: {}, contextDetails: [],
@@ -48,6 +49,21 @@ describe('persistent command terminal', () => {
       title: 'gh aw compile --strict', description: 'persistent-1 · running'
     });
     expect(root.querySelector('header')).toBeNull();
+    const styles = document.createElement('style');
+    styles.textContent = shellStyles;
+    document.head.append(styles);
+    try {
+      const actions = root.querySelector('.command-terminal-actions');
+      expect(actions && getComputedStyle(actions).right).toBe('24px');
+      expect(actions && getComputedStyle(actions).bottom).toBe('24px');
+      const cancelStyle = [...(styles.sheet?.cssRules ?? [])].find((rule) =>
+        rule instanceof CSSStyleRule && rule.selectorText === '.command-terminal-actions > .cli-action-cancel');
+      expect(cancelStyle).toBeDefined();
+      expect(/** @type {CSSStyleRule} */ (cancelStyle).style.background).toBe('var(--accent)');
+      expect(/** @type {CSSStyleRule} */ (cancelStyle).style.color).toBe('var(--canvas)');
+    } finally {
+      styles.remove();
+    }
     const signal = queue.attach.mock.calls[0][2];
     window.location.hash = 'page-commands';
     root.remove();

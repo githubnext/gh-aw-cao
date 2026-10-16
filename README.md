@@ -173,18 +173,27 @@ backend. Select either backend explicitly with
 `dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
 startup rather than silently falling back to IndexedDB.
 
+Canvas startup also reads compiler metadata from the default-branch lock files
+of workflows already present in the downloaded inventory, through its
+read-only GitHub API service. Reads are cached per credential and limited to
+128 distinct files with eight concurrent requests. The API returns only file
+identity and the parsed compiler version, never workflow contents or credentials.
+Unavailable or stale reads retain snapshot versions without fabricating fresh
+installed-version evidence. Upgrade is hidden only when recorded versions are known current;
+missing installed-version or release evidence keeps the action available.
+
 `--data-backend postgres` selects the existing Go/PostgreSQL server, with
 PostgreSQL operational storage by default; `--operational-store` may select
 Redis or memory instead. This mode requires the reviewed host policy, built
 site, database, and OAuth/HTTPS configuration described in
 [the server guide](server/README.md), and does not support canvas preview mode.
 
-Every native CLI action requires a fresh trusted host confirmation of its exact
-command, working directory, and standard input, independently of the dashboard's
-preview dialog. Hosts without interactive elicitation cannot execute canvas
-actions; run the reviewed command in a terminal instead. Installing the complete
-plugin bundle is required; the extension folder alone is not a standalone
-package.
+CLI actions are approved in the canvas's command-review dialog; there is no
+second host confirmation prompt or interactive-elicitation requirement.
+The server still validates each declared action and its resolved command, binds
+execution to the preview's working directory, and executes without a shell.
+Installing the complete plugin bundle is required; the extension folder alone
+is not a standalone package.
 
 For extension changes, run `npm run typecheck:copilot` and the focused
 `tests/unit/dashboard-extension.test.mjs` and

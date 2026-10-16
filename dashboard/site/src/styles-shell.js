@@ -193,6 +193,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-actions-menu > summary { list-style: none; }
 .cli-actions-menu > summary::-webkit-details-marker { display: none; }
 .cli-actions-toggle { min-height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .75rem; font-weight: 600; cursor: pointer; }
+.cli-commands-navigation[hidden] { display: none; }
 .cli-actions-toggle:hover, .cli-actions-menu[open] .cli-actions-toggle { background: var(--neutral-muted); }
 .cli-actions-toggle .octicon { width: 14px; height: 14px; }
 .cli-actions-list { width: min(320px, calc(100vw - 28px)); display: grid; gap: 4px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
@@ -265,7 +266,7 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .command-terminal > .cli-action-dialog-body { min-height: 0; flex: 1; padding: 0; overflow: hidden; }
 .command-terminal .cli-action-terminal-output { min-height: 0; height: 100%; }
 .command-terminal .cli-action-terminal { min-height: 0; height: 100%; border: 0; border-radius: 0; }
-.command-terminal-actions { position: absolute; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; }
+.command-terminal-actions { position: absolute; right: 24px; bottom: 24px; z-index: 2; display: flex; gap: 8px; }
 .command-terminal-actions[hidden] { display: none; }
 .command-terminal-actions > button { min-height: 44px; box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .cli-action-dialog-close { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
@@ -293,8 +294,10 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-cancel, .cli-action-confirm { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
 .cli-action-cancel[hidden], .cli-action-confirm[hidden] { display: none; }
 .cli-action-cancel { background: var(--canvas); color: var(--fg); }
+.command-terminal-actions > .cli-action-cancel { border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .cli-action-confirm { border-color: var(--accent); background: var(--accent); color: var(--canvas); }
 .cli-action-cancel:hover { background: var(--neutral-muted); }
+.command-terminal-actions > .cli-action-cancel:hover { background: var(--accent); filter: brightness(1.08); }
 .cli-action-confirm:hover { filter: brightness(1.08); }
 .cli-action-cancel:disabled, .cli-action-confirm:disabled { cursor: default; opacity: .6; }
 .site-callouts { display: grid; margin: 0; padding: 0; }

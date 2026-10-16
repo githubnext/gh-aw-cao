@@ -133,6 +133,49 @@ test("latest releases expose only safe fields and missing releases return 404", 
   assert.equal((await service.request("/api/v1/github/repos/other/repo/releases/latest")).status, 404);
 });
 
+test("workflow contents expose only parsed compiler evidence through the read-only cache", async () => {
+  const workflow = ".github/workflows/Agent.lock.yml";
+  const sha = "a".repeat(40);
+  let calls = 0;
+  const service = createLocalGitHubService({
+    token: credential,
+    fetchImpl: async (url) => {
+      calls++;
+      assert.equal(url.href, `https://api.github.com/repos/githubnext/gh-aw-cao/contents/${workflow}`);
+      return reply({
+        type: "file", path: workflow, sha, encoding: "base64",
+        content: Buffer.from('# gh-aw-metadata: {"compiler_version":"v0.92.0"}\nprivate workflow content').toString("base64"),
+        download_url: "https://untrusted.example/ignored",
+      });
+    },
+  });
+  const resource = `${path}/contents/${workflow}`;
+  const first = await service.request(resource);
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.body, { path: workflow, sha, gh_aw_version: "v0.92.0" });
+  assert.doesNotMatch(JSON.stringify(first), /private workflow|untrusted/);
+  assert.equal((await service.request(resource, first.headers.ETag)).status, 304);
+  assert.equal(calls, 1);
+});
+
+test("workflow compiler reads reject missing metadata and mismatched content paths", async () => {
+  for (const invalid of [
+    { content: Buffer.from("name: not an agentic workflow").toString("base64") },
+    { path: ".github/workflows/unexpected.lock.yml" },
+    { type: "symlink" },
+  ]) {
+    const service = createLocalGitHubService({
+      token: credential,
+      fetchImpl: async () => reply({
+        type: "file", path: ".github/workflows/test.lock.yml", sha: "a".repeat(40), encoding: "base64",
+        content: Buffer.from('# gh-aw-metadata: {"compiler_version":"v0.92.0"}').toString("base64"),
+        ...invalid,
+      }),
+    });
+    assert.equal((await service.request(`${path}/contents/.github/workflows/test.lock.yml`)).status, 503);
+  }
+});
+
 test("unsafe resource paths are rejected without using credentials", async () => {
   let authentications = 0;
   let requests = 0;
@@ -144,6 +187,9 @@ test("unsafe resource paths are rejected without using credentials", async () =>
     "/api/v1/github/repos/o/..",
     "/api/v1/github/repos/o/.",
     "/api/v1/github/repos/o/r/issues",
+    "/api/v1/github/repos/o/r/contents/.github/workflows/test.yml",
+    "/api/v1/github/repos/o/r/contents/.github/workflows/../secret.lock.yml",
+    "/api/v1/github/repos/o/r/contents/.github/workflows/a%2fb.lock.yml",
     "/api/v1/github/repos/o/r%2fsecret",
     "/api/v1/github/repos/o/r?token=anything",
     "/api/v1/github/repos/o/r#fragment",

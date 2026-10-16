@@ -9,17 +9,27 @@
     "action-context": ["repository"]
   },
   "repository-drill": { "type": "external", "field": "repository-url" },
+  "repository-upgrade-action": {
+    "action": "upgrade-target-repository",
+    "context": ["repository"],
+    "when": { "field": "upgrade-action-visible", "equals": true }
+  },
   "campaign-update": {
     "action": "update-repository",
     "action-context": ["campaign"]
   },
   "repository-workflows": [
-    { "organization": "octo", "repository": "first", "workflow": "a.md" },
-    { "organization": "octo", "repository": "first", "workflow": "b.md" },
-    { "organization": "other", "repository": "second", "workflow": "c.md" }
+    { "organization": "octo", "repository": "first", "workflow": "a.md", "gh-aw-version": "v0.92.0", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "current" },
+    { "organization": "octo", "repository": "first", "workflow": "b.md", "gh-aw-version": "v0.92.0", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "current" },
+    { "organization": "octo", "repository": "first", "workflow": "historical.md", "gh-aw-update-state": "unknown" },
+    { "organization": "other", "repository": "second", "workflow": "c.md", "gh-aw-version": "v0.91.5", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "update-available" },
+    { "organization": "octo", "repository": "unknown", "workflow": "d.md", "gh-aw-update-state": "unknown" },
+    { "organization": "octo", "repository": "unreleased", "workflow": "e.md", "gh-aw-version": "v0.92.0", "gh-aw-update-state": "unknown" }
   ],
   "repository-homes": [
-    { "repository": "octo/first", "repository-url": "https://github.com/octo/first" },
-    { "repository": "other/second", "repository-url": "https://github.com/other/second" }
+    { "repository": "octo/first", "repository-url": "https://github.com/octo/first", "upgrade-required": 0, "upgrade-action-visible": false },
+    { "repository": "octo/unknown", "repository-url": "https://github.com/octo/unknown", "upgrade-required": 0, "upgrade-action-visible": true },
+    { "repository": "octo/unreleased", "repository-url": "https://github.com/octo/unreleased", "upgrade-required": 0, "upgrade-action-visible": true },
+    { "repository": "other/second", "repository-url": "https://github.com/other/second", "upgrade-required": 1, "upgrade-action-visible": true }
   ]
 }

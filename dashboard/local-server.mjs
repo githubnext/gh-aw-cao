@@ -46,7 +46,7 @@ import { executeDashboardCommand } from "./cli-actions.mjs";
 import { createCliActionQueue } from "./cli-action-queue.mjs";
 import { createCliActionApi } from "./cli-action-api.mjs";
 import { createCliActionAdmission } from "./cli-action-quota.mjs";
-import { refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease } from "./local-release-metadata.mjs";
+import { compilerVersionOverrides, refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease, refreshDashboardCompilerVersions } from "./local-release-metadata.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -353,7 +353,7 @@ function redactJsonSecrets(source) {
   return JSON.stringify(redact(JSON.parse(source)), null, 2);
 }
 
-async function redactJsonlSecretsFile(sourcePath, destinationPath, latestGhAwVersion) {
+async function redactJsonlSecretsFile(sourcePath, destinationPath, latestGhAwVersion, compilerVersions) {
   const decoder = new TextDecoder();
   const hash = createHash("sha256");
   let pending = "";
@@ -361,7 +361,7 @@ async function redactJsonlSecretsFile(sourcePath, destinationPath, latestGhAwVer
     if (!line.trim()) return "";
     const value = JSON.parse(redactJsonSecrets(line));
     return JSON.stringify(latestGhAwVersion
-      ? refreshCanonicalCompilerRelease(value, latestGhAwVersion)
+      ? refreshCanonicalCompilerRelease(value, latestGhAwVersion, compilerVersions)
       : value);
   };
   const emit = (stream, content) => {
@@ -748,13 +748,28 @@ export async function startDashboardServer({
   let repositoryMemoryDirectory;
   const splitSourceContent = new Map();
   let sqliteBackend;
+  const githubService = createLocalGitHubService({
+    databasePath: join(temporaryDirectory, "github-resources.sqlite"),
+    token: async () => (await executeFile(ghExecutable, ["auth", "token", "--hostname", "github.com"], {
+      cwd: resolvedWorkingDirectory, timeout: 10_000, maxBuffer: 16 * 1024, windowsHide: true,
+    })).stdout.trim(),
+  });
   try {
     const downloaded = await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
-    const prepareSources = (content) => redactJsonSecrets(downloaded?.latestGhAwVersion
-      ? JSON.stringify(refreshDashboardCompilerRelease(JSON.parse(content), downloaded.latestGhAwVersion))
-      : content);
+    const prepareSources = async (content) => {
+      let sources = JSON.parse(redactJsonSecrets(content));
+      if (downloaded?.latestGhAwVersion) sources = refreshDashboardCompilerRelease(sources, downloaded.latestGhAwVersion);
+      if (canvas) sources = await refreshDashboardCompilerVersions(sources, {
+        request: (path) => githubService.request(path), output,
+      });
+      return JSON.stringify(sources);
+    };
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
+      inventorySourcesContent = await prepareSources(
+        await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
+      );
+      const compilerVersions = canvas ? compilerVersionOverrides(JSON.parse(inventorySourcesContent)) : undefined;
       const payloadHashes = {};
       for (const shardDirectoryName of ["gh-aw-logs-runs", "gh-aw-logs-records"]) {
         const shardDirectory = join(canonicalDataDirectory, shardDirectoryName);
@@ -763,7 +778,7 @@ export async function startDashboardServer({
           const outputPath = join(temporaryDirectory, shardDirectoryName, entry.name);
           await mkdir(dirname(outputPath), { recursive: true });
           const hash = await redactJsonlSecretsFile(
-            join(shardDirectory, entry.name), outputPath, downloaded?.latestGhAwVersion,
+            join(shardDirectory, entry.name), outputPath, downloaded?.latestGhAwVersion, compilerVersions,
           );
           const publishedName = `${shardDirectoryName}/${entry.name}`;
           dashboardDataShards.set(`/${publishedName}`, outputPath);
@@ -771,15 +786,12 @@ export async function startDashboardServer({
         }
       }
       payloadHashesContent = JSON.stringify(payloadHashes);
-      inventorySourcesContent = prepareSources(
-        await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
-      );
       const memoryDirectory = await realpath(join(canonicalDataDirectory, "memory")).catch(() => undefined);
       repositoryMemoryDirectory = memoryDirectory && isWithin(canonicalDataDirectory, memoryDirectory)
         ? memoryDirectory
         : undefined;
     } else {
-      sourcesContent = prepareSources(
+      sourcesContent = await prepareSources(
         await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
       );
       const parsedSources = JSON.parse(sourcesContent);
@@ -792,6 +804,7 @@ export async function startDashboardServer({
       sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
     }
   } catch (error) {
+    await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -949,6 +962,7 @@ export async function startDashboardServer({
   } catch (error) {
     for (const watcher of watchers.values()) watcher.close();
     await sqliteBackend?.close();
+    await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -994,6 +1008,7 @@ export async function startDashboardServer({
     await cliAdmission?.close();
     for (const watcher of watchers.values()) watcher.close();
     await sqliteBackend?.close();
+    await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
@@ -1001,9 +1016,6 @@ export async function startDashboardServer({
     queue: cliQueue, getDashboard: () => JSON.parse(dashboardContent),
     approve: (invocation) => admin ? Promise.resolve(true) : approveCliAction(invocation),
     isAllowedOrigin, readJsonRequest, sendJson,
-  });
-  const githubService = createLocalGitHubService({
-    databasePath: join(temporaryDirectory, "dashboard.sqlite"),
   });
   const server = createServer(async (request, response) => {
     const requestStarted = performance.now();

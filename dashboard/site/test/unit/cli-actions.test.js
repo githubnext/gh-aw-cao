@@ -24,6 +24,7 @@ import {
   setDeclaredCliActions
 } from '../../src/components/cli-actions.js';
 import { subscribeCanonicalDashboardView } from '../../src/data-processor.js';
+import { shellStyles } from '../../src/styles-shell.js';
 
 beforeEach(() => {
   vi.stubGlobal('__CLI_QUEUE__', true);
@@ -40,6 +41,9 @@ afterEach(() => {
 
 describe('CLI actions', () => {
   it('shares the command summary context across shell replacements with independent lifetimes', async () => {
+    const styles = document.createElement('style');
+    styles.textContent = shellStyles;
+    document.head.append(styles);
     const dashboards = Array.from({ length: 2 }, () => {
       const dashboard = document.createElement('div');
       const actions = document.createElement('div');
@@ -50,6 +54,11 @@ describe('CLI actions', () => {
       return dashboard;
     });
     const [first, second] = vi.mocked(subscribeCanonicalDashboardView).mock.calls;
+    const navigations = dashboards.map((dashboard) => dashboard.querySelector('.cli-commands-navigation'));
+    for (const navigation of navigations) {
+      expect(navigation).toHaveProperty('hidden', true);
+      expect(navigation && getComputedStyle(navigation).display).toBe('none');
+    }
     expect(first[0]).toBe('cli-commands-navigation');
     expect(second[2]).toBe(first[2]);
     expect(first[5]?.signal).not.toBe(second[5]?.signal);
@@ -64,12 +73,35 @@ describe('CLI actions', () => {
     } };
     first[3](sources);
     second[3](sources);
-    for (const dashboard of dashboards) expect(dashboard.textContent).toBe('Commands (2 running)');
+    for (const navigation of navigations) {
+      expect(navigation).toHaveProperty('hidden', false);
+      expect(navigation && getComputedStyle(navigation).display).toBe('inline-flex');
+      expect(navigation?.textContent).toBe('');
+      expect(navigation?.getAttribute('aria-label')).toBe('Commands running');
+      expect(navigation?.getAttribute('title')).toBe('Commands running');
+      expect(navigation?.querySelector('.octicon-terminal')?.getAttribute('aria-hidden')).toBe('true');
+    }
+    sources['cli-command-summary'].rows[0].running = 0;
+    first[3](sources);
+    second[3](sources);
+    for (const navigation of navigations) expect(navigation).toHaveProperty('hidden', true);
+    sources['cli-command-summary'].rows[0].running = 1;
+    first[3](sources);
+    second[3](sources);
+    for (const navigation of navigations) {
+      expect(navigation).toHaveProperty('hidden', false);
+      expect(navigation?.textContent).toBe('');
+      expect(navigation?.querySelector('.octicon-terminal')).not.toBeNull();
+    }
+    first[3]({});
+    second[3]({});
+    for (const navigation of navigations) expect(navigation).toHaveProperty('hidden', true);
     dashboards[0].remove();
     await vi.waitFor(() => expect(first[5]?.signal?.aborted).toBe(true));
     expect(second[5]?.signal?.aborted).toBe(false);
     dashboards[1].remove();
     await vi.waitFor(() => expect(second[5]?.signal?.aborted).toBe(true));
+    styles.remove();
   });
 
   it('rejects UI-only declarations and prompt execution without sending a request', () => {

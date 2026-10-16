@@ -35,6 +35,7 @@ vi.mock('../../src/data-processor.js', async () => ({
 }));
 
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { renderDataView } from '../../src/components/data-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElementAsync } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
@@ -91,6 +92,28 @@ describe('Configuration dashboard view', () => {
       if (available) {
         expect(result.rows).toHaveLength(maintenanceNavigationContract['repository-homes'].length);
         expect(result.rows).toMatchObject(maintenanceNavigationContract['repository-homes']);
+        vi.stubGlobal('__CLI_QUEUE__', true);
+        setDeclaredCliActions(dashboard['cli-actions']);
+        try {
+          const view = page.views[0];
+          const rendered = renderDataView('list', {
+            pageId: page.id, title: view.title, view,
+            sourceName: view.data.source, rows: result.rows,
+            cardTemplates: Object.fromEntries(dashboard['card-templates'].map(
+              (/** @type {{ id: string }} */ template) => [template.id, template]
+            )),
+            metadata: result.metadata, contextDetails: [], headingTag: 'h3',
+            prepareTableRows: (rows) => rows, buildChartPoints: () => [],
+            prepareChartPoints: () => [], toText: String
+          });
+          const cards = [...(rendered?.querySelectorAll('.entity-card-list-card') ?? [])];
+          expect(cards).toHaveLength(maintenanceNavigationContract['repository-homes'].length);
+          expect(cards.map((card) => card.querySelectorAll('.entity-card-list-actions .cli-action-trigger').length))
+            .toEqual([0, 1, 1, 1]);
+        } finally {
+          setDeclaredCliActions([]);
+          vi.unstubAllGlobals();
+        }
       } else {
         expect(result.rows).toEqual([]);
       }
@@ -368,10 +391,13 @@ describe('Configuration dashboard view', () => {
         when: { field: 'registration', equals: 'false' }
       }
     ]);
-    expect(templates.get('maintenance-repository').actions).toEqual([{
-      action: 'upgrade-target-repository',
-      context: ['repository']
-    }]);
+    expect(templates.get('maintenance-repository').actions).toEqual([
+      maintenanceNavigationContract['repository-upgrade-action']
+    ]);
+    const compilerVersions = dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
+      candidate.id === 'repository-settings').views[0];
+    expect(compilerVersions.encoding.actions[0].when)
+      .toEqual(maintenanceNavigationContract['repository-upgrade-action'].when);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
       .command).toBe('./cao.sh update --campaign {{campaign}}');

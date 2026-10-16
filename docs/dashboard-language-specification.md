@@ -1423,7 +1423,8 @@ cancellation remain available while waiting; abandoned lookups and their
 slow-search timers must not update later searches. Presenters support keyboard
 selection and disable execution until a mapped value
 passes command-template validation. Selection never executes a command; fresh,
-exact per-invocation host approval remains mandatory.
+exact per-invocation approval in the canvas remains mandatory. The native
+extension validates the reviewed command without a second host confirmation prompt.
 
 A CLI action may declare `copy-only: true`. Presenters must expose its resolved
 command for copying and must not execute it.

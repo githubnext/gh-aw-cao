@@ -26,6 +26,7 @@
       "filter-bar": false,
       "view-mode-control": false,
       "description": "Durable local commands. Closing a terminal detaches; use Cancel command to stop work.",
+      "route": { "navigation-page": "overview" },
       "views": [
         {
           "id": "commands-history",

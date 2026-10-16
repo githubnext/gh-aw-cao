@@ -2,10 +2,8 @@ import { joinSession } from "@github/copilot-sdk/extension";
 import { createDashboardExtension } from "./dashboard-extension.mjs";
 import { approveDashboardCommand } from "./approval.mjs";
 
-/** @type {import("@github/copilot-sdk").CopilotSession | undefined} */
-let session;
 const { config, closePreviews } = createDashboardExtension({
-  approveCommand: (request) => approveDashboardCommand(session, request),
+  approveCommand: approveDashboardCommand,
 });
 
 let shuttingDown = false;
@@ -23,4 +21,4 @@ const shutdown = () => {
 process.once("SIGTERM", shutdown);
 process.once("SIGINT", shutdown);
 
-session = await joinSession(config);
+await joinSession(config);

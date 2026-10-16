@@ -101,6 +101,7 @@ for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`${preview.url}/#page-maintenance`);
       await expect(page.locator('main')).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator('.cli-commands-navigation')).toBeHidden();
       await page.getByRole('button', { name: 'Add repository', exact: true }).click();
       const approval = page.getByRole('dialog', { name: 'Approve Add repository', exact: true });
       await approval.getByRole('searchbox', { name: 'Repository', exact: true }).fill('octo');
@@ -109,6 +110,20 @@ for (const width of [1440, 390]) {
       await expect.poll(() => runs).toBe(1);
       const back = page.getByRole('button', { name: 'Back to Commands', exact: true });
       await expect(page.getByRole('region', { name: 'Command console log', exact: true })).toBeVisible();
+      const activity = page.locator('.cli-commands-navigation');
+      await expect(activity).not.toHaveAttribute('hidden', '');
+      await expect(activity).toHaveText('');
+      await expect(activity.locator('.octicon-terminal')).toHaveCount(1);
+      const cancel = page.getByRole('button', { name: 'Cancel command', exact: true });
+      await expect(cancel).toBeVisible();
+      expect(await cancel.evaluate((button) => {
+        const actions = button.parentElement;
+        if (!actions) return false;
+        const style = getComputedStyle(actions);
+        const buttonStyle = getComputedStyle(button);
+        return style.right === '24px' && style.bottom === '24px'
+          && buttonStyle.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      })).toBe(true);
       await back.click();
       await expect(approval).not.toBeVisible();
       expect(cancellations).toBe(0);
@@ -124,6 +139,12 @@ for (const width of [1440, 390]) {
       await expect(history.getByRole('table')).toHaveCount(0);
       await expect(history).toContainText('running');
       await expect(history).toContainText('octo/example');
+      await page.getByRole('button', { name: 'Back to Overview', exact: true }).click();
+      await expect(page).toHaveURL(/#page-overview$/);
+      await expect(page.locator('.mobile-history-back')).toBeHidden();
+      if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+      await activity.click();
+      await expect(page).toHaveURL(/#page-commands$/);
       const command = history.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true }).first();
       await expect(command).toBeVisible();
       const queuedTime = history.locator('time').first();
@@ -134,6 +155,7 @@ for (const width of [1440, 390]) {
       expect(commandHref).toContain('#page-command?command=');
       finish?.();
       await expect(history).toContainText('completed');
+      await expect(activity).toBeHidden();
       expect(runs).toBe(1);
       const screenshot = testInfo.outputPath(`commands-${width}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });

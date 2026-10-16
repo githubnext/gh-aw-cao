@@ -129,7 +129,8 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.doesNotMatch(source, /github\.io|https:/);
   assert.match(entry, /process\.once\("SIGTERM", shutdown\)/);
   assert.doesNotMatch(entry, /process\.once\("exit"/);
-  assert.match(entry, /approveDashboardCommand\(session, request\)/);
+  assert.match(entry, /approveCommand: approveDashboardCommand/);
+  assert.doesNotMatch(entry, /session\.ui\.confirm|session\.ui\.elicitation/);
 });
 
 test("the complete plugin passes portable metadata, link, and bundled-resource validation", async () => {

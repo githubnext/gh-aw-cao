@@ -12,6 +12,7 @@ afterEach(() => {
 
 describe('worker command queue', () => {
   it('declares a single full-width lazy card table with server-backed filtering', () => {
+    expect(commands.pages[0].route).toEqual({ 'navigation-page': 'overview' });
     expect(commands.pages[0].views).toHaveLength(1);
     expect(commands.pages[0].views[0]).toMatchObject({
       id: 'commands-history', mark: 'table', layout: 'full', 'lazy-list': true,
@@ -29,6 +30,42 @@ describe('worker command queue', () => {
     expect(commands.pages[1].views[0]).toMatchObject({
       id: 'command-terminal', element: 'command-terminal', layout: 'full-view'
     });
+  });
+
+  it('returns from command output through Commands to Overview without cycling through history', () => {
+    const previousUrl = window.location.href;
+    window.history.replaceState({ centralAgenticOpsNavigationIndex: 4 }, '', '#page-command?command=42');
+    const root = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'command-back', title: 'Command navigation',
+          navigation: [{ label: 'Main', pages: ['overview'] }],
+          pages: [
+            { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+            ...commands.pages.map((page) => ({
+              id: page.id, kind: /** @type {const} */ ('custom'), title: page.title, route: page.route, views: []
+            }))
+          ]
+        }
+      },
+      sources: {}
+    });
+    document.body.append(root);
+    try {
+      const back = /** @type {HTMLButtonElement} */ (root.querySelector('.mobile-history-back'));
+      expect(back.getAttribute('aria-label')).toMatch(/^Back to Commands$/i);
+      back.click();
+      expect(window.location.hash).toBe('#page-commands');
+      expect(back.getAttribute('aria-label')).toBe('Back to Overview');
+      back.click();
+      expect(window.location.hash).toBe('#page-overview');
+      expect(back.hidden).toBe(true);
+    } finally {
+      disposeDashboard(root);
+      root.remove();
+      window.history.replaceState({}, '', previousUrl);
+    }
   });
 
   it('omits the declared interaction-only route without local queue support', () => {

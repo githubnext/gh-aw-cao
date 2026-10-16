@@ -1116,7 +1116,7 @@
       "name": "maintenance-repositories",
       "subject": "List each repository with recorded compiler versions and computed upgrade state.",
       "objective": "Expose recorded compiler versions and computed upgrade state per repository, with its GitHub home URL for inspection.",
-      "acceptance": "Return repository, repository-url linking to its GitHub home, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
+      "acceptance": "Return repository, repository-url, version lists, upgrade-required, upgrade-state, and upgrade-action-visible. Show Upgrade for outdated or unknown evidence; hide it for known-current repositories. Visibility grants no rollout authority.",
       "from": "maintenance-repository-versions",
       "compute": [
         {
@@ -1140,15 +1140,38 @@
           ]
         },
         {
-          "as": "upgrade-status-unavailable",
+          "as": "installed-version-unavailable",
           "function": "equals-any",
           "args": [
-            {
-              "field": "upgrade-state-unknown"
-            },
-            {
-              "value": 1
-            }
+            { "field": "gh-aw-version" },
+            { "value": "" },
+            { "value": "unknown" }
+          ]
+        },
+        {
+          "as": "compiler-versions-match",
+          "function": "equals-any",
+          "args": [
+            { "field": "gh-aw-version" },
+            { "field": "gh-aw-current-version" }
+          ]
+        },
+        {
+          "as": "known-current-versions",
+          "function": "if",
+          "args": [
+            { "field": "installed-version-unavailable" },
+            { "value": false },
+            { "field": "compiler-versions-match" }
+          ]
+        },
+        {
+          "as": "upgrade-status-unavailable",
+          "function": "if",
+          "args": [
+            { "field": "known-current-versions" },
+            { "value": false },
+            { "value": true }
           ]
         },
         {
@@ -1164,6 +1187,15 @@
             {
               "value": "Current"
             }
+          ]
+        },
+        {
+          "as": "upgrade-action-visible",
+          "function": "if",
+          "args": [
+            { "field": "should-upgrade" },
+            { "value": true },
+            { "field": "upgrade-status-unavailable" }
           ]
         },
         {
@@ -1198,6 +1230,9 @@
         },
         {
           "field": "upgrade-required"
+        },
+        {
+          "field": "upgrade-action-visible"
         },
         {
           "field": "upgrade-state"

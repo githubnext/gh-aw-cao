@@ -1849,6 +1849,10 @@
             "actions": [
               {
                 "action": "upgrade-target-repository",
+                "when": {
+                  "field": "upgrade-action-visible",
+                  "equals": true
+                },
                 "presentation": "cli-action",
                 "level": "operate",
                 "icon": "download",

@@ -578,13 +578,14 @@ export function attachCliActions(dashboard, actions, options = {}) {
     const scope = createFactoryScope();
     const navigation = h('a', {
       href: '#page-commands', className: 'cli-actions-toggle cli-commands-navigation',
-      'aria-label': 'Commands'
-    }, 'Commands');
+      'aria-label': 'Commands running', title: 'Commands running', hidden: true,
+      dataset: { mobileNavPageId: 'commands' }
+    }, octicon('terminal'));
     dashboard.querySelector('.report-actions')?.prepend(navigation);
     scope.bind(navigation);
     subscribeCanonicalDashboardView('cli-commands-navigation', ['cli-command-summary'], cliCommandSummaryContext, (sources) => {
       const running = sources['cli-command-summary']?.rows[0]?.running;
-      navigation.textContent = typeof running === 'number' ? `Commands (${running} running)` : 'Commands';
+      navigation.hidden = !(typeof running === 'number' && running > 0);
     }, undefined, { signal: scope.signal });
   }
 

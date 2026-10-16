@@ -618,6 +618,7 @@ describe('declarative dashboard queries', () => {
         'gh-aw-version': 'v0.89.0',
         'gh-aw-current-version': 'v0.89.0',
         'upgrade-required': 0,
+        'upgrade-action-visible': false,
         'upgrade-state': 'Current'
       },
       {
@@ -626,6 +627,7 @@ describe('declarative dashboard queries', () => {
         'gh-aw-version': 'v0.88.0, v0.89.0',
         'gh-aw-current-version': 'v0.89.0',
         'upgrade-required': 1,
+        'upgrade-action-visible': true,
         'upgrade-state': 'Upgrade recommended'
       },
       {
@@ -634,6 +636,7 @@ describe('declarative dashboard queries', () => {
         'gh-aw-version': '',
         'gh-aw-current-version': '',
         'upgrade-required': 0,
+        'upgrade-action-visible': true,
         'upgrade-state': 'Upgrade status unavailable'
       }
     ]);
