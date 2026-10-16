@@ -13,6 +13,16 @@ afterEach(() => {
 });
 
 describe('dashboard footer version', () => {
+  it('omits the redundant data timestamp and provenance even with the epoch fallback', () => {
+    const footer = renderDashboardFooter({
+      evaluatedAt: '1970-01-01T00:00:00.000Z', githubUrlBase, dashboardRepository
+    });
+    expect(footer.querySelector('.report-footer-status')).toBeNull();
+    expect(footer.querySelector('time')).toBeNull();
+    expect(footer.textContent).not.toContain('Last updated');
+    expect(footer.textContent).not.toContain('Generated deterministically');
+  });
+
   it('reactively shows an accessible download icon beside the existing version link', () => {
     const footer = renderDashboardFooter({
       evaluatedAt, commitSha: '0123456789abcdef0123456789abcdef01234567', githubUrlBase, dashboardRepository

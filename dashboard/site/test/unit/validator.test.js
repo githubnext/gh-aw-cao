@@ -648,7 +648,7 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    expect(header.config[key]).toBe(true);
+    header.config[key] = true;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     header.config[key] = 'true';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);

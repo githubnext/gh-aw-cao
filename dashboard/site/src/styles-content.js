@@ -128,8 +128,7 @@ tbody tr:hover { background: var(--canvas-subtle); }
 .provenance-list li + li { margin-top: 4px; }
 code { padding: 2px 4px; border-radius: 4px; background: var(--neutral-muted); font: .75rem var(--font-mono); }
 footer { min-height: 44px; display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; padding: 7px var(--dashboard-page-padding-inline); border-top: 1px solid var(--border); color: var(--muted); font-size: .75rem; }
-.report-footer-status { min-width: 0; display: flex; align-items: center; gap: 5px; }
-.report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
+.report-footer { justify-content: flex-end; }
 .report-footer-versions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
 .report-footer-versions > span { white-space: nowrap; }
 .report-footer-app-update { display: inline-flex; margin-inline-start: 6px; vertical-align: middle; color: var(--accent); }

@@ -1724,8 +1724,7 @@
           "element": "factory-header",
           "objective": "Show browser-local first-import progress instead of factory status until a complete snapshot is available; backend dashboards use the declarative factory evidence directly.",
           "config": {
-            "browser-first-load": true,
-            "data-status": true
+            "browser-first-load": true
           },
           "layout": "full"
         },

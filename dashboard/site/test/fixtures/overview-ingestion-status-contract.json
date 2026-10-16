@@ -1,6 +1,7 @@
 {
   "view": "overview-header",
   "config": "data-status",
+  "enabled": false,
   "cases": [
     { "phase": "unknown", "value": "Unknown", "icon": "question", "tone": "muted" },
     { "phase": "loading", "value": "Importing", "icon": "sync", "tone": "muted" },

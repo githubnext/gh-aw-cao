@@ -1,5 +1,4 @@
 import { h } from '../dom.js';
-import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 import { dashboardAppUpdateDownloading } from '../dashboard-app-update-state.js';
 import { octicon } from '../octicons.js';
@@ -21,7 +20,7 @@ function renderAppUpdateIndicator() {
 }
 
 /** @param {{ evaluatedAt: string, commitSha?: string | null, caoVersion?: string | null, ghAwVersion?: string | null, githubUrlBase: string, dashboardRepository: string | null }} options */
-export function renderDashboardFooter({ evaluatedAt, commitSha, caoVersion, ghAwVersion, githubUrlBase, dashboardRepository }) {
+export function renderDashboardFooter({ commitSha, caoVersion, ghAwVersion, githubUrlBase, dashboardRepository }) {
   const hasVersion = Boolean(commitSha) && commitSha !== 'development';
   const validShaFormat = hasVersion && /^[0-9a-f]{40}$/.test(/** @type {string} */ (commitSha));
   const linked = hasVersion && validShaFormat && Boolean(dashboardRepository);
@@ -35,13 +34,6 @@ export function renderDashboardFooter({ evaluatedAt, commitSha, caoVersion, ghAw
   return h(
     'footer',
     { className: 'report-footer' },
-    h(
-      'div',
-      { className: 'report-footer-status' },
-      h('span', null, 'Last updated'),
-      h('time', { dateTime: evaluatedAt }, formatMediumUtcDateTimeWithSuffix(new Date(evaluatedAt))),
-      h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
-    ),
     h(
       'span',
       { className: 'report-footer-versions' },

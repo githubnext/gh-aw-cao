@@ -49,7 +49,7 @@ test('mobile typography uses a larger base font size without changing desktop si
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('18px');
 });
 
-test('mobile footer hides update details and keeps versions within the viewport', async ({ page }) => {
+test('footer omits data update details and keeps versions within the viewport', async ({ page }) => {
   await page.evaluate(async ([stylesUrl, footerUrl]) => {
     const [{ getPrimerStyles }, { renderDashboardFooter }] = await Promise.all([
       import(stylesUrl),
@@ -72,9 +72,9 @@ test('mobile footer hides update details and keeps versions within the viewport'
   const status = footer.locator('.report-footer-status');
   const versions = footer.locator('.report-footer-versions');
   await page.setViewportSize({ width: 1200, height: 800 });
-  await expect(status).toBeVisible();
-  await expect(footer.locator('time')).toBeVisible();
-  await expect(footer.locator('.report-footer-provenance')).toBeVisible();
+  await expect(status).toHaveCount(0);
+  await expect(footer.locator('time')).toHaveCount(0);
+  await expect(footer.locator('.report-footer-provenance')).toHaveCount(0);
 
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 800 });

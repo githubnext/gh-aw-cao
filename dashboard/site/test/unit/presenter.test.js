@@ -2294,7 +2294,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.refresh-button')).toBeNull();
     expect(rendered.querySelector('.account-menu')).toBeNull();
     expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
-    expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
+    expect(rendered.querySelector('.report-footer-status')).toBeNull();
     expect(rendered.querySelector('.repository-link')).toBeNull();
   });
 
