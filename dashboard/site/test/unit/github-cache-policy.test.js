@@ -20,7 +20,8 @@ function subscribe(service) {
   controllers.push(controller);
   const listener = vi.fn();
   service.subscribe({ owner: 'githubnext', repo: 'gh-aw-cao' }, {
-    baseUrl: 'https://dashboard.example/api/v1/github/'
+    baseUrl: 'https://dashboard.example/api/v1/github/',
+    cacheIdentity: 'test-principal:cache-policy-session'
   }, listener, { signal: controller.signal });
   return { controller, listener };
 }
@@ -58,7 +59,13 @@ it('honors Retry-After on stale 200 responses without extending the original ret
   await vi.waitFor(() => expect(second.listener).toHaveBeenLastCalledWith(expect.objectContaining({
     source: 'network', status: 'stale', retryAt: now + 120_000
   })));
-  const [updated] = await readTransactions(indexedDB);
+  expect(second.listener.mock.calls[0]?.[0]).toMatchObject({ source: 'cache', status: 'stale', data });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch.mock.calls[1]?.[1]?.headers).toMatchObject({ 'If-None-Match': '"v1"' });
+  const receipts = await readTransactions(indexedDB);
+  expect(receipts).toHaveLength(1);
+  const [updated] = receipts;
+  expect(updated.id).toBe(original.id);
   expect(updated.freshUntil).toBe(now);
   expect(updated.staleUntil).toBeLessThanOrEqual(original.staleUntil);
 });
