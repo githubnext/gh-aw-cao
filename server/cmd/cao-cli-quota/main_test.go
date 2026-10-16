@@ -402,3 +402,52 @@ func TestReconcileWithNoReservationsIsNoop(t *testing.T) {
 		t.Fatalf("unexpected result: %v, %d", err, len(b.reservations))
 	}
 }
+
+func TestActiveCountIgnoresFinishedReservations(t *testing.T) {
+	b, _ := testBridge(t, 5000)
+	if got := b.activeCount(); got != 0 {
+		t.Fatalf("empty bridge active = %d", got)
+	}
+	ctx := context.Background()
+	first := b.handle(ctx, request{ID: 1, Operation: "admit"})
+	b.handle(ctx, request{ID: 2, Operation: "admit"})
+	if got := b.activeCount(); got != 2 {
+		t.Fatalf("active = %d, want 2", got)
+	}
+	b.reservations[first.ReservationID].finished = true
+	if got := b.activeCount(); got != 1 {
+		t.Fatalf("active after finish = %d, want 1", got)
+	}
+}
+
+func TestReserveAllReservesEveryResourceAndRollsBackOnFailure(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	for _, resource := range []string{"core", "graphql"} {
+		if err := b.service.Observe(ctx, bucket(current.identity, resource), current.observations[resource]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	held, err := b.reserveAll(ctx, current.identity, []string{"core", "graphql"}, 50, 100)
+	if err != nil || len(held) != 2 {
+		t.Fatalf("reserveAll = %d buckets, %v", len(held), err)
+	}
+	for _, r := range held {
+		if err := b.service.Release(ctx, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// graphql has no observation under this identity, so its reservation fails
+	// after core succeeded and core must be rolled back.
+	if err := b.service.Observe(ctx, bucket("gh-other", "core"), current.observations["core"]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.reserveAll(ctx, "gh-other", []string{"core", "graphql"}, 50, 100); err == nil {
+		t.Fatal("expected failure for unobserved graphql bucket")
+	}
+	state, err := b.service.State(ctx, bucket("gh-other", "core"))
+	if err != nil || state.Reserved != 0 {
+		t.Fatalf("core not rolled back: %+v, %v", state, err)
+	}
+}

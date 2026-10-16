@@ -176,12 +176,7 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		return b.unknown(req.ID)
 	}
 	concurrency, cost, floor := req.limits()
-	active := 0
-	for _, held := range b.reservations {
-		if !held.finished {
-			active++
-		}
-	}
+	active := b.activeCount()
 	available := concurrency
 	var retry time.Time
 	for _, resource := range resources {
@@ -206,22 +201,44 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		result.Reason = "concurrency"
 		return result
 	}
-	var held []githubquota.Reservation
-	for _, resource := range resources {
-		r, reserveErr := b.service.Reserve(ctx, bucket(current.identity, resource), githubquota.ReservationRequest{
-			EstimatedCost: cost, MinimumRemain: floor, TTL: 20 * time.Minute,
-		})
-		if reserveErr != nil {
-			for _, previous := range held {
-				_ = b.service.Release(ctx, previous)
-			}
-			return b.unknown(req.ID)
-		}
-		held = append(held, r)
+	held, err := b.reserveAll(ctx, current.identity, resources, cost, floor)
+	if err != nil {
+		return b.unknown(req.ID)
 	}
 	result.ReservationID = held[0].ID
 	b.reservations[result.ReservationID] = &reservation{buckets: held}
+	quotaLog.Printf("admitted reservation: buckets=%d active=%d capacity=%d", len(held), active, result.Capacity)
 	return result
+}
+
+// activeCount returns the number of reservations whose command has not finished.
+func (b *bridge) activeCount() int {
+	active := 0
+	for _, held := range b.reservations {
+		if !held.finished {
+			active++
+		}
+	}
+	return active
+}
+
+// reserveAll reserves every resource or none: a failure releases the buckets
+// already reserved.
+func (b *bridge) reserveAll(ctx context.Context, identity string, resources []string, cost, floor int) ([]githubquota.Reservation, error) {
+	var held []githubquota.Reservation
+	for _, resource := range resources {
+		r, err := b.service.Reserve(ctx, bucket(identity, resource), githubquota.ReservationRequest{
+			EstimatedCost: cost, MinimumRemain: floor, TTL: 20 * time.Minute,
+		})
+		if err != nil {
+			for _, previous := range held {
+				_ = b.service.Release(ctx, previous)
+			}
+			return nil, err
+		}
+		held = append(held, r)
+	}
+	return held, nil
 }
 
 // reconcile settles finished reservations against a fresh observation. Never
