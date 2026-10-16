@@ -180,6 +180,29 @@ unions, and limited queries MUST NOT be partitioned this way. This adapter
 batching MUST NOT raise or bypass the input and output limits of dashboard
 queries or truncate canonical evidence.
 
+Storage-native aggregate execution MAY scan a single canonical record store in
+bounded batches when the query planner proves that its canonical projection and
+all aggregate ancestors are row-local. The native plan MUST reuse the canonical
+projection and authored filters and computations; it MUST NOT select behavior by
+page, view, or query identity. Supported reducers are `count`, `distinct-count`,
+and `sum`, including their authored conditional filters. One accumulator MUST
+retain exact distinct identities across the entire scan and add numeric values in
+source order, rather than combine independently evaluated batch aggregates.
+Ancestors with aggregation, ordering, limits, joins, unions, windows, predictions,
+or temporal expansion, and unsupported reducers, MUST retain ordinary execution.
+
+Native scans MUST use bounded readonly storage batches, share the request's
+cancellation, deadline, and operation budget, and bound both intermediate groups
+and distinct identities per reducer by the query input-row limit. Final
+projection, ordering, limiting, and output-row enforcement MUST remain in the
+query engine. Equivalent aliases MAY reuse a result only within the same request;
+different predicates MUST NOT share it. Canonical run lookups SHOULD be reused
+without rebuilding the complete join index for every batch. A failed projection
+or reduction MUST NOT publish partial counts, and unavailable canonical stores
+MUST remain unavailable. This storage-native plan is distinct from partitioning
+an authored aggregate with the row-local adapter batching described above; it
+does not change the limits of ordinary Dashboard Language execution.
+
 The MCP tool inventory SHALL aggregate calls by tool and workflow before
 materializing its shared intermediate. Its final tool totals MUST preserve
 observation counts, distinct calling workflows, request and response byte
