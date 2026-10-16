@@ -87,7 +87,7 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 ARG VERSION=dev
 ARG REVISION=unknown
 ARG CREATED=unknown
-ARG GH_AW_VERSION=v0.92.3
+ARG GH_AW_VERSION=v0.92.4
 ARG TARGETARCH
 LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
       org.opencontainers.image.description="Hosted CAO collection worker and backfill runtime" \
