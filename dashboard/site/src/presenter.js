@@ -43,7 +43,7 @@ import { enablePullRefresh } from './components/pull-refresh.js';
 import { resolveModeIndicator } from './components/mode-indicator.js';
 import { createDebug } from './debug.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
-import { dashboardDataBackend, viewBackendAvailable, viewBackendHidden, viewBackendUnavailableMessage } from './view-availability.js';
+import { dashboardDataBackend, pageCapabilityAvailable, viewBackendAvailable, viewBackendHidden, viewBackendUnavailableMessage } from './view-availability.js';
 import { dashboardViewSourceNames as getViewSources, normalizeViewFilters, viewDataSourceNames, viewFilterControls, viewFilterSourceNames } from './view-filter-contract.js';
 import { captureCardFilterState, renderCardFilterBar, restoreCardFilterState } from './components/card-filter-bar.js';
 
@@ -169,7 +169,7 @@ export function dashboardPageLazySourceNames(document, pageId) {
  */
 export function dashboardPagePaginatedSourceBindings(document, pageId) {
   const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return {};
+  if (!page || !pageCapabilityAvailable(page)) return {};
   const payload = getBuiltInPagePayload(page, document.dashboard.views);
   return Object.fromEntries((payload.views ?? []).flatMap((view, viewIndex) => {
     if (!isPlainObject(view)
@@ -196,7 +196,7 @@ export function dashboardTableSourceNames(document) {
  */
 export function renderDashboard(input) {
   const { document, sources: rawSources } = input;
-  const pages = document.dashboard.pages;
+  const pages = document.dashboard.pages.filter(pageCapabilityAvailable);
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
@@ -276,9 +276,13 @@ export function renderDashboard(input) {
     (pageId, options) => {
       const pageStartedAt = monotonicNow();
       let renderCount = 0;
-      const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
-      const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
-      if (!resolvedPage()) return null;
+      const pageIndex = document.dashboard.pages.findIndex((candidate) => candidate.id === pageId);
+      if (pageIndex < 0) return null;
+      const resolvedPage = () => {
+        const page = document.dashboard.pages[pageIndex];
+        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+        return page;
+      };
       const renderPreparedPage = () => {
         const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
         const initialViewMode = defaultViewMode(pagePayload.views ?? []);

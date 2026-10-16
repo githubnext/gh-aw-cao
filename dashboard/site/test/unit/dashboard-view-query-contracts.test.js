@@ -21,6 +21,7 @@ const serverSourceNames = new Set(SERVER_SOURCE_VALUES);
 describe('Commands view contract', () => {
   it('resolves durable card rows through the production worker and declares the console route', async () => {
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === commandsContract.page);
+    expect(page.requires).toEqual(commandsContract.requires);
     const view = page.views.find((/** @type {{ id: string }} */ view) => view.id === commandsContract.view);
     expect(view).toMatchObject({
       mark: 'table', layout: 'full', 'lazy-list': true,
@@ -31,6 +32,7 @@ describe('Commands view contract', () => {
     const template = dashboard['card-templates'].find((/** @type {{ id: string }} */ template) => template.id === commandsContract.card);
     expect(template).toMatchObject({ icon: 'terminal', title: { field: 'id' }, status: { field: 'status' } });
     const outputPage = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'command');
+    expect(outputPage.requires).toEqual(commandsContract.requires);
     expect(outputPage.route).toMatchObject({ 'hash-query-parameter': 'command', 'navigation-page': commandsContract.page });
     expect(outputPage.views[0]).toMatchObject({ mark: 'element', element: commandsContract.element, data: { sources: [] } });
     configureCliQueue(true);

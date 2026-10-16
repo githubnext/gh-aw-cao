@@ -2,7 +2,7 @@ import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 import { createDebug } from './debug.js';
-import { dashboardDataBackend, viewBackendAvailable } from './view-availability.js';
+import { dashboardDataBackend, pageCapabilityAvailable, viewBackendAvailable } from './view-availability.js';
 import { dashboardViewSourceNames as getViewSources, viewDataSourceNames } from './view-filter-contract.js';
 
 const debugDashboardChunks = createDebug('dashboard-chunks');
@@ -138,7 +138,7 @@ export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = 
  */
 export function dashboardPageSourceNames(document, pageId, viewMode, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
-  if (!page) return [];
+  if (!page || backend !== 'all' && !pageCapabilityAvailable(page)) return [];
   const indexed = backendSourceIndex(page, backend)?.sourceNames ?? stringList(page['source-names']);
   if (!dashboardPageIsLoaded(page) && !viewMode && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);
@@ -175,7 +175,7 @@ export function dashboardPageSourceNames(document, pageId, viewMode, backend = d
  */
 export function dashboardPageAllSourceNames(document, pageId, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
-  if (!page) return [];
+  if (!page || backend !== 'all' && !pageCapabilityAvailable(page)) return [];
   const names = new Set(dashboardPageSourceNames(document, pageId, undefined, backend));
   const payload = dashboardPagePayload(page, document.dashboard.views);
   for (const view of payload.views ?? []) {
@@ -202,7 +202,7 @@ function viewMatchesMode(view, mode) {
  */
 export function dashboardPageLazySourceNames(document, pageId, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
-  if (!page) return [];
+  if (!page || backend !== 'all' && !pageCapabilityAvailable(page)) return [];
   const indexed = backendSourceIndex(page, backend)?.lazySourceNames ?? stringList(page['lazy-source-names']);
   if (!dashboardPageIsLoaded(page) && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);
@@ -221,7 +221,7 @@ export function dashboardPageLazySourceNames(document, pageId, backend = dashboa
 export function dashboardTableSourceNames(document, pageId, backend = dashboardDataBackend()) {
   if (typeof pageId === 'string' && pageId.length > 0) {
     const page = dashboardPage(document, pageId);
-    if (!page) return [];
+    if (!page || backend !== 'all' && !pageCapabilityAvailable(page)) return [];
     const indexed = backendSourceIndex(page, backend)?.tableSourceNames ?? stringList(page['table-source-names']);
     if (!dashboardPageIsLoaded(page) && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
     const payload = dashboardPagePayload(page, document.dashboard.views);

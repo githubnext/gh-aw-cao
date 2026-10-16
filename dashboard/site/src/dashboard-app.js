@@ -20,6 +20,7 @@
       } from "./dashboard-chunks.js";
       import { createDebug } from "./debug.js";
       import { loadDashboardPageChunk, loadDashboardSchema } from "./dashboard-definition.js";
+      import { pageCapabilityAvailable } from "./view-availability.js";
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
@@ -152,7 +153,7 @@
        */
       const ensureDashboardPageLoaded = async (pageId) => {
         const page = dashboardDocument.dashboard.pages.find((candidate) => candidate.id === pageId);
-        if (!page) return;
+        if (!page || !pageCapabilityAvailable(page)) return;
         if (dashboardPageIsLoaded(page)) {
           if (!loadedDashboardPages.has(pageId)) {
             mergeDashboardQueries([], collectDashboardTableSourceNames(dashboardDocument, pageId));
@@ -212,7 +213,7 @@
           const route = hash.slice("#page-".length);
           const queryIndex = route.indexOf("?");
           const pageId = decodeURIComponent(queryIndex === -1 ? route : route.slice(0, queryIndex));
-          return dashboardDocument.dashboard.pages.some((page) => page.id === pageId) ? pageId : "overview";
+          return dashboardDocument.dashboard.pages.some((page) => page.id === pageId && pageCapabilityAvailable(page)) ? pageId : "overview";
         } catch {
           return "overview";
         }

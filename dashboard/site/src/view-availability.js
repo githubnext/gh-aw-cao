@@ -1,10 +1,20 @@
 import { createDebug } from './debug.js';
+import { cliQueueAvailable } from './backend-mode.js';
 
 /**
  * @typedef {'static'|'hosted'} DashboardDataBackend
  */
 
 const debugViewAvailability = createDebug('view-availability');
+
+/** @param {unknown} page */
+export function pageCapabilityAvailable(page) {
+  if (typeof page !== 'object' || page === null || Array.isArray(page)) return false;
+  const requirement = /** @type {Record<string, unknown>} */ (page).requires;
+  if (requirement === undefined) return true;
+  if (typeof requirement !== 'object' || requirement === null || Array.isArray(requirement)) return false;
+  return /** @type {{ capability?: unknown }} */ (requirement).capability === 'cli-queue' && cliQueueAvailable();
+}
 
 /** @param {Document} [document] @returns {DashboardDataBackend} */
 export function dashboardDataBackend(document = globalThis.document) {

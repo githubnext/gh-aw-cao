@@ -5,6 +5,54 @@ import { expect, test } from '@playwright/test';
 const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
 
 for (const width of [1440, 390]) {
+  test(`Commands is absent without queue support at ${width}px`, async ({ page }, testInfo) => {
+    const preview = await startDashboardServer({
+      workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
+      repository: 'acme/control', port: 0,
+      output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+      downloadData: async (/** @type {string} */ destination) => {
+        await mkdir(destination, { recursive: true });
+        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+          repositories: {
+            metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
+            rows: [{ organization: 'acme', repository: 'control' }]
+          },
+          workflows: {
+            metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
+            rows: [{ organization: 'acme', repository: 'control', workflow: 'demo.md', 'workflow-name': 'Demo' }]
+          }
+        }));
+      }
+    });
+    /** @type {string[]} */
+    const queueRequests = [];
+    page.on('request', (request) => {
+      if (request.url().includes('__cli_commands') || /dashboard-pages\/commands?\.json/.test(request.url())) {
+        queueRequests.push(request.url());
+      }
+    });
+    try {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${preview.url}/#page-commands`);
+      await expect(page.locator('#page-title')).toHaveText('Overview');
+      await expect(page.locator('.first-load-overlay')).toHaveCount(0);
+      await expect(page.locator('a[href="#page-commands"]')).toHaveCount(0);
+      await expect(page.locator('[data-page-id="commands"], [data-page-id="command"]')).toHaveCount(0);
+      if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+      await expect(page.getByRole('link', { name: 'Commands', exact: true })).toHaveCount(0);
+      await page.goto(`${preview.url}/#page-command?command=123`);
+      await expect(page.locator('#page-title')).toHaveText('Overview');
+      await expect(page.getByRole('dialog', { name: 'Command console log', exact: true })).toHaveCount(0);
+      expect(queueRequests).toEqual([]);
+      const screenshot = testInfo.outputPath(`commands-unavailable-${width}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      await testInfo.attach(`Dashboard without command support (${width}px)`, { path: screenshot, contentType: 'image/png' });
+    } finally {
+      await page.goto('about:blank');
+      await preview.close();
+    }
+  });
+
   test(`Commands retains detached work and reacts to completion at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     /** @type {string[]} */

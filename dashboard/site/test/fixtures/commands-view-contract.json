@@ -1,5 +1,6 @@
 {
   "page": "commands",
+  "requires": { "capability": "cli-queue" },
   "view": "commands-history",
   "query": "command-queue",
   "card": "command",
