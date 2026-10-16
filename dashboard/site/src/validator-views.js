@@ -1353,7 +1353,8 @@ export function validateTableActions(encoding, encodingNode, mark, sourceName, p
         const command = state.declaredCliActions.get(action.action)?.command;
         const templateFields = typeof command === 'string' ? cliActionTemplateFields(command) : [];
         const contextFieldNames = action.context.filter((field) => typeof field === 'string');
-        if (templateFields.length === 0 || templateFields.some((field) => !contextFieldNames.includes(field))) {
+        if (typeof command !== 'string' || cliActionTemplateFields(command, { includeContext: true }).length === 0
+          || templateFields.some((field) => !contextFieldNames.includes(field))) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action context must include every command template field.', `${actionPath}.context`));
         }
       }

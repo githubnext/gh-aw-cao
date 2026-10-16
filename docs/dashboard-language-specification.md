@@ -1367,6 +1367,20 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
+CLI command text supports literal `{{field}}` substitutions, not expressions or
+shell evaluation. Row fields remain bounded, validated command tokens.
+`{{cao-url}}`, `{{cao-repository}}`, and `{{cao-repository-url}}` are reserved
+host-context placeholders: the public dashboard base URL with a trailing slash,
+the control repository slug, and its GitHub repository URL, respectively.
+They MUST NOT be required as query-produced row fields, supplied by selectors,
+or overridden by browser request values. Public dashboards resolve their own
+page base URL; local executable hosts resolve the published Pages URL or an
+explicit public URL override. A local capability URL MUST NOT become a backlink.
+Context URLs MUST use HTTPS without credentials, query, fragment, whitespace,
+or command delimiters. Preview and queue resolution MUST use the same context;
+missing context MUST disable execution and fail queue admission. Retries MUST
+re-resolve current context and reject a changed approved command.
+
 A list may bind its primary `action` to every worker-produced source row with
 `list.action-context`, a non-empty sequence of unique scalar field names.
 The approval dialog lists one fully resolved CLI command per row, and explicit

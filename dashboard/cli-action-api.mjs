@@ -9,7 +9,7 @@ function failure(status, message) {
 }
 
 /** Resolve only dashboard-declared actions, never browser-supplied executable text. */
-export function resolveQueuedCliAction(dashboard, payload) {
+export function resolveQueuedCliAction(dashboard, payload, context = {}) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)
       || Object.keys(payload).some((key) => !["id", "arguments", "values", "input", "idempotencyKey"].includes(key))
       || typeof payload.id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(payload.id)
@@ -40,7 +40,7 @@ export function resolveQueuedCliAction(dashboard, payload) {
   }
   let rendered;
   try {
-    rendered = renderCliActionCommand(action.command, values);
+    rendered = renderCliActionCommand(action.command, values, context);
   } catch {
     throw failure(400, "Invalid CLI action template values.");
   }
@@ -134,7 +134,7 @@ function integer(value, fallback, maximum) {
 }
 
 /** Capability-path and host validation remain owned by the local server. */
-export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrigin, readJsonRequest, sendJson }) {
+export function createCliActionApi({ queue, getDashboard, getTemplateContext = () => ({}), approve, isAllowedOrigin, readJsonRequest, sendJson }) {
   let approvalPending = false;
   const read = async (request) => {
     if (!isAllowedOrigin(request.headers.origin)
@@ -167,7 +167,7 @@ export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrig
   };
   const enqueue = async (request) => {
     const payload = await read(request);
-    const invocation = resolveQueuedCliAction(getDashboard(), payload);
+    const invocation = resolveQueuedCliAction(getDashboard(), payload, getTemplateContext());
     await authorize(invocation);
     return queue.enqueue(invocation, payload.idempotencyKey ?? request.headers["idempotency-key"]);
   };
@@ -226,7 +226,7 @@ export function createCliActionApi({ queue, getDashboard, approve, isAllowedOrig
           }
           const invocation = resolveQueuedCliAction(getDashboard(), {
             id: original.actionId, arguments: original.arguments, values: original.values, input: original.input,
-          });
+          }, getTemplateContext());
           if (invocation.command !== original.command) throw failure(409, "CLI action declaration has changed.");
           await authorize(invocation);
           const retried = await queue.retry(id, payload.idempotencyKey ?? request.headers["idempotency-key"]);

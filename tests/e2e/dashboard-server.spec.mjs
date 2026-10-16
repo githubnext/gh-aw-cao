@@ -13,6 +13,7 @@ import {
   normalizeDashboardPageChunk,
 } from "../../dashboard/site/src/dashboard-chunks.js";
 import { scrollRenderedViewsIntoView } from "./dashboard-deployed-refresh-helpers.mjs";
+import { serverDashboardPageExclusionReason } from "./dashboard-server-page-coverage.mjs";
 
 const SERVER_LOCAL_ONLY_PAGES = new Map([
   ["configuration", "configuration-policy is provided by the local preview fixture, not the PostgreSQL server"],
@@ -153,6 +154,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         pages.push(mergeDashboardPage(definition, normalizeDashboardPageChunk(await chunkResponse.json()).page));
       }
       expect(pages.length).toBeGreaterThan(0);
+      expect(await page.evaluate(() => Reflect.get(globalThis, "__CLI_QUEUE__"))).not.toBe(true);
 
       for (const definition of pages) {
         const localOnlyReason = SERVER_LOCAL_ONLY_PAGES.get(definition.id);
@@ -173,9 +175,18 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         page.on("response", onResponse);
         try {
           await waitForQueryBudget(page);
+          const exclusionReason = serverDashboardPageExclusionReason(definition);
           await page.evaluate((hash) => { window.location.hash = hash; },
             dashboardAssessmentPageHash(definition, dashboard));
           const activePage = page.locator(`[data-page-id="${definition.id}"]`);
+          if (exclusionReason) {
+            await expect(page.locator('[data-page-id="overview"]')).toBeVisible();
+            await expect(activePage).toHaveCount(0);
+            await expect(page.locator(".cli-commands-navigation:visible")).toHaveCount(0);
+            result.status = "unsupported";
+            result.reason = exclusionReason;
+            continue;
+          }
           await expect(activePage).toBeVisible({ timeout: 30_000 });
           await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 30_000 });
           await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
@@ -252,17 +263,18 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
     } finally {
       const passed = results.filter((result) => result.status === "passed").length;
       const skipped = results.filter((result) => result.status === "skipped").length;
+      const unsupported = results.filter((result) => result.status === "unsupported").length;
       const failed = results.some((result) => result.status === "failed");
       const summary = [
         "### Go Postgres dashboard page checks",
         "",
-        `**${blocker || failed ? "FAILED" : "PASSED"}** — ${passed}/${results.length - skipped} server-backed pages passed; ${skipped} local-only page(s) skipped.`,
+        `**${blocker || failed ? "FAILED" : "PASSED"}** — ${passed}/${results.length - skipped - unsupported} server-backed pages passed; ${skipped} local-only page(s) skipped; ${unsupported} capability-gated route(s) verified unavailable.`,
         ...(blocker ? ["", `Setup failed: ${blocker.replaceAll("\n", " ")}`] : []),
         "",
-        "| Page | Status | Queries | Errors |",
+        "| Page | Status | Queries | Errors / scope reason |",
         "|---|---|---:|---|",
         ...results.map((result) =>
-          `| ${result.pageId} | ${result.status.toUpperCase()} | ${result.queries} | ${result.errors.map((error) => error.replaceAll("|", "\\|").replaceAll("\n", " ")).join("; ") || "—"} |`),
+          `| ${result.pageId} | ${result.status.toUpperCase()} | ${result.queries} | ${[...result.errors, ...(result.reason ? [result.reason] : [])].map((error) => error.replaceAll("|", "\\|").replaceAll("\n", " ")).join("; ") || "—"} |`),
         "",
       ].join("\n");
       await writeFile(resolve(outputDirectory, "summary.md"), summary);

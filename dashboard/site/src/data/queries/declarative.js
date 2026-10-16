@@ -861,9 +861,21 @@ function lazyValue(consume) {
  */
 function runDashboardQuery(definition, sources, budget) {
   const sourceNames = [definition.from, ...(definition.union ?? [])];
-  const input = sourceNames.flatMap((sourceName) => /** @type {Row[]} */ (sources[sourceName].rows));
+  const operators = compileRowOperators(definition);
+  const materializesRows = Boolean(definition.joins?.length)
+    || operators.some((operator) => operator.op === 'compute');
+  const input = sourceNames.length === 1
+    ? /** @type {Row[]} */ (sources[definition.from].rows)
+    : sourceNames.flatMap((sourceName) => /** @type {Row[]} */ (sources[sourceName].rows));
   enforceLimit(input.length, 'max-input-rows', sourceNames.join(', '));
   let rows = timeQueryStage(definition.name, 'from', input.length, budget, () => {
+    // Joins and computed fields allocate their output rows; copying every
+    // input first only adds a redundant full-row pass, including per scan batch.
+    if (materializesRows) {
+      if (sourceNames.length > 1) budget.spend(input.length);
+      else budget.checkpoint();
+      return input;
+    }
     budget.spend(input.length);
     return input.map((row) => ({ ...row }));
   });
@@ -875,7 +887,6 @@ function runDashboardQuery(definition, sources, budget) {
       joinedRows: joinedRows.length
     });
   }
-  const operators = compileRowOperators(definition);
   for (const operator of operators) {
     rows = timeQueryStage(
       definition.name,

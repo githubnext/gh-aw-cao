@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/model"
 )
 
 func TestPackageRepositoryLinkParity(t *testing.T) {
@@ -52,6 +54,17 @@ func TestPackageRepositoryLinkParity(t *testing.T) {
 				pkg.RepositoryLink.Href != tc.href ||
 				pkg.RepositoryLink.Label != "Open example/packages on GitHub" {
 				t.Fatalf("wrong safe link: %+v", pkg.RepositoryLink)
+			}
+			link, ok := row["repository-link"].(model.Row)
+			if !ok {
+				t.Fatalf("repository-link must be a native row object, got %T", row["repository-link"])
+			}
+			if !reflect.DeepEqual(link, model.Row{
+				"relation": "repository",
+				"href":     tc.href,
+				"label":    "Open example/packages on GitHub",
+			}) {
+				t.Fatalf("wrong native repository link: %#v", link)
 			}
 			rowJSON, err := json.Marshal(row["repository-link"])
 			if err != nil {

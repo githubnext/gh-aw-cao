@@ -4,7 +4,7 @@ export function runUpdate({ arguments_, updateCaoCampaigns }) {
 
 export function parseUpdateArguments(ghAwOptions, UsageError) {
   const addValueFlags = new Set(['--dir', '-d', '--engine', '-e', '--stop-after', '--append', '--gh-aw-ref']);
-  const valueFlags = new Set([...addValueFlags, '--cool-down', '--repo', '-r', '--org', '--repos']);
+  const valueFlags = new Set([...addValueFlags, '--cool-down', '--repo', '-r', '--org', '--repos', '--pr-message']);
   const arguments_ = [];
   let ref;
   let campaign;

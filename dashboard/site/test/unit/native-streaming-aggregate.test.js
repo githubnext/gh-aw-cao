@@ -46,6 +46,23 @@ afterEach(async () => {
 });
 
 describe('native streaming canonical aggregates', () => {
+  it('keeps workflow-level firewall evidence within the unchanged operation budget at deployed scale', async () => {
+    await seed(350001, false, 10000);
+    const name = 'firewall-domain-workflows';
+    const budget = createDashboardQueryBudget();
+    const result = await queryIndexedDatabaseSources(
+      indexedDB, {}, authoritativeDashboard.dashboard.queries.filter(
+        (/** @type {{ name: string }} */ query) => query.name === name
+      ), [name], { budget }
+    );
+    expect(result[name].rows).toEqual([{
+      domain: 'example.com', organization: 'org', repository: 'repo', workflow: 'test.md',
+      'workflow-source-url': null, runs: 1, accepted: 0, blocked: 350001
+    }]);
+    expect(result[name].metadata.availability).toBe('available');
+    expect(budget.operations).toBeLessThan(5000000);
+  }, 240000);
+
   it('executes both production firewall view aliases above the 200000 observation boundary', async () => {
     await seed(200001, false, 10000);
     const compiled = compileDashboardViewPayloadQueries(firewall, 'firewall', {

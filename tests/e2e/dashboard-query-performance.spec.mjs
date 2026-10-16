@@ -271,29 +271,30 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
       for (const definition of queries) {
         const name = definition?.name;
         if (typeof name !== "string" || !name) continue;
+        const loadQuery = async (pagination) => {
+          try {
+            return await loadCanonicalDashboardPage([name], context, pagination);
+          } catch (error) {
+            throw new Error(`Dashboard query "${name}" failed: ${error.message}`, { cause: error });
+          }
+        };
         let chunkStartedAt = performance.now();
-        let sources = await loadCanonicalDashboardPage(
-          [name],
-          context,
-          { [name]: { limit: chunkSize } },
-        );
+        let sources = await loadQuery({ [name]: { limit: chunkSize } });
         const firstChunkMs = performance.now() - chunkStartedAt;
         let source = sources[name];
         if (!source) throw new Error(`Query "${name}" did not return its named source.`);
         let continuationChunkMs = null;
         if (source.continuationToken) {
           chunkStartedAt = performance.now();
-          sources = await loadCanonicalDashboardPage(
-            [name],
-            context,
-            { [name]: { limit: chunkSize, continuationToken: source.continuationToken } },
-          );
+          sources = await loadQuery({
+            [name]: { limit: chunkSize, continuationToken: source.continuationToken },
+          });
           continuationChunkMs = performance.now() - chunkStartedAt;
           source = sources[name];
           if (!source) throw new Error(`Query "${name}" continuation omitted its named source.`);
         }
         const fillStartedAt = performance.now();
-        const filledSources = await loadCanonicalDashboardPage([name], context);
+        const filledSources = await loadQuery();
         const filled = filledSources[name];
         if (!filled) throw new Error(`Query "${name}" fill omitted its named source.`);
         timings.push({

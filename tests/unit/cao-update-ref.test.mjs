@@ -142,6 +142,8 @@ for (const args of [
   ["--campaign", "dependabot;echo"], ["--campaign", "Dependabot"],
   ["--campaign", "dependabot", "--campaign", "root"],
   ["--campaign=dependabot", "--campaign=dependabot"],
+  ["--pr-message"], ["--pr-message", "--force"],
+  ["main", "--pr-message", "CAO update"],
 ]) {
   test(`cao update rejects ${args.join(" ")} before any side effects`, async () => {
     await assert.rejects(updateCaoCampaigns(args, {
@@ -181,12 +183,13 @@ test("selected release update retains release preparation and refreshes only the
     const beforeRoot = await readFile(recordPaths.get(catalog), "utf8");
     const start = calls.length;
     let releaseUpdates = 0;
-    const result = await updateCaoCampaigns(["--campaign", "dependabot", "--major", "--cool-down", "0"], {
+    const prMessage = "Requested through [CAO](https://github.com/githubnext/gh-aw-cao) to update the dependabot campaign.";
+    const result = await updateCaoCampaigns(["--campaign", "dependabot", "--major", "--cool-down", "0", "--pr-message", prMessage], {
       execute(command, args) {
         if (args.includes(`/repos/${catalog}/tags`)) return { ...ok, stdout: "v0.0.2\n" };
         if (args.includes(`/repos/${catalog}/releases/tags/v0.0.2`)) return { ...ok, stdout: "v0.0.2\n" };
         if (args[1] === "update") {
-          assert.deepEqual(args, ["aw", "update", `https://github.com/${catalog}/dependabot`, "--major", "--cool-down", "0"]);
+          assert.deepEqual(args, ["aw", "update", `https://github.com/${catalog}/dependabot`, "--major", "--cool-down", "0", "--pr-message", prMessage]);
           const record = JSON.parse(readFileSync(recordPaths.get(`${catalog}/dependabot`), "utf8"));
           assert.equal(record.source, `${catalog}/dependabot@v0.0.2`);
           releaseUpdates += 1;
@@ -304,6 +307,16 @@ test("release option values are not interpreted as refs", () => {
   assert.deepEqual(parseUpdateArguments(options, Error), {
     ref: undefined, includePrereleases: true, updateOptions: options.slice(0, -1),
   });
+});
+
+test("PR messages are forwarded as option values, not update refs", () => {
+  const message = "Requested through [CAO](https://github.com/githubnext/gh-aw-cao) to update workflows.";
+  for (const option of [["--pr-message", message], [`--pr-message=${message}`]]) {
+    const options = ["--create-pull-request", ...option];
+    assert.deepEqual(parseUpdateArguments(["--campaign", "activity", ...options], Error), {
+      ref: undefined, campaign: "activity", includePrereleases: false, updateOptions: options,
+    });
+  }
 });
 
 for (const [ref, defaultBranch] of [["main", "master"], ["master", "main"], ["main", "release/default"]]) {
