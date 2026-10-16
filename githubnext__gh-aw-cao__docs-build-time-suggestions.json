@@ -1,61 +1,7 @@
 {
   "source_sha": "55bb730caca0e609d6074146c25b467b3e839020",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-16T10:42:40Z",
-      "worker_run_id": 38888481812,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        38888227359,
-        38887035432,
-        38884484626,
-        38883148256,
-        38883036953,
-        38881765630,
-        38880420321,
-        38877656235,
-        38876897045,
-        38876510336,
-        38874195614,
-        38871048661,
-        38869711428,
-        38868963660,
-        38868680670,
-        38867288108,
-        38866105775,
-        38864550032,
-        38864038769,
-        38862275278
-      ],
-      "docs_window": {
-        "start": "2026-10-16T06:37:34Z",
-        "end": "2026-10-16T10:35:23Z"
-      },
-      "docs_success_count": 20,
-      "docs_comparable_success_count": 6,
-      "docs_deployed_success_count": 6,
-      "dashboard_completed_count": 20,
-      "dashboard_success_count": 14,
-      "dashboard_success_run_ids": [
-        38882881781,
-        38876685954,
-        38868790117,
-        38865858009,
-        38863840822,
-        38860528528,
-        38858288863,
-        38855449902,
-        38852328230,
-        38851551055,
-        38850292556,
-        38848474549,
-        38846977223,
-        38845019414
-      ],
-      "decision": "noop_not_actionable",
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T06:37:34Z through 2026-10-16T10:35:23Z, all 20 runs concluded success; 15 were schedule freshness checks that skipped build and deploy, and 5 were workflow_run callbacks plus 1 schedule run that completed both build and deploy. Six comparable successful deployed docs runs (38883148256, 38876897045, 38868963660, 38866105775, 38864038769, 38862275278) on the current workflow source showed trusted median queue time 0.0s (p90 0.0s), docs workflow execution 75.0s (p90 80.5s), schedule-freshness 8.0s (p90 9.0s), build 42.0s (p90 49.5s), deploy 10.5s (p90 15.0s), Set up Node.js 5.5s (p90 6.5s), Restore node_modules 5.0s (p90 6.5s), Build documentation 13.5s (p90 15.0s), Restore cached CAO Dashboard 2.0s (p90 2.5s), and Upload Pages artifact 5.5s (p90 6.5s). Trusted job metadata showed Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact skipped in all six comparable docs runs. Bounded logs from docs run 38883148256 confirmed actions/setup-node restored the npm cache (~293 MB), actions/cache restored node_modules (~283 MB), and the fixed-key central-agentic-ops-dashboard cache hit and restored successfully (~25 MB) before Astro built the static site and the Pages artifact uploaded. Related current-source cao-dashboard.yml workflow_run builds (38882881781, 38876685954, 38868790117, 38865858009, 38863840822) showed trusted median queue time 0.0s (p90 0.0s), full execution 115.0s (p90 140.0s), dashboard build 100.0s (p90 123.8s), Restore collected activity data 3.0s (p90 4.0s), Install dashboard build dependencies 3.0s (p90 4.0s), Upgrade fallback activity data 68.0s (p90 95.2s), Assemble Dashboard Language site 3.0s (p90 3.6s), and Upload dashboard artifact 4.0s (p90 5.6s). Trusted dashboard job metadata showed Download fallback activity data and Bootstrap empty activity data skipped in all five comparable runs after cache restore. Bounded logs from dashboard run 38882881781 confirmed a cache hit for cao-activity-v5-38880099460-1 and npm ci --prefix dashboard/site --ignore-scripts --omit=dev adding only 6 packages in 1s. No new dependency-installation or caching change is actionable: the verified cache hits already eliminate docs npm ci, dashboard dependency installation remains a ~3 second slice, and no category-scoped change is evidenced to save at least 60 seconds or 15 percent of the 75-second median docs workflow execution time without overlapping larger existing bottlenecks already represented by open issues #16825, #17171, #18158, and #16054."
-    },
     {
       "evaluated_at": "2026-10-16T09:46:17Z",
       "worker_run_id": 38881974316,
@@ -1268,6 +1214,61 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. In the latest 20 completed docs.yml runs from 2026-10-15T10:48:53Z through 2026-10-15T14:37:02Z, 16 runs concluded success and 4 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 2 comparable successful schedule runs executed both build and deploy: 38724388157 on source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d and 38731662863 on source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. Trusted run and job metadata for those two runs showed median queue time 0s, docs workflow execution 112s (p90 112.8s), build job 41.5s (p90 44.3s), and deploy job 47s (p90 47.8s). One additional successful run, 38723065420 on push at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d, built documentation but skipped deploy, so it was disclosed as a non-comparable outlier. The remaining 13 successful schedule runs and 4 workflow_run callbacks stopped after schedule-freshness with build and deploy skipped; a bounded log read from run 38752943277 confirmed the skip message was \"Documentation build skipped because the deployed docs and dashboard are current.\" Bounded build-log reads from runs 38724388157 and 38731662863 confirmed cache hits for the Linux node/npm caches and for the fixed-key central-agentic-ops-dashboard cache, so neither comparable docs build exercised the fallback dashboard-run lookup or artifact download path. In the latest 20 completed cao-dashboard.yml runs, the only successful dashboard generation sample was manual workflow_dispatch run 38675339180 on older source SHA 17b08b9099a9aa5062174d6cae81c7a4fed33907; all current-source workflow_run callbacks were skipped. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, and there is only 1 successful dashboard-generation sample in the relevant window, this evaluation stopped without an actionable reusable-dashboard suggestion."
+    },
+    {
+      "evaluated_at": "2026-10-16T10:56:53Z",
+      "worker_run_id": 38890012497,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38889788704,
+        38889605391,
+        38888227359,
+        38887035432,
+        38884484626,
+        38883148256,
+        38883036953,
+        38881765630,
+        38880420321,
+        38877656235,
+        38876897045,
+        38876510336,
+        38874195614,
+        38871048661,
+        38869711428,
+        38868963660,
+        38868680670,
+        38867288108,
+        38866105775,
+        38864550032
+      ],
+      "docs_window": {
+        "start": "2026-10-16T07:01:01Z",
+        "end": "2026-10-16T10:49:47Z"
+      },
+      "docs_success_count": 20,
+      "docs_comparable_success_count": 5,
+      "docs_deployed_success_count": 5,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 15,
+      "dashboard_success_run_ids": [
+        38889522543,
+        38882881781,
+        38876685954,
+        38868790117,
+        38865858009,
+        38863840822,
+        38860528528,
+        38858288863,
+        38855449902,
+        38852328230,
+        38851551055,
+        38850292556,
+        38848474549,
+        38846977223,
+        38845019414
+      ],
+      "decision": "noop_not_actionable",
+      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T07:01:01Z through 2026-10-16T10:49:47Z, all 20 runs succeeded; 15 schedule freshness checks skipped build and deploy, and 5 same-source workflow_run runs executed build and deploy (38889788704, 38883148256, 38876897045, 38868963660, 38866105775). Comparable docs runs showed median queue 0.0s (p90 0.0s), docs workflow execution 70.0s (p90 79.0s), build 40.0s (p90 48.8s), deploy 10.0s (p90 12.2s), Restore node_modules 5.0s (p90 5.6s), Build documentation 13.0s (p90 15.0s), Restore cached CAO Dashboard 2.0s (p90 2.0s), and Upload Pages artifact 5.0s (p90 6.6s). Bounded logs from docs run 38889788704 verified npm and node_modules cache hits, a central-agentic-ops-dashboard cache hit, Astro building 75 pages in 7.71s, and Pagefind finishing in 277ms. Related same-source cao-dashboard.yml runs (38889522543, 38882881781, 38876685954, 38868790117, 38865858009, 38863840822) showed median queue 0.0s (p90 0.0s), workflow execution 126.0s (p90 144.5s), build 109.5s (p90 130.0s), Install dashboard build dependencies 3.5s (p90 4.5s), Upgrade fallback activity data 81.0s (p90 99.5s), Assemble Dashboard Language site 2.5s (p90 3.5s), and Upload dashboard artifact 4.5s (p90 6.0s). Bounded logs from dashboard run 38889522543 verified a cache hit for cao-activity-v5-38886717478-1, npm ci adding 6 packages in 3s, validation of gh-aw-logs.sqlite at 298.2 MiB, and copying 229 activity shards totaling 206.4 MiB. No actionable Astro-generation change is evidenced: the docs Build documentation step remains a stable ~13 second slice, the dashboard site-assembly step remains ~2.5 seconds, and no workflow-only change in this category is evidenced to save at least 60 seconds or 15 percent of the 70-second median docs execution time without weakening correctness, freshness, or deployment safety."
     }
   ]
 }
