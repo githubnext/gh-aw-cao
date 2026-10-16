@@ -318,7 +318,7 @@ export async function startDashboardData(options) {
     }
     const subscriptionSourceNames = [...new Set(sourceNames)].toSorted();
     return subscribeSources({
-      subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
+      subscriptionId: `sources:${subscriptionSourceNames.join(",")}:${++nextViewSubscriptionId}`,
       sourceNames: subscriptionSourceNames,
       pageOptions
     });

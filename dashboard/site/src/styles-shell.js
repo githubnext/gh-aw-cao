@@ -329,9 +329,11 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .tooltip-trigger { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
 .tooltip-trigger:hover { background: var(--neutral-muted); color: var(--fg); }
 .tooltip-trigger .octicon { width: 14px; height: 14px; }
-.dashboard-current-status .tooltip-trigger { color: var(--success); }
+.dashboard-current-status .tooltip-trigger { color: var(--muted); }
+.dashboard-current-status[data-tone="success"] .tooltip-trigger { color: var(--success); }
+.dashboard-current-status[data-tone="attention"] .tooltip-trigger { color: var(--attention); }
+.dashboard-current-status[data-tone="danger"] .tooltip-trigger { color: var(--danger); }
 .dashboard-current-status[hidden] { display: none; }
-.dashboard-current-status-limited .tooltip-trigger { color: var(--attention); }
 .dashboard-current-status-refreshing .tooltip-trigger { color: var(--muted); }
 .dashboard-current-status-refreshing .octicon-sync { animation: dashboard-refresh-spin 1s linear infinite; }
 .dashboard-ingestion-status { display: grid; gap: 6px; margin-top: 20px; font-size: .75rem; }

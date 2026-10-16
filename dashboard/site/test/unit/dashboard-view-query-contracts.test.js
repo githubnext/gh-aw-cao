@@ -141,7 +141,7 @@ function declaredQueryReferences(value) {
   if (Array.isArray(value)) return value.flatMap(declaredQueryReferences);
   const configured = /** @type {Record<string, unknown>} */ (value);
   return Object.entries(configured).flatMap(([key, nested]) => {
-    if ((key === 'from' || key === 'source' || key === 'partial-source' || key === 'query') && typeof nested === 'string' && queryNames.has(nested)) {
+    if (['from', 'source', 'partial-source', 'query', 'freshness-source', 'health-source'].includes(key) && typeof nested === 'string' && queryNames.has(nested)) {
       return [nested];
     }
     if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
@@ -1101,7 +1101,7 @@ describe('dashboard view query contracts', () => {
     expect(SERVER_SOURCE_VALUES).toContain('collection-health');
     expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'ingestion-health')?.from)
       .toBe('collection-health');
-    const sourceNames = ['ingestion-queue-sizes'];
+    const sourceNames = ['ingestion-queue-sizes', 'dashboard-ingestion-health'];
     const available = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
@@ -1110,7 +1110,7 @@ describe('dashboard view query contracts', () => {
         'collection-health': {
           source: 'collection-health',
           metadata: { ...metadata, availability: 'available' },
-          rows: [{ configured: true, 'queue-depth': 8, 'pending-tasks': 2, 'backfill-queued-run-tasks': 13 }]
+          rows: [{ configured: true, health: 'degraded', 'queue-depth': 8, 'pending-tasks': 2, 'backfill-queued-run-tasks': 13 }]
         }
       }
     }));
@@ -1119,6 +1119,7 @@ describe('dashboard view query contracts', () => {
       { queue: 'In flight', tasks: 2 },
       { queue: 'Backfill admitted (total)', tasks: 13 }
     ]);
+    expect(available['dashboard-ingestion-health'].rows).toEqual([{ configured: true, health: 'degraded' }]);
     const unconfigured = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries', queries, sourceNames,
       sources: {
@@ -1133,6 +1134,7 @@ describe('dashboard view query contracts', () => {
       operation: 'execute-dashboard-queries', queries, sourceNames, sources: {}
     }));
     expect(denied['ingestion-queue-sizes'].metadata.availability).toBe('unavailable');
+    expect(denied['dashboard-ingestion-health'].metadata.availability).toBe('unavailable');
   });
 
   it('registers GitHub quota usage as a server-owned query source', () => {

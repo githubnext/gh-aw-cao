@@ -53,7 +53,7 @@ async function openEditor(page) {
   }
   await page.goto(`${server.url}/?local-preview=canvas#page-query-editor`);
   if (dataBackend === 'indexeddb') {
-    await expect(page.locator('.dashboard-current-status .tooltip-trigger')).toHaveAttribute('aria-label', 'Dashboard data is current');
+    await expect(page.locator('.dashboard-current-status .tooltip-trigger')).toHaveAttribute('aria-label', 'Dashboard data is stale');
   } else {
     await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
   }

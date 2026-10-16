@@ -14,7 +14,8 @@ test('hosted rate-limit notice reacts to request recovery without duplicating al
   await expect(page.getByRole('alert')).toHaveCount(1);
   await expect(page.getByRole('alert')).toHaveText('Dashboard is rate limited. Please try again shortly.');
   await expect(page.getByRole('button', { name: 'Dashboard is rate limited' })).toBeVisible();
-  await expect(page.locator('.dashboard-current-status .octicon-alert')).toHaveCount(1);
+  await expect(page.locator('.dashboard-current-status .octicon-stop')).toHaveCount(1);
+  await expect(page.locator('.dashboard-current-status')).toHaveAttribute('data-tone', 'danger');
   await page.evaluate(async (url) => {
     const { updateRateLimitNotification } = await import(url);
     updateRateLimitNotification('/api/v1/query', 200);

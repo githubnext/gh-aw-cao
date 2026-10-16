@@ -1,6 +1,18 @@
 {
   "queries": [
     {
+      "name": "dashboard-ingestion-health",
+      "subject": "Expose the current collection state for the global ingestion indicator.",
+      "objective": "Distinguish reported ingestion failure or recovery from the age of retained workflow evidence.",
+      "acceptance": "Use the authorized server collection-health classification, not cumulative failures or browser refresh time. Missing or unauthorized health remains unknown and static dashboards do not request this source.",
+      "from": "collection-health",
+      "select": [
+        { "field": "configured" },
+        { "field": "health" }
+      ],
+      "limit": 1
+    },
+    {
       "name": "dashboard-data-freshness",
       "subject": "Find the newest workflow activity timestamp in retained canonical data.",
       "objective": "Warn globally when the ingested workflow evidence has not advanced for 24 hours.",

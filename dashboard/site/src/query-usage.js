@@ -100,6 +100,13 @@ export function buildDashboardQueryUsageGraph(dashboard) {
     });
   }
 
+  if (isRecord(dashboard['data-status'])) {
+    const node = addNode('data-status:$.dashboard.data-status');
+    labels.set(node, 'Dashboard data status');
+    roots.add(node);
+    addQueryEdges(node, [dashboard['data-status']['freshness-source'], dashboard['data-status']['health-source']]);
+  }
+
   if (Array.isArray(dashboard.callouts)) {
     dashboard.callouts.forEach((callout, index) => {
       if (!isRecord(callout) || !isRecord(callout['visible-when'])) return;

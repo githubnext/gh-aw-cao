@@ -2,6 +2,11 @@
   "view": "overview-header",
   "config": "data-status",
   "enabled": false,
+  "indicator": {
+    "freshness-source": "dashboard-data-freshness",
+    "health-source": "dashboard-ingestion-health",
+    "stale-after-hours": 24
+  },
   "cases": [
     { "phase": "unknown", "value": "Unknown", "icon": "question", "tone": "muted" },
     { "phase": "loading", "value": "Importing", "icon": "sync", "tone": "muted" },

@@ -407,7 +407,9 @@ export function splitDashboardDocument(source, options = {}) {
     const visibility = isPlainObject(callout?.['visible-when']) ? callout['visible-when'] : null;
     return typeof visibility?.source === 'string' ? [visibility.source] : [];
   });
-  const shellQueries = new Set(resolveDashboardQuerySources(queryDefinitions, calloutSources));
+  const status = isPlainObject(document.dashboard['data-status']) ? document.dashboard['data-status'] : {};
+  const statusSources = [status['freshness-source'], status['health-source']].filter((name) => typeof name === 'string');
+  const shellQueries = new Set(resolveDashboardQuerySources(queryDefinitions, [...calloutSources, ...statusSources]));
   const shellDefinitions = queryDefinitions.filter((query) => shellQueries.has(query.name ?? ''));
   if (shellDefinitions.length) dashboard.queries = shellDefinitions;
   else delete dashboard.queries;

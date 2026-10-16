@@ -69,7 +69,7 @@ describe('refresh error', () => {
     expect(status.hidden).toBe(true);
     updateRateLimitNotification('/api/v1/query', 429);
     expect(status.hidden).toBe(false);
-    expect(status.querySelector('.octicon-alert')).not.toBeNull();
+    expect(status.querySelector('.octicon-stop')).not.toBeNull();
     expect(status.querySelector('button')?.getAttribute('aria-label')).toBe('Dashboard is rate limited');
     expect(status.querySelector('[role="tooltip"]')?.textContent).toContain('Please try again shortly');
     expect(document.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(1);

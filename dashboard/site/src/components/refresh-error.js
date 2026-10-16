@@ -2,10 +2,12 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatMediumUtcDateTime, renderCloseButton, renderTooltip } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
-import { derived, effect, render } from '../reactive.js';
+import { derived, effect, render, state } from '../reactive.js';
 import { dashboardDataStatus } from '../dashboard-data-status.js';
 import { isDashboardRateLimited } from '../rate-limit-notification.js';
 import { createFactoryScope } from './factory-elements.js';
+import { usesRemoteDataBackend } from '../remote-data-backend.js';
+import { timestampMilliseconds } from '../data/model/schema.js';
 
 const debugRefreshError = createDebug('refresh-error');
 
@@ -69,11 +71,37 @@ export function renderDashboardSnapshotStatus(snapshot) {
 
 /**
  * @param {{ createdAt: string } | null} snapshot
- * @param {{ refreshing?: boolean }} [options]
+ * @param {{ refreshing?: boolean, failed?: boolean, configuration?: import('../dashboard-data-status.js').DashboardStatusConfiguration, sources?: Record<string, import('../presenter.js').LogicalSourceInput>, loadPageSources?: import('../presenter.js').PageSourceLoader }} [options]
  */
-export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = {}) {
+export function renderDashboardCurrentStatus(snapshot, { refreshing = false, failed = false, configuration, sources = {}, loadPageSources } = {}) {
   const scope = createFactoryScope();
-  const phase = refreshing ? 'cached' : snapshot ? 'ready' : 'loading';
+  const phase = failed ? 'stale' : refreshing ? 'cached' : snapshot ? 'ready' : 'loading';
+  const freshness = state(/** @type {import('../presenter.js').LogicalSourceInput | undefined} */ (sources[configuration?.['freshness-source'] ?? '']));
+  const health = state(/** @type {import('../presenter.js').LogicalSourceInput | undefined} */ (sources[configuration?.['health-source'] ?? '']));
+  const clock = state(Date.now());
+  const remote = usesRemoteDataBackend(document);
+  if (configuration) {
+    const timer = setInterval(() => clock.set(Date.now()), 60_000);
+    scope.signal.addEventListener('abort', () => clearInterval(timer), { once: true });
+    const bindings = [
+      { name: configuration['freshness-source'], result: freshness },
+      ...(remote && configuration['health-source'] ? [{ name: configuration['health-source'], result: health }] : [])
+    ];
+    for (const { name, result } of bindings) {
+      if (!loadPageSources?.subscribeBackgroundSources) continue;
+      /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} next */
+      const update = (next) => {
+        if (!scope.signal.aborted) result.set(next[name]);
+      };
+      void loadPageSources.subscribeBackgroundSources([name], { signal: scope.signal, onUpdate: update })
+        .then(update)
+        .catch((error) => {
+          if (scope.signal.aborted) return;
+          debugRefreshError({ event: 'status-subscription-failed', source: name, errorName: error instanceof Error ? error.name : 'unknown' });
+          result.set(undefined);
+        });
+    }
+  }
   const trigger = h('button', { type: 'button', className: 'tooltip-trigger' });
   const description = h('span', { className: 'tooltip-description' });
   const status = renderTooltip({
@@ -85,16 +113,48 @@ export function renderDashboardCurrentStatus(snapshot, { refreshing = false } = 
   });
   const presentation = derived(() => {
     const limited = isDashboardRateLimited();
-    return { limited, ...dataStatusPresentation(phase, snapshot, limited) };
+    if (failed || limited) return {
+      ...dataStatusPresentation(phase, snapshot, limited),
+      icon: 'stop', tone: 'danger'
+    };
+    if (!configuration) return dataStatusPresentation(phase, snapshot, limited);
+    const latest = freshness.get();
+    const collection = health.get();
+    const row = collection?.metadata?.availability !== 'unavailable' ? collection?.rows?.[0] : undefined;
+    if (row?.configured === true && row.health === 'degraded') return {
+      icon: 'stop', tone: 'danger', label: 'Data ingestion is broken',
+      detail: 'Collection reports degraded ingestion, with an unresolved failure or dead-lettered work. Check Ingestion for diagnostics.'
+    };
+    const value = latest?.metadata?.availability !== 'unavailable' ? latest?.rows?.[0]?.['latest-data-at'] : undefined;
+    const timestamp = typeof value === 'number' && Number.isFinite(value) ? value : timestampMilliseconds(value);
+    if (timestamp !== null && clock.get() - timestamp >= configuration['stale-after-hours'] * 3_600_000) return {
+      icon: 'alert', tone: 'attention', label: 'Dashboard data is stale',
+      detail: `The latest workflow evidence is from ${formatMediumUtcDateTime(timestamp)}, at least ${configuration['stale-after-hours']} hours old. Inactivity alone does not prove ingestion is broken.`
+    };
+    if (row?.configured === true && row.health === 'recovering') return {
+      icon: 'alert', tone: 'attention', label: 'Data ingestion is recovering',
+      detail: 'Collection reports queued or in-flight ingestion work. Check Ingestion for progress.'
+    };
+    if (refreshing) return dataStatusPresentation(phase, snapshot, limited);
+    if (timestamp === null || timestamp > clock.get() || (remote && configuration['health-source'] && (row?.configured !== true || row.health !== 'healthy'))) return {
+      icon: 'question', tone: 'muted', label: 'Data ingestion status is unknown',
+      detail: timestamp === null || timestamp > clock.get()
+        ? 'Workflow evidence freshness is unavailable. A successful dashboard refresh does not verify upstream ingestion.'
+        : 'Workflow evidence is fresh, but collection health is unavailable or not configured. Upstream ingestion health could not be verified.'
+    };
+    return {
+      icon: 'check-circle-fill', tone: 'success', label: 'Dashboard data is current',
+      detail: `Workflow evidence is current as of ${formatMediumUtcDateTime(timestamp)}.${remote ? ' Collection reports healthy ingestion.' : ' Upstream collection health is not available in this static dashboard.'}`
+    };
   }, { signal: scope.signal });
   render(trigger, () => octicon(presentation.get().icon), { signal: scope.signal });
   render(description, () => presentation.get().detail, { signal: scope.signal });
   effect(() => {
-    const { limited, label } = presentation.get();
+    const { tone, label } = presentation.get();
     trigger.setAttribute('aria-label', label);
-    status.classList.toggle('dashboard-current-status-limited', limited);
-    status.classList.toggle('dashboard-current-status-refreshing', !limited && refreshing);
-    status.hidden = !snapshot && !limited;
+    status.dataset.tone = tone;
+    status.classList.toggle('dashboard-current-status-refreshing', tone === 'muted' && refreshing);
+    status.hidden = !configuration && !snapshot && !isDashboardRateLimited() && !failed;
   }, { signal: scope.signal });
   scope.bind(status);
   return status;

@@ -408,7 +408,7 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
   for (const query of findDeadDashboardQueries(dashboard)) {
     errors.push(createError(
       ERROR_CODES.unusedQuery,
-      `query "${query.name}" is not used by a view, callout, or another retained query.`,
+      `query "${query.name}" is not used by a view, callout, data status, or another retained query.`,
       query.path
     ));
   }
@@ -425,6 +425,7 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
   );
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
+  validateDataStatus(dashboard['data-status'], getValueNodeByKey(dashboardNode, 'data-status'), errors);
 
   if (!Array.isArray(dashboard.pages) || dashboard.pages.length === 0) {
     errors.push(createError(
@@ -917,6 +918,41 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
       }
       validateSiteCalloutVisibility(callout['visible-when'], getValueNodeByKey(calloutNode, 'visible-when'), `${path}.visible-when`, errors);
     });
+  }
+
+  /**
+   * @param {unknown} status
+   * @param {unknown} statusNode
+   * @param {ValidationError[]} errors
+   */
+  function validateDataStatus(status, statusNode, errors) {
+    if (status === undefined) return;
+    const path = '$.dashboard.data-status';
+    if (!isPlainObject(status)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data-status must be a mapping.', path));
+      return;
+    }
+    validateObjectKeys(statusNode, ['freshness-source', 'health-source', 'stale-after-hours'], path, errors);
+    /** @type {Array<[string, string[]]>} */
+    const bindings = [
+      ['freshness-source', ['latest-data-at']],
+      ['health-source', ['configured', 'health']]
+    ];
+    for (const [key, fields] of bindings) {
+      const source = status[key];
+      if (key === 'health-source' && source === undefined) continue;
+      validateSource(source, `${path}.${key}`, errors);
+      if (typeof source === 'string' && !state.declaredQueries.has(source)) {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'data-status sources must reference declared queries.', `${path}.${key}`));
+      }
+      if (typeof source === 'string' && state.declaredQueries.has(source)
+          && fields.some((field) => !sourceFieldNames(source)?.includes(field))) {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, `data-status source must expose ${fields.join(', ')}.`, `${path}.${key}`));
+      }
+    }
+    if (typeof status['stale-after-hours'] !== 'number' || !Number.isFinite(status['stale-after-hours']) || status['stale-after-hours'] <= 0) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'stale-after-hours must be positive and finite.', `${path}.stale-after-hours`));
+    }
   }
 
   /**

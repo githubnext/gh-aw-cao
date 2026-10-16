@@ -5,6 +5,11 @@
     "title": "Central Agentic Ops Dashboard",
     "description": "Authoritative declarative dashboard document for built-in and custom pages in the presenter prototype.",
     "repository": "githubnext/gh-aw-cao",
+    "data-status": {
+      "freshness-source": "dashboard-data-freshness",
+      "health-source": "dashboard-ingestion-health",
+      "stale-after-hours": 24
+    },
     "callouts": [
       {
         "id": "stale-data",

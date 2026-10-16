@@ -352,9 +352,9 @@ test('async Factory Overview elements receive their chunked query definitions', 
   await expect(overview.getByText('Weekly rhythm', { exact: true })).toBeVisible();
   await expect(overview.locator('.dashboard-ingestion-status')).toHaveCount(0);
   await expect(page.locator('.report-footer-status')).toHaveCount(0);
-  const status = page.getByRole('button', { name: 'Dashboard data is current', exact: true });
+  const status = page.getByRole('button', { name: 'Dashboard data is stale', exact: true });
   await expect(status).toHaveCount(1);
-  await expect(status.locator('.octicon-check-circle-fill')).toBeVisible();
+  await expect(status.locator('.octicon-alert')).toBeVisible();
   await expect(overview.locator('.factory-station').first()).toContainText('Factory health');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
@@ -362,20 +362,35 @@ test('async Factory Overview elements receive their chunked query definitions', 
     if (viewport.width < 768) await page.getByRole('button', { name: 'Select view', exact: true }).click();
     await expect(status).toBeVisible();
     await status.hover();
-    await expect(page.locator('#dashboard-current-status-tooltip')).toContainText('Dashboard data is current as of');
-    if (viewport.width < 768) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+    await expect(page.locator('#dashboard-current-status-tooltip')).toContainText('The latest workflow evidence is from');
     const path = test.info().outputPath(`factory-overview-${viewport.width}.png`);
     await page.screenshot({ path, fullPage: true });
     await test.info().attach(`factory-overview-${viewport.width}`, {
       path,
       contentType: 'image/png'
     });
+    if (viewport.width < 768) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+  }
+});
+
+test('fresh upstream evidence shows green on desktop and mobile', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00Z'));
+  await page.goto(`${origin}/#page-overview`);
+  const status = page.getByRole('button', { name: 'Dashboard data is current', exact: true });
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    if (viewport.width < 768) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+    await expect(status).toBeVisible();
+    await expect(status.locator('.octicon-check-circle-fill')).toBeVisible();
+    await expect(page.locator('.dashboard-current-status')).toHaveAttribute('data-tone', 'success');
+    await status.hover();
+    await expect(page.locator('#dashboard-current-status-tooltip')).toContainText('Workflow evidence is current as of');
   }
 });
 
 test('dashboard status preserves refresh failure and recovery without the Overview duplicate', async ({ page }) => {
   await page.goto(`${origin}/#page-overview`);
-  const status = page.getByRole('button', { name: 'Dashboard data is current', exact: true });
+  const status = page.getByRole('button', { name: 'Dashboard data is stale', exact: true });
   await expect(status).toBeVisible();
   await expect(page.locator('.dashboard-ingestion-status')).toHaveCount(0);
   await page.route(`${origin}/payload-hashes.json`, (route) => route.fulfill({
@@ -386,11 +401,13 @@ test('dashboard status preserves refresh failure and recovery without the Overvi
   await page.evaluate(() => window.dispatchEvent(new Event('dashboard-refresh-request')));
   await expect(page.locator('.dashboard-snapshot-status')).toContainText('last complete snapshot');
   await expect(page.locator('.source-refresh-error')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Dashboard refresh failed', exact: true }).locator('.octicon-stop')).toBeVisible();
+  await expect(page.locator('.dashboard-current-status')).toHaveAttribute('data-tone', 'danger');
   await expect(page.locator('.dashboard-ingestion-status')).toHaveCount(0);
   await page.unroute(`${origin}/payload-hashes.json`);
   await page.evaluate(() => window.dispatchEvent(new Event('dashboard-refresh-request')));
   await expect(status).toBeVisible();
-  await expect(status.locator('.octicon-check-circle-fill')).toBeVisible();
+  await expect(status.locator('.octicon-alert')).toBeVisible();
   await expect(page).toHaveURL(`${origin}/#page-overview`);
 });
 

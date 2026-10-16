@@ -273,7 +273,7 @@
       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
       * @param {boolean} [prepared]
-      * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+      * @param {import('./presenter.js').PageSourceLoader} [loadPageSources]
       * @param {() => void} [retryRefresh]
       * @param {{ createdAt: string } | null} [snapshot]
       */
@@ -307,9 +307,14 @@
         }
         if (snapshot && state === "stale") {
           dashboard.prepend(renderDashboardSnapshotStatus(snapshot));
-        } else if (snapshot || usesRemoteDataBackend(document)) {
+        }
+        if (snapshot || usesRemoteDataBackend(document) || dashboardDocument.dashboard["data-status"]) {
           dashboard.querySelector(".dashboard-horizon")?.after(renderDashboardCurrentStatus(snapshot, {
-            refreshing: state === "cached"
+            refreshing: state === "cached",
+            failed: state === "stale" || Boolean(retryRefresh && state === "loading"),
+            configuration: dashboardDocument.dashboard["data-status"],
+            sources,
+            loadPageSources
           }));
         }
         if (retryRefresh && (state === "stale" || (state === "loading" && !snapshot))) {

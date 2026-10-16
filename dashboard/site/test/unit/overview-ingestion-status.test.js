@@ -79,7 +79,7 @@ describe('Overview ingestion status', () => {
     updateRateLimitNotification('/api/v1/query', 429);
     expect(status.querySelector('strong')?.textContent).toBe('Rate limited');
     expect(status.querySelector('.octicon-alert')).not.toBeNull();
-    expect(headerStatus.querySelector('.octicon-alert')).not.toBeNull();
+    expect(headerStatus.querySelector('.octicon-stop')).not.toBeNull();
     updateRateLimitNotification('/api/v1/query', 200);
     expect(status.querySelector('strong')?.textContent).toBe('Current');
   });

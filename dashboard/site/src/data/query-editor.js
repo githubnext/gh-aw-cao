@@ -34,8 +34,8 @@ export function validateQueryEditorDocument(source) {
   if (dashboard.pages.length !== 1 || dashboard.pages[0].kind !== 'custom') {
     return invalid('The query editor requires exactly one custom page.', '$.dashboard.pages');
   }
-  if (dashboard['cli-actions'] || dashboard.views || dashboard.callouts || dashboard.navigation) {
-    return invalid('Preview documents cannot declare actions, reusable views, callouts, or navigation.', '$.dashboard');
+  if (dashboard['cli-actions'] || dashboard.views || dashboard.callouts || dashboard.navigation || dashboard['data-status']) {
+    return invalid('Preview documents cannot declare actions, reusable views, callouts, navigation, or data status.', '$.dashboard');
   }
   if (dashboard['card-templates']?.some((card) => 'actions' in card || 'drill' in card)) {
     return invalid('Preview card templates cannot declare actions or drill navigation.', '$.dashboard.card-templates');

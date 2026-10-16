@@ -231,7 +231,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Mapping | Allowed keys |
 |---|---|
 | Root | `language-version`, `dashboard` |
-| `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `cli-actions`, `horizon`, `defaults`, `units`, `queries`, `card-templates`, `views`, `pages`, `navigation` |
+| `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `cli-actions`, `horizon`, `data-status`, `defaults`, `units`, `queries`, `card-templates`, `views`, `pages`, `navigation` |
 | Card template | `id`, `icon`, `icon-field`, `title`, `labels`, `details`, `drill` |
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
 | Callout `visible-when` | `source`, `field`, `equals`, `older-than-hours` |
@@ -1006,6 +1006,30 @@ The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, 
 
 ## 8. Provenance, Freshness, and Data States
 
+### Global ingestion indicator
+
+`dashboard.data-status` optionally binds the shell indicator to a declared
+`freshness-source` query exposing one row with `latest-data-at` (ISO timestamp or
+Unix milliseconds), a positive finite `stale-after-hours` threshold, and an
+optional `health-source` query exposing one row with `configured` and `health`.
+Both queries remain shell dependencies when page definitions are chunked.
+The health query is requested only on server-backed dashboards and respects
+the existing authorization boundary.
+
+The indicator subscribes to these query results for its mounted lifetime and
+reevaluates evidence age once per minute. Green means evidence is fresh and,
+when hosted health is configured, collection reports `healthy`. Amber means
+evidence is at least the threshold age or collection reports `recovering`.
+Red means collection reports `degraded`, a dashboard refresh failed, or requests
+are blocked by rate limiting. Missing, invalid, future, or unavailable evidence
+and unavailable hosted health remain unknown, not healthy. Stale evidence alone
+does not prove ingestion failure. The accessible label and tooltip explain the
+state, using upstream evidence time rather than browser import time.
+
+This clock comparison and lifecycle feedback are shared shell presentation:
+Dashboard Language still owns evidence selection, aggregation, and collection
+health projection; the renderer must not query or reconstruct source rows.
+
 ### 8.1 Data-Set Metadata
 
 Each database table or query result is accompanied by metadata outside the dashboard YAML:
@@ -1742,7 +1766,7 @@ Validation proceeds conceptually through YAML syntax, document count, structural
 - **DLS-VAL-003:** A Level 2 or Level 3 validator **MUST** reject incompatible source fields, filters, aggregates, encodings, links, or data relationships. A validator **MUST** reject an `href` reference to a non-link field or an ambiguous multi-link field with link-specific error code `DLS-E009`, and **MUST** reject ambiguous or invalid aggregate-order references with `DLS-E010`. A valid custom view **MUST NOT** be rejected merely because its runtime result is `empty` or `unavailable`; `DLS-E012` applies only when required external source metadata needed to determine those states is missing.
 - **DLS-VAL-004:** Error reporting **MUST NOT** expose credentials, secret values, or sensitive source payloads.
 - **DLS-VAL-005:** A validator **MUST** reject a page that uses `disclosure` and has zero or more than four effective essential views using `DLS-E013`.
-- **DLS-VAL-006:** A validator **MUST** build the dependency graph from rendered views and callouts through declarative query inputs and reject every declared query that is unreachable from that graph using `DLS-E015`.
+- **DLS-VAL-006:** A validator **MUST** build the dependency graph from rendered views, callouts, and data-status bindings through declarative query inputs and reject every declared query that is unreachable from that graph using `DLS-E015`.
 
 Error codes are listed in Appendix B.
 

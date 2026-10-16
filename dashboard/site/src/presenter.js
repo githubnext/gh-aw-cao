@@ -99,7 +99,7 @@ import {
  */
 
 /**
- * @typedef {{ languageVersion: string, dashboard: PresentableDashboard }} PresentationDocument
+ * @typedef {{ languageVersion: string, dashboard: PresentableDashboard & { ['data-status']?: import('./dashboard-data-status.js').DashboardStatusConfiguration } }} PresentationDocument
  */
 
 /**

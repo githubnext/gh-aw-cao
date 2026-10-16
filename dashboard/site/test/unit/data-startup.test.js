@@ -498,18 +498,25 @@ describe("dashboard data startup", () => {
           signal: new AbortController().signal,
           onUpdate: () => {},
         });
+        void loadPageSources.subscribeBackgroundSources?.(["maintenance-campaign-updates"], {
+          signal: new AbortController().signal,
+          onUpdate: () => {},
+        });
       }),
     }));
 
     await vi.waitFor(() => expect(calls).toContain("subscribe:page:overview"));
-    expect(calls).not.toContain("subscribe:sources:maintenance-campaign-updates");
+    expect(calls.some((call) => call.startsWith("subscribe:sources:maintenance-campaign-updates:"))).toBe(false);
     expect(calls).not.toContain("refresh");
 
     settle();
     await startup;
 
     expect(calls.indexOf("subscribe:page:overview"))
-      .toBeLessThan(calls.indexOf("subscribe:sources:maintenance-campaign-updates"));
+      .toBeLessThan(calls.findIndex((call) => call.startsWith("subscribe:sources:maintenance-campaign-updates:")));
+    const backgroundSubscriptions = calls.filter((call) => call.startsWith("subscribe:sources:maintenance-campaign-updates:"));
+    expect(backgroundSubscriptions).toHaveLength(2);
+    expect(new Set(backgroundSubscriptions).size).toBe(2);
     expect(calls.indexOf("subscribe:page:overview")).toBeLessThan(calls.indexOf("refresh"));
   });
 

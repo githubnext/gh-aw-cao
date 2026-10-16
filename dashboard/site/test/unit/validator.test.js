@@ -537,7 +537,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([{
         code: 'DLS-E015',
-        message: 'query "unused-run-query" is not used by a view, callout, or another retained query.',
+        message: 'query "unused-run-query" is not used by a view, callout, data status, or another retained query.',
         path: `$.dashboard.queries[${document.dashboard.queries.length - 1}].name`
       }])
     });

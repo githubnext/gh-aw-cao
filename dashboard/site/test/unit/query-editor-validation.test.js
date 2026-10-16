@@ -21,6 +21,25 @@ describe('query editor worker validation', () => {
     });
   });
 
+  it('rejects shell ingestion bindings in isolated preview documents', async () => {
+    const fixture = previewDocument();
+    const document = {
+      ...fixture,
+      dashboard: {
+        ...fixture.dashboard,
+        'data-status': { 'freshness-source': 'freshness', 'stale-after-hours': 24 },
+        queries: [...fixture.dashboard.queries, {
+          name: 'freshness', subject: 'Workflow evidence timestamp.', from: 'runs', limit: 1,
+          select: [{ field: 'updated-at', as: 'latest-data-at' }]
+        }]
+      }
+    };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    expect(await validate(document)).toMatchObject({
+      ok: false, errors: [expect.objectContaining({ code: 'QUERY-EDITOR', message: expect.stringContaining('data status') })]
+    });
+  });
+
   it('explains the exact encoding property required even for a pre-bucketed temporal query', async () => {
     const fixture = previewDocument();
     const x = { field: 'date', type: 'temporal' };
