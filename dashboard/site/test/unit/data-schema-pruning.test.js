@@ -159,6 +159,7 @@ describe.each(['IndexedDB', 'SQLite'])('pruning at the %s storage boundary', (ba
     input.evalObservations?.push({
       id: 'eval-result:1', evalId: 'eval:1', runId: input.runs[0].id,
       timestamp: observedAt, resultTimestamp: observedAt, sourceEvalId: 'correctness-v1',
+      auditId: 'audit:eval',
       evalResult: 'YES', answer: 'YES', requestedModel: 'unused-copy', resolvedModel: 'unused-copy', observedAt, provenance
     });
     input.audits.push({
@@ -195,6 +196,7 @@ describe.each(['IndexedDB', 'SQLite'])('pruning at the %s storage boundary', (ba
     expect(sources.evals.rows[0]).toMatchObject({ eval: 'correctness', 'source-eval-id': 'correctness-v1' });
     expect(sources['eval-observations'].rows[0]).toMatchObject({
       'source-eval-id': 'correctness-v1', 'result-timestamp': observedAt, 'eval-result': 'YES',
+      'audit-id': 'audit:eval',
       'requested-model': 'requested', 'resolved-model': 'resolved'
     });
     expect(sources.audits.rows.find((row) => row.id === 'audit:target')).toMatchObject({ 'target-repo': 'octo/api' });

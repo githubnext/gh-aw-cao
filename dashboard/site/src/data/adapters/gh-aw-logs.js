@@ -10,7 +10,7 @@ import {
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
-import { parseUnifiedSession } from './unified-session.js';
+import { parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -387,17 +387,47 @@ function timestamp(value) {
   return new Date(value).toISOString();
 }
 
-/** @param {unknown} candidate @param {string} githubRunId @param {string} canonicalRunId @param {string} observedAt */
-function classifiedEval(candidate, githubRunId, canonicalRunId, observedAt) {
+/** @param {unknown} candidate @param {string} githubRunId @param {string} canonicalRunId @param {string} observedAt @param {unknown} [attempt] */
+export function classifiedEval(candidate, githubRunId, canonicalRunId, observedAt, attempt) {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
   const record = /** @type {Record<string, unknown>} */ (candidate);
-  const name = optionalString(record.id);
-  const answer = optionalString(record.answer)?.toUpperCase();
-  const reportedRunId = optionalString(record.runId ?? record.run_id ?? record.runid);
-  const eventAt = record.timestamp === undefined ? observedAt : timestamp(record.timestamp);
-  if (!name || !['YES', 'NO', 'UNKNOWN'].includes(answer ?? '') || !eventAt
-    || (reportedRunId && reportedRunId !== githubRunId && reportedRunId !== canonicalRunId)) return null;
+  const name = typeof record.id === 'string' && record.id.trim() ? record.id : undefined;
+  const answer = typeof record.answer === 'string' ? record.answer.trim().toUpperCase() : undefined;
+  const eventAt = timestamp(record.timestamp === undefined ? observedAt : record.timestamp);
+  if (!name || !['YES', 'NO', 'UNKNOWN'].includes(answer ?? '') || !eventAt) return null;
+  for (const field of ['runId', 'run_id', 'runid']) {
+    if (record[field] === undefined) continue;
+    const reported = record[field];
+    if ((typeof reported !== 'string' && typeof reported !== 'number')
+        || (String(reported) !== githubRunId && String(reported) !== canonicalRunId)) return null;
+  }
+  for (const field of ['runAttempt', 'run_attempt']) {
+    if (record[field] !== undefined && (!Number.isInteger(Number(record[field]))
+        || Number(record[field]) < 1 || Number(record[field]) !== Number(attempt))) return null;
+  }
   return { name, answer, eventAt };
+}
+
+/** @param {Record<string, unknown>} record @param {Record<string, unknown>} assignments @param {string} workflow */
+function experimentLink(record, assignments, workflow) {
+  const name = record.experimentId ?? record.experiment_id;
+  const assigned = typeof name === 'string' && Object.hasOwn(assignments, name) ? assignments[name] : undefined;
+  if (typeof name !== 'string' || !name.trim() || typeof assigned !== 'string' || !assigned.trim()
+      || (record.variant !== undefined && record.variant !== assigned)) return {};
+  return { experimentId: sourceId('experiment', OBSERVATION_SOURCE, `${workflow}:${name}`), variant: assigned };
+}
+
+/** @param {Record<string, unknown>} run */
+function sessionRunEvidence(run) {
+  const session = run.cao_unified_session;
+  if (session === undefined) return run;
+  const evidence = objectValue(session, 'run.cao_unified_session');
+  if (evidence.version !== 1) throw new TypeError('Unsupported unified session evidence version');
+  const projected = { ...run };
+  for (const field of ['experiments', 'graders', 'evals']) {
+    if (evidence[field] !== undefined) projected[field] = evidence[field];
+  }
+  return projected;
 }
 
 /** @param {string} runKey @param {number} index @param {string} name */
@@ -814,6 +844,20 @@ export function adaptGhAwLogs(input) {
     }
   ];
   observations.push(...events);
+  const unified = logFiles(document.files).find((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
+  if (unified) {
+    const evidence = parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt });
+    const adapted = adaptCachedGhAwJsonl(`${JSON.stringify({
+      schema_version: 5, kind: 'run', run: {
+        run_id: githubRunId, run_attempt: attempt, organization: repositoryOwner, repository: repositoryName,
+        workflow_name: workflow.name, workflow_path: workflowPath, created_at: run.createdAt,
+        updated_at: observedAt, cao_unified_session: { version: 1, path: unified.path, ...evidence }
+      }
+    })}\n`);
+    observations.push(...adapted.observations.filter((record) =>
+      ['experiment', 'experiment-assignment', 'grader', 'grader-observation', 'eval', 'eval-observation'].includes(record.kind)
+        || (record.kind === 'audit' && ['workflow_run_grader', 'workflow_run_eval', 'workflow_run_eval_unclassified'].includes(String(record.data.type)))));
+  }
   return { observations };
 }
 
@@ -1354,7 +1398,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const { repository, workflow } = structuralIds(structural);
     const rawValue = raw?.value ?? {};
     const enrichedValue = enriched && (!raw || Number(raw.value.attempt ?? 1) === Number(enriched.value.run_attempt ?? 1))
-      ? enriched.value : {};
+      ? sessionRunEvidence(enriched.value) : {};
     const githubRunId = identifier(
       rawValue.databaseId ?? enrichedValue.run_id,
       `${id}.githubRunId`
@@ -1494,13 +1538,6 @@ function createCachedGhAwJsonlAccumulator(options) {
           ? enriched.observedAt : timestamp(record.timestamp);
         if (!resultAt) continue;
         const graderId = sourceId('grader', OBSERVATION_SOURCE, `${workflow}:${name}`);
-        const experimentName = optionalString(record.experimentId ?? record.experiment_id);
-        const assignedVariant = experimentName ? optionalString(assignments[experimentName]) : undefined;
-        const explicitVariant = optionalString(record.variant);
-        const linkedExperiment = experimentName && assignedVariant
-          && (!explicitVariant || explicitVariant === assignedVariant)
-          ? sourceId('experiment', OBSERVATION_SOURCE, `${workflow}:${experimentName}`)
-          : undefined;
         observations.push({
           kind: 'grader', source: OBSERVATION_SOURCE,
           sourceId: `${workflow}:grader:${name}`, observedAt: resultAt,
@@ -1518,8 +1555,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           data: {
             id: sourceId('grader-observation', OBSERVATION_SOURCE, `${runKey}:${name}:${index}`),
             runId: runKey, graderId, sourceGraderId: name,
-            experimentId: linkedExperiment,
-            variant: linkedExperiment ? assignedVariant : undefined,
+            ...experimentLink(record, assignments, workflow),
             value: finiteNumber(record.value),
             status: optionalString(record.status)
               ?? (record.passed === true ? 'passed' : record.passed === false ? 'failed' : 'unavailable'),
@@ -1536,7 +1572,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         });
       }
       for (const [index, candidate] of (Array.isArray(enrichedValue.evals) ? enrichedValue.evals : []).entries()) {
-        const result = classifiedEval(candidate, String(githubRunId), runKey, enriched.observedAt);
+        const result = classifiedEval(candidate, String(githubRunId), runKey, enriched.observedAt, attempt);
         if (!result) continue;
         const evalId = sourceId('eval', OBSERVATION_SOURCE, `${workflow}:${result.name}`);
         observations.push({
@@ -1552,6 +1588,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           data: {
             id: sourceId('eval-observation', OBSERVATION_SOURCE, `${runKey}:${result.name}:${index}`),
             runId: runKey, evalId, sourceEvalId: result.name, answer: result.answer,
+            ...experimentLink(objectValue(candidate, 'eval'), assignments, workflow),
             evalResult: result.answer,
             status: result.answer === 'YES' ? 'pass' : result.answer === 'NO' ? 'fail' : 'unavailable',
             requestedModel: metadata.requestedModel,
@@ -1568,7 +1605,7 @@ function createCachedGhAwJsonlAccumulator(options) {
   observations.unshift(...repositories.values(), ...workflows.values());
 
   for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
-    const run = enriched.value;
+    const run = sessionRunEvidence(enriched.value);
     const raw = rawRuns.get(id);
     if (raw && Number(raw.value.attempt ?? 1) !== Number(run.run_attempt ?? 1)) continue;
     const session = run.cao_unified_session === undefined ? null
@@ -1740,6 +1777,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           observation: record.observation,
           metrics: record.metrics,
           diagnostics: record.diagnostics,
+          payloadRef: optionalString(record.sessionPayloadRef),
           baselineValue: finiteNumber(record.baselineValue),
           deltaFromBaseline: finiteNumber(record.deltaFromBaseline)
         }
@@ -1747,7 +1785,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     });
     if (Array.isArray(run.evals)) {
       run.evals.forEach((candidate, index) => {
-        const result = classifiedEval(candidate, String(run.run_id), id, enriched.observedAt);
+        const result = classifiedEval(candidate, String(run.run_id), id, enriched.observedAt, run.run_attempt ?? 1);
         emitEvent(
           result ? 'workflow_run_eval' : 'workflow_run_eval_unclassified',
           result?.eventAt ?? completedAt ?? enriched.observedAt,
@@ -1757,7 +1795,9 @@ function createCachedGhAwJsonlAccumulator(options) {
           result ? { type: 'eval', index, name: result.name } : { type: 'unclassified-eval', index },
           {
             source: 'audit', evidenceState: result ? 'classified' : 'unclassified',
-            evalId: result?.name, answer: result?.answer
+            evalId: result?.name, answer: result?.answer,
+            payloadRef: candidate && typeof candidate === 'object'
+              ? optionalString(/** @type {Record<string, unknown>} */ (candidate).sessionPayloadRef) : undefined
           }
         );
       });

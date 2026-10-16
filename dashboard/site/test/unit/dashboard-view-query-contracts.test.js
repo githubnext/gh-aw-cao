@@ -8,6 +8,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { SERVER_SOURCE_VALUES, TABLE_FIELDS } from '../../src/specification.js';
 import campaignNavigationContract from '../fixtures/campaign-navigation-contract.json' with { type: 'json' };
+import evaluationContract from '../fixtures/evaluation-evidence-contract.json' with { type: 'json' };
 
 import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
@@ -178,13 +179,18 @@ describe('dashboard view query contracts', () => {
     ]);
     expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
       .toMatchObject({ data: { source: 'eval-yes-no-status' } });
-    for (const id of ['evals', 'graders']) {
+    for (const id of /** @type {const} */ (['evals', 'graders'])) {
       const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
       expect(viewsOf(page)[0]).toMatchObject({
         mark: 'table', 'lazy-list': true, layout: 'full-view',
         data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
       });
       expect(page.description).toContain('TODO:');
+      const contract = evaluationContract[id];
+      expect(viewsOf(page)[0].id).toBe(contract.view);
+      expect(viewsOf(page)[0]).toMatchObject({ data: { source: contract.query } });
+      const encoding = /** @type {{ columns: { field: string }[] }} */ (viewsOf(page)[0].encoding);
+      expect(encoding.columns.map((column) => column.field)).toEqual(contract.fields);
     }
   });
 

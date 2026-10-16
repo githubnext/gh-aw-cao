@@ -55,8 +55,8 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 			recordEvidence = append(recordEvidence, line)
 		}
 	}
-	if len(runEvidence) != 2 || len(recordEvidence) != 4 {
-		t.Fatalf("expected two run-phase and four record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
+	if len(runEvidence) != 2 || len(recordEvidence) != 5 {
+		t.Fatalf("expected two run-phase and five record-phase evidence records, got %d and %d", len(runEvidence), len(recordEvidence))
 	}
 
 	runFixture, err := snapshot.ReadFile("gh-aw-logs-runs/subset.jsonl")
@@ -141,7 +141,7 @@ func TestEvidenceShardPipelineParity(t *testing.T) {
 		"graders":                {"grader": "quality", "unit": "score", "threshold": float64(0.8)},
 		"grader-observations":    {"value": float64(0.93), "status": "pass", "grader": "quality"},
 		"evals":                  {"eval": "correctness", "workflow": ".github/workflows/dashboard.md"},
-		"eval-observations":      {"eval-result": "YES", "status": "pass", "eval": "correctness"},
+		"eval-observations":      {"eval-result": "YES", "status": "pass", "eval": "correctness", "audit-id": "audit:424242:correctness", "experiment-id": "experiment:dashboard:prompt", "variant": "candidate"},
 	}
 	for store, source := range map[string]string{
 		"experiments":           "experiments",

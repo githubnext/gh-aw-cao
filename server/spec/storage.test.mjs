@@ -97,6 +97,17 @@ test('TypeSpec Audit storage describes curation without speculative duplicate Ru
   assert.match(contract, /Cleanup precedes size eviction/);
 });
 
+test('grader and eval observations retain distinct definitions and audit provenance', () => {
+  for (const [source, parent, other] of [
+    ['$graderObservations', 'graderId', 'evalId'],
+    ['$evalObservations', 'evalId', 'graderId']
+  ]) {
+    assert.ok(tables.get(source).has(parent));
+    assert.ok(tables.get(source).has('auditId'));
+    assert.equal(tables.get(source).has(other), false);
+  }
+});
+
 test('native table fields cover database projections and joins without speculative columns', () => {
   const defects = [];
   const required = new Map([...tables.keys()].map((source) => [source, new Set(['id'])]));

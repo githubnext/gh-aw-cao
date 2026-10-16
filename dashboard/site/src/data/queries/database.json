@@ -146,6 +146,8 @@
     "select": [
       { "field": "id" }, { "field": "runId", "as": "run-id" },
       { "field": "evalId", "as": "eval-id" }, { "field": "source-eval-id" },
+      { "field": "auditId", "as": "audit-id" },
+      { "field": "experimentId", "as": "experiment-id" },
       { "field": "eval" }, { "field": "experiment" },
       { "field": "variant" }, { "field": "included" },
       { "field": "exclusionReason", "as": "exclusion-reason" },

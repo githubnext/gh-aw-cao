@@ -1344,9 +1344,9 @@
     },
     {
       "name": "grader-status-ledger",
-      "subject": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
-      "objective": "Distinguish explicit per-observation grader pass and fail verdicts from unknown statuses.",
-      "acceptance": "Map only pass/passed to YES and fail/failed to NO, leaving all other statuses unknown; preserve run-level evidence and do not infer current success, causation, or policy authority from a prior verdict.",
+      "subject": "Report grader measurements, units and explicit statuses without confusing them with binary eval answers.",
+      "objective": "Preserve numeric grader evidence and distinguish explicit per-observation pass and fail verdicts from unknown statuses.",
+      "acceptance": "Retain native grader values, units and statuses. Map only pass/passed to YES and fail/failed to NO in the auxiliary verdict field, leaving all other statuses unknown; never infer an eval answer, current success, causation or policy authority from a grader score.",
       "from": "grader-observations",
       "compute": [
         {
@@ -2609,6 +2609,7 @@
             "columns": [
               { "field": "workflow", "type": "nominal", "title": "Workflow" },
               { "field": "eval", "type": "nominal", "title": "Eval" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
               { "field": "eval-result", "type": "nominal", "title": "YES / NO" },
               { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
               { "field": "run", "type": "nominal", "title": "Run", "display": "evidence-link" }
@@ -2623,7 +2624,7 @@
       "title": "Graders",
       "icon": "checklist",
       "experimental": true,
-      "description": "YES/NO pass/fail results from retained grader observations, grouped by workflow and newest first. Other results are unknown. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
+      "description": "Numeric grader measurements with their native units and recorded statuses, grouped by workflow and newest first. These are not binary eval answers. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
       "views": [
         {
           "id": "graders-statuses",
@@ -2644,7 +2645,10 @@
             "columns": [
               { "field": "workflow", "type": "nominal", "title": "Workflow" },
               { "field": "grader", "type": "nominal", "title": "Grader" },
-              { "field": "verdict", "type": "nominal", "title": "YES / NO" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "value", "type": "quantitative", "title": "Value" },
+              { "field": "unit", "type": "nominal", "title": "Unit" },
+              { "field": "status", "type": "nominal", "title": "Status" },
               { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
               { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" }
             ]

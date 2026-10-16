@@ -865,7 +865,11 @@ describe('gh-aw logs adapter', () => {
           { id: 'correctness', answer: 'YES', runId: '608', timestamp: '2026-09-17T00:01:00Z' },
           { id: 'uncertain', answer: 'UNKNOWN' },
           { id: 'mismatch', answer: 'NO', runId: '999' },
-          { id: 'bad-timestamp', answer: 'YES', timestamp: 'not-a-date' }
+          { id: 'bad-timestamp', answer: 'YES', timestamp: 'not-a-date' },
+          { id: 'conflicting-run-alias', answer: 'YES', runId: '608', runid: '999' },
+          { id: 'wrong-attempt', answer: 'NO', run_attempt: 2 },
+          { id: { untrusted: 'id' }, answer: 'YES' },
+          { id: 'invalid-run', answer: 'YES', runId: null }
         ]
       }
     })}\n`;
@@ -879,7 +883,34 @@ describe('gh-aw logs adapter', () => {
     expect(batch.evalObservations?.every((record) =>
       batch.audits.some((audit) => audit.id === record.auditId && audit.runId === record.runId)
     )).toBe(true);
-    expect(batch.audits.filter((record) => record.type === 'workflow_run_eval_unclassified')).toHaveLength(2);
+    expect(batch.audits.filter((record) => record.type === 'workflow_run_eval_unclassified')).toHaveLength(6);
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
+  it('links grader and eval experiments only to explicit own assignments with matching variants', () => {
+    const results = [
+      { id: 'matching', experimentId: 'prompt', variant: 'candidate' },
+      { id: 'mismatch', experimentId: 'prompt', variant: 'control' },
+      { id: 'missing', experimentId: 'absent' },
+      { id: 'invalid', experimentId: 'invalid' },
+      { id: 'prototype', experimentId: 'toString' }
+    ];
+    const batch = normalize(adaptCachedGhAwJsonl(`${JSON.stringify({
+      schema_version: 5, kind: 'run', run: {
+        run_id: 608, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+        workflow_name: 'Worker', workflow_path: '.github/workflows/worker.lock.yml',
+        created_at: '2026-10-15T10:00:00Z',
+        experiments: { assignments: { prompt: 'candidate', invalid: true } },
+        graders: { results: results.map((row) => ({ ...row, value: 0.5, status: 'pass' })) },
+        evals: results.map((row) => ({ ...row, answer: 'YES' }))
+      }
+    })}\n`).observations);
+    expect(batch.experiments).toHaveLength(1);
+    for (const records of [batch.graderObservations, batch.evalObservations]) {
+      expect(records?.filter((row) => row.experimentId)).toEqual([
+        expect.objectContaining({ experimentId: batch.experiments?.[0].id, variant: 'candidate' })
+      ]);
+    }
     expect(relationshipErrors(batch)).toEqual([]);
   });
 

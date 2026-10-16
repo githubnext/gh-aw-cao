@@ -213,3 +213,118 @@ test('unexpected filesystem failures still fail collection without altering the 
   await assert.rejects(enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { code: 'EISDIR' });
   assert.equal(await readFile(f.shard, 'utf8'), original);
 });
+
+test('downloaded evals remain separate from graders through SQLite and normalized publication', async (t) => {
+  const f = await fixture(t);
+  await writeFile(path.join(f.usage, 'evals.jsonl'), [
+    { id: 'quality', answer: 'YES', runid: '303', timestamp: '2026-10-15T10:00:30Z', prompt: 'SECRET_PROMPT' },
+    { id: 'uncertain', answer: 'UNKNOWN', runid: '303', timestamp: '2026-10-15T10:00:31Z' }
+  ].map((row) => JSON.stringify(row)).join('\n'));
+  f.envelope.run.graders = { results: [{ id: 'quality', value: 0.75, status: 'pass', unit: 'ratio' }] };
+  f.envelope.run.experiments = { assignments: { prompt: 'candidate' } };
+  await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  const content = await readFile(f.shard, 'utf8');
+  assert.doesNotMatch(content, /SECRET_/);
+  const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+  assert.equal(batch.graders.length, 1);
+  assert.equal(batch.graderObservations[0].value, 0.75);
+  assert.equal(batch.evals.length, 2);
+  assert.deepEqual(batch.evalObservations.map((row) => row.evalResult).sort(), ['UNKNOWN', 'YES']);
+  assert.ok(batch.evalObservations.every((row) => batch.audits.some((audit) => audit.id === row.auditId)));
+  assert.equal(batch.experimentAssignments.length, 1);
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+
+  const args = ['activity/cao.mjs', 'ingest-jsonl', '--input-dir', path.dirname(f.shard),
+    '--database', path.join(f.root, 'activity.sqlite'), '--retention-days', 'all'];
+  const first = JSON.parse((await execute(process.execPath, args)).stdout);
+  assert.equal(first.counts.graders, 1);
+  assert.equal(first.counts.evals, 2);
+  assert.equal(first.counts.evalObservations, 2);
+  assert.equal(first.counts.experimentAssignments, 1);
+  assert.equal(JSON.parse((await execute(process.execPath, args)).stdout).result.shards[0].skipped, true);
+
+  const recordsDirectory = path.join(f.root, 'records');
+  await execute(process.execPath, ['activity/cao.mjs', 'hash-payloads',
+    '--shard-dir', path.dirname(f.shard), '--runs-dir', path.join(f.root, 'runs'),
+    '--records-dir', recordsDirectory]);
+  const published = (await Promise.all((await readdir(recordsDirectory))
+    .filter((name) => name.endsWith('.jsonl'))
+    .map((name) => readFile(path.join(recordsDirectory, name), 'utf8')))).join('\n');
+  const rows = published.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  assert.equal(rows.filter((row) => row.collection === 'graders').length, 1);
+  assert.equal(rows.filter((row) => row.collection === 'evals').length, 2);
+  assert.equal(rows.filter((row) => row.collection === 'evalObservations').length, 2);
+  assert.doesNotMatch(published, /SECRET_/);
+});
+
+test('collection prefers unified experiment, grader and eval events over standalone and legacy evidence', async (t) => {
+  const f = await fixture(t);
+  const evaluationSession = await readFile(new URL('../../dashboard/site/test/fixtures/evaluation-session.jsonl', import.meta.url), 'utf8');
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), evaluationSession);
+  // A malformed fallback must not be read when session evals are available.
+  await writeFile(path.join(f.usage, 'evals.jsonl'), 'PRIVATE_INVALID_FALLBACK');
+  const warnings = t.mock.method(console, 'warn', () => {});
+  f.envelope.run.graders = { results: [{ id: 'legacy', value: 0.1, status: 'fail' }] };
+  f.envelope.run.experiments = { assignments: { legacy: 'control' } };
+  f.envelope.run.evals = [{ id: 'legacy', answer: 'NO' }];
+  await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.equal(warnings.mock.callCount(), 0);
+  const enriched = await readFile(f.shard, 'utf8');
+  assert.doesNotMatch(enriched, /PRIVATE_/);
+  const batch = normalize(adaptCachedGhAwJsonl(enriched).observations);
+  assert.deepEqual(batch.experiments.map((row) => row.name), ['prompt']);
+  assert.deepEqual(batch.graders.map((row) => row.name), ['quality']);
+  assert.deepEqual(batch.evals.map((row) => row.name), ['quality', 'uncertain']);
+  assert.equal(batch.graderObservations[0].value, 0.93);
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+});
+
+test('eval artifact layouts verify repository, run and attempt independently of optional sessions', async (t) => {
+  for (const layout of ['usage', 'caller-usage', 'evals', '.']) {
+    await t.test(layout, async (t) => {
+      const f = await fixture(t);
+      const directory = path.join(f.logs, 'run-303', layout);
+      await mkdir(directory, { recursive: true });
+      await writeFile(path.join(directory, 'evals.jsonl'), '{"id":"quality","answer":"NO","runid":"303"}\n');
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      const row = JSON.parse(await readFile(f.shard, 'utf8')).run.evals[0];
+      assert.equal(row.answer, 'NO');
+      assert.equal(row.timestamp, '2026-10-15T10:01:00.000Z');
+    });
+  }
+  for (const [name, info, record] of [
+    ['wrong run', { run_id: 304, repository: 'octo/api', run_attempt: 1 }],
+    ['wrong repository', { run_id: 303, repository: 'other/repo', run_attempt: 1 }],
+    ['wrong attempt', { run_id: 303, repository: 'octo/api', run_attempt: 2 }],
+    ['missing attempt', { run_id: 303, repository: 'octo/api' }],
+    ['mismatched record', null, { id: 'quality', answer: 'YES', runid: '304' }],
+    ['conflicting aliases', null, { id: 'quality', answer: 'YES', runId: '303', runid: '304' }],
+    ['invalid answer', null, { id: 'quality', answer: 'SECRET_ANSWER' }]
+  ]) {
+    await t.test(name, async (t) => {
+      const f = await fixture(t);
+      const original = await readFile(f.shard, 'utf8');
+      const warnings = t.mock.method(console, 'warn', () => {});
+      if (info) await writeFile(f.info, JSON.stringify(info));
+      await writeFile(path.join(f.usage, 'evals.jsonl'), JSON.stringify(record ?? { id: 'quality', answer: 'YES' }));
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.equal(await readFile(f.shard, 'utf8'), original);
+      assert.doesNotMatch(JSON.stringify(warnings.mock.calls), /SECRET_|other\/repo/);
+    });
+  }
+});
+
+test('invalid optional sessions do not prevent valid eval enrichment and vice versa', async (t) => {
+  const f = await fixture(t);
+  t.mock.method(console, 'warn', () => {});
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), 'SECRET_INVALID_JSON');
+  await writeFile(path.join(f.usage, 'evals.jsonl'), '{"id":"quality","answer":"YES"}\n');
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.evals[0].answer, 'YES');
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
+  await writeFile(path.join(f.usage, 'evals.jsonl'), 'SECRET_INVALID_JSON');
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session.events.length, 3);
+});

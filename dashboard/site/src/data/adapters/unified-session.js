@@ -25,9 +25,8 @@ function string(value) {
  * tool inputs/outputs, raw errors, or native provenance.
  * @param {string} content
  * @param {string} path
- * @returns {SessionEvidence[]}
  */
-export function parseUnifiedSession(content, path) {
+function sessionRecords(content, path) {
   const records = content.split(/\r?\n/).flatMap((line, index) => {
     if (!line.trim()) return [];
     let record;
@@ -46,6 +45,11 @@ export function parseUnifiedSession(content, path) {
     debugUnifiedSession({ event: 'format-rejected', records: records.length });
     throw new TypeError(`${path} must declare unified session format version 1`);
   }
+  return records;
+}
+
+/** @param {ReturnType<typeof sessionRecords>} records */
+function timeline(records) {
   let turn = 0;
   /** @type {Map<string, { server?: string, tool?: string }>} */
   const tools = new Map();
@@ -145,4 +149,111 @@ export function parseUnifiedSession(content, path) {
   });
   debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length, skipped: records.length - evidence.length, turns: turn });
   return evidence;
+}
+
+/** @param {string} content @param {string} path */
+export function parseUnifiedSession(content, path) {
+  return timeline(sessionRecords(content, path));
+}
+
+/**
+ * Keep typed evaluation evidence even when the producer has no event clock.
+ * Observation time is supplied by ingestion, not invented as a session event.
+ * @param {string} content
+ * @param {string} path
+ * @param {{ runId: string, attempt: number }} context
+ */
+export function parseUnifiedSessionDocument(content, path, context) {
+  const records = sessionRecords(content, path);
+  /** @type {Record<string, unknown>} */
+  const evidence = {};
+  /** @type {Map<string, Record<string, unknown>>} */
+  const manifest = new Map();
+  /** @type {Record<string, unknown>[]} */
+  const results = [];
+  /** @type {Record<string, unknown>[]} */
+  const evals = [];
+  /** @param {Record<string, unknown>} value @param {string[]} fields */
+  const select = (value, fields) => Object.fromEntries(fields
+    .filter((field) => Object.hasOwn(value, field) && (value[field] === null
+      || ['string', 'boolean'].includes(typeof value[field])
+      || (typeof value[field] === 'number' && Number.isFinite(value[field]))))
+    .map((field) => [field, value[field]]));
+  const graderFields = ['id', 'name', 'status', 'value', 'score', 'unit', 'passed', 'direction',
+    'threshold', 'source', 'digest', 'experimentId', 'experiment_id', 'variant'];
+  /** @param {Record<string, unknown>} value */
+  const matchesRun = (value) => ['runId', 'run_id', 'runid'].every((field) =>
+    value[field] === undefined || String(value[field]) === context.runId)
+    && ['runAttempt', 'run_attempt'].every((field) => value[field] === undefined
+      || (Number.isInteger(Number(value[field])) && Number(value[field]) === context.attempt));
+  for (const { record, line } of records) {
+    const data = /** @type {Record<string, unknown>} */ (record.data);
+    const clock = object(record.provenance)?.timestampMs ?? record.timestamp;
+    const milliseconds = typeof clock === 'number' ? clock : typeof clock === 'string' ? Date.parse(clock) : NaN;
+    const timestamp = Number.isFinite(milliseconds) && Math.abs(milliseconds) <= 8640000000000000
+      ? new Date(milliseconds).toISOString() : undefined;
+    const observation = { ...(timestamp ? { timestamp } : {}), sessionPayloadRef: `${path}#L${line}` };
+    switch (record.type) {
+      case 'experiment.state':
+        // State files can contain a ledger for many runs.
+        if (String(data.runId) !== context.runId) break;
+        // falls through
+      case 'experiment.assignment': {
+        if (!matchesRun(data)) break;
+        const assignments = object(data.assignments);
+        if (!assignments) throw new TypeError(`${path}:${line} must contain experiment assignments`);
+        evidence.experiments = { assignments: Object.fromEntries(Object.entries(assignments)
+          .filter(([name, variant]) => name.trim() && typeof variant === 'string' && variant.trim())) };
+        break;
+      }
+      case 'grader.manifest':
+        for (const candidate of Array.isArray(data.graders) ? data.graders : []) {
+          const grader = object(candidate);
+          if (grader && typeof grader.id === 'string') manifest.set(grader.id, select(grader, graderFields));
+        }
+        break;
+      case 'grader.result': {
+        const run = object(data.run);
+        if (!matchesRun(data) || (run && (String(run.id) !== context.runId
+            || (run.attempt !== undefined && Number(run.attempt) !== context.attempt)))) break;
+        for (const candidate of Array.isArray(data.results) ? data.results : [data]) {
+          const grader = object(candidate);
+          if (!grader || typeof grader.id !== 'string' || !grader.id.trim()) {
+            throw new TypeError(`${path}:${line} must contain a grader identity`);
+          }
+          if (!matchesRun(grader)) continue;
+          const implementation = object(grader.implementation);
+          results.push({
+            ...select(grader, graderFields), ...observation,
+            ...(typeof implementation?.digest === 'string' ? { evaluatorDigest: implementation.digest } : {}),
+            ...(Array.isArray(grader.metrics) ? { metrics: grader.metrics.flatMap((metric) => {
+              const value = object(metric);
+              return value && typeof value.id === 'string' && value.id.trim()
+                && typeof value.value === 'number' && Number.isFinite(value.value)
+                ? [{ id: value.id, value: value.value }] : [];
+            }) } : {})
+          });
+        }
+        // An explicit empty result document is authoritative, too.
+        evidence.graders = { results };
+        break;
+      }
+      case 'eval.result':
+        if (!matchesRun(data)) break;
+        evals.push({ ...select(data, ['id', 'answer', 'runId', 'experimentId', 'experiment_id', 'variant']), ...observation });
+        evidence.evals = evals;
+        break;
+      default:
+        break;
+    }
+  }
+  for (const result of results) {
+    const metadata = manifest.get(String(result.id));
+    if (metadata) {
+      for (const [field, value] of Object.entries(metadata)) {
+        if (result[field] === undefined) result[field] = value;
+      }
+    }
+  }
+  return { events: timeline(records), ...evidence };
 }

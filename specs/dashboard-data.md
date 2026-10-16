@@ -1563,21 +1563,34 @@ The hosted dashboard ingester admits the same six canonical collections and
 projects those query definitions from the verified shards rather than trusting
 inventory or report-derived rows.
 
-Only explicit `run.experiments.assignments` and `run.graders.results` evidence
-can populate their respective entities; cumulative experiment counts alone do
-not establish an assignment. A supplied `run.evals[]` entry is accepted only with
+Unified session version-1 `experiment.assignment`, run-matching
+`experiment.state`, `grader.manifest`, `grader.result`, and `eval.result`
+observations are the preferred evidence. Manifests enrich observed grader
+definitions but do not invent results. Session evidence overrides cached run
+evidence independently for each category; it MUST NOT be added a second time
+from legacy audit projections. Run-scoped result identities and supplied
+attempts MUST match the producing run. State ledgers for other runs and
+cumulative counts MUST NOT establish assignments. Untimed evaluation evidence
+is retained using ingestion observation time without inventing a timed session
+event. Only allowlisted scalar metadata and numeric metrics survive projection;
+prompts, messages, error bodies and raw payloads MUST NOT be retained.
+
+In the absence of corresponding session evidence, explicit
+`run.experiments.assignments` and `run.graders.results` evidence can populate
+their respective entities. A supplied `run.evals[]` entry is accepted only with
 an explicit ID, `YES`/`NO`/`UNKNOWN` answer, valid optional timestamp and
-matching optional run identity. This explicit shape is supported by the legacy
-report contract, but no retained gh-aw fixture currently establishes its
-presence in collected audit data. `evals.jsonl` is read by a separate
-reporting path, not by the normalized Activity shard input. Until trustworthy
-eval evidence appears in that existing input, populating Eval observations
-from actual gh-aw audit remains blocked; the projection stays empty rather
-than introducing a second acquisition path. Tests of the explicit eval shape
-use synthetic inputs and do not establish that gh-aw emits it. Invalid eval
+matching optional run identity and attempt; all supplied identity aliases MUST
+agree. Collection MAY project an already-downloaded `evals.jsonl` into that
+existing run input after verifying its repository, run and attempt against
+`aw_info.json`, but MUST prefer session evals and MUST NOT introduce an extra
+GitHub acquisition path. Invalid eval
 candidates remain run-linked Audit observations without an inferred answer
 or score; valid entries also produce a run-linked Audit observation and their
 canonical Eval observation references that Audit's stable identity.
+Eval audit identities MUST survive browser, SQLite and hosted PostgreSQL
+projection and be exposed as `audit-id` by the eval-observations query.
+Grader values and units MUST remain distinct from YES/NO eval answers in
+dashboard views; a grader score or pass/fail status does not create an Eval.
 
 Records MUST remain independently addressable and MUST NOT be stored as one
 ever-growing array inside the Run record. Issues and pull requests share the

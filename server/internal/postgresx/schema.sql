@@ -474,6 +474,7 @@ CREATE TABLE IF NOT EXISTS eval_observations (
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
+  audit_id TEXT,
   direction TEXT,
   eval_id TEXT,
   eval_link TEXT,
@@ -495,7 +496,7 @@ CREATE TABLE IF NOT EXISTS eval_observations (
 
   PRIMARY KEY (namespace, id, run_at),
   UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 17),
+  CHECK (bit_length(present_fields) = 18),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (eval_id IS NOT NULL AND eval_id <> ''),
   FOREIGN KEY (namespace, eval_id) REFERENCES evals(namespace, id) DEFERRABLE INITIALLY DEFERRED,

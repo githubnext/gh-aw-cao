@@ -342,6 +342,7 @@ var entityTables = map[string]entityTable{
 		{field: "workflowId", name: "workflow_id", kind: "", sql: "TEXT"},
 	}},
 	"$evalObservations": {name: "eval_observations", runtime: false, canonical: true, partitioned: true, columns: []entityColumn{
+		{field: "auditId", name: "audit_id", kind: "", sql: "TEXT"},
 		{field: "direction", name: "direction", kind: "", sql: "TEXT"},
 		{field: "evalId", name: "eval_id", kind: "", sql: "TEXT"},
 		{field: "evalLink", name: "eval_link", kind: "", sql: "TEXT"},

@@ -514,6 +514,7 @@ model evals {
 
 @runPartition
 model evalObservations {
+  auditId?: string;
   direction?: string;
   @parent("evals")
   evalId: string;

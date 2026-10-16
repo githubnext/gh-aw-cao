@@ -1,0 +1,9 @@
+{"type":"session.format","data":{"version":1}}
+{"type":"experiment.state","data":{"runId":"999","assignments":{"stale":"control"},"counts":{"stale":{"control":100}}}}
+{"type":"experiment.state","data":{"runId":"303","assignments":{"prompt":"candidate"},"counts":{"prompt":{"candidate":100}}}}
+{"type":"experiment.assignment","data":{"assignments":{"prompt":"candidate"}}}
+{"type":"grader.manifest","data":{"version":1,"graders":[{"id":"quality","name":"Quality","unit":"ratio","direction":"higher_is_better","threshold":0.8,"message":"PRIVATE_MANIFEST"}]}}
+{"type":"grader.result","data":{"version":1,"run":{"id":"303","attempt":1},"results":[{"id":"quality","value":0.93,"status":"pass","passed":true,"implementation":{"id":"grader","version":1,"digest":"sha256:quality-v1"},"message":"PRIVATE_MESSAGE","error":"PRIVATE_ERROR"}]}}
+{"type":"eval.result","timestamp":"2026-10-15T10:00:40Z","data":{"id":"quality","answer":"YES","runId":"303","model":"eval-model","error":"PRIVATE_EVAL_ERROR","assignments":{"prompt":"candidate"}}}
+{"type":"eval.result","data":{"id":"uncertain","answer":"UNKNOWN","runId":"303"}}
+{"type":"eval.result","data":{"id":"other-run","answer":"NO","runId":"999"}}

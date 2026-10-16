@@ -134,8 +134,18 @@ Schema-v5 cached logs are accepted alongside legacy v2/v4 shards.
 
 The canonical adapter prefers the unified timeline for agent, MCP, firewall,
 and skill events, without adding duplicate legacy events for those categories.
-Other run metadata, audit findings, safe outputs, and evaluation evidence still
-come from the enriched run. Runs without a published session retain the
+Experiment assignments, grader measurements and manifests, and binary eval
+answers also come from the unified session first. `experiment.state` contributes
+only the producing run's explicit assignments, never cumulative counts;
+`grader.result` and `eval.result` populate separate canonical evidence tables.
+Untimed evaluation records remain evidence without invented session timeline
+events. Missing session evidence falls back by category to the enriched run;
+evals can additionally be projected from an already-downloaded `evals.jsonl`,
+after repository, run, and attempt verification using `aw_info.json`. No extra
+GitHub download is introduced. Only allowlisted metadata is retained, never
+evaluation prompts, error bodies, or native payload copies.
+Other run metadata, audit findings, and safe outputs still come from the enriched
+run. Runs without a published session retain the
 existing cached-audit parser; `cao ingest --logs` likewise retains its raw
 agent/gateway/firewall parsers when `aw_session.jsonl` is absent. During Activity
 collection, invalid, unsupported, ambiguous, or incorrectly identified optional

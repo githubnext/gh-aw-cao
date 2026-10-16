@@ -1,0 +1,12 @@
+{
+  "graders": {
+    "query": "grader-status-ledger",
+    "view": "graders-statuses",
+    "fields": ["workflow", "grader", "repository", "value", "unit", "status", "observed-at", "run"]
+  },
+  "evals": {
+    "query": "eval-yes-no-status",
+    "view": "evals-statuses",
+    "fields": ["workflow", "eval", "repository", "eval-result", "observed-at", "run"]
+  }
+}
