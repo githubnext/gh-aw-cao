@@ -162,6 +162,8 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
           results.push({ pageId: definition.id, status: "skipped", queries: 0, errors: [localOnlyReason] });
           continue;
         }
+        // Chromium can discard unfinished response bodies when the next page navigates.
+        await page.waitForLoadState("networkidle");
         const result = { pageId: definition.id, status: "failed", queries: 0, errors: [] };
         results.push(result);
         const queryResponses = definition.id === "overview" ? [...initialQueryResponses] : [];
