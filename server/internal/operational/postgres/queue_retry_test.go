@@ -48,7 +48,7 @@ func TestSelectDue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var positions []int64
+	positions := make([]int64, 0, len(got))
 	for _, d := range got {
 		positions = append(positions, d.record.position)
 	}
