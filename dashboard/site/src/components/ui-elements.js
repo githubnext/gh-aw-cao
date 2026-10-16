@@ -75,7 +75,6 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'campaign-route',
   'workflow-route-page',
   'outcome-detail',
-  'outcome-detail-section',
   'problem-detail',
   'configuration-policy',
   'entity-route',

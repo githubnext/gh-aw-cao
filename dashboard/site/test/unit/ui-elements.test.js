@@ -29,6 +29,11 @@ const REMOVED_ELEMENTS = [
 ];
 
 describe('UI element registry', () => {
+  it('delegates missing outcome sections to the shared empty-state renderer', () => {
+    expect(elementHandlesEmptyRows('outcome-detail')).toBe(true);
+    expect(elementHandlesEmptyRows('outcome-detail-section')).toBe(false);
+  });
+
   it.each(REMOVED_ELEMENTS)('does not expose the unreferenced %s renderer', (element) => {
     expect(renderUiElement(element, /** @type {never} */ ({}))).toBeNull();
     expect(elementHandlesEmptyRows(element)).toBe(false);
