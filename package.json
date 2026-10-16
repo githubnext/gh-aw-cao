@@ -101,6 +101,14 @@
     "astro": {
       "http-cache-semantics": "4.2.0"
     },
+    "mermaid": {
+      "katex": "0.18.2"
+    },
+    "postcss-nested": {
+      "postcss-selector-parser": "7.1.6"
+    },
+    "sharp": "^0.35.5",
+    "smol-toml": "^1.9.0",
     "source-map-js": "$source-map-js",
     "undici": "^6.28.1"
   }
