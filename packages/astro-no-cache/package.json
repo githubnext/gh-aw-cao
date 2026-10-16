@@ -1,0 +1,8 @@
+{
+  "name": "@central-agentic-ops/astro-no-cache",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Non-caching replacement for Astro's remote-image expiry policy.",
+  "type": "module",
+  "exports": "./index.js"
+}

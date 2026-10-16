@@ -79,6 +79,7 @@
     "astro": "7.3.2",
     "astro-mermaid": "2.1.0",
     "esbuild": "0.28.2",
+    "http-cache-semantics": "file:packages/astro-no-cache",
     "mermaid": "11.17.2",
     "node-pty": "^1.1.0",
     "source-map-js": "file:dashboard/site/packages/source-map-compat",
@@ -101,7 +102,7 @@
   },
   "overrides": {
     "astro": {
-      "http-cache-semantics": "4.2.0"
+      "http-cache-semantics": "$http-cache-semantics"
     },
     "mermaid": {
       "katex": "0.18.2"
