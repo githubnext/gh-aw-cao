@@ -1406,7 +1406,8 @@ Back navigation detaches without canceling work, and retained output remains
 available in Commands. Another run requires reopening the approval dialog.
 The console offers **Copy** instead of a cancellation button. It copies the last
 HTTPS pull-request URL found in retained output, or the transcript when no PR
-URL is available. Result URLs support GitHub Enterprise hosts, ports, and path
+URL is available. Copied transcripts are plain text with ANSI formatting removed;
+displayed and retained output keeps its colors. Result URLs support GitHub Enterprise hosts, ports, and path
 prefixes, exclude credentials, query strings, and fragments, and persist with
 the command. **Open pull request** opens the result separately without opener
 access. Other terminal URLs use HTTP/HTTPS link detection with the same

@@ -7,15 +7,19 @@ vi.mock('../../src/data-processor.js', () => ({
   cliQueueAvailable: queue.available, requestCliQueue: queue.get,
   attachCliCommand: queue.attach, cancelCliCommand: queue.cancel, retryCliCommand: queue.retry
 }));
-vi.mock('../../src/components/cli-terminal-runtime.js', () => ({
-  mountTerminal: (/** @type {HTMLElement} */ root) => ({
-    write: (/** @type {string} */ text, /** @type {string} */ stream) => {
-      terminalWrites(text, stream);
-      root.textContent += text;
-    },
-    reset: () => { root.textContent = ''; }
-  })
-}));
+vi.mock('../../src/components/cli-terminal-runtime.js', async () => {
+  const { default: stripAnsi } = await import('strip-ansi');
+  return {
+    mountTerminal: (/** @type {HTMLElement} */ root) => ({
+      plainText: stripAnsi,
+      write: (/** @type {string} */ text, /** @type {string} */ stream) => {
+        terminalWrites(text, stream);
+        root.textContent += text;
+      },
+      reset: () => { root.textContent = ''; }
+    })
+  };
+});
 import { renderCommandTerminal } from '../../src/components/command-terminal.js';
 import { shellStyles } from '../../src/styles-shell.js';
 
@@ -95,13 +99,14 @@ describe('persistent command terminal', () => {
     queue.attach.mockImplementation((_id, output) => {
       expect(document.querySelector('.cli-action-terminal')?.textContent)
         .toBe('$ gh aw compile --strict --repo "octo/repo"\r\n');
-      output({ data: 'Compiling workflows...\r\n' });
+      output({ data: '\x1b[3' });
+      output({ data: '2mCompiling workflows...\x1b[0m\r\n' });
       return new Promise(() => {});
     });
     const root = renderCommandTerminal(context);
     document.body.append(root);
     await vi.waitFor(() => expect(root.querySelector('.cli-action-terminal')?.textContent)
-      .toBe('$ gh aw compile --strict --repo "octo/repo"\r\nCompiling workflows...\r\n'));
+      .toBe('$ gh aw compile --strict --repo "octo/repo"\r\n\x1b[32mCompiling workflows...\x1b[0m\r\n'));
   });
 
   it('shows the PR result after live completion without navigating away', async () => {
@@ -246,11 +251,12 @@ describe('persistent command terminal', () => {
     expect(queue.cancel).not.toHaveBeenCalled();
   });
 
-  it('copies the command transcript instead of canceling running work', async () => {
+  it('copies plain text from split colored output without changing terminal rendering or running work', async () => {
     queue.available.mockReturnValue(true);
     queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running', command: 'gh aw compile --strict' });
     queue.attach.mockImplementation((_id, output) => {
-      output({ data: 'Compiling workflows...\r\n' });
+      output({ data: '\x1b[3' });
+      output({ data: '2mCompiling workflows...\x1b[0m\r\n' });
       return new Promise(() => {});
     });
     const root = renderCommandTerminal(context);
@@ -260,11 +266,35 @@ describe('persistent command terminal', () => {
     expect(copy.getAttribute('aria-label')).toBe('Copy command output');
     expect(copy.textContent).toBe('Copy');
     expect(copy.querySelector('.octicon-copy')).not.toBeNull();
+    expect(root.querySelector('.cli-action-terminal')?.textContent).toContain('\x1b[32mCompiling workflows...\x1b[0m');
     copy.click();
     await vi.waitFor(() => expect(navigator.clipboard.writeText)
       .toHaveBeenCalledExactlyOnceWith('$ gh aw compile --strict\r\nCompiling workflows...\r\n'));
     expect(queue.cancel).not.toHaveBeenCalled();
     expect(root.querySelector('output')?.textContent).toContain('running');
+  });
+
+  it.each([
+    ['\x1b[1;95mBright\x1b[0m', 'Bright'],
+    ['\x1b[38;5;208mIndexed\x1b[39m', 'Indexed'],
+    ['\x1b[38;2;10;20;30mTrue color\x1b[0m', 'True color'],
+    ['\x1b[38:2::10:20:30mColon color\x1b[m', 'Colon color'],
+    ['\u009b32mC1 color\u009b0m', 'C1 color'],
+    ['\x1b]8;;https://example.com\x07Link\x1b]8;;\x07', 'Link'],
+    ['Plain [31m text\r\nNext line', 'Plain [31m text\r\nNext line']
+  ])('copies formatting-free output for %j', async (formatted, plain) => {
+    queue.available.mockReturnValue(true);
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'running' });
+    queue.attach.mockImplementation((_id, output) => {
+      output({ data: formatted.slice(0, 3), stream: 'stderr' });
+      output({ data: formatted.slice(3), stream: 'stderr' });
+      return new Promise(() => {});
+    });
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalled());
+    /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-copy')).click();
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(plain));
   });
 
   it('reports clipboard errors without changing command state', async () => {

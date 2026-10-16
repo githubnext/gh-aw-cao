@@ -149,6 +149,8 @@ apply only to displayed commands, not authentication or JSON preparation reads.
 The browser terminal preserves standard, bright, 256-color, and true-color
 sequences across chunks and retained replay on both stdout and stderr; stderr
 is not automatically recolored because it also carries progress and status.
+Copying a transcript removes ANSI formatting without changing the terminal or
+retained output; copying a pull-request result still copies only its URL.
 GitHub CLI prompts and pagers are disabled. These terminal settings do not
 change the parent shell environment.
 

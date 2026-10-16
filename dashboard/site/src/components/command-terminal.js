@@ -88,7 +88,8 @@ export function renderCommandTerminal(context) {
       busy.set(true);
       try {
         const url = pullRequestUrl.get();
-        const copied = await copyTextToClipboard(url || transcript);
+        const text = url || terminal?.plainText(transcript);
+        const copied = text !== undefined && await copyTextToClipboard(text);
         if (scope.signal.aborted) return;
         publishNotification({
           message: copied ? (url ? 'Pull request URL copied.' : 'Command output copied.') : 'Copy unavailable.',

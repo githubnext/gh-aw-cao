@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import terminalStyles from '@xterm/xterm/css/xterm.css';
+import stripAnsi from 'strip-ansi';
 import { h } from '../dom.js';
 import { createDebug } from '../debug.js';
 
@@ -60,6 +61,8 @@ export function mountTerminal(root, signal) {
   signal.addEventListener('abort', dispose, { once: true });
   if (signal.aborted) dispose();
   return {
+    /** @param {string} data */
+    plainText(data) { return stripAnsi(data); },
     /** @param {string} data @param {'stdout'|'stderr'} [_stream] */
     write(data, _stream = 'stdout') {
       // Preserve ANSI state across chunks; stderr also carries colored progress.

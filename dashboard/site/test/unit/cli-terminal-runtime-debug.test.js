@@ -50,6 +50,18 @@ afterEach(() => {
 });
 
 describe('cli-terminal-runtime debug logging', () => {
+  it('provides plain clipboard text without altering colored terminal output', async () => {
+    stubResizeObserver();
+    const { mountTerminal } = await loadRuntime('');
+    const controller = new AbortController();
+    const terminal = mountTerminal(document.createElement('div'), controller.signal);
+    const colored = '\x1b[1;38;2;10;20;30mCommand output\x1b[0m\r\n';
+    terminal.write(colored);
+    expect(terminal.plainText(colored)).toBe('Command output\r\n');
+    expect(writes).toHaveBeenCalledExactlyOnceWith(colored);
+    controller.abort();
+  });
+
   it('preserves ANSI sequences and color state across stdout and stderr chunks', async () => {
     stubResizeObserver();
     const { mountTerminal } = await loadRuntime('');

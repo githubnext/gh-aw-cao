@@ -175,8 +175,14 @@ for (const width of [1440, 390]) {
       await expect(consoleView).toBeVisible();
       await expect(back).toBeVisible();
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(preview.url).origin });
+      await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
       await consoleView.getByRole('button', { name: 'Copy command output', exact: true }).click();
-      expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('$ ./cao.sh add --repository octo/example');
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toContain('$ ./cao.sh add --repository octo/example');
+      expect(copied).toContain('Starting repository setup');
+      expect(copied).not.toContain('\x1b');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Starting repository setup' }))
+        .toHaveCSS('color', 'rgb(63, 185, 80)');
       expect(cancellations).toBe(0);
       finish?.();
       await expect(consoleView.getByRole('status')).toContainText('completed');
