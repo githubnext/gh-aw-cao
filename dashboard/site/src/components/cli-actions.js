@@ -244,7 +244,6 @@ function renderCliActionControl(action, options = {}) {
   const close = () => {
     runController?.abort();
     selector?.cancel();
-    showTerminalWindow.set(false);
     closeModal();
   };
   const copyControl = canExecute ? null : createCopyControl({
@@ -266,8 +265,6 @@ function renderCliActionControl(action, options = {}) {
   const busy = state(false);
   const statusText = state('');
   const outputVisible = state(false);
-  const showTerminalWindow = state(false);
-  const terminalReady = state(false);
   const cancelling = state(false);
   /** @type {AbortController | undefined} */
   let runController;
@@ -288,54 +285,9 @@ function renderCliActionControl(action, options = {}) {
       cancelling.set(false);
     }
   };
-  const terminalCheckbox = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'checkbox',
-    checked: false,
-    onChange: (/** @type {Event} */ event) => {
-      showTerminalWindow.set(/** @type {HTMLInputElement} */ (event.currentTarget).checked);
-    }
-  }));
-  const { dialog: terminalDialog, open: openTerminal, close: closeTerminal } = createModalDialog({
-    className: 'cli-action-dialog cli-action-terminal-dialog',
-    ariaLabel: `Terminal: ${action.label}`,
-    onFallbackClose: () => (busy.get() ? cancel : terminalCheckbox).focus()
-  });
-  const terminalStatus = renderLiveRegion('output', 'cli-action-terminal-status');
-  const terminalBody = h('div', { className: 'cli-action-dialog-body' });
-  const terminalCancel = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button',
-    className: 'cli-action-cancel',
-    onClick: cancelRun
-  }, 'Cancel command'));
   const inlineCancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'cli-action-cancel', hidden: true, onClick: cancelRun
   }, 'Cancel command'));
-  const terminalClose = h('button', {
-    type: 'button',
-    className: 'cli-action-cancel',
-    onClick: () => showTerminalWindow.set(false)
-  }, 'Close terminal');
-  terminalDialog.append(
-    h('header', { className: 'cli-action-dialog-header' },
-      h('h2', null, `Terminal: ${action.label}`),
-      renderCloseButton({
-        className: 'cli-action-dialog-close',
-        label: 'Close terminal window',
-        onClick: () => showTerminalWindow.set(false)
-      })
-    ),
-    terminalBody,
-    h('footer', { className: 'cli-action-dialog-footer' }, terminalStatus, terminalCancel, terminalClose)
-  );
-  terminalDialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    showTerminalWindow.set(false);
-  });
-  terminalDialog.addEventListener('close', (event) => {
-    event.stopPropagation();
-    if (!terminalDialog.open && dialog.open) (busy.get() ? cancel : terminalCheckbox).focus();
-  });
   const selectionReady = state(!action.selector && !options.batch?.error);
   const selector = action.selector ? createDialogSelector(action.id, action.selector, {
     signal: scope.signal,
@@ -384,7 +336,6 @@ function renderCliActionControl(action, options = {}) {
           if (!terminal) {
             terminal = await createCliTerminal(scope.signal);
             output.replaceWith(terminal.root);
-            terminalReady.set(true);
           }
           terminal.root.hidden = false;
           controller.signal.throwIfAborted();
@@ -433,7 +384,6 @@ function renderCliActionControl(action, options = {}) {
   if (canExecute) {
     effect(() => {
       dialog.classList.toggle('cli-action-running', busy.get());
-      terminalDialog.classList.toggle('cli-action-running', busy.get());
       confirm.hidden = outputVisible.get();
       confirm.disabled = busy.get() || outputVisible.get() || !selectionReady.get();
       cancel.disabled = false;
@@ -444,19 +394,9 @@ function renderCliActionControl(action, options = {}) {
       output.hidden = !outputVisible.get();
       if (terminal) terminal.root.hidden = !outputVisible.get();
       confirm.textContent = confirmationLabel;
-      terminalCheckbox.checked = showTerminalWindow.get();
-      terminalStatus.textContent = statusText.get();
-      terminalCancel.hidden = !busy.get();
       inlineCancel.hidden = !busy.get();
       inlineCancel.disabled = cancelling.get();
-      terminalClose.hidden = false;
-      terminalCancel.disabled = cancelling.get();
-      const terminalOpen = outputVisible.get() && terminalReady.get() && showTerminalWindow.get();
-      inlineOutput.hidden = !outputVisible.get() || terminalOpen;
-      const terminalParent = terminalOpen ? terminalBody : inlineOutput;
-      if (terminal && terminal.root.parentNode !== terminalParent) terminalParent.append(terminal.root);
-      if (terminalOpen && !terminalDialog.open) openTerminal();
-      else if (!terminalOpen && terminalDialog.open) closeTerminal();
+      inlineOutput.hidden = !outputVisible.get();
     }, { signal: scope.signal });
   }
   trigger = /** @type {HTMLButtonElement} */ (h(
@@ -476,7 +416,6 @@ function renderCliActionControl(action, options = {}) {
           commandId = undefined;
           statusText.set('');
           outputVisible.set(false);
-          showTerminalWindow.set(false);
           if (terminal) terminal.root.hidden = true;
         }
         resetArguments();
@@ -520,17 +459,14 @@ function renderCliActionControl(action, options = {}) {
         : null,
       action.selector ? null : h('p', null, canExecute
         ? presentation.confirmation
-          ? `Confirm the exact effect of ${presentation.label} on the selected targets. Each listed command will execute once after approval. Actions that use gh aw may install the pinned extension first.`
+          ? [
+            `Confirm the exact effect of ${presentation.label} on the selected targets. Each listed command will execute once after approval. Actions that use `,
+            h('code', null, 'gh aw'),
+            ' may install the pinned extension first.'
+          ]
           : 'This command is declared as read-only investigation. Review its exact target and command before running.'
         : 'Copy this command and run it in your terminal.'),
       command,
-      canExecute ? h('label', { className: 'cli-action-argument' },
-        terminalCheckbox,
-        h('span', null,
-          h('strong', null, 'Open terminal window'),
-          h('small', null, 'Output appears here by default. Closing the terminal window does not cancel the command.')
-        )
-      ) : null,
       canExecute ? inlineOutput : null
     ),
     h('footer', { className: 'cli-action-dialog-footer' }, status, inlineCancel, cancel, confirm)
@@ -545,7 +481,7 @@ function renderCliActionControl(action, options = {}) {
     close();
   });
   scope.bind(trigger);
-  return { trigger, dialog, terminalDialog: canExecute ? terminalDialog : null };
+  return { trigger, dialog };
 }
 
 /**
@@ -557,7 +493,7 @@ function renderCliActionControl(action, options = {}) {
 export function renderRowCliAction(actionId, templateValues, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action) return null;
-  const { trigger, dialog, terminalDialog } = renderCliActionControl({
+  const { trigger, dialog } = renderCliActionControl({
     ...action,
     ...(options.level && { level: options.level }),
     ...(options.verb && { verb: options.verb }),
@@ -569,7 +505,7 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
     canExecute: declaredCliActionsCanExecute,
     showRowLabel: options.showLabel === true
   });
-  return h('span', { className: 'table-cli-action-control' }, trigger, dialog, terminalDialog);
+  return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
 }
 
 /**
@@ -608,7 +544,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}, binding) 
     canExecute: declaredCliActionsCanExecute,
     batch
   });
-  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog, rendered.terminalDialog);
+  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
 }
 
 /**
@@ -664,10 +600,9 @@ export function renderCliActions(actions, options = {}) {
 
   for (const declared of visibleActions) {
     const action = { ...normalizeAction(declared, { id: declared.id, type: 'cli' }), ...declared };
-    const { trigger, dialog, terminalDialog } = renderCliActionControl(action, options);
+    const { trigger, dialog } = renderCliActionControl(action, options);
     list.append(trigger);
     root.append(dialog);
-    if (terminalDialog) root.append(terminalDialog);
   }
   return root;
 }

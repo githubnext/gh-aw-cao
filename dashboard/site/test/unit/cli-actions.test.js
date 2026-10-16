@@ -319,7 +319,7 @@ describe('CLI actions', () => {
     ));
   });
 
-  it('streams inline, moves the same terminal into a window, and detaches without cancellation', async () => {
+  it('streams inline without a terminal-window option and detaches without cancellation', async () => {
     queue.attach.mockImplementation((_id, _onOutput, signal) => new Promise((_resolve, reject) => {
       signal.addEventListener('abort', () => reject(new DOMException('Detached', 'AbortError')), { once: true });
     }));
@@ -331,12 +331,14 @@ describe('CLI actions', () => {
     const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
     const confirm = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm'));
     const cancel = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-detach'));
-    const checkbox = /** @type {HTMLInputElement} */ (root.querySelector('input[type="checkbox"]'));
-    const terminalDialog = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-terminal-dialog'));
-    expect(root.querySelector('.cli-action-dialog')?.contains(terminalDialog)).toBe(false);
+    expect(root.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(root.querySelector('.cli-action-terminal-dialog')).toBeNull();
+    expect(root.textContent).not.toContain('Open terminal window');
+    expect(root.textContent).not.toContain('Output appears here by default.');
+    expect(root.textContent).not.toContain('Close terminal');
+    expect(root.querySelector('.cli-action-dialog-body p code')?.textContent).toBe('gh aw');
     trigger.click();
     expect(queue.enqueue).not.toHaveBeenCalled();
-    expect(checkbox.checked).toBe(false);
     confirm.click();
     await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
     expect(confirm.hidden).toBe(true);
@@ -346,19 +348,8 @@ describe('CLI actions', () => {
     expect(queue.enqueue).toHaveBeenCalledTimes(1);
     expect(queue.enqueue.mock.calls[0][0].arguments).toEqual({});
     const terminal = root.querySelector('.cli-action-terminal');
-    expect(terminalDialog.open).toBe(false);
     expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
     expect(terminal?.textContent).toContain('$ gh aw compile');
-    checkbox.click();
-    expect(terminalDialog.open).toBe(true);
-    expect(terminalDialog.contains(terminal)).toBe(true);
-    expect(queue.enqueue).toHaveBeenCalledTimes(1);
-    terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
-    expect(terminalDialog.open).toBe(false);
-    expect(root.querySelector('.cli-action-dialog')?.contains(terminal)).toBe(true);
-    expect(queue.attach.mock.calls[0][2].aborted).toBe(false);
-    checkbox.click();
-    expect(terminalDialog.open).toBe(true);
     expect(root.querySelector('.cli-action-terminal')).toBe(terminal);
     expect(cancel.disabled).toBe(false);
     expect(cancel.textContent).toBe('Detach');
@@ -373,7 +364,6 @@ describe('CLI actions', () => {
     confirm.click();
     expect(queue.enqueue).toHaveBeenCalledTimes(1);
     expect(confirm.hidden).toBe(true);
-    terminalDialog.querySelector('.cli-action-dialog-close')?.dispatchEvent(new MouseEvent('click'));
     cancel.click();
     trigger.click();
     expect(confirm.hidden).toBe(false);
@@ -392,7 +382,7 @@ describe('CLI actions', () => {
     { ok: true, status: 'completed', error: undefined },
     { ok: false, status: 'failed', error: 'Action failed' },
     { ok: false, status: 'canceled', error: 'The CLI action was canceled.' }
-  ])('closes both dialogs after $status and restores trigger focus', async ({ ok, status, error }) => {
+  ])('closes the terminal dialog after $status and restores trigger focus', async ({ ok, status, error }) => {
     /** @type {(value: unknown) => void} */
     let finish = () => {};
     queue.attach.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
@@ -403,15 +393,13 @@ describe('CLI actions', () => {
     document.body.append(root);
     const trigger = /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger'));
     const approval = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-dialog'));
-    const terminal = /** @type {HTMLDialogElement} */ (root.querySelector('.cli-action-terminal-dialog'));
     trigger.click();
-    /** @type {HTMLInputElement} */ (root.querySelector('input[type="checkbox"]')).click();
     /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
-    await vi.waitFor(() => expect(terminal.open).toBe(true));
-    expect(terminal.querySelector('header button')?.getAttribute('aria-label')).toBe('Close terminal window');
+    await vi.waitFor(() => expect(queue.attach).toHaveBeenCalledTimes(1));
+    expect(approval.open).toBe(true);
+    expect(approval.querySelector('header button')?.getAttribute('aria-label')).toBe('Close action approval');
     finish({ result: { ok, exitCode: ok ? 0 : 1, error }, command: { id: 'command-1', status } });
     await vi.waitFor(() => expect(approval.open).toBe(false));
-    expect(terminal.open).toBe(false);
     expect(document.activeElement).toBe(trigger);
     expect(queue.cancel).not.toHaveBeenCalled();
     expect(document.querySelector('.dashboard-notification-message a')?.getAttribute('href')).toBe('#page-commands');

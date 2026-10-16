@@ -43,6 +43,24 @@ for (const width of [1440, 390]) {
     try {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`${preview.url}/#page-maintenance`);
+      const repositoryLinks = page.locator('[data-view-id="maintenance-repositories"] [data-card-drill="external"]');
+      await expect(repositoryLinks).toHaveCount(repositories.length);
+      for (const repository of repositories) {
+        await expect(repositoryLinks.filter({ hasText: repository })).toHaveAttribute('href', `https://github.com/${repository}`);
+      }
+      const repositoriesScreenshot = testInfo.outputPath(`updates-repositories-${width}.png`);
+      await page.screenshot({ path: repositoriesScreenshot, fullPage: true });
+      await testInfo.attach(`updates-repositories-${width}`, { path: repositoriesScreenshot, contentType: 'image/png' });
+      const repositoryHome = `https://github.com/${repositories[0]}`;
+      await page.context().route(repositoryHome, (route) => route.fulfill({ body: 'Repository home fixture' }));
+      const openedRepository = page.waitForEvent('popup');
+      await repositoryLinks.filter({ hasText: repositories[0] }).click();
+      const repositoryPage = await openedRepository;
+      await expect(repositoryPage).toHaveURL(repositoryHome);
+      expect(await repositoryPage.evaluate(() => window.opener === null)).toBe(true);
+      await repositoryPage.close();
+      await expect(page).toHaveURL(/#page-maintenance$/);
+      expect(commands).toEqual([]);
       await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true });
       await expect(dialog.locator('.cli-action-command')).toHaveText([
