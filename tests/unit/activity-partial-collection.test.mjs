@@ -65,12 +65,23 @@ fs.writeFileSync(shard, JSON.stringify({ schema_version: 2, kind: "run", run: {
   workflow_path: ".github/workflows/example.lock.yml", created_at: new Date().toISOString(), status: "completed",
 } }) + "\\n");
 if (repository === "acme/two") {
+  if (process.env.MODE.startsWith("session-")) {
+    const usage = path.join(args[args.indexOf("--output") + 1], "run-43", "usage");
+    fs.mkdirSync(usage, { recursive: true });
+    fs.writeFileSync(path.join(usage, "aw_session.jsonl"),
+      process.env.MODE === "session-json" ? "SECRET_INVALID_JSON" : JSON.stringify({ type: "session.format", data: { version: 1 } }));
+    if (process.env.MODE === "session-json") {
+      fs.writeFileSync(path.join(usage, "aw_info.json"), JSON.stringify({ run_id: 43, run_attempt: 1, repository }));
+    }
+  }
   const messages = {
     primary: "HTTP 403: API rate limit exceeded for user ID 123",
     secondary: "HTTP 429: You have exceeded a secondary rate limit",
     permission: "HTTP 403: Resource not accessible by integration",
     transport: "HTTP 500: Internal Server Error",
     malformed: "HTTP 403: API rate limit exceeded for user ID 123",
+    "session-identity": "HTTP 403: API rate limit exceeded for user ID 123",
+    "session-json": "HTTP 403: API rate limit exceeded for user ID 123",
     "unknown-75": "Unexpected collector failure",
   };
   if (process.env.MODE === "malformed") fs.appendFileSync(shard, "invalid-json\\n");
@@ -105,11 +116,17 @@ for (const [mode, expectedRuns, expectedDownloads] of [
   ["reserve-second", ["1", "2", "3", "42"], 1],
   ["primary", ["1", "2", "3", "42", "43"], 2],
   ["secondary", ["1", "2", "3", "42", "43"], 2],
+  ["session-identity", ["1", "2", "3", "42", "43"], 2],
+  ["session-json", ["1", "2", "3", "42", "43"], 2],
 ]) {
   test(`${mode} exhaustion publishes a marked partial fragment and indexes retained and downloaded runs`, async (t) => {
     const item = await fixture(t, mode);
     const result = await execute("bash", ["-e", "-c", collectionStep.run], { env: item.env });
     assert.match(result.stdout, /indexing retained and downloaded runs as partial evidence/);
+    if (mode.startsWith("session-")) {
+      assert.match(result.stderr, /Skipping invalid unified session evidence for run 43/);
+      assert.doesNotMatch(result.stderr, /SECRET_/);
+    }
     assert.equal(await readFile(item.exitCode, "utf8"), "75\n");
     assert.equal(await readFile(item.output, "utf8"), "rate-limited=true\n");
     assert.match(await readFile(item.summary, "utf8"), /uncollected repositories are not current/);

@@ -147,7 +147,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.doesNotMatch(workflow, /Install SQLite|apt-get install.*sqlite3/);
   const collection = parse(workflow).jobs.collect.steps.find((step) => step.name === "Download owner-scoped agentic workflow logs");
   assert.equal(collection.env.REPORT_RUN_LIMIT, "${{ inputs.fast == true && '10' || '10000' }}");
-  assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '15' }}");
+  assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '10' }}");
   assert.match(
     workflow,
     /ingest-jsonl[\s\S]*?--retention-days 7[\s\S]*?--run-retention-days 30[\s\S]*?doctor[\s\S]*?--ttl-days 7[\s\S]*?--run-ttl-days 30/,

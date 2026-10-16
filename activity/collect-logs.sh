@@ -11,7 +11,7 @@ drain3_weights_path="${REPORT_DRAIN3_WEIGHTS:-}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
 detail_window_days="${REPORT_DETAIL_WINDOW_DAYS:-7}"
 run_limit="${REPORT_RUN_LIMIT:-10}"
-request_timeout="${REPORT_LOG_TIMEOUT:-10}"
+download_timeout_minutes="${REPORT_LOG_TIMEOUT:-10}"
 rate_limit="${REPORT_MAX_GITHUB_API_RATE_LIMIT:--2000}"
 activity_database="${REPORT_ACTIVITY_DATABASE:-}"
 issue_status_cost_budget="${REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET:-25}"
@@ -67,7 +67,7 @@ if [[ ${#repositories[@]} -eq 0 ]]; then
   printf '1\n' > "$exit_code_path"
   exit 1
 fi
-echo "Activity log collection: ${#repositories[@]} repositories; window=${window_days}d; run limit=${run_limit}; request timeout=${request_timeout}s; storage limit=${max_storage}MB"
+echo "Activity log collection: ${#repositories[@]} repositories; window=${window_days}d; run limit=${run_limit}; download timeout=${download_timeout_minutes}m; storage limit=${max_storage}MB"
 
 exit_code=0
 drain3_args=()
@@ -140,7 +140,7 @@ for index in "${!repositories[@]}"; do
     --start-date "-${window_days}d" \
     --cache-before "-${window_days}d" \
     --count "$run_limit" \
-    --timeout "$request_timeout" \
+    --timeout "$download_timeout_minutes" \
     --max-github-api-rate-limit "$rate_limit" \
     --max-storage "$max_storage" \
     --prune-older-runs \

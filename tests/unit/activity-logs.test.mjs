@@ -98,6 +98,7 @@ process.stderr.write("Fetched 1 run\\n");
     await writeFile(path.join(seedPath, "github-gh-aw-logs-2000-second.jsonl"), `${duplicate}\n`);
     const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
     assert.match(collection.stdout, /Activity log collection: 2 repositories; window=30d/);
+    assert.match(collection.stdout, /download timeout=10m/);
     assert.match(collection.stdout, /github\/gh-aw restored 2 matching cache shards/);
     assert.match(collection.stdout, /githubnext\/gh-aw-cao download exited 0 after \d+s/);
     assert.match(collection.stdout, /Activity log collection: completed with exit code 0/);
@@ -124,6 +125,7 @@ process.stderr.write("Fetched 1 run\\n");
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
     assert.deepEqual(args.slice(args.indexOf("--timeout"), args.indexOf("--timeout") + 2), ["--timeout", "10"]);
+    assert.equal(args.filter((value) => value === "--timeout").length, 1);
     assert.deepEqual(logInvocations.map((invocation) => invocation[invocation.indexOf("--repo") + 1]), [
       "github/gh-aw",
       "githubnext/gh-aw-cao",

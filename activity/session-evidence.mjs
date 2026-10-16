@@ -27,7 +27,7 @@ async function sessionFile(directory) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
-  if (found.length > 1) throw new Error('Multiple unified sessions found for one run');
+  if (found.length > 1) throw new TypeError('Multiple unified sessions found for one run');
   return found[0] ?? null;
 }
 
@@ -70,22 +70,27 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
         const key = `${runId}:${run.run_attempt ?? 1}`;
         if (!sessions.has(key)) {
           const runDirectory = path.join(logDirectory, `run-${runId}`);
-          const file = await sessionFile(runDirectory);
           let evidence = null;
-          if (file) {
-            // The download directory is keyed by run ID, not attempt. Verify
-            // attempt identity before associating retained artifacts with a rerun.
-            const info = await sessionIdentity(runDirectory, file.path);
-            if (!info || String(info.run_id) !== String(runId)
-                || String(info.repository).toLowerCase() !== repository.toLowerCase()) {
-              throw new Error(`Unified session identity unavailable or mismatched for run ${runId}`);
+          try {
+            const file = await sessionFile(runDirectory);
+            if (file) {
+              // The download directory is keyed by run ID, not attempt. Verify
+              // attempt identity before associating retained artifacts with a rerun.
+              const info = await sessionIdentity(runDirectory, file.path);
+              if (!info || String(info.run_id) !== String(runId)
+                  || String(info.repository).toLowerCase() !== repository.toLowerCase()) {
+                throw new TypeError(`Unified session identity unavailable or mismatched for run ${runId}`);
+              }
+              if (Number(info.run_attempt) === Number(run.run_attempt ?? 1)) {
+                const relativePath = path.relative(runDirectory, file.path).split(path.sep).join('/');
+                evidence = { version: 1, path: relativePath, events: parseUnifiedSession(file.content, relativePath) };
+              } else if (!Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
+                throw new TypeError(`Unified session attempt identity unavailable for run ${runId}`);
+              }
             }
-            if (Number(info.run_attempt) === Number(run.run_attempt ?? 1)) {
-              const relativePath = path.relative(runDirectory, file.path).split(path.sep).join('/');
-              evidence = { version: 1, path: relativePath, events: parseUnifiedSession(file.content, relativePath) };
-            } else if (!Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
-              throw new Error(`Unified session attempt identity unavailable for run ${runId}`);
-            }
+          } catch (error) {
+            if (!(error instanceof SyntaxError) && !(error instanceof TypeError)) throw error;
+            console.warn(`Skipping invalid unified session evidence for run ${runId}`);
           }
           sessions.set(key, evidence);
         }

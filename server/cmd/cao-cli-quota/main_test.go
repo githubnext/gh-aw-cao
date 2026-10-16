@@ -311,3 +311,51 @@ func TestJSONLinesPersistentAndRedacted(t *testing.T) {
 		}
 	}
 }
+
+func TestRequestLimitsDefaultsAndOverrides(t *testing.T) {
+	c, cost, floor := request{}.limits()
+	if c != 4 || cost != 50 || floor != 100 {
+		t.Fatalf("defaults: %d %d %d", c, cost, floor)
+	}
+	c, cost, floor = request{MaxConcurrency: 2, EstimatedCost: 7, MinimumRemaining: 9}.limits()
+	if c != 2 || cost != 7 || floor != 9 {
+		t.Fatalf("overrides: %d %d %d", c, cost, floor)
+	}
+	c, cost, floor = request{MaxConcurrency: -1, EstimatedCost: -1, MinimumRemaining: -1}.limits()
+	if c != 4 || cost != 50 || floor != 100 {
+		t.Fatalf("negative values: %d %d %d", c, cost, floor)
+	}
+}
+
+func TestParkDurationClamps(t *testing.T) {
+	for seconds, want := range map[int]time.Duration{
+		-5: time.Minute, 0: time.Minute, 60: time.Minute, 300: 5 * time.Minute,
+		86400: 24 * time.Hour, 1000000: 24 * time.Hour,
+	} {
+		if got := parkDuration(seconds); got != want {
+			t.Errorf("parkDuration(%d) = %v, want %v", seconds, got, want)
+		}
+	}
+}
+
+func TestReleaseFreesReservationAndIgnoresUnknownID(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	admitted := b.handle(ctx, request{ID: 1, Operation: "admit"})
+	if admitted.ReservationID == "" {
+		t.Fatalf("admission: %+v", admitted)
+	}
+	if err := b.release(ctx, "missing"); err != nil || len(b.reservations) != 1 {
+		t.Fatalf("unknown release changed state: %v, %d", err, len(b.reservations))
+	}
+	if err := b.release(ctx, admitted.ReservationID); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.reservations) != 0 {
+		t.Fatalf("reservation retained: %d", len(b.reservations))
+	}
+	state, err := b.service.State(ctx, bucket(current.identity, "core"))
+	if err != nil || state.Reserved != 0 {
+		t.Fatalf("quota still reserved: %+v, %v", state, err)
+	}
+}

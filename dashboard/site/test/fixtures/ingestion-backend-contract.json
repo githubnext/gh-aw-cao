@@ -1,9 +1,10 @@
 {
   "page": "indexing",
+  "scatter": { "view": "indexing-workflow-runs", "cluster": false, "regressionEntries": 2101 },
   "staticSources": [
     "indexing-database-table-counts",
     "indexing-daily-records",
-    "indexing-daily-workflow-runs",
+    "indexing-ingestion-runs",
     "indexing-transactions",
     "indexing-shards"
   ],

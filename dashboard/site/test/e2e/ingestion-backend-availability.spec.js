@@ -110,10 +110,29 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   await expect(shards).toContainText(shardName);
   await expect(shards).toContainText('Committed records');
   await expect(shards).toContainText(hash);
+  const scatter = page.locator('[data-view-id="indexing-workflow-runs"]');
+  await scatter.scrollIntoViewIfNeeded();
+  await expect(scatter.getByRole('heading', { name: 'Runs per ingestion' })).toBeVisible();
+  await expect(scatter.locator('[data-chart-widget="scatter"]')).toBeVisible();
+  const ingestionRows = await page.evaluate(async () => {
+    const { processDataRequest } = await import(new URL('/src/data-worker.js', window.location.href).href);
+    const response = await fetch('/dashboard-pages/indexing.json');
+    const chunk = await response.json();
+    const result = await processDataRequest({
+      operation: 'query-canonical-dashboard',
+      sourceNames: ['indexing-ingestion-runs'],
+      context: { queries: chunk.queries, pages: [chunk.page] }
+    });
+    return result['indexing-ingestion-runs'];
+  });
+  expect(ingestionRows.metadata.availability).toBe('available');
+  expect(ingestionRows.rows.length).toBeGreaterThan(0);
+  await expect(scatter.locator('.scatter-chart-point')).toHaveCount(ingestionRows.rows.length);
+  await expect(scatter).toContainText('Missing run counts are labeled');
   await expect(page.locator('.first-load-overlay')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('stale-data-ingestion.png'), fullPage: true });
-  await testInfo.attach('Stale data and ingestion shards', {
+  await testInfo.attach(`Fixture-backed Ingestion page (${viewport.width}px)`, {
     path: testInfo.outputPath('stale-data-ingestion.png'), contentType: 'image/png'
   });
   for (const id of contract.hostedViews) {

@@ -124,10 +124,13 @@ and skill events, without adding duplicate legacy events for those categories.
 Other run metadata, audit findings, safe outputs, and evaluation evidence still
 come from the enriched run. Runs without a published session retain the
 existing cached-audit parser; `cao ingest --logs` likewise retains its raw
-agent/gateway/firewall parsers when `aw_session.jsonl` is absent. Invalid,
-unsupported, ambiguous, or incorrectly identified sessions fail explicitly
-instead of silently falling back. Untimed session observations are not assigned
-invented event timestamps.
+agent/gateway/firewall parsers when `aw_session.jsonl` is absent. During Activity
+collection, invalid, unsupported, ambiguous, or incorrectly identified optional
+sessions are skipped with a warning containing only the run ID. Their cached
+records remain unchanged and other runs continue enrichment; filesystem and
+shard errors still fail collection. Direct `cao ingest --logs` session parsing
+remains strict. Untimed session observations are not assigned invented event
+timestamps.
 
 The raw cache defaults to **1 GiB** across all repositories in a job, not per
 shard. Set the repository variable `CAO_ACTIVITY_MAX_RAW_CACHE_BYTES` to override

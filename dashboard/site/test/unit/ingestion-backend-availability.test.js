@@ -7,7 +7,7 @@ import {
 } from '../../src/dashboard-chunks.js';
 import { disposeDashboard, renderDashboard } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, openCanonicalDatabase, recordTransaction, TRANSACTION_STORE } from '../../src/data/storage/indexeddb.js';
 import { DashboardServerError, queryRemoteDashboard } from '../../src/remote-data-backend.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { compileDashboardViewPayloadQueries, dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
@@ -100,6 +100,113 @@ describe('Ingestion backend contract', () => {
     disposeDashboard(root);
     expect(signal.aborted).toBe(true);
   });
+
+  it('updates the ingestion scatter from abort-scoped worker query snapshots, including coincident entries', async () => {
+    const view = page.views.find((/** @type {{ id: string }} */ entry) => entry.id === 'indexing-workflow-runs');
+    const documentInput = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        ...authoritativeDashboard.dashboard,
+        pages: [{ id: 'indexing', kind: /** @type {const} */ ('custom'), views: [view] }],
+        callouts: undefined
+      }
+    };
+    /** @type {any} */
+    let subscription;
+    const read = async () => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'query-canonical-dashboard',
+      pageId: 'indexing', viewId: view.id, sourceNames: [view.data.source],
+      context: documentInput.dashboard
+    }, subscription?.signal));
+    const subscribe = vi.fn(async (_pageId, _viewId, _names, options) => {
+      subscription = options;
+      return read();
+    });
+    const root = renderDashboard({
+      document: documentInput, sources: {},
+      loadPageSources: Object.assign(vi.fn(), { subscribeViewSources: subscribe })
+    });
+    roots.push(root);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.textContent).toContain('No ingestion entries have been retained.'));
+    expect(subscription.signal).toBeInstanceOf(AbortSignal);
+    const createdAt = '2026-09-24T01:02:03.456Z';
+    for (const entry of [
+      { id: 'known', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
+      { id: 'coincident', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
+      { id: 'zero', kind: 'ingest-normalized-jsonl', createdAt, rawRuns: 0 },
+      { id: 'missing', kind: 'ingest-dashboard-sources', createdAt }
+    ]) await recordTransaction(indexedDB, entry);
+    subscription.onUpdate(await read());
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(4));
+    expect(root.textContent).toContain('Run count unavailable (shown at 0)');
+    const positions = [...root.querySelectorAll('.scatter-chart-point')].map((point) => point.getAttribute('cx'));
+    expect(new Set(positions).size).toBe(1);
+    await recordTransaction(indexedDB, {
+      id: 'later', kind: 'ingest-jsonl', createdAt: '2026-09-24T02:03:04.567Z', rawRuns: 4
+    });
+    subscription.onUpdate(await read());
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(5));
+    disposeDashboard(root);
+    expect(subscription.signal.aborted).toBe(true);
+  });
+
+  it('renders every worker-produced ingestion entry beyond clustering and point-sampling thresholds', async () => {
+    const view = page.views.find((/** @type {{ id: string }} */ entry) => entry.id === contract.scatter.view);
+    expect(view.scatter).toEqual({ cluster: contract.scatter.cluster });
+    const count = contract.scatter.regressionEntries;
+    expect(count).toBeGreaterThan(2000);
+    const start = Date.parse('2026-09-24T01:02:03.000Z');
+    const database = await openCanonicalDatabase(indexedDB);
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction(TRANSACTION_STORE, 'readwrite');
+        transaction.oncomplete = () => resolve(undefined);
+        transaction.onerror = () => reject(transaction.error);
+        for (let index = 0; index < count; index++) {
+          transaction.objectStore(TRANSACTION_STORE).put({
+            id: `entry-${index.toString().padStart(4, '0')}`,
+            kind: 'ingest-normalized-jsonl',
+            payloadHash: index.toString(16).padStart(64, '0'),
+            createdAt: new Date(start + Math.floor(index / 2)).toISOString(),
+            rawRuns: 1 + Math.floor(index / 2)
+          });
+        }
+      });
+    } finally {
+      database.close();
+    }
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'query-canonical-dashboard',
+      pageId: 'indexing', viewId: view.id, sourceNames: [view.data.source],
+      context: documentInput.dashboard
+    }));
+    const rows = sources[view.data.source]?.rows;
+    expect(sources[view.data.source]?.metadata.availability).toBe('available');
+    expect(rows).toHaveLength(count);
+    expect(rows.every((row) => row['cluster-count'] === undefined)).toBe(true);
+    const root = renderDashboard({
+      document: {
+        ...documentInput,
+        dashboard: { ...documentInput.dashboard, pages: [{ id: 'indexing', kind: 'custom', views: [view] }] }
+      },
+      sources
+    });
+    roots.push(root);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(count));
+    expect(root.querySelector('.chart-clustering-progress')).toBeNull();
+    const points = [...root.querySelectorAll('.scatter-chart-point')];
+    const firstX = Number(points[0].getAttribute('cx'));
+    const lastX = Number(points.at(-1)?.getAttribute('cx'));
+    const firstY = Number(points[0].getAttribute('cy'));
+    const lastY = Number(points.at(-1)?.getAttribute('cy'));
+    for (let index = 0; index < count; index++) {
+      const ratio = Math.floor(index / 2) / Math.floor((count - 1) / 2);
+      expect(Number(points[index].getAttribute('cx'))).toBeCloseTo(firstX + (lastX - firstX) * ratio, 8);
+      expect(Number(points[index].getAttribute('cy'))).toBeCloseTo(firstY + (lastY - firstY) * ratio, 8);
+    }
+  }, 20000);
 
   it('keeps authorized hosted query values through the production query and view boundary', async () => {
     hostedBackend();
