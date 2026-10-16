@@ -142,37 +142,16 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 			}
 		}
 		if req.RateLimited {
-			wait := parkDuration(req.RetryAfterSeconds)
-			b.parkedUntil = maxTime(b.parkedUntil, b.now().Add(wait))
-			quotaLog.Printf("parking quota after rate limit: wait_seconds=%d reservations=%d", int(wait.Seconds()), len(b.reservations))
-			// Park every known meter: command output does not identify which
-			// resource incurred a secondary limit.
-			for _, held := range b.reservations {
-				for _, r := range held.buckets {
-					if err := b.service.Park(ctx, r.Bucket, b.parkedUntil, githubquota.ParkReasonSecondaryRateLimit); err != nil {
-						return b.unknown(req.ID)
-					}
-				}
+			if err := b.parkAfterRateLimit(ctx, req.RetryAfterSeconds); err != nil {
+				return b.unknown(req.ID)
 			}
 		}
 	}
 	if b.parkedUntil.After(b.now()) {
 		return decision{ID: req.ID, Reason: "parked", RetryAt: b.parkedUntil.UTC().Format(time.RFC3339)}
 	}
-	current, err := b.read(ctx, resources)
+	current, err := b.refresh(ctx, resources)
 	if err != nil {
-		return b.unknown(req.ID)
-	}
-	for _, resource := range resources {
-		observation, ok := current.observations[resource]
-		if !ok || observation.ResetAt.Before(b.now()) || observation.Limit <= 0 {
-			return b.unknown(req.ID)
-		}
-		if err := b.service.Observe(ctx, bucket(current.identity, resource), observation); err != nil {
-			return b.unknown(req.ID)
-		}
-	}
-	if err := b.reconcile(ctx, current); err != nil {
 		return b.unknown(req.ID)
 	}
 	concurrency, cost, floor := req.limits()
@@ -191,6 +170,7 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		retry = maxTime(retry, state.ResetAt)
 	}
 	if available == 0 {
+		quotaLog.Printf("admission exhausted: resources=%d", len(resources))
 		return decision{ID: req.ID, Reason: "exhausted", RetryAt: retry.UTC().Format(time.RFC3339)}
 	}
 	result := decision{ID: req.ID, Capacity: min(concurrency, active+available), Reason: "available"}
@@ -199,6 +179,7 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	}
 	if max(active, req.Running) >= result.Capacity {
 		result.Reason = "concurrency"
+		quotaLog.Printf("admission at concurrency bound: active=%d running=%d capacity=%d", active, req.Running, result.Capacity)
 		return result
 	}
 	held, err := b.reserveAll(ctx, current.identity, resources, cost, floor)
@@ -209,6 +190,44 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	b.reservations[result.ReservationID] = &reservation{buckets: held}
 	quotaLog.Printf("admitted reservation: buckets=%d active=%d capacity=%d", len(held), active, result.Capacity)
 	return result
+}
+
+// parkAfterRateLimit extends the bridge-wide park and parks every held bucket:
+// command output does not identify which resource incurred a secondary limit.
+func (b *bridge) parkAfterRateLimit(ctx context.Context, retryAfterSeconds int) error {
+	wait := parkDuration(retryAfterSeconds)
+	b.parkedUntil = maxTime(b.parkedUntil, b.now().Add(wait))
+	quotaLog.Printf("parking quota after rate limit: wait_seconds=%d reservations=%d", int(wait.Seconds()), len(b.reservations))
+	for _, held := range b.reservations {
+		for _, r := range held.buckets {
+			if err := b.service.Park(ctx, r.Bucket, b.parkedUntil, githubquota.ParkReasonSecondaryRateLimit); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// refresh reads a fresh snapshot, requires a usable observation for every
+// resource, records them, and reconciles finished reservations.
+func (b *bridge) refresh(ctx context.Context, resources []string) (snapshot, error) {
+	current, err := b.read(ctx, resources)
+	if err != nil {
+		return snapshot{}, err
+	}
+	for _, resource := range resources {
+		observation, ok := current.observations[resource]
+		if !ok || observation.ResetAt.Before(b.now()) || observation.Limit <= 0 {
+			return snapshot{}, errors.New("GitHub quota observation is unusable")
+		}
+		if err := b.service.Observe(ctx, bucket(current.identity, resource), observation); err != nil {
+			return snapshot{}, err
+		}
+	}
+	if err := b.reconcile(ctx, current); err != nil {
+		return snapshot{}, err
+	}
+	return current, nil
 }
 
 // activeCount returns the number of reservations whose command has not finished.

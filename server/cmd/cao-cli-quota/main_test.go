@@ -451,3 +451,77 @@ func TestReserveAllReservesEveryResourceAndRollsBackOnFailure(t *testing.T) {
 		t.Fatalf("core not rolled back: %+v, %v", state, err)
 	}
 }
+
+func TestParkAfterRateLimitExtendsParkAndParksHeldBuckets(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	held := b.handle(ctx, request{Operation: "admit"})
+	if held.ReservationID == "" {
+		t.Fatalf("setup admission failed: %+v", held)
+	}
+	if err := b.parkAfterRateLimit(ctx, 10); err != nil {
+		t.Fatal(err)
+	}
+	if want := b.now().Add(time.Minute); !b.parkedUntil.Equal(want) {
+		t.Fatalf("parkedUntil = %v, want clamped minimum %v", b.parkedUntil, want)
+	}
+	if err := b.parkAfterRateLimit(ctx, 3600); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.parkAfterRateLimit(ctx, 60); err != nil {
+		t.Fatal(err)
+	}
+	if want := b.now().Add(time.Hour); !b.parkedUntil.Equal(want) {
+		t.Fatalf("parkedUntil shrank: %v, want %v", b.parkedUntil, want)
+	}
+	for _, resource := range []string{"core", "graphql"} {
+		state, err := b.service.State(ctx, bucket(current.identity, resource))
+		if err != nil || state.Status != githubquota.StatusParked {
+			t.Fatalf("%s not parked: %+v, %v", resource, state, err)
+		}
+	}
+}
+
+func TestParkAfterRateLimitWithoutReservationsOnlyParksBridge(t *testing.T) {
+	b, _ := testBridge(t, 5000)
+	if err := b.parkAfterRateLimit(context.Background(), 120); err != nil {
+		t.Fatal(err)
+	}
+	if want := b.now().Add(2 * time.Minute); !b.parkedUntil.Equal(want) {
+		t.Fatalf("parkedUntil = %v, want %v", b.parkedUntil, want)
+	}
+}
+
+func TestRefreshObservesAndRejectsUnusableSnapshots(t *testing.T) {
+	b, current := testBridge(t, 5000)
+	ctx := context.Background()
+	got, err := b.refresh(ctx, []string{"core"})
+	if err != nil || got.identity != "gh-test" {
+		t.Fatalf("refresh = %+v, %v", got, err)
+	}
+	state, err := b.service.State(ctx, bucket("gh-test", "core"))
+	if err != nil || state.Status == githubquota.StatusUnknown {
+		t.Fatalf("core not observed: %+v, %v", state, err)
+	}
+
+	delete(current.observations, "graphql")
+	if _, err := b.refresh(ctx, []string{"core", "graphql"}); err == nil {
+		t.Fatal("missing observation accepted")
+	}
+	current.observations["graphql"] = githubquota.Observation{Limit: 5000, Remaining: 1, ResetAt: b.now().Add(-time.Second)}
+	if _, err := b.refresh(ctx, []string{"graphql"}); err == nil {
+		t.Fatal("expired observation accepted")
+	}
+	current.observations["graphql"] = githubquota.Observation{Limit: 0, ResetAt: b.now().Add(time.Hour)}
+	if _, err := b.refresh(ctx, []string{"graphql"}); err == nil {
+		t.Fatal("zero-limit observation accepted")
+	}
+}
+
+func TestRefreshPropagatesReadFailure(t *testing.T) {
+	b, _ := testBridge(t, 5000)
+	b.read = func(context.Context, []string) (snapshot, error) { return snapshot{}, errors.New("boom") }
+	if _, err := b.refresh(context.Background(), []string{"core"}); err == nil {
+		t.Fatal("read failure not propagated")
+	}
+}
