@@ -51,9 +51,20 @@ const buildCommitShort = buildCommit.slice(0, 7);
     if (!(target instanceof HTMLElement)) return;
     if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
 
+    const focusMainFallback = () => {
+      const main = document.querySelector("main");
+      if (!(main instanceof HTMLElement)) return;
+      if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: true });
+      main.scrollIntoView({ block: "start" });
+    };
+
     const focusTarget = () => {
       target.focus({ preventScroll: true });
       target.scrollIntoView({ block: "start" });
+      requestAnimationFrame(() => {
+        if (document.activeElement !== target) focusMainFallback();
+      });
     };
 
     skipLink.addEventListener("click", () => requestAnimationFrame(focusTarget));
