@@ -7,6 +7,72 @@ const { startDashboardServer } = await import(new URL('../../../local-server.mjs
 const parseDashboardCommand = (await import(new URL('../../../cli-actions.mjs', import.meta.url).href)).parseDashboardCommand;
 
 for (const width of [1440, 390]) {
+  test(`Upgrade copy dialog contains clicks inside the repository card at ${width}px`, async ({ page }, testInfo) => {
+    const preview = await startDashboardServer({
+      workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
+      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', port: 0,
+      output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+      downloadData: async (/** @type {string} */ destination) => {
+        await mkdir(destination, { recursive: true });
+        const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
+        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+          repositories: { metadata, rows: [{ organization: 'octo', repository: 'example' }] },
+          workflows: { metadata, rows: [{
+            organization: 'octo', repository: 'example', workflow: 'demo.md', 'workflow-name': 'Demo',
+            'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0'
+          }] }
+        }));
+      }
+    });
+    try {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${preview.url}/#page-maintenance`);
+      const repositoryLink = page.locator('[data-view-id="maintenance-repositories"] [data-card-drill="external"]');
+      await expect(repositoryLink).toHaveCount(1);
+      await repositoryLink.evaluate((link) => {
+        link.addEventListener('click', () => link.setAttribute('data-test-activated', 'true'));
+      });
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: { writeText: async (/** @type {string} */ text) => { document.body.dataset.copiedCommand = text; } }
+        });
+      });
+      const trigger = page.getByRole('button', { name: 'Upgrade', exact: true });
+      await trigger.click();
+      const dialog = page.getByRole('dialog', { name: 'Approve Upgrade', exact: true });
+      await expect(dialog).toBeVisible();
+      await dialog.getByText('Upgrade Agentic Workflows in the selected repository and create a pull request.', { exact: true }).click();
+      await expect(repositoryLink).not.toHaveAttribute('data-test-activated');
+      await dialog.getByText('Include pre-releases', { exact: true }).click();
+      await expect(dialog.getByRole('checkbox', { name: 'Include pre-releases' })).toBeChecked();
+      await expect(dialog.locator('.cli-action-command')).toContainText('--pre-releases');
+      await dialog.getByText('Auto merge', { exact: true }).click();
+      await expect(dialog.getByRole('checkbox', { name: 'Auto merge' })).toBeChecked();
+      await expect(dialog.locator('.cli-action-command')).toContainText('--auto-merge');
+      await dialog.locator('.cli-action-command').click();
+      await dialog.getByRole('button', { name: 'Copy command', exact: true }).click();
+      await expect(dialog.locator('.cli-action-status')).toHaveText('Command copied.');
+      await expect(page.locator('body')).toHaveAttribute('data-copied-command', /gh aw upgrade --repo octo\/example.*--pre-releases.*--auto-merge/);
+      await expect(repositoryLink).not.toHaveAttribute('data-test-activated');
+      await expect(page).toHaveURL(/#page-maintenance$/);
+      const screenshot = testInfo.outputPath(`upgrade-copy-dialog-${width}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      await testInfo.attach(`upgrade-copy-dialog-${width}`, { path: screenshot, contentType: 'image/png' });
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+      await trigger.click();
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+      await expect(repositoryLink).not.toHaveAttribute('data-test-activated');
+    } finally {
+      await page.goto('about:blank').catch(() => {});
+      await preview.close();
+    }
+  });
+
   test(`Upgrade all lists and queues every repository at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const repositories = ['octo/first', 'other/second', 'octo/third'];
