@@ -1123,7 +1123,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(maintenanceSection.locator('summary')).toHaveText('Maintenance');
-  await expect(maintenanceSection.getByRole('link')).toHaveText(['Updates', 'Commands', 'Marketplace', 'Ingestion', 'Settings']);
+  await expect(maintenanceSection.getByRole('link')).toHaveText(['Updates', 'Marketplace', 'Ingestion', 'Settings']);
   await expect(maintenanceSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([

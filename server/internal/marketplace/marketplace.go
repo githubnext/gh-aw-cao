@@ -147,7 +147,11 @@ func (p Package) Row() model.Row {
 		"forks":               p.Forks,
 	}
 	if p.RepositoryLink != nil {
-		row["repository-link"] = p.RepositoryLink
+		row["repository-link"] = model.Row{
+			"relation": p.RepositoryLink.Relation,
+			"href":     p.RepositoryLink.Href,
+			"label":    p.RepositoryLink.Label,
+		}
 	}
 	return row
 }

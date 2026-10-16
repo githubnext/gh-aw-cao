@@ -122,7 +122,9 @@ test("portable install without Go sources uses the prebuilt quota helper on PATH
   t.after(() => rm(directory, { recursive: true, force: true }));
   const dashboard = join(directory, "dashboard");
   await mkdir(dashboard);
-  await Promise.all(["cli-action-quota.mjs", "cli-actions.mjs"].map((name) =>
+  await Promise.all([
+    "cli-action-quota.mjs", "cli-actions.mjs", "cli-terminal-process.mjs", "cli-terminal-child.mjs",
+  ].map((name) =>
     copyFile(new URL(`../../dashboard/${name}`, import.meta.url), join(dashboard, name))));
   const executable = join(directory, "cao-cli-quota");
   await writeFile(executable, `#!${process.execPath}

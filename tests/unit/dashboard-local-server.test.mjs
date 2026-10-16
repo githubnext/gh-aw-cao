@@ -422,8 +422,11 @@ else if (args === "aw compile") {
     const response = await invoke("compile");
     const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
     assert.equal(events[0].type, "output");
-    assert.equal(events[0].data, "compile started\n");
-    assert.equal(events[1].stream, "stderr");
+    assert.equal(events[0].data.replaceAll("\r\n", "\n"), "compile started\n");
+    const output = events.filter((event) => event.type === "output");
+    assert.ok(output.every((event) => event.stream === "stdout"));
+    assert.equal(output.map((event) => event.data).join("").replaceAll("\r\n", "\n"),
+      "compile started\ncompile complete\n");
     assert.equal(events.at(-1).result.ok, true);
     assert.equal(events.at(-1).result.exitCode, 0);
     const rejected = await invoke("unsupported");

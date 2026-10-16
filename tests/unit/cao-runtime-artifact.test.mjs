@@ -87,6 +87,17 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
   assert.ok(metadata.files["activity/setup-prompt.mjs"]);
   assert.ok(metadata.files["dashboard/local-github-service.mjs"]);
+  for (const file of [
+    "dashboard/cli-terminal-process.mjs",
+    "dashboard/cli-terminal-child.mjs",
+    "dashboard/site/scripts/prepare-terminal.mjs",
+  ]) assert.ok(metadata.files[file], `missing terminal runtime file: ${file}`);
+  const dashboardManifest = JSON.parse(readFileSync(path.join(root, "dashboard/site/package.json"), "utf8"));
+  const dashboardLock = JSON.parse(readFileSync(path.join(root, "dashboard/site/package-lock.json"), "utf8"));
+  assert.ok(dashboardManifest.dependencies["node-pty"]);
+  assert.equal(dashboardManifest.scripts.postinstall, "node scripts/prepare-terminal.mjs");
+  assert.equal(dashboardLock.packages[""].dependencies["node-pty"], dashboardManifest.dependencies["node-pty"]);
+  assert.ok(dashboardLock.packages["node_modules/node-pty"].hasInstallScript);
   const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
   const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
   assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);

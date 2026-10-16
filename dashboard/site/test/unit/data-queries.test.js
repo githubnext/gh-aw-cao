@@ -89,6 +89,52 @@ function overviewRuns(rows, workflowRows = []) {
 
 describe('declarative dashboard queries', () => {
 
+  it('avoids redundant input copies when a later operator materializes independent rows', () => {
+    const row = Object.freeze({ value: 2 });
+    const input = { source: 'input', rows: [row], metadata: metadata('input') };
+    const budget = createDashboardQueryBudget({ maxOperations: 2 });
+    const result = executeDashboardQuery({
+      name: 'computed', from: 'input',
+      filter: { predicates: [{ field: 'value', equals: 2 }] },
+      compute: [{ as: 'double', function: 'product', args: [{ field: 'value' }, { value: 2 }] }]
+    }, { input }, undefined, budget);
+    expect(result.rows).toEqual([{ value: 2, double: 4 }]);
+    expect(result.rows[0]).not.toBe(row);
+    expect(budget.operations).toBe(2);
+    result.rows[0].value = 3;
+    expect(row.value).toBe(2);
+  });
+
+  it('retains independent result rows for selection-only pipelines and charges their copy pass', () => {
+    const row = Object.freeze({ value: 2 });
+    const budget = createDashboardQueryBudget({ maxOperations: 2 });
+    const result = executeDashboardQuery({
+      name: 'filtered', from: 'input',
+      filter: { predicates: [{ field: 'value', equals: 2 }] }
+    }, { input: { source: 'input', rows: [row], metadata: metadata('input') } }, undefined, budget);
+    expect(result.rows).toEqual([{ value: 2 }]);
+    expect(result.rows[0]).not.toBe(row);
+    expect(budget.operations).toBe(2);
+  });
+
+  it('lets joins materialize rows without mutating or aliasing their inputs', () => {
+    const row = Object.freeze({ value: 2 });
+    const budget = createDashboardQueryBudget({ maxOperations: 2 });
+    const result = executeDashboardQuery({
+      name: 'joined', from: 'input',
+      joins: [{
+        source: 'other', type: 'left', on: [{ left: 'value', right: 'value' }],
+        fields: [{ field: 'label', as: 'label' }]
+      }]
+    }, {
+      input: { source: 'input', rows: [row], metadata: metadata('input') },
+      other: { source: 'other', rows: [{ value: 2, label: 'two' }], metadata: metadata('other') }
+    }, undefined, budget);
+    expect(result.rows).toEqual([{ value: 2, label: 'two' }]);
+    expect(result.rows[0]).not.toBe(row);
+    expect(budget.operations).toBe(2);
+  });
+
   it('unions specialized run records before applying query clauses', () => {
     const result = executeDashboardQuery(
       {

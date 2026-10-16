@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -69,7 +70,7 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 			"marketplace": {
 				"cache-ttl-seconds": 60,
 				"registries": [
-					{"id": "official", "repository": "example/packages", "ref": "main", "api-url": "` + githubServer.URL + `"}
+					{"id": "official", "repository": "example/packages", "ref": "main", "api-url": "` + githubServer.URL + `/api/v3"}
 				]
 			}
 		}
@@ -134,6 +135,13 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 	}
 	if source.Metadata["availability"] != "available" {
 		t.Fatalf("unexpected availability: %v", source.Metadata["availability"])
+	}
+	if want := (map[string]any{
+		"relation": "repository",
+		"href":     githubServer.URL + "/example/packages",
+		"label":    "Open example/packages on GitHub",
+	}); !reflect.DeepEqual(source.Rows[0]["repository-link"], want) {
+		t.Fatalf("native marketplace query lost repository link: %#v", source.Rows[0]["repository-link"])
 	}
 }
 

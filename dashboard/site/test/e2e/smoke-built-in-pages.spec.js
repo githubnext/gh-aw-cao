@@ -57,7 +57,7 @@ for (const width of [1200, 390]) {
         const fixture = ${JSON.stringify(valueTracking)};
         const metadata = {
           'source-id': 'value-tracking', 'source-kind': 'fixture',
-          'as-of': '2026-09-24T10:00:00Z', 'retrieved-at': '2026-09-24T10:00:00Z',
+          'as-of': fixture.plotHorizonContract.end, 'retrieved-at': fixture.plotHorizonContract.end,
           completeness: 'complete', freshness: 'unknown', availability: 'available'
         };
         localStorage.setItem('central-agentic-ops.dashboard.horizon-filter-settings', JSON.stringify({ range: 'all' }));
