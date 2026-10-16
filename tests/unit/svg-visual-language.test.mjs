@@ -56,20 +56,28 @@ test("rejects incomplete metadata, gradients, and undersized labels", () => {
   });
 });
 
-test("does not retain markup delimiters from malformed nested tags", () => {
-  const svg = `<svg role="img" aria-labelledby="title" data-visual-kind="diagram" data-visual-id="flow">
+for (const [markup, text] of [
+  ["<<script>script>alert(1)", "scriptalert(1)"],
+  ["<<SCRIPT>SCRIPT>alert(1)", "SCRIPTalert(1)"],
+  ["<script", "script"],
+  ["<SCRIPT", "SCRIPT"],
+  ["label<>tail>", "labeltail"],
+  ["<tspan>Nested label</tspan>", "Nested label"],
+]) {
+  test(`does not retain markup delimiters from ${JSON.stringify(markup)}`, () => {
+    const svg = `<svg role="img" aria-labelledby="title" data-visual-kind="diagram" data-visual-id="flow">
     <title id="title"><<></title>
-    <g data-node="step"><text font-size="12"><<script>script>alert(1)</text></g>
+    <g data-node="step"><text font-size="12">${markup}</text></g>
   </svg>`;
 
-  withFixtures({ "malformed.svg": svg }, (paths) => {
-    const result = runChecker(paths);
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /aria-labelledby references missing or empty elements: title/);
-    assert.match(result.stderr, /require at least 16px/);
-    assert.doesNotMatch(result.stderr, /<script>/);
+    withFixtures({ "malformed.svg": svg }, (paths) => {
+      const result = runChecker(paths);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /aria-labelledby references missing or empty elements: title/);
+      assert.ok(result.stderr.includes(`Text ${JSON.stringify(text)} uses font-size 12; diagram labels require at least 16px.`));
+    });
   });
-});
+}
 
 test("rejects missing theme counterparts and incorrect state colors", () => {
   const invalid = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-label="Status" data-visual-kind="diagram" data-visual-id="status">
