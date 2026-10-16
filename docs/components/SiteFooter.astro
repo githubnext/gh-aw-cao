@@ -48,12 +48,25 @@ const buildCommitShort = buildCommit.slice(0, 7);
     if (!targetId) return;
 
     const target = document.getElementById(targetId);
-    if (!(target instanceof HTMLElement)) return;
-    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+    const fallback = document.querySelector("main");
+    if (!(target instanceof HTMLElement) && !(fallback instanceof HTMLElement)) return;
+
+    const ensureFocusable = (element) => {
+      if (!(element instanceof HTMLElement)) return null;
+      if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "-1");
+      return element;
+    };
 
     const focusTarget = () => {
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "start" });
+      const candidates = [ensureFocusable(target), ensureFocusable(fallback)].filter(Boolean);
+      for (const candidate of candidates) {
+        candidate.focus({ preventScroll: true });
+        if (document.activeElement === candidate) {
+          candidate.scrollIntoView({ block: "start" });
+          return;
+        }
+      }
+      ensureFocusable(target)?.scrollIntoView({ block: "start" });
     };
 
     skipLink.addEventListener("click", () => requestAnimationFrame(focusTarget));
