@@ -1032,9 +1032,9 @@ describe('data view renderer', () => {
       buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
     });
     rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
-    expect(rendered?.querySelector('.cli-action-command')?.textContent)
-      .toBe(rows.map((row) => `gh aw upgrade --repo ${row.repository}`).join('\n'));
-    expect(rendered?.querySelector('.cli-action-command')?.textContent).not.toContain('acme/control');
+    expect([...rendered?.querySelectorAll('.cli-action-command') ?? []].map((node) => node.textContent))
+      .toEqual(rows.map((row) => `gh aw upgrade --repo ${row.repository}`));
+    expect(rendered?.querySelector('.cli-action-batch-preview')?.textContent).not.toContain('acme/control');
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(1);
     setDeclaredCliActions([]);
   });

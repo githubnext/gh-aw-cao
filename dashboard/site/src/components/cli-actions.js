@@ -260,16 +260,26 @@ function renderCliActionControl(action, options = {}) {
   const enqueueBatch = async () => {
     if (busy.get() || options.batch?.error) return;
     busy.set(true);
+    statusText.set('Queuing commands…');
     try {
-      const results = await Promise.allSettled(templateTargets.map((values) => enqueueCliCommand({
-        id: action.id,
-        arguments: { ...argumentValues },
-        values,
-        idempotencyKey: crypto.randomUUID()
-      }, scope.signal)));
+      let admitted = 0;
+      let failed = 0;
+      for (const values of templateTargets) {
+        if (scope.signal.aborted) return;
+        try {
+          await enqueueCliCommand({
+            id: action.id,
+            arguments: { ...argumentValues },
+            values,
+            idempotencyKey: crypto.randomUUID()
+          }, scope.signal);
+          admitted += 1;
+        } catch {
+          failed += 1;
+        }
+        statusText.set(`${admitted} commands queued; ${failed} could not be queued.`);
+      }
       if (scope.signal.aborted) return;
-      const admitted = results.filter((result) => result.status === 'fulfilled').length;
-      const failed = results.length - admitted;
       publishNotification({
         message: failed
           ? `${action.label}: ${admitted} commands queued; ${failed} could not be queued.`
@@ -352,10 +362,6 @@ function renderCliActionControl(action, options = {}) {
       title: action.label,
       'aria-label': action.label,
       onClick: async () => {
-        if (options.batch && canExecute && inputs.length === 0) {
-          await enqueueBatch();
-          return;
-        }
         copyControl?.reset();
         if (canExecute) {
           statusText.set('');
@@ -383,9 +389,23 @@ function renderCliActionControl(action, options = {}) {
       trigger.title = options.batch?.error ?? action.label;
     }, { signal: scope.signal });
   }
-  command = h('code', { className: 'cli-action-command' }, commandPreviewText.get());
+  const batchCommands = options.batch && !options.batch.error
+    ? templateTargets.map((values) => ({
+      target: Object.values(values).join(', '),
+      code: h('code', { className: 'cli-action-command' })
+    })) : null;
+  command = batchCommands
+    ? h('section', { className: 'cli-action-batch-preview', 'aria-label': 'Batch preview' },
+      h('h3', null, `${batchCommands.length} ${batchCommands.length === 1 ? 'command' : 'commands'} to queue`),
+      h('ol', { className: 'cli-action-batch-commands', 'aria-label': 'Commands to queue' },
+        ...batchCommands.map(({ target, code }) => h('li', null, h('strong', null, `Target: ${target}`), code))))
+    : h('code', { className: 'cli-action-command' }, commandPreviewText.get());
   effect(() => {
-    command.textContent = commandPreviewText.get();
+    const text = commandPreviewText.get();
+    if (batchCommands) {
+      const lines = text.split('\n');
+      batchCommands.forEach(({ code }, index) => { code.textContent = lines[index]; });
+    } else command.textContent = text;
   }, { signal: scope.signal });
   dialog.append(
     h(

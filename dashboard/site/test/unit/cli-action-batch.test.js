@@ -46,8 +46,11 @@ it('reviews batch options before queuing every explicit target without attaching
   trigger.click();
   expect(queue.enqueue).not.toHaveBeenCalled();
   expect(root.querySelector('dialog')?.open).toBe(true);
-  expect(root.querySelector('.cli-action-command')?.textContent).toBe(rows.map(({ repository }) =>
-    `gh aw upgrade --repo ${repository} --create-pull-request`).join('\n'));
+  expect(root.querySelector('.cli-action-batch-preview h3')?.textContent).toBe('2 commands to queue');
+  expect([...root.querySelectorAll('.cli-action-batch-commands li > strong')].map((node) => node.textContent))
+    .toEqual(rows.map(({ repository }) => `Target: ${repository}`));
+  expect([...root.querySelectorAll('.cli-action-command')].map((node) => node.textContent)).toEqual(rows.map(({ repository }) =>
+    `gh aw upgrade --repo ${repository} --create-pull-request`));
   confirm.click();
   await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.values)).toEqual(rows);
@@ -62,8 +65,8 @@ it('applies the opted-in auto merge flag to every preview and queued target', as
   const { root, trigger, confirm } = control(rows);
   trigger.click();
   /** @type {HTMLInputElement} */ (root.querySelectorAll('.cli-action-argument input')[1]).click();
-  expect(root.querySelector('.cli-action-command')?.textContent).toBe(rows.map(({ repository }) =>
-    `gh aw upgrade --repo ${repository} --create-pull-request --auto-merge`).join('\n'));
+  expect([...root.querySelectorAll('.cli-action-command')].map((node) => node.textContent)).toEqual(rows.map(({ repository }) =>
+    `gh aw upgrade --repo ${repository} --create-pull-request --auto-merge`));
   expect(queue.enqueue).not.toHaveBeenCalled();
   confirm.click();
   await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
@@ -111,6 +114,20 @@ it('waits for every admission and prevents double activation while enqueueing', 
   expect(queue.attach).not.toHaveBeenCalled();
 });
 
+it('serializes admissions so the trusted host never has concurrent approval requests', async () => {
+  /** @type {((value: { id: string }) => void) | undefined} */
+  let admit;
+  queue.enqueue.mockImplementationOnce(() => new Promise((resolve) => { admit = resolve; }));
+  const { root, trigger, confirm } = control(rows);
+  trigger.click();
+  confirm.click();
+  await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
+  expect(root.querySelector('.cli-action-status')?.textContent).toBe('Queuing commands…');
+  admit?.({ id: 'octo/first' });
+  await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
+});
+
 it('shows partial admission failures and still navigates to admitted commands', async () => {
   queue.enqueue.mockRejectedValueOnce(new Error('Admission denied'));
   const { trigger, confirm } = control(rows);
@@ -140,6 +157,9 @@ it('binds campaign updates to separate scoped CLI commands', async () => {
   if (!root) throw new Error('Missing campaign action');
   document.body.append(root);
   /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-trigger')).click();
+  expect(root.querySelector('dialog')?.open).toBe(true);
+  expect(queue.enqueue).not.toHaveBeenCalled();
+  /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
   await vi.waitFor(() => expect(window.location.hash).toBe('#page-commands'));
   expect(queue.enqueue.mock.calls.map(([payload]) => payload.values)).toEqual(targets);
 });

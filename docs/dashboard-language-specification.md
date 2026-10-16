@@ -1376,8 +1376,10 @@ Empty, unavailable, incomplete, paginated, or invalid target sets cannot execute
 and must never fall back to the dashboard's control repository. This binding
 requires a non-lazy list. Additional `list.actions` remain independent controls.
 
-Batch actions with boolean arguments open the shared approval dialog before
-queuing any commands. Each checkbox choice applies to every target in the
+All batch actions open the shared approval dialog before queuing any commands.
+The preview shows the total command count and each target with its resolved
+command. Admissions are submitted sequentially so the trusted host reviews
+at most one request at a time. Each checkbox choice applies to every target in the
 displayed batch. The built-in update and upgrade actions declare an **Auto merge**
 checkbox, unchecked by default, which adds `--auto-merge` only when selected.
 This gh-aw option requires **Create pull request**.

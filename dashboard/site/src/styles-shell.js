@@ -280,6 +280,11 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .cli-action-argument > span { display: grid; gap: 2px; }
 .cli-action-argument strong { font-size: .8125rem; }
 .cli-action-argument small { color: var(--muted); font-size: .75rem; }
+.cli-action-batch-preview { min-width: 0; }
+.cli-action-batch-preview h3 { margin: 0 0 8px; font-size: .875rem; }
+.cli-action-batch-commands { display: grid; gap: 12px; margin: 0; padding-left: 24px; }
+.cli-action-batch-commands li { min-width: 0; overflow-wrap: anywhere; }
+.cli-action-batch-commands .cli-action-command { display: block; margin-top: 4px; }
 .cli-action-command, .cli-action-output { overflow: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-inset); color: var(--fg); font-family: var(--font-mono, ui-monospace, monospace); font-size: .75rem; white-space: pre-wrap; word-break: break-word; }
 .cli-action-output { min-height: 160px; flex: 1 1 auto; margin: 0; }
 .cli-action-terminal { height: min(360px, 45dvh); min-height: 160px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #0d1117; }
