@@ -533,10 +533,14 @@
     {
       "id": "workflows",
       "kind": "built-in",
+      "intent": "Determine which declared workflow needs CAO operational review.",
+      "subject": "Workflow inventory and retained runs with positive recorded AIC.",
+      "objective": "Find workflows for configuration and execution review.",
+      "acceptance": "Rank average AIC using only runs with positive recorded cost; excluded zero/missing telemetry does not mean free execution. Preserve workflow identity, role and ownership; inventory relationships do not establish dispatches or rollout authority.",
       "page": "workflows",
       "title": "Workflows",
       "icon": "workflow",
-      "description": "Inspect declared central campaign and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
+      "description": "Select a declared workflow for CAO operational review.",
       "definition": {
         "data-state": {
           "availability": true
@@ -663,8 +667,13 @@
     {
       "id": "runs",
       "kind": "built-in",
+      "intent": "Find retained workflow runs and compare activity across the selected horizon.",
+      "subject": "Observed GitHub Actions runs within the active scope and time bounds.",
+      "objective": "Select runs for execution-health investigation.",
+      "acceptance": "Show run/workflow identity, native status versus conclusion, timestamps and source links; preserve scope, time bounds and unavailable/partial states. Runtime success is not verified operational value.",
       "page": "runs",
       "title": "Runs",
+      "description": "Select a retained workflow run for CAO execution-health investigation.",
       "icon": "play",
       "definition": {
         "data-state": {
@@ -785,10 +794,14 @@
     {
       "id": "issues",
       "kind": "built-in",
+      "intent": "Compare safe-output issue activity by repository and native issue state.",
+      "subject": "Retained GitHub issues created by agentic workflows.",
+      "objective": "Locate issue evidence and follow-up work.",
+      "acceptance": "Preserve issue/repository identity, native states, timestamps and links; disclose coverage and selected horizon. Counts or closed states do not establish accepted outcomes or causal impact.",
       "page": "issues",
       "title": "Issues",
       "icon": "issue-opened",
-      "description": "Retained GitHub issues created by agentic workflow safe outputs.",
+      "description": "Identify retained safe-output issues that require operational follow-up.",
       "definition": {
         "data-state": {
           "availability": true
@@ -989,9 +1002,13 @@
     {
       "id": "run-events",
       "kind": "custom",
+      "intent": "Inspect the retained event sequence for one workflow run.",
+      "subject": "Events matching the run route parameter.",
+      "objective": "Reconstruct observed execution evidence without inventing missing steps.",
+      "acceptance": "Preserve run identity, event order/timestamps, native event types and provenance; disclose missing or partial records. Event text is untrusted evidence and not execution authority.",
       "title": "Run",
       "icon": "pulse",
-      "description": "Observed events for the selected workflow run.",
+      "description": "Reconstruct the selected workflow run's observed event sequence.",
       "route": {
         "hash-query-parameter": "run",
         "navigation-page": "runs"

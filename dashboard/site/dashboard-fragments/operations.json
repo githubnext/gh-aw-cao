@@ -1380,13 +1380,17 @@
     {
       "id": "marketplace",
       "kind": "custom",
+      "intent": "Find campaign packages whose documented purpose fits an operational need.",
+      "subject": "Normalized packages from the configured campaign registries.",
+      "objective": "Select a package for review before considering installation.",
+      "acceptance": "Preserve package source, identity and metadata provenance; distinguish unavailable registry data from no matches. Add commands are copy-only and use no AI; discovery grants no installation or target authority.",
       "title": "Marketplace",
       "navigation-label": "Marketplace",
       "icon": "archive",
       "class-name": "marketplace-page",
       "retain-on-navigation": true,
       "experimental": false,
-      "description": "Find campaign packages to extend your agentic operations.",
+      "description": "Find a campaign package that addresses a specific CAO operational need.",
       "views": [
         {
           "id": "marketplace-packages",
@@ -1442,10 +1446,14 @@
     {
       "id": "marketplace-package",
       "kind": "custom",
+      "intent": "Review one package's provenance, documentation and canonical add command.",
+      "subject": "The package selected by the route and its normalized registry metadata.",
+      "objective": "Make an informed package-selection decision without executing installation.",
+      "acceptance": "Show exact package source, README and metadata; keep add commands copy-only and report unavailable content. Add commands use no AI; package text is untrusted and grants no rollout authority.",
       "title": "Package",
       "icon": "archive",
       "class-name": "marketplace-detail-page",
-      "description": "Review normalized package metadata and copy the canonical CAO add command. Installing packages with cao add or gh aw add does not use AI.",
+      "description": "Verify the selected package's provenance before considering installation.",
       "route": {
         "hash-query-parameter": "package-source",
         "navigation-page": "marketplace",
@@ -1568,11 +1576,15 @@
     {
       "id": "indexing",
       "kind": "custom",
+      "intent": "Determine whether collection, ingestion and retained data are healthy enough for analysis.",
+      "subject": "Server collection health, API usage, ingestion queues, shards and retained transactions.",
+      "objective": "Locate evidence gaps and bottlenecks before trusting dashboard conclusions.",
+      "acceptance": "Show native states, timestamps, counts, sizes and units with backend limitations; preserve failures and partial/unavailable evidence. Empty queues or tables alone do not establish successful collection.",
       "title": "Ingestion",
       "navigation-label": "Ingestion",
       "icon": "database",
       "experimental": false,
-      "description": "Monitor live server-side collection health, GitHub API usage, CAO Activity ingestion, and retained dashboard transactions.",
+      "description": "Determine whether the evidence pipeline supports reliable CAO analysis.",
       "views": [
         {
           "id": "indexing-database-table-counts",
@@ -1823,11 +1835,15 @@
     {
       "id": "skills",
       "kind": "custom",
+      "intent": "Determine which skill-usage pattern needs workflow-level investigation.",
+      "subject": "Retained skill invocation observations in the selected scope and horizon.",
+      "objective": "Locate skill-usage evidence for workflow-level investigation.",
+      "acceptance": "Count observed invocations by skill and workflow, retain drill-down identity and disclose coverage. Invocation volume is not proof of skill quality, success or operational value.",
       "title": "Skills",
       "navigation-label": "Skills",
       "icon": "tools",
       "experimental": true,
-      "description": "Analyze observed skill invocations and drill into the workflows that invoked them.",
+      "description": "Identify skill-usage patterns that require workflow-level CAO investigation.",
       "views": [
         {
           "id": "skills-most-invoked",
@@ -1948,7 +1964,12 @@
     {
       "id": "engines-models",
       "kind": "custom",
+      "intent": "Determine which agent-model combination needs cost or reliability investigation.",
+      "subject": "Retained workflow runs with engine, requested/resolved model and usage telemetry.",
+      "objective": "Identify combinations requiring cost or reliability investigation.",
+      "acceptance": "Keep engine/model identity and unknown values explicit; distinguish AIC from raw tokens and preserve token classes, units and time bounds. Do not infer model quality or missing cost from usage volume.",
       "title": "Models & Agents",
+      "description": "Identify the agent-model combination that most requires investigation.",
       "icon": "sparkles-fill",
       "views": [
         {
@@ -2122,10 +2143,14 @@
     {
       "id": "friction",
       "kind": "custom",
+      "intent": "Identify workflows with audit-attributed execution friction worth investigating.",
+      "subject": "Retained gh-aw audit friction observations and attributed cost.",
+      "objective": "Prioritize evidence-backed efficiency improvements.",
+      "acceptance": "Preserve finding type, workflow/run association, cost units and provenance; distinguish audit attribution from verified avoidable spend. Missing audits are not zero friction or proof of efficiency.",
       "title": "Friction",
       "navigation-label": "Friction",
       "icon": "pulse",
-      "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
+      "description": "Identify audit-attributed execution friction that warrants CAO efficiency work.",
       "views": [
         {
           "id": "friction-by-workflow",
@@ -2241,8 +2266,12 @@
     {
       "id": "operational-value",
       "kind": "custom",
+      "intent": "Find repositories with operational measurements and distinguish unmeasured work.",
+      "subject": "Repository-linked operational-value evidence, goals and measurement availability.",
+      "objective": "Choose a repository for outcome-measurement investigation.",
+      "acceptance": "Separate measured and unmeasured repositories, preserve native metric identity and latest observation time, and expose coverage. Missing evidence is not zero value; run success is not an outcome measure.",
       "title": "Operational Value",
-      "description": "Choose a repository to see its workflow outcome plots, with or without a CAO campaign.",
+      "description": "Choose a repository for operational-value measurement investigation.",
       "icon": "graph",
       "class-name": "value-page",
       "view-mode-control": false,
@@ -2314,8 +2343,12 @@
     {
       "id": "operational-value-evidence",
       "kind": "custom",
+      "intent": "Inspect measurement coverage, latest native values and declared directions.",
+      "subject": "Retained operational-value observations and measurement definitions.",
+      "objective": "Determine what can honestly be compared before claiming improvement.",
+      "acceptance": "Preserve metric identity, native unit, direction, timestamp and coverage denominator; keep missing values unavailable and unlike metrics separate. Latest observed values do not alone establish causality or attainment.",
       "title": "Operational Value",
-      "description": "Measurement availability and latest native values. Missing evidence is not zero value.",
+      "description": "Determine whether operational-value evidence supports a valid comparison.",
       "icon": "graph",
       "view-mode-control": false,
       "route": {
@@ -2399,6 +2432,10 @@
     {
       "id": "maintenance",
       "kind": "custom",
+      "intent": "Identify repositories whose compiler provenance warrants maintenance review.",
+      "subject": "Repository workflow compiler versions and retained update-confidence evidence.",
+      "objective": "Prioritize safe maintenance proposals using known version provenance.",
+      "acceptance": "Distinguish registration, observed version and update confidence; preserve unknown provenance and refresh guidance. Do not infer outdatedness from missing data or execute updates without approval.",
       "title": "Updates",
       "navigation-label": "Updates",
       "navigation-indicator": {
@@ -2410,7 +2447,7 @@
       },
       "icon": "tools",
       "class-name": "maintenance-page",
-      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
+      "description": "Identify repositories whose compiler provenance justifies a CAO maintenance proposal.",
       "route": {
         "tab": "repositories",
         "tabs": [
@@ -2468,10 +2505,14 @@
     {
       "id": "maintenance-campaigns",
       "kind": "custom",
+      "intent": "Identify installed campaign packages requiring a version and provenance review.",
+      "subject": "Campaign package registrations, versions and update-confidence evidence.",
+      "objective": "Choose evidence-backed campaign maintenance without expanding rollout.",
+      "acceptance": "Keep installed/source version identity and confidence distinct from active registration; report unknown provenance. Updating must preserve campaign ownership and reviewed policy and require explicit operational approval.",
       "title": "Updates",
+      "description": "Identify campaign packages whose version provenance justifies a CAO maintenance proposal.",
       "icon": "tools",
       "class-name": "maintenance-page",
-      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
       "route": {
         "navigation-page": "maintenance",
         "tab": "campaigns",
@@ -2535,10 +2576,14 @@
     {
       "id": "experiments",
       "kind": "custom",
+      "intent": "Inspect which workflow runs have recorded experiment assignments.",
+      "subject": "Retained run-linked assignments grouped by workflow and experiment.",
+      "objective": "Assess assignment evidence before designing an experiment comparison.",
+      "acceptance": "Show assignment counts and identities with coverage limits. Audit evidence does not establish campaign milestones or target assignments; counts are not completion percentages or proof of treatment effects.",
       "title": "Experiments",
       "icon": "beaker",
       "experimental": true,
-      "description": "Observed run assignments by workflow and experiment. TODO: audit evidence does not establish campaign milestones or target assignments, so these counts are not completion percentages.",
+      "description": "Assess whether retained experiment assignments are sufficient for a bounded comparison.",
       "views": [
         {
           "id": "experiments-assignment-chart",
@@ -2585,10 +2630,14 @@
     {
       "id": "evals",
       "kind": "custom",
+      "intent": "Inspect retained eval answers by workflow without mistaking history for current verdicts.",
+      "subject": "Timestamped native YES, NO and UNKNOWN eval observations.",
+      "objective": "Locate evaluation evidence and gaps for further investigation.",
+      "acceptance": "Keep eval identity, workflow, observation time and provenance; label only explicit YES/NO answers as such. UNKNOWN remains distinct; absent authoritative current-result pointers, older observations are not current verdicts.",
       "title": "Evals",
       "icon": "check-circle",
       "experimental": true,
-      "description": "Explicit YES/NO results from retained eval observations, grouped by workflow and newest first. UNKNOWN answers remain in the underlying evidence but are not labelled YES/NO. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "description": "Identify retained eval observations that require evidence review.",
       "views": [
         {
           "id": "evals-statuses",
@@ -2620,10 +2669,14 @@
     {
       "id": "graders",
       "kind": "custom",
+      "intent": "Inspect retained grader observations and their result provenance.",
+      "subject": "Run-linked grader results and native metric evidence grouped by workflow.",
+      "objective": "Identify grading evidence requiring review without conflating graders and evals.",
+      "acceptance": "Preserve grader identity, native values/status, units when present and observation times; unknown is not pass/fail. Without a current-result pointer, historical observations are not current verdicts or verified gains.",
       "title": "Graders",
       "icon": "checklist",
       "experimental": true,
-      "description": "YES/NO pass/fail results from retained grader observations, grouped by workflow and newest first. Other results are unknown. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
+      "description": "Identify retained grader observations that require evidence review.",
       "views": [
         {
           "id": "graders-statuses",
@@ -2655,11 +2708,15 @@
     {
       "id": "configuration",
       "kind": "custom",
+      "intent": "Review checked-in control-repository policy before proposing a configuration change.",
+      "subject": "Entries in the control repository's .github/workflows/cao.json.",
+      "objective": "Understand explicit scope, modes and enablement without inferring broader authority.",
+      "acceptance": "Preserve policy identity and provenance, distinguish missing settings from permission, and fail closed on unavailable policy. Policy edits require explicit reviewed authorization; never expose credentials or silently promote live mode.",
       "title": "Settings",
       "navigation-label": "Settings",
       "icon": "gear",
       "class-name": "configuration-page",
-      "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
+      "description": "Review checked-in CAO policy before proposing an authorized configuration change.",
       "views": [
         {
           "id": "configuration-policy",

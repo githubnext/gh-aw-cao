@@ -32,6 +32,31 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it.each(['built-in', 'custom'])('validates optional %s page analysis contracts and their annotation budget', (kind) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+      const original = page[field];
+      for (const invalid of ['', '   ', 42]) {
+        page[field] = invalid;
+        expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+          ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining(`.${field}`) })])
+        });
+      }
+      page[field] = original;
+    }
+    page.subject = 's'.repeat(513);
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining('at most 512') })])
+    });
+    page.subject = 'Evidence';
+    page.intent = 'i'.repeat(8001);
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.intent') })])
+    });
+  });
+
   it('accepts declared table card templates and rejects unresolved references and other marks', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const view = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'commands').views[0];

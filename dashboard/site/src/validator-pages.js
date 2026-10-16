@@ -182,6 +182,20 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
     errors
   );
   validateOptionalStringField(page.description, `${path}.description`, errors);
+  for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+    if (page[field] !== undefined) {
+      validateStringField(page[field], `${path}.${field}`, true, errors);
+      if (typeof page[field] === 'string' && !page[field].trim()) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+          `${field} must not be whitespace only.`, `${path}.${field}`));
+      }
+    }
+  }
+  if (typeof page.intent === 'string' && [...page.intent].length > 8000) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+      'Page intent must be at most 8000 characters.', `${path}.intent`));
+  }
+  validateSemanticMetadataLength(page, path, errors);
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
   }

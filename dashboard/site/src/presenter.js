@@ -322,7 +322,7 @@ export function renderDashboard(input) {
             failures,
             loading,
             signal: options.signal
-          });
+          }, { repository: document.dashboard.repository, githubUrlBase: document.dashboard['github-url-base'] });
           debugPerformance('page render', {
             pageId,
             phase: renderCount++ === 0 ? 'initial' : 'update',
@@ -815,12 +815,13 @@ function renderPageSkeleton() {
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
  * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, failures: import('./reactive.js').State<Record<string, string>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
+ * @param {{ repository?: string, githubUrlBase?: string }} [promptContext]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding = undefined) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext, queries = [], binding = undefined, promptContext = {}) {
   const title = getPageTitle(page);
   const payload = getBuiltInPagePayload(page, reusableViews);
-  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries, binding);
+  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext, queries, binding, promptContext);
 }
 
 /**
@@ -837,7 +838,8 @@ export function renderDashboardPagePreview(document, binding, queryContext) {
   }
   const templates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const root = renderPage(page, binding.sources.get(), document.dashboard.units ?? {},
-    document.dashboard.defaults ?? {}, templates, [], queryContext, document.dashboard.queries ?? [], binding);
+    document.dashboard.defaults ?? {}, templates, [], queryContext, document.dashboard.queries ?? [], binding,
+    { repository: document.dashboard.repository, githubUrlBase: document.dashboard['github-url-base'] });
   enableLazyViews(root);
   binding.signal.addEventListener('abort', () => disconnectLazyViews(root), { once: true });
   return root;
@@ -854,9 +856,10 @@ export function renderDashboardPagePreview(document, binding, queryContext) {
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @param {Array<Record<string, unknown>>} [queries]
  * @param {{ sources: import('./reactive.js').State<Record<string, LogicalSourceInput>>, failures: import('./reactive.js').State<Record<string, string>>, loading: import('./reactive.js').State<boolean>, signal: AbortSignal }} [binding]
+ * @param {{ repository?: string, githubUrlBase?: string }} [promptContext]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding = undefined) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext, queries = [], binding = undefined, promptContext = {}) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -1002,6 +1005,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
               const routeValues = Object.fromEntries(new URLSearchParams(globalThis.location?.hash.split('?')[1] ?? ''));
               return semanticViewPrompt({
                 pageId: page.id,
+                pageContract: page,
+                ...promptContext,
                 viewId: view.id ?? `view-${index + 1}`,
                 title: getViewTitle(view, index),
                 semantics,

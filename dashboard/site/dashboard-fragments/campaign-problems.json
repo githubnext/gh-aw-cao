@@ -500,8 +500,12 @@
     {
       "id": "campaign-problems",
       "kind": "custom",
+      "intent": "Identify current runtime problems recorded for the selected campaign.",
+      "subject": "Campaign-linked runtime problem evidence in the retained snapshot.",
+      "objective": "Prioritize bounded diagnosis and repair proposals.",
+      "acceptance": "Show problem identity, recorded state, affected runs and evidence links; distinguish current problems from historical failures and unavailable evidence. Do not assume a repair succeeded without verification.",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify current runtime problems blocking the selected campaign's operation.",
       "icon": "alert",
       "class-name": "campaign-problems-page",
       "route": {
@@ -648,8 +652,12 @@
     {
       "id": "campaign-problem-detail",
       "kind": "custom",
+      "intent": "Investigate one campaign runtime problem and the evidence supporting its repair guidance.",
+      "subject": "The routed campaign problem, related runs and recorded diagnostics.",
+      "objective": "Choose a narrowly supported repair or report an incomplete investigation.",
+      "acceptance": "Preserve problem/campaign identity and source provenance; separate recorded diagnostics from proposed causes and repairs. Missing evidence must not trigger speculative changes or wider rollout.",
       "title": "Problem",
-      "description": "Runtime failure details and repair guidance for a specific campaign problem.",
+      "description": "Determine whether evidence supports a repair for the selected campaign runtime problem.",
       "icon": "alert",
       "class-name": "campaign-problem-detail-page",
       "route": {

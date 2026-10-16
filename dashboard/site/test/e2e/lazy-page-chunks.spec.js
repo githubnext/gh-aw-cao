@@ -263,11 +263,20 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
     };
   });
   expect(core.textLength).toBeLessThan(76000);
+  expect(core.value.dashboard.pages.some((/** @type {Record<string, unknown>} */ entry) =>
+    ['intent', 'subject', 'objective', 'acceptance'].some((field) => field in entry))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ views?: unknown[] }} */ entry) => Array.isArray(entry.views))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ definition?: { views?: unknown[] } }} */ entry) => Array.isArray(entry.definition?.views))).toBe(false);
 
   await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories with issues/);
+  const analysis = page.locator('[data-view-id="repositories-runs"] .table-intent-button');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+  const preview = page.locator('[data-view-id="repositories-runs"] .table-intent-preview');
+  await expect(preview).toContainText('Page intent:\nDetermine which repository most needs CAO operational investigation.');
+  await expect(preview).toContainText('https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md');
+  await page.getByRole('button', { name: 'Close prompt preview' }).click();
   await page.getByRole('button', { name: 'Table' }).click();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(
     /Ingestion %|No repositories discovered\.|gh-aw-cao|Loading Repositories/

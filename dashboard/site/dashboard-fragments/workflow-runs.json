@@ -529,8 +529,12 @@
     {
       "id": "workflow-detail",
       "kind": "custom",
+      "intent": "Inspect durable reports produced by the selected authored workflow.",
+      "subject": "Retained safe-output reports associated with the workflow route parameter.",
+      "objective": "Locate report evidence and reviewer disposition before claiming delivery.",
+      "acceptance": "Preserve report identity, status, timestamps and provenance links; distinguish no retained reports from unavailable evidence. A published report is not automatically an accepted outcome.",
       "title": "Workflow",
-      "description": "Durable reports produced by this authored GitHub Agentic Workflow.",
+      "description": "Identify durable reports from the selected workflow that require follow-up.",
       "icon": "workflow",
       "class-name": "workflow-detail-page",
       "route": {
@@ -631,8 +635,12 @@
     {
       "id": "workflow-runs",
       "kind": "custom",
+      "intent": "Determine which retained run signal needs investigation for the selected workflow.",
+      "subject": "Retained runs for the routed workflow in the selected horizon.",
+      "objective": "Find concrete execution regressions and runs worth investigating.",
+      "acceptance": "Keep status and conclusion distinct; show run links, time bounds and failure-change comparison basis. Missing or partial evidence must not become zero failures or a causal claim.",
       "title": "Workflow runs",
-      "description": "Observed GitHub Actions runs for this authored workflow.",
+      "description": "Identify retained runs from the selected workflow that require execution investigation.",
       "icon": "play",
       "class-name": "workflow-runs-page",
       "route": {
@@ -871,8 +879,12 @@
     {
       "id": "workflow-run-cards",
       "kind": "custom",
+      "intent": "Browse individual retained runs for the selected workflow.",
+      "subject": "Run inventory matching the workflow route parameter and selected horizon.",
+      "objective": "Open the relevant run evidence without confusing inventory with outcomes.",
+      "acceptance": "Preserve run identity, native status/conclusion, timestamps and drill-down links; maintain filters and disclose unavailable or partial results.",
       "title": "Workflow runs",
-      "description": "Observed runs for the selected workflow.",
+      "description": "Select retained run evidence for the selected workflow.",
       "icon": "play",
       "route": {
         "hash-query-parameter": "workflow",
@@ -885,8 +897,12 @@
     {
       "id": "workflow-runtime",
       "kind": "custom",
+      "intent": "Determine the selected workflow's highest-priority operational investigation.",
+      "subject": "The routed workflow's retained runs, AIC and operational measurements.",
+      "objective": "Choose one evidence-backed reliability, cost, or measurement investigation.",
+      "acceptance": "Retain native conclusions, AIC units, observation times and unavailable states. Do not infer operational value from run success, low spend or missing measurements.",
       "title": "Workflow runtime",
-      "description": "Run health, AI Credit usage, and operational value for this authored workflow.",
+      "description": "Choose the highest-priority operational investigation for the selected workflow.",
       "icon": "play",
       "class-name": "workflow-runtime-page",
       "route": {
@@ -956,8 +972,12 @@
     {
       "id": "outcome-detail",
       "kind": "custom",
+      "intent": "Inspect one published safe output and its recorded review disposition.",
+      "subject": "The outcome selected by the route, its discussion and provenance.",
+      "objective": "Determine what evidence supports the recorded outcome state.",
+      "acceptance": "Show native disposition, source links, record metadata and discussion when available; distinguish awaiting review, accepted, rejected and unavailable evidence without inventing review decisions.",
       "title": "Outcome",
-      "description": "Published safe-output outcome details and provenance.",
+      "description": "Determine what evidence supports the selected safe output's recorded disposition.",
       "icon": "issue-opened",
       "class-name": "outcome-detail-page",
       "route": {
