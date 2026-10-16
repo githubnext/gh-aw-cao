@@ -48,15 +48,40 @@ const buildCommitShort = buildCommit.slice(0, 7);
     if (!targetId) return;
 
     const target = document.getElementById(targetId);
-    if (!(target instanceof HTMLElement)) return;
-    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+    const fallbackTarget = document.querySelector("main");
+    if (!(target instanceof HTMLElement) && !(fallbackTarget instanceof HTMLElement)) return;
 
-    const focusTarget = () => {
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "start" });
+    const ensureFocusable = (element) => {
+      if (!(element instanceof HTMLElement)) return null;
+      if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "-1");
+      return element;
     };
 
-    skipLink.addEventListener("click", () => requestAnimationFrame(focusTarget));
+    const primaryTarget = ensureFocusable(target);
+    const secondaryTarget = ensureFocusable(fallbackTarget);
+
+    const moveFocus = () => {
+      const tryFocus = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        element.focus({ preventScroll: true });
+        return document.activeElement === element;
+      };
+
+      const finalTarget = tryFocus(primaryTarget)
+        ? primaryTarget
+        : (tryFocus(secondaryTarget) ? secondaryTarget : primaryTarget || secondaryTarget);
+
+      finalTarget?.scrollIntoView({ block: "start" });
+    };
+
+    skipLink.addEventListener("click", () => {
+      requestAnimationFrame(() => {
+        moveFocus();
+        if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+          requestAnimationFrame(moveFocus);
+        }
+      });
+    });
     skipLink.dataset.caoSkipFocusBound = "true";
   }
 
