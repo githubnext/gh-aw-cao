@@ -1,7 +1,9 @@
+import { createDebug } from '../debug.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from './queries/declarative.js';
 import { compileDashboardViewPayloadQueries } from './queries/view-payload-compiler.js';
 
 export const CLI_QUEUE_SOURCES = new Set(['cli-commands', 'cli-command-summary', 'cli-command-statuses']);
+const debugCliQueue = createDebug('cli-queue');
 const COMMAND_STATUSES = ['queued', 'running', 'completed', 'failed', 'canceled', 'timed-out'];
 let enabled = false;
 let endpoint = '';
@@ -38,6 +40,7 @@ async function request(path, options = {}) {
     cache: 'no-store', credentials: 'same-origin', ...options
   });
   if (!response.ok) {
+    debugCliQueue({ event: 'request-failed', method: options.method ?? 'GET', status: response.status });
     const result = await response.json().catch(() => null);
     throw new Error(result?.error || `Command queue returned HTTP ${response.status}.`);
   }
@@ -106,6 +109,7 @@ export async function cliQueueOperation(payload, signal, notify = () => {}) {
       if (done) break;
     }
     consume(buffer);
+    debugCliQueue({ event: 'attach', after, lastSequence: sequence, completed: Boolean(complete) });
     if (!complete) throw new Error('Command output disconnected. Reopen the command to resume.');
     return complete;
   } finally {
@@ -174,6 +178,10 @@ export async function queryCliQueue(payload, signal) {
     }] : [], enabled),
     'cli-command-statuses': source('cli-command-statuses', COMMAND_STATUSES.map((status) => ({ status })), enabled)
   };
+  debugCliQueue({
+    event: 'query', enabled, limit, offset, rows: result?.commands?.length ?? 0, total: result?.total ?? 0,
+    sources: names.size
+  });
   const output = new Map(Object.entries(executeDashboardQueries(queries, inputs, names, { signal })));
   /** @type {Array<[string, import('../presenter.js').LogicalSourceInput]>} */
   const entries = [];
