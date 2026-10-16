@@ -158,7 +158,7 @@ function commandPreview(action, values, templateValues, context) {
 
 /**
  * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, selector?: import('../dialog-selector.js').DialogSelector, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
- * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean, batch?: { targets: Array<Record<string, string>>, error?: string } }} [options]
+ * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, context?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean, batch?: { targets: Array<Record<string, string>>, error?: string, warning?: string } }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const presentation = actionPresentation(normalizeAction(action, { id: action.id, type: 'cli' }));
@@ -413,6 +413,7 @@ function renderCliActionControl(action, options = {}) {
       'div',
       { className: 'cli-action-dialog-body' },
       action.description ? h('p', null, action.description) : null,
+      options.batch?.warning ? h('p', { className: 'view-metadata', role: 'note' }, options.batch.warning) : null,
       selector?.root,
       inputs.length > 0
         ? h('fieldset', { className: 'cli-action-arguments' },
@@ -472,15 +473,15 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
  * Render one declared CLI action with its authored label and description.
  * @param {string} actionId
  * @param {Record<string, string>} [templateValues]
- * @param {{ rows: Array<Record<string, unknown>>, fields: string[], available: boolean }} [binding]
+ * @param {{ rows: Array<Record<string, unknown>>, fields: string[], available: boolean, warning?: string }} [binding]
  */
 export function renderDeclaredCliAction(actionId, templateValues = {}, binding) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action || action.selector && !declaredCliActionsCanExecute) return null;
-  /** @type {{ targets: Array<Record<string, string>>, error?: string } | undefined} */
+  /** @type {{ targets: Array<Record<string, string>>, error?: string, warning?: string } | undefined} */
   let batch;
   if (binding) {
-    batch = { targets: [] };
+    batch = { targets: [], warning: binding.warning };
     try {
       if (!binding.available || binding.rows.length === 0) {
         throw new Error('The complete target list is unavailable. No commands can be approved.');

@@ -1013,7 +1013,7 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('No repositories were discovered.');
   });
 
-  it('binds a batch list action to every query row, not the control repository or displayed cards', () => {
+  it.each(/** @type {const} */ (['complete', 'partial']))('binds a batch list action to every query row with %s evidence, not the control repository or displayed cards', (completeness) => {
     setDeclaredCliActions([{
       id: 'upgrade-repository', label: 'Upgrade all', icon: 'download',
       command: 'gh aw upgrade --repo {{repository}}', placement: 'view'
@@ -1026,7 +1026,7 @@ describe('data view renderer', () => {
         list: { style: 'cards', icon: 'repo', action: 'upgrade-repository', 'action-context': ['repository'] },
         encoding: { columns: [{ field: 'repository' }] }
       },
-      rows, metadata: { ...metadata, availability: 'available' },
+      rows, metadata: { ...metadata, availability: 'available', completeness },
       contextDetails: [], headingTag: 'h3',
       prepareTableRows: (rows) => rows.slice(0, 1),
       buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
@@ -1035,7 +1035,37 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
       .toBe(rows.map((row) => `gh aw upgrade --repo ${row.repository}`).join('\n'));
     expect(rendered?.querySelector('.cli-action-command')?.textContent).not.toContain('acme/control');
+    expect(rendered?.querySelector('.cli-action-confirm')?.hasAttribute('disabled')).toBe(false);
+    expect(rendered?.querySelector('dialog')?.textContent.includes('Inventory evidence is partial.')).toBe(completeness === 'partial');
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    setDeclaredCliActions([]);
+  });
+
+  it.each(/** @type {const} */ ([
+    { completeness: 'unknown', sourceTruncated: false },
+    { completeness: 'partial', sourceTruncated: true },
+    { completeness: 'complete', sourceTruncated: true }
+  ]))('blocks batch approval for unknown or truncated query results: %j', ({ completeness, sourceTruncated }) => {
+    setDeclaredCliActions([{
+      id: 'upgrade-repository', label: 'Upgrade all', icon: 'download',
+      command: 'gh aw upgrade --repo {{repository}}', placement: 'view'
+    }], { canExecute: false });
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance', title: 'Repositories', sourceName: 'maintenance-repositories',
+      view: {
+        mark: 'list',
+        list: { style: 'cards', icon: 'repo', action: 'upgrade-repository', 'action-context': ['repository'] },
+        encoding: { columns: [{ field: 'repository' }] }
+      },
+      rows: [{ repository: 'octo/first' }],
+      metadata: { ...metadata, availability: 'available', completeness },
+      sourceTruncated,
+      contextDetails: [], headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [], prepareChartPoints: () => [], toText: String
+    });
+    expect(rendered?.querySelector('.cli-action-confirm')?.hasAttribute('disabled')).toBe(true);
+    expect(rendered?.querySelector('.cli-action-command')?.textContent).toContain('The complete target list is unavailable.');
     setDeclaredCliActions([]);
   });
 

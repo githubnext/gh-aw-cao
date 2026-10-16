@@ -94,6 +94,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   sourceName: string,
  *   rows: Array<Record<string, unknown>>,
  *   metadata: import('../presenter.js').SourceMetadata,
+ *   sourceTruncated?: boolean,
  *   contextDetails: string[],
  *   headingTag: 'h2'|'h3'|'h4',
  *   rowLimit?: number,
@@ -272,7 +273,12 @@ function renderListView(context) {
   ].map((id) => renderDeclaredCliAction(id, {}, id === view.list.action && Array.isArray(view.list['action-context']) ? {
     rows,
     fields: view.list['action-context'],
-    available: metadata.availability === 'available' && metadata.completeness === 'complete' && !context.continuation
+    available: metadata.availability === 'available'
+      && ['complete', 'partial'].includes(metadata.completeness)
+      && !context.sourceTruncated && !context.continuation,
+    warning: metadata.completeness === 'partial'
+      ? 'Inventory evidence is partial. Only the repositories or campaigns listed in these commands will be targeted; unobserved targets are not included.'
+      : undefined
   } : undefined)).filter(Boolean) : [];
   const listAction = listActions.length ? h('span', { className: 'document-list-actions' }, ...listActions) : null;
   const renderValue = createEntityAwareCellRenderer(

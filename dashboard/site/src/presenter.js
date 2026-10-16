@@ -2529,6 +2529,8 @@ function renderCustomView(pageId, view, index, sources, units, cardTemplates, he
     view,
     sourceName: authoredSourceName,
     rows: filteredRows,
+    sourceTruncated: sourceInput.continuationToken !== undefined
+      || Number(metadata['total-row-count']) > filteredRows.length,
     rowLimit: Number(/** @type {Record<PropertyKey, unknown>} */ (view.data ?? {})[TABLE_ROW_LIMIT]),
     metadata,
     contextDetails,
