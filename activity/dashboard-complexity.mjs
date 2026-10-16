@@ -462,13 +462,6 @@ function databaseSourceTables(definitions) {
       ? definition.from.slice(1)
       : stores.find((table) => !['repositories', 'workflows', 'runs'].includes(table));
     if (directTable && stores.includes(directTable)) sources.set(definition.name, directTable);
-    if (!isRecord(definition['stores-by-source'])) continue;
-    for (const [source, tables] of Object.entries(definition['stores-by-source'])) {
-      if (Array.isArray(tables) && tables.length > 0) {
-        const table = tables.findLast((candidate) => typeof candidate === 'string');
-        if (table) sources.set(source, table);
-      }
-    }
   }
   return sources;
 }
@@ -485,10 +478,6 @@ function databaseSourceFields(definitions) {
       : undefined;
     if (!fields) continue;
     sources.set(definition.name, fields);
-    if (!isRecord(definition['stores-by-source'])) continue;
-    for (const source of Object.keys(definition['stores-by-source'])) {
-      sources.set(source, fields);
-    }
   }
   return sources;
 }

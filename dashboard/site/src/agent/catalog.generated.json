@@ -1614,19 +1614,19 @@
     {
       "id": "run-incomplete-outcomes",
       "subject": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
-      "objective": "Find retained report_incomplete safe outputs that can explain a specific run's incomplete reporting.",
-      "acceptance": "Include only matching audit safe_output.created records with run-attempt identity, outcome kind, and recorded diagnosis; absence is not proof that reporting completed.",
+      "objective": "Find recorded report_incomplete terminal outcomes that can explain a specific run's incomplete reporting.",
+      "acceptance": "Include only runs with a recorded report_incomplete terminal outcome, preserving run-attempt identity, outcome kind, and recorded diagnosis; absence is not proof that reporting completed.",
       "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
       "parameters": [],
       "sources": [
-        "audits"
+        "runs"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits"
+          "runs"
         ]
       }
     },
@@ -1654,7 +1654,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -1800,7 +1799,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -1823,7 +1821,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -1844,7 +1841,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -2869,7 +2865,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -2897,7 +2892,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -2918,7 +2912,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -2980,7 +2973,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3002,7 +2994,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3024,7 +3015,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3047,7 +3037,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3091,7 +3080,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3128,7 +3116,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "overview-runs",
           "runs",
           "workflows"
@@ -3549,7 +3536,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -3570,7 +3556,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -3599,7 +3584,6 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "audits",
           "runs",
           "workflows"
         ]
@@ -4082,9 +4066,11 @@
         "friction"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires friction, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "friction"
+        ]
       }
     },
     {
@@ -4101,9 +4087,11 @@
         "friction"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires friction, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "friction"
+        ]
       }
     },
     {
@@ -4432,9 +4420,11 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {
@@ -4451,9 +4441,11 @@
         "skills"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {
@@ -4468,9 +4460,11 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {
@@ -4487,9 +4481,11 @@
         "skills"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {
@@ -4504,9 +4500,11 @@
       ],
       "used-by-pages": [],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {
@@ -4523,9 +4521,11 @@
         "skills"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires skills, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "skills"
+        ]
       }
     },
     {

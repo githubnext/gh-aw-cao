@@ -3,15 +3,12 @@ package postgresx
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
-
-var recordSources = []string{"$domains", "$tools", "$skills", "$friction", "$audits", "$issues"}
 
 func sqlKind(column entityColumn) query.SQLKind {
 	switch column.kind {
@@ -55,80 +52,17 @@ func relationColumns(table entityTable, presence func(int) string) map[string]qu
 }
 
 func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error) {
-	if name == "$records" {
-		return r.recordSQLSource()
-	}
 	table, exists := entityTables[name]
 	if !exists || table.runtime {
 		return query.SQLRelation{}, fmt.Errorf("SQL source %q is not registered by TypeSpec", name)
 	}
 	columns := relationColumns(table, func(index int) string { return "get_bit(t.present_fields, " + strconv.Itoa(index) + ") = 1" })
-	for _, recordSource := range recordSources {
-		if recordSource != name {
-			continue
-		}
-		for _, family := range recordSources {
-			familyColumns := relationColumns(entityTables[family], func(int) string { return "FALSE" })
-			for field, column := range familyColumns {
-				if _, exists := columns[field]; !exists {
-					column.Expression = "NULL::" + wireSQLType(column.Kind)
-					column.Presence = "FALSE"
-					columns[field] = column
-				}
-			}
-		}
-	}
 	return query.SQLRelation{
 		SQL:     "(SELECT * FROM " + query.SQLIdentifier(table.name) + " WHERE namespace = {}) AS t",
 		Params:  []any{r.store.namespace},
 		Columns: columns,
 		Order:   "t.ordinal",
 	}, nil
-}
-
-func (r *readTransaction) recordSQLSource() (query.SQLRelation, error) {
-	columns := map[string]query.SQLColumn{}
-	relations := make([]query.SQLRelation, len(recordSources))
-	for index, name := range recordSources {
-		relation, err := r.entitySQLSource(name)
-		if err != nil {
-			return query.SQLRelation{}, err
-		}
-		relations[index] = relation
-		for field, column := range relation.Columns {
-			if existing, ok := columns[field]; ok && existing.Kind != column.Kind {
-				return query.SQLRelation{}, fmt.Errorf("record union field %s has conflicting native types", field)
-			}
-			columns[field] = column
-		}
-	}
-	fields := make([]string, 0, len(columns))
-	for field := range columns {
-		fields = append(fields, field)
-	}
-	sort.Strings(fields)
-	var branches []string
-	var args []any
-	for index, relation := range relations {
-		projection := []string{strconv.Itoa(index) + "::integer AS __family", "t.ordinal"}
-		for fieldIndex, field := range fields {
-			value, present := "NULL::"+wireSQLType(columns[field].Kind), "FALSE"
-			if column, ok := relation.Columns[field]; ok {
-				value, present = column.Expression, column.Presence
-			}
-			projection = append(projection, value+" AS "+query.SQLIdentifier(field),
-				present+" AS "+query.SQLIdentifier(fmt.Sprintf("__p_%d", fieldIndex)))
-		}
-		branches = append(branches, "SELECT "+strings.Join(projection, ",")+" FROM "+relation.SQL)
-		args = append(args, relation.Params...)
-	}
-	for index, field := range fields {
-		column := columns[field]
-		column.Expression = "t." + query.SQLIdentifier(field)
-		column.Presence = "t." + query.SQLIdentifier(fmt.Sprintf("__p_%d", index))
-		columns[field] = column
-	}
-	return query.SQLRelation{SQL: "(" + strings.Join(branches, " UNION ALL ") + ") AS t", Params: args, Columns: columns, Order: "t.__family, t.ordinal"}, nil
 }
 
 func wireSQLType(kind query.SQLKind) string {
@@ -185,25 +119,4 @@ func runtimeSQLSource(name string, source model.Source) (query.SQLRelation, erro
 	aliases = append(aliases, "ordinal")
 	relation := "unnest(" + strings.Join(parameters, ",") + ") WITH ORDINALITY AS t(" + strings.Join(aliases, ",") + ")"
 	return query.SQLRelation{SQL: relation, Params: args, Columns: columns, Order: "t.ordinal"}, nil
-}
-
-func collectionDefinitions(definitions []query.Definition) []query.Definition {
-	result := append([]query.Definition{}, definitions...)
-	names := map[string]bool{}
-	var runRecords *query.Definition
-	for index := range definitions {
-		names[definitions[index].Name] = true
-		if definitions[index].Name == "run-records" {
-			runRecords = &definitions[index]
-		}
-	}
-	for _, source := range recordSources {
-		name := strings.TrimPrefix(source, "$")
-		if !names[name] && runRecords != nil {
-			definition := *runRecords
-			definition.Name, definition.From = name, source
-			result = append(result, definition)
-		}
-	}
-	return result
 }

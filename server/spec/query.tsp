@@ -93,7 +93,6 @@ model QueryDefinition {
   limit?: int32;
   facet?: Facet;
   stores?: string[];
-  @encodedName("application/json", "stores-by-source") storesBySource?: Record<string[]>;
 }
 
 model PaginationRequest {

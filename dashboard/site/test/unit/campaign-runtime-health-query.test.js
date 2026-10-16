@@ -156,7 +156,9 @@ it('diagnoses report-incomplete outcomes instead of presenting driver exit as th
           'run-attempt': 1,
           'run-status': 'completed',
           'run-conclusion': 'failure',
-          'failure-kind': 'driver_exit'
+          'failure-kind': 'driver_exit',
+          'terminal-outcome': 'report_incomplete',
+          'terminal-outcome-detail': 'Dependabot alert evidence was unavailable for the target repository.'
         }]
       },
       workflows: {
@@ -170,20 +172,6 @@ it('diagnoses report-incomplete outcomes instead of presenting driver exit as th
           'campaign-name': 'Dependabot',
           'workflow-name': 'Dependabot / Update Planner',
           'workflow-role': 'worker'
-        }]
-      },
-      audits: {
-        source: 'audits',
-        metadata,
-        rows: [{
-          organization: 'githubnext',
-          repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dependabot-update-planner.lock.yml',
-          run: '35754799033',
-          'run-attempt': 1,
-          'event-type': 'safe_output.created',
-          'safe-output-type': 'report_incomplete',
-          'event-summary': 'Dependabot alert evidence was unavailable for the target repository.'
         }]
       }
     },

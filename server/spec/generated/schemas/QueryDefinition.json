@@ -90,9 +90,6 @@
             "items": {
                 "type": "string"
             }
-        },
-        "storesBySource": {
-            "$ref": "#/$defs/RecordArrayString"
         }
     },
     "required": [
@@ -420,16 +417,6 @@
                 "as"
             ],
             "description": "Terminal projection of processed rows into at most 64 chart panels. Declare field alone, or row and/or column; as names each panel's ordered row sequence."
-        },
-        "RecordArrayString": {
-            "type": "object",
-            "properties": {},
-            "unevaluatedProperties": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            }
         },
         "Predicate": {
             "type": "object",

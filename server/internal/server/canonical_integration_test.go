@@ -116,11 +116,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	app := &App{database: store, databaseQueries: append([]query.Definition{{
-		Name: "$records", From: "$domains",
-		Union: []string{"$tools", "$skills", "$friction", "$audits", "$issues"},
-	}}, definitions...)}
-	app.databaseQueries = append(app.databaseQueries, rawSourceDefinitions(definitions)...)
+	app := &App{database: store, databaseQueries: definitions}
 	response, status, err := app.executeQuery(ctx, queryRequest{
 		SourceNames: []string{"runs", "overview-runs", "outcomes", "mcp-calls", "domains", "issues"},
 	}, false)

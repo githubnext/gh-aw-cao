@@ -24,22 +24,21 @@ const (
 )
 
 type Definition struct {
-	Name           string              `json:"name"`
-	From           string              `json:"from"`
-	Union          []string            `json:"union,omitempty"`
-	Joins          []Join              `json:"joins,omitempty"`
-	Filter         *Filter             `json:"filter,omitempty"`
-	Compute        []ComputedField     `json:"compute,omitempty"`
-	Aggregate      *Aggregate          `json:"aggregate,omitempty"`
-	TemporalSeries *TemporalSeries     `json:"temporal-series,omitempty"`
-	Predict        []json.RawMessage   `json:"predict,omitempty"`
-	Window         []WindowField       `json:"window,omitempty"`
-	Select         []SelectedField     `json:"select,omitempty"`
-	OrderBy        []OrderField        `json:"order-by,omitempty"`
-	Limit          *int                `json:"limit,omitempty"`
-	Facet          *Facet              `json:"facet,omitempty"`
-	Stores         []string            `json:"stores,omitempty"`
-	StoresBySource map[string][]string `json:"stores-by-source,omitempty"`
+	Name           string            `json:"name"`
+	From           string            `json:"from"`
+	Union          []string          `json:"union,omitempty"`
+	Joins          []Join            `json:"joins,omitempty"`
+	Filter         *Filter           `json:"filter,omitempty"`
+	Compute        []ComputedField   `json:"compute,omitempty"`
+	Aggregate      *Aggregate        `json:"aggregate,omitempty"`
+	TemporalSeries *TemporalSeries   `json:"temporal-series,omitempty"`
+	Predict        []json.RawMessage `json:"predict,omitempty"`
+	Window         []WindowField     `json:"window,omitempty"`
+	Select         []SelectedField   `json:"select,omitempty"`
+	OrderBy        []OrderField      `json:"order-by,omitempty"`
+	Limit          *int              `json:"limit,omitempty"`
+	Facet          *Facet            `json:"facet,omitempty"`
+	Stores         []string          `json:"stores,omitempty"`
 }
 
 const MaxChartFacets = 64

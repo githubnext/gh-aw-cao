@@ -5528,7 +5528,7 @@ describe('declarative query validation', () => {
   it('accepts bounded aggregate-local filters over pre-aggregation scalar fields', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'audits',
+      from: 'domains',
       aggregate: {
         by: ['workflow'],
         values: [{

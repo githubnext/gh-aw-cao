@@ -50,9 +50,8 @@ function batch() {
 
 describe('canonical field pruning', () => {
   it('never prunes a field required by a canonical database query', () => {
-    const recordStores = ['domains', 'tools', 'skills', 'friction', 'audits', 'issues'];
     for (const definition of definitions) {
-      const stores = definition.from === '$records' ? recordStores : [definition.from.slice(1)];
+      const stores = [definition.from.slice(1)];
       const derived = new Set([
         ...(definition.joins ?? []).flatMap((join) => join.fields.map((field) => field.as ?? field.field)),
         ...(definition.compute ?? []).map((field) => field.as)

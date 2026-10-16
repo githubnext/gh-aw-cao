@@ -92,7 +92,7 @@ describe('declarative dashboard queries', () => {
   it('unions specialized run records before applying query clauses', () => {
     const result = executeDashboardQuery(
       {
-        name: 'run-records',
+        name: 'combined-events',
         from: 'audits',
         union: ['domains', 'tools', 'issues'],
         select: [{ field: 'event' }],

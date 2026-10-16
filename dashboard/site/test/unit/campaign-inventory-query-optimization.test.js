@@ -129,6 +129,8 @@ function evidence(scale = 1) {
       'run-status': 'completed',
       'run-conclusion': attempt % 2 ? 'failure' : 'success',
       'failure-kind': attempt % 2 ? 'driver_exit' : '',
+      'terminal-outcome': attempt % 2 ? 'report_incomplete' : undefined,
+      'terminal-outcome-detail': attempt % 2 ? 'Retained diagnostic evidence' : undefined,
       'aic-total': (index + 1) * 0.25,
       event: attempt % 2 ? 'schedule' : 'workflow_dispatch',
       'target-repository': attempt % 4 ? 'example/target' : 'example/unregistered',
@@ -358,13 +360,13 @@ describe('campaign inventory query optimization', () => {
 
   it('preserves duplicate incomplete-outcome join failures instead of counting unvalidated dispatches', async () => {
     const sources = await canonicalSources();
-    const diagnosis = sources.audits.rows.find((row) => row['safe-output-type'] === 'report_incomplete');
+    const diagnosis = sources.runs.rows.find((row) => row['terminal-outcome'] === 'report_incomplete');
     if (!diagnosis) throw new Error('The canonical fixture must contain an incomplete outcome.');
     const results = parity({
       ...sources,
-      audits: {
-        ...sources.audits,
-        rows: [...sources.audits.rows, { ...diagnosis, event: 'duplicate-incomplete-outcome' }]
+      runs: {
+        ...sources.runs,
+        rows: [...sources.runs.rows, { ...diagnosis, id: 'duplicate-incomplete-outcome', 'aic-total': 0 }]
       }
     });
     for (const row of results['campaign-inventory'].rows) expect(row.dispatches).toBe(0);

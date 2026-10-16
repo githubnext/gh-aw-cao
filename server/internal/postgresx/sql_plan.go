@@ -55,7 +55,6 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	definitions = collectionDefinitions(definitions)
 	metadata := map[string]model.Metadata{}
 	retrievedAt := time.Now().UTC().Format(time.RFC3339Nano)
 	resolve := func(name string) (query.SQLRelation, error) {
@@ -278,17 +277,6 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 }
 
 func (r *readTransaction) rootMetadata(ctx context.Context, name string) (model.Metadata, error) {
-	if name == "$records" {
-		result := model.Metadata{"availability": "empty", "completeness": "complete", "freshness": "current"}
-		for _, source := range recordSources {
-			value, err := r.rootMetadata(ctx, source)
-			if err != nil {
-				return nil, err
-			}
-			result = mergeMetadata(result, value, false)
-		}
-		return result, nil
-	}
 	var availability, completeness, freshness string
 	var asOf, retrieved sql.NullTime
 	err := r.tx.QueryRowContext(ctx, `SELECT availability,completeness,freshness,as_of,retrieved_at FROM cao_quality

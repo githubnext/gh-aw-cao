@@ -1095,10 +1095,9 @@ describe('canonical view sources', () => {
         'event-type': 'tool.call',
         'event-source': 'mcp',
         'event-summary': 'github.list_issues',
-        'request-count': 7,
         'correlation-id': 'call-1',
-        'safe-output-type': 'create_issue',
-        'github-entity-type': 'issue'
+        'request-bytes': 128,
+        'response-bytes': 256
       })
     ]);
     expect(projected.audits.rows).toEqual([

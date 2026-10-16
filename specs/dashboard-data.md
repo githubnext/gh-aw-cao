@@ -2830,6 +2830,22 @@ issues.forRun(runId);
 
 Dashboard code SHOULD NOT directly scatter IndexedDB transaction logic through views.
 
+The `domains`, `tools`, `skills`, `friction`, `audits`, and `issues` logical
+sources SHALL each be an explicit Dashboard Language query over its own
+canonical table, with declared joins for run context. Backends MUST NOT
+synthesize these queries from a shared event projection or implicitly union
+event families. Cross-family views MUST declare their unions in their queries.
+This contract applies equally to browser IndexedDB, local SQLite, and hosted
+PostgreSQL execution.
+
+Firewall observations SHALL select firewall request events directly from the
+canonical domain table and join only their run context. Request totals SHALL
+use native grouping and conditional sums, preserving zero counts and the
+one-request fallback for missing or null counts. Firewall queries MUST NOT
+scan unrelated tool, audit, skill, friction, or issue tables. Run terminal
+diagnoses SHALL use the recorded Run terminal outcome and detail, not fields
+borrowed from another event family's schema.
+
 Token-optimization pages SHALL query only the three database tables defined in
 Section 5.5.5 and their declarative derivatives. They MUST NOT scan Audit
 payloads, join source rows, calculate comparability, or rank opportunities in a

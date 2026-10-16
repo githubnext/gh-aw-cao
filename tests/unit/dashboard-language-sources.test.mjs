@@ -2081,8 +2081,8 @@ test("dashboard source bridge exposes authoritative coverage and structured coll
   assert.equal(sources.repositories.metadata["coverage-observed"], 1);
   assert.equal(sources.runs.metadata["coverage-expected"], 1);
   assert.equal(sources.runs.metadata["coverage-observed"], 0);
-  assert.equal(sources.runs.metadata["run-records-observed"], 0);
-  assert.equal(sources.runs.metadata["run-records-expected"], undefined);
+  assert.equal(sources.runs.metadata["run-observations-observed"], 0);
+  assert.equal(sources.runs.metadata["run-observations-expected"], undefined);
   assert.equal(sources.runs.metadata["collection-state"], "partial");
   assert.equal(sources.runs.metadata["failure-class"], "rate-limit");
   assert.equal(sources.runs.metadata["fallback-used"], true);

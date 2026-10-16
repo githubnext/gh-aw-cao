@@ -102,13 +102,9 @@ test('native table fields cover database projections and joins without speculati
   const required = new Map([...tables.keys()].map((source) => [source, new Set(['id'])]));
   required.get('$runs').add('repositoryId'); // Cross-parent canonical integrity.
   for (const definition of definitions) {
-    const sources = definition.from === '$records' ? records : [definition.from];
+    const sources = [definition.from];
     const fields = inputFields(definition);
-    if (definition.from === '$records') {
-      for (const field of fields) {
-        if (!records.some((source) => tables.get(source).has(field))) defects.push(`missing record field ${field}`);
-      }
-    } else if (tables.has(definition.from)) {
+    if (tables.has(definition.from)) {
       for (const field of fields) {
         if (!tables.get(definition.from).has(field)) defects.push(`missing ${definition.from}.${field}`);
       }

@@ -8,6 +8,27 @@ import { authoritativeDashboard } from '../authoritative-dashboard.js';
 const read = (path) => readFileSync(resolve(path), 'utf8');
 
 describe('dashboard query architecture', () => {
+  it('declares each event family as a native-table query rather than an implicit combined source', () => {
+    const definitions = /** @type {Array<{
+      name: string, from: string, stores: string[], union?: string[],
+      joins?: Array<{ source: string }>
+    }>} */ (JSON.parse(read('src/data/queries/database.json')));
+    for (const family of ['domains', 'tools', 'skills', 'friction', 'audits', 'issues']) {
+      const definition = definitions.find(({ name }) => name === family);
+      expect(definition, family).toMatchObject({
+        from: `$${family}`, stores: ['runs', family], joins: [{ source: '$runs' }]
+      });
+      expect(definition?.union).toBeUndefined();
+    }
+    expect(definitions.filter(({ from }) => from.startsWith('$')).every(({ from, stores }) => (
+      stores.length === 0 || stores.includes(from.slice(1))
+    ))).toBe(true);
+    expect(read('src/data/queries/database.js')).not.toContain('stores-by-source');
+    expect(definitions.find(({ name }) => name === 'mcp-calls')?.from).toBe('tools');
+    expect(definitions.find(({ name }) => name === 'findings')?.from).toBe('audits');
+    expect(definitions.find(({ name }) => name === 'outcomes')?.from).toBe('issues');
+  });
+
   it('gives agents an explicit database-authoritative query and effect contract', () => {
     const guidance = read('../../AGENTS.md');
 
@@ -85,7 +106,7 @@ describe('dashboard query architecture', () => {
       'repositories',
       'workflows',
       'runs',
-      'run-records',
+      'domains', 'tools', 'skills', 'friction', 'audits', 'issues',
       'mcp-calls',
       'findings',
       'detection-observations',

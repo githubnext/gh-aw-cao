@@ -156,6 +156,8 @@ function evidence() {
         'failure-message': `Retained failure ${run}`,
         'failure-step': 'agent',
         'failure-log': `Diagnostic ${run}`,
+        'terminal-outcome': index === 0 && attempt === 30 ? 'report_incomplete' : undefined,
+        'terminal-outcome-detail': index === 0 && attempt === 30 ? 'Required target evidence is unavailable.' : undefined,
         engine: 'copilot',
         'engine-version': '1.2.3',
         'gh-aw-version': 'v0.89.4',
@@ -321,9 +323,9 @@ describe('campaign problem query optimization', () => {
     /** @type {typeof canonical} */
     const sources = {
       ...canonical,
-      audits: {
-        ...canonical.audits,
-        metadata: { ...canonical.audits.metadata, completeness: 'partial', freshness: 'stale' }
+      runs: {
+        ...canonical.runs,
+        metadata: { ...canonical.runs.metadata, completeness: 'partial', freshness: 'stale' }
       }
     };
     const before = execute(baselineQueries, selected, sources);

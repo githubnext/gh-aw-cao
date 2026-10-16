@@ -128,10 +128,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if config.Database == nil {
 		return nil, errors.New("dashboard Postgres database is required")
 	}
-	databaseQueries := []query.Definition{{
-		Name: "$records", From: "$domains",
-		Union: []string{"$tools", "$skills", "$friction", "$audits", "$issues"},
-	}}
+	var databaseQueries []query.Definition
 	if config.DatabaseQueriesPath != "" {
 		content, err := os.ReadFile(config.DatabaseQueriesPath)
 		if err != nil {
@@ -142,7 +139,6 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 			return nil, err
 		}
 		databaseQueries = append(databaseQueries, parsed...)
-		databaseQueries = append(databaseQueries, rawSourceDefinitions(parsed)...)
 	}
 	if err := validateHostProfile(store, &config); err != nil {
 		return nil, err
@@ -299,29 +295,6 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		app.mcp = handler
 	}
 	return app, nil
-}
-
-func rawSourceDefinitions(definitions []query.Definition) []query.Definition {
-	var recordQuery *query.Definition
-	declared := make(map[string]bool, len(definitions))
-	for i := range definitions {
-		declared[definitions[i].Name] = true
-		if definitions[i].Name == "run-records" {
-			recordQuery = &definitions[i]
-		}
-	}
-	result := make([]query.Definition, 0, 9)
-	if recordQuery != nil {
-		for _, name := range []string{"domains", "tools", "skills", "friction", "audits", "issues"} {
-			if declared[name] {
-				continue
-			}
-			derived := *recordQuery
-			derived.Name, derived.From = name, "$"+name
-			result = append(result, derived)
-		}
-	}
-	return result
 }
 
 //nolint:contextcheck // Startup validation has no request context.

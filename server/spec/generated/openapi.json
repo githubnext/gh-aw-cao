@@ -4139,15 +4139,6 @@
             "items": {
               "type": "string"
             }
-          },
-          "stores-by-source": {
-            "type": "object",
-            "unevaluatedProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
           }
         },
         "description": "A Dashboard Language query definition. See dashboard/site/dashboard.json for the language vocabulary."

@@ -184,22 +184,19 @@ function executeDatabaseProjection(definition, inputs, sharedBudget) {
  * @param {Record<string, unknown>} sources
  * @param {import('./declarative.js').QueryBudget} [budget]
  */
-function executeRunRecordsQuery(sourceName, records, runs, sources, budget) {
-  return {
-    ...executeDatabaseQuery('run-records', {
-      $records: {
-        source: '$records',
-        rows: records,
-        metadata: queryMetadata(sources, sourceName, sourceName, true)
-      },
-      $runs: {
-        source: '$runs',
-        rows: runs,
-        metadata: queryMetadata(sources, 'runs', 'runs', true)
-      }
-    }, sources, sourceName, budget),
-    source: sourceName
-  };
+function executeRecordQuery(sourceName, records, runs, sources, budget) {
+  return executeDatabaseQuery(sourceName, {
+    [`$${sourceName}`]: {
+      source: `$${sourceName}`,
+      rows: records,
+      metadata: queryMetadata(sources, sourceName, sourceName, true)
+    },
+    $runs: {
+      source: '$runs',
+      rows: runs,
+      metadata: queryMetadata(sources, 'runs', 'runs', true)
+    }
+  }, sources, sourceName, budget);
 }
 
 /**
@@ -270,10 +267,20 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
           const run = runIndex.get(id);
           return run ? [run] : [];
         });
-      const canonical = executeRunRecordsQuery(plan.store, records, batchRuns, logicalSources, budget);
-      const projected = plan.projection
-        ? executeDatabaseQuery(plan.source, { 'run-records': canonical }, logicalSources, plan.store, budget)
-        : canonical;
+      const projected = plan.direct
+        ? executeDatabaseQuery(plan.source, {
+            [`$${plan.store}`]: {
+              source: `$${plan.store}`, rows: records,
+              metadata: queryMetadata(logicalSources, plan.store, plan.store, true)
+            },
+            $runs: {
+              source: '$runs', rows: batchRuns,
+              metadata: queryMetadata(logicalSources, 'runs', 'runs', true)
+            }
+          }, logicalSources, plan.store, budget)
+        : executeDatabaseQuery(plan.source, {
+            [plan.projection.from]: executeRecordQuery(plan.store, records, batchRuns, logicalSources, budget)
+          }, logicalSources, plan.store, budget);
       const input = executeDashboardQueries(plan.queries, {
         [plan.source]: projected
       }, [name], { budget })[name];
@@ -335,7 +342,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     for (let offset = 0; offset < keys.length; offset += batchSize) {
       budget.checkpoint();
       const batch = keys.slice(offset, offset + batchSize);
-      const projected = executeRunRecordsQuery(source, batch.map(({ row, key }) => ({
+      const projected = executeRecordQuery(plan.store, batch.map(({ row, key }) => ({
         ...row, id: key
       })), [], logicalSources);
       const keyed = {
@@ -343,7 +350,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         rows: projected.rows.map((row, position) => ({ ...row, [plan.keyField]: batch[position].key }))
       };
       const inputs = plan.projection
-        ? executeDashboardQueries([plan.projection], { 'run-records': keyed }, [source], { budget })[source]
+        ? executeDashboardQueries([plan.projection], { [plan.projection.from]: keyed }, [source], { budget })[source]
         : keyed;
       const result = executeDashboardQueries(plan.keyQueries, { [source]: inputs }, [name], { budget })[name];
       if (result.metadata.availability === 'unavailable') return [name, result];
@@ -353,9 +360,9 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       maxRows: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.checkpoint()
     });
     const runs = await readRuns();
-    const projected = executeRunRecordsQuery(source, records, runs, logicalSources);
+    const projected = executeRecordQuery(plan.store, records, runs, logicalSources);
     const actual = plan.projection
-      ? executeDatabaseQuery(source, { 'run-records': projected }, logicalSources, plan.store)
+      ? executeDatabaseQuery(source, { [plan.projection.from]: projected }, logicalSources, plan.store)
       : projected;
     return [name, executeRowLocalRecordGraph(plan.queries, {
       [source]: actual
@@ -395,7 +402,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         { ...plan, maxGroups: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1) }
       );
       if (!groups) return null;
-      const projected = executeRunRecordsQuery(source, groups, runs, logicalSources);
+      const projected = executeRecordQuery(source, groups, runs, logicalSources);
       inputs[source] = {
         ...projected,
         rows: projected.rows.map((row, position) => ({ ...row, [weightField]: groups[position].count }))
@@ -430,7 +437,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   });
   const recordSelections = await Promise.all(recordSelectionPlans.map(async ({ name, definition, predicates }) => {
     const runs = await readRuns();
-    const identities = executeRunRecordsQuery(definition.from, runs.map((run) => ({
+    const identities = executeRecordQuery(definition.from, runs.map((run) => ({
       id: run.id, runId: run.id
     })), runs, logicalSources);
     const selected = executeDashboardQueries([{
@@ -464,7 +471,7 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       records.sort((left, right) => indexedDB.cmp(
         /** @type {IDBValidKey} */ (left.id), /** @type {IDBValidKey} */ (right.id)
       ));
-      inputs[source] = executeRunRecordsQuery(source, records, runs, logicalSources);
+      inputs[source] = executeRecordQuery(source, records, runs, logicalSources);
     }
     return [name, executeDashboardQueries([definition], inputs, [name], { budget })[name]];
   }));
@@ -580,7 +587,8 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   };
 }
 
-const RUN_RECORD_PROJECTION = databaseQueryIndex.get('run-records');
+const RECORD_PROJECTIONS = [...RUN_RECORD_STORES].map((name) => databaseQueryIndex.get(name))
+  .filter((query) => query !== undefined);
 
 /**
  * Prove a row-local path from one canonical record projection to an aggregate.
@@ -605,19 +613,28 @@ function streamingAggregatePlan(index, definition) {
     queries.unshift(parent);
     source = parent.from;
   }
-  const projection = RUN_RECORD_STORES.has(source) ? undefined : databaseQueryIndex.get(source);
+  if (RUN_RECORD_STORES.has(source)) return null;
+  const projection = databaseQueryIndex.get(source);
   if (!projection) return null;
-  if (projection && (projection.from !== 'run-records' || projection.aggregate || projection.union?.length
-      || projection.joins?.length || projection['order-by']?.length || projection.limit !== undefined
-      || projection['temporal-series'] || projection.predict?.length || projection.window?.length || projection.facet)) return null;
+  const direct = projection.from.startsWith('$') && RUN_RECORD_STORES.has(projection.from.slice(1));
+  if ((!RUN_RECORD_STORES.has(projection.from) && !direct) || projection.aggregate || projection.union?.length
+      || (projection.joins ?? []).some((join) => !direct || join.source !== '$runs'
+        || join.on.length !== 1 || join.on[0].left !== 'runId' || join.on[0].right !== 'id')
+      || projection['order-by']?.length || projection.limit !== undefined
+      || projection['temporal-series'] || projection.predict?.length || projection.window?.length || projection.facet) return null;
   const stores = RUN_RECORD_STORES.has(source) ? [source]
     : (projection?.stores ?? []).filter((store) => RUN_RECORD_STORES.has(store));
   if (stores.length !== 1) return null;
-  return { source, projection, store: /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (stores[0]), queries };
+  if (direct && projection.from !== `$${stores[0]}`) return null;
+  return { source, projection, direct, store: /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (stores[0]), queries };
 }
-const RECORD_PROJECTED_FIELDS = new Set((RUN_RECORD_PROJECTION?.select ?? []).map((field) => field.as ?? field.field));
+const RECORD_PROJECTED_FIELDS = new Set(RECORD_PROJECTIONS.flatMap((query) => (
+  (query.select ?? []).map((field) => field.as ?? field.field)
+)));
 const RECORD_RUN_FIELDS = new Set([
-  ...(RUN_RECORD_PROJECTION?.joins ?? []).flatMap((join) => join.fields.map((field) => field.as ?? field.field)),
+  ...RECORD_PROJECTIONS.flatMap((query) => (
+    (query.joins ?? []).flatMap((join) => join.fields.map((field) => field.as ?? field.field))
+  )),
   'run'
 ]);
 
@@ -675,21 +692,23 @@ function indexedRecordKeySelectionPlan(index, definition) {
   const stores = RUN_RECORD_STORES.has(source) ? [source]
     : (projection?.stores ?? []).filter((store) => RUN_RECORD_STORES.has(store));
   if (stores.length !== 1 || (projection && (
-    projection.from !== 'run-records' || projection.joins?.length || projection.aggregate
+    projection.from !== stores[0] || projection.joins?.length || projection.aggregate
     || projection.union?.length || projection['temporal-series'] || projection.predict?.length || projection.window?.length
   ))) return null;
   const store = /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (stores[0]);
+  const recordProjection = databaseQueryIndex.get(store);
+  if (!recordProjection) return null;
   /** @type {Set<string>} */
   const rawFields = new Set([
-    ...(RUN_RECORD_PROJECTION?.select ?? []).map((field) => field.field),
-    ...(RUN_RECORD_PROJECTION?.compute ?? []).flatMap((computed) => computed.args.flatMap((arg) => (
+    ...(recordProjection.select ?? []).map((field) => field.field),
+    ...(recordProjection.compute ?? []).flatMap((computed) => computed.args.flatMap((arg) => (
       'field' in arg ? [arg.field] : []
     )))
   ]);
   /** @type {RecordFieldLineage} */
   const canonical = new Map([...rawFields].map((field) => [field, new Set([field])]));
   for (const field of RECORD_RUN_FIELDS) canonical.set(field, null);
-  const recordFields = selectedRecordLineage(canonical, RUN_RECORD_PROJECTION ?? { name: '', from: '' });
+  const recordFields = selectedRecordLineage(canonical, recordProjection);
   /** @type {Array<{ definition: import('./declarative.js').DashboardQuery, fields: RecordFieldLineage }>} */
   const stages = [];
   let fields = recordFields;
@@ -1008,11 +1027,7 @@ function indexedRunAggregateOperators(definition) {
 
 /** @param {string} name */
 function queryStores(name) {
-  const definition = databaseQueryIndex.get(name);
-  const mapped = [...databaseQueryIndex.values()]
-    .map((candidate) => candidate['stores-by-source']?.[name])
-    .find(Array.isArray);
-  const configured = definition?.stores ?? mapped;
+  const configured = databaseQueryIndex.get(name)?.stores;
   return Array.isArray(configured)
     ? configured.filter((store) => typeof store === 'string')
     : [];
@@ -1057,7 +1072,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const projectRecords = (store) => {
     let projection = recordProjections.get(store);
     if (!projection) {
-      projection = executeRunRecordsQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
+      projection = executeRecordQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
       if (requested.has(store)) recordProjections.set(store, projection);
     }
     return projection;
@@ -1089,11 +1104,11 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       result[name] = projectRecords(name);
       continue;
     }
-    if (name === 'mcp-calls' || name === 'findings' || name === 'firewall-observations') {
-      const store = name === 'mcp-calls' ? 'tools' : name === 'findings' ? 'audits' : 'domains';
+    if (name === 'mcp-calls' || name === 'findings') {
+      const store = name === 'mcp-calls' ? 'tools' : 'audits';
       const records = projectRecords(store);
       result[name] = executeDatabaseQuery(name, {
-        'run-records': records
+        [store]: records
       }, sources, store);
       continue;
     }
@@ -1117,7 +1132,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
         }
       }, sources, 'workflows');
       result[name] = executeDatabaseQuery(name, {
-        'run-records': records,
+        issues: records,
         workflows: workflowRows
       }, sources, 'issues');
       continue;
