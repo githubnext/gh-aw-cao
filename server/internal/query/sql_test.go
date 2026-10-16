@@ -49,6 +49,37 @@ func TestCompileRelationalSQLDAG(t *testing.T) {
 	}
 }
 
+func TestCompileCalendarWeekBooleanInclusion(t *testing.T) {
+	started := "started"
+	for _, included := range []bool{true, false} {
+		definition := Definition{
+			Name: "rhythm", From: "facts",
+			Compute: []ComputedField{{
+				As: "point", Function: "calendar-week-point",
+				Args: []Argument{{Field: &started}, {Value: "2026-09-24T00:00:00Z"}, {Value: included}},
+			}},
+		}
+		plan, err := CompileSQL([]Definition{definition}, []string{"rhythm"}, func(string) (SQLRelation, error) {
+			return SQLRelation{
+				SQL: "(SELECT '2026-09-23T18:00:00Z'::timestamptz AS started) AS facts",
+				Columns: map[string]SQLColumn{
+					"started": {Expression: "started", Presence: "TRUE", Kind: SQLTimestamp},
+				},
+			}, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		point := plan.Outputs["rhythm"].Columns["point"]
+		if !strings.Contains(plan.CTEs, "COALESCE(") || strings.Contains(plan.CTEs, " = 'success'") || point.Point != "calendar" {
+			t.Fatalf("calendar inclusion must preserve the boolean selector: %+v", plan)
+		}
+		if len(plan.Args) != 2 || plan.Args[1] != included {
+			t.Fatalf("calendar inclusion must bind the boolean unchanged: %#v", plan.Args)
+		}
+	}
+}
+
 func TestCompileSQLJoinsAndUnions(t *testing.T) {
 	definitions := []Definition{
 		{Name: "combined", From: "facts", Union: []string{"owners"}},

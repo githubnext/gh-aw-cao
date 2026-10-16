@@ -270,7 +270,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       };
     });
     expect(headingPlacement.title).toBe('Weekly rhythm');
-    expect(headingPlacement.subtitle).toBe('Successful runs');
+    expect(headingPlacement.subtitle).toBe('Agnetic Workflow runs');
     expect(headingPlacement.subtitleTypography).toEqual(headingPlacement.legendTypography);
     expect(headingPlacement.titleBottom).toBeLessThanOrEqual(headingPlacement.subtitleTop);
     expect(headingPlacement.subtitleBottom).toBeLessThanOrEqual(headingPlacement.legendTop);
@@ -280,7 +280,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator('.factory-rhythm-current[hidden]')).toHaveCount(4);
     await expect(factory.locator('.factory-rhythm-current[hidden]').first()).toHaveCSS('display', 'none');
     await expect(factory.locator('.factory-rhythm-day').nth(3))
-      .toHaveAttribute('aria-label', 'Thu 2026-09-17: 4 successful runs last week (day not yet reached).');
+      .toHaveAttribute('aria-label', 'Thu 2026-09-17: 4 workflow runs last week (day not yet reached).');
     const layeredDays = await factory.locator('.factory-rhythm-day').evaluateAll((days) => days.map((day) => {
       const previous = day.querySelector('.factory-rhythm-baseline');
       const current = day.querySelector('.factory-rhythm-current');

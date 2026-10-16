@@ -83,13 +83,13 @@ describe('Overview component boundaries', () => {
     const days = [...rendered.querySelectorAll('.factory-rhythm-day')];
 
     expect(days).toHaveLength(7);
-    expect(rendered.getAttribute('aria-label')).toContain('this week and last week');
+    expect(rendered.getAttribute('aria-label')).toBe('Agnetic Workflow runs this week and last week from Monday through Sunday');
     expect([...rendered.querySelector('.factory-rhythm-heading')?.children ?? []].map((child) => child.textContent))
-      .toEqual(['Weekly rhythm', 'Successful runs', 'This weekLast week']);
+      .toEqual(['Weekly rhythm', 'Agnetic Workflow runs', 'This weekLast week']);
     expect(rendered.querySelector('.graph-widget-y-axis-label')).toBeNull();
     expect(rendered.querySelector('.graph-widget-plot.factory-rhythm-bars')).not.toBeNull();
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week; 7 successful runs last week.');
-    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 4 successful runs last week (day not yet reached).');
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 workflow run this week; 7 workflow runs last week.');
+    expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 4 workflow runs last week (day not yet reached).');
     expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
     expect(rendered.querySelectorAll('.factory-rhythm-current')).toHaveLength(7);
     expect(rendered.querySelectorAll('.factory-rhythm-baseline')).toHaveLength(7);
@@ -100,7 +100,7 @@ describe('Overview component boundaries', () => {
     expect(barHeight(days[3]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(400 / 7);
 
     rows.set(rhythmRows(10));
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week; 7 successful runs last week.');
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 workflow runs this week; 7 workflow runs last week.');
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-current'))).toBeCloseTo(1100 / 13);
     expect(barHeight(days[0]?.querySelector('.factory-rhythm-baseline'))).toBeCloseTo(700 / 13);
     expect(days[3]?.getAttribute('aria-label')).toContain('day not yet reached');
@@ -108,18 +108,18 @@ describe('Overview component boundaries', () => {
 
     controller.abort();
     rows.set([]);
-    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week; 7 successful runs last week.');
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 workflow runs this week; 7 workflow runs last week.');
   });
 
   it('rhythm retains both week indicators when the source has no data', () => {
     const controller = new AbortController();
     const rendered = renderFactoryRhythm(binding(), { signal: controller.signal });
     expect(rendered.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
-    expect(rendered.querySelector('.factory-rhythm-heading strong')?.textContent).toBe('Successful runs');
+    expect(rendered.querySelector('.factory-rhythm-heading strong')?.textContent).toBe('Agnetic Workflow runs');
     expect(rendered.querySelector('.graph-widget-y-axis-label')).toBeNull();
     expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i')).toHaveLength(14);
     expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('aria-label'))
-      .toBe('Mon: No successful runs this week or last week (day not yet reached).');
+      .toBe('Mon: No workflow runs this week or last week (day not yet reached).');
     expect(rendered.querySelectorAll('.factory-rhythm-bar-pair i:not([hidden])')).toHaveLength(0);
     expect(barHeight(rendered.querySelector('.factory-rhythm-current'))).toBe(0);
     controller.abort();
@@ -139,7 +139,7 @@ describe('Overview component boundaries', () => {
     expect(current?.hasAttribute('hidden')).toBe(false);
     expect(previous?.hasAttribute('hidden')).toBe(true);
     expect(barHeight(previous)).toBe(0);
-    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week.');
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 workflow run this week.');
 
     rows.set(rhythmRows());
     expect(previous?.hasAttribute('hidden')).toBe(false);
@@ -147,11 +147,11 @@ describe('Overview component boundaries', () => {
     rows.set(rhythmRows(-1));
     expect(current?.hasAttribute('hidden')).toBe(true);
     expect(previous?.hasAttribute('hidden')).toBe(false);
-    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 7 successful runs last week.');
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 7 workflow runs last week.');
     rows.set(rhythmRows(-1, 0));
     expect(current?.hasAttribute('hidden')).toBe(true);
     expect(previous?.hasAttribute('hidden')).toBe(true);
-    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: No successful runs this week or last week.');
+    expect(first?.getAttribute('aria-label')).toBe('Mon 2026-09-07: No workflow runs this week or last week.');
     controller.abort();
   });
 

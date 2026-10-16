@@ -56,6 +56,10 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 		{"link", []Argument{{Value: "https://example.com"}, {Value: "example"}}, `{"href": "https://example.com", "label": "example"}`},
 		{"failure-streak-point", []Argument{field("observed"), field("run"), field("failed")}, "[1790186400000, \"r1\", true]"},
 		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: "success"}}, "[1790186400000, 1790208000000, true]"},
+		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: "failure"}}, "[1790186400000, 1790208000000, false]"},
+		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: true}}, "[1790186400000, 1790208000000, true]"},
+		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: false}}, "[1790186400000, 1790208000000, false]"},
+		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, field("failed")}, "[1790186400000, 1790208000000, true]"},
 	} {
 		t.Run(testcase.name, func(t *testing.T) {
 			definition := Definition{Name: "computed", From: "facts",

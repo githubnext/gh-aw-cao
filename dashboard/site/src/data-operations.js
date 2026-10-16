@@ -436,7 +436,7 @@ export function computeValue(row, definition) {
     const timestamp = parseTimestamp(values[0]);
     const reference = parseTimestamp(values[1]);
     if (timestamp === null || reference === null) return null;
-    return JSON.stringify([timestamp, reference, values[2] === 'success']);
+    return JSON.stringify([timestamp, reference, values[2] === true || values[2] === 'success']);
   }
   if (definition.function === 'dashboard-link') {
     const existing = isPlainObject(values[0]) ? values[0] : {};
