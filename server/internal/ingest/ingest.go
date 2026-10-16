@@ -478,7 +478,7 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 // Canonical IDs use the same stable coordinate rules as ingestion.json.
 func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 	source := "$" + name
-	row := model.Row{}
+	var row model.Row
 	switch name {
 	case "campaigns", "repositories", "workflows":
 		var err error

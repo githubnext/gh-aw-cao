@@ -55,10 +55,11 @@ func TestCanonicalWorkItemContractExecutesNatively(t *testing.T) {
 	if err := json.Unmarshal(content, &fixture); err != nil {
 		t.Fatal(err)
 	}
-	asOf, err := time.Parse(time.RFC3339, fixture["runs"][0]["observedAt"].(string))
+	asOf, err := time.Parse(time.RFC3339, fixture["repositories"][0]["observedAt"].(string))
 	if err != nil {
 		t.Fatal(err)
 	}
+	fixture["runs"][1]["startedAt"] = nil
 	if err := store.RunPartitionMaintenance(t.Context(), asOf, 90, store.linkedRetentionDays); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,8 @@ func TestCanonicalWorkItemContractExecutesNatively(t *testing.T) {
 	for _, row := range rows {
 		if row["workflow"] == ".github/workflows/worker.md" {
 			if row["lifecycle-state"] != "review" || row["name"] != "Worker · Current attempt" ||
-				row["outcome-state"] != "pending" || row["verification-state"] != "pending" {
+				row["outcome-state"] != "pending" || row["verification-state"] != "pending" ||
+				row["started-at"] != fixture["runs"][1]["createdAt"] {
 				t.Fatalf("native latest-attempt contract changed: %#v", row)
 			}
 			link, ok := row["evidence-link"].(map[string]any)

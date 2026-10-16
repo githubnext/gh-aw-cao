@@ -1587,7 +1587,7 @@
     "stores": ["runs"],
     "from": "$runs",
     "compute": [
-      { "as": "_started-at", "function": "coalesce", "args": [{ "field": "startedAt" }, { "field": "createdAt" }, { "field": "observedAt" }] },
+      { "as": "_started-at", "function": "coalesce", "args": [{ "field": "startedAt" }, { "field": "createdAt" }] },
       { "as": "_started", "function": "timestamp", "args": [{ "field": "_started-at" }] },
       { "as": "_run-number", "function": "number", "args": [{ "field": "githubRunId" }] }
     ]

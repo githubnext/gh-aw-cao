@@ -88,13 +88,23 @@ describe('canonical work item payloads', () => {
     expect(currentItem(sources)).toMatchObject({ 'lifecycle-state': lifecycle, 'next-actor': actor });
   });
 
-  it('keeps denied admission blocked and uses available observation times without a run start', async () => {
+  it('keeps denied admission blocked and falls back to run creation without a run start', async () => {
     const batch = structuredClone(fixture);
     Object.assign(batch.runs[1], { startedAt: null, admissionStatus: 'denied', admissionReason: 'Policy denied' });
     const sources = await query(batch);
     expect(currentItem(sources)).toMatchObject({
       'lifecycle-state': 'blocked', reason: 'Policy denied', 'waiting-on': 'scheduled run',
       'started-at': '2026-09-17T12:00:00Z'
+    });
+  });
+
+  it('does not rank a run using workflow observation time when run timestamps are missing', async () => {
+    const batch = structuredClone(fixture);
+    Object.assign(batch.runs[1], { startedAt: null, createdAt: null });
+    const sources = await query(batch);
+    expect(currentItem(sources)).toMatchObject({
+      name: 'Worker · First attempt', 'lifecycle-state': 'blocked',
+      'started-at': '2026-09-17T11:00:00Z'
     });
   });
 
