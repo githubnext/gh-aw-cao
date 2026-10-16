@@ -182,10 +182,10 @@ describe('data-worker ingestion progress', () => {
       notification: expect.objectContaining({ dismiss: true })
     });
     vi.advanceTimersByTime(1_000);
-    expect(postMessage).toHaveBeenCalledTimes(6);
+    expect(postMessage.mock.calls.filter(([message]) => message.type !== 'preparation-log')).toHaveLength(6);
   });
 
-  it('stays silent when ingestion completes before work is required', () => {
+  it('keeps preparation diagnostics without displaying notifications when no work is required', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
@@ -194,7 +194,9 @@ describe('data-worker ingestion progress', () => {
     vi.advanceTimersByTime(3_000);
     progress.complete();
 
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledExactlyOnceWith({
+      type: 'preparation-log', event: { message: 'Checking the published payload identity.' }
+    });
   });
 
   it('exports every preparation step without truncating it to the notification history', () => {
@@ -211,6 +213,19 @@ describe('data-worker ingestion progress', () => {
     expect(log).toHaveLength(217);
     expect(log[0].event.message).toBe('Checking cached shards.');
     expect(log.at(-1).event.message).toBe('Shard 216 committed.');
+  });
+
+  it('retains parsing and storage diagnostics even before the notification starts', () => {
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+    progress.update({ bytesProcessed: 100, recordsIngested: 10 });
+    progress.store({ storedRecords: 10, totalRecords: 10 });
+    for (let index = 0; index < 110; index += 1) progress.log(`Step ${index}`);
+    progress.complete();
+    const messages = postMessage.mock.calls.map(([message]) => message.event.message);
+    expect(messages).toHaveLength(112);
+    expect(messages[0]).toContain('Parsing overall: 10 rec');
+    expect(messages[1]).toContain('Storing 10/10 rec');
   });
 
   it('is disabled by default (no debug output) when the debug query is absent', async () => {

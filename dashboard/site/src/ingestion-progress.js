@@ -42,8 +42,6 @@ export function startIngestionProgress(target = self, requestId) {
   let totalBytes;
   let started = false;
   let completed = false;
-  /** @type {string[]} */
-  let pendingLog = [];
   /** @param {string} message */
   const publishLog = (message) => target.postMessage({ type: 'preparation-log', event: { message } });
   const updateStatus = () => {
@@ -88,8 +86,6 @@ export function startIngestionProgress(target = self, requestId) {
     start() {
       if (started || completed) return;
       started = true;
-      for (const message of pendingLog) publishLog(message);
-      pendingLog = [];
       publishWorkerLoadingProgress({ id, phase: 'start' }, target);
       report();
       interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
@@ -107,6 +103,7 @@ export function startIngestionProgress(target = self, requestId) {
      * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
      */
     update({ bytesProcessed: nextProcessedBytes, recordsIngested, totalBytes: nextTotalBytes }) {
+      if (completed) return;
       processedBytes = Math.max(0, Number(nextProcessedBytes) || 0);
       if (typeof nextTotalBytes === 'number' && Number.isFinite(nextTotalBytes) && nextTotalBytes >= 0) {
         totalBytes = nextTotalBytes;
@@ -119,6 +116,7 @@ export function startIngestionProgress(target = self, requestId) {
         `Parsing overall: ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
         'parsing'
       );
+      publishLog(clock.snapshot().message);
     },
     /**
      * Reports the storage phase, which dominates large ingestions and would
@@ -126,18 +124,19 @@ export function startIngestionProgress(target = self, requestId) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
+      if (completed) return;
       updateStatus();
       clock.update(
         `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
         'storing'
       );
+      publishLog(clock.snapshot().message);
     },
     /** @param {string} nextMessage */
     log(nextMessage) {
       if (completed) return;
       clock.advance(nextMessage);
-      if (started) publishLog(nextMessage);
-      else pendingLog.push(nextMessage);
+      publishLog(nextMessage);
     },
     /** @param {number} completed @param {number} total @param {'files' | 'maintenance' | 'inventory' | 'queries'} stage */
     reportImportProgress(completed, total, stage) {
@@ -147,7 +146,6 @@ export function startIngestionProgress(target = self, requestId) {
     complete() {
       if (completed) return;
       completed = true;
-      pendingLog = [];
       if (interval) clearInterval(interval);
       debugIngestionProgress({ event: 'completed', id, started });
       if (!started) return;
