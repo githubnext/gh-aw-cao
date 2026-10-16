@@ -4,6 +4,9 @@ import { attachCliCommand, cancelCliCommand, retryCliCommand, requestCliQueue, c
 import { createFactoryScope } from './factory-elements.js';
 import { createCliTerminal } from './cli-terminal.js';
 import { publishNotification } from '../notification-service.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
+
+const debugCommandTerminal = createDebug('command-terminal');
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderCommandTerminal(context) {
@@ -39,9 +42,13 @@ export function renderCommandTerminal(context) {
       if (controller.signal.aborted) return;
       status.set(complete.command.status);
       message.set(`${complete.command.id} · ${complete.command.status}`);
+      debugCommandTerminal({ event: 'attach', outcome: 'complete', status: complete.command.status, failed: Boolean(complete.result.error) });
       if (complete.result.error) terminal.write(`\r\n${complete.result.error}\r\n`);
     } catch (error) {
-      if (!controller.signal.aborted) message.set(error instanceof Error ? error.message : 'Command output unavailable.');
+      if (!controller.signal.aborted) {
+        debugCommandTerminal({ event: 'attach', outcome: 'error', error: diagnosticErrorName(error) });
+        message.set(error instanceof Error ? error.message : 'Command output unavailable.');
+      }
     } finally {
       scope.signal.removeEventListener('abort', abort);
     }
@@ -53,6 +60,7 @@ export function renderCommandTerminal(context) {
       busy.set(true);
       try {
         const command = await cancelCliCommand(currentId, scope.signal);
+        debugCommandTerminal({ event: 'cancel', status: command.status });
         status.set(command.status);
         message.set(`${command.id} · ${command.status}`);
       } catch (error) {
