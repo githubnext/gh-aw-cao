@@ -278,7 +278,7 @@ func githubResourceRequest(ctx context.Context, client *http.Client, base, token
 	}
 	request.Header.Set("Authorization", "Bearer "+token)
 	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("X-GitHub-Api-Version", "2026-03-10")
 	if etag != "" {
 		request.Header.Set("If-None-Match", etag)
 	}

@@ -42,6 +42,9 @@ func TestGitHubResourceUpstreamRequestsAreReadOnly(t *testing.T) {
 		if request.Method != http.MethodGet || request.Body != nil {
 			t.Fatalf("resource request must be a bodyless GET: %s %s", request.Method, request.URL.Path)
 		}
+		if version := request.Header.Get("X-GitHub-Api-Version"); version != "2026-03-10" {
+			t.Fatalf("unexpected GitHub API version: %q", version)
+		}
 		paths = append(paths, request.URL.Path)
 		if strings.HasSuffix(request.URL.Path, "/releases/latest") {
 			return resourceResponse(http.StatusOK, `{"tag_name":"v1","name":null,"html_url":"https://github.com/owner/repo/releases/tag/v1","published_at":null,"draft":false,"prerelease":false}`), nil

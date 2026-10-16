@@ -39,7 +39,8 @@ transaction store. Process memory holds active subscriptions and in-flight
 coordination only, not a separate resource cache. GitHub credentials stay on the
 server. Browser resource requests use HttpOnly cookies; local Go bootstrap issues
 a Secure, SameSite=Strict cookie restricted to read-only GitHub resource routes.
-GitHub API requests execute exclusively on the local or hosted server. The
+GitHub API requests execute exclusively on the local or hosted server and pin
+`X-GitHub-Api-Version` to `2026-03-10`. The
 browser worker only requests the dashboard's `/api/v1/github/` resource routes
 (with an optional deployment prefix), rejects upstream API URLs, and refuses
 redirects. Static Pages without a backend reports unavailable instead of

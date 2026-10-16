@@ -35,6 +35,7 @@ test("local GitHub reads are allowlisted, cached, and conditionally returned", a
       assert.ok(url instanceof URL);
       assert.equal(url.href, "https://api.github.com/repos/githubnext/gh-aw-cao");
       assert.equal(options.method, "GET");
+      assert.equal(options.headers["X-GitHub-Api-Version"], "2026-03-10");
       assert.equal(options.body, undefined);
       assert.equal(options.redirect, "error");
       assert.equal(options.headers.Authorization, ["Bearer", credential()].join(" "));
