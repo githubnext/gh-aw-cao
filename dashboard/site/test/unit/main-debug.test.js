@@ -2,6 +2,8 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("../../src/dashboard-definition.js", () => ({ preloadDashboardDefinition: vi.fn() }));
+
 afterEach(() => {
   vi.doUnmock("../../src/debug.js");
   vi.doUnmock("../../src/components/browser-support.js");
@@ -37,7 +39,7 @@ function mockRemoteBackendModule(remoteBackend) {
 }
 
 function mockDashboardAppModule() {
-  vi.doMock("../../src/dashboard-app.js", () => ({}));
+  vi.doMock("../../src/dashboard-app.js", () => ({ startDashboardApp: vi.fn(async () => {}) }));
 }
 
 function mockBrowserSupportModule() {

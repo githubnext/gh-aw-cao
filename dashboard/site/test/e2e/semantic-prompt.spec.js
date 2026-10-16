@@ -64,6 +64,71 @@ test('a loading chart has no prompt action until its own data arrives', async ({
   await page.evaluate(() => Reflect.get(window, 'finishLoading')());
 });
 
+for (const width of [390, 1280]) {
+  test(`pie chart loading reserves visible heading and description at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.setContent(`
+      <div id="root"></div>
+      <script type="module">
+        import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+        const metadata = {
+          'source-id': 'usage', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+          availability: 'available', completeness: 'complete', freshness: 'fresh'
+        };
+        const loadPageSources = (_pageId, options) => new Promise((resolve) => {
+          window.publishCost = () => {
+            const sources = { usage: { source: 'usage', rows: [{ campaign: 'daily', credits: 3 }], metadata } };
+            options.onUpdate(sources);
+            resolve(sources);
+          };
+        });
+        document.querySelector('#root').append(renderDashboard({
+          document: {
+            languageVersion: '0.1.0',
+            dashboard: {
+              id: 'loading-cost', title: 'Cost',
+              pages: [{
+                id: 'cost', kind: 'custom', title: 'Cost',
+                views: [{
+                  id: 'cost-chart', title: 'Cost by campaign',
+                  description: 'Compare AI Credits consumed by each campaign.',
+                  mark: 'chart', chart: 'pie', layout: 'full', prompt: 'always',
+                  data: { source: 'usage' },
+                  encoding: {
+                    x: { field: 'campaign', type: 'nominal' },
+                    y: { field: 'credits', type: 'quantitative' }
+                  }
+                }]
+              }]
+            }
+          },
+          sources: {},
+          loadPageSources
+        }));
+      </script>
+    `);
+    await page.addStyleTag({ content: getPrimerStyles() });
+    const view = page.locator('[data-view-id="cost-chart"]');
+    const heading = view.getByRole('heading', { name: 'Cost by campaign' });
+    const description = view.locator(':scope > .view-description');
+    await expect(view.locator('.dashboard-view-skeleton')).toBeVisible();
+    await expect(heading).toBeVisible();
+    await expect(description).toHaveText('Compare AI Credits consumed by each campaign.');
+    const headingBounds = await heading.boundingBox();
+    if (!headingBounds) throw new Error('The pending chart heading must reserve visible space.');
+    expect(headingBounds.width).toBeGreaterThan(100);
+    expect(headingBounds.height).toBeGreaterThan(16);
+    await expect(view.locator(':scope > .chart-prompt-heading')).toHaveCSS('min-height', '32px');
+
+    await page.evaluate(() => Reflect.get(window, 'publishCost')());
+
+    await expect(view.locator('.dashboard-view-skeleton')).toHaveCount(0);
+    await expect(heading).toBeVisible();
+    await expect(description).toHaveText('Compare AI Credits consumed by each campaign.');
+    await expect(view.locator('.pie-chart-layout')).toBeVisible();
+  });
+}
+
 test('an independently loading element hides its prompt until all busy widgets settle', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>

@@ -18,6 +18,7 @@ describe("live Dashboard Language sources", () => {
     const main = readFileSync(resolve("src/main.js"), "utf8");
     const preview = readFileSync(resolve("src/dashboard-app.js"), "utf8");
     const startup = readFileSync(resolve("src/data/startup.js"), "utf8");
+    const definition = readFileSync(resolve("src/dashboard-definition.js"), "utf8");
 
     expect(shell).toContain("script.src = './src/main.js';");
     expect(main).toContain("const remoteBackend = usesRemoteDataBackend(document)");
@@ -25,7 +26,8 @@ describe("live Dashboard Language sources", () => {
     expect(main).toContain("if (remoteBackend) await disableRemoteDashboardPwa()");
     expect(main).toContain('renderIndexedDBUnsupported()');
     expect(main).toContain('await import("./dashboard-app.js")');
-    expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');
+    expect(preview).toContain('await loadDashboardSchema()');
+    expect(definition).toContain("fetch('./dashboard.json', { cache: 'no-store' })");
     expect(preview).toContain('await ensureDashboardPageLoaded(initialDashboardPageId());');
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview.indexOf('await ensureDashboardPageLoaded(initialDashboardPageId());'))

@@ -235,8 +235,10 @@ test("docs dashboard installs renderer assets without experimental campaign page
       JSON.parse(await readFile(new URL(`src/${file}.map`, destination), "utf8"))
     )));
     assert.ok(chunkMaps.some((map) => map.sources.some((source) => source.endsWith("/src/dashboard-app.js"))));
-    const preloadedChunks = [...builtIndex.matchAll(/<link rel="modulepreload" href="\.\/src\/([^"]+)">/g)]
+    const preloadedChunks = [...builtIndex.matchAll(/<link rel="modulepreload" href="\.\/src\/([^"]+)" fetchpriority="low">/g)]
       .map((match) => match[1]).filter((file) => file.startsWith("chunk-"));
+    assert.ok(preloadedChunks.length > 0 && preloadedChunks.length <= 6,
+      "startup preloads stay bounded and leave bandwidth for the render-blocking stylesheet");
     assert.ok(preloadedChunks.some((file) => chunkMaps[chunkFiles.indexOf(file)].sources
       .some((source) => source.endsWith("/src/dashboard-app.js"))), "application startup is preloaded");
     for (const file of preloadedChunks) {
@@ -244,6 +246,10 @@ test("docs dashboard installs renderer assets without experimental campaign page
       const map = chunkMaps[chunkFiles.indexOf(file)];
       assert.ok(!map.sources.some((source) => /\/(campaign-route-view|workflow-route-page)\.js$/.test(source)),
         "route modules remain deferred");
+      assert.ok(!map.sources.some((source) => /\/(dashboard-fixtures|diagnostics|configuration-view|campaign-memory|measure-history|outcome-detail|outcome-detail-sections)\.js$/.test(source)),
+        "optional and fixture modules remain deferred");
+      assert.ok(!map.sources.some((source) => source.endsWith("/webmcp/runtime.js")),
+        "WebMCP loads only when the browser supports it");
       assert.ok(!/^chunk-(reset-dashboard-control|browser-support)-/.test(file),
         "recovery and unsupported-browser entry points remain deferred");
     }

@@ -5,13 +5,11 @@
       import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
       import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from "./components/refresh-error.js";
-      import { collectFullDiagnostics } from "./diagnostics.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
       import { DashboardServerError, usesRemoteDataBackend } from "./remote-data-backend.js";
-      import { startDashboardWebMCP, supportsWebMCP } from "./webmcp/runtime.js";
       import {
         dashboardPageChunkPath,
         dashboardPageIsLoaded,
@@ -21,56 +19,27 @@
         splitDashboardDocument,
       } from "./dashboard-chunks.js";
       import { createDebug } from "./debug.js";
+      import { loadDashboardPageChunk, loadDashboardSchema } from "./dashboard-definition.js";
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
 
+      export async function startDashboardApp() {
       const debugDashboardApp = createDebug("dashboard-app");
+      const modelContext = /** @type {{ modelContext?: { registerTool?: unknown } }} */ (document).modelContext;
+      const webMCP = typeof modelContext?.registerTool === "function"
+        ? await import("./webmcp/runtime.js") : null;
 
       startConsoleLogCapture();
 
-      /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
-        () => collectFullDiagnostics();
-
-      /**
-       * @param {string} id
-       * @param {Partial<import('./presenter.js').SourceMetadata>} [overrides]
-       * @returns {import('./presenter.js').SourceMetadata}
-       */
-      const metadata = (id, overrides = {}) => ({
-        "source-id": id,
-        "source-kind": "fixture",
-        "as-of": "2026-08-29T19:00:00Z",
-        "retrieved-at": "2026-08-29T19:01:00Z",
-        completeness: "complete",
-        freshness: "fresh",
-        availability: "available",
-        ...overrides,
-      });
-      /** @param {string} run */
-      const runLink = (run) => ({
-        relation: "run",
-        href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`,
-        label: `Run ${run}`,
-      });
-      const targetRepositories = [
-        "github/gh-aw",
-        "github/gh-aw-firewall",
-        "github/gh-aw-mcpg",
-        "github/gh-aw-actions",
-        "github/gh-aw-threat-detection",
-        "githubnext/gh-aw-workshop",
-      ];
-      const campaignTargets = (liveRepository = "") => targetRepositories.map((repository) => ({
-        repository,
-        mode: repository === liveRepository ? "live" : "review",
-      }));
+      /** @type {Window & { collectFullDiagnostics?: typeof import('./diagnostics.js').collectFullDiagnostics }} */ (window).collectFullDiagnostics =
+        () => import("./diagnostics.js").then(({ collectFullDiagnostics }) => collectFullDiagnostics());
 
       const stopWorkerLoadingProgress = subscribeWorkerLoadingProgress((state) => {
         setLoadingProgressState(document, state);
       });
       const cancelCommand = offerCancelCommand(document);
-      /** @type {ReturnType<typeof startDashboardWebMCP>} */
+      /** @type {ReturnType<import('./webmcp/runtime.js').startDashboardWebMCP>} */
       let dashboardWebMCP = null;
       const stopDashboardAppUpdates = usesRemoteDataBackend(document)
         ? () => {}
@@ -82,11 +51,7 @@
           dashboardWebMCP?.stop();
         }
       });
-      const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
-        .then((response) => {
-          if (!response.ok) throw new Error(`Unable to load dashboard.json: ${response.status}`);
-          return response.json();
-        })
+      const dashboardSchema = await loadDashboardSchema()
         .catch((error) => {
           cancelCommand.complete();
           throw error;
@@ -206,11 +171,7 @@
         if (!pendingChunk) {
           const revision = dashboardSchemaRevision;
           debugDashboardApp({ event: "page-chunk-fetch-start", pageId });
-          pendingChunk = fetch(`./${chunkPath}`, { cache: "reload" })
-            .then((response) => {
-              if (!response.ok) throw new Error(`Unable to load dashboard page "${pageId}": ${response.status}`);
-              return response.json();
-            })
+          pendingChunk = loadDashboardPageChunk(chunkPath)
             .then((chunk) => normalizeDashboardPageChunk(chunk))
             .then((chunk) => {
               if (revision !== dashboardSchemaRevision) {
@@ -290,13 +251,13 @@
        * `document.modelContext` register nothing and render as before.
        */
       const syncDashboardWebMCP = () => {
-        if (!supportsWebMCP(document)) return;
+        if (!webMCP) return;
         if (dashboardWebMCP) {
           dashboardWebMCP.refresh();
           return;
         }
         if (!renderedPageSourceLoader) return;
-        dashboardWebMCP = startDashboardWebMCP(document, {
+        dashboardWebMCP = webMCP.startDashboardWebMCP(document, {
           dashboardDocument: () => dashboardDocument,
           loadPageSources: (pageId, loadOptions) => renderedPageSourceLoader
             ? renderedPageSourceLoader(pageId, loadOptions)
@@ -430,459 +391,6 @@
         }
       });
 
-      const fixtureSources = /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ ({
-        "configuration-summary": {
-          source: "configuration-summary",
-          rows: [
-            { status: "Valid", count: 1 },
-            { status: "Guidance", count: 1 },
-          ],
-          metadata: metadata("configuration-summary-fixture"),
-        },
-        "configuration-policy": {
-          source: "configuration-policy",
-          rows: [{
-            path: ".github/workflows/cao.json",
-            document: {
-              version: 1,
-              "control-plane": {
-                scope: { "allowed-owners": ["githubnext"], "allowed-repositories": ["githubnext/gh-aw-cao"] },
-                defaults: { mode: "review", "max-repositories": 1, "rollout-percent": 100 },
-                campaigns: { "self-care": { mode: "review", workers: { "dashboard-review": { workflow: "self-care-dashboard-review" } } } },
-              },
-            },
-            raw: '{\n  "version": 1,\n  "control-plane": {\n    "scope": {\n      "allowed-owners": ["githubnext"],\n      "allowed-repositories": ["githubnext/gh-aw-cao"]\n    },\n    "defaults": {\n      "mode": "review",\n      "max-repositories": 1,\n      "rollout-percent": 100\n    }\n  }\n}',
-            diagnostics: [
-              { severity: "valid", path: ".github/workflows/cao.json", title: "Policy is valid", detail: "The runtime policy resolver accepted this revision." },
-              { severity: "guidance", path: "control-plane.campaigns.self-care.mode", title: "self-care is review-only", detail: "Review mode produces proposals in the control repository and cannot mutate targets." },
-            ],
-          }],
-          metadata: metadata("configuration-policy-fixture"),
-        },
-        "configuration-actions": {
-          source: "configuration-actions",
-          rows: [{
-            action: "Promote self-care to live",
-            path: "control-plane.campaigns.self-care.mode",
-            current: "review",
-            recommended: "live",
-            prompt: 'Update .github/workflows/cao.json so control-plane.campaigns.self-care.mode is "live". Preserve all existing scope and rollout limits, verify target-owned authority, and validate the policy before committing.',
-          }],
-          metadata: metadata("configuration-actions-fixture"),
-        },
-        organizations: {
-          source: "organizations",
-          rows: [
-            { organization: "github", "organization-name": "GitHub", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "octo-org", "organization-name": "Octo Org", "observed-at": "2026-08-29T10:00:00Z" },
-          ],
-          metadata: metadata("organizations-fixture"),
-        },
-        repositories: {
-          source: "repositories",
-          rows: [
-            { organization: "github", repository: "gh-aw-cao", "repository-name": "Central Agentic Ops", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", "repository-name": "Central Agentic Ops", "rollout-mode": "review", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "github", repository: "mona-tools", "repository-name": "Mona Tools", "rollout-mode": "review", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "octo-org", repository: "octo-repo", "repository-name": "Octo Repo", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-          ],
-          metadata: metadata("repositories-fixture"),
-        },
-        workflows: {
-          source: "workflows",
-          rows: [
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "dependabot", "campaign-name": "Dependabot", "workflow-role": "orchestrator", workflow: ".github/workflows/dependabot.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets("github/gh-aw"), "max-ai-credits": 250, "campaign-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "dependabot", "campaign-name": "Dependabot", "workflow-role": "worker", workflow: ".github/workflows/dependabot-update-planner.md", "workflow-name": "Dependabot update planner", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 600, "campaign-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "orchestrator", workflow: ".github/workflows/cao-evolution.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets(), "max-ai-credits": 250, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-compiler-security.md", "workflow-name": "AW compiler security", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-failures-investigator.md", "workflow-name": "AW failures investigator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "Optimization", "workflow-role": "orchestrator", workflow: ".github/workflows/optimization.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets(), "max-ai-credits": 250, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-optimizer.md", "workflow-name": "AI Credit optimizer", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-auditor.md", "workflow-name": "AI Credit auditor", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 350, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-agents-md-curator.md", "workflow-name": "AGENTS.md curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-skills-curator.md", "workflow-name": "Skills curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "github", repository: "gh-aw-cao", "workflow-role": "standalone", workflow: ".github/workflows/daily.yml", "workflow-name": "Daily", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "github", repository: "mona-tools", "workflow-role": "standalone", workflow: ".github/workflows/review.yml", "workflow-name": "Review", "workflow-active": "true", "rollout-mode": "review", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "github", repository: "mona-tools", "workflow-role": "standalone", workflow: ".github/workflows/ci.yml", "workflow-name": "Build and test", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "github", repository: "mona-tools", "workflow-role": "standalone", workflow: ".github/workflows/codeql.yml", "workflow-name": "CodeQL", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "octo-org", repository: "octo-repo", "workflow-role": "standalone", workflow: ".github/workflows/nightly.yml", "workflow-name": "Nightly", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "octo-org", repository: "octo-repo", "workflow-role": "standalone", workflow: ".github/workflows/release.yml", "workflow-name": "Release", "workflow-active": "false", "rollout-mode": "review", "observed-at": "2026-08-29T10:00:00Z" },
-          ],
-          metadata: metadata("workflows-fixture"),
-        },
-        runs: {
-          source: "runs",
-          rows: [
-            { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", "started-at": "2026-08-29T09:00:00Z", "run-status": "completed", "run-conclusion": "success", "rollout-mode": "live", engine: "gpt", "requested-model": "gpt-4o", "resolved-model": "gpt-4.1", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/1001", label: "View run 1001" } },
-            { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", "started-at": "2026-08-29T09:30:00Z", "run-status": "completed", "run-conclusion": "failure", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/mona-tools/actions/runs/1002", label: "View run 1002" } },
-            { organization: "octo-org", repository: "octo-repo", workflow: ".github/workflows/nightly.yml", run: "2001", "started-at": "2026-08-29T08:00:00Z", "run-status": "in-progress", "run-conclusion": "unknown", "rollout-mode": "live", engine: "claude", "requested-model": "claude-3.5", "resolved-model": "claude-3.5", "run-link": { relation: "run", href: "https://github.com/octo-org/octo-repo/actions/runs/2001", label: "View run 2001" } },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", event: "workflow_dispatch", "run-title": "Dependabot", "started-at": "2026-08-29T08:30:00Z", "run-status": "completed", "run-conclusion": "action-required", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/cao-evolution.md", run: "2003", event: "workflow_dispatch", "run-title": "CAO Evolution", "started-at": "2026-08-29T07:30:00Z", "run-status": "completed", "run-conclusion": "success", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2003", label: "View run 2003" } },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot-update-planner.md", run: "2004", event: "workflow_dispatch", "run-title": "Dependabot update planner", "started-at": "2026-08-20T08:30:00Z", "run-status": "completed", "run-conclusion": "failure", "rollout-mode": "live", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2004", label: "View run 2004" } },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/cao-evolution-compiler-security.md", run: "2005", event: "workflow_dispatch", "run-title": "AW Compiler Security", "started-at": "2026-08-10T07:30:00Z", "run-status": "completed", "run-conclusion": "cancelled", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2005", label: "View run 2005" } },
-          ],
-          metadata: metadata("runs-fixture"),
-        },
-        "work-items": {
-          source: "work-items",
-          rows: [
-            {
-              "work-item-id": "dependabot:github/gh-aw:release-train-2026-09-05",
-              objective: "Update the Dependabot release train",
-              organization: "github",
-              repository: "gh-aw",
-              scope: "github/gh-aw",
-              domain: "software-supply-chain",
-              "work-type": "dependency-maintenance",
-              "lifecycle-state": "review",
-              phase: "verifying",
-              reason: "Three required validations passed; security review remains pending.",
-              "reason-evidence-class": "observed",
-              "next-action": "Review the dependency update evidence",
-              "next-actor": "security-reviewers",
-              "waiting-on": "security-reviewers",
-              "waiting-since": "2026-08-29T08:40:00Z",
-              owner: "dependency-automation",
-              "consequence-tier": "high",
-              "verification-state": "pending",
-              "outcome-state": "pending",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": { relation: "evidence", href: "https://github.com/github/gh-aw/pull/74", label: "Review dependency evidence" },
-              "repository-link": { relation: "repository", href: "https://github.com/github/gh-aw", label: "Open github/gh-aw" },
-              "run-link": runLink("2002"),
-            },
-            {
-              "work-item-id": "cao-evolution:github/mona-tools:compiler-security-2026-09-05",
-              objective: "Upgrade agentic workflow dependencies",
-              organization: "github",
-              repository: "mona-tools",
-              scope: "github/mona-tools",
-              domain: "developer-infrastructure",
-              "work-type": "workflow-maintenance",
-              "lifecycle-state": "blocked",
-              phase: "waiting",
-              reason: "The target repository has not granted live authority.",
-              "reason-evidence-class": "observed",
-              "next-action": "Confirm target authority or retain review mode",
-              "next-actor": "repository-owner",
-              "waiting-on": "repository-owner",
-              "waiting-since": "2026-08-29T07:30:00Z",
-              owner: "developer-platform",
-              "consequence-tier": "medium",
-              "verification-state": "not-applicable",
-              "outcome-state": "pending",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("2003"),
-              "repository-link": { relation: "repository", href: "https://github.com/github/mona-tools", label: "Open github/mona-tools" },
-              "run-link": runLink("2003"),
-            },
-            {
-              "work-item-id": "optimization:githubnext/gh-aw-cao:aic-2026-09-05",
-              objective: "Reduce AI Credit usage without reducing accepted outcomes",
-              organization: "githubnext",
-              repository: "gh-aw-cao",
-              scope: "githubnext/gh-aw-cao",
-              domain: "agentic-operations",
-              "work-type": "resource-optimization",
-              "lifecycle-state": "active",
-              phase: "investigating",
-              reason: "Usage attribution is partial for two worker runs.",
-              "reason-evidence-class": "derived",
-              "next-action": "Collect missing worker usage attribution",
-              "next-actor": "ai-credit-optimizer",
-              "waiting-on": "telemetry",
-              "waiting-since": "2026-08-29T09:05:00Z",
-              owner: "agentic-operations",
-              "consequence-tier": "low",
-              "verification-state": "pending",
-              "outcome-state": "pending",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("1001"),
-              "repository-link": { relation: "repository", href: "https://github.com/githubnext/gh-aw-cao", label: "Open githubnext/gh-aw-cao" },
-              "run-link": runLink("1001"),
-            },
-          ],
-          metadata: metadata("work-items-fixture"),
-        },
-        "attention-signals": {
-          source: "attention-signals",
-          rows: [
-            {
-              "attention-signal-id": "verification:dependabot:74",
-              "signal-type": "verification-review",
-              "work-item-id": "dependabot:github/gh-aw:release-train-2026-09-05",
-              objective: "Update the Dependabot release train",
-              scope: "github/gh-aw",
-              reason: "Security verification requires human review.",
-              action: "Review dependency evidence",
-              "expected-actor": "security-reviewers",
-              "age-seconds": 4800,
-              "consequence-tier": "high",
-              priority: 2,
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": { relation: "evidence", href: "https://github.com/github/gh-aw/pull/74", label: "Review dependency evidence" },
-              "repository-link": { relation: "repository", href: "https://github.com/github/gh-aw", label: "Open github/gh-aw" },
-              "run-link": runLink("2002"),
-            },
-            {
-              "attention-signal-id": "authority:mona-tools:upgrade",
-              "signal-type": "authority-gate",
-              "work-item-id": "cao-evolution:github/mona-tools:compiler-security-2026-09-05",
-              objective: "Upgrade agentic workflow dependencies",
-              scope: "github/mona-tools",
-              reason: "Live target authority is unavailable.",
-              action: "Confirm authority or retain review mode",
-              "expected-actor": "repository-owner",
-              "age-seconds": 9000,
-              "consequence-tier": "medium",
-              priority: 1,
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("2003"),
-              "repository-link": { relation: "repository", href: "https://github.com/github/mona-tools", label: "Open github/mona-tools" },
-              "run-link": runLink("2003"),
-            },
-          ],
-          metadata: metadata("attention-signals-fixture"),
-        },
-        "agent-assignments": {
-          source: "agent-assignments",
-          rows: [
-            {
-              "assignment-id": "assignment:update-planner:74",
-              "agent-id": "dependabot-update-planner",
-              "agent-name": "Dependabot update planner",
-              "agent-state": "waiting",
-              "work-item-id": "dependabot:github/gh-aw:release-train-2026-09-05",
-              objective: "Update the Dependabot release train",
-              "assignment-state": "active",
-              "handoff-state": "waiting-for-review",
-              "dependency-state": "clear",
-              "conflict-state": "none",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("2002"),
-              "repository-link": { relation: "repository", href: "https://github.com/github/gh-aw", label: "Open github/gh-aw" },
-              "run-link": runLink("2002"),
-            },
-            {
-              "assignment-id": "assignment:cao-evolution-compiler-security:mona-tools",
-              "agent-id": "cao-evolution-compiler-security",
-              "agent-name": "CAO Evolution compiler security",
-              "agent-state": "blocked",
-              "work-item-id": "cao-evolution:github/mona-tools:compiler-security-2026-09-05",
-              objective: "Upgrade agentic workflow dependencies",
-              "assignment-state": "active",
-              "handoff-state": "none",
-              "dependency-state": "blocked",
-              "conflict-state": "none",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("2003"),
-              "repository-link": { relation: "repository", href: "https://github.com/github/mona-tools", label: "Open github/mona-tools" },
-              "run-link": runLink("2003"),
-            },
-            {
-              "assignment-id": "assignment:aic-optimizer:gh-aw-cao",
-              "agent-id": "ai-credit-optimizer",
-              "agent-name": "AI Credit optimizer",
-              "agent-state": "active",
-              "work-item-id": "optimization:githubnext/gh-aw-cao:aic-2026-09-05",
-              objective: "Reduce AI Credit usage without reducing accepted outcomes",
-              "assignment-state": "active",
-              "handoff-state": "none",
-              "dependency-state": "waiting-on-telemetry",
-              "conflict-state": "none",
-              "observed-at": "2026-08-29T10:00:00Z",
-              "evidence-link": runLink("1001"),
-              "repository-link": { relation: "repository", href: "https://github.com/githubnext/gh-aw-cao", label: "Open githubnext/gh-aw-cao" },
-              "run-link": runLink("1001"),
-            },
-          ],
-          metadata: metadata("agent-assignments-fixture"),
-        },
-        "agent-smells": {
-          source: "agent-smells",
-          rows: [{
-            "smell-observation-id": "agent:2004:partially-reducible",
-            "smell-id": "partially-reducible",
-            "smell-name": "Partially reducible",
-            "smell-category": "design",
-            "smell-severity": "medium",
-            "smell-summary": "Most turns gather data that deterministic pre-steps could provide.",
-            "smell-evidence": "agentic_fraction=0.18 turns=17",
-            "smell-recommendation": "Move repository and alert collection into deterministic pre-steps.",
-            organization: "githubnext",
-            repository: "gh-aw-cao",
-            workflow: ".github/workflows/dependabot-update-planner.md",
-            run: "2004",
-            "observed-at": "2026-08-29T09:40:00Z",
-            "run-link": runLink("2004"),
-          }],
-          metadata: metadata("agent-smells-fixture"),
-        },
-        "workflow-smells": {
-          source: "workflow-smells",
-          rows: [{
-            "smell-observation-id": "workflow:release:strict-disabled",
-            "smell-id": "strict-disabled",
-            "smell-name": "Strict mode disabled",
-            "smell-category": "configuration",
-            "smell-severity": "high",
-            "smell-summary": "Workflow validation is not configured to fail closed.",
-            "smell-recommendation": "Enable strict mode and recompile the workflow.",
-            organization: "octo-org",
-            repository: "octo-repo",
-            workflow: ".github/workflows/release.yml",
-            "observed-at": "2026-08-29T09:30:00Z",
-            "repository-link": { relation: "repository", href: "https://github.com/octo-org/octo-repo", label: "Open octo-org/octo-repo" },
-          }],
-          metadata: metadata("workflow-smells-fixture"),
-        },
-        "security-findings": {
-          source: "security-findings",
-          rows: [{
-            "smell-observation-id": "threat-detection:1002:prompt-injection",
-            "smell-id": "threat-detection-prompt-injection",
-            "smell-name": "Prompt injection detected",
-            "smell-category": "trust-and-security",
-            "smell-severity": "high",
-            "smell-summary": "Threat detection reported untrusted instructions in workflow context.",
-            "smell-recommendation": "Review the run evidence and remove the untrusted instruction path.",
-            organization: "github",
-            repository: "mona-tools",
-            workflow: ".github/workflows/codeql.yml",
-            run: "1002",
-            "observed-at": "2026-08-29T09:20:00Z",
-            "run-link": runLink("1002"),
-          }],
-          metadata: metadata("security-findings-fixture"),
-        },
-        "control-plane-smells": {
-          source: "control-plane-smells",
-          rows: [{
-            "smell-observation-id": "control-plane:cao-evolution:inventory-incomplete",
-            "smell-id": "inventory-incomplete",
-            "smell-name": "Campaign inventory incomplete",
-            "smell-category": "control-plane",
-            "smell-severity": "high",
-            "smell-recommendation": "Restore the worker source and compile its lock file.",
-            organization: "githubnext",
-            repository: "gh-aw-cao",
-            workflow: ".github/workflows/cao-evolution.md",
-            "observed-at": "2026-08-29T09:10:00Z",
-            "repository-link": { relation: "repository", href: "https://github.com/githubnext/gh-aw-cao", label: "Open githubnext/gh-aw-cao" },
-          }],
-          metadata: metadata("control-plane-smells-fixture"),
-        },
-        "evidence-records": {
-          source: "evidence-records",
-          rows: [
-            {
-              "evidence-id": "evidence:dependabot:74:checks",
-              "evidence-class": "observed",
-              "evidence-kind": "verification",
-              "work-item-id": "dependabot:github/gh-aw:release-train-2026-09-05",
-              objective: "Update the Dependabot release train",
-              claim: "Three required validations passed and security review is pending.",
-              "verification-state": "pending",
-              "provenance-state": "complete",
-              "source-revision": "sha256:dependabot123",
-              "observed-at": "2026-08-29T09:55:00Z",
-              "evidence-link": { relation: "evidence", href: "https://github.com/github/gh-aw/pull/74", label: "Review dependency evidence" },
-              "repository-link": { relation: "repository", href: "https://github.com/github/gh-aw", label: "Open github/gh-aw" },
-              "run-link": runLink("2002"),
-            },
-            {
-              "evidence-id": "evidence:mona-tools:authority",
-              "evidence-class": "observed",
-              "evidence-kind": "authority",
-              "work-item-id": "cao-evolution:github/mona-tools:compiler-security-2026-09-05",
-              objective: "Upgrade agentic workflow dependencies",
-              claim: "No matching live target-authority declaration was observed.",
-              "verification-state": "not-applicable",
-              "provenance-state": "complete",
-              "source-revision": "sha256:authority456",
-              "observed-at": "2026-08-29T09:50:00Z",
-              "evidence-link": runLink("2003"),
-              "repository-link": { relation: "repository", href: "https://github.com/github/mona-tools", label: "Open github/mona-tools" },
-              "run-link": runLink("2003"),
-            },
-            {
-              "evidence-id": "evidence:aic:attribution",
-              "evidence-class": "derived",
-              "evidence-kind": "usage-attribution",
-              "work-item-id": "optimization:githubnext/gh-aw-cao:aic-2026-09-05",
-              objective: "Reduce AI Credit usage without reducing accepted outcomes",
-              claim: "Usage attribution is partial for two worker runs.",
-              "verification-state": "pending",
-              "provenance-state": "partial",
-              "source-revision": "sha256:usage789",
-              "observed-at": "2026-08-29T09:45:00Z",
-              "evidence-link": runLink("1001"),
-              "repository-link": { relation: "repository", href: "https://github.com/githubnext/gh-aw-cao", label: "Open githubnext/gh-aw-cao" },
-              "run-link": runLink("1001"),
-            },
-          ],
-          metadata: metadata("evidence-records-fixture"),
-        },
-        outcomes: {
-          source: "outcomes",
-          rows: [
-            { organization: "github", repository: "gh-aw", campaign: "dependabot", "runtime-repository": "githubnext/gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", "safe-output": "dependabot-review", "outcome-state": "accepted", "rollout-mode": "review", "observed-at": "2026-08-29T08:40:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
-            { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", "outcome-state": "pending", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/1001", label: "View run 1001" } },
-            { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", "outcome-state": "rejected", "run-link": { relation: "run", href: "https://github.com/githubnext/mona-tools/actions/runs/1002", label: "View run 1002" } },
-          ],
-          metadata: metadata("outcomes-fixture"),
-        },
-        usage: {
-          source: "usage",
-          rows: [
-            { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", invocation: "u1", engine: "gpt", "requested-model": "gpt-4o", "resolved-model": "gpt-4.1", "rollout-mode": "live", "input-tokens": 100, "output-tokens": 50, "cache-read-tokens": 20, "cache-write-tokens": 10, "reasoning-tokens": 5, aic: 3.5, "observed-at": "2026-08-29T09:05:00Z" },
-            { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", invocation: "u2", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "rollout-mode": "review", "input-tokens": 200, "output-tokens": 80, "cache-read-tokens": 40, "cache-write-tokens": 15, "reasoning-tokens": 7, aic: 4.5, "observed-at": "2026-08-29T09:35:00Z" },
-            { organization: "octo-org", repository: "octo-repo", workflow: ".github/workflows/nightly.yml", run: "2001", invocation: "u3", engine: "claude", "requested-model": "claude-3.5", "resolved-model": "claude-3.5", "rollout-mode": "live", "input-tokens": 150, "output-tokens": 60, "cache-read-tokens": 30, "cache-write-tokens": 12, "reasoning-tokens": 9, aic: 2.25, "observed-at": "2026-08-29T08:05:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/cao-evolution.md", run: "2003", invocation: "u4", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "rollout-mode": "review", "input-tokens": null, "output-tokens": null, "cache-read-tokens": null, "cache-write-tokens": null, "reasoning-tokens": null, aic: 23.9, "observed-at": "2026-08-29T07:35:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", invocation: "u5", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "rollout-mode": "review", "input-tokens": null, "output-tokens": null, "cache-read-tokens": null, "cache-write-tokens": null, "reasoning-tokens": null, aic: 28.3, "observed-at": "2026-08-29T08:35:00Z" },
-          ],
-          metadata: metadata("usage-fixture", { completeness: "partial", "coverage-start": "2026-08-28T19:00:00Z", "coverage-end": "2026-08-29T19:00:00Z" }),
-        },
-        "coverage-diagnostics": {
-          source: "coverage-diagnostics",
-          rows: [
-            { title: "Private repository discovery is off", effect: "Private repositories are excluded from workflow inventory and run-health totals." },
-            { title: "AIC telemetry is partial", effect: "AI Credit totals exclude runs whose usage artifacts could not be collected." },
-          ],
-          metadata: metadata("coverage-diagnostics-fixture"),
-        },
-        findings: {
-          source: "findings",
-          rows: [
-            {
-              finding: "f-1",
-              "finding-kind": "authored-warning",
-              "finding-summary": "Workflow retried more than expected during rollout.",
-              "finding-severity": "medium",
-              "finding-status": "open",
-              organization: "github",
-              repository: "mona-tools",
-              workflow: ".github/workflows/review.yml",
-              "observed-at": "2026-08-29T09:40:00Z",
-              "issue-link": { relation: "issue", href: "https://github.com/githubnext/mona-tools/issues/42", label: "View issue 42" },
-              "external-link": { relation: "external", href: "https://github.com/githubnext/mona-tools/issues/42", label: "View warning output" },
-            },
-          ],
-          metadata: metadata("findings-fixture"),
-        },
-        "grader-observations": {
-          source: "grader-observations",
-          rows: [
-            { grader: "issue-resolution-rate", run: "1001", status: "pass", value: 0.82, "maturity-status": "matured", "baseline-value": 0.77, "delta-from-baseline": 0.05, "evaluator-digest": "sha256:abc123", "observed-at": "2026-08-29T09:10:00Z", "run-link": runLink("1001") },
-            { grader: "issue-resolution-rate", run: "998", status: "pass", value: 0.58, "maturity-status": "matured", "baseline-value": 0.61, "delta-from-baseline": -0.03, "evaluator-digest": "sha256:def456", "observed-at": "2026-08-27T09:10:00Z", "run-link": runLink("998") },
-            { grader: "issue-resolution-rate", run: "999", status: "pass", value: 0.71, "maturity-status": "matured", "baseline-value": 0.69, "delta-from-baseline": 0.02, "evaluator-digest": "sha256:ghi789", "observed-at": "2026-08-28T09:10:00Z", "run-link": runLink("999") },
-            { grader: "review-quality", run: "1002", status: "pass", value: 0.76, "maturity-status": "interim", "baseline-value": 0.72, "delta-from-baseline": 0.04, "evaluator-digest": "sha256:jkl012", "observed-at": "2026-08-29T10:10:00Z", "run-link": runLink("1002") },
-            { grader: "missing-value", run: "Unavailable", status: "unavailable", value: null, "maturity-status": "unavailable", "baseline-value": null, "delta-from-baseline": null, "evaluator-digest": "" },
-          ],
-          metadata: metadata("grader-observations-fixture"),
-        },
-      });
-
       /**
        * @param {Record<string, unknown>} sources
        * @param {boolean} [ingest]
@@ -900,6 +408,7 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
+        const { fixtureSources } = await import("./dashboard-fixtures.js");
         await ensureAllDashboardPagesLoaded();
         const fixtureProjection = await withDatabaseQuerySources(fixtureSources, true);
         renderSources({
@@ -946,4 +455,5 @@
         } finally {
           cancelCommand.complete();
         }
+      }
       }

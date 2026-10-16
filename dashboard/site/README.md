@@ -4,6 +4,8 @@ Production Dashboard Language validator and presenter for the Central Agentic Op
 
 The dashboard build workflow copies this directory to its configured `site-path`, bundles installed `<campaign>/dashboard.json` documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and generates `sources.json`. The browser loads the core shell first, fetches page chunks on demand, derives presentation-only data, and renders the `/cao` experience without page-specific HTML generation.
 
+The esbuild pipeline coalesces the application's static startup dependencies while preserving shared module instances, original source maps, and lazy route boundaries. Startup module preloads use low fetch priority so they do not compete with the render-blocking stylesheet on mobile connections. The declared initial page definition loads alongside the application; diagnostics, illustrative fixtures, optional UI elements, and the WebMCP adapter load only when needed. Pie chart loading skeletons retain their authored heading and description to reserve space before query results arrive.
+
 ## Source composition
 
 An authoring `dashboard.json` may declare a top-level `fragments` array of JSON paths relative to that file. Each fragment is a partial `dashboard` object whose array fields are appended in declaration order. Keep coherent feature slices together: one fragment may contain multiple related `queries`, reusable `views`, and `pages`.

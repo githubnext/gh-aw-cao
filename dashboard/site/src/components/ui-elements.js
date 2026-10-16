@@ -2,16 +2,11 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
-import { renderAllCampaignMemory } from './campaign-memory.js';
-import { renderConfigurationView } from './configuration-view.js';
 import { renderEntityRoute } from './entity-route.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
 import { renderMarkdownElement } from './markdown.js';
-import { renderBoundMeasureHistory } from './measure-history.js';
-import { renderOutcomeDetail } from './outcome-detail.js';
-import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
 import { renderLazyView } from './lazy-view.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -46,17 +41,12 @@ export {};
 
 /** @type {Map<string, (context: ElementRenderContext) => HTMLElement | null>} */
 const ELEMENT_RENDERERS = new Map([
-  ['outcome-detail', renderOutcomeDetail],
-  ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['problem-detail', renderProblemDetail],
-  ['configuration-policy', renderConfigurationView],
   ['entity-route', renderEntityRoute],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
-  ['all-campaign-memory', renderAllCampaignMemory],
   ['link-button-list', renderLinkButtonList],
-  ['markdown', renderMarkdownElement],
-  ['measure-history', renderBoundMeasureHistory]
+  ['markdown', renderMarkdownElement]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -117,6 +107,30 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
+  ['configuration-policy-lazy', lazyElementRenderer(
+    () => import('./configuration-view.js'),
+    ({ renderConfigurationView }, context) => renderConfigurationView(context)
+  )],
+  ['all-campaign-memory-lazy', lazyElementRenderer(
+    () => import('./campaign-memory.js'),
+    ({ renderAllCampaignMemory }, context) => renderAllCampaignMemory(context)
+  )],
+  ['measure-history-lazy', lazyElementRenderer(
+    () => import('./measure-history.js'),
+    ({ renderBoundMeasureHistory }, context) => renderBoundMeasureHistory(context)
+  )],
+  ['outcome-detail-lazy', lazyElementRenderer(
+    () => import('./outcome-detail.js'),
+    ({ renderOutcomeDetail }, context) => renderOutcomeDetail(context)
+  )],
+  ['outcome-detail-section-lazy', lazyElementRenderer(
+    () => import('./outcome-detail-sections.js'),
+    ({ isOutcomeDetailSectionConfig, renderOutcomeDetailSection }, context) => {
+      const outcome = context.sources[context.sourceNames[0]]?.rows[0];
+      return outcome && isOutcomeDetailSectionConfig(context.elementConfig)
+        ? renderOutcomeDetailSection(outcome, context.elementConfig.body) : null;
+    }
+  )],
   ['query-editor-lazy', lazyElementRenderer(
     () => import('./query-editor.js'),
     ({ renderQueryEditor }, context) => renderQueryEditor(context)
@@ -177,19 +191,6 @@ export async function renderUiElementAsync(name, context, signal) {
     return element;
   }
   return renderUiElement(name, context);
-}
-
-/**
- * @param {ElementRenderContext} context
- * @returns {HTMLElement | null}
- */
-function renderOutcomeDetailSectionElement(context) {
-  const outcome = context.sources[context.sourceNames[0]]?.rows[0];
-  const sectionConfig = isOutcomeDetailSectionConfig(context.elementConfig)
-    ? context.elementConfig
-    : null;
-  if (!sectionConfig) return null;
-  return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
 }
 
 /**

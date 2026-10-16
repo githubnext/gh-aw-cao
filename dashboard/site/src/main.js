@@ -1,5 +1,6 @@
 import { disableRemoteDashboardPwa, usesRemoteDataBackend } from "./backend-mode.js";
 import { createDebug } from "./debug.js";
+import { preloadDashboardDefinition } from "./dashboard-definition.js";
 
 const debugMain = createDebug("main");
 
@@ -25,7 +26,9 @@ if (!window.indexedDB && !remoteBackend) {
   root.replaceChildren(renderIndexedDBUnsupported());
 } else {
   if (remoteBackend) await disableRemoteDashboardPwa();
-  await import("./dashboard-app.js");
+  preloadDashboardDefinition();
+  const { startDashboardApp } = await import("./dashboard-app.js");
+  await startDashboardApp();
   debugMain({ event: "dashboard-app-loaded", remoteBackend });
 }
 }

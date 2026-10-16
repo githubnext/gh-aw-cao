@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { access, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, transform } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
@@ -270,30 +270,83 @@ async function bundleSiteJavascript(destinationPath) {
     const startupOutput = Object.entries(result.metafile.outputs)
       .find(([, output]) => output.entryPoint === "src/dashboard-app.js")?.[0];
     if (!startupOutput) throw new Error("Dashboard application startup chunk is missing.");
+    const collectStaticModules = (outputPath, modules = new Set()) => {
+      if (modules.has(outputPath)) return modules;
+      const output = result.metafile.outputs[outputPath];
+      if (!output) throw new Error(`Dashboard startup dependency is missing: ${outputPath}`);
+      modules.add(outputPath);
+      for (const dependency of output.imports) {
+        if (dependency.kind === "import-statement" && !dependency.external) collectStaticModules(dependency.path, modules);
+      }
+      return modules;
+    };
+    const startupModules = collectStaticModules(startupOutput);
+    const mainOutput = join(bundlePath, "main.js");
+    const mainModules = collectStaticModules(relative(destinationPath, mainOutput));
+    const coreModules = [...startupModules].filter((path) => !mainModules.has(path));
+    const corePaths = new Set(coreModules.map((path) => resolve(destinationPath, path)));
+    const coalescedPath = join(destinationPath, ".coalesced");
+    let coreFile;
+    try {
+      const exports = coreModules.map((path, index) => ({
+        path,
+        names: result.metafile.outputs[path].exports,
+        prefix: `module${index}_`,
+      }));
+      // Re-export facades keep lazy modules on the same singleton instances.
+      const coalesced = await build({
+        ...bundleOptions,
+        outdir: coalescedPath,
+        entryNames: "chunk-dashboard-core-[hash]",
+        metafile: true,
+        stdin: {
+          contents: exports.map(({ path, names, prefix }) => names.length
+            ? `export { ${names.map((name) => `${name} as ${prefix}${name}`).join(", ")} } from "./${basename(path)}";`
+            : `import "./${basename(path)}";`).join("\n"),
+          resolveDir: bundlePath,
+          sourcefile: "dashboard-core.js",
+        },
+        plugins: [{
+          name: "preserve-lazy-dashboard-modules",
+          setup(builder) {
+            builder.onResolve({ filter: /^\.\// }, (args) => {
+              const path = resolve(args.resolveDir || dirname(args.importer), args.path);
+              if (args.kind === "dynamic-import" || !corePaths.has(path)) {
+                return { path: `./${basename(path)}`, external: true };
+              }
+            });
+          },
+        }],
+      });
+      const coreOutput = Object.keys(coalesced.metafile.outputs).find((path) => path.endsWith(".js"));
+      if (!coreOutput) throw new Error("Coalesced dashboard startup chunk is missing.");
+      coreFile = basename(coreOutput);
+      await cp(coalescedPath, bundlePath, { recursive: true });
+      for (const { path, names, prefix } of exports) {
+        const facade = await transform(names.length
+          ? `export { ${names.map((name) => `${prefix}${name} as ${name}`).join(", ")} } from "./${coreFile}";`
+          : `import "./${coreFile}";`, {
+          loader: "js", minify: true, sourcemap: "external", sourcefile: basename(path),
+        });
+        await writeFile(resolve(destinationPath, path), `${facade.code}//# sourceMappingURL=${basename(path)}.map\n`);
+        await writeFile(`${resolve(destinationPath, path)}.map`, facade.map);
+      }
+    } finally {
+      await rm(coalescedPath, { force: true, recursive: true });
+    }
     for (const sourceFile of (await listFiles(join(destinationPath, "src")))
       .filter((file) => file.endsWith(".js"))) {
       await rm(join(destinationPath, "src", sourceFile));
     }
     await cp(bundlePath, join(destinationPath, "src"), { recursive: true });
-    const startupModules = new Set();
-    const collectStartupModules = (outputPath) => {
-      if (startupModules.has(outputPath)) return;
-      const output = result.metafile.outputs[outputPath];
-      if (!output) throw new Error(`Dashboard startup dependency is missing: ${outputPath}`);
-      startupModules.add(outputPath);
-      for (const dependency of output.imports) {
-        if (dependency.kind === "import-statement" && !dependency.external) {
-          collectStartupModules(dependency.path);
-        }
-      }
-    };
-    collectStartupModules(startupOutput);
+    const startupChunks = [coreFile, ...new Set([startupOutput, ...mainModules])]
+      .filter((path) => !path.endsWith("/main.js"))
+      .map((path) => basename(path));
     const preloads = [
       '    <link rel="stylesheet" href="./styles.css">',
-      '    <link rel="modulepreload" href="./src/main.js">',
-      ...[...startupModules].map((outputPath) => (
-        `    <link rel="modulepreload" href="./src/${relative(bundlePath, resolve(destinationPath, outputPath))}">`
-      )),
+      '    <link rel="preload" href="./dashboard.json" as="fetch" crossorigin>',
+      '    <link rel="modulepreload" href="./src/main.js" fetchpriority="low">',
+      ...startupChunks.map((chunk) => `    <link rel="modulepreload" href="./src/${chunk}" fetchpriority="low">`),
     ];
     const indexPath = join(destinationPath, "index.html");
     const index = await readFile(indexPath, "utf8");

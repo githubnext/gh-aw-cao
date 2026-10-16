@@ -924,10 +924,20 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             'unavailable', [`Data query failure: ${failure}`], headingTag, 'This view cannot be shown because its data query failed.')
         : pending && viewSourceNames.length > 0 && !isSelfBound && (!isPlainObject(view) || view.mark !== 'callout')
         ? renderPageSection(page.id, getViewTitle(view, index), [
+            ...(isPlainObject(view) && view.mark === 'chart' && view.chart === 'pie' && typeof view.description === 'string'
+              ? [h('p', { className: 'view-description' }, view.description)] : []),
             renderDashboardViewSkeleton(),
             h('span', { className: 'sr-only' }, `Loading ${getViewTitle(view, index)}`)
           ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
+      if (pending && isPlainObject(view) && view.mark === 'chart' && view.chart === 'pie') {
+        const heading = rendered.querySelector(':scope > :is(h2, h3, h4)');
+        if (heading) {
+          const titleRow = h('div', { className: 'chart-prompt-heading' });
+          heading.before(titleRow);
+          titleRow.append(heading);
+        }
+      }
       if (pending && !isSelfBound) rendered.setAttribute('aria-busy', 'true');
       const filterControls = viewFilterControls(view);
       if (filterControls.length > 0 && viewBackendAvailable(view, dashboardDataBackend())) {

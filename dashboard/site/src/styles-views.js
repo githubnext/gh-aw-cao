@@ -29,6 +29,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .semantic-prompt-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .semantic-prompt-heading > :is(h2, h3, h4) { margin: 0; }
 .chart-prompt-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.custom-view[aria-busy="true"] > .chart-prompt-heading { min-height: 32px; }
 .chart-prompt-heading > :is(h2, h3, h4) { min-width: 0; margin: 0; }
 .chart-prompt-action { margin-left: auto; flex: none; }
 .chart-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }

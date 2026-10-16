@@ -1181,7 +1181,7 @@ describe('dashboard DOM provenance', () => {
     });
     const page = await activatePage(rendered, 'configuration');
 
-    expect(page?.querySelector('.configuration-view')).not.toBeNull();
+    await vi.waitFor(() => expect(page?.querySelector('.configuration-view')).not.toBeNull());
     expect(page?.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
     expect(page?.textContent).not.toContain('Affected source: configuration-policy');
   });
@@ -1353,6 +1353,48 @@ describe('dashboard DOM provenance', () => {
 
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 0));
     expect(rendered.hasAttribute('data-json-path')).toBe(false);
+  });
+
+  it('keeps pie chart headings and authored descriptions in loading skeletons', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'pending-chart-dashboard',
+          title: 'Costs',
+          pages: [{
+            id: 'cost',
+            kind: 'custom',
+            title: 'Cost',
+            views: [{
+              id: 'cost-by-campaign',
+              title: 'Cost by campaign',
+              description: 'Compare AI Credits consumed by each campaign.',
+              mark: 'chart',
+              chart: 'pie',
+              data: { source: 'usage' },
+              encoding: {
+                x: { field: 'campaign', type: 'nominal' },
+                y: { field: 'credits', type: 'quantitative' }
+              }
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loading: true
+    });
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-view-id="cost-by-campaign"] .dashboard-view-skeleton')).not.toBeNull();
+    });
+    const view = rendered.querySelector('[data-view-id="cost-by-campaign"]');
+    expect(view?.querySelector(':scope > .chart-prompt-heading > :is(h2, h3, h4)')?.textContent)
+      .toBe('Cost by campaign');
+    expect(view?.querySelector(':scope > .view-description')?.textContent)
+      .toBe('Compare AI Credits consumed by each campaign.');
+    expect(view?.getAttribute('aria-busy')).toBe('true');
+    expect(view?.querySelector('.table-intent-button')).toBeNull();
   });
 
   it('shows a view loading skeleton instead of unavailable source errors during initial load', async () => {
