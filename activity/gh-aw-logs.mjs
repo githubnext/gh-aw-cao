@@ -1,17 +1,16 @@
-import { createReadStream } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { createInterface } from "node:readline";
 import { isSupportedGhAwJsonlSchemaVersion } from "../dashboard/site/src/data/adapters/gh-aw-logs.js";
+import { parseJsonlRecords, readJsonlRecords } from "./jsonl.mjs";
 
 export function parseGhAwLogsJsonl(contents) {
-  return contents
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .map((line) => JSON.parse(line))
-    .flatMap((record) => isSupportedGhAwJsonlSchemaVersion(record.schema_version) && record.kind === "run" && record.run
-      ? [record.run]
-      : []);
+  const runs = [];
+  for (const { value: record } of parseJsonlRecords(contents)) {
+    if (isSupportedGhAwJsonlSchemaVersion(record?.schema_version) && record.kind === "run" && record.run) {
+      runs.push(record.run);
+    }
+  }
+  return runs;
 }
 
 export async function readGhAwLogShards(directory) {
@@ -28,14 +27,8 @@ export async function* iterateGhAwLogShards(directory, shardNames) {
     .filter((name) => name.endsWith(".jsonl"))
     .sort();
   for (const name of names) {
-    const lines = createInterface({
-      input: createReadStream(path.join(directory, name)),
-      crlfDelay: Infinity,
-    });
-    for await (const line of lines) {
-      if (!line) continue;
-      const record = JSON.parse(line);
-      if (isSupportedGhAwJsonlSchemaVersion(record.schema_version) && record.kind === "run" && record.run) yield record.run;
+    for (const { value: record } of readJsonlRecords(path.join(directory, name))) {
+      if (isSupportedGhAwJsonlSchemaVersion(record?.schema_version) && record.kind === "run" && record.run) yield record.run;
     }
   }
 }

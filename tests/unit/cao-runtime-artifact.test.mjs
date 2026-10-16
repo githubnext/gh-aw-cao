@@ -86,6 +86,11 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.js"]);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
   assert.ok(metadata.files["activity/setup-prompt.mjs"]);
+  assert.ok(metadata.files["activity/jsonl.mjs"]);
+  for (const file of [
+    "jsonl_helpers.cjs", "json_schema_validation.cjs", "mcp_scripts_validation.cjs",
+    "memory_schema_contract.cjs", "LICENSE", "source.json",
+  ]) assert.ok(metadata.files[`activity/vendor/gh-aw/${file}`]);
   assert.ok(metadata.files["dashboard/local-github-service.mjs"]);
   for (const file of [
     "dashboard/cli-terminal-process.mjs",

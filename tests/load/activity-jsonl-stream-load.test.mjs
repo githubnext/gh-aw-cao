@@ -7,7 +7,7 @@ import path from "node:path";
 import { finished } from "node:stream/promises";
 import test from "node:test";
 
-test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap", async () => {
+test("cao reads and ingests one million cached JSONL rows within a 32 MB JavaScript heap", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "cao-jsonl-load-"));
   const input = path.join(directory, "activity-shard.jsonl");
   const database = path.join(directory, "gh-aw-logs.sqlite");
@@ -34,6 +34,22 @@ test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap",
   await finished(output);
 
   try {
+    const reader = spawnSync(process.execPath, [
+      "--max-old-space-size=32", "--input-type=module", "-e",
+      `import { readJsonlRecords } from './activity/jsonl.mjs';
+       let records = 0;
+       let checksum = 0;
+       for (const { value } of readJsonlRecords(process.argv[1])) {
+         records++;
+         checksum += value.run.run_id;
+       }
+       console.log(JSON.stringify({ records, checksum }));`,
+      input,
+    ], { cwd: process.cwd(), encoding: "utf8", timeout: 15_000 });
+    assert.equal(reader.signal, null, reader.stderr);
+    assert.equal(reader.status, 0, reader.stderr);
+    assert.deepEqual(JSON.parse(reader.stdout), { records: 1_000_000, checksum: 1_000_000 });
+
     const result = spawnSync(process.execPath, [
       "--max-old-space-size=32",
       "activity/cao.mjs",

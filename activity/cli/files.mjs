@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { createInterface } from 'node:readline';
 import path from 'node:path';
+import { readLines } from '../vendor/gh-aw/jsonl_helpers.cjs';
+
+export { jsonlRecords } from '../jsonl.mjs';
 
 export function isMapping(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -46,11 +48,7 @@ export async function jsonlFiles(root) {
 
 export async function* jsonlLines(paths) {
   for (const filePath of paths) {
-    const lines = createInterface({
-      input: createReadStream(filePath),
-      crlfDelay: Infinity
-    });
-    for await (const line of lines) {
+    for (const line of readLines(filePath)) {
       if (line) yield line;
     }
   }

@@ -32,3 +32,22 @@ test("Activity run readers retain schema-v2, schema-v4 and schema-v5 runs in mix
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("Activity run readers skip whitespace but reject corrupted non-run records", async (t) => {
+  const run = { run_id: 7 };
+  const content = ` \t\r\n${JSON.stringify({ schema_version: 5, kind: "run", run })}\r\nnull\n`;
+  assert.deepEqual(parseGhAwLogsJsonl(content), [run]);
+  const root = await mkdtemp(path.join(os.tmpdir(), "activity-gh-aw-logs-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, "mixed.jsonl");
+  await writeFile(file, content);
+  assert.deepEqual(await readGhAwLogShards(root), [run]);
+  const corrupt = `${content}{"kind":"other","private":"do-not-expose",}`;
+  assert.throws(() => parseGhAwLogsJsonl(corrupt), /JSONL input:4: Invalid JSONL record/);
+  await writeFile(file, corrupt);
+  await assert.rejects(readGhAwLogShards(root), (error) => {
+    assert.ok(error.message.startsWith(`${file}:4:`));
+    assert.doesNotMatch(error.stack, /do-not-expose/);
+    return true;
+  });
+});

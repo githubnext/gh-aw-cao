@@ -14,7 +14,7 @@ import { NORMALIZED_COLLECTIONS } from '../cli-usage.mjs';
 import { consolidationBucket, normalizedPhaseBatch, relationshipSafeEvidenceBatch, STRUCTURAL_CONSOLIDATION_BUCKET } from '../normalized-phase.mjs';
 import { DEFAULT_NORMALIZED_JSONL_SHARD_BYTES, writeNormalizedShardBucket } from '../normalized-shards.mjs';
 import { AUDIT_CURATION_VERSION, auditCurationRunFacts, discardAudit } from '../../dashboard/site/src/data/model/audit-curation.js';
-import { jsonlLines, hashFileContents } from './files.mjs';
+import { jsonlLines, jsonlRecords, hashFileContents } from './files.mjs';
 import { DEFAULT_NORMALIZATION_CACHE_BYTES, pruneNormalizationCaches } from './cache.mjs';
 
 const debugHash = createDebug('hash-payloads');
@@ -87,8 +87,7 @@ async function consolidatePhasePayloads(
   const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
   let sourceRecords = 0;
   for (const cachePath of cachePaths) {
-    for await (const line of jsonlLines([cachePath])) {
-      const entry = JSON.parse(line);
+    for (const { value: entry } of jsonlRecords([cachePath])) {
       if (entry?.kind !== 'record') continue;
       const records = deduped.get(entry.collection);
       if (!records) continue;
