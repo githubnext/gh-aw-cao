@@ -281,8 +281,7 @@ function attachPointSelection(chart, points, readout) {
   const scope = createFactoryScope();
   scope.bind(chart);
 
-  // The smallest DOM update needed from selection state: toggle each mark's
-  // pressed/selected attributes and resync the shared readout text.
+  // Selection state owns the pressed/selected attributes of each mark.
   effect(() => {
     const selected = selectedMark.get();
     for (const candidate of marks) {
@@ -291,18 +290,20 @@ function attachPointSelection(chart, points, readout) {
       if (pressed) candidate.setAttribute('data-selected', 'true');
       else candidate.removeAttribute('data-selected');
     }
+    debugMeasureHistory({ event: 'point-selection', selected: Boolean(selected && pointsByMark.get(selected)) });
+  }, { signal: scope.signal });
+
+  // The readout is a pure function of selection state; render() morphs it in place.
+  render(readout, () => {
+    const selected = selectedMark.get();
     const point = selected ? pointsByMark.get(selected) : undefined;
-    debugMeasureHistory({ event: 'point-selection', selected: Boolean(point) });
-    if (!point) {
-      readout.replaceChildren(SELECT_POINT_MESSAGE);
-      return;
-    }
+    if (!point) return SELECT_POINT_MESSAGE;
     const seriesLabel = String(selected?.getAttribute('data-chart-point-series') || '');
-    readout.replaceChildren(
+    return [
       h('strong', null, formatNumber(point.y)),
       h('span', null, formatInstant(point.x)),
       ...(seriesLabel ? [h('span', null, seriesLabel)] : [])
-    );
+    ];
   }, { signal: scope.signal });
 
   /** @param {Element} mark */

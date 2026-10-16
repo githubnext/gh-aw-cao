@@ -537,6 +537,7 @@ describe('Measure history', () => {
     expect(firstMark.getAttribute('aria-pressed')).toBe('true');
     expect(firstMark.getAttribute('data-selected')).toBe('true');
     expect(readout?.textContent).toContain('12');
+    const readoutValue = readout?.querySelector('strong');
 
     if (secondMark) {
       secondMark.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -544,6 +545,8 @@ describe('Measure history', () => {
       expect(firstMark.hasAttribute('data-selected')).toBe(false);
       expect(secondMark.getAttribute('aria-pressed')).toBe('true');
       expect(readout?.textContent).toContain('18');
+      // The readout morphs in place instead of being rebuilt.
+      expect(readout?.querySelector('strong')).toBe(readoutValue);
     }
 
     // Re-activating the pressed mark clears the selection back to the prompt.
