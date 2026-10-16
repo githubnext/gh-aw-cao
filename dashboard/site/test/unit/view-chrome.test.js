@@ -11,8 +11,19 @@ describe('view chrome component helpers', () => {
     expect(section.getAttribute('aria-labelledby')).toBe('runs-run-status-counts-heading');
     expect(section.querySelector('h3')?.id).toBe('runs-run-status-counts-heading');
     expect(section.querySelector('h3')?.textContent).toBe('Run Status Counts');
+    expect(section.hasAttribute('aria-description')).toBe(false);
   });
 
+  it('keeps section descriptions accessible without inserting a help button', () => {
+    const description = 'Observed run conclusions.';
+    const section = renderPageSection('runs', 'Run Status Counts', [], 'h2', description);
+
+    expect(section.className).toBe('page-section');
+    expect(section.getAttribute('aria-description')).toBe(description);
+    expect(section.querySelector('h2')?.textContent).toBe('Run Status Counts');
+    expect(section.querySelector('button, [role="tooltip"]')).toBeNull();
+    expect(section.children).toHaveLength(1);
+  });
 
   it('DLS-PAGE-014 renders provenance list items and the conservative empty fallback', () => {
     const populated = renderProvenanceList([

@@ -2,7 +2,7 @@ import { expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
-test('view help controls stay clear of action buttons at desktop and mobile widths', async ({ page }) => {
+test('view descriptions do not insert help controls at desktop and mobile widths', async ({ page }) => {
   await page.setContent(`
     <div class="layout-section" id="sections"></div>
     <script type="module">
@@ -33,17 +33,15 @@ test('view help controls stay clear of action buttons at desktop and mobile widt
     </script>
   `);
 
+  await expect(page.locator('#sections > .page-section')).toHaveCount(3);
   for (const width of [1200, 375]) {
     await page.setViewportSize({ width, height: 800 });
-    for (const section of await page.locator('.view-description-section').all()) {
-      const help = section.locator('.view-description-tooltip .tooltip-trigger');
+    for (const section of await page.locator('#sections > .page-section').all()) {
       const action = section.locator('.document-list-header .cli-action-trigger, .document-list-header > button');
-      await expect(help).toBeVisible();
+      await expect(section).toHaveAccessibleDescription('Explanation of this action.');
+      await expect(section.locator('.tooltip-trigger, [role="tooltip"]')).toHaveCount(0);
       await expect(action).toBeVisible();
-      const helpBox = await help.boundingBox();
-      const actionBox = await action.boundingBox();
-      if (!helpBox || !actionBox) throw new Error('Expected visible help and action buttons');
-      expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(actionBox.y);
+      await expect(section.getByRole('button')).toHaveCount(1);
     }
   }
 });

@@ -1529,8 +1529,8 @@
     {
       "id": "maintenance-repositories",
       "subject": "List each repository with recorded compiler versions and computed upgrade state.",
-      "objective": "Expose recorded compiler versions and computed upgrade state per repository so an operator can inspect update signals and gaps.",
-      "acceptance": "Return repository, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
+      "objective": "Expose recorded compiler versions and computed upgrade state per repository, with its GitHub home URL for inspection.",
+      "acceptance": "Return repository, repository-url linking to its GitHub home, recorded version lists, upgrade-required flag, and computed upgrade-state; mixed or absent version evidence requires inspection before any decision, and an upgrade label does not authorize a rollout or policy change.",
       "description": "",
       "parameters": [
         {

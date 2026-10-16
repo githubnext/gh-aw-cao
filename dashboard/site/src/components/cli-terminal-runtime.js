@@ -3,6 +3,9 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import terminalStyles from '@xterm/xterm/css/xterm.css';
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
+
+const debugRuntime = createDebug('cli-terminal-runtime');
 
 /**
  * Terminal emulation is interaction-only: Dashboard Language still owns action
@@ -42,9 +45,11 @@ export function mountTerminal(root, signal) {
   const observer = new ResizeObserver(resize);
   observer.observe(root);
   resize();
+  debugRuntime({ event: 'mounted', scrollback: 5000 });
   const dispose = () => {
     observer.disconnect();
     terminal.dispose();
+    debugRuntime({ event: 'disposed', aborted: signal.aborted });
   };
   signal.addEventListener('abort', dispose, { once: true });
   if (signal.aborted) dispose();

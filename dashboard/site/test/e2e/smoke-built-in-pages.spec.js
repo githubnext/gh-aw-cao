@@ -688,19 +688,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     await expect(prompt).toHaveCSS('position', 'static');
     await expect(prompt.locator('.table-intent-button span')).toBeHidden();
     await expect(prompt.locator('.table-intent-button')).toHaveAccessibleName(/^Propose fix/);
-    const promptAndHelp = await prompt.evaluate((element) => {
-      const section = element.closest('.view-description-section');
-      const promptBox = element.getBoundingClientRect();
-      const helpBox = section?.querySelector('.view-description-tooltip')?.getBoundingClientRect();
-      return promptBox && helpBox ? {
-        separated: promptBox.bottom <= helpBox.top || helpBox.bottom <= promptBox.top
-          || promptBox.right <= helpBox.left || helpBox.right <= promptBox.left
-      } : null;
-    });
-    if (promptAndHelp) {
-      expect(promptAndHelp.separated).toBe(true);
-    }
   }
+  await expect(campaignInsights.locator('.view-description-tooltip')).toHaveCount(0);
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
   for (let step = 0; step < 3 && await campaignInsights.getAttribute('data-view-mode') !== 'table'; step++) {
     const before = await campaignInsights.getAttribute('data-view-mode');
@@ -721,8 +710,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(performanceBaseline).toContainText('Successful attempts');
   await expect(performanceBaseline).toContainText('Reported output items');
   await expect(performanceBaseline).toContainText('Average AIC / costed successful attempt');
-  await expect(performanceBaseline).toContainText('gh aw logs');
-  await expect(performanceBaseline).toContainText('reruns count separately');
+  await expect(performanceBaseline).toHaveAccessibleDescription(/gh aw logs/);
+  await expect(performanceBaseline).toHaveAccessibleDescription(/reruns count separately/);
   const outcomeDistribution = campaignInsights.locator('[data-view-id="campaign-baseline-outcomes"]');
   await expect(outcomeDistribution).not.toBeVisible();
   await campaignInsights.locator('details')

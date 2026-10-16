@@ -1117,7 +1117,7 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).toContain('queued');
   });
 
-  it('renders a view description in the shared explanation tooltip', () => {
+  it('keeps a view description accessible without an automatic explanation button', () => {
     const rendered = renderDataView('table', {
       pageId: 'workflow-runs',
       title: 'Runs',
@@ -1138,8 +1138,8 @@ describe('data view renderer', () => {
       toText: String
     });
 
-    expect(rendered?.querySelector('.tooltip-trigger')?.getAttribute('aria-label')).toBe('Runs explanation');
-    expect(rendered?.querySelector('.tooltip-content')?.textContent).toBe('Answers which recent workflow runs need attention.');
+    expect(rendered?.getAttribute('aria-description')).toBe('Answers which recent workflow runs need attention.');
+    expect(rendered?.querySelector('.tooltip-trigger, .tooltip-content')).toBeNull();
     expect(rendered?.querySelector('.view-description')).toBeNull();
   });
 

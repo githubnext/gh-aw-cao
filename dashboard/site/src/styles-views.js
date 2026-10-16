@@ -18,7 +18,6 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .custom-view[data-view-mark="chart"][data-disclosure="essential"] { min-height: 280px; }
 .custom-view[data-view-mark="chart"] > .dashboard-view-skeleton { height: 280px; overflow: hidden; }
 .layout-section .page-section > :is(h3, h4), .layout-section .page-section > .chart-prompt-heading > :is(h3, h4) { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }
-.view-description-section { position: relative; }
 .semantic-prompt-view { position: relative; }
 .semantic-prompt-action { position: absolute; top: 0; right: 32px; display: block; width: fit-content; margin: 0; }
 .semantic-prompt-action .table-intent-button { width: 32px; min-height: 32px; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--accent); }
@@ -36,7 +35,6 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .chart-prompt-action .table-intent-button:hover { border-color: transparent; background: var(--accent-muted); color: var(--accent); }
 .chart-prompt-action .table-intent-button span { display: none; }
 .semantic-prompt-view:has([aria-busy]:not([aria-busy="false"])) :is(.semantic-prompt-action, .chart-prompt-action) { display: none; }
-.view-description-tooltip { width: fit-content; margin: 0 0 8px auto; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .card-filter-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; position: relative; z-index: 5; padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px 6px 0 0; background: var(--canvas-subtle); }
 .card-filter-menu { position: relative; }
@@ -89,7 +87,7 @@ export const viewStyles = `.dashboard-pages { display: flex; flex-direction: col
 .custom-view[data-view-layout="full-view"] .table-scroll { min-height: 0; flex: 1; overflow: auto; }
 .dashboard-full-view .overview-header .lede,
 .dashboard-full-view .report-footer,
-.dashboard-full-view .custom-view[data-view-layout="full-view"] > :is(h2, h3, h4, .view-description-tooltip) { display: none; }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > :is(h2, h3, h4) { display: none; }
 .dashboard-full-view main.dashboard-prototype { overflow: hidden; padding: 0 var(--dashboard-page-padding-inline); scrollbar-gutter: auto; }
 .dashboard-full-view :is(.report-body, .dashboard-pages, .dashboard-page:not([hidden]), .custom-view-grid) { height: 100%; min-height: 0; }
 .dashboard-full-view .dashboard-page[data-view-mode]:not([hidden]) { display: grid; grid-template-rows: auto minmax(0, 1fr); }

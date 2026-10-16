@@ -1350,6 +1350,9 @@ order beside the list heading, including when the list has no rows.
 
 A list shows its declared description inline in the header. Presenters do not
 repeat that same explanation in a separate heading tooltip.
+View descriptions do not automatically create help icon buttons. Section
+descriptions remain available as accessible descriptions; explicitly declared
+tooltips retain their configured controls.
 
 A view-placed `operate` CLI action may declare a reusable `selector` dialog
 configuration: `label`, optional `placeholder`, `debounce-ms` (100–2000),
