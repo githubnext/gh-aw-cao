@@ -1,7 +1,61 @@
 {
   "source_sha": "55bb730caca0e609d6074146c25b467b3e839020",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T09:00:41Z",
+      "worker_run_id": 38876902086,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        38876897045,
+        38876510336,
+        38874195614,
+        38871048661,
+        38869711428,
+        38868963660,
+        38868680670,
+        38867288108,
+        38866105775,
+        38864550032,
+        38864038769,
+        38862275278,
+        38861640007,
+        38860736621,
+        38859005814,
+        38858450242,
+        38857759623,
+        38857716654,
+        38857483665,
+        38856585209
+      ],
+      "docs_window": {
+        "start": "2026-10-16T05:35:39Z",
+        "end": "2026-10-16T08:56:18Z"
+      },
+      "docs_success_count": 19,
+      "docs_comparable_success_count": 5,
+      "docs_deployed_success_count": 8,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 14,
+      "dashboard_success_run_ids": [
+        38876685954,
+        38868790117,
+        38865858009,
+        38863840822,
+        38860528528,
+        38858288863,
+        38855449902,
+        38852328230,
+        38851551055,
+        38850292556,
+        38848474549,
+        38846977223,
+        38845019414,
+        38843959846
+      ],
+      "decision": "noop_not_actionable",
+      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T05:35:39Z through 2026-10-16T08:56:18Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Five same-source comparable successful docs runs executed both build and deploy (38876897045, 38868963660, 38866105775, 38864038769, 38862275278). Trusted run, job, and step metadata for those comparable runs showed median queue time 0s, docs workflow execution 73s (p90 77.6s), build 40s (p90 45.8s), deploy 11s (p90 15.4s), schedule-freshness 8s (p90 9.2s), Restore node_modules 5s (p90 6.2s), Build documentation 13s (p90 14.6s), Restore cached CAO Dashboard 2s (p90 2.6s), and Upload Pages artifact 5s (p90 6.0s). Trusted build metadata showed Install dependencies and Save node_modules skipped in all five comparable docs runs after successful node_modules cache restore. Bounded logs from docs run 38876897045 confirmed cache hits for the setup-node npm cache and the Linux-node-24 node_modules cache, with npm cache restore around 3s, node_modules restore around 5s, Build documentation 9s, and no npm ci execution in docs.yml. Relevant cao-dashboard.yml evidence in the same window contained 14 successful main-branch workflow_run builds; the four current-source producer runs (38876685954, 38868790117, 38865858009, 38863840822) showed Install dashboard build dependencies at 2-4s and Restore collected activity data at 2-4s, while the broader 14-run same-trigger cohort showed median queue time 0s, full execution 115.5s (p90 131.4s), build 103.5s (p90 115.7s), Install dashboard build dependencies 2.5s (p90 4.7s), Restore collected activity data 3s (p90 3.7s), Upgrade fallback activity data 80s (p90 90.0s), Assemble Dashboard Language site 2.5s (p90 3.0s), and Upload dashboard artifact 4s (p90 5.0s). Bounded logs from dashboard run 38876685954 confirmed a cache hit for cao-activity-v5-38873882743-1, dashboard npm ci added only 6 packages in 2s, validated gh-aw-logs.sqlite at 262.1 MiB, copied 207 activity shards totaling 186.0 MiB, and still uploaded the compressed central-agentic-ops-dashboard artifact at 26.1 MB in about 4s. Open self-care docs build-time issues #16825, #17171, #18158, and #16054 still cover the higher-cost repeated bottlenecks. No new dependency-installation or caching change is actionable because docs dependency caches are consistently hitting, dashboard dependency installation remains a 2-4 second cost, and no change in this category is evidenced to save at least 60 seconds or 15 percent of the 73-second median docs execution time without shifting attention away from the much larger dashboard activity-data upgrade cost already tracked elsewhere."
+    },
     {
       "evaluated_at": "2026-10-16T08:35:10Z",
       "worker_run_id": 38874065020,
@@ -1160,42 +1214,6 @@
       "docs_deployed_success_count": 2,
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. In the latest 20 completed docs.yml runs from 2026-10-15T10:01:27Z through 2026-10-15T13:27:45Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 2 comparable successful docs runs executed both build and deploy: 38724388157 on schedule at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d and 38731662863 on schedule at source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. One additional successful run, 38723065420 on push at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d, built documentation but skipped deploy, so it was disclosed as a non-comparable outlier. The remaining 12 successful schedule runs stopped after schedule-freshness with build and deploy skipped, and trusted job metadata on the two comparable runs showed Restore node_modules and Restore cached CAO Dashboard succeeded while Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper dependency-installation and cache-hit analysis and emitted no actionable suggestion."
-    },
-    {
-      "evaluated_at": "2026-10-15T13:04:56Z",
-      "worker_run_id": 38739096593,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        38738635737,
-        38735734828,
-        38732834225,
-        38731662863,
-        38731096340,
-        38729853467,
-        38728238225,
-        38726847219,
-        38724388157,
-        38723065420,
-        38722913787,
-        38721416049,
-        38720407044,
-        38720005017,
-        38717994847,
-        38717304093,
-        38717262064,
-        38715824085,
-        38714700760,
-        38713058457
-      ],
-      "docs_window": {
-        "start": "2026-10-15T09:27:24Z",
-        "end": "2026-10-15T12:57:20Z"
-      },
-      "docs_success_count": 15,
-      "docs_comparable_success_count": 2,
-      "docs_deployed_success_count": 2,
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271. In the latest 20 completed docs.yml runs from 2026-10-15T09:27:24Z through 2026-10-15T12:57:20Z, 15 runs concluded success and 5 workflow_run callbacks concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 2 comparable successful docs runs executed both build and deploy: 38731662863 on schedule at source SHA 42769d3bcd2b42afe10ea2afd8312e9a5bbfc271 and 38724388157 on schedule at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d. One additional successful run, 38723065420 on push at source SHA bc91f896d6622e20ef5301aad4bdaf65c436dd0d, built documentation but skipped deploy, so it was disclosed as a non-comparable outlier. Trusted job metadata on the two comparable runs showed Restore node_modules and Restore cached CAO Dashboard succeeded while Install dependencies, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped before deeper scheduling, concurrency, or avoidable-rebuild analysis and emitted no actionable suggestion."
     }
   ]
 }
