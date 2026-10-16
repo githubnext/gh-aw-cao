@@ -113,41 +113,62 @@ func ValidateCLICommandText(text string) error {
 }
 
 func (i CLICommandInvocation) Encode(maxBytes int) ([]byte, error) {
-	if i.ActionID == "" || len(i.ActionID) > 256 || strings.TrimSpace(i.Command) == "" ||
-		(i.Input != nil && utf8.RuneCountInString(*i.Input) > 100000) {
-		return nil, ErrCLICommandInput
-	}
-	for key, value := range i.Values {
-		if cliSecretKey.MatchString(key) && value != "" {
-			return nil, ErrCLICommandInput
-		}
-	}
-	for key := range i.Arguments {
-		if err := ValidateCLICommandText(key); err != nil {
-			return nil, err
-		}
-	}
-	for _, text := range []string{i.ActionID, i.Command} {
-		if err := ValidateCLICommandText(text); err != nil {
-			return nil, err
-		}
-	}
-	for key, value := range i.Values {
-		if ValidateCLICommandText(key) != nil || ValidateCLICommandText(value) != nil {
-			return nil, ErrCLICommandInput
-		}
-	}
-	if i.Input != nil && ValidateCLICommandText(*i.Input) != nil {
-		return nil, ErrCLICommandInput
+	if stage, err := i.validate(); err != nil {
+		validationLog.Printf("CLI command invocation rejected stage=%s", stage)
+		return nil, err
 	}
 	data, err := json.Marshal(i)
 	if err != nil {
 		return nil, err
 	}
 	if len(data) > maxBytes {
+		validationLog.Printf("CLI command invocation rejected stage=%s bytes=%d max=%d", cliRejectSize, len(data), maxBytes)
 		return nil, ErrCLICommandInput
 	}
 	return data, nil
+}
+
+// Stages at which an invocation can be rejected; they name the check that
+// failed without carrying any invocation content.
+const (
+	cliRejectShape     = "shape"
+	cliRejectSecretKey = "secret-key"
+	cliRejectText      = "text"
+	cliRejectSize      = "size"
+)
+
+// validate checks an invocation's shape and rejects credential-like content,
+// returning the stage that failed so callers can diagnose without exposing
+// the rejected text.
+func (i CLICommandInvocation) validate() (string, error) {
+	if i.ActionID == "" || len(i.ActionID) > 256 || strings.TrimSpace(i.Command) == "" ||
+		(i.Input != nil && utf8.RuneCountInString(*i.Input) > 100000) {
+		return cliRejectShape, ErrCLICommandInput
+	}
+	for key, value := range i.Values {
+		if cliSecretKey.MatchString(key) && value != "" {
+			return cliRejectSecretKey, ErrCLICommandInput
+		}
+	}
+	for key := range i.Arguments {
+		if err := ValidateCLICommandText(key); err != nil {
+			return cliRejectText, err
+		}
+	}
+	for _, text := range []string{i.ActionID, i.Command} {
+		if err := ValidateCLICommandText(text); err != nil {
+			return cliRejectText, err
+		}
+	}
+	for key, value := range i.Values {
+		if ValidateCLICommandText(key) != nil || ValidateCLICommandText(value) != nil {
+			return cliRejectText, ErrCLICommandInput
+		}
+	}
+	if i.Input != nil && ValidateCLICommandText(*i.Input) != nil {
+		return cliRejectText, ErrCLICommandInput
+	}
+	return "", nil
 }
 
 func ValidateCLICommandKey(key string) error {

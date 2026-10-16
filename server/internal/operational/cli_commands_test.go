@@ -61,3 +61,49 @@ func TestCLICommandsRequireDurability(t *testing.T) {
 		t.Fatalf("unsupported commands accepted: %s", got)
 	}
 }
+
+func TestCLICommandInvocationValidateReportsRejectionStage(t *testing.T) {
+	secretInput := "token=abc123"
+	longInput := strings.Repeat("x", 100001)
+	tests := []struct {
+		name  string
+		input CLICommandInvocation
+		stage string
+	}{
+		{"valid", CLICommandInvocation{ActionID: "compile", Command: "gh aw compile", Values: map[string]string{"mode": "review"}}, ""},
+		{"missing action", CLICommandInvocation{Command: "gh aw compile"}, cliRejectShape},
+		{"blank command", CLICommandInvocation{ActionID: "a", Command: "  "}, cliRejectShape},
+		{"oversized input", CLICommandInvocation{ActionID: "a", Command: "c", Input: &longInput}, cliRejectShape},
+		{"secret key", CLICommandInvocation{ActionID: "a", Command: "c", Values: map[string]string{"apiToken": "v"}}, cliRejectSecretKey},
+		{"empty secret key value", CLICommandInvocation{ActionID: "a", Command: "c", Values: map[string]string{"apiToken": ""}}, ""},
+		{"secret argument", CLICommandInvocation{ActionID: "a", Command: "c", Arguments: map[string]bool{"--auth-token": true}}, cliRejectText},
+		{"secret command", CLICommandInvocation{ActionID: "a", Command: "echo ghp_abcdef123456"}, cliRejectText},
+		{"secret value", CLICommandInvocation{ActionID: "a", Command: "c", Values: map[string]string{"k": "Bearer abc"}}, cliRejectText},
+		{"secret input", CLICommandInvocation{ActionID: "a", Command: "c", Input: &secretInput}, cliRejectText},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stage, err := test.input.validate()
+			if stage != test.stage || (test.stage == "") != (err == nil) {
+				t.Fatalf("stage=%q err=%v, want stage %q", stage, err, test.stage)
+			}
+			if err != nil && !errors.Is(err, ErrCLICommandInput) {
+				t.Fatalf("error %v is not ErrCLICommandInput", err)
+			}
+		})
+	}
+}
+
+func TestCLICommandInvocationEncodeEnforcesSizeBoundary(t *testing.T) {
+	invocation := CLICommandInvocation{ActionID: "compile", Command: "gh aw compile"}
+	data, err := invocation.Encode(1 << 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := invocation.Encode(len(data)); err != nil {
+		t.Fatalf("exact-size encoding rejected: %v", err)
+	}
+	if _, err := invocation.Encode(len(data) - 1); !errors.Is(err, ErrCLICommandInput) {
+		t.Fatalf("oversized encoding accepted: %v", err)
+	}
+}
