@@ -81,4 +81,14 @@ describe('renderDeclaredRouteTabs', () => {
     }));
     expect(element.querySelectorAll('a').length).toBe(0);
   });
+
+  it('keeps tab nodes stable when the same route value is re-applied', () => {
+    const dispatch = () => element.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'repository', value: 'octo-org/octo-repo' }
+    }));
+    dispatch();
+    const first = element.querySelector('a');
+    dispatch();
+    expect(element.querySelector('a')).toBe(first);
+  });
 });

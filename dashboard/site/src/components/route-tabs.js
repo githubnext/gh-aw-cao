@@ -3,6 +3,7 @@
  */
 
 import { h } from '../dom.js';
+import { render, state } from '../reactive.js';
 import { renderRouteTabSet } from './route-tab-set.js';
 import { bindRouteChangeListener } from './route-composition.js';
 import { createDebug } from '../debug.js';
@@ -27,18 +28,19 @@ const debugRouteTabs = createDebug('route-tabs');
 export function renderDeclaredRouteTabs(options) {
   const root = h('div', { className: 'route-tab-navigation' });
 
-  /** @param {unknown} routeValue */
-  const render = (routeValue) => {
-    const value = typeof routeValue === 'string' ? routeValue.trim() : '';
+  const routeValue = state('');
+
+  render(root, () => {
+    const value = routeValue.get();
     root.dataset.routeValue = value;
     if (!value) {
-      root.replaceChildren();
       debugRouteTabs({ event: 'cleared', parameter: options.routeParameter });
-      return;
+      return null;
     }
 
     const query = `?${encodeURIComponent(options.routeParameter)}=${encodeURIComponent(value)}`;
-    root.replaceChildren(renderRouteTabSet({
+    debugRouteTabs({ event: 'rendered', parameter: options.routeParameter, tabCount: options.tabs.length, currentTab: options.currentTab });
+    return renderRouteTabSet({
       className: options.className ?? 'route-tabs',
       ariaLabel: `${value} views`,
       currentTab: options.currentTab,
@@ -48,11 +50,10 @@ export function renderDeclaredRouteTabs(options) {
         icon: tab.icon,
         href: `#page-${encodeURIComponent(tab.page)}${query}`
       }))
-    }));
-    debugRouteTabs({ event: 'rendered', parameter: options.routeParameter, tabCount: options.tabs.length, currentTab: options.currentTab });
-  };
+    });
+  });
 
-  bindRouteChangeListener(root, options.routeParameter, render);
+  bindRouteChangeListener(root, options.routeParameter, (value) => routeValue.set(value.trim()));
   return root;
 }
 
