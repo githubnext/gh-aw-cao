@@ -583,9 +583,13 @@
     {
       "id": "overview-failed-runs",
       "kind": "custom",
+      "intent": "Locate runs ending in recorded failure states for focused investigation.",
+      "subject": "Retained failed runs in the selected scope and horizon.",
+      "objective": "Open concrete execution evidence before proposing repairs.",
+      "acceptance": "Preserve native status/conclusion, run identity, timestamps and source links; state which conclusions count as failure. Partial/unavailable evidence must not imply no failures or establish root cause.",
       "title": "Failed runs",
       "icon": "x-circle",
-      "description": "Runs in the selected horizon that ended in a failure state and need investigation.",
+      "description": "Select a failed run for evidence-backed CAO repair investigation.",
       "route": {
         "navigation-page": "overview"
       },
@@ -648,9 +652,13 @@
     {
       "id": "overview-blocked-work",
       "kind": "custom",
+      "intent": "Inspect delegated work whose latest recorded admission or run state blocks progress.",
+      "subject": "Retained blocked-work evidence within the selected snapshot horizon.",
+      "objective": "Identify the recorded blocker and next bounded investigation.",
+      "acceptance": "Preserve work/run identity, latest-state basis, recorded blocking reason and evidence links; distinguish blocked, failed and missing states. Never infer authorization to bypass admission or widen policy.",
       "title": "Blocked work",
       "icon": "stop",
-      "description": "Delegated work whose latest admission or run state prevents progress.",
+      "description": "Identify the recorded blocker preventing delegated CAO work from progressing.",
       "route": {
         "navigation-page": "overview"
       },
@@ -703,9 +711,13 @@
     {
       "id": "overview-awaiting-review",
       "kind": "custom",
+      "intent": "Locate produced outcomes explicitly waiting for a reviewer decision.",
+      "subject": "Retained safe outputs with recorded awaiting-review disposition.",
+      "objective": "Direct human attention to unresolved review evidence.",
+      "acceptance": "Show output identity, native review state, timestamps and source links. Keep pending review distinct from acceptance, rejection and unavailable state; do not invent or perform reviewer decisions.",
       "title": "Awaiting review",
       "icon": "eye",
-      "description": "Produced outcomes that are waiting for a reviewer decision.",
+      "description": "Select a produced outcome that requires a human review decision.",
       "route": {
         "navigation-page": "overview"
       },
@@ -758,9 +770,13 @@
     {
       "id": "overview-security-findings",
       "kind": "custom",
+      "intent": "Inspect collected security findings and their supporting workflow-run evidence.",
+      "subject": "Recorded prompt-injection, secret-leak and malicious-patch findings.",
+      "objective": "Prioritize evidence-backed security investigation without exposing sensitive content.",
+      "acceptance": "Preserve finding type, native verdict, run identity and safe provenance links; distinguish observed findings from confirmed exploitation. Missing scans are not proof of safety; never copy secrets into prompts or logs.",
       "title": "Security findings",
       "icon": "shield",
-      "description": "Detected prompt-injection, secret-leak, and malicious-patch evidence from collected workflow runs.",
+      "description": "Select a retained security finding for evidence-backed investigation.",
       "route": {
         "navigation-page": "overview"
       },

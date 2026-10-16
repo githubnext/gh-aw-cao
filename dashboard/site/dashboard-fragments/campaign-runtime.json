@@ -304,8 +304,12 @@
     {
       "id": "campaign-runs",
       "kind": "custom",
+      "intent": "Inspect run conclusions, failure reasons and failed dispatches for the selected campaign.",
+      "subject": "Retained campaign runs and dispatch evidence in the selected horizon.",
+      "objective": "Find concrete runtime problems before proposing repairs.",
+      "acceptance": "Preserve run identity, native status/conclusion, recorded failure reason and source links; distinguish dispatch failure from worker failure. Disclose partial evidence and avoid inferring causes from counts.",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify the selected campaign run that most requires investigation.",
       "icon": "play",
       "class-name": "campaign-runs-page",
       "route": {

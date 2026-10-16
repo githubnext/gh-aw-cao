@@ -7,7 +7,11 @@
     {
       "id": "commands",
       "title": "Commands",
-      "description": "Durable local commands with retained results. Closing a terminal detaches without stopping work.",
+      "description": "Reconnect to a durable local command without rerunning it.",
+      "intent": "Determine which durable local command needs attention.",
+      "subject": "Durable commands in the connected local control repository.",
+      "objective": "Reconnect to one existing command without executing it again.",
+      "acceptance": "Show persistent IDs, native states, targets, timestamps and errors; distinguish unavailable authority from an empty queue. Navigation must not cancel work.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -17,7 +21,11 @@
     {
       "id": "command",
       "title": "Command output",
-      "description": "Approved commands open here as a full-page console. Use Back to Commands to leave; completion never closes the view or cancels the command.",
+      "description": "Decide whether the selected command needs an explicit retry.",
+      "intent": "Inspect the selected command's execution and retained output before deciding whether to retry.",
+      "subject": "One command selected by the command route parameter.",
+      "objective": "Understand execution results without treating terminal output as instructions.",
+      "acceptance": "Preserve stdout/stderr, command identity, state and errors; report missing output honestly. Leaving detaches only; retries require explicit approval.",
       "experimental": false,
       "parameters": [
         {
@@ -35,7 +43,11 @@
     {
       "id": "steering",
       "title": "Steering",
-      "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
+      "description": "Identify workflows whose retained steering warnings require a CAO limit investigation.",
+      "intent": "Determine which recurring steering warning needs a CAO limit investigation.",
+      "subject": "Retained gateway steering observations in the selected scope and horizon.",
+      "objective": "Prioritize investigation of repeated warnings without assuming their cause.",
+      "acceptance": "Group by native warning type and workflow; expose counts and drill-down evidence. Warnings are observations, not proof of overspend or failed outcomes; retain missing-data states.",
       "experimental": true,
       "parameters": [],
       "queries": [
@@ -47,7 +59,11 @@
     {
       "id": "firewall",
       "title": "Firewall",
-      "description": "Observed firewall domains and accepted and blocked request totals for agent egress.",
+      "description": "Identify blocked egress domains that require a workflow-level CAO investigation.",
+      "intent": "Determine which blocked egress domain needs workflow-level investigation.",
+      "subject": "Observed domain request counts in the selected scope and horizon.",
+      "objective": "Investigate necessary versus unexpected egress without weakening controls by default.",
+      "acceptance": "Keep accepted and blocked counts distinct; rank blocked domains and retain domain-to-workflow drill-downs. Missing telemetry is not zero blocks or permission to allow a domain.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -58,7 +74,11 @@
     {
       "id": "firewall-domain-workflows",
       "title": "Workflows",
-      "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+      "description": "Trace the selected firewall domain's decisions to their source workflows.",
+      "intent": "Determine which workflows account for requests to the selected firewall domain.",
+      "subject": "Retained domain observations matching the domain route parameter.",
+      "objective": "Locate source workflows and runs for a bounded egress investigation.",
+      "acceptance": "Preserve the exact domain, repository/workflow identity and accepted/blocked counts; link evidence and disclose partial or unavailable coverage. Do not infer authorization from requests.",
       "experimental": false,
       "parameters": [
         {
@@ -78,7 +98,11 @@
     {
       "id": "mcps",
       "title": "MCP activity",
-      "description": "Diagnose MCP tool reliability across agentic workflow runs.",
+      "description": "Identify MCP tools whose observed failures require a workflow-level reliability investigation.",
+      "intent": "Determine which MCP tool failure needs workflow-level investigation.",
+      "subject": "Retained MCP tool invocations in the selected scope and horizon.",
+      "objective": "Prioritize tool-reliability investigation using observed execution evidence.",
+      "acceptance": "Show tool identity, invocation and failure counts, workflow context and available provenance. Keep absent telemetry distinct from no failures; do not infer root cause from counts.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -89,7 +113,11 @@
     {
       "id": "repositories",
       "title": "Repositories",
-      "description": "Repository-owned workflow health and AI Credit usage across the configured repository scope.",
+      "description": "Identify the repository with the strongest need for CAO operational investigation.",
+      "intent": "Determine which repository most needs CAO operational investigation.",
+      "subject": "Configured repositories and retained run/issue evidence for the selected horizon.",
+      "objective": "Prioritize repository-level health and usage review.",
+      "acceptance": "Preserve repository identity, run counts, issue states and observed AIC units; link repository detail. Inventory membership is not execution, authorized coverage or verified value.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -101,7 +129,11 @@
     {
       "id": "repository-workflows",
       "title": "Repository workflows",
-      "description": "Declared workflows for the selected repository.",
+      "description": "Locate the selected repository's declared workflows for execution review.",
+      "intent": "Find the declared workflows belonging to the selected repository.",
+      "subject": "Workflow inventory matching the repository route parameter.",
+      "objective": "Locate authored workflows before inspecting their execution evidence.",
+      "acceptance": "Retain repository, workflow file and role identities and detail links. Distinguish declared inventory from observed runs and unavailable inventory from an empty result.",
       "experimental": false,
       "parameters": [
         {
@@ -122,7 +154,11 @@
     {
       "id": "repository-detail",
       "title": "Repository",
-      "description": "Observed workflow health and AI Credit usage for this repository.",
+      "description": "Choose the next operational investigation for the selected repository.",
+      "intent": "Determine the selected repository's next operational investigation.",
+      "subject": "One routed repository, its authored workflows and retained runs in the selected horizon.",
+      "objective": "Choose one repository-specific workflow or run investigation.",
+      "acceptance": "Show workflow/run counts and AIC with scope and native health distinctions. Preserve missing cost and unavailable evidence; successful runs do not establish accepted outcomes.",
       "experimental": false,
       "parameters": [
         {
@@ -142,7 +178,11 @@
     {
       "id": "repository-insights",
       "title": "Repository",
-      "description": "Execution health observed for the workflows in this repository.",
+      "description": "Identify execution-health patterns in the selected repository that require workflow review.",
+      "intent": "Compare native run conclusions for the selected repository.",
+      "subject": "Retained runs for the routed repository in the selected horizon.",
+      "objective": "Identify execution-health patterns that warrant workflow-level investigation.",
+      "acceptance": "Group by native run conclusion and show counts with the selected time bounds. Do not substitute success for effectiveness or interpret missing runs as verified health.",
       "experimental": false,
       "parameters": [
         {
@@ -162,7 +202,11 @@
     {
       "id": "repository-workflow-inventory",
       "title": "Repository",
-      "description": "Authored GitHub Agentic Workflows owned by this repository.",
+      "description": "Inspect the selected repository's authored agentic workflow inventory.",
+      "intent": "Inspect which authored agentic workflows are registered for the selected repository.",
+      "subject": "Authored workflow inventory for the routed repository.",
+      "objective": "Navigate to workflow definitions and their retained execution evidence.",
+      "acceptance": "Show stable workflow file identity, repository ownership and detail links; distinguish inventory availability from execution activity. Registration alone does not establish a dispatch.",
       "experimental": false,
       "parameters": [
         {
@@ -182,7 +226,11 @@
     {
       "id": "repository-runs",
       "title": "Repository",
-      "description": "Observed GitHub Actions runs for the workflows in this repository.",
+      "description": "Select a retained run from the selected repository for execution investigation.",
+      "intent": "Find recent or problematic workflow runs in the selected repository.",
+      "subject": "Retained GitHub Actions runs for the routed repository and selected horizon.",
+      "objective": "Select concrete runs for execution investigation.",
+      "acceptance": "Preserve run/workflow identity, native status versus conclusion, timestamps and run links; honor repository and horizon filters and disclose partial/unavailable evidence.",
       "experimental": false,
       "parameters": [
         {
@@ -202,7 +250,11 @@
     {
       "id": "repository-settings",
       "title": "Repository",
-      "description": "Agentic workflow maintenance actions for this repository.",
+      "description": "Decide whether the selected repository's compiler provenance justifies maintenance.",
+      "intent": "Review compiler provenance before considering maintenance for the selected repository.",
+      "subject": "Authored workflow compiler versions and maintenance controls for the routed repository.",
+      "objective": "Identify evidence-backed maintenance needs without silently performing updates.",
+      "acceptance": "Show observed version provenance and unknown states. Registration is not update confidence; refresh inventory when needed, and require explicit approval for operational commands.",
       "experimental": false,
       "parameters": [
         {
@@ -222,7 +274,11 @@
     {
       "id": "workflow-detail",
       "title": "Workflow",
-      "description": "Durable reports produced by this authored GitHub Agentic Workflow.",
+      "description": "Identify durable reports from the selected workflow that require follow-up.",
+      "intent": "Inspect durable reports produced by the selected authored workflow.",
+      "subject": "Retained safe-output reports associated with the workflow route parameter.",
+      "objective": "Locate report evidence and reviewer disposition before claiming delivery.",
+      "acceptance": "Preserve report identity, status, timestamps and provenance links; distinguish no retained reports from unavailable evidence. A published report is not automatically an accepted outcome.",
       "experimental": false,
       "parameters": [
         {
@@ -243,7 +299,11 @@
     {
       "id": "workflow-runs",
       "title": "Workflow runs",
-      "description": "Observed GitHub Actions runs for this authored workflow.",
+      "description": "Identify retained runs from the selected workflow that require execution investigation.",
+      "intent": "Determine which retained run signal needs investigation for the selected workflow.",
+      "subject": "Retained runs for the routed workflow in the selected horizon.",
+      "objective": "Find concrete execution regressions and runs worth investigating.",
+      "acceptance": "Keep status and conclusion distinct; show run links, time bounds and failure-change comparison basis. Missing or partial evidence must not become zero failures or a causal claim.",
       "experimental": false,
       "parameters": [
         {
@@ -265,7 +325,11 @@
     {
       "id": "workflow-run-cards",
       "title": "Workflow runs",
-      "description": "Observed runs for the selected workflow.",
+      "description": "Select retained run evidence for the selected workflow.",
+      "intent": "Browse individual retained runs for the selected workflow.",
+      "subject": "Run inventory matching the workflow route parameter and selected horizon.",
+      "objective": "Open the relevant run evidence without confusing inventory with outcomes.",
+      "acceptance": "Preserve run identity, native status/conclusion, timestamps and drill-down links; maintain filters and disclose unavailable or partial results.",
       "experimental": false,
       "parameters": [
         {
@@ -286,7 +350,11 @@
     {
       "id": "workflow-runtime",
       "title": "Workflow runtime",
-      "description": "Run health, AI Credit usage, and operational value for this authored workflow.",
+      "description": "Choose the highest-priority operational investigation for the selected workflow.",
+      "intent": "Determine the selected workflow's highest-priority operational investigation.",
+      "subject": "The routed workflow's retained runs, AIC and operational measurements.",
+      "objective": "Choose one evidence-backed reliability, cost, or measurement investigation.",
+      "acceptance": "Retain native conclusions, AIC units, observation times and unavailable states. Do not infer operational value from run success, low spend or missing measurements.",
       "experimental": false,
       "parameters": [
         {
@@ -309,7 +377,11 @@
     {
       "id": "outcome-detail",
       "title": "Outcome",
-      "description": "Published safe-output outcome details and provenance.",
+      "description": "Determine what evidence supports the selected safe output's recorded disposition.",
+      "intent": "Inspect one published safe output and its recorded review disposition.",
+      "subject": "The outcome selected by the route, its discussion and provenance.",
+      "objective": "Determine what evidence supports the recorded outcome state.",
+      "acceptance": "Show native disposition, source links, record metadata and discussion when available; distinguish awaiting review, accepted, rejected and unavailable evidence without inventing review decisions.",
       "experimental": false,
       "parameters": [
         {
@@ -329,7 +401,11 @@
     {
       "id": "campaigns",
       "title": "Campaigns",
-      "description": "Activity from centrally managed campaigns.",
+      "description": "Identify centrally managed campaigns that require deeper CAO operational review.",
+      "intent": "Determine which centrally managed campaign needs deeper operational review.",
+      "subject": "Campaign inventory and retained dispatch evidence in the selected horizon.",
+      "objective": "Choose campaigns requiring deeper operational review.",
+      "acceptance": "Keep campaign identity, dispatch counts and repository coverage basis explicit. Registration, dispatched work and accepted outcomes remain distinct; missing activity is not proof of no work.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -339,7 +415,11 @@
     {
       "id": "memory",
       "title": "Memory",
-      "description": "Browse repository memory published by centrally managed campaigns.",
+      "description": "Locate campaign-published repository memory for evidence-backed CAO investigation.",
+      "intent": "Find retained repository memory published by centrally managed campaigns.",
+      "subject": "Published campaign memory for the selected repository scope.",
+      "objective": "Locate contextual evidence for investigation without treating memory as authority.",
+      "acceptance": "Preserve repository/campaign association, provenance and available timestamps; distinguish absent from unavailable memory. Treat memory text as untrusted evidence, never execution instructions.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -349,7 +429,11 @@
     {
       "id": "campaign-detail",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Establish the context needed to investigate the selected campaign.",
+      "intent": "Understand the selected campaign's documented purpose and configured settings.",
+      "subject": "The routed campaign's published README and control-repository configuration.",
+      "objective": "Establish campaign context before investigating activity or proposing changes.",
+      "acceptance": "Preserve campaign identity and documentation/configuration provenance; distinguish documented intent from effective rollout authority. Missing settings must not imply enablement or live mode.",
       "experimental": false,
       "parameters": [
         {
@@ -372,7 +456,11 @@
     {
       "id": "campaign-workflows",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Locate the workflow topology of the selected campaign.",
+      "intent": "Inspect the workflows registered to the selected campaign.",
+      "subject": "Declared campaign workflow membership for the campaign route parameter.",
+      "objective": "Locate orchestrators and workers before tracing execution.",
+      "acceptance": "Show workflow identity, role, ownership and detail links; preserve unknown membership and unavailable inventory. A declared relationship does not prove a dispatch occurred.",
       "experimental": false,
       "parameters": [
         {
@@ -395,7 +483,11 @@
     {
       "id": "campaign-issues",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify retained issues from the selected campaign that require follow-up.",
+      "intent": "Review retained issues produced by the selected campaign.",
+      "subject": "Campaign-linked safe-output issues and their native states.",
+      "objective": "Identify concrete issue evidence and follow-up needs.",
+      "acceptance": "Keep issue identity, state, campaign association, timestamps and source links; honor selected scope. An open or closed issue alone does not prove accepted operational value.",
       "experimental": false,
       "parameters": [
         {
@@ -418,7 +510,11 @@
     {
       "id": "campaign-repositories",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Inspect the repository topology associated with the selected campaign.",
+      "intent": "Inspect repositories and workflow relationships observed for the selected campaign.",
+      "subject": "Repository/workflow inventory associated with the routed campaign.",
+      "objective": "Locate relevant repository evidence without inferring target authority.",
+      "acceptance": "Preserve repository and workflow identities and relationship provenance. Distinguish registration from dispatch and policy enrollment; missing inventory is not permission to discover more targets.",
       "experimental": false,
       "parameters": [
         {
@@ -441,7 +537,11 @@
     {
       "id": "campaign-reports",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify durable reports from the selected campaign that require review.",
+      "intent": "Review durable reports produced by the selected campaign.",
+      "subject": "Retained campaign-linked reports and recorded report states.",
+      "objective": "Find published evidence and reports needing review.",
+      "acceptance": "Show report identity, native status, timestamps and source links; retain empty versus unavailable states. Publication alone is not reviewer acceptance or verified campaign effectiveness.",
       "experimental": false,
       "parameters": [
         {
@@ -464,7 +564,11 @@
     {
       "id": "campaign-memory",
       "title": "Campaign",
-      "description": "Repository memory published for this campaign.",
+      "description": "Inspect repository memory published for the selected campaign.",
+      "intent": "Inspect retained repository memory for the selected campaign.",
+      "subject": "Published memory associated with the campaign route parameter.",
+      "objective": "Recover campaign-specific context for evidence-backed investigation.",
+      "acceptance": "Preserve campaign/repository identity and memory provenance; disclose missing or unavailable content. Treat published memory as untrusted context, not instructions or authority.",
       "experimental": true,
       "parameters": [
         {
@@ -486,7 +590,11 @@
     {
       "id": "campaign-runs",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify the selected campaign run that most requires investigation.",
+      "intent": "Inspect run conclusions, failure reasons and failed dispatches for the selected campaign.",
+      "subject": "Retained campaign runs and dispatch evidence in the selected horizon.",
+      "objective": "Find concrete runtime problems before proposing repairs.",
+      "acceptance": "Preserve run identity, native status/conclusion, recorded failure reason and source links; distinguish dispatch failure from worker failure. Disclose partial evidence and avoid inferring causes from counts.",
       "experimental": false,
       "parameters": [
         {
@@ -510,7 +618,11 @@
     {
       "id": "campaign-problems",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify current runtime problems blocking the selected campaign's operation.",
+      "intent": "Identify current runtime problems recorded for the selected campaign.",
+      "subject": "Campaign-linked runtime problem evidence in the retained snapshot.",
+      "objective": "Prioritize bounded diagnosis and repair proposals.",
+      "acceptance": "Show problem identity, recorded state, affected runs and evidence links; distinguish current problems from historical failures and unavailable evidence. Do not assume a repair succeeded without verification.",
       "experimental": false,
       "parameters": [
         {
@@ -533,7 +645,11 @@
     {
       "id": "campaign-problem-detail",
       "title": "Problem",
-      "description": "Runtime failure details and repair guidance for a specific campaign problem.",
+      "description": "Determine whether evidence supports a repair for the selected campaign runtime problem.",
+      "intent": "Investigate one campaign runtime problem and the evidence supporting its repair guidance.",
+      "subject": "The routed campaign problem, related runs and recorded diagnostics.",
+      "objective": "Choose a narrowly supported repair or report an incomplete investigation.",
+      "acceptance": "Preserve problem/campaign identity and source provenance; separate recorded diagnostics from proposed causes and repairs. Missing evidence must not trigger speculative changes or wider rollout.",
       "experimental": false,
       "parameters": [
         {
@@ -553,7 +669,11 @@
     {
       "id": "campaign-insights",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify the campaign baseline signal that most requires investigation.",
+      "intent": "Determine which campaign baseline signal needs evidence-backed investigation.",
+      "subject": "Retained campaign attempts, baseline comparisons and audit observations.",
+      "objective": "Choose one baseline change for run-level or audit-level investigation.",
+      "acceptance": "State the baseline/time windows, counts and comparison basis; retain native results and audit provenance. Successful attempts are not accepted outcomes; partial or missing baselines cannot prove improvement.",
       "experimental": false,
       "parameters": [
         {
@@ -578,7 +698,11 @@
     {
       "id": "operational-value-repository",
       "title": "Operational Value",
-      "description": "Measurements over time. Select a point to inspect its value.",
+      "description": "Assess whether the selected repository's operational measurements support a comparison.",
+      "intent": "Compare the selected repository's operational measurements over time.",
+      "subject": "Timestamped native operational-value observations for the routed repository.",
+      "objective": "Assess measurement direction and comparison evidence without inferring causality.",
+      "acceptance": "Keep metric identity, unit, direction, maturity, observation times and baseline basis explicit; do not combine unlike units or replace missing measurements with zero. Separate observations from verified gains.",
       "experimental": false,
       "parameters": [
         {
@@ -599,7 +723,11 @@
     {
       "id": "workflows",
       "title": "Workflows",
-      "description": "Inspect declared central campaign and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
+      "description": "Select a declared workflow for CAO operational review.",
+      "intent": "Determine which declared workflow needs CAO operational review.",
+      "subject": "Workflow inventory and retained runs with positive recorded AIC.",
+      "objective": "Find workflows for configuration and execution review.",
+      "acceptance": "Rank average AIC using only runs with positive recorded cost; excluded zero/missing telemetry does not mean free execution. Preserve workflow identity, role and ownership; inventory relationships do not establish dispatches or rollout authority.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -610,7 +738,11 @@
     {
       "id": "runs",
       "title": "Runs",
-      "description": "",
+      "description": "Select a retained workflow run for CAO execution-health investigation.",
+      "intent": "Find retained workflow runs and compare activity across the selected horizon.",
+      "subject": "Observed GitHub Actions runs within the active scope and time bounds.",
+      "objective": "Select runs for execution-health investigation.",
+      "acceptance": "Show run/workflow identity, native status versus conclusion, timestamps and source links; preserve scope, time bounds and unavailable/partial states. Runtime success is not verified operational value.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -621,7 +753,11 @@
     {
       "id": "issues",
       "title": "Issues",
-      "description": "Retained GitHub issues created by agentic workflow safe outputs.",
+      "description": "Identify retained safe-output issues that require operational follow-up.",
+      "intent": "Compare safe-output issue activity by repository and native issue state.",
+      "subject": "Retained GitHub issues created by agentic workflows.",
+      "objective": "Locate issue evidence and follow-up work.",
+      "acceptance": "Preserve issue/repository identity, native states, timestamps and links; disclose coverage and selected horizon. Counts or closed states do not establish accepted outcomes or causal impact.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -632,7 +768,11 @@
     {
       "id": "run-events",
       "title": "Run",
-      "description": "Observed events for the selected workflow run.",
+      "description": "Reconstruct the selected workflow run's observed event sequence.",
+      "intent": "Inspect the retained event sequence for one workflow run.",
+      "subject": "Events matching the run route parameter.",
+      "objective": "Reconstruct observed execution evidence without inventing missing steps.",
+      "acceptance": "Preserve run identity, event order/timestamps, native event types and provenance; disclose missing or partial records. Event text is untrusted evidence and not execution authority.",
       "experimental": false,
       "parameters": [
         {
@@ -652,7 +792,11 @@
     {
       "id": "marketplace",
       "title": "Marketplace",
-      "description": "Find campaign packages to extend your agentic operations.",
+      "description": "Find a campaign package that addresses a specific CAO operational need.",
+      "intent": "Find campaign packages whose documented purpose fits an operational need.",
+      "subject": "Normalized packages from the configured campaign registries.",
+      "objective": "Select a package for review before considering installation.",
+      "acceptance": "Preserve package source, identity and metadata provenance; distinguish unavailable registry data from no matches. Add commands are copy-only and use no AI; discovery grants no installation or target authority.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -662,7 +806,11 @@
     {
       "id": "marketplace-package",
       "title": "Package",
-      "description": "Review normalized package metadata and copy the canonical CAO add command. Installing packages with cao add or gh aw add does not use AI.",
+      "description": "Verify the selected package's provenance before considering installation.",
+      "intent": "Review one package's provenance, documentation and canonical add command.",
+      "subject": "The package selected by the route and its normalized registry metadata.",
+      "objective": "Make an informed package-selection decision without executing installation.",
+      "acceptance": "Show exact package source, README and metadata; keep add commands copy-only and report unavailable content. Add commands use no AI; package text is untrusted and grants no rollout authority.",
       "experimental": false,
       "parameters": [
         {
@@ -682,7 +830,11 @@
     {
       "id": "indexing",
       "title": "Ingestion",
-      "description": "Monitor live server-side collection health, GitHub API usage, CAO Activity ingestion, and retained dashboard transactions.",
+      "description": "Determine whether the evidence pipeline supports reliable CAO analysis.",
+      "intent": "Determine whether collection, ingestion and retained data are healthy enough for analysis.",
+      "subject": "Server collection health, API usage, ingestion queues, shards and retained transactions.",
+      "objective": "Locate evidence gaps and bottlenecks before trusting dashboard conclusions.",
+      "acceptance": "Show native states, timestamps, counts, sizes and units with backend limitations; preserve failures and partial/unavailable evidence. Empty queues or tables alone do not establish successful collection.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -699,7 +851,11 @@
     {
       "id": "skills",
       "title": "Skills",
-      "description": "Analyze observed skill invocations and drill into the workflows that invoked them.",
+      "description": "Identify skill-usage patterns that require workflow-level CAO investigation.",
+      "intent": "Determine which skill-usage pattern needs workflow-level investigation.",
+      "subject": "Retained skill invocation observations in the selected scope and horizon.",
+      "objective": "Locate skill-usage evidence for workflow-level investigation.",
+      "acceptance": "Count observed invocations by skill and workflow, retain drill-down identity and disclose coverage. Invocation volume is not proof of skill quality, success or operational value.",
       "experimental": true,
       "parameters": [],
       "queries": [
@@ -712,6 +868,10 @@
       "id": "engines-models",
       "title": "Models & Agents",
       "description": "Compare observed agent and model combinations from workflow runs.",
+      "intent": "Determine which agent-model combination needs cost or reliability investigation.",
+      "subject": "Retained workflow runs with engine, requested/resolved model and usage telemetry.",
+      "objective": "Identify combinations requiring cost or reliability investigation.",
+      "acceptance": "Keep engine/model identity and unknown values explicit; distinguish AIC from raw tokens and preserve token classes, units and time bounds. Do not infer model quality or missing cost from usage volume.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -721,7 +881,11 @@
     {
       "id": "friction",
       "title": "Friction",
-      "description": "Avoidable execution cost attributed by gh aw audit across observed workflow runs.",
+      "description": "Identify audit-attributed execution friction that warrants CAO efficiency work.",
+      "intent": "Identify workflows with audit-attributed execution friction worth investigating.",
+      "subject": "Retained gh-aw audit friction observations and attributed cost.",
+      "objective": "Prioritize evidence-backed efficiency improvements.",
+      "acceptance": "Preserve finding type, workflow/run association, cost units and provenance; distinguish audit attribution from verified avoidable spend. Missing audits are not zero friction or proof of efficiency.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -732,7 +896,11 @@
     {
       "id": "operational-value",
       "title": "Operational Value",
-      "description": "Choose a repository to see its workflow outcome plots, with or without a CAO campaign.",
+      "description": "Choose a repository for operational-value measurement investigation.",
+      "intent": "Find repositories with operational measurements and distinguish unmeasured work.",
+      "subject": "Repository-linked operational-value evidence, goals and measurement availability.",
+      "objective": "Choose a repository for outcome-measurement investigation.",
+      "acceptance": "Separate measured and unmeasured repositories, preserve native metric identity and latest observation time, and expose coverage. Missing evidence is not zero value; run success is not an outcome measure.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -745,7 +913,11 @@
     {
       "id": "maintenance",
       "title": "Updates",
-      "description": "Review CAO campaign packages and gh-aw compiler versions. Active describes registration only; update confidence is reported separately. If version provenance is unknown, run CAO Activity to refresh inventory, then inspect Indexing diagnostics.",
+      "description": "Identify repositories whose compiler provenance justifies a CAO maintenance proposal.",
+      "intent": "Identify repositories whose compiler provenance warrants maintenance review.",
+      "subject": "Repository workflow compiler versions and retained update-confidence evidence.",
+      "objective": "Prioritize safe maintenance proposals using known version provenance.",
+      "acceptance": "Distinguish registration, observed version and update confidence; preserve unknown provenance and refresh guidance. Do not infer outdatedness from missing data or execute updates without approval.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -755,7 +927,11 @@
     {
       "id": "experiments",
       "title": "Experiments",
-      "description": "Observed run assignments by workflow and experiment. TODO: audit evidence does not establish campaign milestones or target assignments, so these counts are not completion percentages.",
+      "description": "Assess whether retained experiment assignments are sufficient for a bounded comparison.",
+      "intent": "Inspect which workflow runs have recorded experiment assignments.",
+      "subject": "Retained run-linked assignments grouped by workflow and experiment.",
+      "objective": "Assess assignment evidence before designing an experiment comparison.",
+      "acceptance": "Show assignment counts and identities with coverage limits. Audit evidence does not establish campaign milestones or target assignments; counts are not completion percentages or proof of treatment effects.",
       "experimental": true,
       "parameters": [],
       "queries": [
@@ -765,7 +941,11 @@
     {
       "id": "evals",
       "title": "Evals",
-      "description": "Explicit YES/NO results from retained eval observations, grouped by workflow and newest first. UNKNOWN answers remain in the underlying evidence but are not labelled YES/NO. TODO: audit evidence lacks an authoritative current-result pointer per eval; older observations remain visible and must not be read as current verdicts.",
+      "description": "Identify retained eval observations that require evidence review.",
+      "intent": "Inspect retained eval answers by workflow without mistaking history for current verdicts.",
+      "subject": "Timestamped native YES, NO and UNKNOWN eval observations.",
+      "objective": "Locate evaluation evidence and gaps for further investigation.",
+      "acceptance": "Keep eval identity, workflow, observation time and provenance; label only explicit YES/NO answers as such. UNKNOWN remains distinct; absent authoritative current-result pointers, older observations are not current verdicts.",
       "experimental": true,
       "parameters": [],
       "queries": [
@@ -775,7 +955,11 @@
     {
       "id": "graders",
       "title": "Graders",
-      "description": "Numeric grader measurements with their native units and recorded statuses, grouped by workflow and newest first. These are not binary eval answers. TODO: audit evidence lacks an authoritative current-result pointer per grader; older observations remain visible.",
+      "description": "Identify retained grader observations that require evidence review.",
+      "intent": "Inspect retained grader observations and their result provenance.",
+      "subject": "Run-linked grader results and native metric evidence grouped by workflow.",
+      "objective": "Identify grading evidence requiring review without conflating graders and evals.",
+      "acceptance": "Preserve grader identity, native values/status, units when present and observation times; unknown is not pass/fail. Without a current-result pointer, historical observations are not current verdicts or verified gains.",
       "experimental": true,
       "parameters": [],
       "queries": [
@@ -785,7 +969,11 @@
     {
       "id": "configuration",
       "title": "Settings",
-      "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
+      "description": "Review checked-in CAO policy before proposing an authorized configuration change.",
+      "intent": "Review checked-in control-repository policy before proposing a configuration change.",
+      "subject": "Entries in the control repository's .github/workflows/cao.json.",
+      "objective": "Understand explicit scope, modes and enablement without inferring broader authority.",
+      "acceptance": "Preserve policy identity and provenance, distinguish missing settings from permission, and fail closed on unavailable policy. Policy edits require explicit reviewed authorization; never expose credentials or silently promote live mode.",
       "experimental": false,
       "parameters": [],
       "queries": []
@@ -793,7 +981,11 @@
     {
       "id": "simulators",
       "title": "Simulators",
-      "description": "Explore modeled database growth under a 30-day detailed-record retention policy.",
+      "description": "Compare modeled storage capacity under the selected CAO workload assumptions.",
+      "intent": "Explore modeled database growth under the declared retention and workload assumptions.",
+      "subject": "Synthetic growth estimates from the selected simulator inputs and 30-day detail retention.",
+      "objective": "Compare capacity scenarios, not predict observed production performance.",
+      "acceptance": "Show input assumptions, modeled horizon and size/count units; recompute on parameter changes. Clearly distinguish estimates from measurements and do not infer actual storage use or capacity guarantees.",
       "experimental": true,
       "parameters": [
         {
@@ -869,7 +1061,11 @@
     {
       "id": "overview",
       "title": "Overview",
-      "description": "",
+      "description": "Identify the single highest-priority CAO operational area for deeper investigation.",
+      "intent": "Determine the highest-priority CAO operational area in the selected horizon.",
+      "subject": "Retained campaign/runtime health, review needs, cost and outcome-evidence summaries.",
+      "objective": "Prioritize a concrete drill-down without conflating execution success and value.",
+      "acceptance": "Keep run states, blocked work, awaiting-review outputs and measured evidence distinct; preserve scope, time bounds, units and freshness. Missing/partial data is not zero activity or healthy operation.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -884,7 +1080,11 @@
     {
       "id": "cost",
       "title": "Cost",
-      "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
+      "description": "Identify the strongest concentration of observed AI Credit usage for investigation.",
+      "intent": "Determine where observed AI Credit usage is most concentrated.",
+      "subject": "Retained AIC observations and per-run usage in the selected scope and horizon.",
+      "objective": "Find spend concentrations requiring evidence-backed efficiency investigation.",
+      "acceptance": "Label AIC units and per-run denominators; preserve campaign/repository/workflow identity, time bounds and unknown cost. Raw tokens are not AIC; spend alone does not prove waste, ROI or operational value.",
       "experimental": false,
       "parameters": [],
       "queries": [
@@ -898,7 +1098,11 @@
     {
       "id": "domain-insights",
       "title": "Domain",
-      "description": "Insights for the selected domain entity.",
+      "description": "Determine whether the selected domain's observed activity requires run-level investigation.",
+      "intent": "Inspect observed activity for the selected domain entity.",
+      "subject": "Domain observations matching the route and selected horizon.",
+      "objective": "Identify domain activity requiring run-level investigation.",
+      "acceptance": "Preserve exact domain identity, declared counts and time bounds with run drill-downs; distinguish unknown or unavailable telemetry. Domain occurrence alone does not prove maliciousness or authorize egress.",
       "experimental": false,
       "parameters": [
         {
@@ -919,7 +1123,11 @@
     {
       "id": "domain-runs",
       "title": "Domain",
-      "description": "Runs related to the selected domain entity.",
+      "description": "Select a workflow run associated with the selected domain for investigation.",
+      "intent": "Find runs with retained observations of the selected domain.",
+      "subject": "Run-linked domain evidence matching the route and selected horizon.",
+      "objective": "Trace domain activity to concrete workflow execution evidence.",
+      "acceptance": "Preserve domain, repository/workflow and run identity, native status/conclusion and evidence links; honor route filters and disclose partial coverage. Association is not proof of causality.",
       "experimental": false,
       "parameters": [
         {
@@ -939,7 +1147,11 @@
     {
       "id": "tool-insights",
       "title": "Tool",
-      "description": "Insights for the selected tool entity.",
+      "description": "Determine whether the selected tool's observed activity requires run-level investigation.",
+      "intent": "Inspect invocation activity for the selected tool entity.",
+      "subject": "Retained tool observations matching the route and selected horizon.",
+      "objective": "Choose tool-usage patterns for run-level investigation.",
+      "acceptance": "Keep tool identity, declared invocation measures and time bounds explicit; expose related runs and unavailable evidence. Invocation volume does not prove tool quality, reliability or value.",
       "experimental": false,
       "parameters": [
         {
@@ -960,7 +1172,11 @@
     {
       "id": "tool-runs",
       "title": "Tool",
-      "description": "Runs related to the selected tool entity.",
+      "description": "Select a workflow run associated with the selected tool for investigation.",
+      "intent": "Find workflow runs with recorded invocations of the selected tool.",
+      "subject": "Run-linked tool evidence matching the route and selected horizon.",
+      "objective": "Inspect execution context behind observed tool activity.",
+      "acceptance": "Preserve tool/run/workflow identity, native run status/conclusion, timestamps and evidence links; distinguish no matches from unavailable telemetry. Tool use alone does not explain a run outcome.",
       "experimental": false,
       "parameters": [
         {
@@ -981,7 +1197,11 @@
     {
       "id": "audit-insights",
       "title": "Audit event",
-      "description": "Insights for the selected audit event entity.",
+      "description": "Determine whether the selected audit event requires run-level investigation.",
+      "intent": "Inspect the distribution of the selected audit event and locate supporting evidence.",
+      "subject": "Retained audit observations matching the routed event and selected horizon.",
+      "objective": "Prioritize investigation without elevating audit attribution into proven cause.",
+      "acceptance": "Preserve native audit event identity, declared measures, time bounds and related-run links. Keep audit findings distinct from confirmed security incidents and disclose missing or partial audits.",
       "experimental": false,
       "parameters": [
         {
@@ -1002,7 +1222,11 @@
     {
       "id": "audit-runs",
       "title": "Audit event",
-      "description": "Runs related to the selected audit event entity.",
+      "description": "Select a workflow run associated with the selected audit event for investigation.",
+      "intent": "Find runs carrying the selected audit event observation.",
+      "subject": "Run-linked audit evidence matching the route and selected horizon.",
+      "objective": "Trace an audit signal to concrete workflow-run provenance.",
+      "acceptance": "Preserve audit/run/workflow identity, native status/conclusion, timestamps and evidence links; honor exact route filters. Association does not establish cause, exploitation or verified operational impact.",
       "experimental": false,
       "parameters": [
         {

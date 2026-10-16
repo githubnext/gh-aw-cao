@@ -32,6 +32,31 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it.each(['built-in', 'custom'])('validates optional %s page analysis contracts and their annotation budget', (kind) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+      const original = page[field];
+      for (const invalid of ['', '   ', 42]) {
+        page[field] = invalid;
+        expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+          ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining(`.${field}`) })])
+        });
+      }
+      page[field] = original;
+    }
+    page.subject = 's'.repeat(513);
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining('at most 512') })])
+    });
+    page.subject = 'Evidence';
+    page.intent = 'i'.repeat(8001);
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.intent') })])
+    });
+  });
+
   it('accepts declared table card templates and rejects unresolved references and other marks', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const view = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'commands').views[0];
@@ -687,6 +712,28 @@ describe('dashboard document validation', () => {
         path: expect.stringContaining('.config.content-field'),
         message: 'config.content-field is supported only for the markdown element.'
       })
+    ]));
+  });
+
+  it.each([
+    { preview: 'gh aw upgrade --repo {{repository}}', valid: true },
+    { preview: 'gh aw upgrade', valid: true },
+    { preview: 'gh aw upgrade --repo {{other}}', valid: false },
+    { preview: 'gh aw upgrade --repo other/repository', valid: false },
+    { preview: 'gh aw compile', valid: false },
+    { preview: '', valid: false },
+    { preview: 'gh aw\nupgrade', valid: false },
+    { preview: `${' '.repeat(1000)}gh aw upgrade`, valid: false },
+    { preview: 'gh aw upgrade --repo "{{repository}}', valid: false },
+    { preview: false, valid: false }
+  ])('validates compact CLI previews as command prefixes: $preview', ({ preview, valid }) => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const action = document.dashboard['cli-actions'].find((/** @type {{ id: string }} */ item) => item.id === 'upgrade-repository');
+    action['preview-command'] = preview;
+    const result = validateDashboardDocument(JSON.stringify(document));
+    expect(result.ok).toBe(valid);
+    if (!valid) expect(result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringContaining('.preview-command') })
     ]));
   });
 

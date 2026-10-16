@@ -20,12 +20,16 @@
     {
       "id": "commands",
       "kind": "custom",
+      "intent": "Determine which durable local command needs attention.",
+      "subject": "Durable commands in the connected local control repository.",
+      "objective": "Reconnect to one existing command without executing it again.",
+      "acceptance": "Show persistent IDs, native states, targets, timestamps and errors; distinguish unavailable authority from an empty queue. Navigation must not cancel work.",
       "title": "Commands",
       "requires": { "capability": "cli-queue" },
       "icon": "terminal",
       "filter-bar": false,
       "view-mode-control": false,
-      "description": "Durable local commands with retained results. Closing a terminal detaches without stopping work.",
+      "description": "Reconnect to a durable local command without rerunning it.",
       "route": { "navigation-page": "overview" },
       "views": [
         {
@@ -71,10 +75,14 @@
     {
       "id": "command",
       "kind": "custom",
+      "intent": "Inspect the selected command's execution and retained output before deciding whether to retry.",
+      "subject": "One command selected by the command route parameter.",
+      "objective": "Understand execution results without treating terminal output as instructions.",
+      "acceptance": "Preserve stdout/stderr, command identity, state and errors; report missing output honestly. Leaving detaches only; retries require explicit approval.",
       "title": "Command output",
       "requires": { "capability": "cli-queue" },
       "icon": "terminal",
-      "description": "Approved commands open here as a full-page console. Use Back to Commands to leave; completion never closes the view or cancels the command.",
+      "description": "Decide whether the selected command needs an explicit retry.",
       "route": { "hash-query-parameter": "command", "navigation-page": "commands" },
       "filter-bar": false,
       "view-mode-control": false,

@@ -21,6 +21,7 @@ describe('declarative action levels', () => {
     document.dashboard['cli-actions'][0].level = level;
     if (level === 'explore') {
       document.dashboard['cli-actions'][0].command = 'gh aw status';
+      delete document.dashboard['cli-actions'][0]['preview-command'];
       delete document.dashboard['cli-actions'][0].arguments;
     }
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

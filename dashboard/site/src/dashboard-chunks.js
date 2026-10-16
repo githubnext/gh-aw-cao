@@ -274,6 +274,7 @@ export function resolveBuiltInPages(document, templateDocument) {
  * @returns {DashboardPage}
  */
 function stubDashboardPage(page, chunkPath, index) {
+  /** @type {DashboardPage} */
   const base = {
     ...page,
     chunk: chunkPath,
@@ -283,6 +284,7 @@ function stubDashboardPage(page, chunkPath, index) {
     'independent-source-bindings': index.independentSourceBindings,
     ...(index.backendSourceIndex ? { 'backend-source-index': index.backendSourceIndex } : {}),
   };
+  for (const field of ['intent', 'subject', 'objective', 'acceptance']) delete base[field];
   if (page.kind === 'built-in') {
     delete base.definition;
   } else {

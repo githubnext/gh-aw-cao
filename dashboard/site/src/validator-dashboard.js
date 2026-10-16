@@ -522,6 +522,22 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
         }
       }
       validateStringField(action.command, `${path}.command`, true, errors);
+      if (action['preview-command'] !== undefined) {
+        validateStringField(action['preview-command'], `${path}.preview-command`, true, errors);
+        const previewTokens = typeof action['preview-command'] === 'string'
+          ? parseCliActionTokens(action['preview-command']) : null;
+        const commandTokens = typeof action.command === 'string' ? parseCliActionTokens(action.command) : null;
+        if (!previewTokens?.length || !commandTokens
+          || typeof action['preview-command'] === 'string' && (
+            action['preview-command'].length > MAX_CLI_ACTION_COMMAND_LENGTH
+            || /[\r\n\0]/.test(action['preview-command'])
+          )
+          || previewTokens.some((token, index) => token !== commandTokens[index])) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action preview-command must be a non-empty, single-line token prefix of command.',
+            `${path}.preview-command`));
+        }
+      }
       if (action.selector !== undefined) {
         try {
           assertDialogSelector(action.selector, typeof action.command === 'string' ? cliActionTemplateFields(action.command) : []);

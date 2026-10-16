@@ -22,6 +22,41 @@ function string(value) {
 }
 
 /**
+ * Normalize both freshly parsed and retained safe session projections.
+ * @param {SessionEvidence[]} events
+ * @returns {SessionEvidence[]}
+ */
+export function normalizeSessionMcpEvents(events) {
+  const identity = (/** @type {SessionEvidence} */ event) => {
+    const server = string(event.fields.mcpServer);
+    const name = string(event.fields.mcpTool ?? event.fields.toolName);
+    const tool = server && event.source === 'agent' && name?.startsWith(`${server}-`)
+      ? name.slice(server.length + 1) : name;
+    const correlation = string(event.fields.correlationId);
+    return { server, tool, key: correlation ? JSON.stringify([server, tool, correlation]) : null };
+  };
+  const nativeCalls = new Set(events.filter((event) => (
+    event.source === 'mcp' && ['tool_call', 'tool.call'].includes(event.type)
+  )).map((event) => identity(event).key).filter((key) => key !== null));
+  return events.map((event) => {
+    if (event.source === 'mcp' && event.type === 'tool_call') {
+      return { ...event, type: 'tool.call' };
+    }
+    const { server, tool, key } = identity(event);
+    if (event.source !== 'agent' || !server || !tool
+        || !['agent_tool_start', 'agent_tool_done'].includes(event.type)
+        || (event.type === 'agent_tool_start' && key !== null && nativeCalls.has(key))) return event;
+    return {
+      ...event,
+      source: 'mcp',
+      type: event.type === 'agent_tool_start' ? 'tool.call'
+        : event.fields.status === 'error' ? 'tool.error' : 'tool.result',
+      fields: { ...event.fields, summary: `${server}/${tool}`, mcpServer: server, mcpTool: tool }
+    };
+  });
+}
+
+/**
  * Project gh-aw v1 unified sessions to bounded metadata, never message bodies,
  * tool inputs/outputs, raw errors, or native provenance.
  * @param {string} content
@@ -212,7 +247,7 @@ function timeline(records, includeUntimed = false, context) {
   });
   debugUnifiedSession({ event: 'parsed', records: records.length, evidence: evidence.length,
     skipped: records.length - new Set(evidence.map((event) => event.line)).size, turns: turn });
-  return evidence;
+  return normalizeSessionMcpEvents(evidence);
 }
 
 /** @param {string} content @param {string} path */

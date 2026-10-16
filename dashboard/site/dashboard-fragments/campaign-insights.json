@@ -542,8 +542,12 @@
     {
       "id": "campaign-insights",
       "kind": "custom",
+      "intent": "Determine which campaign baseline signal needs evidence-backed investigation.",
+      "subject": "Retained campaign attempts, baseline comparisons and audit observations.",
+      "objective": "Choose one baseline change for run-level or audit-level investigation.",
+      "acceptance": "State the baseline/time windows, counts and comparison basis; retain native results and audit provenance. Successful attempts are not accepted outcomes; partial or missing baselines cannot prove improvement.",
       "title": "Campaign",
-      "description": "Operational activity for this campaign.",
+      "description": "Identify the campaign baseline signal that most requires investigation.",
       "icon": "graph",
       "class-name": "campaign-insights-page",
       "view-mode-control": true,
@@ -690,10 +694,14 @@
     {
       "id": "operational-value-repository",
       "kind": "custom",
+      "intent": "Compare the selected repository's operational measurements over time.",
+      "subject": "Timestamped native operational-value observations for the routed repository.",
+      "objective": "Assess measurement direction and comparison evidence without inferring causality.",
+      "acceptance": "Keep metric identity, unit, direction, maturity, observation times and baseline basis explicit; do not combine unlike units or replace missing measurements with zero. Separate observations from verified gains.",
       "filter-bar": true,
       "view-mode-control": false,
       "title": "Operational Value",
-      "description": "Measurements over time. Select a point to inspect its value.",
+      "description": "Assess whether the selected repository's operational measurements support a comparison.",
       "route": {
         "hash-query-parameter": "repository", "navigation-page": "operational-value",
         "breadcrumbs": [

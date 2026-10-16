@@ -3,6 +3,8 @@ import controls from '../../dashboard-fragments/controls.json' with { type: 'jso
 import { effectiveViewSemantics } from '../../src/view-semantics.js';
 import { semanticViewPrompt } from '../../src/semantic-view-prompt.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { semanticMetadataLength } from '../../src/semantic-metadata.js';
+import { dashboardPagePayload } from '../../src/dashboard-chunks.js';
 
 afterEach(() => {
   vi.doUnmock('../../src/debug.js');
@@ -10,6 +12,93 @@ afterEach(() => {
 });
 
 describe('semantic view prompts', () => {
+  it('defines a bounded four-field analysis contract on every page, including routed and built-in pages', () => {
+    const pages = authoritativeDashboard.dashboard.pages;
+    const actionDescription = /^(Assess|Browse|Choose|Compare|Decide|Determine|Establish|Find|Identify|Inspect|Locate|Reconnect|Reconstruct|Review|Select|Trace|Verify)\b/;
+    expect(pages.length).toBeGreaterThan(0);
+    for (const page of pages) {
+      expect(typeof page.description, `${page.id}.description`).toBe('string');
+      expect(page.description.trim().length, `${page.id}.description`).toBeGreaterThan(0);
+      expect(page.description.length, `${page.id}.description`).toBeLessThanOrEqual(160);
+      expect(page.description, `${page.id}.description`).toMatch(actionDescription);
+      expect(page.description.match(/[.!?](?:\s|$)/g), `${page.id}.description`).toHaveLength(1);
+      expect(page.description).not.toContain('TODO');
+      expect(page.description).not.toBe('Operational activity for this campaign.');
+      for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+        expect(typeof page[field], `${page.id}.${field}`).toBe('string');
+        expect(page[field].trim().length, `${page.id}.${field}`).toBeGreaterThan(0);
+      }
+      expect([...page.intent].length, page.id).toBeLessThanOrEqual(8000);
+      expect(semanticMetadataLength(page), page.id).toBeLessThanOrEqual(512);
+      expect(dashboardPagePayload(page, authoritativeDashboard.dashboard.views)).toMatchObject({
+        intent: page.intent, subject: page.subject, objective: page.objective, acceptance: page.acceptance
+      });
+    }
+  });
+
+  it('includes page context, analysis links and repository provenance without expanding the selected task', () => {
+    const page = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'cost');
+    const prompt = semanticViewPrompt({
+      pageId: page.id, pageContract: page, repository: 'example/control',
+      viewId: 'cost-by-campaign', title: 'Campaign cost',
+      semantics: { queryIds: ['cost-by-campaign'], subject: 'Campaign AIC', objective: 'Investigate spend', acceptance: 'Preserve AIC units' },
+      queryParameters: { campaign: 'example' }, filters: { timeWindow: '7d' }, scope: { repository: 'example/target' },
+      sources: { cost: { rows: [], metadata: {
+        availability: 'empty', completeness: 'complete', freshness: 'stale',
+        'as-of': '2026-10-01T00:00:00Z', 'retrieved-at': '2026-10-02T00:00:00Z'
+      } } }
+    });
+    for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+      expect(prompt).toContain(`Page ${field}:\n${page[field]}`);
+    }
+    for (const path of [
+      'skills/analyze-cao/SKILL.md', 'docs/agent-analysis.md', 'specs/dashboard-data.md',
+      'docs/dashboard-language-specification.md', 'dashboard/site/dashboard.json', 'CODEBASE.yml'
+    ]) expect(prompt).toContain(`https://github.com/githubnext/gh-aw-cao/blob/main/${path}`);
+    expect(prompt).toContain('https://github.com/githubnext/gh-aw-cao/tree/main/dashboard/site/dashboard-fragments');
+    expect(prompt).toContain('https://github.com/example/control/blob/HEAD/.github/workflows/cao.json');
+    expect(prompt).toContain('https://github.com/example/control/tree/HEAD/.github/workflows');
+    expect(prompt).toContain('not snapshot-version proof');
+    expect(prompt).toContain('selected view/query objective and acceptance below bound this task');
+    expect(prompt).toContain('cao download --url VERIFIED_PAYLOAD_HASHES_URL');
+    expect(prompt).toContain('"freshness": "stale"');
+    expect(prompt).toContain('"as-of": "2026-10-01T00:00:00Z"');
+    expect(prompt).toContain('"retrieved-at": "2026-10-02T00:00:00Z"');
+    expect(prompt).toContain('"campaign": "example"');
+    expect(prompt).toContain('"timeWindow": "7d"');
+    expect(prompt).toContain('"repository": "example/target"');
+  });
+
+  it.each([undefined, 'https://example.com/control', 'owner/repo?token=secret'])(
+    'does not invent control-repository links for an absent or invalid identity %s', (repository) => {
+      const prompt = semanticViewPrompt({
+        queryId: 'summary', repository,
+        semantics: { queryIds: ['summary'], subject: 'Runs', objective: 'Inspect runs', acceptance: 'Preserve status' },
+        queryParameters: {}, filters: {}, scope: {}, sources: {}
+      });
+      expect(prompt).toContain('Establish its identity from verified snapshot/query provenance');
+      expect(prompt).not.toContain('/blob/HEAD/.github/workflows/cao.json');
+      expect(prompt).not.toContain('token=secret');
+    }
+  );
+
+  it.each([
+    ['https://github.example.com/', 'https://github.example.com/example/control/blob/HEAD/.github/workflows/cao.json'],
+    ['http://github.example.com', null],
+    ['https://user:secret@github.example.com', null],
+    ['https://github.example.com?token=secret', null]
+  ])('uses only the configured safe GitHub host %s for deployment links', (githubUrlBase, expectedPolicy) => {
+    const prompt = semanticViewPrompt({
+      queryId: 'summary', repository: 'example/control', githubUrlBase,
+      semantics: { queryIds: ['summary'], subject: 'Runs', objective: 'Inspect runs', acceptance: 'Preserve status' },
+      queryParameters: {}, filters: {}, scope: {}, sources: {}
+    });
+    if (expectedPolicy) expect(prompt).toContain(expectedPolicy);
+    else expect(prompt).not.toContain('/blob/HEAD/.github/workflows/cao.json');
+    expect(prompt).not.toContain('secret');
+    expect(prompt).not.toContain('https://github.com/example/control');
+  });
+
   it('names the firewall queries needed to investigate blocked domains', () => {
     const firewall = controls.pages.find((page) => page.id === 'firewall');
     const view = firewall?.views.find((candidate) => typeof candidate === 'object'

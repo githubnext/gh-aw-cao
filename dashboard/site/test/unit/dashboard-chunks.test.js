@@ -13,6 +13,7 @@ import {
   splitDashboardDocument,
 } from '../../src/dashboard-chunks.js';
 import { dashboardPagePaginatedSourceBindings } from '../../src/presenter.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 /** @returns {import('../../src/presenter.js').PresentationDocument} */
 function sampleDocument() {
@@ -66,6 +67,22 @@ function sampleDocument() {
 }
 
 describe('dashboard-chunks source discovery', () => {
+  it('keeps every page analysis contract in its lazy chunk and restores it without bloating core navigation', () => {
+    const { core, pageChunks } = splitDashboardDocument(authoritativeDashboard);
+    for (const page of authoritativeDashboard.dashboard.pages) {
+      const stub = core.dashboard.pages.find((candidate) => candidate.id === page.id);
+      const chunk = pageChunks.get(page.id);
+      expect(stub, page.id).toBeDefined();
+      expect(chunk, page.id).toBeDefined();
+      if (!chunk) throw new Error(`Missing page chunk: ${page.id}`);
+      for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
+        expect(stub?.[field], `${page.id}.${field}`).toBeUndefined();
+        expect(chunk.page[field], `${page.id}.${field}`).toBe(page[field]);
+        expect(mergeDashboardPage(stub, chunk.page)[field]).toBe(page[field]);
+      }
+    }
+  });
+
   it('collects the source names a page renders, including callouts', () => {
     expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page')).toEqual(['alpha-source', 'callout-source']);
     expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page', 'table')).toEqual(['alpha-source', 'callout-source']);

@@ -10,7 +10,7 @@ import {
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
-import { parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
+import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
 
 const debug = createDebug('data:ingestion:jsonl');
 
@@ -781,16 +781,25 @@ export function adaptGhAwTimelineFiles(input, runId) {
 /** @param {unknown} input @param {string} path @param {string} runId @param {string} [observedAt] */
 function sessionObservations(input, path, runId, observedAt) {
   if (!Array.isArray(input)) throw new TypeError('Unified session evidence must be an array');
-  return input.map((value) => {
+  const events = input.map((value) => {
     const event = objectValue(value, 'unified session evidence');
+    return {
+      line: positiveInteger(event.line, 'session line'),
+      timestamp: event.timestamp === undefined ? undefined : canonicalTimestamp(event.timestamp, 'session timestamp'),
+      source: requiredString(event.source, 'session source'),
+      type: requiredString(event.type, 'session type'),
+      fields: objectValue(event.fields, 'session fields'),
+      ...(event.key === undefined ? {} : { key: requiredString(event.key, 'session event key') })
+    };
+  });
+  return normalizeSessionMcpEvents(events).map((event) => {
     const observation = eventObservation(
-      runId, path, positiveInteger(event.line, 'session line'),
+      runId, path, event.line,
       canonicalTimestamp(event.timestamp ?? observedAt, 'session observation timestamp'),
-      requiredString(event.source, 'session source'), requiredString(event.type, 'session type'),
-      objectValue(event.fields, 'session fields')
+      event.source, event.type, event.fields
     );
     if (event.timestamp === undefined) delete observation.data.timestamp;
-    if (event.key !== undefined) observation.sourceId += `:${requiredString(event.key, 'session event key')}`;
+    if (event.key !== undefined) observation.sourceId += `:${event.key}`;
     return observation;
   });
 }

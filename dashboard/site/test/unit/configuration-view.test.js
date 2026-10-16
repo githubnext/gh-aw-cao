@@ -324,8 +324,9 @@ describe('Configuration dashboard view', () => {
       .toEqual(maintenanceNavigationContract.sources);
     expect(manageNavigation.pages).toContain('maintenance');
     expect(manageNavigation.pages).not.toContain('maintenance-campaigns');
-    expect(page.description).toContain('Active describes registration only');
-    expect(page.description).toContain('run CAO Activity to refresh inventory');
+    expect(page.description).toBe('Identify repositories whose compiler provenance justifies a CAO maintenance proposal.');
+    expect(page.acceptance).toContain('registration');
+    expect(page.acceptance).toContain('refresh guidance');
     expect(page['filter-bar']).toBeUndefined();
     expect(views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
@@ -606,6 +607,29 @@ describe('Configuration dashboard view', () => {
     resetButton.click();
     expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('No changes');
     expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('#configuration-control-plane-defaults-max-repositories'))?.value).toBe('7');
+  });
+
+  it('keeps the edited control node and focus while the draft changes', () => {
+    const rendered = renderConfigurationView(context({
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+
+    const selector = '#configuration-control-plane-defaults-max-repositories';
+    const input = /** @type {HTMLInputElement | null} */ (rendered.querySelector(selector));
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.focus();
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
+    expect(rendered.querySelector(selector)).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('12');
+    rendered.remove();
   });
 
   it('stops reacting to draft edits once the editor is detached from the document', () => {

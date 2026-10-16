@@ -72,8 +72,13 @@ for (const width of [1440, 390]) {
       await preview.close();
     }
   });
+}
 
-  test(`Upgrade all lists and queues every repository at ${width}px`, async ({ page }, testInfo) => {
+for (const { width, canExecute } of [
+  { width: 1440, canExecute: true }, { width: 390, canExecute: true },
+  { width: 1440, canExecute: false }, { width: 390, canExecute: false }
+]) {
+  test(`Upgrade all lists and ${canExecute ? 'queues' : 'copies'} every repository at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const repositories = ['octo/first', 'other/second', 'octo/third'];
     const campaigns = ['activity', 'dependabot'];
@@ -84,7 +89,7 @@ for (const width of [1440, 390]) {
     const execution = new Promise((resolve) => { finish = () => resolve(undefined); });
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', admin: true, port: 0,
+      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', admin: canExecute, port: 0,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
@@ -106,7 +111,7 @@ for (const width of [1440, 390]) {
             const [organization, repository] = coordinate.split('/');
             return { organization, repository };
           }) },
-          workflows: { metadata, rows: repositories.map((coordinate) => {
+          workflows: { metadata: { ...metadata, completeness: 'partial' }, rows: repositories.map((coordinate) => {
             const [organization, repository] = coordinate.split('/');
             return { organization, repository, workflow: 'demo.md', 'workflow-name': 'Demo',
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0' };
@@ -145,16 +150,47 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
       const upgradeDialog = page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true });
       await expect(upgradeDialog).toBeVisible();
+      await expect(upgradeDialog.getByRole('note')).toContainText('Inventory evidence is partial.');
+      for (const repository of repositories) {
+        await expect(upgradeDialog.locator('.cli-action-command')).toContainText(`--repo ${repository}`);
+      }
       await expect(upgradeDialog.locator('.cli-action-command')).toContainText('https://ops.example.com/central/#page-maintenance');
       await expect(upgradeDialog.locator('.cli-action-command')).not.toContainText(new URL(preview.url).pathname);
       const autoMerge = upgradeDialog.getByRole('checkbox', { name: 'Auto merge' });
+      const compactPreview = upgradeDialog.locator('.cli-action-preview-command');
+      const fullCommands = upgradeDialog.locator('.cli-action-command');
+      await expect(compactPreview).toBeVisible();
+      await expect(compactPreview).toHaveText(`gh aw upgrade --repo ${repositories[0]} --create-pull-request`);
+      await expect(compactPreview).not.toContainText('--pr-message');
+      await expect(fullCommands).not.toBeVisible();
+      await expect(upgradeDialog.getByText('Preview for the first of 3 targets:', { exact: true })).toBeVisible();
+      await upgradeDialog.getByText('Show all 3 full commands', { exact: true }).click();
+      await expect(fullCommands).toBeVisible();
+      await expect(fullCommands).toContainText('--pr-message');
+      await upgradeDialog.getByText('Show all 3 full commands', { exact: true }).click();
+      await expect(fullCommands).not.toBeVisible();
       await expect(autoMerge).not.toBeChecked();
       expect(commands).toEqual([]);
       if (width === 1440) {
         await autoMerge.check();
+        await expect(compactPreview).toContainText('--auto-merge');
         await expect(upgradeDialog.locator('.cli-action-command')).toContainText('--auto-merge');
       }
-      await page.screenshot({ path: testInfo.outputPath(`upgrade-options-${width}.png`), fullPage: true });
+      const optionsScreenshot = testInfo.outputPath(`upgrade-options-${width}.png`);
+      await page.screenshot({ path: optionsScreenshot, fullPage: true });
+      await testInfo.attach(`upgrade-options-${width}`, { path: optionsScreenshot, contentType: 'image/png' });
+      if (!canExecute) {
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        const fullCommandText = await fullCommands.textContent();
+        await upgradeDialog.getByRole('button', { name: 'Copy command', exact: true }).click();
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(fullCommandText);
+        expect(fullCommandText?.split('\n')).toHaveLength(repositories.length);
+        expect(fullCommandText).toContain('--pr-message');
+        expect(fullCommandText).not.toContain('The complete target list is unavailable.');
+        expect(commands).toEqual([]);
+        await expect(page).toHaveURL(/#page-maintenance$/);
+        return;
+      }
       await upgradeDialog.getByRole('button', { name: 'Upgrade all', exact: true }).click();
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(page.getByRole('dialog', { name: 'Approve Upgrade all', exact: true })).not.toBeVisible();
@@ -185,6 +221,8 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'Update all', exact: true }).click();
       const updateDialog = page.getByRole('dialog', { name: 'Approve Update all', exact: true });
       await expect(updateDialog).toBeVisible();
+      await expect(updateDialog.locator('.cli-action-preview-command')).toHaveText(/^(?:bash )?\.\/cao\.sh update --campaign activity --create-pull-request$/);
+      await expect(updateDialog.locator('.cli-action-command')).not.toBeVisible();
       await expect(updateDialog.getByRole('checkbox', { name: 'Auto merge' })).not.toBeChecked();
       await updateDialog.getByRole('checkbox', { name: 'Auto merge' }).check();
       await expect(updateDialog.locator('.cli-action-command')).toContainText('--auto-merge');
