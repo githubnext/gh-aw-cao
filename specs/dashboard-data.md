@@ -2315,7 +2315,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 38;
+const DATABASE_VERSION = 39;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2327,7 +2327,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 38 SHALL define:
+IndexedDB version 39 SHALL define:
 
 ```text
 campaigns
