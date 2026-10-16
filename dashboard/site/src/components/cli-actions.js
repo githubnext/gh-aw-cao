@@ -406,6 +406,7 @@ function renderCliActionControl(action, options = {}) {
           debugCliActions({ event: 'execute-completed', actionId: action.id, ok: result.ok });
           publishNotification({
             message: `${action.label}: ${result.ok ? 'Completed' : result.error || 'Action failed'}`,
+            href: '#page-commands',
             tone: result.ok ? 'success' : 'error'
           });
           close();

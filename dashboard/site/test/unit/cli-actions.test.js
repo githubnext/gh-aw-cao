@@ -414,6 +414,7 @@ describe('CLI actions', () => {
     expect(terminal.open).toBe(false);
     expect(document.activeElement).toBe(trigger);
     expect(queue.cancel).not.toHaveBeenCalled();
+    expect(document.querySelector('.dashboard-notification-message a')?.getAttribute('href')).toBe('#page-commands');
     root.remove();
   });
 

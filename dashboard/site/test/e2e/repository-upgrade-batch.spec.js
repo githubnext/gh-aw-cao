@@ -66,6 +66,19 @@ for (const width of [1440, 390]) {
       await expect.poll(() => commands.length).toBe(3);
       expect(commands.sort()).toEqual(repositories.map((repository) =>
         `gh aw upgrade --repo ${repository} --create-pull-request`).sort());
+      await page.getByRole('button', { name: 'Upgrade all', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Upgrade all', exact: true }).click();
+      const completionLink = page.getByRole('link', { name: 'Upgrade all: Completed', exact: true });
+      await expect(completionLink).toBeVisible();
+      await expect(completionLink).toHaveAttribute('href', '#page-commands');
+      await expect(dialog).not.toBeVisible();
+      const completionScreenshot = testInfo.outputPath(`upgrade-complete-link-${width}.png`);
+      await page.screenshot({ path: completionScreenshot, fullPage: true });
+      await testInfo.attach(`upgrade-complete-link-${width}`, { path: completionScreenshot, contentType: 'image/png' });
+      await completionLink.click();
+      await expect(page).toHaveURL(/#page-commands$/);
+      await expect(page.locator('[data-view-id="commands-history"]')).toBeVisible();
+      expect(commands).toHaveLength(6);
     } finally {
       finish();
       await page.goto('about:blank').catch(() => {});
