@@ -1392,6 +1392,15 @@ opens the command's full-page, read-only console, with no separate
 terminal-window option. Its first output line shows the executed command.
 Terminal emulation cannot be expressed by data marks and does not query or
 derive dashboard evidence.
+Displayed `gh aw` and `./cao.sh` commands use a pseudo-terminal with ANSI color
+enabled, combining stdout/stderr in terminal order.
+Prompts and pagers are disabled. Stdin-backed commands and
+preparation reads retain separate pipes.
+The console preserves standard, bright, indexed, and true-color ANSI sequences
+across streamed chunks and retained replay on both stdout and stderr, without
+overriding command-provided colors or assuming that stderr always means failure.
+Authentication and machine-readable preparation reads do not force terminal
+formatting.
 Completion, failure, timeout, or cancellation leaves the console open.
 Back navigation detaches without canceling work, and retained output remains
 available in Commands. Another run requires reopening the approval dialog.

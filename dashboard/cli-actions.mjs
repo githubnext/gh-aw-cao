@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { spawnTerminalCommand } from "./cli-terminal-process.mjs";
 
 const maximumOutputBytes = 1024 * 1024;
 const timeoutMilliseconds = 15 * 60 * 1000;
@@ -13,7 +14,7 @@ const caoConfigurationPath = join(".github", "workflows", "cao.json");
 const repositoryPattern = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const workflowInputPattern = /^[A-Za-z_][A-Za-z0-9_-]*=.*$/s;
 
-/** @param {import("node:child_process").ChildProcess} child @param {NodeJS.Signals} signal */
+/** @param {{ pid?: number, kill: (signal: NodeJS.Signals) => unknown }} child @param {NodeJS.Signals} signal */
 function signalCommand(child, signal) {
   if (process.platform === "win32" || !child.pid) {
     child.kill(signal);
@@ -29,7 +30,7 @@ function signalCommand(child, signal) {
 /**
  * @param {string} executable
  * @param {readonly string[]} args
- * @param {import("node:child_process").ExecFileOptions & { input?: string }} options
+ * @param {import("node:child_process").ExecFileOptions & { input?: string, terminal?: boolean }} options
  */
 async function executeFile(executable, args, options) {
   let stdout = "";
@@ -38,6 +39,7 @@ async function executeFile(executable, args, options) {
   const result = await runDashboardCommandStreaming({
     ghExecutable: executable, args, workingDirectory: options.cwd, env: options.env,
     input: options.input,
+    terminal: options.terminal,
     timeoutMs: options.timeout ?? timeoutMilliseconds,
     signal: options.signal ? AbortSignal.any([options.signal, outputLimit.signal]) : outputLimit.signal,
     onOutput: ({ stream, data }) => {
@@ -216,6 +218,23 @@ function commandEnvironment(githubToken, gitIdentity) {
       GIT_COMMITTER_NAME: gitIdentity.name,
       GIT_COMMITTER_EMAIL: gitIdentity.email,
     } : {}),
+  };
+}
+
+function terminalCommandEnvironment(githubToken, gitIdentity) {
+  const environment = commandEnvironment(githubToken, gitIdentity);
+  delete environment.NO_COLOR;
+  return {
+    ...environment,
+    TERM: "xterm-256color",
+    COLORTERM: "truecolor",
+    CLICOLOR: "1",
+    CLICOLOR_FORCE: "1",
+    FORCE_COLOR: "3",
+    GH_FORCE_TTY: "80",
+    GH_PAGER: "cat",
+    PAGER: "cat",
+    GH_PROMPT_DISABLED: "1",
   };
 }
 
@@ -402,6 +421,7 @@ export async function executeDashboardCommand({
       workingDirectory,
       githubToken: resolvedGithubToken,
       gitIdentity,
+      terminal: (isGhAwCommand || isCaoCommand) && input === undefined,
       input,
       onOutput,
       signal,
@@ -411,7 +431,8 @@ export async function executeDashboardCommand({
   try {
     const result = await execute(commandExecutable, commandArguments, {
       cwd: workingDirectory,
-      env: commandEnvironment(resolvedGithubToken, gitIdentity),
+      env: terminalCommandEnvironment(resolvedGithubToken, gitIdentity),
+      terminal: (isGhAwCommand || isCaoCommand) && input === undefined,
       maxBuffer: maximumOutputBytes,
       timeout: Math.max(1, Math.min(timeoutMs, deadline - Date.now())),
       windowsHide: true,
@@ -446,15 +467,19 @@ export function runDashboardCommandStreaming({
   workingDirectory,
   githubToken,
   gitIdentity,
-  env = commandEnvironment(githubToken, gitIdentity),
+  env = terminalCommandEnvironment(githubToken, gitIdentity),
+  terminal = false,
   input,
   onOutput,
   signal = /** @type {AbortSignal | undefined} */ (undefined),
   timeoutMs = timeoutMilliseconds,
 }) {
   signal?.throwIfAborted();
+  if (terminal && input !== undefined) throw new Error("Terminal CLI commands cannot receive standard input.");
   return new Promise((resolve, reject) => {
-    const child = spawn(ghExecutable, args, {
+    const child = terminal ? spawnTerminalCommand(ghExecutable, args, {
+      cwd: workingDirectory, env,
+    }) : spawn(ghExecutable, args, {
       cwd: workingDirectory,
       env,
       shell: false,
@@ -462,7 +487,7 @@ export function runDashboardCommandStreaming({
       detached: process.platform !== "win32",
       stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
-    if (input !== undefined) {
+    if (input !== undefined && "stdin" in child) {
       child.stdin.on("error", () => {
         // The child can close stdin before consuming the prompt.
       });
@@ -472,12 +497,13 @@ export function runDashboardCommandStreaming({
     let timedOut = false;
     let killTimer;
     let outputError = false;
+    let forceKilled = false;
     let outputPending = Promise.resolve();
     /** @param {NodeJS.Signals} signal */
     const kill = (signal) => signalCommand(child, signal);
     const terminate = () => {
       kill("SIGTERM");
-      killTimer ??= setTimeout(() => kill("SIGKILL"), 2000);
+      killTimer ??= setTimeout(() => { forceKilled = true; kill("SIGKILL"); }, 2000);
       killTimer.unref();
     };
     signal?.addEventListener("abort", terminate, { once: true });
@@ -520,7 +546,7 @@ export function runDashboardCommandStreaming({
       if (settled) return;
       await outputPending;
       settled = true;
-      if (signal?.aborted || timedOut) kill("SIGKILL");
+      if (!forceKilled && (signal?.aborted || timedOut || outputError)) kill("SIGKILL");
       clearTimeout(timer);
       clearTimeout(killTimer);
       signal?.removeEventListener("abort", terminate);

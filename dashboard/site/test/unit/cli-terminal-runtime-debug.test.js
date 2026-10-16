@@ -50,20 +50,28 @@ afterEach(() => {
 });
 
 describe('cli-terminal-runtime debug logging', () => {
-  it('uses error color for stderr and restores the default color for subsequent output', async () => {
+  it('preserves ANSI sequences and color state across stdout and stderr chunks', async () => {
     stubResizeObserver();
     const { mountTerminal } = await loadRuntime('');
     const controller = new AbortController();
     const terminal = mountTerminal(document.createElement('div'), controller.signal);
-    terminal.write('An error occurred.\r\n', 'stderr');
+    terminal.write('\x1b[3', 'stderr');
+    terminal.write('2mProgress', 'stderr');
+    terminal.write(' complete\x1b[0m\r\n', 'stderr');
+    terminal.write('\x1b[38;5;208mIndexed\x1b[0m\r\n');
+    terminal.write('\x1b[38;2;10;20;30mTrue color\x1b[0m\r\n');
     terminal.write('Normal output.\r\n');
     expect(writes.mock.calls).toEqual([
-      ['\x1b[31mAn error occurred.\r\n\x1b[39m'],
+      ['\x1b[3'],
+      ['2mProgress'],
+      [' complete\x1b[0m\r\n'],
+      ['\x1b[38;5;208mIndexed\x1b[0m\r\n'],
+      ['\x1b[38;2;10;20;30mTrue color\x1b[0m\r\n'],
       ['Normal output.\r\n']
     ]);
     controller.abort();
     terminal.write('Late error', 'stderr');
-    expect(writes).toHaveBeenCalledTimes(2);
+    expect(writes).toHaveBeenCalledTimes(6);
   });
 
   it('is disabled by default', async () => {

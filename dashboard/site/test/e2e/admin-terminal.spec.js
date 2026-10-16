@@ -80,6 +80,24 @@ for (const width of [1440, 390]) {
       await expect(subtitle).toContainText('running');
       await expect(consoleView.locator('header')).toHaveCount(0);
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Starting repository setup' }))
+        .toHaveCSS('color', 'rgb(63, 185, 80)');
+      emitOutput?.({ stream: 'stderr', data: '\r\n\x1b[9' });
+      emitOutput?.({ stream: 'stderr', data: '5mBright progress\x1b[0m\r\n' });
+      emitOutput?.({ stream: 'stdout', data: '\x1b[38;5;208mIndexed color\x1b[0m\r\n' });
+      emitOutput?.({ stream: 'stderr', data: '\x1b[38;2;10;200;230mTrue color\x1b[0m\r\n' });
+      emitOutput?.({ stream: 'stderr', data: 'Default output\r\n' });
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Bright progress' }))
+        .toHaveCSS('color', 'rgb(210, 168, 255)');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Indexed color' }))
+        .toHaveCSS('color', 'rgb(255, 135, 0)');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'True color' }))
+        .toHaveCSS('color', 'rgb(10, 200, 230)');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Default output' }))
+        .toHaveCSS('color', 'rgb(230, 237, 243)');
+      const screenshot = testInfo.outputPath(`admin-terminal-${width}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      await testInfo.attach(`admin-terminal-${width}`, { path: screenshot, contentType: 'image/png' });
       await terminal.click();
       await page.keyboard.type('this must not reach the command');
       await expect(terminal.locator('.xterm-accessibility-tree')).not.toContainText('this must not reach');
@@ -127,10 +145,6 @@ for (const width of [1440, 390]) {
       await expect(popup).toHaveURL(url);
       expect(await popup.evaluate(() => window.opener === null)).toBe(true);
       await popup.close();
-      const screenshot = testInfo.outputPath(`admin-terminal-${width}.png`);
-      await page.screenshot({ path: screenshot, fullPage: true });
-      await testInfo.attach(`admin-terminal-${width}`, { path: screenshot, contentType: 'image/png' });
-
       await page.keyboard.press('Escape');
       await expect(consoleView).toBeVisible();
       await back.click();
@@ -142,6 +156,11 @@ for (const width of [1440, 390]) {
       await expect(consoleView.getByRole('status')).toContainText('completed');
       await expect(subtitle).toContainText('completed');
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Repository staged.');
+      await viewport.evaluate((element) => { element.scrollTop = 0; });
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Bright progress' }))
+        .toHaveCSS('color', 'rgb(210, 168, 255)');
+      await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'True color' }))
+        .toHaveCSS('color', 'rgb(10, 200, 230)');
       await expect(back).toBeVisible();
       await expect(consoleView.getByRole('button', { name: 'Cancel command', exact: true })).toBeHidden();
       await back.click();

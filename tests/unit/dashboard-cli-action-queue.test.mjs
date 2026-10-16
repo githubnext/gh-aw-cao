@@ -52,9 +52,13 @@ test("the last sanitized PR URL survives split chunks, preview limits, and queue
   const expected = { ...success, pullRequestUrl: "https://ghe.example.test:8443/github/team/project/pull/42" };
   assert.deepEqual(queue.detail(job.id).result, expected);
   assert.deepEqual(queue.list().commands[0].result, expected);
+  const coloredOutput = queue.output(job.id).filter(({ stream }) => stream === "stderr");
+  assert.equal(coloredOutput.map(({ data }) => data).join(""),
+    "\x1b[32mhttps://ghe.example.test:8443/github/team/project/pull/42\x1b[0m\n");
   await queue.close();
   queue = createCliActionQueue({ filename, execute: async () => success });
   assert.deepEqual(queue.detail(job.id).result, expected);
+  assert.deepEqual(queue.output(job.id).filter(({ stream }) => stream === "stderr"), coloredOutput);
 });
 
 test("commands without a PR URL retain their original result shape", async (t) => {

@@ -140,6 +140,18 @@ and timed-out commands. Attach by command ID to replay retained stdout/stderr
 and follow new output. Cancel explicitly to terminate work; Retry creates a new
 entry linked to a failed or timed-out command.
 
+The command service runs displayed `gh aw` and `./cao.sh` commands in a
+pseudo-terminal through `node-pty`, capturing colors even when gh-aw requires
+TTY detection. Install its native runtime with `npm ci` in `dashboard/site`.
+The pseudo-terminal combines stdout and stderr in terminal order. Authentication,
+JSON preparation, and stdin-backed commands retain separate pipes. Color settings
+apply only to displayed commands, not authentication or JSON preparation reads.
+The browser terminal preserves standard, bright, 256-color, and true-color
+sequences across chunks and retained replay on both stdout and stderr; stderr
+is not automatically recolored because it also carries progress and status.
+GitHub CLI prompts and pagers are disabled. These terminal settings do not
+change the parent shell environment.
+
 The queue defaults to four concurrent executions (configure with
 `--command-concurrency 1..32`) and a 15-minute execution deadline, beginning when
 a command starts. GitHub-dependent work uses the existing

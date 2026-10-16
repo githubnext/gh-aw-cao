@@ -24,6 +24,71 @@ test("the dashboard bundle and Copilot extension share the CLI action executor",
   assert.equal(resolveGhAwCompilerVersion, bundledCliActions.resolveGhAwCompilerVersion);
 });
 
+test("displayed gh-aw and CAO commands capture colors without changing preparation or parent settings", {
+  skip: process.platform === "win32",
+}, async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "cao-colored-command-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const [key, value] of Object.entries({
+    NO_COLOR: "1", FORCE_COLOR: "0", GH_FORCE_TTY: "0", TERM: "dumb",
+  })) {
+    const previous = process.env[key];
+    t.after(() => {
+      if (previous === undefined) delete process.env[key];
+      else process.env[key] = previous;
+    });
+    process.env[key] = value;
+  }
+  const executable = join(directory, "gh");
+  const script = `#!/usr/bin/env node
+const assert = require("node:assert/strict");
+const args = process.argv.slice(2);
+if (args.includes("--help") || args[0] === "api") {
+  assert.equal(process.env.NO_COLOR, "1");
+  assert.equal(process.env.FORCE_COLOR, "0");
+  assert.equal(process.env.GH_FORCE_TTY, "0");
+  assert.equal(process.env.TERM, "dumb");
+  process.stdout.write(args[0] === "api" ? '{"login":"octocat","id":1}' : "usage");
+} else {
+  assert.equal(process.stdout.isTTY, true);
+  assert.equal(process.stderr.isTTY, true);
+  assert.notEqual(process.stdin.isTTY, true);
+  assert.equal(process.env.GH_PROMPT_DISABLED, "1");
+  assert.equal(process.env.NO_COLOR, undefined);
+  assert.equal(process.env.FORCE_COLOR, "3");
+  assert.equal(process.env.CLICOLOR_FORCE, "1");
+  assert.equal(process.env.GH_FORCE_TTY, "80");
+  assert.equal(process.env.TERM, "xterm-256color");
+  assert.equal(process.env.COLORTERM, "truecolor");
+  assert.equal(process.env.GH_PAGER, "cat");
+  process.stdout.write("\\x1b[32mSuccess\\x1b[0m\\n");
+  process.stderr.write("\\x1b[38;2;10;20;30mProgress\\x1b[0m\\n");
+}
+`;
+  for (const filename of [executable, join(directory, "cao.sh")]) {
+    await writeFile(filename, script);
+    await chmod(filename, 0o755);
+  }
+  for (const command of ["gh aw compile", "./cao.sh update"]) {
+    for (const streaming of [false, true]) {
+      const output = { stdout: "", stderr: "" };
+      const result = await executeDashboardCommand({
+        command, ghExecutable: executable, workingDirectory: directory, githubToken: "test-fixture", timeoutMs: 10000,
+        ...(streaming ? { onOutput: ({ stream, data }) => { output[stream] += data; } } : {}),
+      });
+      assert.equal(result.ok, true);
+      assert.equal(result.exitCode, 0);
+      const captured = streaming ? output : result;
+      assert.equal(captured.stdout.replaceAll("\r\n", "\n"),
+        "\x1b[32mSuccess\x1b[0m\n\x1b[38;2;10;20;30mProgress\x1b[0m\n");
+      assert.equal(captured.stderr, "");
+    }
+  }
+  assert.equal(process.env.NO_COLOR, "1");
+  assert.equal(process.env.FORCE_COLOR, "0");
+  assert.equal(process.env.TERM, "dumb");
+});
+
 test("buffered CLI commands preserve results and bound captured output", { skip: process.platform === "win32" }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "cao-buffered-command-"));
   const executable = join(directory, "gh");
@@ -346,7 +411,8 @@ test("CLI actions stream command output when an output handler is provided", asy
       throw new Error("buffered execution should not run");
     },
     onOutput: (event) => output.push(event),
-    streamCommand: async ({ onOutput, gitIdentity }) => {
+    streamCommand: async ({ onOutput, gitIdentity, terminal }) => {
+      assert.equal(terminal, true);
       assert.deepEqual(gitIdentity, {
         name: "octocat",
         email: "1+octocat@users.noreply.github.com",
@@ -384,6 +450,7 @@ test("agent-task actions pass the reviewed prompt through standard input", async
   });
 
   assert.equal(streamed.input, prompt);
+  assert.equal(streamed.terminal, false);
   assert.deepEqual(streamed.args, ["agent-task", "create", "--from-file", "-"]);
 });
 
