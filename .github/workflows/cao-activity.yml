@@ -305,7 +305,7 @@ jobs:
           REPORT_TARGET_OWNER: ${{ matrix.owner }}
           REPORT_TARGET_REPOSITORIES_JSON: ${{ toJSON(matrix.repositories) }}
           REPORT_DEFER_ISSUE_STATUS: "1"
-          REPORT_LOG_TIMEOUT: ${{ inputs.fast == true && '5' || '15' }}
+          REPORT_LOG_TIMEOUT: ${{ inputs.fast == true && '5' || '10' }}
           REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_MAX_STORAGE: ${{ inputs.fast == true && '100' || '1200' }}
           REPORT_RUN_LIMIT: ${{ inputs.fast == true && '10' || '10000' }}

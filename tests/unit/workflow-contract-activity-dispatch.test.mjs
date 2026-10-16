@@ -20,7 +20,7 @@ test('manual fast collection narrows download budgets without changing scope or 
   const collection = step('collect', 'Download owner-scoped agentic workflow logs');
   assert.equal(collection.env.REPORT_RUN_LIMIT, "${{ inputs.fast == true && '10' || '10000' }}");
   assert.equal(collection.env.REPORT_MAX_STORAGE, "${{ inputs.fast == true && '100' || '1200' }}");
-  assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '15' }}");
+  assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '10' }}");
   assert.equal(collection.env.REPORT_DETAIL_WINDOW_DAYS, "${{ inputs.fast == true && '1' || '7' }}");
   assert.equal(collection.env.REPORT_RUN_WINDOW_DAYS, '30');
   assert.equal(collection.env.REPORT_TARGET_REPOSITORIES_JSON, '${{ toJSON(matrix.repositories) }}');
