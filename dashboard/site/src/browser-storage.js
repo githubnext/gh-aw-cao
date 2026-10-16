@@ -1,4 +1,6 @@
-import { diagnosticErrorName } from './debug.js';
+import { createDebug, diagnosticErrorName } from './debug.js';
+
+const debugBrowserStorage = createDebug('browser-storage');
 
 export const TEMPORARY_STORAGE_WARNING = 'Browser storage is temporary or not guaranteed. In private browsing, downloaded dashboard data will be lost when the private session ends. Use a regular window to reuse data on future visits. Campaign data is not affected.';
 
@@ -15,7 +17,7 @@ export async function inspectBrowserStorage(storage) {
     }),
     Promise.resolve().then(() => storage?.estimate?.() ?? null)
   ]);
-  return {
+  const inspection = {
     persisted: persistence.status === 'fulfilled' ? persistence.value : null,
     usage: estimate.status === 'fulfilled' ? estimate.value?.usage ?? null : null,
     quota: estimate.status === 'fulfilled' ? estimate.value?.quota ?? null : null,
@@ -24,4 +26,12 @@ export async function inspectBrowserStorage(storage) {
           ? persistence.reason : estimate.status === 'rejected' ? estimate.reason : undefined) }
       : {})
   };
+  debugBrowserStorage({
+    operation: 'inspect',
+    persisted: inspection.persisted,
+    'has-estimate': inspection.usage !== null && inspection.quota !== null,
+    'persist-api': typeof storage?.persist === 'function',
+    ...('errorName' in inspection ? { errorName: inspection.errorName } : {})
+  });
+  return inspection;
 }
