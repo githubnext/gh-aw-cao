@@ -16,15 +16,14 @@ The Azure deployment runs the Go dashboard server from the `server/` directory a
 - Runs bounded [Dashboard Language](dashboard-language.md) queries against dashboard data in PostgreSQL.
 - Uses Azure Managed Redis only for sessions, rate limits, queues, deduplication, coordination, and bounded caches.
 
-```mermaid
-flowchart LR
-  Browser["Authorized browser"] -->|"HTTPS"| Function["Function App<br/>cao-functions custom handler"]
-  Function -->|"OAuth, refresh, membership"| GitHub["GitHub OAuth + API"]
-  Function -->|"managed identity"| KeyVault["Key Vault"]
-  Function -->|"PostgreSQL protocol"| Postgres["PostgreSQL<br/>dashboard entities + queries"]
-  Function -->|"rediss://"| Redis["Azure Managed Redis<br/>operational state"]
-  Function -->|"non-secret telemetry"| Insights["Application Insights"]
-```
+The Function App sits between the browser and the Azure or GitHub services it depends on:
+
+- **Authorized browser → Function App:** HTTPS on the same origin.
+- **Function App → GitHub:** OAuth sign-in, token refresh, and membership checks.
+- **Function App → Key Vault:** Managed identity for secret access.
+- **Function App → PostgreSQL:** Dashboard entities and query execution over the PostgreSQL protocol.
+- **Function App → Azure Managed Redis:** Sessions, queues, and other operational state over `rediss://`.
+- **Function App → Application Insights:** Non-secret operational telemetry.
 
 ## Prerequisites
 
