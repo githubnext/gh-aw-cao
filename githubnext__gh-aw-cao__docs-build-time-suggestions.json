@@ -1,7 +1,46 @@
 {
-  "source_sha": "573475888dc015a33e0f19cd4ef09130a8f53c3c",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "c7035164b2f35cfb5c63c91a3ecb53c6aa570fe6",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-16T15:53:18Z",
+      "worker_run_id": 38927193741,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        38926700561,
+        38924890051,
+        38923388111,
+        38920553235,
+        38920240360,
+        38918840983,
+        38917293463,
+        38917056131,
+        38915690483,
+        38915284787,
+        38912474568,
+        38911364559,
+        38910745334,
+        38909539751,
+        38909157000,
+        38907731912,
+        38907322173,
+        38906258108,
+        38905086017,
+        38903978657
+      ],
+      "docs_window": {
+        "start": "2026-10-16T12:55:30Z",
+        "end": "2026-10-16T15:49:19Z"
+      },
+      "docs_success_count": 18,
+      "docs_comparable_success_count": 5,
+      "docs_schedule_build_count": 3,
+      "docs_schedule_skip_count": 10,
+      "dashboard_completed_count": 20,
+      "dashboard_success_count": 16,
+      "decision": "noop_not_actionable",
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA c7035164b2f35cfb5c63c91a3ecb53c6aa570fe6. In the latest 20 completed docs.yml runs from 2026-10-16T12:55:30Z through 2026-10-16T15:49:19Z, 18 runs concluded success and 2 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. For like-for-like docs measurements, five successful workflow_run-triggered runs executed both build and deploy (38920240360, 38917056131, 38911364559, 38909539751, 38906258108), spanning three recent source revisions with stable artifact behavior. Trusted metadata showed median queue time 0.0s (p90 0.0s), docs workflow execution 79.0s (p90 99.0s), build 43.0s (p90 50.2s), deploy 11.0s (p90 34.0s), Restore cached CAO Dashboard 2.0s, Upload Pages artifact 6.0s (p90 7.6s), and Deploy Pages 7.0s (p90 30.2s). Three successful schedule-triggered rebuilds (38926700561, 38915690483, 38907731912) were disclosed separately as slower deploy outliers: they kept similar build times (54.0s median) but had slower deploys (46.0s median, p90 65.2s), including the current-source run 38926700561. Ten successful schedule runs skipped build and deploy after freshness with an 11.0s median full workflow and a 6.0s median freshness job. The latest 20 completed cao-dashboard.yml runs in the paired window contained 16 successful builds and 4 skipped callbacks; trusted metadata showed median queue time 0.0s (p90 0.0s), full execution 139.5s (p90 165.0s), build 123.0s (p90 146.0s), cache 9.0s (p90 11.5s), Upload dashboard artifact 5.5s (p90 7.0s), cache-job Download dashboard artifact 3.0s (p90 4.0s), and Save dashboard cache 2.0s (p90 3.0s). Bounded logs from docs run 38920240360 confirmed cache hits for node_modules and central-agentic-ops-dashboard, Astro building 75 pages in 12.82s, Pagefind finishing in 433ms, and a 39.8 MB github-pages.zip upload before a 5s deploy; current-source schedule run 38926700561 showed the same 39.8 MB upload and dashboard-cache hit but a 66s deploy wait after artifact upload. Bounded logs from dashboard run 38919868612 confirmed a cache hit for cao-activity-v5-38915266212-1 (~67 MB), dashboard npm ci adding only 6 packages in 2s, validation of a 385.6 MiB activity database, copying 278 activity shards totaling 256.0 MiB, uploading a 36.1 MB dashboard artifact in about 7s, and re-downloading then saving the same artifact in about 5s for the fixed dashboard cache. No new recommendation in this category is actionable because repeated evidence still shows artifact transfer and Pages packaging are secondary costs well below the dominant 95s median dashboard activity-upgrade step, and the only larger delay in the current window is Pages deployment service latency that is not tied to a concrete workflow change proven to save at least 60 seconds or 15 percent without weakening freshness or deployment safety."
+    },
     {
       "evaluated_at": "2026-10-16T15:39:40Z",
       "worker_run_id": 38925218295,
@@ -1296,45 +1335,6 @@
       "dashboard_success_run_ids": [],
       "decision": "noop_insufficient_evidence",
       "outcome": "Evaluated category \"reusable dashboard generation\" on current source SHA 3ff54d6f7863c61c1c101c9800a45ff5b00136e7. In the latest 20 completed docs.yml runs from 2026-10-15T20:22:38Z through 2026-10-15T22:23:06Z, 9 runs concluded success, 10 concluded skipped, and 1 concluded action_required; there were no failed, cancelled, or timed_out runs in the inspected window. Only 4 comparable successful docs runs executed both build and deploy: 38801430881, 38809471925, 38810844842, and 38814233540, all on schedule. Two additional successful push runs, 38807631070 and 38812374506, rebuilt documentation but skipped deploy, so they were disclosed as non-comparable outliers. Five successful schedule runs, 38802995042, 38804796944, 38806647932, 38812321559, and 38816726101, skipped build and deploy after the freshness gate. Trusted run and job metadata for the 4 comparable runs showed median queue time 0s, docs workflow execution 98.5s (p90 102s), build 50s (p90 60s), and deploy 25s (p90 33s). Trusted build metadata for those runs showed Build documentation taking 9s, 14s, 14s, and 15s; Restore cached CAO Dashboard taking 2s, 2s, 3s, and 4s; and Upload Pages artifact taking 12s, 14s, 14s, and 15s. Trusted build logs from run 38814233540 confirmed cache hits for the setup-node npm cache, the Linux-node-24 node_modules cache, and the fixed-key central-agentic-ops-dashboard cache, with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped. In the latest 20 completed cao-dashboard.yml runs, all 20 runs were skipped workflow_run callbacks, so there were 0 successful dashboard-generation samples in the inspected window. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, and there were no successful dashboard-generation runs to measure reusable dashboard generation directly, this evaluation stopped without an actionable reusable-dashboard suggestion."
-    },
-    {
-      "evaluated_at": "2026-10-15T21:28:11Z",
-      "worker_run_id": 38809436203,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38809471925,
-        38809116438,
-        38807631070,
-        38806647932,
-        38806377294,
-        38805745072,
-        38804796944,
-        38802995042,
-        38802950209,
-        38801430881,
-        38801059458,
-        38800192856,
-        38800177046,
-        38800010928,
-        38798625920,
-        38798424683,
-        38797755462,
-        38797432449,
-        38797264867,
-        38796829058
-      ],
-      "docs_window": {
-        "start": "2026-10-15T19:48:10Z",
-        "end": "2026-10-15T21:23:19Z"
-      },
-      "docs_success_count": 10,
-      "docs_comparable_success_count": 3,
-      "docs_deployed_success_count": 3,
-      "dashboard_completed_count": 20,
-      "dashboard_success_count": 0,
-      "dashboard_success_run_ids": [],
-      "decision": "noop_insufficient_evidence",
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA c07eaee32f6f890c24e297266dd5302874cc7971. In the latest 20 completed docs.yml runs from 2026-10-15T19:48:10Z through 2026-10-15T21:23:19Z, 10 runs concluded success and 10 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only 3 comparable successful docs runs executed both build and deploy: 38798625920, 38801430881, and 38809471925. Four additional successful push runs, 38797264867, 38797755462, 38800177046, and 38807631070, rebuilt documentation but skipped deploy. Three successful schedule runs, 38802995042, 38804796944, and 38806647932, skipped build and deploy after freshness concluded the published docs and dashboard were current. Trusted build metadata for the 3 comparable runs showed the Build documentation step lasting 12s, 15s, and 14s. Trusted build logs from run 38809471925 confirmed cache hits for the setup-node npm cache and the Linux-node-24 node_modules cache, and trusted schedule-freshness logs from run 38806647932 confirmed the skip message was \"Documentation build skipped because the deployed docs and dashboard are current.\" In the latest 20 completed cao-dashboard.yml runs, all 20 runs were skipped, so there were 0 successful dashboard-generation samples in the inspected window. Because the worker requires at least 5 comparable successful docs runs before making a timing-backed recommendation, this evaluation stopped without an actionable Astro documentation generation suggestion."
     }
   ]
 }
