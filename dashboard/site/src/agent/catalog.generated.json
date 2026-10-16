@@ -17,7 +17,7 @@
     {
       "id": "command",
       "title": "Command output",
-      "description": "",
+      "description": "Approved commands open here as a full-page console. Use Back to Commands to leave; completion never closes the view or cancels the command.",
       "experimental": false,
       "parameters": [
         {
