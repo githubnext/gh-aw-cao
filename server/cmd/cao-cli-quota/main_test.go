@@ -525,3 +525,45 @@ func TestRefreshPropagatesReadFailure(t *testing.T) {
 		t.Fatal("read failure not propagated")
 	}
 }
+
+func TestSnapshotFromRateLimitIdentityAndObservations(t *testing.T) {
+	data := []byte(`{"resources":{"core":{"limit":5000,"remaining":4000,"reset":4102444800},"graphql":{"limit":100,"remaining":7,"reset":4102444801}}}`)
+	got, err := snapshotFromRateLimit("GitHub.com", 42, data, []string{"core", "graphql"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	same, err := snapshotFromRateLimit("github.com", 42, data, []string{"core"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.identity != same.identity || !strings.HasPrefix(got.identity, "gh-") {
+		t.Fatalf("identity must be host-case-insensitive and prefixed: %q vs %q", got.identity, same.identity)
+	}
+	other, err := snapshotFromRateLimit("github.com", 43, data, []string{"core"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.identity == got.identity {
+		t.Fatal("different users must have different identities")
+	}
+	if len(same.observations) != 1 || got.observations["graphql"].Remaining != 7 || got.observations["core"].ResetAt.Unix() != 4102444800 {
+		t.Fatalf("unexpected observations: %+v", got.observations)
+	}
+}
+
+func TestSnapshotFromRateLimitRejectsBadPayloads(t *testing.T) {
+	cases := map[string]string{
+		"invalid json":   `{`,
+		"missing meter":  `{"resources":{}}`,
+		"zero limit":     `{"resources":{"core":{"limit":0,"remaining":0,"reset":1}}}`,
+		"over limit":     `{"resources":{"core":{"limit":10,"remaining":11,"reset":1}}}`,
+		"negative":       `{"resources":{"core":{"limit":10,"remaining":-1,"reset":1}}}`,
+		"missing reset":  `{"resources":{"core":{"limit":10,"remaining":1}}}`,
+		"null remaining": `{"resources":{"core":{"limit":10,"remaining":null,"reset":1}}}`,
+	}
+	for name, payload := range cases {
+		if _, err := snapshotFromRateLimit("github.com", 1, []byte(payload), []string{"core"}); err == nil {
+			t.Errorf("%s: expected error", name)
+		}
+	}
+}

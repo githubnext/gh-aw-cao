@@ -332,10 +332,17 @@ func ghSnapshot(ctx context.Context, run commandRunner, executable, host string,
 	if err != nil {
 		return snapshot{}, errors.New("GitHub quota observation is unavailable")
 	}
+	return snapshotFromRateLimit(host, userID, data, resources)
+}
+
+// snapshotFromRateLimit derives the credential identity and validates every
+// required meter in a `gh api rate_limit` payload.
+func snapshotFromRateLimit(host string, userID int64, data []byte, resources []string) (snapshot, error) {
 	var payload struct {
 		Resources map[string]meter `json:"resources"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
+		quotaLog.Printf("rejected quota snapshot: reason=invalid_payload")
 		return snapshot{}, errors.New("GitHub quota observation is invalid")
 	}
 	sum := sha256.Sum256(fmt.Appendf(nil, "%s:%d", strings.ToLower(host), userID))
@@ -343,6 +350,7 @@ func ghSnapshot(ctx context.Context, run commandRunner, executable, host string,
 	for _, resource := range resources {
 		m, ok := payload.Resources[resource]
 		if !ok || m.Limit == nil || m.Remaining == nil || *m.Limit <= 0 || *m.Remaining < 0 || *m.Remaining > *m.Limit || m.Reset <= 0 {
+			quotaLog.Printf("rejected quota snapshot: reason=incomplete_meter resources=%d", len(resources))
 			return snapshot{}, errors.New("GitHub quota observation is incomplete")
 		}
 		result.observations[resource] = githubquota.Observation{
