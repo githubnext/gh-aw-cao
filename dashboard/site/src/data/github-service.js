@@ -131,7 +131,8 @@ export function createGitHubDataService(dependencies = {}) {
     if (signal.aborted) return () => {};
     const base = configuration.baseUrl ? new URL(configuration.baseUrl) : null;
     if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password
-        || /(^|\.)github(?:usercontent)?\.com$/i.test(base.hostname) || base.hostname === 'api.github.com')) {
+        || base.search || base.hash || !/\/api\/v1\/github\/$/.test(base.pathname)
+        || /(^|\.)github(?:usercontent)?\.com$/i.test(base.hostname.replace(/\.$/, '')))) {
       throw new TypeError('GitHub resources require a dashboard backend URL.');
     }
     const credentials = configuration.credentials ?? 'same-origin';

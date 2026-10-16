@@ -60,7 +60,7 @@ describe('worker GitHub resource service', () => {
     const { listener } = subscribe(createGitHubDataService({ fetch }));
     await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network', status: 'available' })));
     expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-aw-cao');
-    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'same-origin' });
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'same-origin', redirect: 'error' });
     expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
     const receipts = await readTransactions(indexedDB);
     expect(receipts).toHaveLength(1);
@@ -273,13 +273,58 @@ describe('worker GitHub resource service', () => {
     await vi.waitFor(() => expect(third.listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: null, error: 'unavailable' })));
   });
 
-  it('supports safe normalized latest releases and refuses direct GitHub URLs and invalid resource paths', async () => {
+  it.each([
+    'https://api.github.com/',
+    'https://api.github.com/api/v1/github/',
+    'https://api.github.com./api/v1/github/',
+    'https://github.com/api/v1/github/',
+    'https://raw.githubusercontent.com/api/v1/github/',
+    'https://github.enterprise.example/api/v3/',
+    'https://github.enterprise.example/api/graphql/',
+    'https://dashboard.example/',
+    'https://dashboard.example/api/v1/github',
+    'https://dashboard.example/api/v1/github/?upstream=https://api.github.com',
+    'https://dashboard.example/api/v1/github/#upstream',
+    'https://user:password@dashboard.example/api/v1/github/',
+    'ftp://dashboard.example/api/v1/github/'
+  ])('rejects non-backend resource destinations before storage or network access: %s', (baseUrl) => {
+    const fetch = vi.fn();
+    const open = vi.spyOn(indexedDB, 'open');
+    expect(() => subscribe(createGitHubDataService({ fetch }), { baseUrl })).toThrow(/backend URL/);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('preserves the local preview server prefix for resource requests', async () => {
+    const fetch = vi.fn(/** @type {typeof globalThis.fetch} */ (async () => response()));
+    const { listener } = subscribe(createGitHubDataService({ fetch }), {
+      ...configuration, baseUrl: 'http://127.0.0.1:8080/cao/api/v1/github/', credentials: 'omit'
+    });
+    await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('http://127.0.0.1:8080/cao/api/v1/github/repos/githubnext/gh-aw-cao');
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'omit', redirect: 'error' });
+    expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
+  });
+
+  it('reports unavailable when the backend redirects instead of retrying against an upstream API', async () => {
+    const fetch = vi.fn(/** @type {typeof globalThis.fetch} */ (async (_url, init) => {
+      expect(init?.redirect).toBe('error');
+      throw new TypeError('Redirect blocked');
+    }));
+    const { listener } = subscribe(createGitHubDataService({ fetch }));
+    await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: null, status: 'unavailable', error: 'unavailable'
+    })));
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-aw-cao');
+  });
+
+  it('supports safe normalized latest releases and refuses invalid resource paths', async () => {
     const fetch = vi.fn(/** @type {typeof globalThis.fetch} */ (async () => response({ tag_name: 'v1', name: 'Release', body: 'not retained', draft: false })));
     const service = createGitHubDataService({ fetch });
     const { listener } = subscribe(service, configuration, { ...resource, resource: 'latest-release' });
     await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ data: { tag_name: 'v1', name: 'Release', draft: false } })));
     expect(String(fetch.mock.calls[0]?.[0])).toMatch(/\/releases\/latest$/);
-    expect(() => subscribe(service, { baseUrl: 'https://api.github.com/' })).toThrow(/backend URL/);
     expect(() => githubResourcePath({ owner: 'a/b', repo: 'test' })).toThrow();
     expect(() => githubResourcePath({ owner: 'test', repo: '..' })).toThrow();
   });
