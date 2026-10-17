@@ -134,6 +134,20 @@ describe('model routing unified-session contract', () => {
     }]);
   });
 
+  it('counts only the four specified agent-job outcomes as known results', async () => {
+    const indexedDB = new IDBFactory();
+    for (const [index, result] of ['success', 'failure', 'cancelled', 'skipped', 'timed_out'].entries()) {
+      await ingest(indexedDB, index + 1, [
+        event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', selectedEffort: 'high' }),
+        event('workflow.job_result', { jobId: 'agent', result })
+      ]);
+    }
+    const result = await query(indexedDB, ['routing-outcomes'], { 'minimum-sample': 1 });
+    expect(result['routing-outcomes'].rows).toMatchObject([{
+      successes: 1, 'known-outcomes': 4, 'unknown-outcomes': 1, 'success-rate': 0.25
+    }]);
+  });
+
   it('chooses proxy accounting per phase and never makes missing purpose agent traffic', async () => {
     const indexedDB = new IDBFactory();
     await ingest(indexedDB, 1, [

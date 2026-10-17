@@ -88,7 +88,7 @@
           { "field": "routing-goal", "as": "configured-goal", "reducer": "unique", "filter": { "predicates": [{ "field": "event-type", "equals": "model.config" }] } },
           { "field": "routing-configured-mode", "as": "configured-routing-mode", "reducer": "unique", "filter": { "predicates": [{ "field": "event-type", "equals": "model.config" }] } },
           { "field": "routing-max-credits", "as": "configured-max-credits", "reducer": "unique", "filter": { "predicates": [{ "field": "event-type", "equals": "model.config" }] } },
-          { "field": "event-status", "as": "agent-result", "reducer": "unique", "filter": { "predicates": [{ "field": "event-type", "equals": "workflow.job_result" }, { "field": "name", "equals": "agent" }] } },
+          { "field": "event-status", "as": "agent-result", "reducer": "unique", "filter": { "predicates": [{ "field": "event-type", "equals": "workflow.job_result" }, { "field": "name", "equals": "agent" }, { "field": "event-status", "in": ["success", "failure", "cancelled", "skipped"] }] } },
           { "field": "event", "as": "warnings", "reducer": "count", "filter": { "predicates": [{ "field": "event-type", "equals": "session.collection_warning" }] } }
         ]
       }
