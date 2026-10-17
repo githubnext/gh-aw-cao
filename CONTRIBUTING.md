@@ -122,6 +122,16 @@ Workflow source changes must pass `npm run compile`. Run
 The root Go module provides the operator-facing `gh cao` GitHub CLI extension.
 It is independent of the existing `server/` module. `make check` scopes Go checks to `cmd/` and `internal/`,
 excluding dashboard server tests and Go files inside npm dependencies.
+Extension CI also runs golangci-lint with the root `.golangci.yml`, including
+gofmt/goimports checks and the standard linters. To run those checks locally:
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+golangci-lint fmt --diff ./cmd/... ./internal/...
+golangci-lint run ./cmd/... ./internal/...
+```
+
+Formatting diffs must be empty; CI fails when the formatter reports changes.
 Use the Go version declared in `go.mod` or newer, GitHub CLI, and Make. For local
 extension installation, the checkout directory must be named `gh-cao`, even
 before the repository is renamed:
@@ -154,7 +164,8 @@ On Windows, build `gh-cao.exe` with
 | `go.mod`, `go.sum` | Pinned extension dependencies, separate from `server/go.mod`. |
 | `Makefile` | `build`, `release`, `fmt`, `lint` (gofmt and go vet), `test` (race detector), and `check`. |
 | `scripts/build-release.sh` | Cross-compile six extension binaries with the exact release tag embedded in `main.version`, then write SHA-256 checksums. |
-| `.github/workflows/go-extension.yml` | Path-scoped extension formatting, vet, tests, build, and smoke checks. |
+| `.golangci.yml` | Root-module standard linters and gofmt/goimports formatting, separate from the server configuration. |
+| `.github/workflows/go-extension.yml` | Path-scoped extension formatting, golangci-lint, vet, tests, build, and smoke checks. |
 
 Reuse `github.com/github/gh-aw/pkg/logger` rather than implementing another
 logger. Enable its namespaces with `DEBUG=cao:*` and disable debug colors with

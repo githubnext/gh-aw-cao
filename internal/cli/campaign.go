@@ -41,7 +41,7 @@ func campaignWorkflows(campaign string) ([]string, error) {
 	return result, nil
 }
 
-func readCampaignDeclaration(directory, campaign string) (*campaignDeclaration, error) {
+func readCampaignDeclaration(directory, campaign string) (result *campaignDeclaration, err error) {
 	path := filepath.Join(directory, "cao.json")
 	file, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -50,7 +50,7 @@ func readCampaignDeclaration(directory, campaign string) (*campaignDeclaration, 
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { err = errors.Join(err, file.Close()) }()
 	var declaration struct {
 		Campaign     string          `json:"campaign"`
 		Orchestrator string          `json:"orchestrator"`
@@ -75,7 +75,7 @@ func readCampaignDeclaration(directory, campaign string) (*campaignDeclaration, 
 	if err != nil || token != json.Delim('{') {
 		return nil, fmt.Errorf("%s workers must be a non-empty object", path)
 	}
-	result := &campaignDeclaration{Campaign: campaign, Orchestrator: declaration.Orchestrator}
+	result = &campaignDeclaration{Campaign: campaign, Orchestrator: declaration.Orchestrator}
 	seen := map[string]bool{}
 	workerNames := map[string]bool{}
 	for workers.More() {
@@ -175,6 +175,8 @@ func checkLiveAuthentication(cmd *cobra.Command, gh ghExecutor) {
 		}
 	}
 	if !configured && os.Getenv("CI") == "true" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Live write authentication is not configured for %s; run gh cao setup to configure a GitHub App or PAT before posting live items.\n", repository)
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Live write authentication is not configured for %s; run gh cao setup to configure a GitHub App or PAT before posting live items.\n", repository); err != nil {
+			log.Print("Unable to write live authentication warning")
+		}
 	}
 }

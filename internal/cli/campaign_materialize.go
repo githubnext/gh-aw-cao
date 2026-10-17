@@ -122,7 +122,7 @@ func repositoryPath(destination string) (string, error) {
 	}
 }
 
-func materializeCampaign(ctx context.Context, gh ghExecutor, campaign, sourceRoot string) (*campaignDeclaration, error) {
+func materializeCampaign(ctx context.Context, gh ghExecutor, campaign, sourceRoot string) (result *campaignDeclaration, err error) {
 	destination, err := repositoryPath(campaign)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func materializeCampaign(ctx context.Context, gh ghExecutor, campaign, sourceRoo
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(staging)
+	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
 	if sourceRoot != "" {
 		err = stageTrackedCampaign(ctx, sourceRoot, staging, campaign)
 	} else {
@@ -258,12 +258,12 @@ func stageCampaignFile(staging, name string, mode os.FileMode, input io.Reader) 
 	return closeErr
 }
 
-func stageCampaignArchive(ctx context.Context, archive io.Reader, staging, campaign string) error {
+func stageCampaignArchive(ctx context.Context, archive io.Reader, staging, campaign string) (err error) {
 	compressed, err := gzip.NewReader(archive)
 	if err != nil {
 		return fmt.Errorf("invalid CAO archive: %w", err)
 	}
-	defer compressed.Close()
+	defer func() { err = errors.Join(err, compressed.Close()) }()
 	reader := tar.NewReader(compressed)
 	var root string
 	for {
@@ -301,7 +301,7 @@ func stageCampaignArchive(ctx context.Context, archive io.Reader, staging, campa
 		if !safeCampaignPath(resource, campaign) {
 			return fmt.Errorf("unsafe CAO campaign path: %q", resource)
 		}
-		if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeRegA {
+		if header.Typeflag != tar.TypeReg {
 			return fmt.Errorf("unsupported CAO archive entry type for %s", resource)
 		}
 		if err := stageCampaignFile(staging, resource, os.FileMode(header.Mode), reader); err != nil {

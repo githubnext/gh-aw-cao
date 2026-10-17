@@ -199,7 +199,7 @@ func readPolicy() (map[string]any, error) {
 	return document, nil
 }
 
-func writePolicy(document map[string]any, create bool) error {
+func writePolicy(document map[string]any, create bool) (err error) {
 	var original []byte
 	if !create {
 		var err error
@@ -219,10 +219,13 @@ func writePolicy(document map[string]any, create bool) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
+	defer func() {
+		if removeErr := os.Remove(file.Name()); !errors.Is(removeErr, os.ErrNotExist) {
+			err = errors.Join(err, removeErr)
+		}
+	}()
 	if _, err := file.Write(append(content, '\n')); err != nil {
-		file.Close()
-		return err
+		return errors.Join(err, file.Close())
 	}
 	if err := file.Close(); err != nil {
 		return err
