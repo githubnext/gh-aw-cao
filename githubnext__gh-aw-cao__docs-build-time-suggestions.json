@@ -3,6 +3,34 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-17T10:23:45Z",
+      "worker_run_id": 39024486982,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        39024561244,
+        39024394751,
+        39023322207,
+        39022363324,
+        39021573078,
+        39020868386,
+        39019546432,
+        39018733048,
+        39018718063,
+        39018141339,
+        39017379499,
+        39017223028,
+        39015843426,
+        39014860602,
+        39014114830,
+        39013971286,
+        39013428151,
+        39012230962,
+        39011796811,
+        39011704428
+      ],
+      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T06:55:28Z through 2026-10-17T10:21:15Z, 17 runs concluded success, 2 concluded skipped, 1 concluded action_required, and none failed or were cancelled. All 20 runs shared the same head SHA, but only 2 successful runs executed both docs build and deploy (39011796811 and 39018733048). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-17T09:53:08Z",
       "worker_run_id": 39022614407,
       "category": "reusable dashboard generation",
