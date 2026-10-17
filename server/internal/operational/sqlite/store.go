@@ -1,6 +1,6 @@
 // Package sqlite is a single-host, file-backed store for local debugging of
-// hosted CLI actions. It provides only the CLI command queue and the
-// tamper-evident audit table, so `serve-hosted` and `execute-cli` on one
+// hosted CLI actions. It provides the CLI command queue, encrypted token
+// cleanup journal, and tamper-evident audit table, so `serve-hosted` and `execute-cli` on one
 // machine can share them without PostgreSQL. It is not a production backend:
 // it has no namespace isolation, capacity accounting, or replication.
 package sqlite

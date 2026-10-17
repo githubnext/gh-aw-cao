@@ -106,12 +106,14 @@ func NewHostedCLIExecutorFromEnv(ctx context.Context, options HostedCLIExecutorO
 	var store io.Closer
 	var queues operational.CLICommandQueues
 	var auditStore operational.AuditLog
+	var revocations operational.RevocationQueue
 	if options.SQLitePath != "" {
 		debugStore, err := OpenHostedCLISQLite(ctx, options.SQLitePath)
 		if err != nil {
 			return nil, err
 		}
 		store, queues, auditStore = debugStore, debugStore, debugStore
+		revocations = debugStore
 		if options.Logger != nil {
 			options.Logger.Printf("hosted CLI execution uses a local SQLite debug store; not for production")
 		}
@@ -122,8 +124,13 @@ func NewHostedCLIExecutorFromEnv(ctx context.Context, options HostedCLIExecutorO
 		}
 		services := operationalStore.OperationalServices()
 		store, queues, auditStore = operationalStore, services.CLICommands, services.Audit
+		if operationalStore.Capabilities().Revocations.Persistence != operational.PersistenceRestart {
+			_ = store.Close()
+			return nil, errors.New("hosted CLI execution requires restart-durable token revocations")
+		}
+		revocations = services.Revocations
 	}
-	executor, err := newHostedCLIExecutor(ctx, queues, auditStore, client, control, apiURL, options)
+	executor, err := newHostedCLIExecutor(ctx, queues, auditStore, revocations, client, control, apiURL, options)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
@@ -131,7 +138,7 @@ func NewHostedCLIExecutorFromEnv(ctx context.Context, options HostedCLIExecutorO
 	return &HostedCLIExecutor{Executor: executor, store: store}, nil
 }
 
-func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueues, auditStore operational.AuditLog, client *githubapp.Client, control, apiURL string, options HostedCLIExecutorOptions) (*hostedcli.Executor, error) {
+func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueues, auditStore operational.AuditLog, revocationQueue operational.RevocationQueue, client *githubapp.Client, control, apiURL string, options HostedCLIExecutorOptions) (*hostedcli.Executor, error) {
 	if queues == nil {
 		return nil, errors.New("hosted CLI execution requires the postgres operational store or --sqlite")
 	}
@@ -156,14 +163,18 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 		return nil, err
 	}
 	auditLog = auditLog.WithStore(auditStore)
-	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog})
+	revocations, err := hostedCLIRevocationsFromEnv(revocationQueue)
+	if err != nil {
+		return nil, err
+	}
 	image := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTAINER_IMAGE"))
 	dockerBinary := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_DOCKER"))
 	runner, err := hostedcli.NewContainerRunner(image, dockerBinary, hostedcli.ExecRunner{})
 	if err != nil {
 		return nil, err
 	}
-	return hostedcli.NewExecutor(queue, broker, client, runner, hostedcli.Options{
+	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog, Revocations: revocations})
+	executor, err := hostedcli.NewExecutor(queue, broker, client, runner, hostedcli.Options{
 		Owner:               options.Owner,
 		ControlRepository:   control,
 		ContainerImage:      runner.Image,
@@ -175,6 +186,11 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 		Logger:              options.Logger,
 		Audit:               auditLog,
 	})
+	if err != nil {
+		_ = broker.Close(ctx)
+		return nil, err
+	}
+	return executor, nil
 }
 
 // gitHubHost derives the gh hostname from an App API base URL.
