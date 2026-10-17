@@ -207,6 +207,9 @@ function metadata(type, data) {
 
 /** @param {string} type @param {Record<string, unknown>} data */
 export function sessionMetadata(type, data) {
+  if (typeof data.status === 'number' && Number.isFinite(data.status)) {
+    data = { ...data, status: String(data.status) };
+  }
   const integers = new Set(['exitCode', 'httpStatus', 'requestBytes', 'responseBytes', 'errorsCount',
     'permissionDenialsCount', 'rateLimit', 'remaining', 'used', 'requestAttempt', 'turns', 'toolCalls', 'totalEvents']);
   return metadata(type, data).map((entry) => ({

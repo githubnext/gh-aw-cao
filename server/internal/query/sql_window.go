@@ -312,11 +312,12 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 	numeric := sqlFinite(sqlNumeric(value))
 	var result string
 	kind := SQLNumber
-	if entry.Operation == "previous" {
+	switch entry.Operation {
+	case "previous":
 		result, kind = "lag("+value.Expression+") OVER ("+over+")", value.Kind
-	} else if entry.Operation == "row-number" {
+	case "row-number":
 		result = "row_number() OVER (" + over + ")"
-	} else if entry.Operation == "rolling" {
+	case "rolling":
 		reducer := entry.Reducer
 		if reducer == "" || reducer == "mean" {
 			reducer = "avg"
@@ -331,7 +332,7 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 		if entry.Alignment == "centered" {
 			result = "CASE WHEN count(*)" + window + fmt.Sprintf(" = %d THEN %s END", *entry.Frame, result)
 		}
-	} else {
+	default:
 		previous := "lag(" + numeric + ") OVER (" + over + ")"
 		difference := "(" + numeric + " - " + previous + ")"
 		switch entry.Mode {
