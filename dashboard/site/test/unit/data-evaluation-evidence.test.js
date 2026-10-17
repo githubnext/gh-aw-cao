@@ -3,10 +3,12 @@ import { resolve } from 'node:path';
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
+import { parseExperimentAssignments, experimentAssignmentArtifact } from '../../src/data/adapters/experiment-evidence.js';
 import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../../src/data/adapters/gh-aw-logs.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
-import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
+import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../../src/data/ingest/coordinator.js';
+import { readCollections } from '../../src/data/storage/indexeddb.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/evaluation-evidence-contract.json' with { type: 'json' };
@@ -32,6 +34,18 @@ const cached = () => `${JSON.stringify({
 afterEach(() => vi.unstubAllGlobals());
 
 describe('unified evaluation evidence', () => {
+  it('rejects invalid or ambiguous standalone assignments without exposing their contents', () => {
+    for (const content of ['PRIVATE_INVALID_JSON', 'null', '[]', '{"prompt":100}', '{"prompt":""}']) {
+      expect(() => parseExperimentAssignments(content, 'experiment/assignments.json'))
+        .toThrow(/^experiment\/assignments.json must contain/);
+    }
+    expect(() => experimentAssignmentArtifact([
+      { path: 'usage/experiment/assignments.json', content: '{}' },
+      { path: 'experiment/assignments.json', content: '{}' }
+    ])).toThrow('Multiple experiment assignment artifacts found for one run');
+    expect(parseExperimentAssignments('{}', 'experiment/assignments.json')).toEqual({ assignments: {} });
+  });
+
   it('retains untimed typed evidence, enriches grader metadata and never stores private bodies', () => {
     const parsed = projection();
     expect(parsed.events).toEqual([]);
@@ -67,13 +81,71 @@ describe('unified evaluation evidence', () => {
       observedAt: '2026-10-15T10:01:00Z',
       repository: { githubId: 1, owner: 'octo', name: 'api' },
       workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
-      run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z' },
+      run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z',
+        url: 'https://github.com/octo/api/actions/runs/303' },
       files: [{ path: 'usage/aw_session.jsonl', content }]
     }).observations);
     expect(batch.graderObservations).toMatchObject([{ value: 0.93 }]);
     expect(batch.evalObservations).toHaveLength(2);
     expect(batch.experimentAssignments).toHaveLength(1);
     expect(relationshipErrors(batch)).toEqual([]);
+  });
+
+  it('persists standalone experiment assignments and resolves every Experiments view source through the worker', async () => {
+    const indexedDB = new IDBFactory();
+    vi.stubGlobal('indexedDB', indexedDB);
+    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    const input = {
+      observedAt: '2026-10-15T10:01:00Z',
+      repository: { githubId: 1, owner: 'octo', name: 'api' },
+      workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
+      run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z',
+        url: 'https://github.com/octo/api/actions/runs/303' },
+      files: [{ path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate","style":"concise"}' }]
+    };
+    await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
+    const stored = await readCollections(indexedDB, ['experiments', 'experimentAssignments']);
+    expect(stored.experiments).toHaveLength(2);
+    expect(stored.experimentAssignments).toHaveLength(2);
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        sourceNames: [contract.experiments.query, contract.experiments.coverage.query, contract.experiments.definitions.query],
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    expect(sources[contract.experiments.query].rows).toMatchObject([
+      { experiment: 'prompt', variant: 'candidate', run: '303', repository: 'api',
+        workflow: '.github/workflows/worker.md', 'assignment-link': 'https://github.com/octo/api/actions/runs/303' },
+      { experiment: 'style', variant: 'concise', run: '303', repository: 'api' }
+    ]);
+    expect(sources[contract.experiments.coverage.query].rows).toMatchObject([
+      { experiment: 'prompt', assignments: 1 }, { experiment: 'style', assignments: 1 }
+    ]);
+    expect(sources[contract.experiments.definitions.query].rows.map((row) => row['experiment-name']))
+      .toEqual(['prompt', 'style']);
+    await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
+    expect((await readCollections(indexedDB, ['experimentAssignments'])).experimentAssignments).toHaveLength(2);
+  });
+
+  it('prefers explicit unified assignments, including empty maps, over standalone artifacts', () => {
+    for (const assignments of [{ prompt: 'control' }, {}]) {
+      const batch = normalize(adaptGhAwLogs({
+        observedAt: '2026-10-15T10:01:00Z',
+        repository: { githubId: 1, owner: 'octo', name: 'api' },
+        workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
+        run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z' },
+        files: [
+          { path: 'usage/aw_session.jsonl', content: [
+            { type: 'session.format', data: { version: 1 } },
+            { type: 'experiment.assignment', data: { assignments } }
+          ].map((record) => JSON.stringify(record)).join('\n') },
+          { path: 'usage/experiment/assignments.json', content: 'PRIVATE_INVALID_FALLBACK' }
+        ]
+      }).observations);
+      expect(batch.experimentAssignments?.map((row) => row.variant)).toEqual(Object.values(assignments));
+    }
   });
 
   it('falls back independently by category while honoring explicit empty session results', () => {

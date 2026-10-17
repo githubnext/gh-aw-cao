@@ -250,6 +250,7 @@ export function parseUnifiedSession(content, path) {
  * @param {string} content
  * @param {string} path
  * @param {{ runId: string, attempt: number }} context
+ * @returns {{ events: SessionEvidence[], run: Record<string, unknown> } & Record<string, unknown>}
  */
 export function parseUnifiedSessionDocument(content, path, context) {
   const records = sessionRecords(content, path);

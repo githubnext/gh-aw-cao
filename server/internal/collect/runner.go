@@ -252,7 +252,7 @@ func (r Runner) downloadLogs(ctx context.Context, repository, workspace, token s
 		"--output", filepath.Join(workspace, "logs"),
 		"--summary-file", "",
 		"--cached-jsonl", shardPrefix + "*",
-		"--artifacts", "usage",
+		"--artifacts", "usage,experiment",
 		"--start-date", fmt.Sprintf("-%dd", r.windowDays()),
 		"--cache-before", fmt.Sprintf("-%dd", r.windowDays()),
 		"--count", strconv.Itoa(r.runLimit()),

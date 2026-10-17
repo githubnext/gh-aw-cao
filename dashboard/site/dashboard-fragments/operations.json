@@ -2612,8 +2612,36 @@
           }
         },
         {
+          "id": "experiments-assignments",
+          "title": "Run assignments",
+          "description": "Explicit observed variants for retained runs. Assignments are not experiment outcomes or treatment effects.",
+          "data": {
+            "source": "experiment-assignments",
+            "order-by": [
+              { "field": "workflow", "direction": "asc" },
+              { "field": "assignment-at", "direction": "desc" }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No experiment assignments were observed.",
+          "encoding": {
+            "columns": [
+              { "field": "experiment", "type": "nominal", "title": "Experiment" },
+              { "field": "variant", "type": "nominal", "title": "Assigned variant" },
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "run", "type": "nominal", "title": "Run" },
+              { "field": "assignment-at", "type": "temporal", "title": "Observed at", "format": "human-friendly-timestamp" },
+              { "field": "assignment-link", "type": "nominal", "title": "Evidence", "format": "workflow-run-url" }
+            ]
+          }
+        },
+        {
           "id": "experiments-definitions",
-          "title": "Experiments",
+          "disclosure": "supplemental",
           "description": "Experiment definitions discovered in run-level audit evidence. Missing campaign progress targets are not inferred.",
           "data": { "source": "experiments" },
           "mark": "table",
