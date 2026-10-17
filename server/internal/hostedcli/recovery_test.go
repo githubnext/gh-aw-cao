@@ -130,6 +130,9 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			if minter.liveCount() != 0 {
 				t.Fatal("uncertain workload token was not revoked")
 			}
+			if events, err := store.ListAudit(ctx, operational.AuditFilter{Event: "cli_command.finished"}); err != nil || len(events) != 0 {
+				t.Fatal("uncertain VM termination produced completion evidence", err)
+			}
 			if _, err := os.Stat(workspace); err != nil {
 				t.Fatalf("live workload workspace was removed: %v", err)
 			}
@@ -170,6 +173,10 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			cleanupFails = false
 			if err := executor.recover(ctx, replacement); err != nil {
 				t.Fatal(err)
+			}
+			events, err := store.ListAudit(ctx, operational.AuditFilter{Event: "cli_command.finished"})
+			if err != nil || len(events) != 1 || events[0].Attributes["execution_claimed"] != "false" || events[0].Attributes["recovered"] != "true" {
+				t.Fatal("confirmed recovery did not atomically record settlement", err)
 			}
 			next, err = queue.Claim(ctx, replacement)
 			if err != nil || next == nil || next.ID != second.ID {

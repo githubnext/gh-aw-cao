@@ -104,6 +104,11 @@ func cliWeek(now time.Time) string {
 }
 
 func (q *cliCommandQueue) Acquire(ctx context.Context, owner string, ttl time.Duration) (operational.CLICommandLease, error) {
+	if ctx == nil {
+		return operational.CLICommandLease{}, invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if err := name(owner); err != nil {
 		return operational.CLICommandLease{}, err
 	}
@@ -123,6 +128,9 @@ func (q *cliCommandQueue) Acquire(ctx context.Context, owner string, ttl time.Du
 			return err
 		}
 		if interrupted {
+			if err := q.auditRecovery(t, "cli_command.result"); err != nil {
+				return err
+			}
 			if _, err := t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET status='failed',completed_at=?,completion_week=?,error='CLI action interrupted; subprocess termination is unverified.' WHERE queue=? AND status='running'`, nanos(t.now), cliWeek(t.now), q.name); err != nil {
 				return err
 			}
@@ -174,12 +182,20 @@ func (q *cliCommandQueue) Release(ctx context.Context, lease operational.CLIComm
 }
 
 func (q *cliCommandQueue) AcknowledgeRecovery(ctx context.Context, lease operational.CLICommandLease) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	return q.transact(ctx, true, func(t *transaction, state cliQueueState) error {
 		if err := cliLeaseValid(t, state, lease); err != nil {
 			return err
 		}
 		if !state.blocked {
 			return operational.ErrConflict
+		}
+		if err := q.auditRecovery(t, "cli_command.finished"); err != nil {
+			return err
 		}
 		if _, err := t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET execution_claimed=0 WHERE queue=?`, q.name); err != nil {
 			return err
@@ -312,6 +328,11 @@ func validExitCode(code *int) bool {
 }
 
 func (q *cliCommandQueue) Finish(ctx context.Context, lease operational.CLICommandLease, id int64, result operational.CLICommandResult) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if id < 1 || (result.Status != operational.CLICommandCompleted && result.Status != operational.CLICommandFailed && result.Status != operational.CLICommandTimedOut) ||
 		len(result.Error) > 512 || operational.ValidateCLICommandText(result.Error) != nil || !validExitCode(result.ExitCode) {
 		return operational.ErrCLICommandInput
@@ -333,11 +354,19 @@ func (q *cliCommandQueue) Finish(ctx context.Context, lease operational.CLIComma
 		}
 		_, err = t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET status=?,exit_code=?,error=?,completed_at=?,completion_week=? WHERE queue=? AND id=?`,
 			string(result.Status), result.ExitCode, result.Error, nanos(t.now), cliWeek(t.now), q.name, id)
-		return err
+		if err != nil {
+			return err
+		}
+		return q.auditLifecycle(t, id, "cli_command.result", false)
 	})
 }
 
 func (q *cliCommandQueue) Settle(ctx context.Context, lease operational.CLICommandLease, id int64, exitCode *int) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if id < 1 || !validExitCode(exitCode) {
 		return operational.ErrCLICommandInput
 	}
@@ -359,7 +388,10 @@ func (q *cliCommandQueue) Settle(ctx context.Context, lease operational.CLIComma
 			return nil
 		}
 		_, err = t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET execution_claimed=0,exit_code=coalesce(?,exit_code) WHERE queue=? AND id=?`, exitCode, q.name, id)
-		return err
+		if err != nil {
+			return err
+		}
+		return q.auditLifecycle(t, id, "cli_command.finished", false)
 	})
 }
 

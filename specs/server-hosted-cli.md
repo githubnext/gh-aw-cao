@@ -520,9 +520,9 @@ to the executor's App-only credential for requester authorization.
    report a gap, broken link, hash mismatch, or column that differs from the
    hashed record as `ErrAuditTampered`. The chain detects tampering by anyone
    who cannot also rewrite every later hash; operators who need protection
-   against a database superuser MUST also forward the mirror (item 3) to
+   against a database superuser MUST also forward committed audit evidence (item 3) to
    write-once storage.
-3. Every event MUST also be mirrored as one JSON line with `"audit":"cao"`,
+3. Events produced through the audit logger MUST also be mirrored as one JSON line with `"audit":"cao"`,
    `event`, `outcome`, `stored`, and, when stored, `sequence`. The mirror goes
    to standard error, or to the file named by `CAO_AUDIT_LOG`, opened for
    append with mode `0600`, for SIEM forwarding. Waiting for and writing the
@@ -538,6 +538,9 @@ to the executor's App-only credential for requester authorization.
    append failures or trigger compensation. A hosted mutation whose durable
    commit succeeded MUST report its committed command ID and state even when
    mirror confirmation fails; same-key replay MUST NOT duplicate or cancel it.
+   Storage-owned lifecycle events in section 7.1 commit directly to the audit
+   stream, not through this best-effort inline mirror. Forwarders MUST consume
+   committed audit rows to include these events and recover missed mirror writes.
 4. Enabling hosted CLI actions, in either process, MUST fail unless the
    operational store provides the audit table. Privileged steps MUST fail
    closed when their event cannot be stored: a minted token is revoked and not
@@ -554,8 +557,8 @@ to the executor's App-only credential for requester authorization.
    a nonempty key with the same invocation and retry ancestry MUST return the
    same retained command, and MUST atomically audit the repeated request; a different
    invocation or retry ancestor MUST conflict. Audit failure on a replay MUST
-   NOT cancel a previously committed command. Denials and completion events
-   are best-effort, and a storage failure still appears in the mirror with
+   NOT cancel a previously committed command. Denial events remain
+   best-effort, and a storage failure still appears in the mirror with
    `stored:false` (unconfirmed, not proof that no durable event exists).
 5. The web process MUST record `admin.denied` with the reason
    (`step_up_required` or `not_admin`), the method, and the path for every
@@ -563,9 +566,9 @@ to the executor's App-only credential for requester authorization.
    `cli_command.rejected`, `cli_command.cancel_requested`, and
    `cli_command.retried`. Each admitted event carries the actor, action,
    repository, assurance factors, and step-up time.
-6. The executor MUST record `token.minted`, `token.revoked`, and
-   `token.revoke_failed`. It MUST also record `cli_command.started`,
-   `cli_command.permission_denied`, and `cli_command.finished`, with the
+6. The executor MUST record `token.minted`, `token.revoked`, `token.expired`, and
+   `token.revoke_failed` as applicable. It MUST also record `cli_command.started`,
+   `cli_command.permission_denied`, `cli_command.result`, and `cli_command.finished`, with the
    actor, repository, installation, granted permissions, container image,
    status, and exit code.
 7. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
@@ -585,7 +588,7 @@ to the executor's App-only credential for requester authorization.
 9. `cao-dashboard audit export` MUST write retained rows as JSON Lines in
    sequence order, optionally filtered by `--after`, `--event`, and `--actor`,
    for evidence requests and SIEM backfill.
-10. When OpenTelemetry is configured, every audit event MUST also be emitted as
+10. When OpenTelemetry is configured, audit-logger events MUST also be emitted as
     an OTLP log record named `cao.audit.<event>`, with severity `ERROR` for
     `failure`, `WARN` for `denied`, and `INFO` otherwise. Audit events recorded
     inside a span MUST carry `trace_id` and `span_id` in the stored record.
@@ -601,6 +604,84 @@ to the executor's App-only credential for requester authorization.
     PostgreSQL MUST preserve any stricter nonzero session timeout rather than
     replacing an operator's ceiling with a longer caller budget; limits MUST
     be transaction-local and MUST NOT change subsequent session defaults.
+
+### 7.1. Durable completion and token cleanup
+
+PostgreSQL and SQLite MUST commit a command's result transition with
+`cli_command.result`, and its claim settlement with `cli_command.finished`,
+in the same transaction as the corresponding audit append. Events MUST use
+the stored actor, repository, queue, command ID, authoritative status and exit
+code, not a late executor's requested status. A cancellation remains canceled
+even if a later subprocess reports success. A result event with
+`execution_claimed:true` is not evidence of workload termination.
+Repeated transitions MUST NOT duplicate semantic lifecycle events.
+
+An audit failure MUST roll back the associated result/settlement transition,
+including the queue revision, and MUST NOT clear an execution claim. A crash
+before result commit leaves the original claim, not permission to rerun work.
+Lease recovery MUST atomically record interrupted running commands as failed
+results with `recovered:true`; the original exit result is unknown. Recovery
+MUST keep claims until explicit operator acknowledgement and the existing
+runtime-specific reconciliation succeed. Acknowledgement MUST append the
+corresponding finished events atomically with clearing claims. A crash after
+result commit but before settlement preserves that known result. Failure to
+record acknowledgement MUST leave recovery blocked, including interruptions
+before container registration. Production execution MUST require
+`AuditedCLICommandLifecycle` and `RevocationTransitions`.
+
+Token cleanup MUST attempt GitHub revocation without waiting for audit
+availability. On confirmed API success or observed expiry, the broker MUST
+discard its plaintext credential and replace the encrypted journal value with
+a credential-free terminal receipt, independently of the audit table. The
+receipt MUST preserve the hashed token, installation, expiry, original
+observation time, and known actor/repository/command identity. Pooled handout
+MUST durably bind its actual requester before use. Terminal receipts and
+unresolved encrypted ownership MUST have no automatic expiry; protected
+capacity exhaustion MUST backpressure new issuance rather than evict receipts.
+
+The broker MUST attempt to persist the first observed revocation failure per
+token in the encrypted journal independently of audit availability. A journal
+failure remains explicit and MUST NOT suppress remote cleanup retries.
+`token.revoke_failed` denotes
+that first observation, not an exact count of network attempts. Its audit row
+is deferred until cleanup reaches revocation or expiry (normally within the
+token's one-hour lifetime, plus any audit outage); broker failure telemetry and
+errors remain immediate. Terminal receipt acknowledgement MUST append that failure and the
+terminal event while deleting the receipt in one transaction. A changed or
+missing expected version MUST NOT append an event or recreate a journal entry.
+Initial ownership writes MUST be insert-only, never overwrite a more advanced
+journal version. Retained audit history MUST also deduplicate terminal and
+first-failure events by hashed token if an ambiguous initial insert is retried
+after another process already completed cleanup. This lookup uses a nonunique
+index so pre-existing history is not rewritten; its protection is bounded by
+the audit retention horizon, not an infinite exactly-once guarantee.
+Restart reconciliation MUST process receipts without minting, handing out, or
+revoking tokens again. Audit outages MUST NOT prevent subsequent revocation
+attempts for still-live credentials.
+Maintenance and shutdown flush journal events outside the broker's cleanup
+lock; a stalled append for one receipt MUST NOT delay another token's
+revocation. Release hands off a saved terminal receipt without waiting for its
+audit append.
+
+`token.expired` denotes observed expiry, not a successful revoke request.
+`token.revoked` carries
+`confirmation:revoke_api_accepted_or_already_invalid`: GitHub may accept
+revocation of an already-invalid credential. Recovery of encrypted ownership
+sets `recovered:true`; `observed_at` describes the reconciliation observation,
+not an invented historical result. Receipt replay preserves its original
+observation rather than manufacturing a new external effect.
+
+GitHub and local storage are not one transaction. Abrupt termination between
+remote issuance and initial ownership persistence still relies on token expiry.
+A crash or complete storage outage after revocation but before receipt
+persistence may require a repeat revoke or expiry observation after restart.
+A failed result commit similarly cannot preserve an exit result that never
+became durable, and a crash before a failed revoke observation reaches the
+journal cannot reconstruct that historical failure. These are explicit uncertainty windows, not exactly-once
+external-effect guarantees. If a received token could neither be journaled nor
+its terminal receipt persisted, shutdown reports incomplete evidence even when
+the credential is no longer usable. No operating-effectiveness or SOC 2
+certification claim follows from these implementation guarantees.
 
 ### Independent audit delivery
 

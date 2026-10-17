@@ -64,6 +64,9 @@ CREATE INDEX IF NOT EXISTS cao_operational_audit_time
     ON cao_operational_audit_events(occurred_at);
 CREATE INDEX IF NOT EXISTS cao_operational_audit_actor
     ON cao_operational_audit_events(actor, sequence);
+CREATE INDEX IF NOT EXISTS cao_operational_audit_token_lifecycle
+    ON cao_operational_audit_events(event, json_extract(record,'$.attributes.hashed_token'))
+    WHERE event IN ('token.revoked','token.expired','token.revoke_failed');
 -- Retention maintenance inserts the marker row inside its transaction; the
 -- delete trigger rejects every other delete.
 CREATE TABLE IF NOT EXISTS cao_operational_audit_retention (
