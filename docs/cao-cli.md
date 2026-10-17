@@ -27,7 +27,28 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 
 ## GitHub CLI extension
 
-Build with `make build` and use `./gh-cao` directly, or follow the
+Once a release containing extension binaries is promoted to latest, install
+or upgrade the precompiled extension:
+
+```bash
+gh extension install githubnext/gh-aw-cao
+gh aw-cao --version
+# For an existing installation:
+gh extension upgrade aw-cao
+```
+
+GitHub CLI derives `gh aw-cao` from this repository's name; use it in place of
+`gh cao` in the examples below. Release binaries use the
+`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
+macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
+digests. An unpinned install selects the latest stable release, not a prerelease.
+After the latest stable release has extension assets, select a particular
+release (including a prerelease) with
+`gh extension install githubnext/gh-aw-cao --pin vX.Y.Z`.
+GitHub CLI also checks the latest stable release to detect binary extensions,
+so pinning alone cannot bypass a latest stable release without binaries.
+
+For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
 to invoke it as `gh cao`.
 

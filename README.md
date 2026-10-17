@@ -130,6 +130,17 @@ work and planned improvements.
 The `gh cao` Go extension exposes the operator commands for setup,
 authentication, campaigns, validation, and read-only evidence analysis.
 Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
+Once a release containing extension binaries is promoted to latest, install
+without building Go locally:
+
+```bash
+gh extension install githubnext/gh-aw-cao
+gh aw-cao --help
+```
+
+GitHub CLI derives the installed command `gh aw-cao` from the repository name.
+The local development installation can expose the same executable as `gh cao`.
+
 Use `gh cao setup` for guided configuration or
 `gh cao setup auth github-app|enterprise-app|token` for authentication only.
 `campaigns add`, `init`, `campaigns mode`, `campaigns enable`, and
@@ -142,7 +153,8 @@ Help, version, and the local `doctor` diagnostic need no CAO runtime.
 
 Activity and Dashboard Actions retain their Node CLI and pipeline commands;
 `cao.sh` and the installer remain compatible. Releases include version-stamped
-binaries for Linux, macOS, and Windows (amd64 and arm64), plus SHA-256 checksums.
+binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
+(amd64 and arm64), plus SHA-256 checksums.
 See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
 boundary and [extension development](CONTRIBUTING.md#go-extension-development)
 for local installation, project layout, and checks.
