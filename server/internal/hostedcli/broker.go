@@ -129,7 +129,7 @@ func (b *Broker) Acquire(ctx context.Context, installationID int64, scope github
 	key := scope.Key(installationID)
 	b.cleanupMutex.Lock()
 	b.mutex.Lock()
-	if err := b.issuanceErrorLocked(); err != nil {
+	if err := b.issuanceErrorLocked(ctx); err != nil {
 		b.mutex.Unlock()
 		b.cleanupMutex.Unlock()
 		return githubapp.ScopedToken{}, err
@@ -353,7 +353,7 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 	defer func() { <-b.mints }()
 	b.cleanupMutex.Lock()
 	b.mutex.Lock()
-	if err := b.issuanceErrorLocked(); err != nil {
+	if err := b.issuanceErrorLocked(ctx); err != nil {
 		b.mutex.Unlock()
 		b.cleanupMutex.Unlock()
 		return githubapp.ScopedToken{}, err
@@ -412,11 +412,23 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 		b.Release(ctx, token)
 		return githubapp.ScopedToken{}, err
 	}
+	b.cleanupMutex.Lock()
+	b.mutex.Lock()
+	err = b.issuanceErrorLocked(ctx)
+	b.mutex.Unlock()
+	b.cleanupMutex.Unlock()
+	if err != nil {
+		b.Release(ctx, token)
+		return githubapp.ScopedToken{}, err
+	}
 	return token, nil
 }
 
 // Both cleanupMutex and mutex protect this admission check.
-func (b *Broker) issuanceErrorLocked() error {
+func (b *Broker) issuanceErrorLocked(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if b.closed {
 		return ErrBrokerClosed
 	}

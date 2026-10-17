@@ -61,6 +61,120 @@ func TestBrokerCanceledMintStillOwnsRevocation(t *testing.T) {
 	}
 }
 
+type pausedMintAudit struct {
+	failingAuditStore
+	started, proceed chan struct{}
+}
+
+func (a pausedMintAudit) AppendAudit(_ context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+	if event.Event == "token.minted" {
+		close(a.started)
+		<-a.proceed
+	}
+	return event, nil
+}
+
+func TestBrokerRechecksHandoutAfterAudit(t *testing.T) {
+	for _, shutdown := range []bool{false, true} {
+		t.Run(map[bool]string{false: "cancellation", true: "shutdown"}[shutdown], func(t *testing.T) {
+			journal, _ := testTokenJournal(t)
+			minter := newFakeMinter()
+			store := pausedMintAudit{started: make(chan struct{}), proceed: make(chan struct{})}
+			broker := NewBroker(minter, BrokerOptions{Revocations: journal, Audit: audit.New(io.Discard).WithStore(store)})
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			type acquired struct {
+				token githubapp.ScopedToken
+				err   error
+			}
+			result := make(chan acquired, 1)
+			go func() {
+				token, err := broker.Acquire(ctx, 1, testScope, time.Now().Add(time.Minute))
+				result <- acquired{token, err}
+			}()
+			<-store.started
+			var closed chan error
+			expected := context.Canceled
+			if shutdown {
+				expected = ErrBrokerClosed
+				closed = make(chan error, 1)
+				go func() { closed <- broker.Close(t.Context()) }()
+				for {
+					broker.mutex.Lock()
+					stopped := broker.closed
+					broker.mutex.Unlock()
+					if stopped {
+						break
+					}
+					time.Sleep(time.Millisecond)
+				}
+			} else {
+				cancel()
+			}
+			close(store.proceed)
+			got := <-result
+			if !errors.Is(got.err, expected) || got.token.Secret() != "" {
+				t.Error("audit completion handed out a token after cancellation or shutdown")
+			}
+			if shutdown {
+				if err := <-closed; err != nil {
+					t.Fatal(err)
+				}
+			} else if err := broker.Close(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if minter.liveCount() != 0 {
+				t.Fatal("withheld token lost cleanup ownership")
+			}
+		})
+	}
+}
+
+func TestBrokerRechecksUnsafeCleanupAfterAudit(t *testing.T) {
+	journal, queue := testTokenJournal(t)
+	minter := newFakeMinter()
+	store := pausedMintAudit{started: make(chan struct{}), proceed: make(chan struct{})}
+	broker := NewBroker(minter, BrokerOptions{Revocations: journal, Audit: audit.New(io.Discard).WithStore(store)})
+	handout := make(chan bool, 1)
+	go func() {
+		token, err := broker.Acquire(t.Context(), 1, testScope, time.Now().Add(time.Minute))
+		handout <- err == nil || token.Secret() != ""
+	}()
+	<-store.started
+	queue.failWrite, minter.failRevoke = true, true
+	other := githubapp.TokenScope{Repositories: []string{"other"}, Permissions: testScope.Permissions}
+	_, err := broker.Acquire(t.Context(), 1, other, time.Now().Add(time.Minute))
+	if err == nil || broker.Stats().PendingRevocations != 1 {
+		t.Error("journal and revocation outage must retain unsafe cleanup debt")
+	}
+	close(store.proceed)
+	if <-handout {
+		t.Error("audit completion handed out a token despite new unsafe cleanup debt")
+	}
+	queue.failWrite, minter.failRevoke = false, false
+	if err := broker.Close(t.Context()); err != nil || minter.liveCount() != 0 {
+		t.Fatal("shutdown did not clean every withheld token")
+	}
+}
+
+func TestBrokerCanceledAcquireDoesNotConsumePooledToken(t *testing.T) {
+	minter := newFakeMinter()
+	broker := NewBroker(minter, BrokerOptions{MaxPooled: 1})
+	need := time.Now().Add(time.Minute)
+	if err := broker.Prefetch(t.Context(), 1, testScope, need); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	token, err := broker.Acquire(ctx, 1, testScope, need)
+	if !errors.Is(err, context.Canceled) || token.Secret() != "" || broker.Stats().Pooled != 1 {
+		t.Error("canceled acquisition consumed a pooled token")
+	}
+	if err := broker.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type faultRevocations struct {
 	operational.RevocationQueue
 	failWrite, failComplete bool
