@@ -568,6 +568,7 @@ settings:
 | `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
 | `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
+| `CAO_GITHUB_LOCAL_USER` | Optional exact developer login for [single-user local OAuth](#local-oauth-without-organization-access); removes organization scopes/checks only on a direct loopback HTTPS listener. Cannot be combined with organization/team/SSO policy. |
 | `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
@@ -596,6 +597,77 @@ authentication for the user. A stale or unassured administrator receives `401`
 with a `CAO-Step-Up` challenge. Everyone else receives `403`. See
 [`SECURITY.md`](SECURITY.md#administrator-step-up).
 
+#### OAuth permissions and onboarding
+
+Classic OAuth Apps request `read:org read:user`: membership access plus the
+least user scope that lets `/user` disclose `two_factor_authentication`.
+GitHub omits that private field from a `read:org`-only token. After upgrading
+from that grant, sign out and complete `/auth/login` again, consenting to the
+new scope. Refreshing an existing token or revalidating membership cannot add
+scopes or establish new step-up evidence. If consent omits `read:user`, or
+GitHub reports 2FA disabled, non-SSO administrator access still fails closed.
+
+GitHub App clients (`Iv...`) instead request only `offline_access`; configure
+organization **Members: read** and approved installations in each allowed
+organization. OAuth scopes do not grant App permissions. Do not assume a
+GitHub App user token discloses 2FA: if the field is absent, administrator
+access requires a successfully verified membership in an operator-attested
+`CAO_GITHUB_SSO_ORGANIZATIONS` organization. Otherwise that configuration
+cannot satisfy administrator step-up.
+
+Neither `read:user` nor `prompt=select_account` forces an MFA challenge.
+Step-up records recent OAuth completion with 2FA enabled or attested SSO
+access, not proof that the user just performed MFA.
+
+### Local OAuth without organization access
+
+For dashboard-only development, `cao-dashboard serve` already uses a local
+bearer capability and does not require GitHub OAuth or organization access.
+To exercise the OAuth and hosted CLI paths locally with a personal GitHub
+account, opt into **single-user development OAuth** with
+`CAO_GITHUB_LOCAL_USER`. Classic OAuth requests only `read:user`, and login,
+refresh, and revalidation check that exact GitHub login instead of reading
+organization or team membership. GitHub App clients retain `offline_access`.
+
+From `server/`, with the ordinary database, reviewed host policy, OAuth App
+credentials, session secret, webhook secret, source/site, and trusted local
+TLS certificate already configured:
+
+```bash
+export CAO_GITHUB_LOCAL_USER=YOUR_GITHUB_LOGIN
+export CAO_GITHUB_ADMIN_USERS="$CAO_GITHUB_LOCAL_USER"
+export CAO_ALLOWED_HOSTS=127.0.0.1
+export CAO_GITHUB_REDIRECT_URL=https://127.0.0.1:8443/auth/callback
+unset CAO_GITHUB_ALLOWED_ORGS CAO_GITHUB_ALLOWED_TEAMS
+unset CAO_GITHUB_SSO_ORGANIZATIONS CAO_TRUSTED_PROXY_CIDRS
+go run ./cmd/cao-dashboard serve-hosted --listen 127.0.0.1:8443 \
+  --cert ./localhost.pem --key ./localhost-key.pem
+```
+
+Register that exact callback on a development OAuth App and use a certificate
+trusted by your browser for the chosen loopback host. `localhost` is also
+supported when the listener, allowed host, and callback all use it. Startup
+rejects public/private-network listeners, nonmatching callbacks, reverse
+proxies, CORS, external/platform listeners, and mixed organization/team/SSO
+authorization. Requests must arrive directly from loopback over TLS. Do not
+expose this development server through a tunnel or reverse proxy. Production
+hosted authorization is unchanged when `CAO_GITHUB_LOCAL_USER` is unset.
+
+Only the configured developer can sign in; this is not anonymous access.
+Secure cookies, CSRF, administrator allowlisting, 2FA evidence, and live
+target-repository writer checks remain required for their respective
+operations. To test hosted CLI, keep both `--experimental` and
+`--hosted-cli-actions`, then use `/auth/login?hosted_cli=1` for explicit
+classic `read:user repo` consent. No `read:org` is requested. A GitHub App
+that does not disclose 2FA cannot satisfy administrator assurance in this
+no-SSO development mode; use a classic development OAuth App for that path.
+
+Changing between development and ordinary hosted mode, or changing the
+configured developer, requires a new sign-in: existing sessions cannot cross
+those authorization boundaries. Use a separate development operational
+namespace and secrets. Removing a mode or scope does not revoke previously
+issued GitHub grants; revoke the development App authorization when finished.
+
 ### Hosted CLI actions
 
 Hosted CLI actions are an experimental feature and are off by default. To
@@ -609,6 +681,43 @@ PostgreSQL operational store and OAuth. Then run a separate executor:
 cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
+
+Ordinary hosted **classic OAuth App** sign-in requests only
+`read:org read:user`, even when hosted CLI is enabled and even for
+administrators; the single-user local mode above omits `read:org`.
+To authorize private-target probes, first sign in normally,
+then open `/auth/login?hosted_cli=1` while signed in as a configured
+`CAO_GITHUB_ADMIN_USERS` administrator and consent to the additional `repo`
+scope. This explicit flow is unavailable to anonymous users and viewers,
+and when hosted CLI is disabled. Sessions created before account-ID binding
+was introduced must complete ordinary sign-in again first.
+
+The signed, HttpOnly state cookie binds consent to the initiating session,
+GitHub numeric account ID, login, and a ten-minute expiry. Keep the same
+account selected in GitHub's account chooser. The callback rejects switched
+accounts (including another allowlisted administrator), missing/replaced
+sessions, removed administrator access, disabled hosted CLI, and missing
+factor evidence; rejected issued credentials are revoked or queued for
+revocation. A query flag alone grants no authority. Private-target probes
+remain denied until the user's token actually has the required access.
+
+GitHub's classic `repo` scope is broad read/write access to the consenting
+administrator's accessible public and private repositories, not a metadata-only
+or selected-repository grant. Prefer a separate **GitHub App for browser sign-in** to
+avoid that broad grant: retain **Members: read**, approve its installation
+for the selected private targets with **Metadata: read**, and ensure its
+user token's live repository response reports the requester's `admin`,
+`maintain`, or `push` permission. An App installation alone never establishes
+the user's write authority. OAuth App access restrictions and SSO approval
+must also permit the token to access the organization.
+
+The server only reads repository permissions with the browser user's token;
+execution still uses the separately scoped hosted CLI App installation token.
+Missing repository access or permission fields fail closed without falling
+back to that executor token. `offline_access` remains unchanged for GitHub
+App sign-ins and grants no repository permissions. Disabling the feature
+blocks new administrator consent but does not revoke previously granted GitHub scopes;
+revoke the OAuth App authorization in GitHub when removing that access.
 
 In production, all web and executor replicas must share the same PostgreSQL
 operational namespace. Web replicas can admit work concurrently; executor
@@ -1749,7 +1858,8 @@ and local HTTP. Without that setting, Azure mode continues to require
 Azure mode does not accept the local bearer capability and does not support
 PATs. Login alone does not grant access: after exchanging the OAuth code, the
 server verifies active organization or team membership. OAuth App clients
-request `read:org`; GitHub App clients (`Iv...`) request `offline_access` for
+request `read:org read:user` for membership and disclosed 2FA-enabled evidence;
+GitHub App clients (`Iv...`) request `offline_access` for
 expiring user tokens and server-side refresh even if the App's global
 expiration setting is disabled. For a GitHub App, configure organization
 **Members: read** on the registration; scopes do not grant App permissions.

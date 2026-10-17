@@ -112,6 +112,10 @@ secret-management SDK.
 
 ## Dashboard access capability
 
+For the distinct, opt-in OAuth development exception, see
+[Single-user local OAuth](#single-user-local-oauth). It does not relax remote
+hosted authorization.
+
 The server protects every data API except the minimal health probe with a
 bearer capability. Static application assets contain no dashboard records and
 may be loaded without the capability.
@@ -185,6 +189,38 @@ include tokens or upstream error bodies.
 
 The capability mechanism is local access control, not a replacement for
 identity-aware authentication in a remote service.
+
+## Single-user local OAuth
+
+`CAO_GITHUB_LOCAL_USER` explicitly authorizes one GitHub login for OAuth
+development without organization access. Only this development mode replaces
+membership checks: classic login requests `read:user` without `read:org`,
+and GitHub App login keeps `offline_access`. The authenticated account must
+match the configured login and disclose a valid numeric ID. No membership
+read or SSO attestation is used.
+
+Startup requires a process-owned listener on `localhost` or IPv4 loopback,
+direct TLS, one matching loopback allowed host, and a callback exactly at
+`https://<listen-address>/auth/callback`. It rejects proxy trust, external or
+platform listeners, public/private-network binds, CORS, and simultaneous
+organization/team/SSO policy. Each request must also have a loopback peer,
+actual TLS, and the configured origin authority. Operators must not expose
+the listener through tunnels or proxies.
+
+Local sessions record their authorization mode and configured developer;
+they cannot authenticate an ordinary hosted server or a different local
+developer, even if the same session store and encryption secret are reused.
+Switching modes requires new sign-in. Use separate development namespaces
+and secrets anyway, and revoke old GitHub grants when removing access.
+
+This mode does not bypass GitHub authentication, Secure/HttpOnly cookies,
+CSRF, administrator allowlisting, fresh assurance, or live target writer
+probes. Explicit administrator consent adds classic `repo` only after the
+existing server-verified consent checks. Missing 2FA evidence still denies
+administrator operations; SSO configuration is rejected rather than silently
+ignored. The ordinary bearer-based `serve` mode remains OAuth-free, and
+remote hosted profiles still require organization or team authorization.
+See the [local setup instructions](README.md#local-oauth-without-organization-access).
 
 ## Hosted transport boundary
 
@@ -316,7 +352,11 @@ configured allow-list and the forwarded protocol is HTTPS.
 ### GitHub OAuth and authorization
 
 Azure mode implements the GitHub OAuth authorization-code flow. OAuth Apps
-request `read:org` for active organization or team membership checks. GitHub
+request `read:org read:user` for active organization or team membership checks
+and disclosure of the private `/user.two_factor_authentication` field.
+`read:org` alone cannot disclose that field. Existing grants require a new
+interactive authorization with consent to `read:user`; token refresh cannot
+add the scope. The broader `user` scope is not requested. GitHub
 App client IDs (`Iv...`) instead request `offline_access`, which opts that
 authorization into expiring user tokens and refresh tokens; their registration
 must grant organization **Members: read** with an approved installation in each
@@ -327,6 +367,36 @@ server must verify an allowed organization or team membership before creating a
 session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership
 authorization controls.
+
+Ordinary classic OAuth App login never requests `repo`, including on a
+hosted-CLI-enabled deployment. Only the explicit
+`/auth/login?hosted_cli=1` reauthentication/consent flow may request it:
+hosted CLI must be enabled, and an existing server-side session must identify
+a configured administrator with a known numeric GitHub account ID.
+The signed, HttpOnly state cookie binds the initiating session, account ID,
+login, and ten-minute expiry. The callback rechecks the original session,
+subject, current administrator allowlist, feature enablement, membership, and
+factor evidence. Selecting another account, even another administrator,
+fails closed and revokes or queues issued credentials. Consent metadata
+cannot be stripped or moved into the provider state to downgrade the flow
+to ordinary login. No client query flag grants authority by itself.
+
+`repo` is needed to read private target repository metadata with the
+requester's classic token. It grants broad repository read/write access
+to the consenting administrator's accessible repositories;
+GitHub offers no equivalent classic OAuth scope limited to private metadata
+or selected repositories. Prefer a browser sign-in GitHub App with
+organization **Members: read**, repository **Metadata: read**, and approved
+installations covering the selected targets when that broad grant is
+unacceptable. Its user token remains limited by the user's own access and
+the App's permissions and installations. App-only credentials never substitute
+for the requester's live `admin`, `maintain`, or `push` permission.
+Missing access, withheld permission fields, and failed probes remain denials.
+Existing sessions lacking account-ID binding require ordinary sign-in before
+administrator consent. Private-target probes remain denied without actual
+token access. Disabling the feature
+does not revoke prior GitHub grants. See the
+[onboarding instructions](README.md#oauth-permissions-and-onboarding).
 
 Organization and team authorization is revalidated whenever an OAuth access
 token is refreshed. Failed revalidation deletes the session and revokes both
@@ -375,7 +445,10 @@ and revalidation never extend either value.
   `two_factor_authentication: true` (`2fa`), or that a membership read with the
   fresh token succeeded for an organization listed in
   `CAO_GITHUB_SSO_ORGANIZATIONS` (`sso:<org>`). A missing or false 2FA field
-  fails closed. The SSO list is an operator attestation that those
+  cannot establish `2fa` assurance, even if the requested scopes included
+  `read:user`. GitHub App tokens do not use OAuth user scopes; if the provider
+  omits the field, an accepted SSO attestation path is required instead.
+  The SSO list is an operator attestation that those
   organizations enforce SAML SSO for OAuth access.
 - A listed administrator without step-up receives `401` with
   `WWW-Authenticate: CAO-Step-Up realm="admin", max_age=<seconds>` and
@@ -384,10 +457,13 @@ and revalidation never extend either value.
   `GET /api/auth/session` exposes `adminAssuranceExpiresAt`.
 
 GitHub OAuth cannot force password or 2FA re-entry. Step-up therefore proves
-a recent completed authorization, not a new second-factor challenge. Operators
-who need a guaranteed second-factor or SSO challenge must enforce it in GitHub
-through organization 2FA requirements, SAML SSO, or an identity-provider
-session lifetime. The local loopback profile has no OAuth and is unaffected.
+a recent completed authorization, not a new second-factor challenge.
+`read:user` exposes 2FA enrollment, and `prompt=select_account` selects an
+account; neither proves a fresh MFA ceremony. Operators who require a fresh
+second-factor or SSO challenge need a provider/session policy that enforces
+it; organization 2FA enrollment alone is insufficient. This server does not
+verify a provider MFA ceremony timestamp. The local loopback profile has no
+OAuth and is unaffected.
 
 Session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Mutating
 endpoints require the session-bound `X-CSRF-Token` header. The injected

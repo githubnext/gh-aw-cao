@@ -172,6 +172,7 @@ func newHostedAppWithPolicy(
 			PreviousSessionSecret:       os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
 			AllowedOrganizations:        splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
+			LocalDevelopmentUser:        os.Getenv("CAO_GITHUB_LOCAL_USER"),
 			AdminReauthenticationMaxAge: envStrictDuration("CAO_ADMIN_REAUTH_MAX_AGE"),
 			SSOOrganizations:            splitCSV(os.Getenv("CAO_GITHUB_SSO_ORGANIZATIONS")),
 			RevocationKeyPrefix:         revocationKeyPrefix,

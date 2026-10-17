@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,9 +77,10 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	state := location.Query().Get("state")
-	if state == "" || location.Query().Get("scope") != "read:org" || location.Query().Get("prompt") != "select_account" {
+	if state == "" || location.Query().Get("scope") != "read:org read:user" || location.Query().Get("prompt") != "select_account" {
 		t.Fatalf("unexpected login redirect: %s", location.String())
 	}
+	authorizeFakeGitHub(t, app, location.String())
 
 	callback := httptest.NewRecorder()
 	request = azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
@@ -127,8 +129,8 @@ func TestOAuthLoginScopeMatchesApplicationType(t *testing.T) {
 		clientID string
 		scope    string
 	}{
-		{"legacy-oauth-client", "read:org"},
-		{"Ov23liOAuthClient", "read:org"},
+		{"legacy-oauth-client", "read:org read:user"},
+		{"Ov23liOAuthClient", "read:org read:user"},
 		{"Iv1.github-app", "offline_access"},
 		{"Iv23liGitHubApp", "offline_access"},
 	} {
@@ -150,6 +152,16 @@ func TestOAuthLoginScopeMatchesApplicationType(t *testing.T) {
 			}
 			if location.Query().Get("state") == "" || location.Query().Get("prompt") != "select_account" {
 				t.Fatal("login must retain state and account selection")
+			}
+			oauth.repositoryConsentAllowed = func(oauthSession) bool { return true }
+			response = httptest.NewRecorder()
+			oauth.login(response, azureRequest(t, http.MethodGet, "/auth/login"))
+			location, err = url.Parse(response.Header().Get("Location"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != http.StatusFound || location.Query().Get("scope") != test.scope {
+				t.Fatalf("enabled hosted CLI widened ordinary login scope: %s", location.Query().Get("scope"))
 			}
 		})
 	}
@@ -856,6 +868,22 @@ type fakeGitHubOptions struct {
 	accessExpiresIn          int64
 	refreshSucceeds          bool
 	rejectRevocation         bool
+	// nil grants the requested scopes; a non-nil slice models reduced consent.
+	grantedScopes         []string
+	appDisclosesTwoFactor bool
+}
+
+type fakeOAuthGrant struct {
+	clientID string
+	scopes   []string
+}
+
+func (grant fakeOAuthGrant) isGitHubApp() bool {
+	return strings.HasPrefix(grant.clientID, "Iv")
+}
+
+func (grant fakeOAuthGrant) hasScope(scope string) bool {
+	return slices.Contains(grant.scopes, scope)
 }
 
 type fakeGitHubServer struct {
@@ -866,11 +894,19 @@ type fakeGitHubServer struct {
 	onUserRequest    func()
 	// twoFactor controls the /user two_factor_authentication field: nil
 	// omits it, matching tokens GitHub does not disclose it to.
-	twoFactor *bool
+	twoFactor          *bool
+	grantMu            sync.Mutex
+	grant              fakeOAuthGrant
+	tokens             map[string]fakeOAuthGrant
+	login              string
+	accountID          int64
+	accessToken        string
+	refreshToken       string
+	membershipRequests int
 }
 
-// assuredSession returns a session that completed an interactive 2FA
-// authorization just now, satisfying administrator step-up.
+// assuredSession models recent OAuth completion with disclosed 2FA enabled,
+// not a freshly performed second-factor challenge.
 func assuredSession(login string) oauthSession {
 	return oauthSession{Login: login, AuthenticatedAt: time.Now().UTC(), Assurance: []string{assuranceTwoFactor}}
 }
@@ -878,10 +914,23 @@ func assuredSession(login string) oauthSession {
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	t.Helper()
 	twoFactor := true
-	server := &fakeGitHubServer{twoFactor: &twoFactor}
+	server := &fakeGitHubServer{
+		twoFactor: &twoFactor, tokens: make(map[string]fakeOAuthGrant),
+		login: "octocat", accountID: 1, accessToken: "access-old", refreshToken: "refresh-old",
+	}
 	server.rejectRevocation = options.rejectRevocation
 	server.membershipState = options.membershipState
 	mux := http.NewServeMux()
+	mux.HandleFunc("/login/oauth/authorize", func(response http.ResponseWriter, request *http.Request) {
+		scopes := strings.Fields(request.URL.Query().Get("scope"))
+		if options.grantedScopes != nil {
+			scopes = options.grantedScopes
+		}
+		server.grantMu.Lock()
+		server.grant = fakeOAuthGrant{clientID: request.URL.Query().Get("client_id"), scopes: scopes}
+		server.grantMu.Unlock()
+		response.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("/login/oauth/access_token", func(response http.ResponseWriter, request *http.Request) {
 		if err := request.ParseForm(); err != nil {
 			t.Error(err)
@@ -893,36 +942,54 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 				response.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+			server.grantMu.Lock()
+			server.tokens["access-new"] = server.tokens["access-old"]
+			server.grantMu.Unlock()
 			// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
 			_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-new", RefreshToken: "refresh-new", ExpiresIn: 3600, RefreshTokenExpiresIn: 7200})
 			return
 		}
+		server.grantMu.Lock()
+		accessToken, refreshToken := server.accessToken, server.refreshToken
+		server.tokens[accessToken] = server.grant
+		server.grantMu.Unlock()
 		// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
-		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-old", RefreshToken: "refresh-old", ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
+		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
 		if server.onUserRequest != nil {
 			server.onUserRequest()
 		}
+		server.grantMu.Lock()
 		payload := map[string]any{
-			"login":      "octocat",
+			"id":         server.accountID,
+			"login":      server.login,
 			"avatar_url": server.URL + "/avatars/octocat.png",
 		}
-		if server.twoFactor != nil {
+		server.grantMu.Unlock()
+		grant := server.tokenGrant(request.Header.Get("Authorization"))
+		disclosesPrivateUser := grant.hasScope("read:user") || grant.hasScope("user")
+		if grant.isGitHubApp() {
+			disclosesPrivateUser = options.appDisclosesTwoFactor
+		}
+		if server.twoFactor != nil && disclosesPrivateUser {
 			payload["two_factor_authentication"] = *server.twoFactor
 		}
 		_ = json.NewEncoder(response).Encode(payload)
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
+		server.grantMu.Lock()
+		server.membershipRequests++
+		server.grantMu.Unlock()
 		state := server.membershipState
 		if options.refreshedMembershipState != "" && request.Header.Get("Authorization") == "Bearer "+"access-new" {
 			state = options.refreshedMembershipState
 		}
 		_ = json.NewEncoder(response).Encode(map[string]string{"state": state})
 	})
-	mux.HandleFunc("/applications/client/token", func(response http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc("/applications/{client_id}/token", func(response http.ResponseWriter, request *http.Request) {
 		clientID, clientSecret, ok := request.BasicAuth()
-		if !ok || clientID != "client" || clientSecret != "secret" {
+		if !ok || clientID != request.PathValue("client_id") || clientSecret != "secret" {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -938,6 +1005,12 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	server.Server = httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	return server
+}
+
+func (server *fakeGitHubServer) tokenGrant(authorization string) fakeOAuthGrant {
+	server.grantMu.Lock()
+	defer server.grantMu.Unlock()
+	return server.tokens[strings.TrimPrefix(authorization, "Bearer ")]
 }
 
 func (server *fakeGitHubServer) sawRevocation(token string) bool {
@@ -1007,20 +1080,48 @@ func loginState(t *testing.T, app *App) (*http.Cookie, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	authorizeFakeGitHub(t, app, location.String())
 	return firstCookie(t, response.Result(), "cao_oauth_state"), location.Query().Get("state")
+}
+
+func authorizeFakeGitHub(t *testing.T, app *App, location string) {
+	t.Helper()
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, location, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := app.oauth.client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusNoContent {
+		t.Fatalf("fake GitHub authorization returned %d", response.StatusCode)
+	}
 }
 
 func callbackSession(t *testing.T, app *App) (*http.Cookie, *http.Cookie) {
 	t.Helper()
 	stateCookie, state := loginState(t, app)
-	response := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
-	request.AddCookie(stateCookie)
-	app.Handler().ServeHTTP(response, request)
+	response := oauthCallbackResponse(t, app, stateCookie, state)
 	if response.Code != http.StatusFound {
 		t.Fatalf("callback returned %d: %s", response.Code, response.Body.String())
 	}
 	return firstCookie(t, response.Result(), sessionCookieName), firstCookie(t, response.Result(), csrfCookieName)
+}
+
+func oauthCallbackResponse(t *testing.T, app *App, stateCookie *http.Cookie, state string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+	response := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
+	request.AddCookie(stateCookie)
+	for _, cookie := range cookies {
+		if cookie != nil {
+			request.AddCookie(cookie)
+		}
+	}
+	app.Handler().ServeHTTP(response, request)
+	return response
 }
 
 func firstCookie(t *testing.T, response *http.Response, name string) *http.Cookie {

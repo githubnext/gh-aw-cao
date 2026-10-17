@@ -79,6 +79,9 @@ func validateHostedMode(store operational.Store, config *Config) error {
 	if err := config.GitHubOAuth.validate(); err != nil {
 		return err
 	}
+	if err := validateLocalDevelopmentOAuth(*config); err != nil {
+		return err
+	}
 	return nil
 }
 
