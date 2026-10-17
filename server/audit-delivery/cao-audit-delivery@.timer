@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic CAO audit evidence delivery (%i)
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=1min
+Unit=cao-audit-delivery@%i.service
+
+[Install]
+WantedBy=timers.target

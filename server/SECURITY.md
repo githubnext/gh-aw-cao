@@ -835,6 +835,17 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   rewrite of the whole chain and a rollback to an earlier head, which the
   chain alone cannot detect. `cao-dashboard audit export` writes rows as JSON
   Lines for evidence requests.
+- **Independent delivery**: the opt-in
+  [`audit deliver` job](audit-delivery/README.md) replays bounded committed rows
+  only after anchored verification, requires exact independent read-back, and
+  advances a destination-resident conditional checkpoint only after delivery.
+  Missing/stale anchors, retention gaps, interrupted verification, delivery
+  failures and checkpoint conflicts fail closed with a nonzero exit and
+  structured operational status. The HTTPS object adapter, its durable
+  conditional-write semantics, independent administration, retained checkpoint
+  versions, write-once retention and alert routing remain explicit deployment
+  dependencies. The bounded JSON mirror has no retry queue; OTLP emissions are
+  not acknowledgements.
 - **Telemetry**: audit events are also OTLP log records (`cao.audit.<event>`)
   with the active `trace_id` and `span_id`, which are also stored in the row.
   Command and token spans and metrics carry repository, command ID, and
@@ -886,7 +897,8 @@ period. The following mapping is limited to the hosted CLI:
 | Logical access (CC6.1) | GitHub OAuth organization/team authorization, explicit administrator allowlisting, repository permission checks, and least-privilege installation tokens | Effective authorization configuration and retained access/admission audit events | Review membership, administrator lists, App installation scope, and access changes on the organization's approved cadence |
 | Privileged access (CC6.3) | Assured administrator step-up, live execution permission checks, and durable denial/admission events | `admin.denied`, `cli_command.admitted`, and execution permission events correlated with GitHub audit records | Operate identity lifecycle, access reviews, and timely removal of departed or transferred personnel |
 | Change management (CC8.1) | Fixed Go command planning and a digest-pinned execution image recorded at command start; CAO does not enforce an organization's review policy | Pull requests, required review/check results, release/deployment approvals, and image digest records | Enforce branch protection and deployment approval policies; preserve the evidence for each release |
-| Monitoring (CC7.2) | Hash-chained audit rows, `audit verify` with external anchors, audit export, OTLP records, and documented alert signals | Verification results and anchors, exported audit rows, SIEM delivery/alert records, and incident follow-up | Schedule verification, store anchors and forwarded events outside PostgreSQL in write-once storage, and investigate alerts |
+| Monitoring (CC7.2) | Hash-chained audit rows, anchored verification, bounded restart-safe `audit deliver`, audit export, OTLP records, and documented alert signals | Independently preserved verification results, acknowledged event objects and checkpoints, scheduler/heartbeat and alert records | Provision and validate the independent destination and retention, enroll a trusted initial anchor, enable scheduling, and monitor failures plus missing heartbeats |
+| Event evaluation (CC7.3) | Delivery/verification fail-closed status and documented gap, stale-anchor, backlog and failure signals | Alert delivery/acknowledgement, investigation disposition, recovery exercises and incident follow-up | Route and investigate alerts, evaluate effects on the system, and preserve response evidence; the application cannot perform or attest these organizational activities |
 
 The audit chain is tamper-evident only while an attacker cannot rewrite the
 entire chain. A database superuser can rewrite it consistently; anchors kept
@@ -897,11 +909,12 @@ responded to alerts.
 
 Personnel controls, risk assessments, vendor management, incident-response
 execution, business continuity, and independent audit activities are outside
-this application. The recommended hardening items above (especially external
-write-once forwarding, scheduled anchored verification, separate database
-roles, and managed key signing) remain deployment work, not implemented CAO
-controls. Do not represent this mapping as a SOC 2 report, certification, or
-independent assessment.
+this application. The recommended hardening items above (especially independent
+write-once destination configuration, activation of scheduled anchored delivery,
+separate database roles, and managed key signing) still require deployment
+work and real control-operation evidence. Software support and test fixtures do
+not prove those controls operated. Do not represent this mapping as a SOC 2
+report, certification, or independent assessment.
 
 ## Secrets and logging
 
