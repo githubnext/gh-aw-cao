@@ -25,6 +25,7 @@ func runAudit(t *testing.T, args ...string) (string, error) {
 func TestAuditVerifyAndExportSQLite(t *testing.T) {
 	t.Setenv("CAO_AUDIT_LOG", filepath.Join(t.TempDir(), "audit.jsonl"))
 	path := filepath.Join(t.TempDir(), "cao.sqlite")
+	bootstrapSQLite(t, path)
 	store, err := server.OpenHostedCLISQLite(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)

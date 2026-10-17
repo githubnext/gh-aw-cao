@@ -67,6 +67,15 @@ on the operator's workstation with the operator's own credentials.
    contracts (§7 items 1–2), with these differences: one global namespace,
    timestamps from the host clock, and triggers that anyone with write access
    to the file can drop. It MUST NOT be used in production.
+   `database bootstrap --store operational --sqlite PATH` MUST explicitly
+   provision that file before runtime use. Runtime and evidence readers MUST
+   NOT create missing state, execute schema DDL, or implicitly retain audit
+   history. `database retain-audit --store operational --sqlite PATH` MUST
+   perform only a bounded expired-prefix audit retention batch. SQLite
+   `audit deliver` MUST use a read-only connection and deferred verification
+   transaction; `audit verify` MUST remain writable to record its outcome.
+   SQLite MUST NOT be presented as enforcing PostgreSQL role separation or
+   as an alternative canonical dashboard store.
 
 ## 3. Administrator step-up
 

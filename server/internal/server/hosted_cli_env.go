@@ -67,9 +67,9 @@ type HostedCLIExecutorOptions struct {
 }
 
 // OpenHostedCLISQLite opens the local, single-host SQLite queue and audit
-// table used to debug hosted CLI actions without PostgreSQL.
+// table provisioned by database bootstrap --store operational --sqlite PATH.
 func OpenHostedCLISQLite(ctx context.Context, path string) (*sqlite.Store, error) {
-	return sqlite.Open(ctx, path)
+	return sqlite.OpenExisting(ctx, path)
 }
 
 // HostedCLIExecutor owns an executor and the resources it opened.

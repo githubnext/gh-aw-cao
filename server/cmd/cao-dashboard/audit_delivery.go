@@ -54,7 +54,7 @@ func newAuditDeliverCommand() *cobra.Command {
 			ctx, cancel := context.WithTimeout(ctx, *timeout)
 			defer cancel()
 			result.Stage = "source_open"
-			store, closeStore, err := server.OpenAuditStore(ctx, *sqlitePath)
+			store, closeStore, err := server.OpenAuditReader(ctx, *sqlitePath)
 			if err != nil {
 				return errors.New("audit delivery could not open the configured audit reader")
 			}

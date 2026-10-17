@@ -119,9 +119,9 @@ func newPostgresStore(ctx context.Context, flagValue, namespace string) (*postgr
 		return nil, err
 	}
 	commandLog.Printf("postgres endpoint resolved source=%s", source)
-	store, err := postgresx.NewWithNamespace(ctx, endpoint, namespace)
+	store, err := postgresx.OpenWithNamespace(ctx, endpoint, namespace)
 	if err != nil {
-		return nil, errors.New("postgres is unavailable")
+		return nil, fmt.Errorf("open provisioned postgres storage: %w", err)
 	}
 	return store, nil
 }
@@ -357,6 +357,7 @@ func newRootCommand() *cobra.Command {
 		newExecuteCLICommand(),
 		newHostedCLICommand(),
 		newAuditCommand(),
+		newDatabaseCommand(),
 		newBackfillCommand(),
 		newDoctorCommand(),
 		newTelemetrySmokeCommand(),
@@ -732,7 +733,7 @@ func newServeCommand() *cobra.Command {
 				return configErr
 			}
 			namespace, _ := resolveNamespaceDefault(os.Getenv("CAO_OPERATIONAL_NAMESPACE"), *redisNamespace)
-			store, err = postgres.New(ctx, dsn, namespace, config)
+			store, err = postgres.Open(ctx, dsn, namespace, config)
 		}
 		if err != nil {
 			return err

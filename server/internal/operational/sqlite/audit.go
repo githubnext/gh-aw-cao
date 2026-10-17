@@ -11,10 +11,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
-const (
-	auditRetentionBatchCap = 512
-	auditMaintenanceEvery  = 256
-)
+const auditRetentionBatchCap = 512
 
 // AppendAudit stores one event. BEGIN IMMEDIATE serializes appends across
 // processes, so sequence numbers are gap-free and each record chains to its
@@ -55,11 +52,6 @@ func (t *transaction) appendAudit(event operational.AuditEvent) (operational.Aud
 	if _, err := t.tx.ExecContext(t.ctx, `INSERT INTO cao_operational_audit_events(sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES (?,?,?,?,?,?,?,?)`,
 		event.Sequence, nanos(event.OccurredAt), event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record)); err != nil {
 		return operational.AuditEvent{}, err
-	}
-	if event.Sequence%auditMaintenanceEvery == 0 {
-		if err := t.maintainAudit(); err != nil {
-			return operational.AuditEvent{}, err
-		}
 	}
 	return event, nil
 }
@@ -127,21 +119,43 @@ func (s *Store) VerifyAudit(ctx context.Context, anchors ...operational.AuditAnc
 	return verifier.Finish()
 }
 
-// maintainAudit removes events past retention in a bounded batch. Only a
+// RetainAudit explicitly removes an expired prefix for local testing. SQLite
+// has no role isolation: every process with file write access can invoke it.
+func (s *Store) RetainAudit(ctx context.Context) (int64, error) {
+	var removed int64
+	err := s.transact(ctx, func(t *transaction) error {
+		var err error
+		removed, err = t.retainAudit()
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
+
+// retainAudit removes events past retention in a bounded batch. Only a
 // contiguous oldest prefix is removed and the newest event is always kept, so
 // retained rows remain a verifiable suffix and sequences never restart.
-func (t *transaction) maintainAudit() error {
+func (t *transaction) retainAudit() (int64, error) {
 	if _, err := t.tx.ExecContext(t.ctx, `INSERT INTO cao_operational_audit_retention(active) VALUES (1)`); err != nil {
-		return err
+		return 0, err
 	}
-	if _, err := t.tx.ExecContext(t.ctx, `DELETE FROM cao_operational_audit_events WHERE sequence IN (
+	result, err := t.tx.ExecContext(t.ctx, `DELETE FROM cao_operational_audit_events WHERE sequence IN (
 		SELECT sequence FROM cao_operational_audit_events
 		WHERE sequence < MIN(
 			coalesce((SELECT min(sequence) FROM cao_operational_audit_events WHERE occurred_at>=?), 9223372036854775807),
 			coalesce((SELECT max(sequence) FROM cao_operational_audit_events), 0))
-		ORDER BY sequence LIMIT ?)`, nanos(t.now.Add(-operational.AuditRetention)), auditRetentionBatchCap); err != nil {
-		return err
+		ORDER BY sequence LIMIT ?)`, nanos(t.now.Add(-operational.AuditRetention)), auditRetentionBatchCap)
+	if err != nil {
+		return 0, err
 	}
-	_, err := t.tx.ExecContext(t.ctx, `DELETE FROM cao_operational_audit_retention`)
-	return err
+	removed, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if _, err := t.tx.ExecContext(t.ctx, `DELETE FROM cao_operational_audit_retention`); err != nil {
+		return 0, err
+	}
+	return removed, nil
 }

@@ -494,10 +494,8 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	}
 	// Autovacuum cannot analyze uncommitted replacement rows or partitioned parents.
 	// Refresh estimates before integrity joins can choose quadratic cold-start plans.
-	for _, source := range tableNames() {
-		if _, err := w.tx.Exec(ctx, "ANALYZE "+query.SQLIdentifier(entityTables[source].name)); err != nil {
-			return State{}, fmt.Errorf("refresh native %s statistics: %w", source, err)
-		}
+	if _, err := w.tx.Exec(ctx, "SELECT cao_analyze_native()"); err != nil {
+		return State{}, fmt.Errorf("refresh native statistics: %w", err)
 	}
 	if err := overlayRepositoryLifecycle(ctx, w.store.namespace, func(ctx context.Context, statement string, args ...any) error {
 		_, err := w.tx.Exec(ctx, statement, args...)

@@ -13,8 +13,6 @@ import (
 // AuditRetention is the minimum audit retention.
 const AuditRetention = operational.AuditRetention
 
-const auditRetentionBatchCap = 512
-
 func validAuditEvent(event operational.AuditEvent) error {
 	if err := operational.ValidateAuditEvent(event); err != nil {
 		return invalid(err.Error())
@@ -129,24 +127,10 @@ func (s *Store) VerifyAudit(ctx context.Context, anchors ...operational.AuditAnc
 	return verifier.Finish()
 }
 
-// maintainAudit removes events past retention in bounded batches. Only a
-// contiguous oldest prefix is removed, so retained rows remain a verifiable
-// suffix of the chain even if the database clock moved backwards.
-func (t *transaction) maintainAudit() error {
-	if _, err := t.tx.ExecContext(t.ctx, `SET LOCAL cao.audit_retention = 'on'`); err != nil {
-		return err
-	}
-	// The newest event is always kept so sequence numbers never restart.
-	_, err := t.tx.ExecContext(t.ctx, `DELETE FROM cao_operational_audit_events WHERE namespace=$1 AND sequence IN (
-		SELECT sequence FROM cao_operational_audit_events WHERE namespace=$1
-		AND sequence < LEAST(
-			coalesce((SELECT min(sequence) FROM cao_operational_audit_events WHERE namespace=$1 AND occurred_at>=$2), 9223372036854775807),
-			(SELECT max(sequence) FROM cao_operational_audit_events WHERE namespace=$1))
-		ORDER BY sequence LIMIT $3)`,
-		t.namespace, t.now.Add(-AuditRetention), auditRetentionBatchCap)
-	if err != nil {
-		return err
-	}
-	_, err = t.tx.ExecContext(t.ctx, `SET LOCAL cao.audit_retention = 'off'`)
-	return err
+// RetainAudit invokes the bounded owner-defined retention operation. It is not
+// part of operational.Store or Maintain, and requires a separate EXECUTE grant.
+func (s *Store) RetainAudit(ctx context.Context) (int64, error) {
+	var removed int64
+	err := s.db.QueryRowContext(ctx, `SELECT cao_operational_retain_audit($1)`, s.namespace).Scan(&removed)
+	return removed, err
 }

@@ -275,8 +275,8 @@ func TestAuditRetentionKeepsVerifiableSuffix(t *testing.T) {
 		}
 	}
 	store.now = time.Now
-	if err := store.transact(ctx, func(tx *transaction) error { return tx.maintainAudit() }); err != nil {
-		t.Fatal(err)
+	if removed, err := store.RetainAudit(ctx); err != nil || removed != 2 {
+		t.Fatalf("retention removed %d events: %v", removed, err)
 	}
 	// The newest row is kept even though it is past retention.
 	verification, err := store.VerifyAudit(ctx)

@@ -206,7 +206,7 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if databaseNamespace == "" {
 		databaseNamespace = "hosted-dashboard"
 	}
-	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
+	database, err := postgresx.OpenWithNamespace(ctx, postgresURL, databaseNamespace)
 	if err != nil {
 		return nil, errors.New("connect to dashboard Postgres failed")
 	}

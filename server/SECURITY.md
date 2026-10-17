@@ -882,10 +882,17 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `cao_audit.event.count{stored="false"}`, on `audit.verify_failed`, and on
   spikes in `admin.denied`.
 - **SQLite debug store**: `--hosted-cli-sqlite` and `execute-cli --sqlite`
-  replace PostgreSQL with one local SQLite file (mode `0600`) for debugging.
+  replace the hosted-CLI PostgreSQL queue/audit/journal with one local SQLite
+  file for debugging. Explicit `database bootstrap --store operational
+  --sqlite PATH` creates it with mode `0600`; runtime opens only existing state.
+  Bootstrap, runtime, and appends never perform audit retention. Local
+  `database retain-audit --store operational --sqlite PATH` performs a bounded
+  retention batch. `audit deliver --sqlite PATH` uses a read-only connection,
+  unlike `audit verify`, which appends its own verification result.
   The server refuses it unless it listens on loopback. Its append-only
   triggers protect only against accidental edits, because anyone who can
-  write the file can drop them; do not use it in production.
+  write the file can drop them or run retention; SQLite does not model
+  PostgreSQL database-role separation. Do not use it in production.
 
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).
@@ -904,8 +911,12 @@ Recommended next steps, in priority order:
    restriction is now required, with live boundary evidence collected during rollout.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
    it on a schedule.
-3. Use separate database roles: `INSERT` and `SELECT` on the audit table for
-   the web and executor processes, retention only for a maintenance role.
+3. Deploy the [PostgreSQL privilege boundary](POSTGRES.md): owner-only bootstrap
+   and canonical partition maintenance, runtime audit `INSERT`/`SELECT`, a
+   separate retention-function executor, and SELECT-only evidence access.
+   Runtime startup performs no schema/trigger DDL or audit retention. Apply
+   the shipped grants, remove owner credentials from services, and schedule
+   maintenance; code changes alone do not establish deployed role isolation.
 4. Forward audit records to write-once storage or a SIEM, and schedule
    `audit verify` with external anchors.
 5. Propagate the admission trace context into the queued command.

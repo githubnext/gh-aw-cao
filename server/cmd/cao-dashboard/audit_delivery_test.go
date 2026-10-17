@@ -2,13 +2,23 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/auditdelivery"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
 
 func TestAuditDeliverReportsConfigurationFailure(t *testing.T) {
@@ -26,6 +36,169 @@ func TestAuditDeliverReportsConfigurationFailure(t *testing.T) {
 	var result auditdelivery.Result
 	if err := json.NewDecoder(&stderr).Decode(&result); err != nil || result.Status != "failure" || result.Stage != "configuration" {
 		t.Fatalf("missing observable failure: %+v %v", result, err)
+	}
+}
+
+func TestAuditDeliverSQLiteDoesNotBootstrap(t *testing.T) {
+	t.Setenv("CAO_AUDIT_DELIVERY_URL", "https://127.0.0.1:1")
+	t.Setenv("CAO_AUDIT_DELIVERY_TOKEN", "local-test-token")
+	path := filepath.Join(t.TempDir(), "missing.sqlite")
+	for _, emptyFile := range []bool{false, true} {
+		if emptyFile {
+			if err := os.WriteFile(path, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := newRootCommand()
+		var stdout, stderr bytes.Buffer
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
+		cmd.SetArgs([]string{"audit", "deliver", "--stream", "local", "--sqlite", path})
+		err := cmd.Execute()
+		var result auditdelivery.Result
+		if err == nil || stdout.Len() != 0 {
+			t.Fatalf("missing schema accepted: %q, %v", stdout.String(), err)
+		}
+		if err := json.NewDecoder(&stderr).Decode(&result); err != nil || result.Stage != "source_open" || result.Status != "failure" {
+			t.Fatalf("missing source failure result: %+v, %v", result, err)
+		}
+		info, err := os.Stat(path)
+		if (!emptyFile && !errors.Is(err, os.ErrNotExist)) || (emptyFile && (err != nil || info.Size() != 0)) {
+			t.Fatalf("delivery created or initialized its source: %v", err)
+		}
+	}
+}
+
+func TestAuditDeliverSQLiteReadOnlyEndToEnd(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "source.sqlite")
+	bootstrapSQLite(t, path)
+	seedSQLiteAuditHistory(t, path, time.Now().Add(-2*operational.AuditRetention), 3)
+	reader, closeReader, err := server.OpenAuditReader(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = closeReader() }()
+	head, err := reader.VerifyAudit(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.AppendAudit(t.Context(), operational.AuditEvent{Event: "test.denied", Outcome: "success"}); err == nil {
+		t.Fatal("delivery reader can write")
+	}
+	anchor := auditdelivery.Anchor{Stream: "local", ObservedAt: time.Now().UTC(),
+		Head: operational.AuditAnchor{Sequence: head.LastSequence, Hash: head.LastHash}}
+	body, err := json.Marshal(anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	anchorPath := filepath.Join(t.TempDir(), "anchor.json")
+	if err := os.WriteFile(anchorPath, body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destination, checkpoint := localAuditDeliveryDestination(t)
+	t.Setenv("CAO_AUDIT_DELIVERY_URL", destination.URL)
+	t.Setenv("CAO_AUDIT_DELIVERY_TOKEN", "local-test-token")
+	// Test-only trust configuration; production still verifies the platform
+	// trust store and exposes no insecure-TLS switch.
+	transport := http.DefaultTransport
+	http.DefaultTransport = destination.Client().Transport
+	t.Cleanup(func() { http.DefaultTransport = transport })
+
+	db, err := sql.Open("sqlite", path+"?_txlock=immediate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	tx, err := db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	// The complete command must succeed while another process could be
+	// writing. An accidental read-write verifier would require this lock.
+	for index, want := range []int64{2, 3, 3} {
+		cmd := newRootCommand()
+		var stdout, stderr bytes.Buffer
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
+		args := []string{"--stream", "local", "--sqlite", path, "--max-events", "2", "--timeout", "5s"}
+		if index == 0 {
+			args = append(args, "--bootstrap-anchor", anchorPath)
+		}
+		cmd.SetArgs(append([]string{"audit", "deliver"}, args...))
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("local delivery: %v; %s", err, stderr.String())
+		}
+		var result auditdelivery.Result
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Status != "success" ||
+			result.LastSequence != want || result.VerifiedHead != 3 || result.Remaining != 3-want {
+			t.Fatalf("local delivery result: %+v, %v", result, err)
+		}
+	}
+	saved := checkpoint()
+	if saved.Delivered.Sequence != 3 || saved.Verification.LastHash != head.LastHash {
+		t.Fatalf("independent checkpoint did not preserve source head: %+v", saved)
+	}
+	after, err := reader.VerifyAudit(t.Context())
+	if err != nil || after != head {
+		t.Fatalf("delivery appended events or retained expired history: %+v, %v", after, err)
+	}
+}
+
+func localAuditDeliveryDestination(t *testing.T) (*httptest.Server, func() auditdelivery.Checkpoint) {
+	t.Helper()
+	var mu sync.Mutex
+	objects := map[string][]byte{}
+	versions := map[string]string{}
+	var revision int
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Header.Get("Authorization") != "Bearer local-test-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		body, exists := objects[r.URL.Path]
+		switch r.Method {
+		case http.MethodGet:
+			if !exists {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.Header().Set("ETag", versions[r.URL.Path])
+			_, _ = w.Write(body)
+		case http.MethodPut:
+			if r.Header.Get("If-None-Match") == "*" {
+				if exists {
+					w.WriteHeader(http.StatusPreconditionFailed)
+					return
+				}
+			} else if !exists || r.Header.Get("If-Match") != versions[r.URL.Path] {
+				w.WriteHeader(http.StatusPreconditionFailed)
+				return
+			}
+			value, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 128<<10))
+			if err != nil || !json.Valid(value) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			revision++
+			objects[r.URL.Path] = value
+			versions[r.URL.Path] = fmt.Sprintf(`"%d"`, revision)
+			w.WriteHeader(http.StatusCreated)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv, func() auditdelivery.Checkpoint {
+		mu.Lock()
+		defer mu.Unlock()
+		var checkpoint auditdelivery.Checkpoint
+		if err := json.Unmarshal(objects["/local/checkpoint.json"], &checkpoint); err != nil {
+			t.Fatal(err)
+		}
+		return checkpoint
 	}
 }
 

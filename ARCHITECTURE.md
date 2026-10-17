@@ -200,7 +200,11 @@ query-consumed fields and identity/storage keys. Scalars use native SQL types;
 required structured fields use entity-owned relational child values, not
 JSON, JSONB, or serialized row documents. Scalar entity rows are never duplicated
 in generic source storage. Compact presence bits preserve missing versus null.
-Startup initializes this schema only; it performs no legacy conversion or
+Owner-run bootstrap initializes this schema and its weekly partitions; runtime
+opens and validates provisioned state without DDL. Daily owner-run maintenance
+keeps historical and four upcoming weeks provisioned. A fixed schema-qualified
+ANALYZE capability preserves ingestion statistics without runtime ownership.
+Bootstrap performs no legacy conversion or
 backward-compatible import. There are no persistent Postgres generations or
 separate derived projections. Redis remains reconstructable
 operational state, not an entity
@@ -283,6 +287,12 @@ including storage-owned events absent from the inline mirror.
 For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
 share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
 provides the same queue and audit table without PostgreSQL.
+Local `database bootstrap --store operational --sqlite PATH` provisions that
+file explicitly; runtime opens only existing state, and audit retention runs
+only through the explicit `database retain-audit` command. `audit deliver`
+uses a read-only SQLite connection and deferred verification transaction, while
+`audit verify` retains append authority to record its result. SQLite does not
+replace the canonical dashboard backend or reproduce PostgreSQL role isolation.
 That SQLite development profile may explicitly select an alternative
 `ContainerLifecycle` adapter without changing admission or token authority.
 Docker remains the production default and keeps its local-default-context
@@ -336,6 +346,12 @@ The Coolify profile selects PostgreSQL for every role without Redis credentials.
 This is not an operational-state migration, fallback, or campaign rollout change.
 The read-only doctor opens existing
 operational state without initializing it.
+PostgreSQL bootstrap, runtime, audit retention, and evidence-reader credentials
+are separate authorities. Runtime uses audit SELECT/INSERT and namespace budget
+updates, not namespace destruction or DDL. Audit retention runs only through a
+separately granted owner-defined function with a pinned search path and fixed
+400-day/512-row limits; ordinary maintenance never deletes audit history.
+`server/POSTGRES.md` specifies migration order, grants, and operator schedules.
 
 Hosted server observability uses the same vendor-neutral OTLP contract as
 agentic workflows. Standard `OTEL_*` runtime environment variables select the

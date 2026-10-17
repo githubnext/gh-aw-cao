@@ -105,9 +105,9 @@ func newOperationalStore(ctx context.Context, host *resolvedHostPolicy) (operati
 		if err != nil {
 			return nil, "", err
 		}
-		store, err := postgres.New(ctx, host.OperationalPostgresURL, host.OperationalNamespace, config)
+		store, err := postgres.Open(ctx, host.OperationalPostgresURL, host.OperationalNamespace, config)
 		if err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("open provisioned operational storage (run database bootstrap as owner before rollout): %w", err)
 		}
 		hostedLog.Printf("operational backend=postgres scope=deployment persistence=restart")
 		return store, "", nil

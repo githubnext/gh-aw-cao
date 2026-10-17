@@ -66,6 +66,8 @@ type Store struct {
 
 var _ operational.Store = (*Store)(nil)
 
+// New provisions or migrates operational storage with the schema owner's
+// credentials. Runtime processes must use Open against pre-provisioned state.
 func New(ctx context.Context, dsn, namespace string, config Config) (*Store, error) {
 	return open(ctx, dsn, namespace, config, true)
 }
@@ -120,7 +122,13 @@ func (s *Store) initialize(ctx context.Context) error {
 	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(712083241, 17485)`); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, schema); err != nil {
+	// Capture only the owned schema in SECURITY DEFINER functions. In
+	// particular, temporary objects must never shadow their table references.
+	var schemaName string
+	if err := tx.QueryRowContext(ctx, `SELECT current_schema()`).Scan(&schemaName); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, strings.ReplaceAll(schema, "{{schema}}", pgx.Identifier{schemaName}.Sanitize())); err != nil {
 		return err
 	}
 	config, err := json.Marshal(s.config)
@@ -144,8 +152,8 @@ func (s *Store) checkConfig(ctx context.Context, reader interface {
 	if err := reader.QueryRowContext(ctx, `SELECT version,config FROM cao_operational_namespaces WHERE namespace=$1`, s.namespace).Scan(&version, &stored); err != nil {
 		return err
 	}
-	if version != 1 {
-		return operational.ErrUnsupported
+	if version != 2 {
+		return fmt.Errorf("operational schema requires owner-run database bootstrap: %w", operational.ErrUnsupported)
 	}
 	config, err := json.Marshal(s.config)
 	if err != nil {
@@ -399,9 +407,6 @@ func (s *Store) Maintain(ctx context.Context) error {
 			}
 		}
 		if err := t.maintainCLICommands(); err != nil {
-			return err
-		}
-		if err := t.maintainAudit(); err != nil {
 			return err
 		}
 		_, err = t.tx.ExecContext(ctx, `DELETE FROM cao_operational_cache WHERE namespace=$1 AND key IN (SELECT key FROM cao_operational_cache WHERE namespace=$1 AND expires_at<=$2 LIMIT 512)`, s.namespace, t.now)

@@ -3,12 +3,19 @@ package postgres
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+func TestSQLAuditRetentionMatchesContract(t *testing.T) {
+	if !strings.Contains(schema, fmt.Sprintf("INTERVAL '%d hours'", int64(AuditRetention/time.Hour))) {
+		t.Fatal("SQL retention must match the minimum elapsed-duration contract independently of session timezone")
+	}
+}
 
 func appendAuditEvents(t *testing.T, s *Store, count int) {
 	t.Helper()
@@ -109,7 +116,7 @@ func TestAuditRetentionKeepsVerifiableSuffix(t *testing.T) {
 	old := time.Now().Add(-AuditRetention - 24*time.Hour)
 	// Age every row, including the newest, past retention.
 	tamper(t, dsn, `UPDATE cao_operational_audit_events SET occurred_at=$2 WHERE namespace=$1`, s.namespace, old)
-	if err := s.Maintain(t.Context()); err != nil {
+	if _, err := s.RetainAudit(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	var remaining, first int64

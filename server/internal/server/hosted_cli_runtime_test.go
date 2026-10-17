@@ -79,7 +79,7 @@ func TestHostedCLINativeQueueConfigurationMatchesAdmission(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			store, err := OpenHostedCLISQLite(t.Context(), filepath.Join(t.TempDir(), "queue.sqlite"))
+			store, err := newHostedCLISQLiteTestStore(t, filepath.Join(t.TempDir(), "queue.sqlite"))
 			if err != nil {
 				t.Fatal(err)
 			}
