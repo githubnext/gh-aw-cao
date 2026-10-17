@@ -612,10 +612,10 @@ cao-dashboard execute-cli --max-pooled-tokens 8
 
 In production, all web and executor replicas must share the same PostgreSQL
 operational namespace. Web replicas can admit work concurrently; executor
-replicas coordinate through the durable, fenced queue lease, and a persisted execution
-claim prevents another replica from claiming an already-running command. The
-configured concurrency limit applies across executor replicas. Command
-deadlines and queue state survive process restarts.
+replicas coordinate through the durable, fenced queue lease, and a persisted
+execution claim prevents another replica from claiming an already-running
+command. The configured concurrency limit applies across executor replicas.
+Command deadlines and queue state survive process restarts.
 
 If an executor crashes or loses its lease while a subprocess may still be
 running, the replacement marks the outcome interrupted and blocks new claims.
@@ -623,6 +623,17 @@ It will not replay the command automatically because external side effects may
 already have occurred. After confirming that the old subprocess has stopped,
 an operator must explicitly acknowledge recovery before queue processing
 resumes. This provides at-most-once dispatch, not exactly-once external effects.
+
+The executor plans commands in Go and runs only `gh` or the native Go `gh-aw`
+CLI inside the digest-pinned `ghcr.io/github/gh-aw` container. The campaign
+update action is translated to `gh-aw update`; the server never invokes
+`cao.sh` or checks out and executes control-repository scripts. The executor
+requires a local Docker daemon using its `default` context. Each container has a
+read-only root filesystem, no added capabilities, and only its per-command
+workspace mounted writable. A temporary mode-`0600` environment file passes the
+scoped token; the executor's home, Docker socket, App key, and database
+credentials are not mounted or passed into the container. Cancellation,
+deadlines, and lease loss forcibly remove the container.
 
 `setup-auth hosted-cli` writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
@@ -636,12 +647,13 @@ Never put the key in checked-in configuration, command arguments, logs, or the
 | Variable | Purpose |
 | --- | --- |
 | `CAO_HOSTED_CLI_CONTROL_REPOSITORY` | Control repository, given as `OWNER/REPOSITORY`. It falls back to `CAO_COLLECT_CONTROL_REPOSITORY`. |
-| `CAO_HOSTED_CLI_CONTROL_REVISION` | Full commit SHA of the reviewed control repository at which `./cao.sh` actions run (`execute-cli` only). Without it, control-repository actions fail closed. |
 | `CAO_HOSTED_CLI_APP_ID` | Hosted CLI GitHub App ID (`execute-cli` only). |
 | `CAO_HOSTED_CLI_PRIVATE_KEY` (`_FILE`, `_BASE64`) | App private key (`execute-cli` only). |
 | `CAO_HOSTED_CLI_GITHUB_API_URL`, `CAO_HOSTED_CLI_GITHUB_URL` | GitHub API and web URLs for GHES. |
 | `CAO_HOSTED_CLI_DASHBOARD_URL` | Dashboard URL used in command backlinks. |
-| `CAO_HOSTED_CLI_WORK_ROOT`, `CAO_HOSTED_CLI_GH` | Executor workspace root and `gh` binary. |
+| `CAO_HOSTED_CLI_CONTAINER_IMAGE` | Optional digest-pinned gh-aw image or approved mirror; defaults to `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`. |
+| `CAO_HOSTED_CLI_DOCKER` | Optional Docker CLI path; defaults to `docker`. |
+| `CAO_HOSTED_CLI_WORK_ROOT` | Executor workspace root. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
 
 #### Rotate the hosted CLI App key

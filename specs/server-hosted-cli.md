@@ -194,33 +194,41 @@ a subprocess starts.
    deadline (default 15 minutes) bound execution. The deadline MUST be stored
    durably with the claim and MUST apply across executor restarts.
 6. Each command MUST run in a new workspace with mode `0700`, which is removed
-   afterwards. The subprocess environment MUST be minimal: `GH_TOKEN`, an
+   afterwards. It MUST execute in the official `ghcr.io/github/gh-aw` image
+   pinned by OCI SHA-256 digest (default
+   `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`),
+   or in an operator-approved digest-pinned mirror. An unpinned image reference
+   MUST fail startup. The executor MUST use the local Docker `default` context;
+   remote contexts MUST NOT be used because the command's workspace is a
+   host-local bind mount.
+7. The Go planner MUST accept only fixed `gh` and `gh-aw` container entrypoints.
+   It MUST NOT execute `cao.sh`, arbitrary shell commands, or control-repository
+   scripts. A CAO campaign update MUST be translated to a native `gh-aw update`
+   command scoped to the configured control repository and the catalog-selected
+   CAO package. The container image reference MUST be recorded in the audit
+   event for command start.
+8. The container MUST use a read-only root filesystem, drop all Linux
+   capabilities, enable `no-new-privileges`, and apply process and memory
+   limits. The per-command workspace MUST be its only writable host bind mount;
+   `/tmp` MAY be a bounded tmpfs. The executor MUST NOT mount the host home,
+   Docker socket, App key, database credentials, or other server files.
+9. The subprocess environment MUST be minimal: the single-use `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
-   identity. It MUST NOT inherit server secrets.
-7. Control-checkout commands (`./cao.sh`) MUST run only at the
-   operator-reviewed commit SHA configured by
-   `CAO_HOSTED_CLI_CONTROL_REVISION`. The executor MUST clone without
-   checking out and MUST then check out that detached revision. The live
-   default branch MUST NOT be executed. Without a configured revision, these
-   commands MUST fail before a token is acquired. A value that is not a full
-   commit SHA MUST fail startup.
-8. Each command MUST receive a private copy of the operator's gh extensions
-   inside its workspace (`XDG_DATA_HOME`). Symbolic links are resolved and
-   copied as content. A command MUST NOT be able to modify the extensions
-   that later commands run.
-9. The subprocess MUST run in its own process group and MUST be killed on
-   cancellation, deadline, or loss of the lease.
-10. A terminal result MUST NOT release its concurrency claim until subprocess
-    exit has been confirmed and settlement is durably stored. If a lease expires
-    while a command is still claimed or running, the replacement executor MUST
-    mark the outcome interrupted, block further claims, and require explicit
-    operator recovery acknowledgement after confirming the old subprocess has
-    stopped. It MUST NOT automatically retry the interrupted command: external
-    side effects may have completed before the crash, so the system guarantees
-    at-most-once dispatch, not exactly-once external effects. A retry MUST use a
-    new command ID and explicit admission.
-11. Command output MUST redact the token. Logs MUST NOT contain tokens,
-   private keys, or OAuth credentials.
+   identity. The executor MUST pass it through a temporary mode-`0600`
+   environment file outside the mounted workspace, remove that file after
+   container creation, and MUST NOT place token values in command arguments.
+10. The executor MUST forcibly remove the container on cancellation, deadline,
+   or loss of the lease. Command output MUST redact the token. Logs MUST NOT
+   contain tokens, private keys, or OAuth credentials.
+11. A terminal result MUST NOT release its concurrency claim until container
+   exit has been confirmed and settlement is durably stored. If a lease expires
+   while a command is still claimed or running, the replacement executor MUST
+   mark the outcome interrupted, block further claims, and require explicit
+   operator recovery acknowledgement after confirming the old container has
+   stopped. It MUST NOT automatically retry the interrupted command: external
+   side effects may have completed before the crash, so the system guarantees
+   at-most-once dispatch, not exactly-once external effects. A retry MUST use a
+   new command ID and explicit admission.
 
 ## 7. Audit trail
 
@@ -261,7 +269,7 @@ a subprocess starts.
 6. The executor MUST record `token.minted`, `token.revoked`, and
    `token.revoke_failed`. It MUST also record `cli_command.started`,
    `cli_command.permission_denied`, and `cli_command.finished`, with the
-   actor, repository, installation, granted permissions, control revision,
+   actor, repository, installation, granted permissions, container image,
    status, and exit code.
 7. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
    MUST identify the token by `hashed_token`, the Base64 SHA-256 digest that
@@ -369,18 +377,20 @@ repository and the explicitly enrolled targets. A compromised administrator
 session is limited to the step-up window and to catalog-declared actions on
 repositories the administrator can already write.
 
-Subprocesses run as the executor's OS user. The App private key and the
-operational database credentials are readable by that user, so operators
-SHOULD run `execute-cli` under a dedicated, unprivileged user or container
-and SHOULD advance `CAO_HOSTED_CLI_CONTROL_REVISION` only after reviewing the
-control repository at that commit. Code at the reviewed revision is trusted
-to the same degree as the executor itself.
+The command container runs as the executor's OS user, but receives only its
+workspace and scoped token. The executor process and local Docker daemon remain
+trusted: the executor can read the App private key and database credentials,
+and a Docker administrator can inspect container configuration and its scoped
+token. Operators SHOULD run `execute-cli` under a dedicated, unprivileged user
+and restrict Docker daemon access to trusted operators. The gh-aw image MUST be
+digest-pinned; the container is defense in depth, not a boundary against a
+compromised host kernel or Docker daemon.
 
 Operational hardening that this specification does not yet require, in
 priority order:
 
-1. Run each command in a disposable sandbox (container or gVisor) as a
-   separate OS user without access to the App key or database credentials.
+1. Add a gVisor or microVM boundary and restricted network egress around the
+   command container.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and
    rotate it on a schedule; GitHub allows two active keys during rotation.
 3. Use separate database roles: the web and executor roles get `INSERT` and

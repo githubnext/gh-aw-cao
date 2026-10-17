@@ -27,8 +27,8 @@ const maxHostedCLIRequestBytes = 1 << 20
 // `cao-dashboard execute-cli` with single-use GitHub App tokens.
 type HostedCLIConfig struct {
 	Catalog *hostedcli.Catalog
-	// ControlRepository is the OWNER/REPOSITORY whose CAO checkout runs
-	// ./cao.sh commands and is rendered as {{cao-repository}}.
+	// ControlRepository is the OWNER/REPOSITORY targeted by hosted gh-aw
+	// package updates and is rendered as {{cao-repository}}.
 	ControlRepository string
 	// GitHubURL is the web base used for {{cao-repository-url}}.
 	GitHubURL string

@@ -257,13 +257,16 @@ queue, rechecks the actor's live write permission, and runs each command in an
 isolated workspace with a single-use, repository-scoped GitHub App installation
 token that is revoked on completion. A bounded broker pre-mints tokens for
 backlog.
-Control-repository `./cao.sh` actions run only at an operator-reviewed commit
-(`CAO_HOSTED_CLI_CONTROL_REVISION`), and each command gets a private copy of
-the gh extensions. The broker revokes and rejects any token whose granted
-scope exceeds the request. Both processes append credential-free audit
-events (`server/internal/audit`) to the hash-chained, append-only PostgreSQL
-table `cao_operational_audit_events` and mirror them as JSON lines for SIEM
-forwarding; privileged steps fail closed when the event cannot be stored.
+The Go planner translates the hosted CAO package-update action into a native
+`gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
+The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
+gh-aw container, mounting only the per-command workspace and passing the
+single-use token through a temporary protected environment file. The broker
+revokes and rejects any token whose granted scope exceeds the request. Both
+processes append credential-free audit events (`server/internal/audit`) to the
+hash-chained, append-only PostgreSQL table `cao_operational_audit_events` and
+mirror them as JSON lines for SIEM forwarding; privileged steps fail closed
+when the event cannot be stored.
 For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
 share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
 provides the same queue and audit table without PostgreSQL.

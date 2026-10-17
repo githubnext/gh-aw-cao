@@ -81,6 +81,28 @@ func TestResolveRejectsInvalidRequests(t *testing.T) {
 	}
 }
 
+func TestResolveDeclaredCampaignUpdateUsesNativeGhAwCommand(t *testing.T) {
+	catalog := loadTestCatalog(t)
+	invocation, err := catalog.Resolve(Request{
+		ID: "update-campaign", Values: map[string]string{"campaign": "security"},
+		Arguments: map[string]bool{"create-pull-request": true},
+	}, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(invocation.Command, "cao.sh") ||
+		!strings.HasPrefix(invocation.Command, "gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao") {
+		t.Fatalf("campaign update must use the native gh-aw command: %s", invocation.Command)
+	}
+	plan, err := PlanCommand(invocation.Command, "octo/cao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Kind != KindGhAwUpdate || plan.Program != "gh-aw" || plan.Repository != "octo/cao" {
+		t.Fatalf("unexpected hosted package update plan %+v", plan)
+	}
+}
+
 func TestPlanCommandAllowlist(t *testing.T) {
 	update, err := PlanCommand("gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --pr-message 'msg' --create-pull-request --auto-merge", "octo/cao")
 	if err != nil {

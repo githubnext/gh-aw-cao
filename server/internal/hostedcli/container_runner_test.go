@@ -35,7 +35,17 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	runner.HostEnv = dockerHostEnvironment([]string{"PATH=/usr/bin", "HOME=/operator", "CAO_PRIVATE_KEY=excluded"})
-	commands.run = func(_ context.Context, process Process, _ OutputFunc) (int, error) {
+	var environmentFile string
+	commands.run = func(_ context.Context, process Process, output OutputFunc) (int, error) {
+		if len(commands.processes) == 2 {
+			if process.Args[0] != "--context" || process.Args[2] != "start" {
+				t.Fatalf("unexpected container start %v", process.Args)
+			}
+			if _, err := os.Stat(environmentFile); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("environment file remained after container creation: %v", err)
+			}
+			return 0, nil
+		}
 		if process.Program != "docker" {
 			t.Fatalf("unexpected runtime executable %q", process.Program)
 		}
@@ -45,22 +55,23 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 		if slices.Contains(process.Args, "scoped-value") {
 			t.Fatal("the scoped token must not appear in runtime arguments")
 		}
-		envFile := process.Args[slices.Index(process.Args, "--env-file")+1]
-		info, err := os.Stat(envFile)
+		environmentFile = process.Args[slices.Index(process.Args, "--env-file")+1]
+		info, err := os.Stat(environmentFile)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if info.Mode().Perm() != 0o600 {
 			t.Fatalf("environment file mode = %o, want 0600", info.Mode().Perm())
 		}
-		contents, err := os.ReadFile(envFile)
+		// #nosec G304 -- the path is created by writeContainerEnvironment in this test.
+		contents, err := os.ReadFile(environmentFile)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(string(contents), "GH_TOKEN=scoped-value\n") {
 			t.Fatal("container must receive the scoped token through its protected environment file")
 		}
-		for _, arg := range []string{"--context", "default", "run", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--network", "bridge"} {
+		for _, arg := range []string{"--context", "default", "create", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--network", "bridge"} {
 			if !slices.Contains(process.Args, arg) {
 				t.Fatalf("runtime arguments %v do not include %q", process.Args, arg)
 			}
@@ -75,6 +86,7 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 		if mount != "type=bind,src="+workspace+",dst=/workspace,rw" {
 			t.Fatalf("unexpected workspace mount %q", mount)
 		}
+		output("stdout", []byte(strings.Repeat("a", 64)+"\n"))
 		return 0, nil
 	}
 	_, err = runner.Run(context.Background(), Process{
@@ -84,8 +96,7 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	envFile := commands.processes[0].Args[slices.Index(commands.processes[0].Args, "--env-file")+1]
-	if _, err := os.Stat(envFile); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(environmentFile); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("environment file was not removed: %v", err)
 	}
 }
@@ -97,11 +108,20 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	commands.run = func(ctx context.Context, process Process, _ OutputFunc) (int, error) {
-		if len(commands.processes) == 1 {
-			if len(process.Args) < 3 || process.Args[0] != "--context" || process.Args[1] != "default" || process.Args[2] != "run" {
-				t.Fatalf("first call = %v, want docker run", process.Args)
+	cancelContext := func() {}
+	commands.run = func(ctx context.Context, process Process, output OutputFunc) (int, error) {
+		switch len(commands.processes) {
+		case 1:
+			if len(process.Args) < 3 || process.Args[0] != "--context" || process.Args[1] != "default" || process.Args[2] != "create" {
+				t.Fatalf("first call = %v, want docker create", process.Args)
 			}
+			output("stdout", []byte(strings.Repeat("b", 64)+"\n"))
+			return 0, nil
+		case 2:
+			if len(process.Args) < 4 || process.Args[2] != "start" || process.Args[3] != "--attach" {
+				t.Fatalf("second call = %v, want docker start --attach", process.Args)
+			}
+			cancelContext()
 			return -1, context.Canceled
 		}
 		if err := ctx.Err(); err != nil {
@@ -117,7 +137,7 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 		return 0, nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	cancelContext = cancel
 	_, err = runner.Run(ctx, Process{
 		Workspace: workspace, Dir: workspace, Program: "gh", Args: []string{"workflow", "run", "cao.yml"},
 		Env: []string{"GH_TOKEN=scoped-value"},
@@ -125,8 +145,8 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("run error = %v, want cancellation", err)
 	}
-	if len(commands.processes) != 2 {
-		t.Fatalf("container cleanup calls = %d, want run and remove", len(commands.processes))
+	if len(commands.processes) != 3 {
+		t.Fatalf("container cleanup calls = %d, want create, start, and remove", len(commands.processes))
 	}
 }
 

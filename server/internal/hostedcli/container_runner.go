@@ -17,6 +17,7 @@ const DefaultContainerImage = "ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc9
 
 var (
 	containerImagePattern = regexp.MustCompile(`^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$`)
+	containerIDPattern    = regexp.MustCompile(`^[a-f0-9]{12,64}$`)
 	containerEnvName      = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
@@ -74,7 +75,7 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 		return -1, err
 	}
 	args := []string{
-		"--context", "default", "run", "--rm", "--init", "--name", name,
+		"--context", "default", "create", "--rm", "--init", "--name", name,
 		"--network", "bridge",
 		"--read-only",
 		"--cap-drop", "ALL",
@@ -95,24 +96,53 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	args = append(args, "--entrypoint", process.Program, r.Image)
 	args = append(args, process.Args...)
 
+	var containerID strings.Builder
+	createCode, createErr := r.Commands.Run(ctx, Process{
+		Program: r.DockerBinary, Args: args, Env: r.HostEnv,
+	}, func(stream string, data []byte) {
+		if stream == "stdout" && containerID.Len()+len(data) <= 256 {
+			_, _ = containerID.Write(data)
+		}
+	})
+	if err := os.Remove(environmentFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if cleanupErr := r.removeContainer(ctx, name); cleanupErr != nil {
+			return -1, fmt.Errorf("hosted CLI container environment could not be removed; container cleanup failed: %w", cleanupErr)
+		}
+		return -1, errors.New("hosted CLI container environment could not be removed")
+	}
+	if createErr != nil || createCode != 0 || !containerIDPattern.MatchString(strings.TrimSpace(containerID.String())) {
+		cleanupErr := r.removeContainer(ctx, name)
+		if cleanupErr != nil {
+			return -1, fmt.Errorf("hosted CLI container could not be created or removed: %w", cleanupErr)
+		}
+		return createCode, errors.New("hosted CLI container could not be created")
+	}
 	code, runErr := r.Commands.Run(ctx, Process{
-		Program: r.DockerBinary, Args: args, Env: r.HostEnv, Stdin: process.Stdin,
+		Program: r.DockerBinary, Args: []string{"--context", "default", "start", "--attach", name},
+		Env: r.HostEnv, Stdin: process.Stdin,
 	}, output)
 	if runErr == nil {
 		return code, nil
 	}
+	if cleanupErr := r.removeContainer(ctx, name); cleanupErr != nil {
+		return -1, fmt.Errorf("hosted CLI container stopped but could not be removed: %w", cleanupErr)
+	}
+	return code, runErr
+}
+
+func (r *ContainerRunner) removeContainer(ctx context.Context, name string) error {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
 	cleanupCode, cleanupErr := r.Commands.Run(cleanupCtx, Process{
 		Program: r.DockerBinary, Args: []string{"--context", "default", "rm", "--force", name}, Env: r.HostEnv,
 	}, nil)
-	if cleanupErr != nil || cleanupCode != 0 {
-		if cleanupErr == nil {
-			cleanupErr = fmt.Errorf("docker rm exited with code %d", cleanupCode)
-		}
-		return -1, fmt.Errorf("hosted CLI container stopped but could not be removed: %w", cleanupErr)
+	if cleanupErr == nil && cleanupCode == 0 {
+		return nil
 	}
-	return code, runErr
+	if cleanupErr == nil {
+		cleanupErr = fmt.Errorf("docker rm exited with code %d", cleanupCode)
+	}
+	return cleanupErr
 }
 
 func containerPaths(workspace, directory string) (string, string, error) {
@@ -147,7 +177,7 @@ func writeContainerEnvironment(environment []string) (string, error) {
 	if err != nil {
 		return "", errors.New("hosted CLI container environment could not be prepared")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	if err := file.Chmod(0o600); err != nil {
 		_ = os.Remove(file.Name())
 		return "", errors.New("hosted CLI container environment could not be protected")

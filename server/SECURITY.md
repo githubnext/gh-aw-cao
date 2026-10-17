@@ -660,20 +660,22 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
   shutdown.
 - **Isolation**: each command runs in a fresh `0700` workspace that is removed
-  afterwards. Its environment contains only `GH_TOKEN`, an empty system git
-  configuration, the `gh` credential helper, and the App bot identity. The
-  subprocess runs in its own process group and is killed on cancellation,
-  deadline, or loss of the lease. The token is redacted from captured output.
-  Each command also gets a private copy of the operator's gh extensions, so it
-  cannot tamper with the extensions that later commands run.
-- **Reviewed control code**: `./cao.sh` commands run only at the commit SHA
-  in `CAO_HOSTED_CLI_CONTROL_REVISION`, never at the control repository's
-  live default branch. Without that setting, those commands fail closed. A
-  push to the control repository therefore cannot get code onto the executor
-  until an operator reviews the commit and advances the revision.
-  Subprocesses share the executor's OS user, which can read the App key and
-  database credentials. Run `execute-cli` under a dedicated user or container
-  and treat the reviewed revision as fully trusted.
+  afterwards inside the digest-pinned `ghcr.io/github/gh-aw` image. The container
+  has a read-only root, no added capabilities, resource limits, and only the
+  per-command workspace mounted writable. Only the `gh` and `gh-aw` entrypoints
+  are allowed. A temporary mode-`0600` environment file supplies the scoped
+  token and minimal command environment; the App key, database credentials,
+  executor home, and Docker socket are not mounted. The root Docker context must
+  be local because it bind-mounts a host workspace. On cancellation, timeout, or
+  lease loss, the executor forcibly removes the container. Output redaction
+  applies before persistence.
+- **Native command planning**: Go re-plans every command against the catalog
+  allowlist. CAO campaign updates become native `gh-aw update` invocations
+  constrained to the configured control repository and selected CAO package.
+  The backend does not run `cao.sh`, check out the control repository, or
+  execute scripts from it. The image reference is pinned by digest and included
+  in command-start audit records. An operator-selected mirror must also use a
+  reviewed digest-pinned reference.
 - **App setup**: `./cao.sh setup-auth hosted-cli` creates a least-privilege
   App (actions, contents, pull requests, and workflows write; metadata read).
   It refuses sensitive or organization permissions and installs the App only
@@ -699,8 +701,8 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   for SIEM forwarding. The events cover admin denials (with the
   step-up or not-admin reason), admission, rejection, cancel, retry, token
   mint and revocation, the command's start, permission denial, and finish.
-  They carry the actor, repository, assurance, and control revision, but no
-  credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
+  They carry the actor, repository, assurance, and execution image reference,
+  but no credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
   format, so CAO events join GitHub's record of the App's actions. Forward
   the mirror to write-once SIEM storage when you need protection against a
   database superuser rewriting the whole chain.
@@ -738,8 +740,8 @@ trail emitted no telemetry or trace correlation. Audit verification, anchors,
 export, OTLP audit logs, and hosted CLI telemetry address those findings.
 Recommended next steps, in priority order:
 
-1. Run each command in a disposable sandbox (container or gVisor) as a
-   separate OS user without access to the App key or database credentials.
+1. Add a stronger gVisor or microVM boundary and restricted network egress
+   around the command container.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
    it on a schedule.
 3. Use separate database roles: `INSERT` and `SELECT` on the audit table for
