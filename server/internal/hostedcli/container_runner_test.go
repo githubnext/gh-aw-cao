@@ -37,7 +37,14 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 	runner.HostEnv = dockerHostEnvironment([]string{"PATH=/usr/bin", "HOME=/operator", "CAO_PRIVATE_KEY=excluded"})
 	var environmentFile string
 	commands.run = func(_ context.Context, process Process, output OutputFunc) (int, error) {
-		if len(commands.processes) == 2 {
+		switch len(commands.processes) {
+		case 1:
+			if !slices.Contains(process.Args, "inspect") || !slices.Contains(process.Args, "default") {
+				t.Fatalf("unexpected Docker context inspection %v", process.Args)
+			}
+			output("stdout", []byte("unix:///var/run/docker.sock\n"))
+			return 0, nil
+		case 3:
 			if process.Args[0] != "--context" || process.Args[2] != "start" {
 				t.Fatalf("unexpected container start %v", process.Args)
 			}
@@ -45,6 +52,9 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 				t.Fatalf("environment file remained after container creation: %v", err)
 			}
 			return 0, nil
+		}
+		if len(commands.processes) != 2 {
+			t.Fatalf("unexpected Docker invocation %v", process.Args)
 		}
 		if process.Program != "docker" {
 			t.Fatalf("unexpected runtime executable %q", process.Program)
@@ -112,12 +122,15 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 	commands.run = func(ctx context.Context, process Process, output OutputFunc) (int, error) {
 		switch len(commands.processes) {
 		case 1:
+			output("stdout", []byte("unix:///var/run/docker.sock\n"))
+			return 0, nil
+		case 2:
 			if len(process.Args) < 3 || process.Args[0] != "--context" || process.Args[1] != "default" || process.Args[2] != "create" {
 				t.Fatalf("first call = %v, want docker create", process.Args)
 			}
 			output("stdout", []byte(strings.Repeat("b", 64)+"\n"))
 			return 0, nil
-		case 2:
+		case 3:
 			if len(process.Args) < 4 || process.Args[2] != "start" || process.Args[3] != "--attach" {
 				t.Fatalf("second call = %v, want docker start --attach", process.Args)
 			}
@@ -130,7 +143,8 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 		if len(process.Args) != 5 || process.Args[0] != "--context" || process.Args[1] != "default" || process.Args[2] != "rm" || process.Args[3] != "--force" {
 			t.Fatalf("unexpected container cleanup %v", process.Args)
 		}
-		runName := commands.processes[0].Args[slices.Index(commands.processes[0].Args, "--name")+1]
+		createArgs := commands.processes[1].Args
+		runName := createArgs[slices.Index(createArgs, "--name")+1]
 		if process.Args[4] != runName {
 			t.Fatalf("cleanup target %q does not match running container %q", process.Args[4], runName)
 		}
@@ -145,8 +159,30 @@ func TestContainerRunnerRemovesContainerAfterCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("run error = %v, want cancellation", err)
 	}
-	if len(commands.processes) != 3 {
-		t.Fatalf("container cleanup calls = %d, want create, start, and remove", len(commands.processes))
+	if len(commands.processes) != 4 {
+		t.Fatalf("container cleanup calls = %d, want inspect, create, start, and remove", len(commands.processes))
+	}
+}
+
+func TestContainerRunnerRejectsRemoteDockerDefaultContext(t *testing.T) {
+	workspace := t.TempDir()
+	commands := &containerCommandRunner{}
+	runner, err := NewContainerRunner(DefaultContainerImage, "docker", commands)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commands.run = func(_ context.Context, _ Process, output OutputFunc) (int, error) {
+		output("stdout", []byte("ssh://docker.example.test\n"))
+		return 0, nil
+	}
+	_, err = runner.Run(context.Background(), Process{
+		Workspace: workspace, Dir: workspace, Program: "gh-aw", Env: []string{"GH_TOKEN=scoped-value"},
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "local socket") {
+		t.Fatalf("remote Docker context was not rejected: %v", err)
+	}
+	if len(commands.processes) != 1 {
+		t.Fatalf("Docker invocations = %d, want context inspection only", len(commands.processes))
 	}
 }
 

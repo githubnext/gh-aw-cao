@@ -65,6 +65,9 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	if strings.ContainsAny(workspace, ",\r\n") {
 		return -1, errors.New("hosted CLI workspace path cannot be mounted by the container runtime")
 	}
+	if err := r.requireLocalDockerContext(ctx); err != nil {
+		return -1, err
+	}
 	environmentFile, err := writeContainerEnvironment(process.Env)
 	if err != nil {
 		return -1, err
@@ -128,6 +131,25 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 		return -1, fmt.Errorf("hosted CLI container stopped but could not be removed: %w", cleanupErr)
 	}
 	return code, runErr
+}
+
+func (r *ContainerRunner) requireLocalDockerContext(ctx context.Context) error {
+	var endpoint strings.Builder
+	code, err := r.Commands.Run(ctx, Process{
+		Program: r.DockerBinary,
+		Args:    []string{"--context", "default", "context", "inspect", "default", `--format={{ (index .Endpoints "docker").Host }}`},
+		Env:     r.HostEnv,
+	}, func(stream string, data []byte) {
+		if stream == "stdout" && endpoint.Len()+len(data) <= 512 {
+			_, _ = endpoint.Write(data)
+		}
+	})
+	host := strings.TrimSpace(endpoint.String())
+	local := strings.HasPrefix(host, "unix:///") || strings.HasPrefix(host, "npipe://")
+	if err != nil || code != 0 || !local || strings.ContainsAny(host, "\r\n") {
+		return errors.New("hosted CLI requires the Docker default context to use a local socket")
+	}
+	return nil
 }
 
 func (r *ContainerRunner) removeContainer(ctx context.Context, name string) error {
