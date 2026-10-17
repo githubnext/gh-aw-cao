@@ -191,7 +191,7 @@ jobs:
             core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The workflow will attach the verified runtime and versioned extension binaries, then publish this draft as an immutable prerelease under the exact version tag before adding release highlights. A maintainer must then review the complete notes, remove the prerelease designation, and mark it as the latest release. Control repositories install or update this campaign only with gh aw add or gh aw update.')
+              .addRaw('The workflow will attach the verified runtime and versioned extension binaries, then publish this draft as an immutable prerelease under the exact version tag before adding release highlights. After this workflow succeeds, a maintainer must use the Promote prerelease to latest workflow for exact-source validation and independent environment approval. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
               .addLink('Review draft', release.html_url);
             await core.summary.write();
@@ -524,7 +524,7 @@ jobs:
             core.setOutput('release_tag', releaseTag);
             core.summary
               .addHeading(`Published ${releaseTag} as a prerelease`)
-              .addRaw('The version tag, verified runtime assets, and versioned extension binaries are now immutable. The release highlights agent will update the notes next; after the workflow succeeds, review the release and promote it to latest.')
+              .addRaw('The version tag, verified runtime assets, and versioned extension binaries are now immutable. The release highlights agent will update the notes next; after the workflow succeeds, use the Promote prerelease to latest workflow for independently approved promotion.')
               .addEOL()
               .addLink('Review prerelease', published.html_url);
             await core.summary.write();
@@ -647,7 +647,7 @@ steps:
 
 Update the newly published immutable prerelease identified by `current_release.json` with a concise, human-friendly summary.
 
-The release preparation jobs have already created the tag, attached the verified runtime assets and versioned extension binaries, and published the draft as an immutable prerelease under the verified version tag. Do not create, publish, promote, or otherwise change the release state. Your only write is the release-description update through the safe output. A maintainer will review the completed prerelease and promote it to the latest stable release.
+The release preparation jobs have already created the tag, attached the verified runtime assets and versioned extension binaries, and published the draft as an immutable prerelease under the verified version tag. Do not create, publish, promote, or otherwise change the release state. Your only write is the release-description update through the safe output. A maintainer will use the separate Promote prerelease to latest workflow, with exact-source validation and independent environment approval, for the stable release transition.
 
 ## Available evidence
 

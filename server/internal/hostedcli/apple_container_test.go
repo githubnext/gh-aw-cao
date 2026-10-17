@@ -99,6 +99,32 @@ func TestAppleContainerUsesIsolatedPinnedGuest(t *testing.T) {
 	}
 }
 
+func TestAppleContainerPreservesArgumentBoundaries(t *testing.T) {
+	for _, count := range []int{0, 1, 256} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			_, lifecycle, commands, _ := appleContainerTest(t)
+			args := make([]string, count)
+			for i := range args {
+				args[i] = fmt.Sprintf("argument %d; literal 'value'", i)
+			}
+			workspace := t.TempDir()
+			spec := ContainerSpec{
+				Workspace: workspace, Directory: workspace, Image: DefaultContainerImage,
+				Program: "gh-aw", Args: args,
+			}
+			if err := lifecycle.Create(t.Context(), appleTestExecution(), spec); err != nil {
+				t.Fatal(err)
+			}
+			created := commands.processes[len(commands.processes)-1].Args
+			start := slices.Index(created, "cao-hosted-cli")
+			want := append([]string{"cao-hosted-cli", appleTestExecution().Name, spec.Program}, args...)
+			if start < 0 || !slices.Equal(created[start:], want) {
+				t.Fatal("native command changed argument order or boundaries")
+			}
+		})
+	}
+}
+
 func TestAppleContainerExitRequiresReceiptAndServiceAbsence(t *testing.T) {
 	for _, scenario := range []string{"receipt", "receipt-client-exit", "missing", "wrong-identity", "invalid-code", "oversized", "symlink", "vm-still-present", "service-inventory-failed"} {
 		t.Run(scenario, func(t *testing.T) {
