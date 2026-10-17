@@ -59,6 +59,7 @@ func initializeStatistics(ctx context.Context, db *sql.DB) error {
 }
 
 func (s *Store) checkProvisionedPartitions(ctx context.Context, now time.Time, retention, linkedRetention int) error {
+	now = now.UTC()
 	if linkedRetention > retention {
 		return errors.New("linked retention days must not exceed run retention days")
 	}
