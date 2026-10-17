@@ -622,3 +622,37 @@ func TestAdmissionOutcome(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleLineDecodesRequestsAndRejectsMalformedInput(t *testing.T) {
+	b, _ := testBridge(t, 5000)
+	got := b.handleLine([]byte(`{"id":7,"operation":"status"}`))
+	if got.ID != 7 || got.Reason != "available" || got.Capacity != 4 {
+		t.Fatalf("valid line: %+v", got)
+	}
+	for _, line := range []string{``, `not json`, `{"id":"x"}`, `[1]`} {
+		bad := b.handleLine([]byte(line))
+		if bad.ID != 0 || bad.Reason != "unknown" || bad.RetryAt == "" || bad.Capacity != 0 {
+			t.Fatalf("line %q not rejected: %+v", line, bad)
+		}
+	}
+}
+
+func TestServeContinuesAfterMalformedLine(t *testing.T) {
+	b, _ := testBridge(t, 5000)
+	var out bytes.Buffer
+	input := strings.NewReader("garbage\n{\"id\":2,\"operation\":\"status\"}\n")
+	if err := serve(input, &out, b); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("want 2 responses: %s", out.String())
+	}
+	var first, second decision
+	if err := json.Unmarshal([]byte(lines[0]), &first); err != nil || first.Reason != "unknown" {
+		t.Fatalf("first: %s, %v", lines[0], err)
+	}
+	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil || second.ID != 2 || second.Reason != "available" {
+		t.Fatalf("second: %s, %v", lines[1], err)
+	}
+}

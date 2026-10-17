@@ -391,21 +391,24 @@ func serve(input io.Reader, output io.Writer, b *bridge) error {
 	scanner.Buffer(make([]byte, 4096), 64*1024)
 	encoder := json.NewEncoder(output)
 	for scanner.Scan() {
-		var req request
-		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
-			if err := encoder.Encode(b.unknown(0)); err != nil {
-				return err
-			}
-			continue
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		result := b.handle(ctx, req)
-		cancel()
-		if err := encoder.Encode(result); err != nil {
+		if err := encoder.Encode(b.handleLine(scanner.Bytes())); err != nil {
 			return err
 		}
 	}
 	return scanner.Err()
+}
+
+// handleLine answers one JSONL protocol line. A malformed line yields an
+// "unknown" decision with ID 0 instead of terminating the stream.
+func (b *bridge) handleLine(line []byte) decision {
+	var req request
+	if err := json.Unmarshal(line, &req); err != nil {
+		quotaLog.Printf("rejected request line: reason=invalid_json bytes=%d", len(line))
+		return b.unknown(0)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return b.handle(ctx, req)
 }
 
 func run() error {
