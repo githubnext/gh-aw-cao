@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "LG-P01", "scenario": "identity", "expectedJobs": 0},
+    {"id": "LG-P02", "scenario": "pagination", "expectedJobs": 300},
+    {"id": "LG-P03", "scenario": "signed-ingress", "expectedJobs": 1},
+    {"id": "LG-P04", "scenario": "etag-rollback", "expectedJobs": 2},
+    {"id": "LG-P05", "scenario": "conditional-cancel", "expectedJobs": 1}
+  ]
+}

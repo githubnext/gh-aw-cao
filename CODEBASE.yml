@@ -36,6 +36,8 @@ structure:
   webhook_gateway_entrypoint: server/cmd/cao-webhook-gateway/
   webhook_gateway_contracts: server/internal/webhookgateway/
   webhook_gateway_host: server/internal/webhookgatewayhost/
+  webhook_gateway_local: server/internal/webhookgatewaylocal/
+  webhook_gateway_sqlite: server/internal/operational/sqlite/
   dashboard_server_contract: server/spec/
   dashboard_coolify_profile: server/coolify/
   dashboard_upstash_profile: server/internal/server/hosted.go
@@ -212,7 +214,7 @@ components:
     responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
   webhook_gateway:
     path: server/cmd/cao-webhook-gateway/
-    responsibility: compose optional standalone isolated receive and dispatch processes, independent of dashboard reconciliation and collection, with existing OpenTelemetry and cancellation-owned shutdown
+    responsibility: compose optional isolated production receive/dispatch processes or an explicit non-authoritative local simulation, independent of dashboard reconciliation and collection, with cancellation-owned shutdown
   webhook_gateway_contracts:
     path: server/internal/webhookgateway/
     responsibility: own gateway consumer interfaces and pure bounded subscription, generic filter, authorization and dispatch-outcome decisions
@@ -222,6 +224,12 @@ components:
   webhook_gateway_queue:
     path: server/internal/operational/postgres/webhook.go
     responsibility: extend the existing operational adapter with namespace-isolated cao_operational_webhook tables, atomic bounded batch admission, monotonic policy revisions, database-time leases and fenced CAS transitions, separate from canonical schema and collection jobs
+  webhook_gateway_local:
+    path: server/internal/webhookgatewaylocal/
+    responsibility: poll one explicit immutable repository through bounded GET-only Events API reads, recognize known event IDs through committed retained receipts without re-signing mutable feed payloads or weakening ingress digest conflicts, sign new in-process HTTP deliveries through real ingress and workers, and provide clearly synthetic fixture authorization and dispatch acceptance without production credentials or authority
+  webhook_gateway_sqlite:
+    path: server/internal/operational/sqlite/
+    responsibility: implement only the local gateway Queue contract with private WAL-backed files, atomic bounded receipts/fanout, persisted revisions and rate budgets, database-time leases, fenced CAS transitions and terminal ambiguity across restart; not a hosted operational.Store
   dashboard_server_collection:
     path: server/internal/collect/
     responsibility: optional alternative ingestion profile that discovers paginated historical workflow runs into durable resumable run tasks, resolves reviewed policy over exact operational enrollment, enriches source-bound campaign inventory with short-lived installation authority, and retains repository and inventory evidence in a snapshot-compatible lake loaded through the existing ingestion pipeline
@@ -349,6 +357,10 @@ dependencies:
   - webhook_gateway_host -> operational_contracts
   - webhook_gateway_queue -> webhook_gateway_contracts
   - webhook_gateway_queue -> postgres_operational_store
+  - webhook_gateway -> webhook_gateway_local
+  - webhook_gateway -> webhook_gateway_sqlite
+  - webhook_gateway_local -> webhook_gateway_contracts
+  - webhook_gateway_sqlite -> webhook_gateway_contracts
   - dashboard_rebuild_control -> postgres_entity_store
   - dashboard_rebuild_control -> operational_contracts
   - sqlite_projection -> computations
@@ -371,6 +383,12 @@ dependencies:
   - marketplace_hosted_resolver -> marketplace_ui
 
 boundaries:
+  - subject: webhook_gateway_local
+    must_not_depend_on:
+      - webhook_gateway_host
+      - control_plane_authority
+      - dashboard_entity_storage
+      - dashboard_query_execution
   - subject: webhook_gateway_contracts
     must_not_depend_on:
       - dashboard_entity_storage
@@ -446,10 +464,11 @@ boundaries:
 
 invariants:
   - "The standalone webhook gateway MUST remain optional, not installed or enabled by default, distinct from dashboard reconciliation and collection, and unable to widen campaign scope, enablement or live authority. Fresh control-plane.webhook-gateway policy in cao.json MUST fail closed without stale fallback and bind exact-SHA artifact digests separately from administrative grants."
-  - "The explicit server/Dockerfile webhook-gateway-runtime target MUST remain lean and non-root without Node or dashboard dependencies, leaving the default final dashboard target unchanged. Startup MUST require an explicit role and policy path; receive plaintext MUST be numeric-loopback-only, with certificate and key required otherwise. Declared repository and owner allowlists MUST intersect. Source-route additions, deployment identity and capacity changes MUST require restart; root-scope changes MUST bump gateway revision."
+  - "The explicit server/Dockerfile webhook-gateway-runtime target MUST remain lean and non-root without Node or dashboard dependencies, leaving the default final dashboard target unchanged. Startup MUST require an explicit role and production roles a policy path; receive plaintext MUST be numeric-loopback-only, with certificate and key required otherwise. Declared repository and owner allowlists MUST intersect. Source-route additions, deployment identity and capacity changes MUST require restart; root-scope changes MUST bump gateway revision."
   - "Gateway receive MUST hold only HMAC verification secrets, not App private keys. Dispatch MUST hold independent receiving-App read and dispatch-App keys, not HMAC secrets. Receive MUST require complete 30-second authorization proofs in the existing operational StateStore, primed even with an empty queue; egress MUST independently recheck live GitHub grants, immutable identities, visibility, root scope and approved revision, never reuse admission proofs as send authority."
   - "Gateway filters and compiler-declared identity constraints MUST be bounded generic data, not event-specific routing. Reuse existing githubapp, githubquota, operational request limits and OpenTelemetry; do not create parallel credential, quota or telemetry frameworks."
-  - "Gateway state MUST extend existing PostgreSQL operational cao_operational_webhook_* tables, not canonical schema or collection jobs. Batch deduplication and protected capacity MUST commit atomically; database-time leases, ownership fences and version CAS MUST guard transitions. Monotonic queue revisions MUST reject stale callers and serialize observed revocation with dispatch reservation, without claiming instantaneous remote revocation or recalling in-flight requests. HTTP and backoff MUST remain outside database transactions."
+  - "Production gateway state MUST extend existing PostgreSQL operational cao_operational_webhook_* tables, not canonical schema or collection jobs. Batch deduplication and protected capacity MUST commit atomically; database-time leases, ownership fences and version CAS MUST guard transitions. Monotonic queue revisions MUST reject stale callers and serialize observed revocation with dispatch reservation, without claiming instantaneous remote revocation or recalling in-flight requests. HTTP and backoff MUST remain outside database transactions."
+  - "The explicit local gateway role MUST use a dedicated private SQLite queue and one operator-selected immutable repository, reject production credentials and policy options, preserve durable queue/receipt/revision/rate/fence semantics, and join polling before storage closure. Its bounded read-only polling feed, generated fixture authorization and simulated dispatch acceptance MUST NOT issue GitHub writes, activate authority, imply lossless webhook or Projects coverage, or be presented as live compiler/App evidence. RFC-034 defines the profile, bounded TLA+ model and executable conformance traces."
   - "Gateway uncertain acceptance and expired dispatch leases MUST become terminal ambiguous without automatic replay. Dispatch acceptance MUST NOT imply workflow success or operational value; cancellation MUST join workers before closing storage."
   - "Official gh-aw subscription metadata emission and immutable execution binding remain external unverified dependencies blocking gateway production activation. Hand-authored fixtures MUST NOT be represented as compiler integration or live Projects V2 end-to-end evidence; RFC-033 and its bounded model retain their stated limitations."
   - "The root Go extension module MUST remain independent of server/go.mod; extension Go checks MUST scope cmd/ and internal/ to exclude npm dependency sources and the server. Native gh cao campaigns add delegates ownership/generation to gh aw add with unchanged options, materializes only its installed full resolvedCommit SHA or local Git-tracked campaign files, rejects escaping archive paths and links, validates staged declarations before replacement, refreshes intelligence metadata, pins generated auto-upgrade Actions from the installed setup Action, and merges workers without widening scope, modes, enablement or worker ceilings. Missing policy initializes only the exact control repository. Native initialization refuses replacement, preview maps to review, and all campaign declarations are checked before workflow enablement/disablement. gh cao repos add OWNER/REPO enrollment, updates and other operator commands preserve production onboarding, authentication, policy and canonical-query semantics through the installed Node.js 24+ runtime, not a second engine. The bridge passes argument vectors and stdio without a shell, preserves statuses and cancellation, and never implicitly fetches code. CAO_RUNTIME_ROOT explicitly selects code without fallback; default discovery stays within the current repository before checking beside the executable. Runtime selection never changes cwd or grants authority. Help and version work offline; Go doctor performs bounded read-only GitHub CLI, gh-aw version, authentication and basic local policy structure/compiler-pin checks with text/JSON reports and nonzero status for failed/skipped checks. Authentication may contact GitHub; raw authentication output and subprocess errors MUST NOT be reported. Doctor MUST NOT grant authority, replace production policy/workflow validation or invoke Node snapshot repair. Actions pipeline commands, cao.sh, canonical installation paths and runtime ownership remain Node-owned and unchanged."
@@ -557,6 +576,11 @@ invariants:
   - "Marketplace UI access MUST cross the existing data-worker query boundary and package actions MUST be copy-only canonical CAO add commands; the dashboard MUST NOT install packages."
 
 flows:
+  local_webhook_gateway:
+    - webhook_gateway
+    - webhook_gateway_local
+    - webhook_gateway_contracts
+    - webhook_gateway_sqlite
   optional_webhook_gateway:
     - webhook_gateway
     - webhook_gateway_contracts
@@ -746,6 +770,7 @@ commands:
     working_directory: server/
     entries:
       tests: go test ./...
+      local_gateway_conformance: go test -race ./internal/operational/sqlite ./internal/webhookgatewaylocal ./cmd/cao-webhook-gateway
       redis_up: docker compose up -d
       redis_down: docker compose down
       coolify_contract_tests: node --test ../tests/unit/coolify-deployment-contract.test.mjs
@@ -768,6 +793,7 @@ validation:
     - commands.repository_root.entries.dashboard_server_tests
     - commands.repository_root.entries.dashboard_server_e2e
     - commands.dashboard_server.entries.tests
+    - commands.dashboard_server.entries.local_gateway_conformance
   workflow_source_command_refs:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
@@ -785,6 +811,7 @@ validation:
   documentation_command_refs:
     - commands.repository_root.entries.docs_build
   architecture:
+    - "Verify non-authoritative local gateway isolation, read-only polling and durable SQLite conformance against specs/rfc-034-local-webhook-gateway.md and its bounded TLA+ model."
     - "Verify optional gateway isolation, fresh policy and grants, monotonic revisions, fenced atomic bounds and terminal ambiguity against specs/rfc-033-webhook-gateway.md; do not infer production readiness from fixtures."
     - "Verify campaign contents against root and campaign aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."

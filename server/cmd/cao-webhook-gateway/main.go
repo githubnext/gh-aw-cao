@@ -68,19 +68,39 @@ func loadKey(path string) ([]byte, error) {
 
 func run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("cao-webhook-gateway", flag.ContinueOnError)
-	role := flags.String("role", "", "receive or dispatch; credentials must be isolated by role")
+	role := flags.String("role", "", "receive, dispatch, or local; credentials must be isolated by role")
 	policyPath := flags.String("policy", "", "absolute path to reviewed cao.json")
 	listen := flags.String("listen", "127.0.0.1:8081", "receiving HTTP address")
 	cert := flags.String("tls-cert", "", "receiving TLS certificate file")
 	key := flags.String("tls-key", "", "receiving TLS private key file")
+	repository := flags.String("repository", "", "local only: exact OWNER/REPO to poll read-only")
+	sqlitePath := flags.String("sqlite", "", "local only: absolute path to a private SQLite database")
+	events := flags.String("events", "issues,issue_comment,pull_request", "local only: comma-separated repository Events API event families")
+	interval := flags.Duration("poll-interval", time.Minute, "local only: minimum GitHub polling interval")
+	once := flags.Bool("once", false, "local only: poll once, drain available work, and report simulated outcomes")
+	apiURL := flags.String("api-url", "https://api.github.com", "local only: HTTPS GitHub API base URL (numeric loopback HTTP allowed for tests)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if (*role != "receive" && *role != "dispatch") || flags.NArg() != 0 {
-		return errors.New("gateway requires an isolated receive or dispatch role")
+	if (*role != "receive" && *role != "dispatch" && *role != "local") || flags.NArg() != 0 {
+		return errors.New("gateway requires an isolated receive, dispatch, or local role")
 	}
 	if err := validateRoleCredentials(*role); err != nil {
 		return err
+	}
+	var incompatible bool
+	flags.Visit(func(f *flag.Flag) {
+		productionOption := f.Name == "policy" || f.Name == "listen" || f.Name == "tls-cert" || f.Name == "tls-key"
+		if *role == "local" && productionOption || *role != "local" && f.Name != "role" && !productionOption {
+			incompatible = true
+		}
+	})
+	if incompatible {
+		return errors.New("local simulation and production role options cannot be combined")
+	}
+	if *role == "local" {
+		return runLocal(ctx, localOptions{repository: *repository, path: *sqlitePath, events: strings.Split(*events, ","),
+			interval: *interval, once: *once, apiURL: *apiURL}, os.Stdout)
 	}
 	loader := gateway.NewPolicyLoader(*policyPath)
 	policy, err := loader.Load(ctx)
@@ -121,6 +141,14 @@ func run(ctx context.Context, args []string) error {
 }
 
 func validateRoleCredentials(role string) error {
+	if role == "local" {
+		for _, name := range []string{"CAO_GATEWAY_RECEIVE_KEY_FILE", "CAO_GATEWAY_DISPATCH_KEY_FILE",
+			"CAO_GATEWAY_WEBHOOK_SECRET", "CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"} {
+			if os.Getenv(name) != "" {
+				return errors.New("local simulation must not receive production gateway credentials")
+			}
+		}
+	}
 	if role == "receive" &&
 		(os.Getenv("CAO_GATEWAY_RECEIVE_KEY_FILE") != "" || os.Getenv("CAO_GATEWAY_DISPATCH_KEY_FILE") != "") {
 		return errors.New("receiving process must not receive App private keys")

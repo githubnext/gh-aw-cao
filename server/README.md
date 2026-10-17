@@ -174,6 +174,67 @@ endpoint. It is disabled by default. This change does **not** activate the
 gateway in the root policy, enroll repositories, approve subscriptions, or grant
 Actions write access.
 
+### Local SQLite and GitHub polling
+
+The [RFC-034 local simulation contract](../specs/rfc-034-local-webhook-gateway.md)
+defines the local profile, TLA+ model, and specification-derived conformance
+suites. No PostgreSQL, App installation, webhook registration, compiler emitter,
+or dispatch/write token is required:
+
+```bash
+# From the repository root; the parent directory must already exist and be private.
+# Optional GH_TOKEN supplies read-only access for private repositories/rate limits.
+go -C server run ./cmd/cao-webhook-gateway --role=local \
+  --repository=OWNER/REPO --sqlite="$PWD/local-gateway.sqlite" --once
+
+# Omit --once for a cancellation-scoped polling worker (Ctrl-C stops and joins it).
+go -C server run ./cmd/cao-webhook-gateway --role=local \
+  --repository=OWNER/REPO --sqlite="$PWD/local-gateway.sqlite" \
+  --events=issues,issue_comment,pull_request --poll-interval=60s
+
+# Inspect aggregate simulated outcomes without exposing projected payloads.
+sqlite3 local-gateway.sqlite 'SELECT state,count(*) FROM jobs GROUP BY state;'
+```
+
+The local client makes only GETs to that repository's metadata and Events API.
+`--api-url` supports an explicit HTTPS enterprise API base (including `/api/v3`);
+numeric-loopback HTTP is allowed for fixture servers, never hostname-based
+plaintext or redirects. The queue identity binds the API base, immutable
+repository/owner identities, and selected subscriptions. Reuse the same file and
+event selection to replay safely; use a different private file for a different
+configuration. Files must be private regular files (0600); SQLite WAL and durable
+receipts retain deduplication and fenced state across restart.
+
+Each newly observed event becomes an HMAC-signed **in-process HTTP request** to the real ingress;
+there is no local network listener. The real worker claims, renews, authorizes,
+reserves budgets, and finishes against SQLite. Only authorization evidence and
+dispatch acceptance are synthetic: the dispatcher cannot send GitHub writes.
+Startup/output explicitly say simulation; `succeeded` does not mean a remote
+workflow ran. The generated fixture projects only `simulation: true` and ingress
+provenance. This CLI does not load `--policy` or arbitrary compiler subscriptions
+and does not replace the production authorization/filter test suites.
+
+Do not provide `CAO_GATEWAY_RECEIVE_KEY_FILE`, `CAO_GATEWAY_DISPATCH_KEY_FILE`,
+`CAO_GATEWAY_WEBHOOK_SECRET`, or `CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET` to local
+mode; startup rejects production credentials. `GH_TOKEN` is optional and is never
+printed or persisted. The local fixture does not grant production authority or
+modify `cao.json`.
+
+Polling reads at most 300 visible events per pass, honors GitHub's
+`X-Poll-Interval`, and stops explicitly on API/admission failures. Restart retries
+the retained snapshot safely; an ETag advances only after all selected deliveries
+are admitted. Retained SQLite receipts recognize known event IDs even if GitHub
+changes their feed payloads; existing jobs are neither replaced nor replayed.
+New deliveries still undergo the ingress's body-digest conflict checks.
+There is no high-water ID cursor that skips late events.
+This is a delayed, bounded, best-effort feed, **not a lossless webhook journal**.
+It cannot recover feed gaps or simulate Projects v2 webhooks. Missing actions,
+filter operands, or transition data are not invented. Supported families are
+listed in RFC-034; one-shot mode reports deferred leased/rate-limited work as
+incomplete rather than claiming it was dispatched.
+
+### Isolated production roles
+
 Run two isolated deployments of `server/cmd/cao-webhook-gateway`: a public
 receive role and a private dispatch role. Each uses an absolute path to its
 reviewed `cao.json` and the same durable PostgreSQL operational namespace. The

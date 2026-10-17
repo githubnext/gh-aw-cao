@@ -409,9 +409,23 @@ The host reuses existing `githubapp` authentication, `githubquota`, operational
 request limits, and OpenTelemetry rather than creating parallel frameworks.
 The explicit `webhook-gateway-runtime` target in `server/Dockerfile` is a lean,
 non-root image without Node or dashboard dependencies; the default final
-dashboard target is unchanged. Startup requires an explicit role and policy path.
+dashboard target is unchanged. Production startup requires an explicit role and policy path.
 Receive permits plaintext only on numeric loopback; non-loopback listeners
 require both TLS certificate and key.
+
+The explicit `local` role uses a private, dedicated SQLite queue adapter under
+`server/internal/operational/sqlite/` and a read-only repository Events API
+polling adapter under `server/internal/webhookgatewaylocal/`. It passes signed
+in-process HTTP requests through the real ingress and runs the real fenced
+worker; only authorization evidence and dispatch acceptance are synthetic.
+It requires an exact repository and absolute database file, rejects production
+credentials/policy options, cannot issue GitHub writes, and never activates
+reviewed policy. Atomic receipts, revisions, rate tokens, CAS versions, and
+uncertain-dispatch recovery survive restart. The feed is bounded/best-effort,
+not a lossless webhook source or Projects integration. Polling recognizes known
+event IDs through committed retained receipts, without re-signing mutable feed
+payloads or weakening ingress digest-conflict rejection. RFC-034 defines this
+non-authoritative profile, its TLA+ model, and executable conformance traces.
 
 Receive and dispatch are separate processes and credential domains. Receive
 verifies bounded raw deliveries with HMAC secrets and holds no App private keys.
