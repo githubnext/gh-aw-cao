@@ -669,6 +669,16 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   be local because it bind-mounts a host workspace. On cancellation, timeout, or
   lease loss, the executor forcibly removes the container. Output redaction
   applies before persistence.
+- **Output safety**: stdout and stderr independently retain unfinished known
+  credentials and credential-shaped spans before UTF-8-safe framing. Writes,
+  newlines, and size-based flushes cannot expose a credential split between
+  stored chunks. Unfinished registered-credential prefixes are masked at close.
+  Retention is bounded by the longest registered credential
+  plus two 8 KiB buffers per stream. If an unresolved credential-shaped span
+  exceeds 8 KiB, that stream emits a redaction/suppression notice and discards
+  further output until command completion; the other stream remains available.
+  This fails closed instead of guessing where an unbounded or overlapping
+  credential ends. Queue output limits still apply.
 - **Native command planning**: Go re-plans every command against the catalog
   allowlist. CAO campaign updates become native `gh-aw update` invocations
   constrained to the configured control repository and selected CAO package.
