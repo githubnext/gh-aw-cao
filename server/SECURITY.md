@@ -665,11 +665,14 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   and treat the reviewed revision as fully trusted.
 - **App setup**: `./cao.sh setup-auth hosted-cli` creates a least-privilege
   App (actions, contents, pull requests, and workflows write; metadata read).
-  It refuses sensitive or organization permissions, writes the private key
-  with mode `0600` without overwriting, and installs the App only on the
-  control repository and named same-owner targets. Configure the key with
-  `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its `_FILE` or
-  `_BASE64` variant, available only to `execute-cli`. GitHub allows two active
+  It refuses sensitive or organization permissions and installs the App only
+  on the control repository and named same-owner targets. The private-key file
+  it writes with mode `0600` is a temporary bootstrap copy, not secret storage:
+  import it into the executor deployment's vault and remove the local copy.
+  Make the vaulted value available only to `execute-cli`, preferably through a
+  secret-manager-mounted file configured with `CAO_HOSTED_CLI_PRIVATE_KEY_FILE`.
+  Do not place it in the dashboard web process, checked-in configuration,
+  command arguments, or logs. GitHub allows two active
   App keys during rotation; deploy the replacement to every executor, restart
   only after admissions are paused and commands have drained, verify token
   minting, then revoke the old key. The executor reads its key at startup.
@@ -747,9 +750,12 @@ monitoring (CC7.2, A.8.15, A.8.16).
   tokens, session secrets, or the local dashboard access token in committed
   files, dashboard documents, test fixtures intended for production, query
   payloads, or browser-readable metadata.
-- Never log or persist hosted CLI installation tokens or the hosted CLI App
-  private key. Tokens are redacted from command output and revoked after use.
-  Audit events identify tokens only by their SHA-256 `hashed_token`.
+- Never log hosted CLI installation tokens or the hosted CLI App private key.
+  Tokens are redacted from command output and revoked after use. Audit events
+  identify tokens only by their SHA-256 `hashed_token`.
+- Keep the hosted CLI App private key in the deployment's managed secret store;
+  expose it only to the isolated `execute-cli` service. The setup command's
+  owner-only local output is temporary bootstrap material, not a vault.
 - Prefer environment variables or local command arguments supplied by a secret
   manager for Redis credentials.
 - In Azure, prefer Key Vault references in app settings. Bicep outputs must not

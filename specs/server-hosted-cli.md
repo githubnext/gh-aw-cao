@@ -130,6 +130,12 @@ a subprocess starts.
    `_FILE` or `_BASE64` variant. The App SHOULD be created with
    `cao setup-auth hosted-cli`, which requests only actions, contents,
    pull requests, and workflows write, plus metadata read.
+   Operators MUST store the App private key in the executor deployment's
+   managed secret store and expose it only to `execute-cli`, preferably through
+   a secret-manager-mounted file. The setup command's mode-`0600` local output
+   is temporary bootstrap material, not durable secret storage; operators
+   MUST import it into the vault and remove the local copy. The key MUST NOT
+   be configured on the `serve-hosted` process.
 2. Each command MUST use an installation token minted for exactly its target
    repository, with the narrowest permissions its plan requires.
 3. The broker MUST verify the grant GitHub returns. If the response omits the

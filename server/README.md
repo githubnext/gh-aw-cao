@@ -609,6 +609,15 @@ cao-dashboard serve-hosted --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
 
+`setup-auth hosted-cli` writes the downloaded key to a temporary local
+bootstrap file; that file is not a vault. Import it directly into the secret
+manager used by the `execute-cli` deployment, then securely remove the local
+copy. At runtime, expose the secret only to the executor, preferably as a
+secret-manager-mounted file configured with `CAO_HOSTED_CLI_PRIVATE_KEY_FILE`.
+Never put the key in checked-in configuration, command arguments, logs, or the
+`serve-hosted` process. The Azure Function App deployment does not host
+`execute-cli`; do not add this key to its settings.
+
 | Variable | Purpose |
 | --- | --- |
 | `CAO_HOSTED_CLI_CONTROL_REPOSITORY` | Control repository, given as `OWNER/REPOSITORY`. It falls back to `CAO_COLLECT_CONTROL_REPOSITORY`. |
@@ -627,8 +636,8 @@ configured key at startup, so changing the secret or key file does not update a
 running executor. Use a two-key rollover:
 
 1. Generate a new private key in the hosted CLI App's **Private keys** settings
-   and save it to a new, versioned secret or file. Do not overwrite the old key;
-   set the new file to owner-readable only (`0600`).
+   and save it to a new, versioned secret in the executor's secret manager. Do
+   not overwrite the old key or leave the downloaded bootstrap file on disk.
 2. Update the `execute-cli` deployment to use the new key through
    `CAO_HOSTED_CLI_PRIVATE_KEY_FILE`, `_BASE64`, or the inline variable. Do not
    expose it to `serve-hosted`.

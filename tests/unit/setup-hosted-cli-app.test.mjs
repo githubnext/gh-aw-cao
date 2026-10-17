@@ -118,3 +118,9 @@ test("dry run prints the manifest without contacting GitHub", () => {
   assert.equal(output.manifest.default_permissions.workflows, "write");
   assert.deepEqual(output.installationTargets, [{ owner: "acme", repositories: ["control"] }]);
 });
+
+test("setup help identifies the key file as temporary bootstrap material", () => {
+  const result = spawnSync(process.execPath, [script, "--help"], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /temporary bootstrap file/);
+});

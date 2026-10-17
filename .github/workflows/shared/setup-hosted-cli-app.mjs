@@ -151,7 +151,7 @@ Options:
   --repo OWNER/REPO            Control repository; the App is installed on it
   --target-repository REPO     Additional repository to add; repeatable
   --app-name NAME              Globally unique App name
-  --private-key-out PATH       Write the private key here (mode 0600, never overwritten)
+  --private-key-out PATH       Write a temporary bootstrap file (mode 0600, never overwritten)
   --dry-run                    Print the manifest and targets without changing GitHub
   --no-open                    Print browser URLs instead of opening them
   -h, --help                   Show this help`);
@@ -184,6 +184,7 @@ async function main() {
   });
   writePrivateKey(options.privateKeyOut, app.pem);
   console.error(`Wrote the private key to ${path.resolve(options.privateKeyOut)} with mode 0600.`);
+  console.error("Import it into the execute-cli deployment's secret manager, then securely remove this bootstrap file.");
 
   const [controlTarget] = targets;
   const [installation] = await ensureInstallations(app, [{ owner: controlTarget.owner, repositories: [splitRepo(options.repo)[1]] }], options.openBrowser, true);
