@@ -1,7 +1,35 @@
 {
   "source_sha": "8332050ca00104805d3a7539f1e46b39418d1426",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-17T03:00:40Z",
+      "worker_run_id": 38996725628,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        38996457368,
+        38995249093,
+        38995179876,
+        38995006790,
+        38993342825,
+        38992733552,
+        38991200650,
+        38990576500,
+        38990080457,
+        38990062433,
+        38989881859,
+        38989255404,
+        38988933940,
+        38988429472,
+        38987633766,
+        38984998455,
+        38984593958,
+        38984403344,
+        38984394547,
+        38983145138
+      ],
+      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-16T23:46:09Z through 2026-10-17T02:50:06Z, 15 runs concluded success and 5 concluded skipped; there were no failed, cancelled, action_required, or timed_out docs runs in the inspected window. All inspected docs and paired latest-20 cao-dashboard.yml head SHAs resolved to the same .github/workflows/docs.yml blob (9a4834bb3d54ed40376fab886e8e1effff0951d5) and .github/workflows/cao-dashboard.yml blob (415481b74f6b56b4d012c9a23e076b13bcaca2bd), so the successful sample is comparable on the same workflow sources. Trusted metadata showed docs queue time median 0.0s (p90 0.0s), docs workflow execution 51.0s (p90 82.6s) across 15 successful runs, schedule-freshness 7.0s (p90 8.0s), build 44.0s (p90 55.0s) across 9 successful build jobs, and deploy 15.0s (p90 21.4s) across 7 successful publish runs. Current-source docs logs from workflow_run 38995249093 and push 38990062433 verified cache restores for setup-node npm, Linux-node-24 node_modules, and central-agentic-ops-dashboard, Astro building 76 pages in 8.14s and 10.13s, /llms-full.txt as the slowest single docs route at about 0.96s and 1.45s, Pagefind completing in 256ms and 363ms, and github-pages artifact uploads of 55.5 MB and 50.1 MB. Current-source schedule run 38996457368 logged that the deployed docs and dashboard were current and skipped the build. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-16T21:16:33Z through 2026-10-17T02:28:09Z contained 9 successful builds and 11 skipped callbacks. Across those 9 successful dashboard builds, trusted metadata showed queue time median 0.0s (p90 0.0s), dashboard workflow execution 175.0s (p90 279.0s), build 156.0s (p90 262.2s), cache 11.0s (p90 12.0s), Restore collected activity data 4.0s (p90 5.4s), Install dashboard build dependencies 4.0s (p90 6.0s), Upgrade fallback activity data 117.0s (p90 192.4s), Assess activity database health 11.0s (p90 39.0s), Assemble Dashboard Language site 4.0s (p90 6.2s), Upload dashboard artifact 9.0s (p90 9.2s), and cache-job Download dashboard artifact plus Delete previous dashboard cache plus Save dashboard cache totaling 8.0s median. Bounded logs from dashboard runs 38995034642, 38990418608, and outlier 38984482860 verified cao-activity cache hits, dashboard npm ci adding 10 packages in 2-4s, copied SQLite payloads of 497.7 MiB to 560.1 MiB, 346 to 380 copied activity shards totaling 323.2 MiB to 357.4 MiB, dashboard artifact uploads of 45.3 MB to 51.7 MB, and immediate artifact re-download before fixed-key cache save; the outlier spent 290s in Upgrade fallback activity data alone. Across all 9 successful dashboard builds, every restored raw activity cache key was unique (38990062517-1, 38988221889-1, 38984394659-1, 38980583243-1, 38976932449-1, 38974992410-1, 38970462977-1, 38968336051-1, and 38962827606-1), so this window still does not show repeated same-snapshot producer rebuilds that would justify a new reusable-dashboard-generation issue. Open issue #16825 already tracks upgraded-snapshot cache reuse, and the latest evidence does not materially change that subject. No new recommendation in this category is actionable because docs-side dashboard reuse is already consistently warm, producer-side dashboard assembly remains single-digit seconds after data preparation, and the repeated cost remains the activity-data upgrade step without fresh same-snapshot reuse evidence."
+    },
     {
       "evaluated_at": "2026-10-17T02:40:00Z",
       "worker_run_id": 38995095701,
@@ -743,62 +771,6 @@
         38871048661
       ],
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 72013c71fc87b2ee155349a296e5750dc41c68e4. In the latest 20 completed docs.yml runs from 2026-10-16T08:02:31Z through 2026-10-16T11:34:09Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only four comparable successful docs runs executed both build and deploy (38893366181, 38889788704, 38883148256, 38876897045). Because this investigation requires at least five comparable successful runs before making a build-time recommendation, the evaluation is incomplete and no actionable suggestion was emitted. The latest 20 completed cao-dashboard.yml runs in the same evidence window contained 15 successful workflow_run builds and 5 skipped callbacks, but the docs sample itself did not meet the minimum comparability threshold after the recent source changes on 058f855ccfe6fbe3c97819d87649077b2719cd69 and 72013c71fc87b2ee155349a296e5750dc41c68e4."
-    },
-    {
-      "evaluated_at": "2026-10-16T11:26:20Z",
-      "worker_run_id": 38893372853,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38893366181,
-        38893093940,
-        38892493560,
-        38892190439,
-        38891087545,
-        38889788704,
-        38889605391,
-        38888227359,
-        38887035432,
-        38884484626,
-        38883148256,
-        38883036953,
-        38881765630,
-        38880420321,
-        38877656235,
-        38876897045,
-        38876510336,
-        38874195614,
-        38871048661,
-        38869711428
-      ],
-      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 72013c71fc87b2ee155349a296e5750dc41c68e4. In the latest 20 completed docs.yml runs from 2026-10-16T07:50:04Z through 2026-10-16T11:24:03Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only four comparable successful docs runs executed both build and deploy (38893366181, 38889788704, 38883148256, 38876897045). Because this investigation requires at least five comparable successful runs before making a build-time recommendation, the evaluation is incomplete and no actionable suggestion was emitted. The latest 20 completed cao-dashboard.yml runs in the same evidence window contained 15 successful workflow_run builds and 5 skipped callbacks, but the docs sample itself did not meet the minimum comparability threshold after the recent source changes on 058f855ccfe6fbe3c97819d87649077b2719cd69 and 72013c71fc87b2ee155349a296e5750dc41c68e4."
-    },
-    {
-      "evaluated_at": "2026-10-16T09:46:17Z",
-      "worker_run_id": 38881974316,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38881765630,
-        38880420321,
-        38877656235,
-        38876897045,
-        38876510336,
-        38874195614,
-        38871048661,
-        38869711428,
-        38868963660,
-        38868680670,
-        38867288108,
-        38866105775,
-        38864550032,
-        38864038769,
-        38862275278,
-        38861640007,
-        38860736621,
-        38859005814,
-        38858450242,
-        38857759623
-      ],
-      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T05:49:06Z through 2026-10-16T09:38:00Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Seven comparable successful docs runs executed both build and deploy (38876897045, 38868963660, 38866105775, 38864038769, 38862275278, 38860736621, 38858450242). Trusted run, job, and step metadata for those comparable runs showed median queue time 0.0s (p90 0.0s), docs workflow execution 73.0s (p90 79.2s), build 40.0s (p90 48.6s), deploy 11.0s (p90 15.8s), Restore node_modules 5.0s (p90 6.5s), Build documentation 13.5s (p90 15.0s), Restore cached CAO Dashboard 1.5s (p90 2.5s), and Upload Pages artifact 5.0s (p90 6.0s). Bounded logs from docs run 38876897045 confirmed a setup-node npm cache hit, a 283 MB node_modules cache hit, a cached central-agentic-ops-dashboard restore, Astro building 75 pages in 7.11s, and Upload Pages artifact producing a 29.9 MB github-pages bundle in about 3.3s. Related cao-dashboard.yml evidence in the latest 20 completed workflow_run callbacks contained 14 successful main-branch builds (38876685954, 38868790117, 38865858009, 38863840822, 38860528528, 38858288863, 38855449902, 38852328230, 38851551055, 38850292556, 38848474549, 38846977223, 38845019414, 38843959846). Across that success cohort, trusted metadata showed median queue time 0.0s (p90 0.0s), full execution 115.5s (p90 131.4s), build 103.5s (p90 115.7s), Restore collected activity data 3.0s (p90 3.7s), Install dashboard build dependencies 2.5s (p90 4.7s), Upgrade fallback activity data 80.0s (p90 90.0s), Assemble Dashboard Language site 2.5s (p90 3.0s), and Upload dashboard artifact 4.0s (p90 5.0s). The current-source dashboard subset (38876685954, 38868790117, 38865858009, 38863840822) still showed Upgrade fallback activity data at 64.5s median, with Install dashboard build dependencies at 3.0s, Assemble Dashboard Language site at 3.0s, and Upload dashboard artifact at 4.0s. Bounded logs from dashboard run 38876685954 confirmed a cache hit for cao-activity-v5-38873882743-1, npm ci adding only 6 packages in 2s, validation of a 262.1 MiB gh-aw-logs.sqlite database, copying 207 activity shards totaling 186.0 MiB, and uploading the compressed central-agentic-ops-dashboard artifact at 26.1 MB in about 4s. Open self-care docs build-time issue #16825 already represents the same underlying reusable-dashboard-generation change: caching upgraded CAO activity snapshots across repeated CAO Dashboard builds. The current source and timing evidence still point to that same producer-side reuse gap, so creating an equivalent new issue would be a duplicate; with only create_issue/noop available in this worker, the category advances with a no-op rather than a repeated issue."
     }
   ]
 }
