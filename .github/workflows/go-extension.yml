@@ -67,6 +67,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
+      - name: Install policy-pinned gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Check extension
         run: make check
       - name: Check foreground terminal inheritance
@@ -79,6 +81,8 @@ jobs:
           { printf 'terminal-input\n'; sleep 1; } | script --quiet --return --command \
             './cao-runtimecli.test -test.run "^TestForegroundTerminal$" -test.count=1 -test.v' /dev/null
       - name: Smoke test extension
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ./gh-cao --help
           ./gh-cao version
