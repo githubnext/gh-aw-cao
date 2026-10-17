@@ -436,6 +436,75 @@ upgrade_gh_aw() {
   exit 0
 }
 
+install_extension() (
+  local version="$1"
+  local os arch asset binary data_dir install_dir staging checksum actual
+  case "$(uname -s)" in
+    Linux) os=linux ;;
+    Darwin) os=darwin ;;
+    MINGW*|MSYS*|CYGWIN*) os=windows ;;
+    *) printf 'Unsupported operating system.\n' >&2; exit 1 ;;
+  esac
+  case "$(uname -m)" in
+    x86_64|amd64) arch=amd64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) printf 'Unsupported architecture; releases support amd64 and arm64.\n' >&2; exit 1 ;;
+  esac
+  asset="$os-$arch"
+  binary=gh-cao
+  if [[ "$os" == windows ]]; then
+    asset+=.exe
+    binary+=.exe
+  fi
+  if [[ -z "$version" ]]; then
+    version="$(GH_HOST=github.com gh release view --repo githubnext/gh-aw-cao --json tagName --jq .tagName)"
+  fi
+  if [[ ! "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+    printf 'Unable to resolve a stable vMAJOR.MINOR.PATCH release.\n' >&2
+    exit 1
+  fi
+  if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
+    printf 'Extension installation requires sha256sum or shasum.\n' >&2
+    exit 1
+  fi
+  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
+    data_dir="$XDG_DATA_HOME/gh"
+  elif [[ "$os" == windows && -n "${LOCALAPPDATA:-}" ]]; then
+    data_dir="${LOCALAPPDATA//\\//}/GitHub CLI"
+  else
+    : "${HOME:?HOME is required to locate GitHub CLI extensions}"
+    data_dir="$HOME/.local/share/gh"
+  fi
+  install_dir="$data_dir/extensions/gh-cao"
+  mkdir -p "$install_dir"
+  staging="$(mktemp -d "$install_dir/.install.XXXXXX")"
+  trap 'rm -rf -- "$staging"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  info "Installing gh cao ($version)..."
+  GH_HOST=github.com gh release download "$version" --repo githubnext/gh-aw-cao \
+    --pattern "$asset" --pattern checksums.txt --dir "$staging"
+  checksum="$(awk -v asset="$asset" '$2 == asset || $2 == "*" asset { print $1 }' "$staging/checksums.txt")"
+  if [[ ! "$checksum" =~ ^[[:xdigit:]]{64}$ ]]; then
+    printf 'Missing or invalid release checksum for %s.\n' "$asset" >&2
+    exit 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$staging/$asset")"
+  else
+    actual="$(shasum -a 256 "$staging/$asset")"
+  fi
+  if [[ "${actual%% *}" != "$checksum" ]]; then
+    printf 'Release checksum verification failed for %s.\n' "$asset" >&2
+    exit 1
+  fi
+  chmod +x "$staging/$asset"
+  "$staging/$asset" version
+  mv -f "$staging/$asset" "$install_dir/$binary"
+  gh cao version
+  success 'GitHub CLI extension installed. Run gh cao --help to get started.'
+)
+
 # Runs with stdin redirected from /dev/null: when this script is streamed into
 # Bash (curl | bash), child processes must not consume the unread script lines.
 main() {
@@ -532,14 +601,7 @@ main() {
       printf '%s\n' 'Install GitHub CLI from https://cli.github.com, then rerun --extension.' >&2
       return 1
     fi
-    local -a extension_arguments=(extension install githubnext/gh-aw-cao --force)
-    if [[ -n "$extension_version" ]]; then
-      extension_arguments+=(--pin "$extension_version")
-    fi
-    info "Installing gh cao (${extension_version:-latest})..."
-    gh "${extension_arguments[@]}"
-    gh cao version
-    success 'GitHub CLI extension installed. Run gh cao --help to get started.'
+    install_extension "$extension_version"
     return
   fi
   if [[ -n "$extension_version" ]]; then

@@ -139,8 +139,9 @@ curl --fail --silent --show-error --location \
 ```
 
 Add `--version vMAJOR.MINOR.PATCH` to pin a specific stable release.
-Extension-only installation uses `gh extension install` to select the release
-binary for your platform; it needs no checkout or Node.js and does not install
+Extension-only installation downloads the release binary for your platform,
+verifies its SHA-256 checksum (using `sha256sum` or `shasum`), and registers it
+as `gh cao`. Rerun the installer to upgrade; it needs no checkout or Node.js and does not install
 workflows, change policy, or create a control repository.
 The existing installer options above still install the control-plane runtime.
 

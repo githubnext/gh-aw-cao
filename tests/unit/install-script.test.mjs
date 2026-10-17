@@ -135,9 +135,28 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
-if [[ "\${1:-} \${2:-}" == "extension install" ]]; then
+if [[ "\${1:-} \${2:-}" == "release view" ]]; then
+  printf '%s\\n' "\${FAKE_EXTENSION_RELEASE:-v1.2.3}"
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "release download" ]]; then
   echo "$*" >> "$FAKE_COMMAND_LOG"
   [[ -z "\${FAKE_EXTENSION_FAILURE:-}" ]] || exit 1
+  asset=""
+  destination=""
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == --pattern && "$2" != checksums.txt ]]; then asset="$2"; fi
+    if [[ "$1" == --dir ]]; then destination="$2"; fi
+    shift
+  done
+  printf '#!/usr/bin/env bash\\necho "gh-cao v1.2.3"\\n' > "$destination/$asset"
+  if command -v sha256sum >/dev/null 2>&1; then
+    checksum="$(sha256sum "$destination/$asset")"
+  else
+    checksum="$(shasum -a 256 "$destination/$asset")"
+  fi
+  printf '%s  %s\\n' "\${checksum%% *}" "$asset" > "$destination/checksums.txt"
+  [[ -z "\${FAKE_EXTENSION_BAD_CHECKSUM:-}" ]] || echo corrupt >> "$destination/$asset"
   exit 0
 fi
 if [[ "$*" == "cao version" ]]; then
@@ -431,25 +450,52 @@ async function assertNothingInstalled(consumer) {
 for (const version of ["", "v1.2.3"]) {
   test(`streamed extension-only installation ${version || "latest"} works outside a checkout`, async (t) => {
     const fixture = await createConsumer(t, supportedGhAw);
+    fixture.env.XDG_DATA_HOME = path.join(fixture.root, "data");
     const args = ["--extension", ...(version ? ["--version", version] : [])];
     const result = await streamInstaller(fixture.root, fixture.env, args);
     assert.match(result.stdout, /GitHub CLI extension installed/);
-    assert.equal(await fixture.log(),
-      `extension install githubnext/gh-aw-cao --force${version ? ` --pin ${version}` : ""}\ncao version\n`);
+    assert.match(await fixture.log(), /release download v1\.2\.3 --repo githubnext\/gh-aw-cao --pattern (linux|darwin|windows)-(amd64|arm64)(\.exe)? --pattern checksums.txt --dir /);
+    const binary = path.join(fixture.env.XDG_DATA_HOME, "gh", "extensions", "gh-cao", process.platform === "win32" ? "gh-cao.exe" : "gh-cao");
+    assert.match(await readFile(binary, "utf8"), /gh-cao v1\.2\.3/);
+    if (process.platform !== "win32") {
+      const registered = await executeFile("gh", ["cao", "version"], {
+        cwd: fixture.root,
+        env: { ...process.env, XDG_DATA_HOME: fixture.env.XDG_DATA_HOME },
+        timeout,
+      });
+      assert.match(registered.stdout, /gh-cao v1\.2\.3/);
+    }
     await assertNothingInstalled(fixture.root);
     await assertNothingInstalled(fixture.consumer);
   });
 }
 
-for (const failure of ["FAKE_EXTENSION_FAILURE", "FAKE_EXTENSION_VERIFY_FAILURE"]) {
+for (const failure of ["FAKE_EXTENSION_FAILURE", "FAKE_EXTENSION_VERIFY_FAILURE", "FAKE_EXTENSION_BAD_CHECKSUM"]) {
   test(`extension-only installation fails closed on ${failure}`, async (t) => {
     const fixture = await createConsumer(t, supportedGhAw);
-    const result = await runStreamed(fixture.root, { ...fixture.env, [failure]: "1" }, ["--extension"]);
+    const result = await runStreamed(fixture.root, {
+      ...fixture.env, XDG_DATA_HOME: path.join(fixture.root, "data"), [failure]: "1",
+    }, ["--extension"]);
     assert.notEqual(result.code, 0);
     assert.doesNotMatch(result.stdout, /GitHub CLI extension installed/);
     await assertNothingInstalled(fixture.root);
   });
 }
+
+test("checksum failure preserves the previously installed extension", async (t) => {
+  const fixture = await createConsumer(t, supportedGhAw);
+  const dataHome = path.join(fixture.root, "data");
+  const directory = path.join(dataHome, "gh", "extensions", "gh-cao");
+  const binary = path.join(directory, process.platform === "win32" ? "gh-cao.exe" : "gh-cao");
+  await mkdir(directory, { recursive: true });
+  await writeFile(binary, "previous extension");
+  const result = await runStreamed(fixture.root, {
+    ...fixture.env, XDG_DATA_HOME: dataHome, FAKE_EXTENSION_BAD_CHECKSUM: "1",
+  }, ["--extension"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /checksum verification failed/);
+  assert.equal(await readFile(binary, "utf8"), "previous extension");
+});
 
 for (const args of [
   ["--version", "v1.2.3"],
