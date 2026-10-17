@@ -136,7 +136,7 @@ for index in "${!repositories[@]}"; do
     --output "$output_directory/$cache_name" \
     --summary-file "" \
     --cached-jsonl "${shard_prefix}*" \
-    --artifacts usage \
+    --artifacts usage,experiment \
     --start-date "-${window_days}d" \
     --cache-before "-${window_days}d" \
     --count "$run_limit" \

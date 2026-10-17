@@ -385,6 +385,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     const queries = createCanonicalQueries(indexedDB);
     return queries.runs.recentFailures();
   });
+
   expect(retained).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
@@ -428,6 +429,61 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     }
   });
   expect(Object.keys(viewSources).sort()).toEqual(['failed-runs', 'runs']);
+});
+
+test('Evals renders persisted artifact answers from the real data worker after reload', async ({ page }) => {
+  await page.evaluate(async () => {
+    const { ingestGhAwLogs } = await import(`${location.origin}/src/data/ingest/coordinator.js`);
+    const observedAt = new Date().toISOString();
+    await ingestGhAwLogs(indexedDB, {
+      observedAt,
+      repository: { githubId: 1, owner: 'octo', name: 'api' },
+      workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
+      run: {
+        githubRunId: 303, attempt: 1, createdAt: observedAt,
+        url: 'https://github.com/octo/api/actions/runs/303'
+      },
+      files: [{
+        path: 'usage/evals.jsonl',
+        content: [
+          { id: 'quality', answer: 'YES', runid: '303' },
+          { id: 'correctness', answer: 'NO', runid: '303' },
+          { id: 'uncertain', answer: 'UNKNOWN', runid: '303' }
+        ].map((row) => JSON.stringify(row)).join('\n')
+      }]
+    });
+  });
+  await page.reload();
+  const counts = await page.evaluate(async () => {
+    const [{ readCanonicalBatch }, processor, presenter, document] = await Promise.all([
+      import(`${location.origin}/src/data/storage/indexeddb.js`),
+      import(`${location.origin}/src/data-processor.js`),
+      import(`${location.origin}/src/presenter.js`),
+      fetch(`${location.origin}/dashboard.json`).then((response) => response.json())
+    ]);
+    const dashboard = document.dashboard;
+    const evals = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
+    const view = evals.views[0];
+    const sources = await processor.loadCanonicalDashboardPage([view.data.source], dashboard, undefined, {
+      pageId: 'evals', viewId: view.id
+    });
+    window.document.body.append(presenter.renderDashboard({
+      document: { ...document, dashboard: {
+        ...dashboard, pages: [evals], navigation: [{ label: 'Evidence', pages: ['evals'] }]
+      } },
+      sources
+    }));
+    const batch = await readCanonicalBatch(indexedDB);
+    return { evals: batch.evals?.length, observations: batch.evalObservations?.length };
+  });
+  expect(counts).toEqual({ evals: 3, observations: 3 });
+  const view = page.locator('[data-view-id="evals-statuses"]');
+  await expect(view).toContainText('quality');
+  await expect(view).toContainText('correctness');
+  await expect(view).toContainText('uncertain');
+  await expect(view).toContainText('UNKNOWN');
+  await expect(view).toContainText('.github/workflows/worker.md');
+  await expect(view.locator('td[data-field="run"] a[href="https://github.com/octo/api/actions/runs/303"]')).toHaveCount(3);
 });
 
 test('data worker returns only the canonical payload requested by a view', async ({ page }) => {

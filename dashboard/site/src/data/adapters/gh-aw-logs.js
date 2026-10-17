@@ -11,6 +11,7 @@ import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePe
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
+import { experimentAssignmentArtifact, parseExperimentAssignments } from './experiment-evidence.js';
 import { unifiedSessionEventType } from '../model/session-types.js';
 
 const debug = createDebug('data:ingestion:jsonl');
@@ -832,11 +833,23 @@ export function adaptGhAwLogs(input) {
   const githubRunId = identifier(run.githubRunId, 'run.githubRunId');
   const attempt = positiveInteger(run.attempt, 'run.attempt');
   const canonicalRunId = runId(repositoryOwner, repositoryName, githubRunId);
-  const sessions = logFiles(document.files).filter((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
+  const files = logFiles(document.files);
+  const sessions = files.filter((file) => /(^|\/)aw_session\.jsonl$/.test(file.path));
   if (sessions.length > 1) throw new TypeError('Multiple unified sessions found for one run');
   const unified = sessions[0];
   const sessionEvidence = unified
     ? parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt }) : undefined;
+  const assignmentArtifact = sessionEvidence?.experiments === undefined
+    ? experimentAssignmentArtifact(files) : undefined;
+  const experiments = assignmentArtifact
+    ? parseExperimentAssignments(assignmentArtifact.content, assignmentArtifact.path) : undefined;
+  const evalFiles = !sessionEvidence || !Object.hasOwn(sessionEvidence, 'evals')
+    ? files.filter((file) => /(^|\/)evals\.jsonl$/.test(file.path)) : [];
+  if (evalFiles.length > 1) throw new TypeError('Multiple eval artifacts found for one run');
+  const evalFile = evalFiles[0];
+  const evals = evalFile ? parseJsonl(evalFile.content, evalFile.path).map(({ value, line }) => ({
+    ...value, sessionPayloadRef: `${evalFile.path}#L${line}`
+  })) : undefined;
   const events = unified && sessionEvidence
     ? sessionObservations(sessionEvidence.events, unified.path, canonicalRunId, observedAt)
     : adaptGhAwTimelineFiles(document.files, canonicalRunId);
@@ -876,22 +889,26 @@ export function adaptGhAwLogs(input) {
         repositoryFullName: `${repositoryOwner}/${repositoryName}`,
         repositoryId: canonicalRepositoryId,
         workflowId: canonicalWorkflowId,
+        workflowPath: workflowSourcePath(workflowPath),
         event: optionalString(run.event) ?? 'unknown',
         status: optionalString(run.status) ?? 'unknown',
         conclusion: optionalString(run.conclusion) ?? null,
         createdAt: optionalString(run.createdAt) ?? null,
         startedAt: optionalString(run.startedAt) ?? null,
-        completedAt: optionalString(run.completedAt) ?? null
+        completedAt: optionalString(run.completedAt) ?? null,
+        runLink: optionalString(run.url) ?? null
       }
     }
   ];
   observations.push(...events);
-  if (unified) {
+  if (unified || experiments || evalFile) {
     const adapted = adaptCachedGhAwJsonl(`${JSON.stringify({
       schema_version: 5, kind: 'run', run: {
         run_id: githubRunId, run_attempt: attempt, organization: repositoryOwner, repository: repositoryName,
         workflow_name: workflow.name, workflow_path: workflowPath, created_at: run.createdAt,
-        updated_at: observedAt, cao_unified_session: { version: 1, path: unified.path, ...sessionEvidence }
+        updated_at: observedAt, experiments,
+        ...(evals === undefined ? {} : { evals }),
+        ...(unified ? { cao_unified_session: { version: 1, path: unified.path, ...sessionEvidence } } : {})
       }
     })}\n`);
     const nativeRun = adapted.observations.find((record) => record.kind === 'run');

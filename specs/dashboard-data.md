@@ -1599,6 +1599,11 @@ Eval audit identities MUST survive browser, SQLite and hosted PostgreSQL
 projection and be exposed as `audit-id` by the eval-observations query.
 Grader values and units MUST remain distinct from YES/NO eval answers in
 dashboard views; a grader score or pass/fail status does not create an Eval.
+Direct artifact ingestion SHALL apply the same classification and identity
+checks to supplied `evals.jsonl` records when session eval evidence is absent.
+The Evals observation ledger SHALL display retained `YES`, `NO`, and `UNKNOWN`
+answers distinctly, preserving run evidence links and observation times rather
+than hiding unknown answers behind a binary-only filter.
 
 The unified session is also the preferred source for every supported telemetry
 family: agent lifecycle and diagnostics, MCP calls/RPC/configuration, firewall
@@ -1815,6 +1820,17 @@ Typed experiment, grader, and eval evidence SHALL populate their respective
 definition and observation stores; retaining native identifiers does not move
 these entities into one generic event table. CAO-only derived findings MAY
 retain their own explicitly source-specific types.
+
+When a unified session does not contain experiment assignments, ingestion SHALL
+also accept gh-aw's explicit current-run `assignments.json` artifact, including
+the compact `usage/experiment/` layout and prefixed artifact directories.
+Both Activity and hosted collectors SHALL request the `usage,experiment` artifact
+sets without widening repository scope or collection budgets.
+Collection SHALL verify repository, run ID and attempt against `aw_info.json`
+before retaining these assignments. Unified assignments, including an explicitly
+empty assignment map, take precedence. Cumulative experiment state counts SHALL
+NOT be used to infer a run's assigned variant. The Experiments page SHALL expose
+retained assignment variants and run evidence links through canonical queries.
 
 Ingestion SHALL canonicalize historical CAO aliases at the shared record
 boundary, including normalized published shards. For example, `agent_tool_start`
