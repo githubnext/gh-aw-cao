@@ -188,6 +188,14 @@ reviewed `cao.json` and the same durable PostgreSQL operational namespace. The
 commands below show separate process roles; they are not evidence that a live
 deployment or compiler integration was tested:
 
+Before starting either role, provision the policy's exact namespace with
+`cao-dashboard database bootstrap --store operational --namespace NAMESPACE`
+and apply `postgres/operational-grants.sql` as described in [POSTGRES.md](POSTGRES.md).
+The gateway opens existing storage with default operational capacity settings;
+bootstrap that namespace with the same defaults. Both roles must use runtime
+database credentials, never the schema owner's credentials or
+`CAO_DATABASE_ADMIN_URL`. Startup does not create or migrate storage.
+
 ```bash
 # Receive deployment only: webhook ingress; no private App keys.
 go -C server run ./cmd/cao-webhook-gateway \
