@@ -42,6 +42,7 @@ func nodeRuntime(t *testing.T) (string, string) {
 
 func TestInstalledRuntimeOutputParity(t *testing.T) {
 	node, repository := nodeRuntime(t)
+	t.Chdir(repository)
 	t.Setenv("CAO_RUNTIME_ROOT", repository)
 	t.Setenv("CAO_DEBUG", "")
 	t.Setenv("NODE_NO_WARNINGS", "1")
@@ -66,6 +67,14 @@ func TestInstalledRuntimeOutputParity(t *testing.T) {
 			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
 		{args: []string{"setup", "auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"},
 			legacy: []string{"setup-auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
+		{args: []string{"setup", "auth", "hosted-cli", "--repo", "owner/repo", "--target-repository", "owner/one", "--target-repository", "owner/two", "--app-name", "cao-cli", "--private-key-out", filepath.Join(directory, "key.pem"), "--no-open", "--dry-run"},
+			legacy: []string{"setup-auth", "hosted-cli", "--repo", "owner/repo", "--target-repository", "owner/one", "--target-repository", "owner/two", "--app-name", "cao-cli", "--private-key-out", filepath.Join(directory, "key.pem"), "--no-open", "--dry-run"}},
+		{args: []string{"setup", "auth", "hosted-cli", "--repo", "owner/repo", "--dry-run"},
+			legacy: []string{"setup-auth", "hosted-cli", "--repo", "owner/repo", "--dry-run"}},
+		{args: []string{"setup", "auth", "hosted-cli", "--repo", "owner/repo"},
+			legacy: []string{"setup-auth", "hosted-cli", "--repo", "owner/repo"}, code: 1},
+		{args: []string{"setup", "auth", "hosted-cli", "--repo", "owner/repo", "--target-repository", "other/target", "--dry-run"},
+			legacy: []string{"setup-auth", "hosted-cli", "--repo", "owner/repo", "--target-repository", "other/target", "--dry-run"}, code: 1},
 		{args: []string{"setup", "auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"},
 			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"}, code: 1},
 		{args: []string{"download", "--url", "file:///not-an-http-snapshot"}, code: 1},
