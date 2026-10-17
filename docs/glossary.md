@@ -102,6 +102,10 @@ The runtime and provider integration used to execute an AI agent. The engine is 
 
 The explicit `generic` HTTP target with `listener: external` that lets a separately owned Go host embed CAO without duplicating its authentication, policy, or ingestion logic. The public `server/hosting/` facade exposes only `New`, `Start`, the complete `http.Handler`, and `Stop`; CAO keeps OAuth, session/CSRF authorization, webhook verification, proxy trust, rate limits, Redis, and background-task cancellation, while the host owns the HTTP listener and must drain it before CAO stops. External hosting introduces no runtime-loaded modules or rollout authority.
 
+## gh cao
+
+The operator-facing GitHub CLI extension for CAO, installed from this repository as `gh aw-cao` because GitHub CLI derives the extension name from the repository name. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` release binaries with SHA-256 checksums. Policy initialization and modes, workflow enablement, `campaigns add`, and `doctor` run natively in Go; onboarding, lifecycle, and other shared domain commands delegate to the installed production CAO Node runtime, and Actions pipeline commands remain owned by `./cao.sh`. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+
 ## GitHub quota service
 
 The CAO-side authority in `server/internal/githubquota` that coordinates GitHub API rate-limit quota across replicas. A bucket is one independently metered quota identified by GitHub App identity, installation, and rate-limit resource, never by a token; admission requires remaining minus reserved minus cost to stay at or above a requested floor, and administrators read 24-hour peak usage through the `github-quota-usage` runtime source. Existing collection budgets do not use this service yet.
