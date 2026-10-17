@@ -491,3 +491,29 @@ func TestHostedCLIMutationsFailClosedWithoutAudit(t *testing.T) {
 		t.Fatalf("unaudited command left %s", status)
 	}
 }
+
+func TestHostedCLISQLiteDebugStoreRequiresLoopback(t *testing.T) {
+	catalog, err := hostedcli.ParseCatalog([]byte(`{"dashboard":{"cli-actions":[]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenHostedCLISQLite(t.Context(), filepath.Join(t.TempDir(), "hosted-cli.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	public := memoryOAuthApp(t, github.URL)
+	err = public.EnableHostedCLIActions(t.Context(), HostedCLIConfig{Catalog: catalog, ControlRepository: "octo/cao", DebugStore: store})
+	if err == nil || !strings.Contains(err.Error(), "loopback") {
+		t.Fatalf("SQLite debug store accepted on a public listener: %v", err)
+	}
+	local := memoryOAuthApp(t, github.URL)
+	local.config.Listen = "127.0.0.1:8443"
+	if err := local.EnableHostedCLIActions(t.Context(), HostedCLIConfig{Catalog: catalog, ControlRepository: "octo/cao", DebugStore: store}); err != nil {
+		t.Fatal(err)
+	}
+	if !local.config.Audit.Durable() || local.hostedCLI == nil {
+		t.Fatal("SQLite debug store did not provide the queue and audit table")
+	}
+}

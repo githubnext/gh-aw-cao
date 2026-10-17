@@ -53,6 +53,16 @@ on the operator's workstation with the operator's own credentials.
    `--cli-actions-catalog`. A request MUST NOT name an arbitrary command.
 5. A separate `execute-cli` process MUST drain the queue. The web server
    process MUST NOT hold the App private key.
+6. For local debugging only, `serve-hosted --hosted-cli-sqlite PATH` and
+   `execute-cli --sqlite PATH` MAY replace the PostgreSQL queue and audit
+   table with one SQLite file shared by both processes on one host.
+   `--hosted-cli-sqlite` MUST be rejected without `--hosted-cli-actions` and
+   MUST fail at startup unless `--listen` is a loopback address. The file
+   MUST be created with mode `0600`, and the path MUST NOT carry URI
+   parameters. The SQLite store MUST implement the same queue and audit
+   contracts (§7 items 1–2), with these differences: one global namespace,
+   timestamps from the host clock, and triggers that anyone with write access
+   to the file can drop. It MUST NOT be used in production.
 
 ## 3. Administrator step-up
 
@@ -233,6 +243,10 @@ this specification or the corresponding implementation changes.
 - `server/internal/server/hosted_cli_test.go` and
   `server/internal/hostedcli/executor_test.go`: hosted CLI requires the table,
   and unaudited admission, cancel, token mint, and command start fail closed.
+- `server/internal/operational/sqlite/store_test.go`: the SQLite debug store
+  shares one file between two handles for queue leases, idempotent admission,
+  recovery, the audit chain, rejected `UPDATE`/`DELETE`, tamper detection, and
+  retention; `hosted_cli_test.go` rejects it on a non-loopback listener.
 - `tests/unit/setup-hosted-cli-app.test.mjs`: least-privilege App manifest and
   helper safety.
 
@@ -266,3 +280,4 @@ to the same degree as the executor itself.
 - Initial hosted CLI actions, administrator step-up, and token broker
   contract.
 - Added granted-scope verification and the audit trail.
+- Added the loopback-only SQLite store for local debugging.

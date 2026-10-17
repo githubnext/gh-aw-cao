@@ -99,6 +99,16 @@ pass as a contiguous oldest prefix, and always keep the newest row. Redis and
 volatile memory do not provide this service, so hosted CLI actions require
 PostgreSQL. `specs/server-hosted-cli.md` §7 defines the events.
 
+For local debugging only, `server/internal/operational/sqlite` provides the
+`CLICommandQueues` and `AuditLog` contracts in one SQLite file (mode `0600`,
+WAL, immediate transactions) shared by `serve-hosted --hosted-cli-sqlite` and
+`execute-cli --sqlite` on one host. It is not an `operational.Store` backend,
+has one global namespace and no capacity accounting, uses host-clock
+timestamps, and its append-only triggers can be dropped by anyone who can
+write the file; the hash chain still detects edits that do not rewrite every
+later hash. `specs/server-hosted-cli.md` §2 restricts it to loopback
+listeners.
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose

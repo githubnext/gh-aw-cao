@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
 )
 
 // HostedCLIConfigFromEnv builds the admission configuration enabled by
@@ -59,13 +61,22 @@ type HostedCLIExecutorOptions struct {
 	AcknowledgeRecovery bool
 	Prefetch            int
 	MaxPooledTokens     int
-	Logger              *log.Logger
+	// SQLitePath selects the local SQLite debug store shared with
+	// `serve-hosted --hosted-cli-sqlite` instead of the operational store.
+	SQLitePath string
+	Logger     *log.Logger
+}
+
+// OpenHostedCLISQLite opens the local, single-host SQLite queue and audit
+// table used to debug hosted CLI actions without PostgreSQL.
+func OpenHostedCLISQLite(ctx context.Context, path string) (*sqlite.Store, error) {
+	return sqlite.Open(ctx, path)
 }
 
 // HostedCLIExecutor owns an executor and the resources it opened.
 type HostedCLIExecutor struct {
 	*hostedcli.Executor
-	store operational.Store
+	store io.Closer
 }
 
 // Close releases the operational store.
@@ -93,11 +104,27 @@ func NewHostedCLIExecutorFromEnv(ctx context.Context, options HostedCLIExecutorO
 	if !hostedcli.ValidRepository(control) {
 		return nil, errors.New("hosted CLI execution requires CAO_HOSTED_CLI_CONTROL_REPOSITORY as OWNER/REPOSITORY")
 	}
-	store, err := StoreFromEnv(ctx)
-	if err != nil {
-		return nil, err
+	var store io.Closer
+	var queues operational.CLICommandQueues
+	var auditStore operational.AuditLog
+	if options.SQLitePath != "" {
+		debugStore, err := OpenHostedCLISQLite(ctx, options.SQLitePath)
+		if err != nil {
+			return nil, err
+		}
+		store, queues, auditStore = debugStore, debugStore, debugStore
+		if options.Logger != nil {
+			options.Logger.Printf("hosted CLI execution uses a local SQLite debug store; not for production")
+		}
+	} else {
+		operationalStore, err := StoreFromEnv(ctx)
+		if err != nil {
+			return nil, err
+		}
+		services := operationalStore.OperationalServices()
+		store, queues, auditStore = operationalStore, services.CLICommands, services.Audit
 	}
-	executor, err := newHostedCLIExecutor(ctx, store, client, control, apiURL, options)
+	executor, err := newHostedCLIExecutor(ctx, queues, auditStore, client, control, apiURL, options)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
@@ -105,10 +132,9 @@ func NewHostedCLIExecutorFromEnv(ctx context.Context, options HostedCLIExecutorO
 	return &HostedCLIExecutor{Executor: executor, store: store}, nil
 }
 
-func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *githubapp.Client, control, apiURL string, options HostedCLIExecutorOptions) (*hostedcli.Executor, error) {
-	queues := store.OperationalServices().CLICommands
+func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueues, auditStore operational.AuditLog, client *githubapp.Client, control, apiURL string, options HostedCLIExecutorOptions) (*hostedcli.Executor, error) {
 	if queues == nil {
-		return nil, errors.New("hosted CLI execution requires the postgres operational store")
+		return nil, errors.New("hosted CLI execution requires the postgres operational store or --sqlite")
 	}
 	queueOptions, err := operational.CLICommandQueueOptions{}.Resolve()
 	if err != nil {
@@ -123,9 +149,8 @@ func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *
 		return nil, err
 	}
 	workRoot := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_WORK_ROOT"))
-	auditStore := store.OperationalServices().Audit
 	if auditStore == nil {
-		return nil, errors.New("hosted CLI execution requires the postgres operational audit table")
+		return nil, errors.New("hosted CLI execution requires the postgres operational audit table or --sqlite")
 	}
 	auditLog, err := audit.FromEnv()
 	if err != nil {

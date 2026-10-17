@@ -684,6 +684,11 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   format, so CAO events join GitHub's record of the App's actions. Forward
   the mirror to write-once SIEM storage when you need protection against a
   database superuser rewriting the whole chain.
+- **SQLite debug store**: `--hosted-cli-sqlite` and `execute-cli --sqlite`
+  replace PostgreSQL with one local SQLite file (mode `0600`) for debugging.
+  The server refuses it unless it listens on loopback. Its append-only
+  triggers protect only against accidental edits, because anyone who can
+  write the file can drop them; do not use it in production.
 
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).

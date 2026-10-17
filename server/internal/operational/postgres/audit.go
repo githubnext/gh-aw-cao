@@ -1,70 +1,25 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
-const (
-	// AuditRetention keeps audit events for at least thirteen months, which
-	// covers annual compliance reviews with a margin.
-	AuditRetention         = 400 * 24 * time.Hour
-	maxAuditAttributes     = 64
-	maxAuditValueBytes     = 4096
-	maxAuditRecordBytes    = 64 << 10
-	maxAuditListLimit      = 1000
-	auditRetentionBatchCap = 512
-)
+// AuditRetention is the minimum audit retention.
+const AuditRetention = operational.AuditRetention
 
-var auditGenesis = make([]byte, sha256.Size)
+const auditRetentionBatchCap = 512
 
 func validAuditEvent(event operational.AuditEvent) error {
-	if err := names(event.Event); err != nil {
-		return err
-	}
-	switch event.Outcome {
-	case "success", "denied", "failure":
-	default:
-		return invalid("audit outcome must be success, denied, or failure")
-	}
-	if len(event.Actor) > 1024 || strings.ContainsRune(event.Actor, 0) {
-		return invalid("invalid audit actor")
-	}
-	if len(event.Attributes) > maxAuditAttributes {
-		return invalid("too many audit attributes")
-	}
-	for name, value := range event.Attributes {
-		if err := names(name); err != nil {
-			return err
-		}
-		if len(value) > maxAuditValueBytes || strings.ContainsRune(value, 0) {
-			return invalid("oversized or NUL-containing audit attribute")
-		}
+	if err := operational.ValidateAuditEvent(event); err != nil {
+		return invalid(err.Error())
 	}
 	return nil
-}
-
-// canonicalAuditRecord is the exact text hashed into the chain. encoding/json
-// sorts map keys, so equal events always produce equal bytes.
-func canonicalAuditRecord(event operational.AuditEvent) ([]byte, error) {
-	event.OccurredAt = event.OccurredAt.UTC()
-	return json.Marshal(event)
-}
-
-func chainHash(prev, record []byte) []byte {
-	sum := sha256.New()
-	sum.Write(prev)
-	sum.Write(record)
-	return sum.Sum(nil)
 }
 
 // AppendAudit stores one event. The namespace row lock taken by transact
@@ -75,7 +30,7 @@ func (s *Store) AppendAudit(ctx context.Context, event operational.AuditEvent) (
 		return operational.AuditEvent{}, err
 	}
 	err := s.transact(ctx, func(t *transaction) error {
-		prev := auditGenesis
+		prev := operational.AuditGenesis()
 		var last int64
 		err := t.tx.QueryRowContext(ctx, `SELECT sequence,hash FROM cao_operational_audit_events WHERE namespace=$1 ORDER BY sequence DESC LIMIT 1`, t.namespace).Scan(&last, &prev)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -83,15 +38,12 @@ func (s *Store) AppendAudit(ctx context.Context, event operational.AuditEvent) (
 		}
 		event.Sequence = last + 1
 		event.OccurredAt = t.now
-		record, err := canonicalAuditRecord(event)
+		record, err := operational.CanonicalAuditRecord(event)
 		if err != nil {
-			return err
-		}
-		if len(record) > maxAuditRecordBytes {
-			return invalid("audit record exceeds payload limit")
+			return invalid(err.Error())
 		}
 		_, err = t.tx.ExecContext(ctx, `INSERT INTO cao_operational_audit_events(namespace,sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-			t.namespace, event.Sequence, event.OccurredAt, event.Event, event.Outcome, event.Actor, string(record), prev, chainHash(prev, record))
+			t.namespace, event.Sequence, event.OccurredAt, event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record))
 		return err
 	})
 	if err != nil {
@@ -106,8 +58,8 @@ func (s *Store) ListAudit(ctx context.Context, filter operational.AuditFilter) (
 		return nil, invalid("nil context")
 	}
 	limit := filter.Limit
-	if limit <= 0 || limit > maxAuditListLimit {
-		limit = maxAuditListLimit
+	if limit <= 0 || limit > operational.AuditListLimit {
+		limit = operational.AuditListLimit
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT record FROM cao_operational_audit_events WHERE namespace=$1 AND sequence>$2 AND ($3='' OR event=$3) AND ($4='' OR actor=$4) ORDER BY sequence LIMIT $5`,
 		s.namespace, filter.AfterSequence, filter.Event, filter.Actor, limit)
@@ -146,43 +98,18 @@ func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification,
 		return operational.AuditVerification{}, err
 	}
 	defer func() { _ = rows.Close() }()
-	var result operational.AuditVerification
-	var expectedPrev []byte
-	tampered := func(sequence int64, reason string) error {
-		return fmt.Errorf("%w at sequence %d: %s", operational.ErrAuditTampered, sequence, reason)
-	}
+	var verifier operational.AuditChainVerifier
 	for rows.Next() {
-		var row operational.AuditEvent
-		var record string
-		var prev, hash []byte
-		if err := rows.Scan(&row.Sequence, &row.OccurredAt, &row.Event, &row.Outcome, &row.Actor, &record, &prev, &hash); err != nil {
-			return result, err
+		var row operational.AuditRow
+		if err := rows.Scan(&row.Indexed.Sequence, &row.Indexed.OccurredAt, &row.Indexed.Event, &row.Indexed.Outcome,
+			&row.Indexed.Actor, &row.Record, &row.PrevHash, &row.Hash); err != nil {
+			return verifier.Result(), err
 		}
-		if result.Events > 0 && row.Sequence != result.LastSequence+1 {
-			return result, tampered(row.Sequence, "sequence gap")
+		if err := verifier.Check(row); err != nil {
+			return verifier.Result(), err
 		}
-		if expectedPrev != nil && !bytes.Equal(prev, expectedPrev) {
-			return result, tampered(row.Sequence, "broken chain")
-		}
-		if !bytes.Equal(hash, chainHash(prev, []byte(record))) {
-			return result, tampered(row.Sequence, "hash mismatch")
-		}
-		var stored operational.AuditEvent
-		if err := json.Unmarshal([]byte(record), &stored); err != nil {
-			return result, tampered(row.Sequence, "unreadable record")
-		}
-		if stored.Sequence != row.Sequence || !stored.OccurredAt.Equal(row.OccurredAt) || stored.Event != row.Event ||
-			stored.Outcome != row.Outcome || stored.Actor != row.Actor {
-			return result, tampered(row.Sequence, "indexed columns differ from the hashed record")
-		}
-		if result.Events == 0 {
-			result.FirstSequence = row.Sequence
-		}
-		result.Events++
-		result.LastSequence = row.Sequence
-		expectedPrev = hash
 	}
-	return result, rows.Err()
+	return verifier.Result(), rows.Err()
 }
 
 // maintainAudit removes events past retention in bounded batches. Only a

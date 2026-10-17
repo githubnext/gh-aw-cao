@@ -257,6 +257,9 @@ scope exceeds the request. Both processes append credential-free audit
 events (`server/internal/audit`) to the hash-chained, append-only PostgreSQL
 table `cao_operational_audit_events` and mirror them as JSON lines for SIEM
 forwarding; privileged steps fail closed when the event cannot be stored.
+For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
+share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
+provides the same queue and audit table without PostgreSQL.
 Tokens appear in those events only as GitHub's `hashed_token` digest.
 Every hosted administrator operation requires a fresh, assured interactive
 OAuth authentication (2FA or attested SSO) within a bounded maximum age.

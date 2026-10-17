@@ -567,7 +567,12 @@ func newServeHostedCommand() *cobra.Command {
 		"accept CLI action commands from authorized administrators into the hosted queue drained by execute-cli")
 	cliActionsCatalog := cmd.Flags().String("cli-actions-catalog", "../dashboard/site/dashboard.json",
 		"dashboard document declaring the CLI actions accepted by --hosted-cli-actions")
+	hostedCLISQLite := cmd.Flags().String("hosted-cli-sqlite", "",
+		"local debugging only: SQLite file holding the hosted CLI queue and audit table, shared with execute-cli --sqlite; requires --hosted-cli-actions and a loopback --listen")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		if *hostedCLISQLite != "" && !*hostedCLIActions {
+			return errors.New("--hosted-cli-sqlite requires --hosted-cli-actions")
+		}
 		commandLog.Printf("serve-hosted flags parsed tls=%s hosted_cli_actions=%t", resolveHostedTLSMode(*cert), *hostedCLIActions)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -589,6 +594,14 @@ func newServeHostedCommand() *cobra.Command {
 			config, err := server.HostedCLIConfigFromEnv(*cliActionsCatalog)
 			if err != nil {
 				return err
+			}
+			if *hostedCLISQLite != "" {
+				debugStore, err := server.OpenHostedCLISQLite(ctx, *hostedCLISQLite)
+				if err != nil {
+					return err
+				}
+				defer func() { _ = debugStore.Close() }()
+				config.DebugStore = debugStore
 			}
 			if err := app.EnableHostedCLIActions(ctx, config); err != nil {
 				return err
@@ -816,6 +829,8 @@ func newExecuteCLICommand() *cobra.Command {
 		"resume claiming after commands interrupted by a previous executor were marked failed")
 	prefetch := cmd.Flags().Int("prefetch", 2, "queued commands whose tokens are minted ahead of execution; 0 disables")
 	maxPooled := cmd.Flags().Int("max-pooled-tokens", 8, "unused pre-minted tokens held at once; 0 disables pooling")
+	sqlitePath := cmd.Flags().String("sqlite", "",
+		"local debugging only: SQLite file shared with serve-hosted --hosted-cli-sqlite instead of the operational store")
 	cmd.RunE = func(*cobra.Command, []string) error {
 		if *prefetch < 0 || *maxPooled < 0 {
 			return errors.New("--prefetch and --max-pooled-tokens must not be negative")
@@ -836,6 +851,7 @@ func newExecuteCLICommand() *cobra.Command {
 			AcknowledgeRecovery: *acknowledgeRecovery,
 			Prefetch:            *prefetch,
 			MaxPooledTokens:     *maxPooled,
+			SQLitePath:          *sqlitePath,
 			Logger:              log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 		})
 		if err != nil {

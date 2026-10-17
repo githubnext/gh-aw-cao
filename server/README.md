@@ -620,6 +620,18 @@ cao-dashboard execute-cli --max-pooled-tokens 8
 | `CAO_HOSTED_CLI_WORK_ROOT`, `CAO_HOSTED_CLI_GH` | Executor workspace root and `gh` binary. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
 
+For local debugging without PostgreSQL, both processes can share one SQLite
+file holding the queue and the audit table. `--hosted-cli-sqlite` requires
+`--hosted-cli-actions` and a loopback `--listen`, and the file is created with
+mode `0600`. The SQLite triggers can be dropped by anyone who can write the
+file, so never use it in production:
+
+```bash
+cao-dashboard serve-hosted --listen 127.0.0.1:8443 --hosted-cli-actions \
+  --hosted-cli-sqlite ./.tmp/hosted-cli.sqlite ...
+cao-dashboard execute-cli --sqlite ./.tmp/hosted-cli.sqlite
+```
+
 Each command runs with a single-use installation token scoped to its target
 repository, and the token is revoked when the command finishes. The broker
 pool is bounded: `--max-pooled-tokens` sets the total, `0` disables pooling,
