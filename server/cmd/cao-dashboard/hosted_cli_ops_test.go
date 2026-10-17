@@ -48,36 +48,41 @@ func TestHostedCLIQueueOperationsSQLite(t *testing.T) {
 		t.Fatal(err)
 	}
 	var page struct {
-		Commands   []map[string]any `json:"commands"`
-		Total      int              `json:"total"`
-		Running    int              `json:"running"`
-		Offset     int              `json:"offset"`
-		Limit      int              `json:"limit"`
-		HasMore    bool             `json:"hasMore"`
-		NextOffset int              `json:"nextOffset"`
+		Commands              []map[string]any `json:"commands"`
+		Limit                 int              `json:"limit"`
+		HasMore               bool             `json:"hasMore"`
+		NextContinuationToken string           `json:"nextContinuationToken"`
 	}
 	if err := json.Unmarshal([]byte(output), &page); err != nil {
 		t.Fatal(err)
 	}
-	if page.Total != 3 || page.Running != 0 || len(page.Commands) != 2 ||
+	if len(page.Commands) != 2 ||
 		page.Commands[0]["id"] != float64(command.ID) ||
 		page.Commands[0]["actor"] != "octocat" ||
-		page.Offset != 0 || page.Limit != 2 || !page.HasMore || page.NextOffset != 2 {
+		page.Limit != 2 || !page.HasMore || page.NextContinuationToken == "" {
 		t.Fatalf("unexpected queue list: %s", output)
 	}
 	if strings.Contains(output, "gh workflow run") {
 		t.Fatalf("queue summary disclosed command text: %s", output)
 	}
-	output, err = runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--status", "queued", "--limit", "2", "--offset", "2")
+	firstPageLastID := page.Commands[1]["id"]
+	output, err = runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--status", "queued", "--limit", "2", "--continuation-token", page.NextContinuationToken)
 	if err != nil {
 		t.Fatal(err)
 	}
+	page.NextContinuationToken = ""
 	if err := json.Unmarshal([]byte(output), &page); err != nil {
 		t.Fatal(err)
 	}
-	if page.Total != 3 || len(page.Commands) != 1 || page.Offset != 2 ||
-		page.Limit != 2 || page.HasMore || page.NextOffset != 3 {
+	if len(page.Commands) != 1 || page.Commands[0]["id"] != float64(1) ||
+		page.Limit != 2 || page.HasMore || page.NextContinuationToken != "" {
 		t.Fatalf("unexpected final queue page: %s", output)
+	}
+	if _, err := runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--continuation-token", "not-a-token"); err == nil {
+		t.Fatal("invalid continuation token was accepted")
+	}
+	if firstPageLastID == page.Commands[0]["id"] {
+		t.Fatal("continuation token repeated the final item from the previous page")
 	}
 
 	output, err = runHostedCLIQueueTestCommand(t, sqlitePath, "show", "1")

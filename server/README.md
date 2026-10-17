@@ -679,13 +679,16 @@ output:
 
 ```bash
 cao-dashboard hosted-cli queue list --status queued --limit 50
-cao-dashboard hosted-cli queue list --status queued --limit 50 --offset 50
+cao-dashboard hosted-cli queue list --status queued --limit 50 \
+  --continuation-token TOKEN_FROM_PREVIOUS_PAGE
 cao-dashboard hosted-cli queue show 42
 cao-dashboard hosted-cli queue cancel 42 --actor octocat
 ```
 
-The list response includes `total`, `offset`, `limit`, `hasMore`, and
-`nextOffset`. Continue with the returned `nextOffset` while `hasMore` is true.
+The list response includes `limit`, `hasMore`, and, when another page is
+available, `nextContinuationToken`. Pass that opaque token to
+`--continuation-token` with the same status filters to retrieve the next page.
+The cursor follows command IDs and does not count or skip preceding rows.
 
 Cancellation is a privileged backend operation and does not perform the
 dashboard user's repository-permission check. The supplied GitHub login is

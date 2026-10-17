@@ -510,6 +510,51 @@ func (q *cliCommandQueue) List(ctx context.Context, filter operational.CLIComman
 	return page, nil
 }
 
+func (q *cliCommandQueue) ListBefore(ctx context.Context, filter operational.CLICommandCursorFilter) (operational.CLICommandCursorPage, error) {
+	if err := filter.Validate(); err != nil {
+		return operational.CLICommandCursorPage{}, err
+	}
+	page := operational.CLICommandCursorPage{Commands: []operational.CLICommand{}}
+	where := `queue=?`
+	args := []any{q.name}
+	if filter.BeforeID > 0 {
+		where += ` AND id<?`
+		args = append(args, filter.BeforeID)
+	}
+	if len(filter.Statuses) > 0 {
+		where += ` AND status IN (?` + strings.Repeat(`,?`, len(filter.Statuses)-1) + `)`
+		for _, status := range filter.Statuses {
+			args = append(args, string(status))
+		}
+	}
+	err := q.transact(ctx, false, func(t *transaction, state cliQueueState) error {
+		page.Revision, page.RecoveryBlocked = state.revision, state.blocked
+		// #nosec G202 -- where contains only fixed SQL and placeholders.
+		ids, err := queryIDs(t, `SELECT id FROM cao_operational_cli_commands WHERE `+where+` ORDER BY id DESC LIMIT ?`,
+			append(args, filter.Limit+1)...)
+		if err != nil {
+			return err
+		}
+		page.HasMore = len(ids) > filter.Limit
+		if page.HasMore {
+			ids = ids[:filter.Limit]
+		}
+		for _, id := range ids {
+			command, err := q.detail(t, id)
+			if err != nil {
+				return err
+			}
+			command.Input = nil
+			page.Commands = append(page.Commands, command)
+		}
+		return nil
+	})
+	if err != nil {
+		return operational.CLICommandCursorPage{}, err
+	}
+	return page, nil
+}
+
 func (q *cliCommandQueue) Output(ctx context.Context, id, after int64, limit int) ([]operational.CLICommandOutput, error) {
 	if id < 1 || after < 0 || limit < 1 || limit > 500 {
 		return nil, operational.ErrCLICommandInput

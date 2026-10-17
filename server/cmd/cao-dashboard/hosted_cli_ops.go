@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,9 +57,9 @@ func newHostedCLIQueueListCommand() *cobra.Command {
 	sqlitePath := cmd.Flags().String("sqlite", "", "local debugging only: SQLite file used by --hosted-cli-sqlite")
 	statuses := cmd.Flags().StringArray("status", nil, "filter by command status; repeatable")
 	limit := cmd.Flags().Int("limit", 20, "maximum commands to return (1-100)")
-	offset := cmd.Flags().Int("offset", 0, "number of matching commands to skip")
+	continuationToken := cmd.Flags().String("continuation-token", "", "opaque token returned by the previous page")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		filter := operational.CLICommandFilter{Limit: *limit, Offset: *offset}
+		filter := operational.CLICommandCursorFilter{Limit: *limit}
 		for _, raw := range *statuses {
 			status := operational.CLICommandStatus(strings.TrimSpace(raw))
 			if status == "" {
@@ -67,21 +68,29 @@ func newHostedCLIQueueListCommand() *cobra.Command {
 			filter.Statuses = append(filter.Statuses, status)
 		}
 		if filter.Validate() != nil || filter.Limit > 100 {
-			return errors.New("invalid queue filter: limit must be 1-100, offset non-negative, and statuses valid")
+			return errors.New("invalid queue filter: limit must be 1-100 and statuses valid")
 		}
-		return runHostedCLIQueueCommand(*sqlitePath, func(ctx context.Context, session hostedCLIQueueSession) error {
-			page, err := session.queue.List(ctx, filter)
+		if *continuationToken != "" {
+			beforeID, err := parseHostedCLIContinuationToken(*continuationToken)
 			if err != nil {
 				return err
 			}
-			nextOffset := filter.Offset + len(page.Commands)
-			return writeHostedCLIQueueJSON(cmd, map[string]any{
+			filter.BeforeID = beforeID
+		}
+		return runHostedCLIQueueCommand(*sqlitePath, func(ctx context.Context, session hostedCLIQueueSession) error {
+			page, err := session.queue.ListBefore(ctx, filter)
+			if err != nil {
+				return err
+			}
+			response := map[string]any{
 				"commands": hostedCLICommandSummaries(page.Commands),
-				"total":    page.Total, "running": page.Running,
-				"offset": filter.Offset, "limit": filter.Limit,
-				"hasMore": nextOffset < page.Total, "nextOffset": nextOffset,
+				"limit":    filter.Limit, "hasMore": page.HasMore,
 				"revision": page.Revision, "recoveryBlocked": page.RecoveryBlocked,
-			})
+			}
+			if page.HasMore && len(page.Commands) > 0 {
+				response["nextContinuationToken"] = hostedCLIContinuationToken(page.Commands[len(page.Commands)-1].ID)
+			}
+			return writeHostedCLIQueueJSON(cmd, response)
 		})
 	}
 	return cmd
@@ -206,6 +215,26 @@ func parseHostedCLICommandID(raw string) (int64, error) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || id < 1 {
 		return 0, errors.New("command ID must be a positive integer")
+	}
+	return id, nil
+}
+
+func hostedCLIContinuationToken(id int64) string {
+	return base64.RawURLEncoding.EncodeToString([]byte("v1:" + strconv.FormatInt(id, 10)))
+}
+
+func parseHostedCLIContinuationToken(token string) (int64, error) {
+	if len(token) > 128 {
+		return 0, errors.New("invalid continuation token")
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil || !strings.HasPrefix(string(decoded), "v1:") {
+		return 0, errors.New("invalid continuation token")
+	}
+	rawID := strings.TrimPrefix(string(decoded), "v1:")
+	id, err := strconv.ParseInt(rawID, 10, 64)
+	if err != nil || id < 1 || strconv.FormatInt(id, 10) != rawID {
+		return 0, errors.New("invalid continuation token")
 	}
 	return id, nil
 }

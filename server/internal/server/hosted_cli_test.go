@@ -101,6 +101,9 @@ func (q *hostedCLITestQueue) List(context.Context, operational.CLICommandFilter)
 	page.Total = len(page.Commands)
 	return page, nil
 }
+func (q *hostedCLITestQueue) ListBefore(context.Context, operational.CLICommandCursorFilter) (operational.CLICommandCursorPage, error) {
+	return operational.CLICommandCursorPage{Commands: []operational.CLICommand{}}, nil
+}
 func (q *hostedCLITestQueue) Output(_ context.Context, id, after int64, limit int) ([]operational.CLICommandOutput, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

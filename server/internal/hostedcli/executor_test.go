@@ -270,6 +270,9 @@ func (q *fakeQueue) List(_ context.Context, filter operational.CLICommandFilter)
 	}
 	return page, nil
 }
+func (q *fakeQueue) ListBefore(context.Context, operational.CLICommandCursorFilter) (operational.CLICommandCursorPage, error) {
+	return operational.CLICommandCursorPage{Commands: []operational.CLICommand{}}, nil
+}
 func (q *fakeQueue) Output(_ context.Context, id int64, _ int64, _ int) ([]operational.CLICommandOutput, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

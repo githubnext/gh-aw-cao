@@ -33,6 +33,7 @@ type CLICommandQueue interface {
 	Cancel(context.Context, int64) (CLICommand, error)
 	Detail(context.Context, int64) (CLICommand, error)
 	List(context.Context, CLICommandFilter) (CLICommandPage, error)
+	ListBefore(context.Context, CLICommandCursorFilter) (CLICommandCursorPage, error)
 	Output(context.Context, int64, int64, int) ([]CLICommandOutput, error)
 	Retain(context.Context) (int64, error)
 }
@@ -236,6 +237,31 @@ type CLICommandOutput struct {
 type CLICommandFilter struct {
 	Statuses      []CLICommandStatus
 	Limit, Offset int
+}
+
+type CLICommandCursorFilter struct {
+	Statuses []CLICommandStatus
+	BeforeID int64
+	Limit    int
+}
+
+type CLICommandCursorPage struct {
+	Commands        []CLICommand
+	HasMore         bool
+	Revision        int64
+	RecoveryBlocked bool
+}
+
+func (f CLICommandCursorFilter) Validate() error {
+	if f.Limit < 1 || f.Limit > 500 || f.BeforeID < 0 || len(f.Statuses) > 6 {
+		return ErrCLICommandInput
+	}
+	for _, status := range f.Statuses {
+		if status != CLICommandQueued && status != CLICommandRunning && !status.Terminal() {
+			return fmt.Errorf("CLI command status: %w", ErrCLICommandInput)
+		}
+	}
+	return nil
 }
 
 func (f CLICommandFilter) Validate() error {
