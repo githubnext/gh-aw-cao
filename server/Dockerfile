@@ -139,4 +139,23 @@ VOLUME ["/app/evidence"]
 ENTRYPOINT ["/app/cao-dashboard"]
 CMD ["collect", "--database-queries", "/app/queries/database.json"]
 
+# Export only this target with BuildKit --output for a reviewed executor release.
+FROM server-build AS hosted-cli-relay-build
+ARG TARGETARCH
+ARG REVISION
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+WORKDIR /out
+RUN printf '%s' "${REVISION}" | grep -Eq '^[0-9a-f]{40}$' \
+    && CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go -C /workspace/server build \
+    -trimpath -buildvcs=false -ldflags="-s -w" \
+    -o /out/cao-cli-relay ./cmd/cao-cli-relay \
+    && sha256sum cao-cli-relay > cao-cli-relay.sha256 \
+    && printf '{"source":"https://github.com/githubnext/gh-aw-cao","revision":"%s","platform":"linux/%s","sha256":"%s"}\n' \
+      "${REVISION}" "${TARGETARCH}" "$(cut -d ' ' -f1 cao-cli-relay.sha256)" > cao-cli-relay.json
+
+FROM scratch AS hosted-cli-relay-artifact
+COPY --from=hosted-cli-relay-build /out/cao-cli-relay /cao-cli-relay
+COPY --from=hosted-cli-relay-build /out/cao-cli-relay.sha256 /cao-cli-relay.sha256
+COPY --from=hosted-cli-relay-build /out/cao-cli-relay.json /cao-cli-relay.json
+
 FROM dashboard-runtime AS final
