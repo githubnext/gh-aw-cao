@@ -19,9 +19,7 @@ func (e *Executor) recover(ctx context.Context, lease operational.CLICommandLeas
 	if err != nil {
 		return err
 	}
-	reconciler, ok := e.runner.(interface {
-		Reconcile(context.Context, operational.CLICommandExecution) error
-	})
+	reconciler, ok := e.runner.(RecoverableRunner)
 	if len(executions) > 0 && !ok {
 		return errors.New("hosted CLI runner cannot reconcile recorded containers")
 	}

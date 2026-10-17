@@ -6,83 +6,52 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
-	"strings"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 const DefaultContainerImage = "ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090"
 
-// The pinned gh-aw update/upgrade --repo entrypoints require a Git root
-// before cloning their target. Only this fixed bootstrap is interpreted;
-// the validated program and arguments remain positional parameters.
-const containerBootstrap = `git -c init.defaultBranch=main init --quiet --template= . && exec "$@"`
+var containerImagePattern = regexp.MustCompile(`^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$`)
 
-var (
-	containerImagePattern = regexp.MustCompile(`^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$`)
-	containerIDPattern    = regexp.MustCompile(`^[a-f0-9]{12,64}$`)
-	containerEnvName      = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-)
-
-// ContainerRunner executes only gh and gh-aw commands in the pinned gh-aw
-// container. The only host path mounted into the container is the command's
-// ephemeral workspace.
+// ContainerRunner owns registration, execution, and bounded reconciliation.
+// Runtime-specific process management belongs to its lifecycle adapter.
 type ContainerRunner struct {
-	DockerBinary string
-	Image        string
-	HostEnv      []string
-	Commands     Runner
+	Image     string
+	Lifecycle ContainerLifecycle
 }
 
-// NewContainerRunner creates a runner for the official gh-aw image or an
-// operator-configured digest-pinned mirror.
-func NewContainerRunner(image, dockerBinary string, commands Runner) (*ContainerRunner, error) {
+var _ RecoverableRunner = (*ContainerRunner)(nil)
+
+func NewContainerRunner(image string, lifecycle ContainerLifecycle) (*ContainerRunner, error) {
 	if image == "" {
 		image = DefaultContainerImage
 	}
 	if !containerImagePattern.MatchString(image) {
 		return nil, errors.New("hosted CLI container image must be a digest-pinned OCI image reference")
 	}
-	if dockerBinary == "" {
-		dockerBinary = "docker"
+	if lifecycle == nil {
+		return nil, errors.New("hosted CLI requires a container lifecycle")
 	}
-	if commands == nil {
-		commands = ExecRunner{}
-	}
-	return &ContainerRunner{
-		DockerBinary: dockerBinary,
-		Image:        image,
-		HostEnv:      dockerHostEnvironment(os.Environ()),
-		Commands:     commands,
-	}, nil
+	return &ContainerRunner{Image: image, Lifecycle: lifecycle}, nil
 }
 
 func (r *ContainerRunner) Run(ctx context.Context, process Process, output OutputFunc) (int, error) {
 	if process.Program != "gh" && process.Program != "gh-aw" {
 		return -1, errors.New("hosted CLI container rejected an unsupported executable")
 	}
-	workspace, workdir, err := containerPaths(process.Workspace, process.Dir)
-	if err != nil {
-		return -1, err
-	}
-	if strings.ContainsAny(workspace, ",\r\n") {
-		return -1, errors.New("hosted CLI workspace path cannot be mounted by the container runtime")
-	}
-	runtimeID, err := r.runtimeID(ctx)
-	if err != nil {
-		return -1, err
+	if process.Stdin != "" {
+		return -1, errors.New("hosted CLI containers do not support interactive input")
 	}
 	if process.RegisterContainer == nil {
 		return -1, errors.New("hosted CLI requires durable container identity registration")
 	}
-	environmentFile, err := writeContainerEnvironment(process.Env)
+	runtimeID, err := r.Lifecycle.RuntimeID(ctx)
 	if err != nil {
 		return -1, err
 	}
-	defer func() { _ = os.Remove(environmentFile) }()
 	name, err := containerName()
 	if err != nil {
 		return -1, err
@@ -97,130 +66,67 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	if err := ctx.Err(); err != nil {
 		return -1, err
 	}
-	args := []string{
-		"--context", "default", "create", "--init", "--name", name,
-		"--network", "bridge",
-		"--read-only",
-		"--cap-drop", "ALL",
-		"--security-opt", "no-new-privileges",
-		"--pids-limit", "256",
-		"--memory", "1g",
-		"--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=64m",
-		"--mount", "type=bind,src=" + workspace + ",dst=/workspace,rw",
-		"--workdir", workdir,
-		"--env-file", environmentFile,
+	spec := ContainerSpec{
+		Image: r.Image, Workspace: process.Workspace, Directory: process.Dir,
+		Program: process.Program, Args: process.Args, Env: process.Env,
 	}
-	if user := containerUser(); user != "" {
-		args = append(args, "--user", user)
+	if err := r.Lifecycle.Create(ctx, execution, spec); err != nil {
+		return -1, errors.Join(err, r.Reconcile(ctx, execution))
 	}
-	if process.Stdin != "" {
-		args = append(args, "--interactive")
+	runErr := r.Lifecycle.Start(ctx, execution)
+	if runErr == nil {
+		runErr = r.Lifecycle.CollectOutput(ctx, execution, output)
 	}
-	args = append(args, "--entrypoint", "/bin/sh", r.Image, "-c", containerBootstrap, "cao-hosted-cli", process.Program)
-	args = append(args, process.Args...)
-
-	var containerID strings.Builder
-	createCode, createErr := r.Commands.Run(ctx, Process{
-		Program: r.DockerBinary, Args: args, Env: r.HostEnv,
-	}, func(stream string, data []byte) {
-		if stream == "stdout" && containerID.Len()+len(data) <= 256 {
-			_, _ = containerID.Write(data)
-		}
-	})
-	if err := os.Remove(environmentFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-		if cleanupErr := r.Reconcile(ctx, execution); cleanupErr != nil {
-			return -1, fmt.Errorf("hosted CLI container environment could not be removed; container cleanup failed: %w", cleanupErr)
-		}
-		return -1, errors.New("hosted CLI container environment could not be removed")
-	}
-	if createErr != nil || createCode != 0 || !containerIDPattern.MatchString(strings.TrimSpace(containerID.String())) {
-		cleanupErr := r.Reconcile(ctx, execution)
-		if cleanupErr != nil {
-			return -1, fmt.Errorf("hosted CLI container could not be created or removed: %w", cleanupErr)
-		}
-		return -1, errors.New("hosted CLI container could not be created")
-	}
-	code, runErr := r.Commands.Run(ctx, Process{
-		Program: r.DockerBinary, Args: []string{"--context", "default", "start", "--attach", name},
-		Env: r.HostEnv, Stdin: process.Stdin,
-	}, output)
-	return r.finishContainer(ctx, execution, code, runErr)
+	return r.finishContainer(ctx, execution, runErr)
 }
 
-func (r *ContainerRunner) requireLocalDockerContext(ctx context.Context) error {
-	var endpoint strings.Builder
-	code, err := r.Commands.Run(ctx, Process{
-		Program: r.DockerBinary,
-		Args:    []string{"--context", "default", "context", "inspect", "default", `--format={{ (index .Endpoints "docker").Host }}`},
-		Env:     r.HostEnv,
-	}, func(stream string, data []byte) {
-		if stream == "stdout" && endpoint.Len()+len(data) <= 512 {
-			_, _ = endpoint.Write(data)
-		}
-	})
-	host := strings.TrimSpace(endpoint.String())
-	local := strings.HasPrefix(host, "unix:///") || strings.HasPrefix(host, "npipe://")
-	if err != nil || code != 0 || !local || strings.ContainsAny(host, "\r\n") {
-		return errors.New("hosted CLI requires the Docker default context to use a local socket")
+// Reconcile stops a recorded container on its original runtime. The caller must
+// first ensure the old executor and outstanding runtime requests have stopped.
+func (r *ContainerRunner) Reconcile(ctx context.Context, execution operational.CLICommandExecution) error {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := execution.Validate(); err != nil {
+		return fmt.Errorf("%w: invalid recovery identity", ErrContainerTerminationUnconfirmed)
+	}
+	if err := r.sameRuntime(cleanupCtx, execution); err != nil {
+		return err
+	}
+	if err := r.Lifecycle.Stop(cleanupCtx, execution); err != nil {
+		return fmt.Errorf("%w: stop could not be confirmed", ErrContainerTerminationUnconfirmed)
 	}
 	return nil
 }
 
-func containerPaths(workspace, directory string) (string, string, error) {
-	if workspace == "" || directory == "" {
-		return "", "", errors.New("hosted CLI container requires a workspace and working directory")
+func (r *ContainerRunner) sameRuntime(ctx context.Context, execution operational.CLICommandExecution) error {
+	id, err := r.Lifecycle.RuntimeID(ctx)
+	if err != nil || id != execution.RuntimeID {
+		return fmt.Errorf("%w: original container runtime is unavailable", ErrContainerTerminationUnconfirmed)
 	}
-	workspace, err := filepath.Abs(workspace)
-	if err != nil {
-		return "", "", errors.New("hosted CLI workspace path is invalid")
-	}
-	directory, err = filepath.Abs(directory)
-	if err != nil {
-		return "", "", errors.New("hosted CLI working directory is invalid")
-	}
-	workspace, err = filepath.EvalSymlinks(workspace)
-	if err != nil {
-		return "", "", errors.New("hosted CLI workspace path is unavailable")
-	}
-	directory, err = filepath.EvalSymlinks(directory)
-	if err != nil {
-		return "", "", errors.New("hosted CLI working directory is unavailable")
-	}
-	relative, err := filepath.Rel(workspace, directory)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-		return "", "", errors.New("hosted CLI working directory must remain inside its workspace")
-	}
-	return workspace, filepath.ToSlash(filepath.Join("/workspace", relative)), nil
+	return nil
 }
 
-func writeContainerEnvironment(environment []string) (string, error) {
-	file, err := os.CreateTemp("", "cao-hosted-cli-env-")
-	if err != nil {
-		return "", errors.New("hosted CLI container environment could not be prepared")
+func (r *ContainerRunner) finishContainer(ctx context.Context, execution operational.CLICommandExecution, runErr error) (int, error) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := r.sameRuntime(cleanupCtx, execution); err != nil {
+		return -1, err
 	}
-	defer func() { _ = file.Close() }()
-	if err := file.Chmod(0o600); err != nil {
-		_ = os.Remove(file.Name())
-		return "", errors.New("hosted CLI container environment could not be protected")
-	}
-	seen := make(map[string]bool, len(environment))
-	for _, entry := range environment {
-		name, value, ok := strings.Cut(entry, "=")
-		if !ok || !containerEnvName.MatchString(name) || seen[name] || strings.ContainsAny(value, "\x00\r\n") {
-			_ = os.Remove(file.Name())
-			return "", errors.New("hosted CLI container environment is invalid")
+	state, inspectErr := r.Lifecycle.Inspect(cleanupCtx, execution)
+	valid := inspectErr == nil && (state.ExitCode == nil || (state.Terminated && *state.ExitCode >= 0 && *state.ExitCode <= 255))
+	stopErr := r.Lifecycle.Stop(cleanupCtx, execution)
+	if !valid || !state.Terminated {
+		if stopErr != nil {
+			return -1, ErrContainerTerminationUnconfirmed
 		}
-		seen[name] = true
-		if _, err := fmt.Fprintf(file, "%s=%s\n", name, value); err != nil {
-			_ = os.Remove(file.Name())
-			return "", errors.New("hosted CLI container environment could not be written")
-		}
+		return -1, errors.Join(runErr, errors.New("hosted CLI container ended without a confirmed workload result"))
 	}
-	if err := file.Close(); err != nil {
-		_ = os.Remove(file.Name())
-		return "", errors.New("hosted CLI container environment could not be closed")
+	if stopErr != nil {
+		runErr = errors.Join(runErr, errors.New("hosted CLI container exited but could not be removed"))
 	}
-	return file.Name(), nil
+	if state.ExitCode == nil {
+		return -1, errors.Join(runErr, errors.New("hosted CLI container exited without a workload exit code"))
+	}
+	return *state.ExitCode, runErr
 }
 
 func containerName() (string, error) {
@@ -229,22 +135,4 @@ func containerName() (string, error) {
 		return "", errors.New("hosted CLI container name could not be generated")
 	}
 	return "cao-hosted-cli-" + hex.EncodeToString(random), nil
-}
-
-func dockerHostEnvironment(environment []string) []string {
-	allowed := map[string]bool{
-		"PATH": true, "HOME": true, "DOCKER_CONFIG": true,
-	}
-	result := make([]string, 0, len(allowed))
-	for _, entry := range environment {
-		name, _, ok := strings.Cut(entry, "=")
-		if ok && allowed[name] {
-			result = append(result, entry)
-		}
-	}
-	return result
-}
-
-func containerUser() string {
-	return hostContainerUser()
 }

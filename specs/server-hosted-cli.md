@@ -231,7 +231,7 @@ a subprocess starts.
    random container name and the originating Docker daemon identity under the
    current queue lease fence. Missing execution-storage support, failed
    registration, or a stale lease MUST prevent container creation.
-   Docker CLI exit, including a zero attachment exit code, MUST NOT be treated
+   Docker CLI exit, including successful start or output collection, MUST NOT be treated
    as workload termination. The executor MUST inspect the retained container
    state for a confirmed workload exit code; automatic container removal MUST
    NOT discard that evidence. Successful forced removal or a successful empty
@@ -241,7 +241,7 @@ a subprocess starts.
    A terminal result MUST NOT release its concurrency claim until container
    exit has been confirmed and settlement is durably stored. Unconfirmed
    termination MUST retain the claim and container identity, including after
-   startup, attachment, cancellation, or deadline failures. If a lease expires
+   startup, output transport, cancellation, or deadline failures. If a lease expires
    while a command is still claimed or running, the replacement executor MUST
    mark the outcome interrupted, block further claims, and require explicit
    operator recovery acknowledgement after confirming the old executor and its
@@ -252,8 +252,28 @@ a subprocess starts.
    Workspaces retained after a crash or unconfirmed exit require operator
    cleanup after reconciliation. It MUST NOT automatically retry the interrupted command: external
    side effects may have completed before the crash, so the system guarantees
-   at-most-once dispatch, not exactly-once external effects. A retry MUST use a
+   at-most-once dispatch per command ID, not exactly-once external effects. A retry MUST use a
    new command ID and explicit admission.
+12. The container runner MUST delegate runtime operations through
+   `ContainerLifecycle`: stable runtime identity, create, start, inspect, stop,
+   and output collection. Registration MUST precede create. Start MUST NOT
+   wait for workload completion; output collection MUST replay from startup
+   and then follow, without treating transport closure as an exit result.
+   Inspect MUST distinguish confirmed termination from an unknown state and
+   MAY report termination without an exit code; a missing or invalid code MUST
+   NOT become a successful workload result. Stop MUST confirm termination or
+   absence, not merely submit a cancellation request. Cleanup MUST use a
+   cancellation-detached, bounded context. Recovery through `RecoverableRunner`
+   MUST retain the same original-runtime and lease-fencing requirements.
+   Docker is the only production adapter and retains the local-default-context
+   restriction and existing durable daemon IDs. Other adapters require their
+   own backend-scoped runtime identity and equivalent isolation; this interface
+   does not enable remote Docker or a new deployment backend. Hosted commands
+   are non-interactive; supplied stdin MUST be rejected rather than discarded.
+   The lifecycle boundary adds no exactly-once guarantee or cross-command
+   deduplication: idempotent update commands may overlap within configured
+   capacity. This does not make workflow dispatch idempotent, change retry
+   admission, or release capacity occupied by an unconfirmed workload.
 
 ## 7. Audit trail
 
@@ -358,7 +378,7 @@ this specification or the corresponding implementation changes.
 `specs/tla/HostedCLIExecution.tla` models durable container identity, lease
 fencing, occupied capacity, and explicit recovery separately from admission.
 Its configuration MUST pass TLC `Safety` after changes to execution or
-settlement. Docker attachment exit MUST remain distinct from confirmed
+settlement. Runtime client exit MUST remain distinct from confirmed
 workload termination in this model.
 
 ## 9. Conformance tests

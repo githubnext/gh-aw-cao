@@ -25,7 +25,7 @@ func TestExecutorRequiresDurableExecutionStorage(t *testing.T) {
 }
 
 func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
-	for _, scenario := range []string{"create", "attach-error", "attach-zero", "cancel", "timeout", "crash"} {
+	for _, scenario := range []string{"create", "start", "output-error", "output-zero", "cancel", "timeout", "crash"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx := t.Context()
 			path := filepath.Join(t.TempDir(), "queue.sqlite")
@@ -76,11 +76,15 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 						return -1, errors.New("create response lost")
 					}
 				case "start":
+					if scenario == "start" {
+						return -1, errors.New("start response lost")
+					}
+				case "logs":
 					switch scenario {
 					case "crash":
 						panic("simulated executor crash")
-					case "attach-error":
-						return -1, errors.New("attachment lost")
+					case "output-error":
+						return -1, errors.New("output transport lost")
 					case "cancel":
 						if _, err := queue.Cancel(ctx, first.ID); err != nil {
 							t.Fatal(err)

@@ -671,8 +671,10 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   be local because it bind-mounts a host workspace. On cancellation, timeout, or
   lease loss, the executor attempts bounded forced removal. Durable container
   name and daemon identity are registered before creation; unconfirmed
-  termination retains the execution claim and workspace. Docker attachment
-  exit alone cannot settle a command. Recovery must confirm termination on
+  termination retains the execution claim and workspace. Successful Docker
+  startup or log-stream closure alone cannot settle a command. The lifecycle
+  interface keeps startup, output transport, and workload evidence separate;
+  a stop request is not confirmation of termination. Recovery must confirm termination on
   the original daemon after the old executor and its requests have stopped.
   Output redaction applies before persistence.
 - **Native command planning**: Go re-plans every command against the catalog

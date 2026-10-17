@@ -644,6 +644,14 @@ have stopped and successful reconciliation on the original daemon. Remove any
 retained workspace only after reconciliation; never switch Docker contexts to
 bypass recovery.
 
+`ContainerRunner` delegates runtime identity, creation, startup, inspection,
+stopping, and output collection to `ContainerLifecycle`. Docker is the only
+production adapter: it starts detached, then replays and follows logs while
+workload exit evidence remains a separate inspection. The interface does not
+enable Podman or managed jobs, change retry policy, or promise exactly-once
+effects. Idempotent updates may overlap within the configured concurrency
+limit; workflow dispatch does not inherit that idempotency assumption.
+
 `setup-auth hosted-cli` writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
 manager used by the `execute-cli` deployment, then securely remove the local

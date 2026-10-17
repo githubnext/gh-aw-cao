@@ -1,8 +1,8 @@
 ------------------------- MODULE HostedCLIExecution -------------------------
 (* Execution half of server-hosted-cli.md section 6. Identity and claims *)
-(* survive crashes. Docker attachment exit does not imply workload exit. *)
-(* Recovery requires the original daemon AND an operator attestation that *)
-(* the old executor and outstanding Docker requests can no longer start work. *)
+(* survive crashes. Runtime client exit does not imply workload exit. *)
+(* Recovery requires the original runtime AND an operator attestation that *)
+(* the old executor and outstanding runtime requests can no longer start work. *)
 EXTENDS Naturals, FiniteSets
 
 CONSTANTS Commands, MaxConcurrency, MaxFence
@@ -49,7 +49,13 @@ Start(c) ==
     /\ jobs' = [jobs EXCEPT ![c].running = TRUE, ![c].attached = TRUE, ![c].dispatches = @ + 1]
     /\ UNCHANGED <<fence, leaseLive, blocked, oldStopped>>
 
-DockerExit(c) ==
+CollectOutput(c) ==
+    /\ Owns(c) /\ jobs[c].dispatches = 1
+    /\ ~jobs[c].observedExit /\ ~jobs[c].attached
+    /\ jobs' = [jobs EXCEPT ![c].attached = TRUE]
+    /\ UNCHANGED <<fence, leaseLive, blocked, oldStopped>>
+
+ClientExit(c) ==
     /\ jobs[c].attached
     /\ jobs' = [jobs EXCEPT ![c].attached = FALSE]
     /\ UNCHANGED <<fence, leaseLive, blocked, oldStopped>>
@@ -60,12 +66,12 @@ WorkloadExit(c) ==
     /\ UNCHANGED <<fence, leaseLive, blocked, oldStopped>>
 
 (* Failed inspect/remove leaves every state variable unchanged. Only a *)
-(* confirmed exit/absence or successful removal on the original daemon *)
-(* may set observedExit. A stopped Docker request cannot later start work. *)
-ConfirmStopped(c, sameDaemon) ==
-    /\ sameDaemon /\ jobs[c].claimed /\ jobs[c].registered
+(* confirmed exit/absence or successful removal on the original runtime *)
+(* may set observedExit. A stopped runtime request cannot later start work. *)
+ConfirmStopped(c, sameRuntime) ==
+    /\ sameRuntime /\ jobs[c].claimed /\ jobs[c].registered
     /\ (~jobs[c].attached \/ oldStopped)
-    /\ jobs' = [jobs EXCEPT ![c].running = IF sameDaemon THEN FALSE ELSE @, ![c].observedExit = TRUE]
+    /\ jobs' = [jobs EXCEPT ![c].running = IF sameRuntime THEN FALSE ELSE @, ![c].observedExit = TRUE]
     /\ UNCHANGED <<fence, leaseLive, blocked, oldStopped>>
 
 Finish(c) ==
@@ -106,9 +112,9 @@ Recover ==
 
 Next ==
     \/ \E c \in Commands :
-        \/ Claim(c) \/ Register(c) \/ Start(c) \/ DockerExit(c)
+        \/ Claim(c) \/ Register(c) \/ Start(c) \/ CollectOutput(c) \/ ClientExit(c)
         \/ WorkloadExit(c) \/ Finish(c) \/ Settle(c)
-        \/ \E sameDaemon \in BOOLEAN : ConfirmStopped(c, sameDaemon)
+        \/ \E sameRuntime \in BOOLEAN : ConfirmStopped(c, sameRuntime)
     \/ LoseLease \/ AcquireLease \/ OperatorConfirmsOldStopped \/ Recover
 
 Spec == Init /\ [][Next]_vars

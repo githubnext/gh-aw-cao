@@ -159,7 +159,7 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog})
 	image := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTAINER_IMAGE"))
 	dockerBinary := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_DOCKER"))
-	runner, err := hostedcli.NewContainerRunner(image, dockerBinary, hostedcli.ExecRunner{})
+	runner, err := hostedcli.NewContainerRunner(image, hostedcli.NewDockerContainerLifecycle(dockerBinary, hostedcli.ExecRunner{}))
 	if err != nil {
 		return nil, err
 	}

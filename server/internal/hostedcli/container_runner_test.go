@@ -41,7 +41,7 @@ func containerTest(t *testing.T) (*ContainerRunner, *containerCommandRunner, Pro
 			output("stdout", []byte(strings.Repeat("a", 64)+"\n"))
 		case "inspect":
 			output("stdout", []byte(`{"Status":"exited","Running":false,"Restarting":false,"ExitCode":0}`))
-		case "start", "rm":
+		case "start", "logs", "rm":
 		case "container":
 			output("stdout", []byte(strings.Repeat("a", 64)+"\n"))
 		default:
@@ -49,7 +49,7 @@ func containerTest(t *testing.T) (*ContainerRunner, *containerCommandRunner, Pro
 		}
 		return 0, nil
 	}
-	runner, err := NewContainerRunner("", "", commands)
+	runner, err := NewContainerRunner("", NewDockerContainerLifecycle("", commands))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func containerTest(t *testing.T) (*ContainerRunner, *containerCommandRunner, Pro
 
 func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 	runner, commands, process := containerTest(t)
-	runner.HostEnv = dockerHostEnvironment([]string{"PATH=/usr/bin", "HOME=/operator", "CAO_PRIVATE_KEY=excluded"})
+	runner.Lifecycle.(*DockerContainerLifecycle).HostEnv = dockerHostEnvironment([]string{"PATH=/usr/bin", "HOME=/operator", "CAO_PRIVATE_KEY=excluded"})
 	var environmentFile string
 	registered := false
 	process.RegisterContainer = func(_ context.Context, execution operational.CLICommandExecution) error {
@@ -80,8 +80,15 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 	commands.run = func(ctx context.Context, p Process, output OutputFunc) (int, error) {
 		switch p.Args[2] {
 		case "start":
+			if slices.Contains(p.Args, "--attach") {
+				t.Fatal("start must not couple workload lifetime to output transport")
+			}
 			if _, err := os.Stat(environmentFile); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("environment file remained after creation: %v", err)
+			}
+		case "logs":
+			if !slices.Equal(p.Args[:4], []string{"--context", "default", "logs", "--follow"}) {
+				t.Fatalf("output must replay from startup and follow: %v", p.Args)
 			}
 		case "create":
 			if !registered {
@@ -134,7 +141,7 @@ func TestContainerRunnerConfirmedRemovalDoesNotInventWorkloadResult(t *testing.T
 			defer cancel()
 			base := commands.run
 			commands.run = func(callCtx context.Context, p Process, output OutputFunc) (int, error) {
-				if p.Args[2] == "start" && canceled {
+				if p.Args[2] == "logs" && canceled {
 					cancel()
 					return -1, context.Canceled
 				}
@@ -208,7 +215,7 @@ func TestContainerRunnerRequiresDurableRegistration(t *testing.T) {
 }
 
 func TestContainerRunnerRequiresConfirmedTermination(t *testing.T) {
-	for _, scenario := range []string{"create", "attach-error", "attach-zero", "attach-nonzero", "cancel", "timeout", "inspect-failure"} {
+	for _, scenario := range []string{"create", "start", "output-error", "output-zero", "output-nonzero", "cancel", "timeout", "inspect-failure"} {
 		t.Run(scenario, func(t *testing.T) {
 			runner, commands, process := containerTest(t)
 			ctx, cancel := context.WithCancel(t.Context())
@@ -226,6 +233,10 @@ func TestContainerRunnerRequiresConfirmedTermination(t *testing.T) {
 						return -1, errors.New("lost create response")
 					}
 				case "start":
+					if scenario == "start" {
+						return -1, errors.New("lost start response")
+					}
+				case "logs":
 					switch scenario {
 					case "cancel":
 						cancel()
@@ -233,9 +244,9 @@ func TestContainerRunnerRequiresConfirmedTermination(t *testing.T) {
 					case "timeout":
 						<-ctx.Done()
 						return -1, ctx.Err()
-					case "attach-error":
-						return -1, errors.New("lost attachment")
-					case "attach-nonzero":
+					case "output-error":
+						return -1, errors.New("lost output transport")
+					case "output-nonzero":
 						return 125, nil
 					}
 				case "inspect":
@@ -337,7 +348,7 @@ func TestContainerRunnerRejectsRemoteDockerDefaultContext(t *testing.T) {
 
 func TestContainerRunnerRejectsMutableImagesAndOutsideWorkspaces(t *testing.T) {
 	for _, image := range []string{"ghcr.io/github/gh-aw:latest", "ghcr.io/github/gh-aw@sha256:abc"} {
-		if _, err := NewContainerRunner(image, "", nil); err == nil {
+		if _, err := NewContainerRunner(image, NewDockerContainerLifecycle("", nil)); err == nil {
 			t.Errorf("mutable or invalid image %q was accepted", image)
 		}
 	}

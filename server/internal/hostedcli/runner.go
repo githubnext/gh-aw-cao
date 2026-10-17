@@ -22,7 +22,7 @@ type Process struct {
 	Args      []string
 	Env       []string
 	Stdin     string
-	// RegisterContainer must durably record identity before Docker create.
+	// RegisterContainer must durably record identity before container creation.
 	RegisterContainer func(context.Context, operational.CLICommandExecution) error
 }
 
@@ -32,6 +32,13 @@ type OutputFunc func(stream string, data []byte)
 // Runner executes subprocesses.
 type Runner interface {
 	Run(context.Context, Process, OutputFunc) (int, error)
+}
+
+// RecoverableRunner confirms termination of durably recorded executions before
+// the queue can release their claims after an executor restart.
+type RecoverableRunner interface {
+	Runner
+	Reconcile(context.Context, operational.CLICommandExecution) error
 }
 
 // ExecRunner runs subprocesses in their own process group and kills the group
