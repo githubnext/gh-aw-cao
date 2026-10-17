@@ -187,6 +187,11 @@ arguments, or subprocess payloads. Import small shared gh-aw utility packages
 as needed rather than its full CLI command implementation.
 
 Help for every operator command and version work offline without GitHub authentication.
+Guided onboarding runs as `gh cao setup`; independent authentication profiles
+are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
+root-level `setup-auth` command. These Go commands retain the installed runtime's
+setup and setup-auth handlers, including their JSON result contracts and secure
+credential prompts. `./cao.sh` keeps its existing command names.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.
 `campaigns add`, `init`,

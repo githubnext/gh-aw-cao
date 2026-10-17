@@ -272,7 +272,7 @@ components:
     responsibility: own process lifecycle and version for the native gh cao extension in the independent root Go module
   go_extension_commands:
     path: internal/cli/
-    responsibility: own Cobra operator arguments and help, native campaigns add and bounded SHA/local-tracked resource materialization, runtime-backed repos add enrollment, review-safe policy initialization/modes and campaign workflow enablement, version, and bounded read-only installation diagnostics using github.com/github/gh-aw/pkg/logger
+    responsibility: own Cobra operator arguments and help, unified setup and setup auth github-app|enterprise-app|token mapped to unchanged production setup/setup-auth handlers, native campaigns add and bounded SHA/local-tracked resource materialization, runtime-backed repos add enrollment, review-safe policy initialization/modes and campaign workflow enablement, version, and bounded read-only installation diagnostics using github.com/github/gh-aw/pkg/logger
   go_extension_github_helper:
     path: internal/ghcli/
     responsibility: execute context-aware GitHub CLI calls and a bounded local version check using github.com/cli/go-gh/v2, the same helper used by gh-aw

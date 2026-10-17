@@ -49,7 +49,7 @@ func TestOperatorCommandInventory(t *testing.T) {
 	want := []string{
 		"campaigns", "computation", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"quickstart", "repos", "setup", "setup-auth", "update", "upgrade-gh-aw", "validate", "version",
+		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "validate", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)
@@ -124,6 +124,7 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		args, want []string
 	}{
 		{[]string{"setup", "--json"}, []string{"setup", "--json"}},
+		{[]string{"setup", "--json=false"}, []string{"setup"}},
 		{[]string{"quickstart", "--step=run", "--json"}, []string{"quickstart", "--json", "--step", "run"}},
 		{[]string{"quickstart", "--target", "owner/repo"}, []string{"quickstart", "--target", "owner/repo"}},
 		{[]string{"quickstart", "--target", "owner/repo", "--wait"}, []string{"quickstart", "--target", "owner/repo", "--wait"}},
@@ -140,8 +141,11 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		{[]string{"computation", "runtime-health", "--campaign", "example", "--diagnose"}, []string{"computation", "runtime-health", "--campaign", "example", "--diagnose"}},
 		{[]string{"computation", "intelligence", "--previous", "prior.json", "--feedback", "feedback.json"}, []string{"computation", "intelligence", "--feedback", "feedback.json", "--previous", "prior.json"}},
 		{[]string{"mcp", "--port", "9010"}, []string{"mcp", "--port", "9010"}},
-		{[]string{"setup-auth", "token", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two", "--dry-run"}, []string{"setup-auth", "token", "--dry-run", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two"}},
-		{[]string{"setup-auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "one", "--write-client-id", "two"}, []string{"setup-auth", "enterprise-app", "--read-client-id", "one", "--repo", "owner/repo", "--write-client-id", "two"}},
+		{[]string{"setup", "auth", "token", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two", "--dry-run"}, []string{"setup-auth", "token", "--dry-run", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two"}},
+		{[]string{"setup", "auth", "token", "--expires-in", "366", "--keep-existing", "--no-open", "--dry-run=false"}, []string{"setup-auth", "token", "--expires-in", "366", "--keep-existing", "--no-open"}},
+		{[]string{"setup", "auth", "token", "--replace-existing"}, []string{"setup-auth", "token", "--replace-existing"}},
+		{[]string{"setup", "auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "one", "--write-client-id", "two"}, []string{"setup-auth", "enterprise-app", "--read-client-id", "one", "--repo", "owner/repo", "--write-client-id", "two"}},
+		{[]string{"setup", "auth", "github-app", "--read-app-name", "cao-read", "--write-app-name", "cao-write", "--force", "--no-open", "--policy", "space dir/policy.json"}, []string{"setup-auth", "github-app", "--force", "--no-open", "--policy", "space dir/policy.json", "--read-app-name", "cao-read", "--write-app-name", "cao-write"}},
 		{[]string{"upgrade-gh-aw", "v1.2.3"}, []string{"upgrade-gh-aw", "v1.2.3"}},
 		{[]string{"repos", "add", "owner/repo"}, []string{"add", "--repository", "owner/repo"}},
 		{[]string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}, []string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}},
@@ -180,7 +184,14 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"quickstart", "--target", "owner/repo", "--target", "other/repo"},
 		{"gh", "runs", "extra"}, {"gh", "issues", "--status", "open"},
 		{"computation", "runtime-health", "--diagnose"}, {"computation", "intelligence", "--diagnose"},
-		{"setup-auth", "token", "--keep-existing", "--replace-existing"},
+		{"setup", "auth"}, {"setup", "auth", "unknown"}, {"setup", "unknown"},
+		{"setup", "auth", "token", "--keep-existing", "--replace-existing"},
+		{"setup", "auth", "token", "--keep-existing=false", "--replace-existing"},
+		{"setup", "auth", "token", "--repo", "one/repo", "--repo", "two/repo"},
+		{"setup", "auth", "token", "--expires-in", "1", "--expires-in", "2"},
+		{"setup", "auth", "token", "--unknown"}, {"setup", "auth", "token", "extra"},
+		{"setup", "auth", "token", "--json"}, {"setup", "auth", "github-app", "--expires-in", "30"},
+		{"setup", "auth", "enterprise-app", "--force"},
 		{"campaigns"}, {"campaigns", "unknown"}, {"campaigns", "mode", "preview"},
 		{"campaigns", "enable"}, {"campaigns", "disable"},
 		{"campaigns", "mode", "debug", "one"}, {"campaigns", "enable", "../one"},
@@ -253,7 +264,7 @@ func TestOperatorHelpDoesNotRequireRuntime(t *testing.T) {
 	root := NewRootCommand("test")
 	var output bytes.Buffer
 	root.SetOut(&output)
-	root.SetArgs([]string{"setup-auth", "token", "--help"})
+	root.SetArgs([]string{"setup", "auth", "token", "--help"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}

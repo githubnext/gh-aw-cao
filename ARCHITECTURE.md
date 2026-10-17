@@ -444,7 +444,13 @@ using the installed setup Action, and worker declarations are merged without
 widening scope, modes, enablement, or worker ceilings. Missing policy initializes
 only the exact current control repository. Initialization refuses
 replacement, preview maps to review, and campaign declarations are fully checked
-before workflow enablement/disablement. Repository enrollment (`gh cao repos add OWNER/REPO`),
+before workflow enablement/disablement. The extension groups guided setup at
+`gh cao setup` and independent credential profiles under
+`gh cao setup auth github-app|enterprise-app|token`, with no root-level
+`setup-auth` command. It maps the nested authentication commands to the existing
+runtime `setup-auth` handler without changing its options, JSON results,
+credential prompts, consent, or read/write scope boundaries.
+Repository enrollment (`gh cao repos add OWNER/REPO`),
 updates, and other operator commands reuse the installed Node.js
 24+ runtime, preserving the production onboarding, authentication, policy
 validation, and canonical query engines instead of introducing alternate

@@ -50,9 +50,9 @@ func TestInstalledRuntimeOutputParity(t *testing.T) {
 	policy := filepath.Join(directory, "cao.json")
 	writeTestFile(t, policy, `{"version":1,"control-plane":{"scope":{"allowed-repositories":["owner/repo"]}}}`)
 	for _, tt := range []struct {
-		args  []string
-		input string
-		code  int
+		args, legacy []string
+		input        string
+		code         int
 	}{
 		{args: []string{"pages", "--json"}},
 		{args: []string{"pages", "overview", "--json"}},
@@ -62,14 +62,23 @@ func TestInstalledRuntimeOutputParity(t *testing.T) {
 		{args: []string{"query", "--database", database, "--collection", "runs", "--where", "conclusion=failure", "--limit", "3"}},
 		{args: []string{"query", "--database", database, "--stdin"}, input: `{"name":"empty-runs","from":"runs","limit":3}`},
 		{args: []string{"gh", "runs", "--database", database, "-R", "owner/repo", "-L", "3"}},
-		{args: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
+		{args: []string{"setup", "auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"},
+			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
+		{args: []string{"setup", "auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"},
+			legacy: []string{"setup-auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
+		{args: []string{"setup", "auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"},
+			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"}, code: 1},
 		{args: []string{"download", "--url", "file:///not-an-http-snapshot"}, code: 1},
 		{args: []string{"query-info", "not-a-real-query", "--json"}, code: 1},
 	} {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			baseline := exec.CommandContext(ctx, node, append([]string{filepath.Join(repository, "activity", "cao.mjs")}, tt.args...)...)
+			legacy := tt.legacy
+			if legacy == nil {
+				legacy = tt.args
+			}
+			baseline := exec.CommandContext(ctx, node, append([]string{filepath.Join(repository, "activity", "cao.mjs")}, legacy...)...)
 			baseline.Stdin = strings.NewReader(tt.input)
 			var wantOut, wantErr bytes.Buffer
 			baseline.Stdout, baseline.Stderr = &wantOut, &wantErr
