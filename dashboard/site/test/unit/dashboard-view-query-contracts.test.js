@@ -180,7 +180,10 @@ describe('dashboard view query contracts', () => {
       { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
     ]);
     expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
-      .toMatchObject({ data: { source: 'eval-yes-no-status' } });
+      .toMatchObject({
+        data: { source: evaluationContract.evals.query },
+        encoding: { columns: expect.arrayContaining([{ field: 'run', type: 'nominal', title: 'Run', display: evaluationContract.evals.runDisplay }]) }
+      });
     for (const id of /** @type {const} */ (['evals', 'graders'])) {
       const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
       const contract = evaluationContract[id];
@@ -207,11 +210,11 @@ describe('dashboard view query contracts', () => {
       });
   });
 
-  it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
+  it('keeps all eval answers and run links distinct from auxiliary grader verdicts', () => {
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
-      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', 'eval-yes-no-status'],
+      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', evaluationContract.evals.query],
       sources: {
         ...databaseTables,
         'experiment-assignments': {
@@ -225,8 +228,10 @@ describe('dashboard view query contracts', () => {
         'eval-observations': {
           source: 'eval-observations', metadata,
           rows: [
-            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES' },
-            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES', run: '1',
+              'evidence-link': 'https://github.com/octo/api/actions/runs/1' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN', run: '2',
+              'evidence-link': { href: 'https://github.com/octo/api/actions/runs/2', label: 'Run 2' } },
             { workflow: 'worker.md', eval: 'answer', 'eval-result': 'NO' }
           ]
         },
@@ -245,7 +250,12 @@ describe('dashboard view query contracts', () => {
       expect.objectContaining({ 'workflow-coordinate': 'githubnext/two:worker.md', experiment: 'prompt', assignments: 1 })
     ]));
     expect(results['grader-status-ledger'].rows.map((row) => row.verdict)).toEqual(['YES', 'NO', 'unknown']);
-    expect(results['eval-yes-no-status'].rows.map((row) => row['eval-result'])).toEqual(['YES', 'NO']);
+    expect(results[evaluationContract.evals.query].rows.map((row) => row['eval-result'])).toEqual(['YES', 'UNKNOWN', 'NO']);
+    expect(results[evaluationContract.evals.query].rows.map((row) => row['run-link'])).toEqual([
+      { href: 'https://github.com/octo/api/actions/runs/1', label: '1' },
+      { href: 'https://github.com/octo/api/actions/runs/2', label: '2' },
+      null
+    ]);
   });
 
   it('groups navigable experimental pages in one experimental section', () => {

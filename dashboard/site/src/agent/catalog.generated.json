@@ -948,7 +948,7 @@
       "experimental": true,
       "parameters": [],
       "queries": [
-        "eval-yes-no-status"
+        "eval-status-ledger"
       ]
     },
     {
@@ -4753,10 +4753,10 @@
       }
     },
     {
-      "id": "eval-yes-no-status",
-      "subject": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
-      "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
-      "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
+      "id": "eval-status-ledger",
+      "subject": "Inspect every explicitly classified eval answer, including UNKNOWN.",
+      "objective": "Expose retained eval observations with their workflow, run evidence and observation time.",
+      "acceptance": "Keep recorded YES, NO and UNKNOWN answers distinct; unknown or absent evidence must not imply success or failure, and historical answers are not current verdicts or validated operational outcomes.",
       "description": "",
       "parameters": [],
       "sources": [
