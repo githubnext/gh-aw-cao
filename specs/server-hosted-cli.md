@@ -328,7 +328,8 @@ to the executor's App-only credential for requester authorization.
    capabilities, enable `no-new-privileges`, and apply process and memory
    limits. The per-command workspace MUST be its only writable host bind mount;
    `/tmp` MAY be a bounded tmpfs. The executor MUST NOT mount the host home,
-   Docker socket, App key, database credentials, or other server files.
+   Docker socket, App key, database credentials, or other server files, except
+   the reviewed relay and private proxy socket defined in section 6b.
 9. The subprocess environment MUST be minimal: the single-use `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
    identity. For Linux-image profiles, the executor MUST pass it through a temporary mode-`0600`
@@ -453,6 +454,54 @@ to the executor's App-only credential for requester authorization.
    lease-fencing guarantees as the Docker adapter. Native prerequisites are
    operator-managed; the executor MUST NOT install OS features or change
    global runtime configuration automatically.
+
+## 6b. Production Docker egress boundary
+
+1. Production Docker execution MUST require an explicit exact-host policy,
+   a static Linux relay built from reviewed server source, and its independently
+   approved SHA-256 digest. Missing, malformed, unavailable or mismatched
+   configuration MUST fail startup. The verified relay bytes and parsed policy
+   MUST be snapshotted; later host-path replacement MUST NOT change a command.
+   The relay architecture MUST match the local Linux daemon before creation.
+2. Workloads MUST use Docker `--network none`, with no host networking, added
+   interface, Docker socket, network-administration capabilities or unrestricted
+   bridge fallback. Proxy environment variables alone MUST NOT constitute the
+   boundary. Direct IPv4/IPv6, TCP/UDP and DNS bypasses MUST remain unavailable
+   even if the workload ignores the proxy.
+3. The only egress channel MUST be a per-command private Unix socket exposing
+   an HTTPS CONNECT proxy. Its directory MUST be `0700`, its socket `0600`,
+   and its relay and socket mount read-only. Any writable workspace alias of
+   that directory MUST be hidden from the workload. No host administration API,
+   policy mutation interface, App key or database credential may be exposed.
+4. The proxy MUST admit only exact approved DNS hosts and TCP port 443. It MUST
+   reject non-CONNECT methods, IP authorities, wildcards, alternate ports,
+   invalid or unavailable DNS, and any resolution containing an unapproved
+   address. It MUST normalize IPv4-mapped IPv6, validate every address, and dial
+   a validated numeric address rather than resolving again. Public destinations
+   MUST exclude private and special-use addresses. Private GHES exceptions MUST
+   bind exact DNS names to exact RFC1918/ULA addresses; metadata, loopback and
+   link-local addresses MUST remain denied. Policy MUST NOT broaden repository
+   authority. CONNECT destination control MUST NOT be represented as TLS SNI
+   inspection, application-content filtering or prevention of exfiltration to
+   an approved endpoint.
+5. Each proxy MUST bound concurrent connections (32), configured header bytes
+   (8 KiB), header timeout (5 seconds), resolution and dialing (10 seconds each),
+   tunnel I/O idle periods (30 seconds) and total lifetime (15 minutes or earlier
+   command cancellation). Cancellation, stop and executor death MUST close
+   existing tunnels and prevent new ones. Proxy loss MUST NOT imply workload
+   termination, settle claims, revoke the requirement to reconcile, or delete an
+   unconfirmed workload's workspace. Runtime identity, bounded cleanup, token
+   lifetime, and original-daemon recovery MUST remain as defined in section 6.
+6. Deployment MUST bind relay digest, architecture and source/build provenance
+   to the reviewed executor release. Before admitting production work, operators
+   MUST validate the real kernel boundary and allowed gh/Git traffic on their
+   intended Linux executor. Mock command tests or missing-Docker skips MUST NOT
+   count as real-boundary evidence. No global Docker or shared host-network
+   modification is required or authorized by this mechanism.
+7. SQLite-only Docker development MAY retain its previous bridge behavior only
+   when every egress setting is absent. Any supplied setting MUST require the
+   complete boundary with no silent fallback. The explicitly selected native
+   profiles in section 6a remain development-only.
 
 ## 7. Audit trail
 
@@ -634,6 +683,36 @@ its terminal receipt persisted, shutdown reports incomplete evidence even when
 the credential is no longer usable. No operating-effectiveness or SOC 2
 certification claim follows from these implementation guarantees.
 
+### Independent audit delivery
+
+`cao-dashboard audit deliver` MUST remain opt-in and consume only committed
+`AuditLog.ListAudit`/`VerifyAudit` results, without a second producer outbox or
+application-store writes. Every bounded page MUST be verified against an
+independent prior head and its reconstructed ending hash before delivery.
+The delivery cursor MUST distinguish the last acknowledged event from the
+independently verified high-water mark. Missing/stale/expired anchors, sequence
+gaps, rollback, interrupted verification, failed acknowledgements and checkpoint
+conflicts MUST fail closed and remain observable through a nonzero exit and
+credential-free structured status.
+
+Stream identities MUST be unique per deployment/namespace. Event objects MUST
+bind that identity to the sequence and chain hashes, use create-only writes,
+and require exact read-back before acknowledgement. A checkpoint MUST advance
+only after event and verification evidence delivery, using destination-side
+compare-and-swap with a strong version. Retries MUST reload and validate the
+independent checkpoint, accept only identical existing objects, and never
+overwrite another writer's progress. First enrollment MUST require an explicitly
+approved independent anchor and retained history beginning at sequence 1; a
+normal missing-checkpoint failure MUST NOT automatically rebaseline.
+
+The [deployment and adapter contract](../server/audit-delivery/README.md) defines
+bounded requests, restart behavior, conformance testing and scheduling.
+Administrators MUST independently establish destination durability, conditional
+write/read consistency, protected checkpoint versions, write-once retention,
+least-privilege credentials and alert routing. A local file, SIEM label, or OTLP
+emission MUST NOT be represented as a durable independent acknowledgement or
+evidence of organizational monitoring/incident-response control operation.
+
 ## 7a. Telemetry
 
 Hosted CLI telemetry uses the server's OpenTelemetry setup and MUST NOT
@@ -743,7 +822,7 @@ session is limited to the step-up window and to catalog-declared actions on
 repositories the administrator can already write.
 
 The command container runs as the executor's OS user, but receives only its
-workspace and scoped token. The executor process and local Docker daemon remain
+workspace, scoped token and the private egress relay/socket. The executor process and local Docker daemon remain
 trusted: the executor can read the App private key and database credentials,
 and a Docker administrator can inspect container configuration and its scoped
 token. Operators SHOULD run `execute-cli` under a dedicated, unprivileged user
@@ -754,8 +833,9 @@ compromised host kernel or Docker daemon.
 Operational hardening that this specification does not yet require, in
 priority order:
 
-1. Add a gVisor or microVM boundary and restricted network egress around the
-   command container.
+1. Evaluate a gVisor or microVM boundary against the deployment's threat model;
+   it is not a universal SOC 2 requirement. Production Docker egress restriction
+   is required by section 6b.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and
    rotate it on a schedule; GitHub allows two active keys during rotation.
 3. Use separate database roles: the web and executor roles get `INSERT` and

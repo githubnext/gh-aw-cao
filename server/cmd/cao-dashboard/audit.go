@@ -28,7 +28,7 @@ func newAuditCommand() *cobra.Command {
 		Use:   "audit",
 		Short: "verify or export the tamper-evident operational audit table",
 	}
-	cmd.AddCommand(newAuditVerifyCommand(), newAuditExportCommand())
+	cmd.AddCommand(newAuditVerifyCommand(), newAuditExportCommand(), newAuditDeliverCommand())
 	return cmd
 }
 

@@ -16,16 +16,25 @@ func TestHostedCLIContainerRuntimeSelection(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			t.Setenv("CAO_HOSTED_CLI_CONTAINER_RUNTIME", provider)
 			t.Setenv("CAO_HOSTED_CLI_CONTAINER_IMAGE", "")
-			runner, err := newHostedCLIRunnerFromEnv(HostedCLIExecutorOptions{})
+			t.Setenv("CAO_HOSTED_CLI_EGRESS_POLICY_FILE", "")
+			t.Setenv("CAO_HOSTED_CLI_EGRESS_RELAY", "")
+			t.Setenv("CAO_HOSTED_CLI_EGRESS_RELAY_SHA256", "")
+			_, err := newHostedCLIRunnerFromEnv(HostedCLIExecutorOptions{})
+			if err == nil {
+				t.Fatal("production accepted missing egress configuration or a native runtime")
+			}
 			if provider == "" || provider == "docker" {
+				runner, err := newHostedCLIRunnerFromEnv(HostedCLIExecutorOptions{SQLitePath: "debug.sqlite"})
 				if err != nil {
 					t.Fatal(err)
 				}
 				if _, ok := runner.Lifecycle.(*hostedcli.DockerContainerLifecycle); !ok {
 					t.Fatal("Docker must remain the default without automatic native fallback")
 				}
-			} else if err == nil {
-				t.Fatal("native or unknown runtime accepted in production mode")
+				t.Setenv("CAO_HOSTED_CLI_EGRESS_POLICY_FILE", "unavailable.json")
+				if _, err := newHostedCLIRunnerFromEnv(HostedCLIExecutorOptions{SQLitePath: "debug.sqlite"}); err == nil {
+					t.Fatal("partial egress configuration fell back to unrestricted development")
+				}
 			}
 		})
 	}

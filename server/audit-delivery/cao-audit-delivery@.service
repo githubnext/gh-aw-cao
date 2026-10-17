@@ -1,0 +1,25 @@
+[Unit]
+Description=CAO independent audit evidence delivery (%i)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+EnvironmentFile=/etc/cao/audit-delivery/%i.env
+ExecStart=/usr/local/bin/cao-dashboard audit deliver --stream %i --max-events 1000 --timeout 5m --max-anchor-age 24h
+TimeoutStartSec=6min
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+StandardOutput=journal
+StandardError=journal
