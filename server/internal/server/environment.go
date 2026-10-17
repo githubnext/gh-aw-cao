@@ -6,9 +6,63 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 )
+
+var environmentLog = logger.New("cao:server:environment")
+
+type positiveInt64Setting struct {
+	name string
+	dest *int64
+}
+
+type positiveIntSetting struct {
+	name string
+	dest *int
+}
+
+// positiveEnvSetting reads an optional positive integer from the environment.
+// An unset or blank variable reports set=false and leaves the caller's default.
+func positiveEnvSetting(name string, bitSize int) (value int64, set bool, err error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0, false, nil
+	}
+	n, err := strconv.ParseInt(raw, 10, bitSize)
+	if err != nil || n <= 0 {
+		environmentLog.Printf("operational setting rejected name=%s", name)
+		return 0, false, fmt.Errorf("%s must be a positive integer", name)
+	}
+	return n, true, nil
+}
+
+func applyInt64Settings(settings []positiveInt64Setting) error {
+	for _, setting := range settings {
+		n, set, err := positiveEnvSetting(setting.name, 64)
+		if err != nil {
+			return err
+		}
+		if set {
+			*setting.dest = n
+		}
+	}
+	return nil
+}
+
+func applyIntSettings(settings []positiveIntSetting) error {
+	for _, setting := range settings {
+		n, set, err := positiveEnvSetting(setting.name, strconv.IntSize)
+		if err != nil {
+			return err
+		}
+		if set {
+			*setting.dest = int(n)
+		}
+	}
+	return nil
+}
 
 // OperationalEnvironment describes reviewed storage selection without opening
 // an adapter. Namespace is operational; DatabaseNamespace preserves the
@@ -49,39 +103,21 @@ func OperationalPolicySelectedFromEnv() (bool, error) {
 
 func memoryConfigFromEnv() (memory.Config, error) {
 	config := memory.Config{}
-	for _, setting := range []struct {
-		name string
-		dest *int64
-	}{
+	if err := applyInt64Settings([]positiveInt64Setting{
 		{"CAO_OPERATIONAL_CACHE_MAX_BYTES", &config.MaxCacheBytes},
 		{"CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES", &config.MaxCacheValueBytes},
 		{"CAO_OPERATIONAL_PROTECTED_MAX_BYTES", &config.MaxProtectedBytes},
 		{"CAO_OPERATIONAL_TASK_MAX_BYTES", &config.MaxTaskBytes},
-	} {
-		if value := strings.TrimSpace(os.Getenv(setting.name)); value != "" {
-			n, err := strconv.ParseInt(value, 10, 64)
-			if err != nil || n <= 0 {
-				return config, fmt.Errorf("%s must be a positive integer", setting.name)
-			}
-			*setting.dest = n
-		}
+	}); err != nil {
+		return config, err
 	}
-	for _, setting := range []struct {
-		name string
-		dest *int
-	}{
+	if err := applyIntSettings([]positiveIntSetting{
 		{"CAO_OPERATIONAL_CACHE_MAX_ENTRIES", &config.MaxCacheEntries},
 		{"CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES", &config.MaxProtectedEntries},
 		{"CAO_OPERATIONAL_MAX_QUEUED_TASKS", &config.MaxQueuedTasks},
 		{"CAO_OPERATIONAL_MAX_RATE_LIMIT_SUBJECTS", &config.MaxRateLimitSubjects},
-	} {
-		if value := strings.TrimSpace(os.Getenv(setting.name)); value != "" {
-			n, err := strconv.Atoi(value)
-			if err != nil || n <= 0 {
-				return config, fmt.Errorf("%s must be a positive integer", setting.name)
-			}
-			*setting.dest = n
-		}
+	}); err != nil {
+		return config, err
 	}
 	defaults := memory.DefaultConfig()
 	if config.MaxCacheBytes > 0 && config.MaxCacheValueBytes == 0 {
@@ -107,23 +143,14 @@ func operationalEnvironment(host *resolvedHostPolicy) OperationalEnvironment {
 
 func PostgresOperationalConfigFromEnv() (postgres.Config, error) {
 	config := postgres.Config{}
-	for _, setting := range []struct {
-		name string
-		dest *int64
-	}{
+	if err := applyInt64Settings([]positiveInt64Setting{
 		{"CAO_OPERATIONAL_CACHE_MAX_BYTES", &config.MaxCacheBytes},
 		{"CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES", &config.MaxCacheValueBytes},
 		{"CAO_OPERATIONAL_CACHE_MAX_ENTRIES", &config.MaxCacheEntries},
 		{"CAO_OPERATIONAL_PROTECTED_MAX_BYTES", &config.MaxProtectedBytes},
 		{"CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES", &config.MaxProtectedEntries},
-	} {
-		if value := strings.TrimSpace(os.Getenv(setting.name)); value != "" {
-			n, err := strconv.ParseInt(value, 10, 64)
-			if err != nil || n <= 0 {
-				return config, fmt.Errorf("%s must be a positive integer", setting.name)
-			}
-			*setting.dest = n
-		}
+	}); err != nil {
+		return config, err
 	}
 	if config.MaxCacheBytes > 0 && config.MaxCacheValueBytes == 0 {
 		config.MaxCacheValueBytes = min(config.MaxCacheBytes, 4<<20)
