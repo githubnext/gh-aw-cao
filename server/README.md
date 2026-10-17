@@ -620,6 +620,30 @@ cao-dashboard execute-cli --max-pooled-tokens 8
 | `CAO_HOSTED_CLI_WORK_ROOT`, `CAO_HOSTED_CLI_GH` | Executor workspace root and `gh` binary. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
 
+#### Rotate the hosted CLI App key
+
+GitHub permits two active private keys for an App. The executor reads its
+configured key at startup, so changing the secret or key file does not update a
+running executor. Use a two-key rollover:
+
+1. Generate a new private key in the hosted CLI App's **Private keys** settings
+   and save it to a new, versioned secret or file. Do not overwrite the old key;
+   set the new file to owner-readable only (`0600`).
+2. Update the `execute-cli` deployment to use the new key through
+   `CAO_HOSTED_CLI_PRIVATE_KEY_FILE`, `_BASE64`, or the inline variable. Do not
+   expose it to `serve-hosted`.
+3. Pause new CLI admissions and wait until queued and running commands have
+   finished before restarting the executor. Shutdown cancels in-flight
+   commands. Restart every executor instance so none depends on the old key.
+4. Resume admissions for a controlled validation. Confirm the restarted
+   executor can mint a token and complete a safe, catalog-declared action. If
+   validation fails, pause admissions and restore the old configuration while
+   both keys are still active.
+5. After validation succeeds and commands have drained, pause admissions again,
+   revoke the old private key in the App settings, then resume admissions.
+
+Never put either key in logs, command output, or checked-in configuration.
+
 For local debugging without PostgreSQL, both processes can share one SQLite
 file holding the queue and the audit table. `--hosted-cli-sqlite` requires
 `--hosted-cli-actions` and a loopback `--listen`, and the file is created with

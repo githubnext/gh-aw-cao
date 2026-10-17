@@ -147,6 +147,14 @@ a subprocess starts.
 7. The broker MUST discard a pooled token that would expire before the
    command deadline plus one minute.
 8. Concurrent token minting MUST be bounded (default 4).
+9. Operators MUST rotate the App private key using a two-key rollover: create
+   and deploy the new key while the old key remains active, restart every
+   executor, verify token minting with the new key, and only then revoke the old
+   key. The executor loads the configured key at startup; changing its
+   environment or key file MUST NOT be assumed to update a running process.
+   Because shutdown cancels in-flight commands, operators MUST pause admissions
+   and wait for queued and running commands to finish before restarting the
+   executor for rotation.
 
 ## 6. Execution
 

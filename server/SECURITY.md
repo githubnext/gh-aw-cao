@@ -669,7 +669,10 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   with mode `0600` without overwriting, and installs the App only on the
   control repository and named same-owner targets. Configure the key with
   `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its `_FILE` or
-  `_BASE64` variant, available only to `execute-cli`.
+  `_BASE64` variant, available only to `execute-cli`. GitHub allows two active
+  App keys during rotation; deploy the replacement to every executor, restart
+  only after admissions are paused and commands have drained, verify token
+  minting, then revoke the old key. The executor reads its key at startup.
 
 - **Audit trail**: both processes append audit events to the PostgreSQL
   table `cao_operational_audit_events`. Rows carry a gap-free sequence and a
